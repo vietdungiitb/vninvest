@@ -1,5 +1,22 @@
 from django.contrib import admin
-from .models import Portfolio, SubAccount, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol
+from .models import Portfolio, SubAccount, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, StockProfile, ScreenerRule
+
+# Đăng ký StockProfile vào admin
+@admin.register(StockProfile)
+class StockProfileAdmin(admin.ModelAdmin):
+    list_display = ('symbol', 'company_name', 'industry', 'exchange', 'is_active', 'updated_at')
+    list_filter = ('exchange', 'industry', 'is_active')
+    search_fields = ('symbol', 'company_name', 'industry')
+    ordering = ('symbol',)
+    readonly_fields = ('updated_at',)
+
+# Đăng ký ScreenerRule nếu muốn quản lý bộ lọc động
+@admin.register(ScreenerRule)
+class ScreenerRuleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'user', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active', 'user')
+    search_fields = ('name', 'user__username')
+    ordering = ('-created_at',)
 
 
 class TransactionInline(admin.TabularInline):

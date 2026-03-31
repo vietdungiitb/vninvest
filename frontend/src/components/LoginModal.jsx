@@ -1,4 +1,4 @@
-re/**
+/**
  * components/LoginModal.jsx
  * Form đăng nhập JWT Auth.
  */

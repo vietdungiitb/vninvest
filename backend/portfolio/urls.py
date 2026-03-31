@@ -23,13 +23,13 @@ urlpatterns = [
     path('portfolios/<int:portfolio_id>/allocation/', views.AllocationView.as_view(), name='portfolio-allocation'),
     path('portfolios/<int:portfolio_id>/sync/', views.SyncPricesView.as_view(), name='portfolio-sync'),
 
-    # --- Watchlist ---
-    path('watchlist/groups/', views.WatchlistGroupListCreateView.as_view(), name='watchlist-group-list'),
-    path('watchlist/groups/<int:group_id>/', views.WatchlistGroupDetailView.as_view(), name='watchlist-group-detail'),
-    path('watchlist/groups/<int:group_id>/items/', views.WatchlistItemCreateView.as_view(), name='watchlist-item-create'),
-    path('watchlist/items/<int:item_id>/', views.WatchlistItemDeleteView.as_view(), name='watchlist-item-delete'),
-    path('watchlist/seed/', views.WatchlistSeedView.as_view(), name='watchlist-seed'),
-    path('watchlist/sync/', views.WatchlistSyncView.as_view(), name='watchlist-sync'),
+    # --- Watchlist (giữ lại cho tương thích cũ, sẽ chuyển sang stock-management) ---
+    # path('watchlist/groups/', ...)
+    # path('watchlist/groups/<int:group_id>/', ...)
+    # path('watchlist/groups/<int:group_id>/items/', ...)
+    # path('watchlist/items/<int:item_id>/', ...)
+    # path('watchlist/seed/', ...)
+    # path('watchlist/sync/', ...)
 
     # --- Mã Theo dõi (personal tracked symbols) ---
     path('tracked-symbols/', views.TrackedSymbolListCreateView.as_view(), name='tracked-symbol-list'),

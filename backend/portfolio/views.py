@@ -1,3 +1,47 @@
+
+# --- Stock Management Modular Views ---
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import generics
+from .models import StockProfile
+from .serializers import StockProfileSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer
+
+# StockProfile List API
+class StockProfileListView(generics.ListAPIView):
+    queryset = StockProfile.objects.all()
+    serializer_class = StockProfileSerializer
+    permission_classes = [AllowAny]
+
+# StockProfile Detail đã có
+
+# Đồng bộ StockProfile từ vnstock (gọi management command hoặc service)
+from django.http import JsonResponse
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_stockprofile_api(request):
+    from .management.commands.sync_stockprofile import Command as SyncStockProfileCommand
+    try:
+        SyncStockProfileCommand().handle()
+        return JsonResponse({'success': True, 'message': 'Đã đồng bộ mã chứng khoán từ thị trường.'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+# SecuritiesGroup List API
+class SecuritiesGroupListView(generics.ListAPIView):
+    serializer_class = SecuritiesGroupDetailSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return SecuritiesGroup.objects.filter(user=self.request.user)
+
+# SecuritiesItem List API (liệt kê các mã trong group)
+class SecuritiesItemListView(generics.ListAPIView):
+    serializer_class = SecuritiesItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        group_id = self.kwargs['pk']
+        return SecuritiesItem.objects.filter(group_id=group_id, group__user=self.request.user)
 """
 views.py — DRF API Views.
 
@@ -22,12 +66,12 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
     SecuritiesGroupCreateSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer,
-    TrackedSymbolSerializer, WatchlistGroupSerializer, WatchlistItemSerializer
+    TrackedSymbolSerializer, WatchlistGroupSerializer, WatchlistItemSerializer, StockProfileSerializer
 )
 
 from .services import (
@@ -126,6 +170,7 @@ class SubAccountListCreateView(generics.ListCreateAPIView):
         # Auto-assign to user's first portfolio if not specified
         user = self.request.user
         if not user.portfolios.exists():
+            from rest_framework import serializers
             raise serializers.ValidationError('User must have at least one Portfolio')
         portfolio = user.portfolios.first()
         serializer.save(portfolio=portfolio)
@@ -538,7 +583,7 @@ class SecuritiesSeedView(APIView):
             elif added_symbols:
                 updated_groups.append({'group': group.name, 'new_symbols': added_symbols})
 
-            g['symbols'] = symbols  # restore
+            group['symbols'] = symbols  # restore
 
         msg_parts = []
         if created_groups:
@@ -571,17 +616,15 @@ class SecuritiesSyncView(APIView):
         except (ValueError, TypeError):
             days = 5
 
-        results = sync_Securities_prices(request.user.id, days=days)
-        if not results:
+        # Giả sử đồng bộ giá cho toàn bộ mã trong SecuritiesGroup của user
+        from .services import fetch_and_save_daily_prices
+        all_symbols = list({item.symbol for group in SecuritiesGroup.objects.filter(user=request.user) for item in group.items.all()})
+        if not all_symbols:
             return Response({'detail': 'Securities không có mã nào.'}, status=status.HTTP_200_OK)
-
-        total_created = sum(r['created'] for r in results)
-        total_errors = sum(r['errors'] for r in results)
+        results = fetch_and_save_daily_prices(all_symbols, days=days)
         return Response({
             'synced': results,
-            'total_symbols': len(results),
-            'total_created': total_created,
-            'total_errors': total_errors,
+            'total_symbols': len(all_symbols),
         })
 
 
@@ -698,4 +741,14 @@ class TrackedSymbolDeleteView(APIView):
             return Response({'detail': 'Không tìm thấy mã.'}, status=status.HTTP_404_NOT_FOUND)
         ts.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+# --- StockProfile Views ---
+from .models import StockProfile
+from .serializers import StockProfileSerializer
+
+class StockProfileDetailView(generics.RetrieveAPIView):
+    queryset = StockProfile.objects.all()
+    serializer_class = StockProfileSerializer
+    lookup_field = 'symbol'
+    permission_classes = []  # Public, hoặc thêm quyền nếu cần
 

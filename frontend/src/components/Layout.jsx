@@ -7,10 +7,15 @@ import { Outlet, NavLink } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import LoginModal from './LoginModal';
 
+
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Tổng quan' },
   { to: '/transactions', label: 'Giao dịch' },
+];
+
+const STOCK_MGMT_ITEMS = [
   { to: '/watchlist', label: 'Nhóm Chứng khoán' },
+  // Có thể bổ sung thêm các mục quản lý mã CK khác ở đây
 ];
 
 export default function Layout() {
@@ -51,6 +56,7 @@ export default function Layout() {
           </div>
         )}
 
+
         {/* Nav links */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
           {NAV_ITEMS.map(({ to, label }) => (
@@ -61,6 +67,26 @@ export default function Layout() {
                 `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-brand-700 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+
+          {/* Divider for Stock Management */}
+          <div className="mt-6 mb-1 px-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Quản lý danh mục chứng khoán</span>
+          </div>
+          {STOCK_MGMT_ITEMS.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-900 text-blue-200'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
                 }`
               }

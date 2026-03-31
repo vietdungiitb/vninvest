@@ -4,6 +4,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem
+from .models import StockProfile
 
 
 
@@ -195,4 +196,10 @@ class WatchlistItemSerializer(serializers.ModelSerializer):
         model = WatchlistItem
         fields = ['id', 'group', 'group_name', 'symbol', 'added_at']
         read_only_fields = ['id', 'added_at']
+
+class StockProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockProfile
+        fields = ['symbol', 'company_name', 'industry', 'exchange', 'listed_date', 'is_active', 'updated_at']
+        read_only_fields = fields
 

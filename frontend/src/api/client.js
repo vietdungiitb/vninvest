@@ -87,6 +87,9 @@ export const getAllocation = (portfolioId) =>
 export const syncPrices = (portfolioId, days = 30) =>
   apiClient.post(`/portfolio/portfolios/${portfolioId}/sync/`, { days });
 
+// --- Sync StockProfile (trigger backend sync) ---
+export const syncStockProfile = () => apiClient.post('/sync-stockprofile/');
+
 // --- Watchlist ---
 export const getWatchlistGroups = () => apiClient.get('/portfolio/watchlist/groups/');
 export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchlist/groups/', data);
@@ -97,6 +100,17 @@ export const addWatchlistItem = (groupId, symbol) =>
 export const deleteWatchlistItem = (itemId) => apiClient.delete(`/portfolio/watchlist/items/${itemId}/`);
 export const seedWatchlist = () => apiClient.post('/portfolio/watchlist/seed/');
 export const syncWatchlistPrices = (days = 5) => apiClient.post('/portfolio/watchlist/sync/', { days });
+
+// --- Securities Groups APIs ---
+export const getSecuritiesGroups = () => apiClient.get('/portfolio/Securities/groups/');
+export const createSecuritiesGroup = (data) => apiClient.post('/portfolio/Securities/groups/', data);
+export const updateSecuritiesGroup = (id, data) => apiClient.patch(`/portfolio/Securities/groups/${id}/`, data);
+export const deleteSecuritiesGroup = (id) => apiClient.delete(`/portfolio/Securities/groups/${id}/`);
+export const addSecuritiesItem = (groupId, data) => apiClient.post(`/portfolio/Securities/groups/${groupId}/items/`, data);
+export const deleteSecuritiesItem = (itemId) => apiClient.delete(`/portfolio/Securities/items/${itemId}/`);
+export const seedSecurities = () => apiClient.post('/portfolio/Securities/seed/');
+export const syncSecuritiesPrices = (days = 5) => apiClient.post('/portfolio/Securities/sync/', { days });
+export const getStockProfile = (symbol) => apiClient.get(`/portfolio/stockprofile/${symbol}/`);
 
 // --- Mã Theo dõi (personal tracked symbols) ---
 export const getTrackedSymbols = () => apiClient.get('/portfolio/tracked-symbols/');
