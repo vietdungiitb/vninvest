@@ -391,3 +391,90 @@ Luu y:
 - backend/portfolio/admin.py
 - backend/portfolio/templates/admin/index.html
 - docs/ADMIN_UI_IMPLEMENTATION_STEPS.md
+
+### Buoc 25 - Tao man hinh thong tin chi tiet ma co phieu tren Django Admin
+- Yeu cau moi:
+  1. Backend admin can co mot man hinh `thong tin chi tiet ma co phieu` de nguoi van hanh xem nhanh ho so ma, gia gan nhat, ky thuat co ban va context quan sat he thong.
+  2. Man hinh nay phuc vu van hanh/noi bo, khong can giong 100% frontend trading workspace nhung phai day thong tin va de doc trong admin.
+- Cach lam truoc khi code:
+  1. Them custom admin route cho tung `StockProfile`, duong dan tu changelist va change form.
+  2. Tai su dung du lieu san co: `StockProfile`, `DailyPrice`, `SecuritiesGroup`, `TrackedSymbol`, `WatchlistItem`, va technical summary EOD.
+  3. Render mot admin template rieng gom: header thong tin ma, gia/phan tram thay doi, sparkline EOD, technical snapshot, nhom thi truong lien quan, thong ke tracked/watchlist va bang gia gan nhat.
+  4. Them regression test cho route admin moi de dam bao co the mo chi tiet ma tu backend.
+
+Ket qua mong doi:
+- Django Admin co man hinh chi tiet ma co phieu dung cho van hanh backend.
+- Nguoi van hanh co the di tu danh sach `Ho so ma chung khoan` vao mot workspace thong tin day du hon change form mac dinh.
+
+### Buoc 26 - Hoan thien tieng Viet va dieu huong nhanh cho workspace ma tren Admin
+- Yeu cau moi:
+  1. Man hinh chi tiet ma tren backend admin can hien thi day du tieng Viet, khong de lai cac nhan English/ASCII dang do.
+  2. Nguoi van hanh can di thang tu `Nhóm thị trường` hoac `Dữ liệu giá hàng ngày` sang workspace backend cua ma tuong ung.
+  3. Workspace backend can co them panel chart nen EOD de giong man hinh trading hon, khong chi la sparkline.
+- Cach lam truoc khi code:
+  1. Viet hoa lai tieu de, nhan panel, nhan thong ke va thong bao tren template workspace.
+  2. Them cot/link `Mo workspace` cho `SecuritiesItem` va `DailyPrice`, dong thoi them link ngay tren inline cua `Nhóm thị trường`.
+  3. Tai backend admin workspace, tinh bo du lieu nen OHLC tu `DailyPrice` va render mini candlestick chart bang SVG/CSS don gian.
+  4. Cap nhat regression test de xac nhan route workspace van mo duoc va giao dien moi co noi dung tieng Viet + panel nen.
+
+Ket qua mong doi:
+- Man hinh backend chi tiet ma doc tu nhien hon voi nguoi van hanh Viet Nam.
+- Luong dieu huong tu du lieu thi truong sang workspace nhanh hon.
+- Workspace backend gan hon giao dien trading mau ve mat mat do va kieu hien thi gia.
+
+### Buoc 27 - Dong bo nhan bias ky thuat tieng Viet giua backend API va frontend
+- Yeu cau moi:
+  1. Frontend stock workspace va backend admin khong nen tu dich rieng `BULLISH/WEAK/NEUTRAL`, tranh lech nhan va mo ta.
+  2. API chart can tra ve san `nhan tieng Viet` va `mo ta` cho bias ky thuat de frontend dung truc tiep.
+- Cach lam truoc khi code:
+  1. Giu truong `bias` dang code ky thuat de khong pha contract cu.
+  2. Bo sung `bias_label`, `bias_description` vao payload `technical` tu backend.
+  3. Refactor frontend `StockDetail` sang uu tien dung `bias_label`/`bias_description`, chi fallback ve mapping local neu payload cu chua co.
+  4. Cap nhat regression test API de xac nhan backend tra ve nhan tieng Viet moi.
+
+Ket qua mong doi:
+- Frontend va backend admin dung cung mot he nhan ky thuat.
+- Viec doi ngon ngu hoac chuan hoa thuat ngu ve sau se di qua backend context/API, khong lap lai tren UI.
+
+### Buoc 28 - Nen giao dien Stock workspace theo kieu trading screen mat do cao
+- Yeu cau moi:
+  1. Giao dien chi tiet ma tren frontend can giong man hinh trading hon, hien thi duoc nhieu thong tin hon trong mot khung hinh.
+  2. Can giam khoang trang, tang mat do du lieu va chia ro 3 vung: header quote, chart trung tam, cot phai thong tin/lenh/ngu canh.
+- Cach lam truoc khi code:
+  1. Refactor `StockDetail.jsx` thanh layout full-width hon, header compact hon va co quote matrix dang trading terminal.
+  2. Them panel ben phai cho `do sau gia lap` va `dong lenh gia lap` dua tren gia hien tai/khung EOD de giao dien gan hon mau.
+  3. Nen cac khoi `tracked/watchlist/technical/context` thanh card compact, giam margin/padding va sap xep lai theo uu tien quan sat.
+  4. Giu nguyen cac action nghiep vu hien co (`shortlist`, `watchlist`, `alert`) nhung dua vao bo cuc gon hon.
+
+Ket qua mong doi:
+- Stock workspace co mat do thong tin day hon, doc theo kieu trading dashboard.
+- Nguoi dung thay duoc nhieu context hon ma khong phai cuon ngay tu man hinh dau tien.
+
+### Buoc 29 - Tinh chinh Stock workspace thanh bo cuc trading terminal chat hon
+- Yeu cau moi:
+  1. Sau khi da co huong trading screen, man frontend van can duoc nen tiep de header, chart, do sau va technical nam gon trong viewport dau tien.
+  2. Cac thao tac `shortlist/watchlist/alert` can nam trong mot action strip lien mach thay vi tach thanh nhieu khoi roi.
+- Cach lam truoc khi code:
+  1. Thay layout hero-card cu bang quote board compact: gia hien tai, thay doi, tham chieu, tran/san, range ngay, 52 tuan, khoi luong, trang thai feed.
+  2. Dua thanh action vao mot strip duy nhat ben duoi quote board.
+  3. Tai cot phai, bo tri `do sau gia lap`, `dong lenh gia lap`, `tom tat ky thuat`, `ngu canh theo doi` theo thu tu uu tien trading.
+  4. Giam padding/margin, mo rong max width va giu chart la tam nhin chinh cua man hinh.
+
+Ket qua mong doi:
+- Man hinh `Stock workspace` nhin sat phong cach terminal trading hon.
+- Mat do thong tin tang ro ma van giu duoc cac action nghiep vu dang co.
+
+### Buoc 30 - Doi chart area sang kien OHLC va them mini breadth peer stocks
+- Yeu cau moi:
+  1. Thay the Area chart bang chart nen nhat thuc tung diem OHLC: component nien hien thi open/high/low/close qua nhung que nho.
+  2. Them mini breadth panel cho cap co phieu cung nhom thi truong: hien thi performance relative cua nhung ma peer tren cung nhom phan thanh heatmap trang thai tang/yeu.
+  3. Tinh chinh theme CSS va typography cho trading terminal: font-size nho hon, color scheme tu nen slate/dark -> cyan/emerald/rose chi bao hieu suay, spacing chat hon.
+- Chi tiet implementation:
+  1. Frontend da nhan duoc OHLC tu API (open, high, low, close, volume) tu backend view. Chi can su dung chung thay vi Area.
+  2. Dung SecuritiesItem va market_group_refs tu overview de lay danh sach cap co phieu peer va ve mini breadth.
+  3. Cap nhat index.css: font families em/rem, line heights, spacing units cho terminal feel.
+
+Ket qua mong doi:
+- Chart nay thanh kien nhat thuc (candle chart-style) thay Area chart.
+- Hien thi duoc movement cua peer stocks trong cac nhom thi truong.
+- Typography va color scheme tro nen sắc nét, gon gang trading screen thuc.

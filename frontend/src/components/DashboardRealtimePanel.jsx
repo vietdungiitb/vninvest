@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { getTrackedSymbols } from '../api/client';
+import { getTrackedSymbols, getRealtimeHealth } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 
 const REALTIME_LABELS = {
@@ -43,6 +43,7 @@ function toNumber(value) {
 
 export default function DashboardRealtimePanel({ holdings }) {
   const [trackedSymbols, setTrackedSymbols] = useState([]);
+  const [realtimeHealth, setRealtimeHealth] = useState(null);
 
   const holdingSymbols = useMemo(
     () => [...new Set((holdings || []).map((item) => item.symbol).filter(Boolean))],
@@ -84,11 +85,18 @@ export default function DashboardRealtimePanel({ holdings }) {
     };
   }, []);
 
+  useEffect(() => {
+    getRealtimeHealth()
+      .then((res) => setRealtimeHealth(res.data))
+      .catch(() => setRealtimeHealth(null));
+  }, []);
+
   const {
     quotesBySymbol,
     realtimeStatus,
     lastEventAt,
     alerts,
+    metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 5 });
 
   const quoteList = useMemo(
@@ -176,6 +184,45 @@ export default function DashboardRealtimePanel({ holdings }) {
           <span className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-950 text-gray-400">
             Sự kiện gần nhất: {formatTime(lastEventAt)}
           </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 text-xs mt-2 w-full">
+          <span className="text-gray-600 mr-0.5">Observability:</span>
+          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+            📈 {metrics?.eventCounts?.ticker_update ?? 0} tickers
+          </span>
+          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+            🐋 {metrics?.eventCounts?.whale_alert ?? 0} whale
+          </span>
+          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+            💓 {metrics?.eventCounts?.heartbeat ?? 0} hb
+          </span>
+          {(metrics?.eventCounts?.reconnect_attempts ?? 0) > 0 && (
+            <span className="px-2 py-0.5 rounded border border-amber-800 bg-amber-950/20 text-amber-400">
+              ↺ {metrics.eventCounts.reconnect_attempts} reconnect
+            </span>
+          )}
+          {metrics?.lastLatencyMs !== null && metrics?.lastLatencyMs !== undefined && (
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${
+              metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'
+            }`}>
+              ⚡ {metrics.lastLatencyMs}ms
+            </span>
+          )}
+          {realtimeHealth && (
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${
+              realtimeHealth.channel_layer_type === 'inmemory'
+                ? 'border-yellow-800 text-yellow-500'
+                : realtimeHealth.redis_ok === false
+                  ? 'border-red-800 text-red-400'
+                  : 'border-emerald-900 text-emerald-500'
+            }`}>
+              {realtimeHealth.channel_layer_type === 'inmemory'
+                ? '🧠 inmemory'
+                : realtimeHealth.redis_ok === false
+                  ? '🔴 redis down'
+                  : '🟢 redis'}
+            </span>
+          )}
         </div>
       </div>
 

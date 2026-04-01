@@ -217,7 +217,7 @@ class WatchlistItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = WatchlistItem
         fields = ['id', 'group', 'group_name', 'symbol', 'added_at']
-        read_only_fields = ['id', 'added_at']
+        read_only_fields = ['id', 'group', 'added_at']
 
 class StockProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -272,6 +272,8 @@ class StockWorkspaceOverviewSerializer(serializers.Serializer):
 
 class StockWorkspaceTechnicalSerializer(serializers.Serializer):
     bias = serializers.CharField()
+    bias_label = serializers.CharField()
+    bias_description = serializers.CharField()
     sma20 = serializers.FloatField(allow_null=True)
     sma50 = serializers.FloatField(allow_null=True)
     rsi14 = serializers.FloatField(allow_null=True)
@@ -285,7 +287,11 @@ class StockWorkspaceTechnicalSerializer(serializers.Serializer):
 
 class StockWorkspaceChartPointSerializer(serializers.Serializer):
     date = serializers.CharField()
+    open = serializers.FloatField(allow_null=True)
+    high = serializers.FloatField(allow_null=True)
+    low = serializers.FloatField(allow_null=True)
     close = serializers.FloatField()
+    volume = serializers.FloatField(allow_null=True)
 
 
 class StockWorkspaceChartResponseSerializer(serializers.Serializer):

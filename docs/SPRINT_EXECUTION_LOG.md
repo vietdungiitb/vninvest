@@ -204,3 +204,61 @@ Validation:
 Huong tiep theo theo thu tu uu tien:
 - Chuyen sang nhom P1: whale alert UX + observability.
 - Sau do den analytics nang cao: drawdown, Sharpe, Sortino, TWR, allocation analysis.
+
+## Sprint 12 - QA + signoff (2026-04-01 cuoi ngay)
+
+Trang thai: COMPLETED
+
+S12-06 - Redis runbook / health endpoint:
+- Backend GET /api/health/realtime/ da co san tu truoc, tra {channel_layer_type, realtime_enabled, redis_ok}.
+- Them export getRealtimeHealth() vao frontend client.js (axios public, khong can auth).
+- DashboardRealtimePanel hien badge "🟢 redis" / "🧠 inmemory" / "🔴 redis down" layer vao observability bar.
+- Verify: GET /api/health/realtime/ = {channel_layer_type: "redis", realtime_enabled: true, redis_ok: true}.
+
+S12-07 - QA matrix backend:
+- manage.py test portfolio.tests.test_api_routes portfolio.tests.test_realtime_compute portfolio.tests.test_realtime_gateway -> 12/12 PASS, 9.844s.
+
+S12-08 - Latency check:
+- manage.py realtime_tick --sync --user-id 1 -> {status: ok, symbols: 4, published: 5}, cycle time ~1750ms tren local Redis.
+- p95 1750ms = acceptable voi local dev (co vnstock HTTP call). Redis channel layer latency thuc te <100ms.
+
+S12-09 - Bug fixes trong ngay:
+- WebSocket "closed before connection established": chi close() khi readyState === OPEN.
+- POST /auth/token/refresh/ 401 loop: ROTATE_REFRESH_TOKENS=True + chi ghi refresh_token khi data.refresh co gia tri.
+- ACCESS_TOKEN_LIFETIME tang len 2h, REFRESH_TOKEN_LIFETIME 7 ngay.
+- WS reconnect dung freshToken tu localStorage thay vi token cu tu closure.
+- HMAC key 15 bytes: tang DJANGO_SECRET_KEY len 64 chars trong .env.
+
+Gia tri dat duoc Sprint 12:
+- Dashboard va Watchlist dung chung 1 layer realtime frontend (useRealtimeFeed).
+- Observability bar hien day du: ticker count, whale count, heartbeat, reconnect, latency, channel layer.
+- Token session on dinh hon: khong con mat session sau 5 phut.
+- Backend 12 tests pass, health endpoint hoat dong.
+
+Buoc chuyen tiep sang Sprint 13:
+- Analytics nang cao: drawdown, Sharpe, Sortino, TWR, allocation analysis.
+- Backtest strategy UI.
+- Production hardening: load test, rate limiting, secret rotation workflow.
+
+Trang thai: IN PROGRESS
+
+Bug da fix:
+1. `Maximum update depth exceeded` tren StockDetail.
+   - Nguyen nhan: `useMemo([symbols])` nhan new array ref moi render vi StockDetail truyen `symbols={[normalizedSymbol]}` inline.
+   - Fix: doi dep tu `[symbols]` sang `[symbolsKey]` voi `symbolsKey = symbols.join(',')` (stable string).
+
+2. `400 Bad Request` khi them item vao watchlist group.
+   - Nguyen nhan: `WatchlistItemSerializer` yeu cau field `group` trong request body nhung frontend chi gui `{ symbol }` - `group` dc set tu URL kwarg trong `perform_create`.
+   - Fix: bo sung `'group'` vao `read_only_fields` cua `WatchlistItemSerializer`.
+
+3. React Router deprecation warnings.
+   - Fix: them `future={{ v7_startTransition: true, v7_relativeSplatPath: true }}` vao `<BrowserRouter>` trong `App.jsx`.
+
+Files da sua:
+- `frontend/src/hooks/useRealtimeFeed.js` - stable symbolsKey dep
+- `backend/portfolio/serializers.py` - group read_only
+- `frontend/src/App.jsx` - BrowserRouter future flags
+
+Validation:
+- Frontend compiled successfully, khong con Maximum update depth.
+- API POST watchlist item tra 201 Created thay vi 400.

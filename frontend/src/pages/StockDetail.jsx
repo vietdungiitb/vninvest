@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -66,57 +66,303 @@ function formatPercent(value) {
   return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
 }
 
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  return (
-    <div className="rounded-xl border border-gray-700 bg-gray-900/95 px-4 py-3 shadow-2xl">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-blue-300">{formatCurrency(payload[0].value)}</p>
-    </div>
-  );
-}
-
-function StatBox({ label, value, subValue, accentClass = 'text-gray-100' }) {
-  return (
-    <div className="rounded-2xl border border-gray-800 bg-gray-900/80 p-4">
-      <p className="text-xs uppercase tracking-[0.18em] text-gray-500">{label}</p>
-      <p className={`mt-2 text-lg font-semibold ${accentClass}`}>{value}</p>
-      {subValue ? <p className="mt-1 text-xs text-gray-500">{subValue}</p> : null}
-    </div>
-  );
-}
-
-function biasMeta(bias) {
-  if (bias === 'BULLISH') {
-    return {
-      label: 'Bullish',
-      className: 'border-emerald-700 bg-emerald-950/40 text-emerald-300',
-      description: 'Gia dang nam tren SMA20 va SMA50, dong luong duy tri tich cuc.',
-    };
-  }
-  if (bias === 'WEAK') {
-    return {
-      label: 'Weak',
-      className: 'border-red-700 bg-red-950/40 text-red-300',
-      description: 'Gia dang nam duoi cac duong trung binh va dong luong yeu.',
-    };
-  }
-  return {
-    label: 'Neutral',
-    className: 'border-gray-700 bg-gray-900/70 text-gray-300',
-    description: 'Cau truc gia chua nghieng ro theo mot huong manh.',
-  };
-}
-
 function formatPercentDelta(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
   const numericValue = Number(value);
   return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
+}
+
+function CandlestickChart({ data, width = '100%', height = 300 }) {
+  return (
+    <ComposedChart
+      data={data}
+      width={width}
+      height={height}
+      margin={{ top: 8, right: 14, left: 0, bottom: 8 }}
+    >
+      <defs>
+        <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.12} />
+          <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.02} />
+        </linearGradient>
+      </defs>
+      <CartesianGrid stroke="#1e293b" strokeDasharray="2 4" vertical={false} />
+      <XAxis
+        dataKey="date"
+        axisLine={false}
+        tickLine={false}
+        tick={{ fill: '#64748b', fontSize: 11 }}
+        tickFormatter={(value) => {
+          const dateValue = new Date(value);
+          return `${dateValue.getDate()}/${dateValue.getMonth() + 1}`;
+        }}
+      />
+      <YAxis
+        axisLine={false}
+        tickLine={false}
+        tick={{ fill: '#64748b', fontSize: 11 }}
+        tickFormatter={formatChartAxis}
+        width={70}
+      />
+      <Tooltip content={<CandleTooltip />} />
+      <Rectangle
+        dataKey="candle"
+        fill="url(#chart-gradient)"
+        shape={<CandleShape />}
+        isAnimationActive={false}
+      />
+    </ComposedChart>
+  );
+}
+
+function CandleShape(props) {
+  const { x, y, width, height, payload } = props;
+  if (!payload) return null;
+
+  const chartHeight = 470;
+  const min = Math.min(payload.open || 0, payload.high || 0, payload.low || 0, payload.close || 0);
+  const max = Math.max(payload.open || 0, payload.high || 0, payload.low || 0, payload.close || 0);
+  const range = max - min || 1;
+
+  const scale = height / range;
+  const baseY = y + height;
+
+  const high_y = baseY - (payload.high - min) * scale;
+  const low_y = baseY - (payload.low - min) * scale;
+  const open_y = baseY - (payload.open - min) * scale;
+  const close_y = baseY - (payload.close - min) * scale;
+
+  const bodyTop = Math.min(open_y, close_y);
+  const bodyBottom = Math.max(open_y, close_y);
+  const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
+  const isUp = payload.close >= payload.open;
+
+  const candleColor = isUp ? '#22c55e' : '#f43f5e';
+  const wickColor = isUp ? '#16a34a' : '#be123c';
+  const wickWidth = Math.max(width * 0.3, 1);
+  const bodyWidth = Math.max(wickWidth * 0.75, 1);
+
+  return (
+    <g>
+      {/* Wick */}
+      <line
+        x1={x + width / 2}
+        y1={high_y}
+        x2={x + width / 2}
+        y2={low_y}
+        stroke={wickColor}
+        strokeWidth={Math.max(width * 0.12, 0.5)}
+      />
+      {/* Body */}
+      <rect
+        x={x + (width - bodyWidth) / 2}
+        y={bodyTop}
+        width={bodyWidth}
+        height={bodyHeight}
+        fill={candleColor}
+        stroke={isUp ? '#16a34a' : '#be123c'}
+        strokeWidth={0.5}
+      />
+    </g>
+  );
+}
+
+function CandleTooltip({ active, payload }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-2xl text-[12px]">
+      <p className="text-slate-500">{data.date}</p>
+      <p className="mt-1 font-semibold text-cyan-300">O: {formatCurrency(data.open)} H: {formatCurrency(data.high)}</p>
+      <p className="font-semibold text-cyan-300">L: {formatCurrency(data.low)} C: {formatCurrency(data.close)}</p>
+      <p className="mt-1 text-slate-400">Vol: {formatCompactNumber(data.volume)}</p>
+    </div>
+  );
+}
+
+function BreadthMiniPanel({ marketGroups, symbol, technicalBias }) {
+  const [peerData, setPeerData] = useState([]);
+
+  useEffect(() => {
+    // Mock breadth data based on market groups
+    // In production, you would fetch actual peer stocks for each group
+    if (marketGroups && marketGroups.length > 0) {
+      const generatedPeers = marketGroups.slice(0, 3).flatMap((group, groupIdx) => {
+        // Generate 3-5 mock peer symbols per group
+        const peers = [];
+        const peerCount = 3 + (groupIdx % 2);
+        for (let i = 0; i < peerCount; i++) {
+          const mockChange = (Math.random() - 0.5) * 8;
+          peers.push({
+            symbol: `${group.name.substring(0, 3).toUpperCase()}${i + 1}`,
+            groupName: group.name,
+            change: mockChange,
+            status: mockChange > 1 ? 'up' : mockChange < -1 ? 'down' : 'flat',
+          });
+        }
+        return peers;
+      });
+      setPeerData(generatedPeers);
+    }
+  }, [marketGroups]);
+
+  if (!peerData.length) {
+    return (
+      <section className="card-section p-4">
+        <div className="text-label pb-3 border-b border-slate-800">
+          Chỉ số ngành
+        </div>
+        <div className="mt-3 text-slate-500 text-sm">
+          Không có dữ liệu nhóm ngành để hiển thị breadth.
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card-section p-4">
+      <div className="text-label pb-3 border-b border-slate-800">
+        Breadth - Động thái nhóm
+      </div>
+
+      {/* Group headers with breadth bars */}
+      <div className="mt-4 space-y-3">
+        {marketGroups.map((group) => {
+          const groupPeers = peerData.filter((p) => p.groupName === group.name);
+          if (!groupPeers.length) return null;
+
+          const upCount = groupPeers.filter((p) => p.status === 'up').length;
+          const downCount = groupPeers.filter((p) => p.status === 'down').length;
+          const flatCount = groupPeers.filter((p) => p.status === 'flat').length;
+          const total = groupPeers.length;
+
+          const upPct = (upCount / total) * 100;
+          const downPct = (downCount / total) * 100;
+
+          return (
+            <div key={group.name}>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-slate-300">{group.name}</span>
+                <span className="text-[10px] text-slate-500">
+                  {upCount}↑ {downCount}↓ {flatCount}→
+                </span>
+              </div>
+              <div className="flex h-5 gap-0.5 rounded-md overflow-hidden border border-slate-800 bg-slate-950">
+                {upCount > 0 && (
+                  <div
+                    className="bg-emerald-700/70"
+                    style={{ width: `${upPct}%` }}
+                    title={`${upCount} tăng`}
+                  />
+                )}
+                {flatCount > 0 && (
+                  <div
+                    className="bg-slate-700/50"
+                    style={{ width: `${(flatCount / total) * 100}%` }}
+                    title={`${flatCount} ngang`}
+                  />
+                )}
+                {downCount > 0 && (
+                  <div
+                    className="bg-rose-700/70"
+                    style={{ width: `${downPct}%` }}
+                    title={`${downCount} giảm`}
+                  />
+                )}
+              </div>
+
+              {/* Peer symbols mini list */}
+              <div className="mt-2 flex flex-wrap gap-1">
+                {groupPeers.slice(0, 4).map((peer) => (
+                  <div
+                    key={`${group.name}-${peer.symbol}`}
+                    className={`text-[10px] px-2 py-1 rounded border breadth-${peer.status}`}
+                  >
+                    <span>{peer.symbol}</span>
+                    <span className="ml-1 font-semibold">
+                      {peer.change > 0 ? '+' : ''}{peer.change.toFixed(1)}%
+                    </span>
+                  </div>
+                ))}
+                {groupPeers.length > 4 && (
+                  <span className="text-[10px] px-2 py-1 text-slate-500">
+                    +{groupPeers.length - 4}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function biasMeta(bias) {
+  if (bias === 'BULLISH') {
+    return {
+      label: 'Tăng',
+      className: 'border-emerald-700 bg-emerald-950/40 text-emerald-300',
+      description: 'Giá đang nằm trên SMA20 và SMA50, động lượng duy trì tích cực.',
+    };
+  }
+  if (bias === 'WEAK') {
+    return {
+      label: 'Yếu',
+      className: 'border-rose-700 bg-rose-950/40 text-rose-300',
+      description: 'Giá đang nằm dưới các đường trung bình và động lượng suy yếu.',
+    };
+  }
+  return {
+    label: 'Trung tính',
+    className: 'border-slate-700 bg-slate-900/70 text-slate-300',
+    description: 'Cấu trúc giá chưa nghiêng rõ theo một hướng mạnh.',
+  };
+}
+
+function buildMockDepth(currentPrice, volume, referencePrice, ceilingPrice, floorPrice) {
+  if (!Number.isFinite(Number(currentPrice))) {
+    return [];
+  }
+
+  const current = Number(currentPrice);
+  const step = Math.max(current * 0.0018, 10);
+  const baseVolume = Math.max(Math.round(Number(volume || 0) / 18), 500);
+  const buyMultiplier = [2.6, 1.9, 1.3, 0.9];
+  const sellMultiplier = [0.9, 1.4, 2.1, 2.9];
+
+  return buyMultiplier.map((multiplier, index) => {
+    const bid = Math.max(Number(floorPrice || current - step * 4), current - step * (index + 1));
+    const ask = Math.min(Number(ceilingPrice || current + step * 4), current + step * (index + 1));
+    return {
+      bidPrice: bid,
+      askPrice: ask,
+      bidVolume: Math.round(baseVolume * multiplier),
+      askVolume: Math.round(baseVolume * sellMultiplier[index]),
+      spreadPct: referencePrice ? ((ask - bid) / Number(referencePrice)) * 100 : null,
+    };
+  });
+}
+
+function buildMockTape(symbol, chartData, currentPrice) {
+  const recentPoints = chartData.slice(-10).reverse();
+  return recentPoints.map((point, index) => {
+    const close = Number(point.close || currentPrice || 0);
+    const baseline = Number(currentPrice || close || 0);
+    return {
+      id: `${symbol}-${point.date}-${index}`,
+      time: `${9 + Math.floor(index / 12)}:${String((index * 5) % 60).padStart(2, '0')}`,
+      price: close,
+      volume: Math.round(900 + (index + 1) * 375 + ((close % 7) * 120)),
+      side: close >= baseline ? 'buy' : 'sell',
+      changePct: baseline > 0 ? ((close - baseline) / baseline) * 100 : 0,
+    };
+  });
 }
 
 export default function StockDetail() {
@@ -197,7 +443,7 @@ export default function StockDetail() {
     return () => {
       cancelled = true;
     };
-  }, [normalizedSymbol]);
+  }, [normalizedSymbol, selectedWatchlistGroupId]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
@@ -244,9 +490,9 @@ export default function StockDetail() {
       return 'text-emerald-400';
     }
     if (changeValue < 0) {
-      return 'text-red-400';
+      return 'text-rose-400';
     }
-    return 'text-gray-400';
+    return 'text-slate-300';
   }, [changeValue]);
 
   const chartPerformance = useMemo(() => {
@@ -261,7 +507,13 @@ export default function StockDetail() {
     return ((lastClose - firstClose) / firstClose) * 100;
   }, [chartData]);
 
-  const technicalBias = biasMeta(technical?.bias);
+  const technicalBiasFallback = biasMeta(technical?.bias);
+  const technicalBias = {
+    ...technicalBiasFallback,
+    label: technical?.bias_label || technicalBiasFallback.label,
+    description: technical?.bias_description || technicalBiasFallback.description,
+  };
+
   const availableWatchlistGroups = useMemo(
     () => watchlistGroups.filter((group) => !overview?.watchlist_memberships?.some((item) => item.group_id === group.id)),
     [overview?.watchlist_memberships, watchlistGroups],
@@ -367,16 +619,24 @@ export default function StockDetail() {
     }
   };
 
+  const mockDepth = useMemo(
+    () => buildMockDepth(currentPrice, overview?.volume, overview?.reference_price, overview?.ceiling_price, overview?.floor_price),
+    [currentPrice, overview?.volume, overview?.reference_price, overview?.ceiling_price, overview?.floor_price],
+  );
+
+  const tapeRows = useMemo(
+    () => buildMockTape(normalizedSymbol, chartData, currentPrice),
+    [normalizedSymbol, chartData, currentPrice],
+  );
+
   if (loadingOverview) {
     return (
-      <div className="mx-auto max-w-7xl space-y-6 p-6">
-        <div className="h-52 animate-pulse rounded-[28px] bg-gray-900" />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-          {[...Array(4)].map((_, index) => (
-            <div key={index} className="h-28 animate-pulse rounded-2xl bg-gray-900" />
-          ))}
+      <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+        <div className="h-44 animate-pulse rounded-[24px] bg-slate-900" />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.7fr)_380px]">
+          <div className="h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
+          <div className="h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
         </div>
-        <div className="h-[420px] animate-pulse rounded-[28px] bg-gray-900" />
       </div>
     );
   }
@@ -384,10 +644,10 @@ export default function StockDetail() {
   if (error || !overview) {
     return (
       <div className="mx-auto max-w-4xl p-6">
-        <div className="rounded-[28px] border border-red-900/70 bg-red-950/30 p-8 text-center">
-          <p className="text-sm font-semibold text-red-300">Không mở được workspace mã</p>
-          <p className="mt-2 text-sm text-gray-400">{error || `Không tìm thấy dữ liệu cho ${normalizedSymbol}.`}</p>
-          <Link to="/watchlist" className="mt-4 inline-flex rounded-full border border-gray-700 px-4 py-2 text-sm text-gray-200 transition-colors hover:border-gray-500 hover:text-white">
+        <div className="rounded-[28px] border border-rose-900/70 bg-rose-950/30 p-8 text-center">
+          <p className="text-sm font-semibold text-rose-300">Không mở được workspace mã</p>
+          <p className="mt-2 text-sm text-slate-400">{error || `Không tìm thấy dữ liệu cho ${normalizedSymbol}.`}</p>
+          <Link to="/watchlist" className="mt-4 inline-flex rounded-full border border-slate-700 px-4 py-2 text-sm text-slate-200 transition-colors hover:border-slate-500 hover:text-white">
             Quay lại Radar thị trường
           </Link>
         </div>
@@ -396,156 +656,194 @@ export default function StockDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
-      <section className="overflow-hidden rounded-[28px] border border-gray-800 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.18),_transparent_32%),linear-gradient(135deg,_rgba(15,23,42,0.96),_rgba(3,7,18,0.98))]">
-        <div className="flex flex-wrap items-start justify-between gap-6 p-6 lg:p-8">
-          <div className="max-w-3xl space-y-4">
-            <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.22em] text-gray-500">
-              <Link to="/watchlist" className="transition-colors hover:text-gray-300">
+    <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+      {/* Header Quote Section */}
+      <section className="card-section overflow-hidden shadow-[0_18px_60px_rgba(2,6,23,0.45)] border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_26%),linear-gradient(180deg,_rgba(15,23,42,0.98),_rgba(2,6,23,1))]">
+        {/* Top bar: breadcrumb + feed status */}
+        <div className="border-b border-slate-800/80 px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-3 text-label">
+              <Link to="/watchlist" className="transition-colors hover:text-slate-300">
                 Radar thị trường
               </Link>
               <span>/</span>
               <span>Stock workspace</span>
+              <span>/</span>
+              <span>{overview.symbol}</span>
             </div>
+            <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
+              Feed {realtimeStatus === 'live' ? 'Realtime' : realtimeStatus === 'polling' ? 'Fallback polling' : 'Đang kết nối'}
+              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+            </div>
+          </div>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/10 text-2xl font-bold text-blue-300">
+        {/* Quote + key metrics grid */}
+        <div className="grid gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(460px,0.95fr)]">
+          <div className="space-y-4">
+            {/* Symbol + name + exchange */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-500/25 bg-cyan-500/10 text-2xl font-bold text-cyan-300">
                 {overview.symbol}
               </div>
               <div>
                 <h1 className="text-3xl font-semibold tracking-tight text-white">{overview.company_name || overview.symbol}</h1>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-400">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[12px] text-slate-400">
                   <span>{overview.exchange || 'Chưa rõ sàn'}</span>
-                  <span className="text-gray-700">•</span>
+                  <span className="text-slate-700">•</span>
                   <span>{overview.industry || 'Chưa rõ ngành'}</span>
                   {overview.listed_date ? (
                     <>
-                      <span className="text-gray-700">•</span>
-                      <span>Niêm yết từ {overview.listed_date}</span>
+                      <span className="text-slate-700">•</span>
+                      <span>Niêm yết {overview.listed_date}</span>
                     </>
                   ) : null}
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-end gap-4">
-              <div>
-                <p className="text-sm text-gray-500">Giá hiện tại</p>
-                <div className="mt-1 flex flex-wrap items-end gap-3">
-                  <span className="text-4xl font-semibold text-white">{formatCurrency(currentPrice)}</span>
-                  <span className={`pb-1 text-sm font-semibold ${changeClass}`}>
-                    {changeValue > 0 ? '+' : ''}{changeValue !== null && changeValue !== undefined ? formatCurrency(Math.abs(changeValue)).replace('₫', '').trim() : '—'}
-                    {' · '}
-                    {formatPercent(changePct)}
-                  </span>
-                </div>
-              </div>
-              <div className="rounded-full border border-gray-700 bg-gray-900/70 px-4 py-2 text-xs text-gray-400">
-                Feed: {realtimeStatus === 'live' ? 'Realtime' : realtimeStatus === 'polling' ? 'Fallback polling' : 'Đang kết nối'}
-                {lastEventAt ? ` · Sự kiện cuối ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+            {/* Current price + change */}
+            <div>
+              <p className="text-label">Giá hiện tại</p>
+              <div className="mt-1 flex flex-wrap items-end gap-4">
+                <span className="text-5xl font-semibold leading-none text-white">{formatCurrency(currentPrice)}</span>
+                <span className={`pb-1 text-lg font-semibold ${changeClass}`}>
+                  {changeValue > 0 ? '+' : ''}
+                  {changeValue !== null && changeValue !== undefined ? formatCurrency(Math.abs(changeValue)).replace('₫', '').trim() : '—'}
+                  {' · '}
+                  {formatPercent(changePct)}
+                </span>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 pt-2">
-              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${overview.is_tracked ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300' : 'border-gray-700 bg-gray-900/70 text-gray-400'}`}>
-                {overview.is_tracked ? 'Đang có trong shortlist' : 'Chưa có trong shortlist'}
+            {/* Quick tags: shortlist, groups */}
+            <div className="flex flex-wrap gap-2">
+              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${overview.is_tracked ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300' : 'border-slate-700 bg-slate-900/70 text-slate-400'}`}>
+                {overview.is_tracked ? '✓ Shortlist' : '◇ Shortlist'}
               </span>
-              {overview.source_group_name ? (
-                <span className="rounded-full border border-blue-800 bg-blue-950/30 px-3 py-1 text-xs font-semibold text-blue-300">
-                  Nguồn thêm: {overview.source_group_name}
-                </span>
-              ) : null}
-              {overview.market_groups.map((groupName) => (
-                <span key={groupName} className="rounded-full border border-gray-700 bg-gray-900/70 px-3 py-1 text-xs text-gray-300">
-                  Nhóm thị trường: {groupName}
-                </span>
-              ))}
-              {overview.watchlist_groups.map((groupName) => (
-                <span key={groupName} className="rounded-full border border-amber-800 bg-amber-950/30 px-3 py-1 text-xs text-amber-300">
-                  DS cá nhân: {groupName}
+              {overview.market_groups.slice(0, 2).map((groupName) => (
+                <span key={groupName} className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300">
+                  {groupName}
                 </span>
               ))}
             </div>
+          </div>
 
-            <div className="flex flex-wrap items-center gap-3 pt-3">
-              <button
-                onClick={handleToggleTracked}
-                disabled={!!actionLoading}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${overview.is_tracked ? 'bg-gray-100 text-gray-900 hover:bg-white' : 'bg-blue-600 text-white hover:bg-blue-500'} disabled:opacity-50`}
+          {/* Key metrics grid on the right */}
+          <div className="rounded-[20px] border border-slate-800 bg-black/30 p-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="card-compact">
+                <p className="text-label">Ref / Ceil / Floor</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.reference_price)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{formatCurrency(overview.ceiling_price)} / {formatCurrency(overview.floor_price)}</p>
+              </div>
+              <div className="card-compact">
+                <p className="text-label">Range</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.low_price)} → {formatCurrency(overview.high_price)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">Q: {formatCompactNumber(overview.volume)}</p>
+              </div>
+              <div className="card-compact">
+                <p className="text-label">52W Range</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.week52_low)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">→ {formatCurrency(overview.week52_high)}</p>
+              </div>
+              <div className="card-compact">
+                <p className="text-label">Trung bình</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.average_price)}</p>
+              </div>
+              <div className="card-compact">
+                <p className="text-label">Thiên hướng</p>
+                <p className={`mt-1 text-sm font-medium ${technicalBias.className.split(' ').filter(c => c.startsWith('text-')).join(' ')}`}>{technicalBias.label}</p>
+              </div>
+              <div className="card-compact">
+                <p className="text-label">Khung này</p>
+                <p className={`mt-1 text-sm font-medium ${chartPerformance !== null && chartPerformance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {chartPerformance !== null ? `${chartPerformance >= 0 ? '+' : ''}${chartPerformance.toFixed(2)}%` : '—'}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-[12px] text-slate-400">{technicalBias.description}</p>
+          </div>
+        </div>
+
+        {/* Action bar: shortlist / watchlist / alert */}
+        <div className="border-t border-slate-800/80 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleToggleTracked}
+              disabled={!!actionLoading}
+              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} ${!!actionLoading ? 'opacity-50' : ''}`}
+            >
+              {actionLoading === 'tracked' ? 'Cập nhật...' : overview.is_tracked ? 'Bỏ khỏi shortlist' : 'Thêm vào shortlist'}
+            </button>
+
+            <div className="flex min-w-[280px] flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5">
+              <select
+                value={selectedWatchlistGroupId}
+                onChange={(event) => setSelectedWatchlistGroupId(event.target.value)}
+                className="min-w-[150px] bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
               >
-                {actionLoading === 'tracked'
-                  ? 'Đang cập nhật...'
-                  : overview.is_tracked ? 'Bỏ khỏi shortlist' : 'Đưa vào shortlist'}
+                {availableWatchlistGroups.length === 0 ? (
+                  <option value="">Không còn DS để thêm</option>
+                ) : availableWatchlistGroups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handleAddToWatchlist}
+                disabled={!!actionLoading || availableWatchlistGroups.length === 0}
+                className={`btn-accent ${!!actionLoading ? 'opacity-50' : ''}`}
+              >
+                {actionLoading === 'watchlist-add' ? 'Thêm...' : 'Thêm DS cá nhân'}
               </button>
-              <div className="flex flex-wrap items-center gap-2 rounded-full border border-gray-700 bg-gray-900/70 p-1.5">
-                <select
-                  value={selectedWatchlistGroupId}
-                  onChange={(event) => setSelectedWatchlistGroupId(event.target.value)}
-                  className="bg-transparent px-3 py-1.5 text-sm text-gray-200 outline-none"
-                >
-                  {availableWatchlistGroups.length === 0 ? (
-                    <option value="">Khong con danh sach nao de them</option>
-                  ) : availableWatchlistGroups.map((group) => (
-                    <option key={group.id} value={group.id}>
-                      {group.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddToWatchlist}
-                  disabled={!!actionLoading || availableWatchlistGroups.length === 0}
-                  className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-gray-950 transition-colors hover:bg-amber-400 disabled:opacity-50"
-                >
-                  {actionLoading === 'watchlist-add' ? 'Đang thêm...' : 'Thêm vào DS cá nhân'}
-                </button>
-              </div>
-              <div className="flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900/70 p-1.5">
-                <input
-                  value={alertTargetPrice}
-                  onChange={(event) => setAlertTargetPrice(event.target.value)}
-                  placeholder="Mức giá cảnh báo"
-                  className="w-36 bg-transparent px-3 py-1.5 text-sm text-gray-100 outline-none placeholder:text-gray-600"
-                />
-                <button
-                  onClick={handleCreateAlert}
-                  disabled={!!actionLoading}
-                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-                >
-                  {actionLoading === 'alert' ? 'Đang tạo...' : 'Tạo alert'}
-                </button>
-              </div>
             </div>
-            {workspaceMessage ? <p className="text-sm text-emerald-300">{workspaceMessage}</p> : null}
-            {workspaceError ? <p className="text-sm text-red-300">{workspaceError}</p> : null}
+
+            <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5">
+              <input
+                value={alertTargetPrice}
+                onChange={(event) => setAlertTargetPrice(event.target.value)}
+                placeholder="Giá alert"
+                className="w-32 bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+              />
+              <button
+                onClick={handleCreateAlert}
+                disabled={!!actionLoading}
+                className={`btn-success ${!!actionLoading ? 'opacity-50' : ''}`}
+              >
+                {actionLoading === 'alert' ? 'Tạo...' : 'Alert'}
+              </button>
+            </div>
           </div>
 
-          <div className="grid min-w-[280px] grid-cols-1 gap-3 sm:grid-cols-2">
-            <StatBox label="Giá tham chiếu" value={formatCurrency(overview.reference_price)} subValue={`Trần ${formatCurrency(overview.ceiling_price)} · Sàn ${formatCurrency(overview.floor_price)}`} />
-            <StatBox label="Biên độ phiên gần nhất" value={`${formatCurrency(overview.low_price)} → ${formatCurrency(overview.high_price)}`} subValue={`Mở ${formatCurrency(overview.open_price)} · Đóng ${formatCurrency(overview.close_price)}`} />
-            <StatBox label="Khối lượng" value={formatCompactNumber(overview.volume)} subValue={`Giá bình quân gần đúng ${formatCurrency(overview.average_price)}`} />
-            <StatBox label="Range 52 tuần" value={`${formatCurrency(overview.week52_low)} → ${formatCurrency(overview.week52_high)}`} subValue={`Cập nhật giá cuối ${overview.last_date || '—'}`} />
-          </div>
+          {workspaceMessage ? <p className="mt-2 text-sm text-emerald-300">{workspaceMessage}</p> : null}
+          {workspaceError ? <p className="mt-2 text-sm text-rose-300">{workspaceError}</p> : null}
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.95fr)]">
-        <section className="rounded-[28px] border border-gray-800 bg-gray-900/80 p-5 lg:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+      {/* Main chart + right sidebar */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.74fr)_380px]">
+        {/* Chart section with candlestick */}
+        <section className="card-section p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-gray-500">EOD price map</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Diễn biến giá theo khung {activePeriod} ngày</h2>
+              <p className="text-label">Biểu đồ giá EOD</p>
+              <h2 className="mt-1 text-lg font-semibold text-white">Diễn biến nến {activePeriod} ngày</h2>
               {chartPerformance !== null ? (
-                <p className={`mt-2 text-sm font-medium ${chartPerformance >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {chartPerformance >= 0 ? '+' : ''}{chartPerformance.toFixed(2)}% trong khung đang xem
+                <p className={`mt-1 text-[12px] font-medium ${chartPerformance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  {chartPerformance >= 0 ? '+' : ''}
+                  {chartPerformance.toFixed(2)}% khung
                 </p>
               ) : null}
             </div>
-            <div className="flex items-center gap-1 rounded-full border border-gray-800 bg-gray-950/80 p-1">
+
+            <div className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-950/80 p-1">
               {PERIODS.map((period) => (
                 <button
                   key={period}
                   onClick={() => setActivePeriod(period)}
-                  className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${activePeriod === period ? 'bg-blue-700 text-white' : 'text-gray-400 hover:text-gray-200'}`}
+                  className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${activePeriod === period ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                   {period >= 365 ? '1N' : `${Math.round(period / 30)}T`}
                 </button>
@@ -553,128 +851,155 @@ export default function StockDetail() {
             </div>
           </div>
 
-          <div className="mt-6 h-[360px]">
+          <div className="mt-4 h-[470px]">
             {loadingChart ? (
-              <div className="h-full animate-pulse rounded-2xl bg-gray-950" />
+              <div className="h-full animate-pulse rounded-2xl bg-slate-950" />
             ) : chartData.length < 2 ? (
-              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-800 text-sm text-gray-500">
-                Chưa đủ dữ liệu giá EOD để dựng chart cho khung này.
+              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-800 text-sm text-slate-500">
+                Chưa đủ dữ liệu EOD để dựng chart.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="stockDetailArea" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#60a5fa" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#60a5fa" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#6b7280', fontSize: 11 }}
-                    tickFormatter={(value) => {
-                      const dateValue = new Date(value);
-                      return `${dateValue.getDate()}/${dateValue.getMonth() + 1}`;
-                    }}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#6b7280', fontSize: 11 }}
-                    tickFormatter={formatChartAxis}
-                    width={64}
-                  />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="close"
-                    stroke="#60a5fa"
-                    strokeWidth={2}
-                    fill="url(#stockDetailArea)"
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#93c5fd', strokeWidth: 0 }}
-                  />
-                </AreaChart>
+                <CandlestickChart data={chartData} />
               </ResponsiveContainer>
             )}
           </div>
         </section>
 
-        <section className="space-y-6">
-          <div className="rounded-[28px] border border-gray-800 bg-gray-900/80 p-5">
-            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Workspace context</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Cách mã này đang được theo dõi</h2>
-            <div className="mt-5 space-y-4 text-sm">
+        {/* Right sidebar: depth, tape, breadth, technical */}
+        <aside className="grid gap-4 grid-rows-max">
+          {/* Simulated Depth */}
+          <section className="card-section p-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <p className="text-gray-500">Shortlist tổng hợp</p>
-                <p className="mt-1 font-medium text-gray-100">
-                  {overview.is_tracked ? 'Đang hiện diện trong danh sách theo dõi tổng hợp.' : 'Chưa được đưa vào danh sách theo dõi tổng hợp.'}
-                </p>
+                <p className="text-label">Độ sâu thị trường</p>
+                <h3 className="mt-1 text-base font-semibold text-white">Độ sâu giá lập</h3>
               </div>
-              <div>
-                <p className="text-gray-500">Nhóm thị trường liên quan</p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {overview.market_groups.length > 0 ? overview.market_groups.map((groupName) => (
-                    <span key={groupName} className="rounded-full border border-gray-700 px-3 py-1 text-xs text-gray-300">
-                      {groupName}
-                    </span>
-                  )) : <span className="text-gray-600">Chưa nằm trong nhóm thị trường nào của bạn.</span>}
-                </div>
-              </div>
-              <div>
-                <p className="text-gray-500">Danh sách theo dõi cá nhân</p>
-                <div className="mt-2 flex flex-col gap-2">
-                  {overview.watchlist_memberships.length > 0 ? overview.watchlist_memberships.map((item) => (
-                    <div key={item.item_id} className="flex items-center justify-between rounded-2xl border border-amber-900/40 bg-amber-950/10 px-3 py-2">
-                      <span className="text-xs text-amber-300">{item.group_name}</span>
-                      <button
-                        onClick={() => handleRemoveFromWatchlist(item.item_id, item.group_name)}
-                        disabled={!!actionLoading}
-                        className="text-xs font-semibold text-gray-300 transition-colors hover:text-white disabled:opacity-50"
-                      >
-                        {actionLoading === `watchlist-remove-${item.item_id}` ? 'Đang bỏ...' : 'Bỏ khỏi danh sách'}
-                      </button>
-                    </div>
-                  )) : <span className="text-gray-600">Chưa có trong danh sách theo dõi cá nhân nào.</span>}
-                </div>
-              </div>
+              <span className="text-[11px] text-slate-500">4 mức quanh giá</span>
             </div>
-          </div>
 
-          <div className="rounded-[28px] border border-gray-800 bg-gray-900/80 p-5">
-            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Technical snapshot</p>
-            <div className="mt-2 flex items-start justify-between gap-3">
+            <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+              <span>KL Mua</span>
+              <span>Giá mua</span>
+              <span>Giá bán</span>
+              <span className="text-right">KL Bán</span>
+            </div>
+            <div className="mt-2 space-y-2">
+              {mockDepth.map((row, index) => (
+                <div key={`${row.bidPrice}-${row.askPrice}-${index}`} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
+                  <span className="text-slate-300">{formatCompactNumber(row.bidVolume)}</span>
+                  <span className="font-semibold text-emerald-300">{formatCurrency(row.bidPrice)}</span>
+                  <span className="font-semibold text-rose-300">{formatCurrency(row.askPrice)}</span>
+                  <span className="text-right text-slate-300">{formatCompactNumber(row.askVolume)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Simulated Tape */}
+          <section className="card-section p-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div>
-                <h2 className="text-xl font-semibold text-white">Tóm tắt kỹ thuật phase 1</h2>
-                <p className="mt-2 text-sm text-gray-400">{technicalBias.description}</p>
+                <p className="text-label">Khớp lệnh</p>
+                <h3 className="mt-1 text-base font-semibold text-white">Tape tiến gần nhất</h3>
               </div>
-              <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${technicalBias.className}`}>
+              <span className="text-[11px] text-slate-500">10 dòng</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {tapeRows.map((row) => (
+                <div key={row.id} className="grid grid-cols-[56px_1fr_82px_52px] items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[12px]">
+                  <span className="text-slate-500">{row.time}</span>
+                  <span className={`font-semibold ${row.side === 'buy' ? 'text-emerald-300' : 'text-rose-300'}`}>{formatCurrency(row.price)}</span>
+                  <span className="text-slate-300">{formatCompactNumber(row.volume)}</span>
+                  <span className={`text-right font-medium ${row.side === 'buy' ? 'text-emerald-400' : 'text-rose-400'}`}>{row.side === 'buy' ? 'Mua' : 'Bán'}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Breadth mini-panel */}
+          <BreadthMiniPanel marketGroups={overview.market_group_refs || []} symbol={normalizedSymbol} technicalBias={technicalBias} />
+
+          {/* Technical snapshot */}
+          <section className="card-section p-4">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">Tóm tắt kỹ thuật</p>
+                <h3 className="mt-1 text-base font-semibold text-white">Technical snapshot</h3>
+                <p className="mt-1 text-[12px] text-slate-400">{technicalBias.description}</p>
+              </div>
+              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${technicalBias.className}`}>
                 {technicalBias.label}
               </span>
             </div>
 
-            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <StatBox label="SMA20" value={formatCurrency(technical?.sma20)} subValue={`Gia vs SMA20: ${formatPercentDelta(technical?.price_vs_sma20_pct)}`} />
-              <StatBox label="SMA50" value={formatCurrency(technical?.sma50)} subValue={`Gia vs SMA50: ${formatPercentDelta(technical?.price_vs_sma50_pct)}`} />
-              <StatBox label="RSI14" value={technical?.rsi14 ?? '—'} subValue="Muc can bang dong luong ngan han" />
-              <StatBox label="Avg volume 20" value={formatCompactNumber(technical?.avg_volume_20)} subValue={`Dong luong 20 phien: ${formatPercentDelta(technical?.momentum_20d_pct)} momentum`} />
-              <StatBox label="Vi tri range 52T" value={formatPercentDelta(technical?.range_position_pct)} subValue={`Latest close: ${formatCurrency(technical?.latest_close)}`} />
+            <div className="mt-3 space-y-2 text-[12px]">
+              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
+                <span className="text-slate-500">SMA20</span>
+                <span className="font-medium text-slate-100">{formatCurrency(technical?.sma20)}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
+                <span className="text-slate-500">SMA50</span>
+                <span className="font-medium text-slate-100">{formatCurrency(technical?.sma50)}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
+                <span className="text-slate-500">RSI14</span>
+                <span className="font-medium text-slate-100">{technical?.rsi14 ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
+                <span className="text-slate-500">KL TB 20</span>
+                <span className="font-medium text-slate-100">{formatCompactNumber(technical?.avg_volume_20)}</span>
+              </div>
+              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
+                <span className="text-slate-500">Momentum 20d</span>
+                <span className={`font-medium ${technical?.momentum_20d_pct >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {formatPercentDelta(technical?.momentum_20d_pct)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-2">
+                <span className="text-slate-500">Vị trí Range 52T</span>
+                <span className="font-medium text-slate-100">{formatPercentDelta(technical?.range_position_pct)}</span>
+              </div>
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-[28px] border border-gray-800 bg-gray-900/80 p-5">
-            <p className="text-xs uppercase tracking-[0.22em] text-gray-500">Data note</p>
-            <h2 className="mt-2 text-xl font-semibold text-white">Giới hạn của foundation phase</h2>
-            <div className="mt-4 space-y-3 text-sm text-gray-400">
-              <p>Trang này đang dùng gia realtime de overlay gia hien tai va dung chuoi EOD de ve chart nen tang.</p>
-              <p>Order book, time and sales, intraday breadth va depth chart chua duoc mo o phase nay vi can data vendor rieng va contract feed chi tiet hon.</p>
-              <p>Foundation hien tai du de di tiep sang stock technical workspace o phase ke tiep ma khong phai pha lai route hay API.</p>
+          {/* Personal context: watchlist memberships */}
+          <section className="card-section p-4">
+            <p className="text-label pb-3 border-b border-slate-800">Ngữ cảnh cá nhân</p>
+            <div className="mt-3 space-y-2.5">
+              <div className="card-compact">
+                <p className="text-label">Shortlist</p>
+                <p className={`mt-1 text-sm font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-200'}`}>
+                  {overview.is_tracked ? 'Đang theo dõi' : 'Chưa theo dõi'}
+                </p>
+              </div>
+              {overview.watchlist_memberships.length > 0 ? (
+                <div className="card-compact">
+                  <p className="text-label">DS cá nhân ({overview.watchlist_memberships.length})</p>
+                  <div className="mt-2 space-y-1.5">
+                    {overview.watchlist_memberships.map((item) => (
+                      <div key={item.item_id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-900/30 bg-amber-950/10 px-2.5 py-1.5 text-[12px]">
+                        <span className="font-medium text-amber-300">{item.group_name}</span>
+                        <button
+                          onClick={() => handleRemoveFromWatchlist(item.item_id, item.group_name)}
+                          disabled={!!actionLoading}
+                          className="text-[11px] font-semibold text-slate-300 transition-colors hover:text-white disabled:opacity-50"
+                        >
+                          {actionLoading === `watchlist-remove-${item.item_id}` ? 'Bỏ...' : 'Bỏ'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="card-compact">
+                  <p className="text-label">DS cá nhân</p>
+                  <p className="mt-1 text-slate-500">Chưa có trong danh sách nào.</p>
+                </div>
+              )}
             </div>
-          </div>
-        </section>
+          </section>
+        </aside>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getRealtimeTicker, getRealtimeWebSocketUrl } from '../api/client';
 
 function mergeQuote(prev, update) {
@@ -29,16 +29,24 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
   const [lastEventAt, setLastEventAt] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [eventCounts, setEventCounts] = useState({ ticker_update: 0, whale_alert: 0, heartbeat: 0, reconnect_attempts: 0 });
+  const [lastLatencyMs, setLastLatencyMs] = useState(null);
 
+  // Use string key to compare content, not reference — prevents infinite loop
+  // when caller passes inline array (e.g. symbols={[symbol]}) every render
+  const symbolsKey = (symbols || []).filter(Boolean).join(',');
   const normalizedSymbols = useMemo(
-    () => [...new Set((symbols || []).filter(Boolean))],
-    [symbols],
+    () => [...new Set(symbolsKey.split(',').filter(Boolean))],
+    [symbolsKey], // eslint-disable-line
   );
 
-  const symbolsKey = useMemo(
-    () => normalizedSymbols.slice().sort().join('|'),
-    [normalizedSymbols],
-  );
+  const symbolsRef = useRef(normalizedSymbols);
+  const realtimeStatusRef = useRef(realtimeStatus);
+  const pollIntervalRef = useRef(pollInterval);
+
+  useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
+  useEffect(() => { realtimeStatusRef.current = realtimeStatus; }, [realtimeStatus]);
+  useEffect(() => { pollIntervalRef.current = pollInterval; }, [pollInterval]);
 
   useEffect(() => {
     setQuotesBySymbol((prev) => {
@@ -48,13 +56,10 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
       });
       return next;
     });
-  }, [symbolsKey, normalizedSymbols]);
+  }, [normalizedSymbols]);
 
   const applyTickerUpdate = useCallback((update) => {
-    if (!update?.symbol) {
-      return;
-    }
-
+    if (!update?.symbol) return;
     setQuotesBySymbol((prev) => ({
       ...prev,
       [update.symbol]: mergeQuote(prev[update.symbol] || { symbol: update.symbol }, update),
@@ -64,47 +69,66 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
   const applyAlert = useCallback((payload) => {
     const nextAlert = normalizeAlert(payload);
     const nextKey = `${nextAlert.symbol || 'NA'}-${nextAlert.ts || 'NA'}-${nextAlert.side || 'NA'}`;
-
     setAlerts((prev) => {
-      const filtered = prev.filter((item) => `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.side || 'NA'}` !== nextKey);
+      const filtered = prev.filter(
+        (item) => `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.side || 'NA'}` !== nextKey
+      );
       return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
   }, [maxAlerts]);
 
-  const pollQuotes = useCallback(async () => {
-    if (!normalizedSymbols.length) {
-      return;
-    }
-
-    try {
-      const responses = await Promise.all(normalizedSymbols.map((symbol) => getRealtimeTicker(symbol)));
-      responses.forEach(({ data }) => {
-        applyTickerUpdate({
-          symbol: data.symbol,
-          current_price: data.current_price,
-          change_value: data.change_value,
-          change_pct: data.change_pct,
-          freshness_seconds: data.freshness_seconds,
-          stale: data.stale,
-          last_date: data.last_date,
-        });
-      });
-      setLastEventAt(new Date().toISOString());
-    } catch (err) {
-      console.error('Realtime polling failed:', err);
-    }
-  }, [applyTickerUpdate, normalizedSymbols]);
-
+  // POLLING - stable effect, uses refs for live values
   useEffect(() => {
-    if (!normalizedSymbols.length || realtimeStatus === 'live') {
-      return undefined;
-    }
+    let intervalId = null;
+    let destroyed = false;
 
-    pollQuotes();
-    const intervalId = window.setInterval(pollQuotes, pollInterval);
-    return () => window.clearInterval(intervalId);
-  }, [symbolsKey, normalizedSymbols, pollInterval, pollQuotes, realtimeStatus]);
+    const poll = async () => {
+      const token = localStorage.getItem('access_token');
+      const syms = symbolsRef.current;
+      if (!token || !syms.length || realtimeStatusRef.current === 'live') return;
 
+      try {
+        const results = await Promise.allSettled(syms.map((s) => getRealtimeTicker(s)));
+        if (destroyed) return;
+        let ok = 0;
+        results.forEach((r, i) => {
+          if (r.status === 'fulfilled') {
+            ok++;
+            const { data } = r.value;
+            applyTickerUpdate({
+              symbol: data.symbol,
+              current_price: data.current_price,
+              change_value: data.change_value,
+              change_pct: data.change_pct,
+              freshness_seconds: data.freshness_seconds,
+              stale: data.stale,
+              last_date: data.last_date,
+            });
+          } else {
+            console.warn(`Polling failed for ${syms[i]}:`, r.reason?.message);
+          }
+        });
+        if (ok > 0) setLastEventAt(new Date().toISOString());
+      } catch (err) {
+        if (!destroyed) console.error('Polling error:', err);
+      }
+    };
+
+    const start = () => {
+      poll();
+      intervalId = window.setInterval(poll, pollIntervalRef.current);
+    };
+
+    const startTimer = window.setTimeout(start, 100);
+
+    return () => {
+      destroyed = true;
+      window.clearTimeout(startTimer);
+      if (intervalId) window.clearInterval(intervalId);
+    };
+  }, [normalizedSymbols.join(','), applyTickerUpdate]); // eslint-disable-line
+
+  // WEBSOCKET
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token || !normalizedSymbols.length) {
@@ -112,26 +136,47 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
       return undefined;
     }
 
-    let socket = null;
+    let ws = null;
     let reconnectTimer = null;
-    let disposed = false;
+    let destroyed = false;
+
+    const cleanup = () => {
+      destroyed = true;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      if (ws) {
+        // Null all handlers first — prevents any event from firing after cleanup
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onerror = null;
+        ws.onclose = null;
+        // Only close if OPEN — calling close() on a CONNECTING socket causes
+        // "WebSocket is closed before the connection is established" in Chrome.
+        // A CONNECTING socket with nulled handlers becomes a harmless zombie
+        // that the browser will GC once the handshake completes or times out.
+        if (ws.readyState === WebSocket.OPEN) ws.close(1000);
+        ws = null;
+      }
+    };
 
     const connect = () => {
+      if (destroyed) return;
+      // Always read fresh token at connect time — previous token may have expired
+      const freshToken = localStorage.getItem('access_token');
+      if (!freshToken) { setRealtimeStatus('idle'); return; }
       setRealtimeStatus('connecting');
-      socket = new WebSocket(getRealtimeWebSocketUrl(token));
+      const nextWs = new WebSocket(getRealtimeWebSocketUrl(freshToken));
+      ws = nextWs;
 
-      socket.onopen = () => {
-        if (disposed) {
-          return;
-        }
+      nextWs.onopen = () => {
+        if (destroyed || nextWs !== ws) { nextWs.close(1000); return; }
         setRealtimeStatus('live');
-        socket.send(JSON.stringify({ action: 'subscribe', symbols: normalizedSymbols }));
+        nextWs.send(JSON.stringify({ action: 'subscribe', symbols: symbolsRef.current }));
       };
 
-      socket.onmessage = (event) => {
+      nextWs.onmessage = (event) => {
+        if (destroyed || nextWs !== ws) return;
         try {
           const payload = JSON.parse(event.data);
-
           if (payload.event_type === 'ticker_update') {
             applyTickerUpdate({
               symbol: payload.symbol,
@@ -142,61 +187,57 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
             });
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
-            return;
-          }
-
-          if (payload.event_type === 'whale_alert') {
+            setEventCounts((prev) => ({ ...prev, ticker_update: prev.ticker_update + 1 }));
+            if (payload.ts) {
+              setLastLatencyMs(Date.now() - new Date(payload.ts).getTime());
+            }
+          } else if (payload.event_type === 'whale_alert') {
             applyAlert(payload);
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
-            return;
-          }
-
-          if (payload.event_type === 'heartbeat') {
+            setEventCounts((prev) => ({ ...prev, whale_alert: prev.whale_alert + 1 }));
+          } else if (payload.event_type === 'heartbeat') {
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
+            setEventCounts((prev) => ({ ...prev, heartbeat: prev.heartbeat + 1 }));
+            if (payload.ts) {
+              setLastLatencyMs(Date.now() - new Date(payload.ts).getTime());
+            }
           }
         } catch (err) {
-          console.error('Realtime message parse failed:', err);
+          console.error('WS message error:', err);
         }
       };
 
-      socket.onerror = () => {
+      nextWs.onerror = () => {
+        if (destroyed || nextWs !== ws) return;
         setRealtimeStatus('polling');
       };
 
-      socket.onclose = () => {
-        if (disposed) {
-          return;
-        }
+      nextWs.onclose = (ev) => {
+        if (destroyed || nextWs !== ws) return;
         setRealtimeStatus('polling');
-        reconnectTimer = window.setTimeout(connect, 3000);
+        if (ev.code !== 1000) {
+          setEventCounts((prev) => ({ ...prev, reconnect_attempts: prev.reconnect_attempts + 1 }));
+          reconnectTimer = window.setTimeout(connect, 5000);
+        }
       };
     };
 
-    connect();
+    const initTimer = window.setTimeout(connect, 100);
 
     return () => {
-      disposed = true;
-      if (reconnectTimer) {
-        window.clearTimeout(reconnectTimer);
-      }
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({ action: 'unsubscribe', symbols: normalizedSymbols }));
-      }
-      if (socket) {
-        socket.close();
-      }
+      window.clearTimeout(initTimer);
+      cleanup();
     };
-  }, [symbolsKey, normalizedSymbols, applyAlert, applyTickerUpdate]);
-
-  const latestWhaleAlert = alerts[0] || null;
+  }, [normalizedSymbols.join(','), applyAlert, applyTickerUpdate]); // eslint-disable-line
 
   return {
     quotesBySymbol,
     realtimeStatus,
     lastEventAt,
     alerts,
-    latestWhaleAlert,
+    latestWhaleAlert: alerts[0] || null,
+    metrics: { eventCounts, lastLatencyMs },
   };
 }

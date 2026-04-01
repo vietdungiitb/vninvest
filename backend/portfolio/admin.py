@@ -3,9 +3,10 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.db.models import Max
 from django.http import HttpResponseRedirect
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
+from django.utils.html import format_html
 import pandas as pd
 
 from .models import (
@@ -103,6 +104,256 @@ def _admin_stock_profile_sync_view(request):
     return HttpResponseRedirect(next_url)
 
 
+def _format_vnd(value):
+    if value is None:
+        return '—'
+    return f'{float(value):,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+def _format_number(value):
+    if value is None:
+        return '—'
+    return f'{int(value):,}'.replace(',', '.')
+
+
+def _format_pct(value):
+    if value is None:
+        return '—'
+    number = float(value)
+    prefix = '+' if number > 0 else ''
+    return f'{prefix}{number:.2f}%'
+
+
+def _technical_bias_label(bias: str | None) -> str:
+    normalized = (bias or '').strip().upper()
+    if normalized == 'BULLISH':
+        return 'Tăng'
+    if normalized == 'WEAK':
+        return 'Yếu'
+    if normalized == 'NEUTRAL':
+        return 'Trung tính'
+    return '—'
+
+
+def _build_sparkline_points(values, width=640, height=180):
+    if not values:
+        return ''
+    minimum = min(values)
+    maximum = max(values)
+    spread = maximum - minimum
+    if spread == 0:
+        spread = 1
+    step_x = width / max(len(values) - 1, 1)
+    points = []
+    for index, value in enumerate(values):
+        x = round(index * step_x, 2)
+        y = round(height - ((value - minimum) / spread) * height, 2)
+        points.append(f'{x},{y}')
+    return ' '.join(points)
+
+
+def _workspace_url_for_symbol(symbol: str) -> str:
+    return reverse('admin:stock-profile-workspace', args=[(symbol or '').strip().upper()])
+
+
+def _build_candlestick_items(price_rows, width=640, height=240):
+    rows = [row for row in price_rows if row.get('close_price') is not None]
+    if not rows:
+        return []
+
+    lows = [float(row['low_price']) for row in rows if row.get('low_price') is not None]
+    highs = [float(row['high_price']) for row in rows if row.get('high_price') is not None]
+    if not lows or not highs:
+        return []
+
+    min_price = min(lows)
+    max_price = max(highs)
+    spread = max(max_price - min_price, 1)
+    step = width / max(len(rows), 1)
+    candle_width = max(min(step * 0.56, 14), 4)
+    items = []
+
+    def to_y(value):
+        return round(height - ((float(value) - min_price) / spread) * height, 2)
+
+    for index, row in enumerate(rows):
+        open_price = row.get('open_price')
+        high_price = row.get('high_price')
+        low_price = row.get('low_price')
+        close_price = row.get('close_price')
+        if None in {open_price, high_price, low_price, close_price}:
+            continue
+
+        x_center = round((index * step) + (step / 2), 2)
+        body_top = min(to_y(open_price), to_y(close_price))
+        body_bottom = max(to_y(open_price), to_y(close_price))
+        body_height = max(round(body_bottom - body_top, 2), 1.6)
+        items.append(
+            {
+                'date': row['date'],
+                'x_center': x_center,
+                'body_x': round(x_center - candle_width / 2, 2),
+                'body_width': round(candle_width, 2),
+                'wick_top': to_y(high_price),
+                'wick_bottom': to_y(low_price),
+                'body_top': round(body_top, 2),
+                'body_height': body_height,
+                'tone': 'up' if float(close_price) >= float(open_price) else 'down',
+            }
+        )
+    return items
+
+
+def _build_mock_depth_levels(overview: dict) -> dict:
+    current_price = overview.get('current_price') or overview.get('close_price') or overview.get('reference_price')
+    ceiling_price = overview.get('ceiling_price')
+    floor_price = overview.get('floor_price')
+    total_volume = int(overview.get('volume') or 0)
+
+    if current_price is None:
+        return {'bids': [], 'asks': [], 'buy_total': 0, 'sell_total': 0}
+
+    current = float(current_price)
+    step = max(round(current * 0.002, 2), 0.05)
+    bid_prices = [round(current - step * index, 2) for index in range(1, 4)]
+    ask_prices = [round(current + step * index, 2) for index in range(1, 4)]
+
+    if floor_price is not None:
+        bid_prices = [max(price, round(float(floor_price), 2)) for price in bid_prices]
+    if ceiling_price is not None:
+        ask_prices = [min(price, round(float(ceiling_price), 2)) for price in ask_prices]
+
+    base = max(total_volume // 18, 1000)
+    buy_volumes = [base * 3, base * 2, base]
+    sell_volumes = [base, base * 2, base * 3]
+
+    bids = [
+        {'price': _format_vnd(price), 'volume': _format_number(volume), 'raw_volume': volume}
+        for price, volume in zip(bid_prices, buy_volumes)
+    ]
+    asks = [
+        {'price': _format_vnd(price), 'volume': _format_number(volume), 'raw_volume': volume}
+        for price, volume in zip(ask_prices, sell_volumes)
+    ]
+
+    rows = [
+        {
+            'bid_volume': bid['volume'],
+            'bid_price': bid['price'],
+            'ask_price': ask['price'],
+            'ask_volume': ask['volume'],
+        }
+        for bid, ask in zip(bids, asks)
+    ]
+
+    return {
+        'bids': bids,
+        'asks': asks,
+        'rows': rows,
+        'buy_total': _format_number(sum(buy_volumes)),
+        'sell_total': _format_number(sum(sell_volumes)),
+    }
+
+
+def _admin_stock_profile_workspace_view(request, symbol):
+    from .views import _build_stock_workspace_overview, _compute_stock_workspace_technical
+
+    normalized_symbol = (symbol or '').strip().upper()
+    profile = get_object_or_404(StockProfile, symbol=normalized_symbol)
+    overview = _build_stock_workspace_overview(normalized_symbol, request.user)
+    price_rows = list(
+        DailyPrice.objects
+        .filter(symbol=normalized_symbol)
+        .order_by('-date')
+        .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')[:180]
+    )
+    price_rows_for_chart = list(reversed(price_rows))
+    technical = _compute_stock_workspace_technical(price_rows_for_chart, overview)
+    closes = [float(row['close_price']) for row in price_rows_for_chart if row.get('close_price') is not None]
+    tracked_users = list(
+        TrackedSymbol.objects
+        .filter(symbol=normalized_symbol)
+        .select_related('user', 'source_group')
+        .order_by('user__username')[:12]
+    )
+    watchlist_memberships = list(
+        WatchlistItem.objects
+        .filter(symbol=normalized_symbol)
+        .select_related('group', 'group__user')
+        .order_by('group__user__username', 'group__name')[:16]
+    )
+    recent_prices = [
+        {
+            'date': row['date'],
+            'open_price': _format_vnd(row.get('open_price')),
+            'high_price': _format_vnd(row.get('high_price')),
+            'low_price': _format_vnd(row.get('low_price')),
+            'close_price': _format_vnd(row.get('close_price')),
+            'volume': _format_number(row.get('volume')),
+        }
+        for row in price_rows[:12]
+    ]
+    candlestick_items = _build_candlestick_items(price_rows_for_chart[-48:])
+    overview_display = {
+        'current_price': _format_vnd(overview.get('current_price') or overview.get('close_price')),
+        'change_value': _format_vnd(overview.get('change_value')),
+        'change_pct': _format_pct(overview.get('change_pct')),
+        'reference_price': _format_vnd(overview.get('reference_price')),
+        'ceiling_price': _format_vnd(overview.get('ceiling_price')),
+        'floor_price': _format_vnd(overview.get('floor_price')),
+        'volume': _format_number(overview.get('volume')),
+        'last_date': overview.get('last_date') or '—',
+        'change_class': 'tone-neutral',
+    }
+    if overview.get('change_value'):
+        if float(overview['change_value']) > 0:
+            overview_display['change_class'] = 'tone-up'
+        elif float(overview['change_value']) < 0:
+            overview_display['change_class'] = 'tone-down'
+
+    technical_display = {
+        'bias': _technical_bias_label(technical.get('bias')),
+        'rsi14': technical.get('rsi14') if technical.get('rsi14') is not None else '—',
+        'sma20': _format_vnd(technical.get('sma20')),
+        'sma50': _format_vnd(technical.get('sma50')),
+        'price_vs_sma20_pct': _format_pct(technical.get('price_vs_sma20_pct')),
+        'price_vs_sma50_pct': _format_pct(technical.get('price_vs_sma50_pct')),
+        'momentum_20d_pct': _format_pct(technical.get('momentum_20d_pct')),
+        'range_position_pct': _format_pct(technical.get('range_position_pct')),
+    }
+    depth_panel = _build_mock_depth_levels(overview)
+    context = {
+        **admin.site.each_context(request),
+        'opts': StockProfile._meta,
+        'original': profile,
+        'title': f'Chi tiết mã {normalized_symbol}',
+        'stock_profile': profile,
+        'overview': overview,
+        'overview_display': overview_display,
+        'technical': technical,
+        'technical_display': technical_display,
+        'recent_prices': recent_prices,
+        'market_groups': list(
+            SecuritiesGroup.objects.filter(items__symbol=normalized_symbol).order_by('name').distinct()
+        ),
+        'tracked_users': tracked_users,
+        'tracked_user_count': TrackedSymbol.objects.filter(symbol=normalized_symbol).count(),
+        'watchlist_memberships': watchlist_memberships,
+        'watchlist_membership_count': WatchlistItem.objects.filter(symbol=normalized_symbol).count(),
+        'sparkline_points': _build_sparkline_points(closes),
+        'sparkline_min': _format_vnd(min(closes)) if closes else '—',
+        'sparkline_max': _format_vnd(max(closes)) if closes else '—',
+        'candlestick_items': candlestick_items,
+        'price_row_count': len(price_rows_for_chart),
+        'workspace_back_url': reverse('admin:portfolio_stockprofile_changelist'),
+        'change_url': reverse('admin:portfolio_stockprofile_change', args=[profile.pk]),
+        'tracked_user_count_display': _format_number(TrackedSymbol.objects.filter(symbol=normalized_symbol).count()),
+        'watchlist_membership_count_display': _format_number(WatchlistItem.objects.filter(symbol=normalized_symbol).count()),
+        'depth_panel': depth_panel,
+    }
+    return render(request, 'admin/portfolio/stockprofile/workspace.html', context)
+
+
 def _vninvest_admin_get_urls():
     return [
         path(
@@ -114,6 +365,11 @@ def _vninvest_admin_get_urls():
             'stock-profiles/sync/',
             admin.site.admin_view(_admin_stock_profile_sync_view),
             name='stock-profile-sync',
+        ),
+        path(
+            'stock-profiles/<str:symbol>/workspace/',
+            admin.site.admin_view(_admin_stock_profile_workspace_view),
+            name='stock-profile-workspace',
         ),
         *_original_admin_get_urls(),
     ]
@@ -373,12 +629,16 @@ class SecuritiesItemInline(admin.TabularInline):
     verbose_name = 'Mã trong nhóm thị trường'
     verbose_name_plural = 'Mã trong nhóm thị trường'
     extra = 0
-    fields = ('symbol', 'order')
-    readonly_fields = ('symbol', 'order')
+    fields = ('symbol', 'order', 'workspace_link')
+    readonly_fields = ('symbol', 'order', 'workspace_link')
     can_delete = False
 
     def has_add_permission(self, request, obj=None):
         return False
+
+    @admin.display(description='Workspace mã')
+    def workspace_link(self, obj):
+        return format_html('<a href="{}">Mở workspace</a>', _workspace_url_for_symbol(obj.symbol))
 
 
 class WatchlistItemInline(admin.TabularInline):
@@ -500,11 +760,15 @@ class SecuritiesGroupAdmin(admin.ModelAdmin):
 
 @admin.register(SecuritiesItem)
 class SecuritiesItemAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'group', 'order', 'added_at')
+    list_display = ('symbol', 'group', 'order', 'added_at', 'workspace_link')
     list_filter = ('group',)
     search_fields = ('symbol', 'group__name')
     ordering = ('group', 'order', 'symbol')
-    readonly_fields = ('symbol', 'group', 'order', 'added_at')
+    readonly_fields = ('symbol', 'group', 'order', 'added_at', 'workspace_link')
+
+    @admin.display(description='Workspace mã')
+    def workspace_link(self, obj):
+        return format_html('<a href="{}">Mở workspace</a>', _workspace_url_for_symbol(obj.symbol))
 
     def has_view_permission(self, request, obj=None):
         return super().has_view_permission(request, obj) or super().has_change_permission(request, obj)
@@ -558,21 +822,36 @@ class PriceAlertRuleAdmin(admin.ModelAdmin):
 
 @admin.register(StockProfile)
 class StockProfileAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'company_name', 'industry', 'exchange', 'is_active', 'updated_at')
+    list_display = ('symbol', 'company_name', 'industry', 'exchange', 'is_active', 'updated_at', 'workspace_link')
     list_filter = ('exchange', 'industry', 'is_active')
     search_fields = ('symbol', 'company_name', 'industry')
     ordering = ('symbol',)
     change_list_template = 'admin/portfolio/stockprofile/change_list.html'
+    change_form_template = 'admin/portfolio/stockprofile/change_form.html'
+
+    @admin.display(description='Chi tiết backend')
+    def workspace_link(self, obj):
+        url = _workspace_url_for_symbol(obj.pk)
+        return format_html('<a href="{}">Mở workspace</a>', url)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['stock_workspace_url'] = _workspace_url_for_symbol(object_id)
+        return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
 
 @admin.register(DailyPrice)
 class DailyPriceAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
+    list_display = ('symbol', 'date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume', 'workspace_link')
     list_filter = ('symbol',)
     search_fields = ('symbol',)
     ordering = ('-date', 'symbol')
     date_hierarchy = 'date'
-    readonly_fields = ('created_at',)
+    readonly_fields = ('created_at', 'workspace_link')
+
+    @admin.display(description='Workspace mã')
+    def workspace_link(self, obj):
+        return format_html('<a href="{}">Mở workspace</a>', _workspace_url_for_symbol(obj.symbol))
 
 
 @admin.register(WatchlistGroup)

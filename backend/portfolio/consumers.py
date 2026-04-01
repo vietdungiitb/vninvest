@@ -10,28 +10,38 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 class RealtimeConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
-        user = await self._authenticate_user()
-        if not user or isinstance(user, AnonymousUser):
-            await self.close(code=4401)
-            return
+        try:
+            user = await self._authenticate_user()
+            if not user or isinstance(user, AnonymousUser):
+                print("[WebSocket] Authentication failed - closing connection")
+                await self.close(code=4401)
+                return
 
-        self.user = user
-        self.symbol_groups: set[str] = set()
-        self.user_alert_group = f"user_{self.user.id}_alerts"
-        await self.channel_layer.group_add(self.user_alert_group, self.channel_name)
-        await self.accept()
-        await self.send_json(
-            {
-                "event_type": "connected",
-                "user_id": self.user.id,
-            }
-        )
+            self.user = user
+            self.symbol_groups: set[str] = set()
+            self.user_alert_group = f"user_{self.user.id}_alerts"
+            await self.channel_layer.group_add(self.user_alert_group, self.channel_name)
+            await self.accept()
+            print(f"[WebSocket] User {self.user.id} connected")
+            await self.send_json(
+                {
+                    "event_type": "connected",
+                    "user_id": self.user.id,
+                }
+            )
+        except Exception as e:
+            print(f"[WebSocket] Connect error: {e}")
+            await self.close(code=1011)
 
     async def disconnect(self, code):
-        if hasattr(self, "user_alert_group"):
-            await self.channel_layer.group_discard(self.user_alert_group, self.channel_name)
-        for group_name in getattr(self, "symbol_groups", set()):
-            await self.channel_layer.group_discard(group_name, self.channel_name)
+        try:
+            if hasattr(self, "user_alert_group"):
+                await self.channel_layer.group_discard(self.user_alert_group, self.channel_name)
+            for group_name in getattr(self, "symbol_groups", set()):
+                await self.channel_layer.group_discard(group_name, self.channel_name)
+            print(f"[WebSocket] Disconnected with code {code}")
+        except Exception as e:
+            print(f"[WebSocket] Disconnect error: {e}")
 
     async def receive_json(self, content, **kwargs):
         action = content.get("action")

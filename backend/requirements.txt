@@ -4,10 +4,11 @@ djangorestframework-simplejwt==5.3.1
 django-cors-headers==4.3.1
 channels>=4.1.0
 channels-redis>=4.2.0
+daphne>=4.0.0
 python-dotenv==1.0.1
 celery==5.4.0
 redis==5.0.7
-psycopg2-binary==2.9.9; platform_system != "Windows"
+psycopg[binary]>=3.2,<3.3
 vnstock3>=0.3.0.9
 python-dateutil==2.9.0
 Pillow>=10.4.0

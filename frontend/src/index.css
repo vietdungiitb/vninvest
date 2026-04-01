@@ -2,11 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --terminal-bg: #020617;
+  --terminal-panel: #0b1120;
+  --terminal-panel-alt: #101826;
+  --terminal-grid: #1e293b;
+  --terminal-text: #e2e8f0;
+  --terminal-muted: #7c8aa0;
+  --terminal-cyan: #3dd9eb;
+  --terminal-rise: #22c55e;
+  --terminal-fall: #f97316;
+  --terminal-warn: #fbbf24;
+}
+
+html {
+  background: radial-gradient(circle at top, rgba(61, 217, 235, 0.08), transparent 24%), var(--terminal-bg);
+}
+
 body {
-  @apply bg-gray-950 text-gray-100 antialiased;
+  @apply antialiased;
+  background:
+    radial-gradient(circle at top left, rgba(61, 217, 235, 0.06), transparent 20%),
+    linear-gradient(180deg, #020617 0%, #020617 36%, #030712 100%);
+  color: var(--terminal-text);
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+code,
+pre,
+input,
+select,
+textarea {
+  font-family: 'JetBrains Mono', Consolas, monospace;
 }
 
 /* Scrollbar tối */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { @apply bg-gray-900; }
-::-webkit-scrollbar-thumb { @apply bg-gray-700 rounded-full; }
+::-webkit-scrollbar-track { background: #020617; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 9999px; }
+
+/* Typography hierarchy for trading terminal */
+.text-label {
+  @apply text-[11px] uppercase tracking-[0.18em] text-slate-500;
+}
+
+.text-value {
+  @apply font-semibold text-slate-100;
+}
+
+.text-positive {
+  @apply text-emerald-300;
+}
+
+.text-negative {
+  @apply text-rose-300;
+}
+
+.text-neutral {
+  @apply text-slate-300;
+}
+
+/* Button component styles */
+.btn-primary {
+  @apply rounded-full px-4 py-2 text-sm font-semibold bg-cyan-600 text-white hover:bg-cyan-500 transition-colors disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply rounded-full px-4 py-2 text-sm font-semibold bg-slate-100 text-slate-900 hover:bg-white transition-colors disabled:opacity-50;
+}
+
+.btn-accent {
+  @apply rounded-full px-4 py-2 text-sm font-semibold bg-amber-500 text-slate-950 hover:bg-amber-400 transition-colors disabled:opacity-50;
+}
+
+.btn-success {
+  @apply rounded-full px-4 py-2 text-sm font-semibold bg-emerald-600 text-white hover:bg-emerald-500 transition-colors disabled:opacity-50;
+}
+
+/* Card and section styles */
+.card-section {
+  @apply rounded-[24px] border border-slate-800 bg-slate-900/85;
+}
+
+.card-compact {
+  @apply rounded-xl border border-slate-800 bg-slate-950/75 px-3 py-2.5;
+}
+
+/* Breadth heatmap status colors */
+.breadth-strong {
+  @apply bg-emerald-950/40 border-emerald-700 text-emerald-300;
+}
+
+.breadth-weak {
+  @apply bg-rose-950/40 border-rose-700 text-rose-300;
+}
+
+.breadth-flat {
+  @apply bg-slate-900/70 border-slate-700 text-slate-300;
+}
+
+/* Candlestick chart styling */
+.candle-up {
+  fill: #22c55e;
+  stroke: #16a34a;
+}
+
+.candle-down {
+  fill: #f43f5e;
+  stroke: #be123c;
+}

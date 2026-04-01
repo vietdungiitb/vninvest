@@ -916,6 +916,27 @@ def _compute_rsi(values, window=14):
     return 100 - (100 / (1 + rs))
 
 
+def _technical_bias_meta(bias):
+    normalized_bias = (bias or 'NEUTRAL').strip().upper()
+    if normalized_bias == 'BULLISH':
+        return {
+            'bias': 'BULLISH',
+            'bias_label': 'Tăng',
+            'bias_description': 'Giá đang nằm trên SMA20 và SMA50, động lượng duy trì tích cực.',
+        }
+    if normalized_bias == 'WEAK':
+        return {
+            'bias': 'WEAK',
+            'bias_label': 'Yếu',
+            'bias_description': 'Giá đang nằm dưới các đường trung bình và động lượng suy yếu.',
+        }
+    return {
+        'bias': 'NEUTRAL',
+        'bias_label': 'Trung tính',
+        'bias_description': 'Cấu trúc giá chưa nghiêng rõ theo một hướng mạnh.',
+    }
+
+
 def _compute_stock_workspace_technical(rows, overview):
     close_values = [float(row['close_price']) for row in rows if row.get('close_price') is not None]
     volume_values = [float(row['volume']) for row in rows if row.get('volume') is not None]
@@ -950,8 +971,10 @@ def _compute_stock_workspace_technical(rows, overview):
         elif latest_close < sma20 < sma50 and rsi14 <= 45:
             bias = 'WEAK'
 
+    bias_meta = _technical_bias_meta(bias)
+
     return {
-        'bias': bias,
+        **bias_meta,
         'sma20': _safe_round(sma20),
         'sma50': _safe_round(sma50),
         'rsi14': _safe_round(rsi14),
@@ -993,10 +1016,17 @@ class StockWorkspaceChartView(APIView):
             DailyPrice.objects
             .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
             .order_by('date')
-            .values('date', 'close_price', 'volume')
+            .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
         )
         series = [
-            {'date': str(row['date']), 'close': float(row['close_price'])}
+            {
+                'date': str(row['date']),
+                'open': _to_float(row['open_price']),
+                'high': _to_float(row['high_price']),
+                'low': _to_float(row['low_price']),
+                'close': float(row['close_price']),
+                'volume': _to_float(row['volume']),
+            }
             for row in price_rows
         ]
         overview = _build_stock_workspace_overview(normalized_symbol, request.user)

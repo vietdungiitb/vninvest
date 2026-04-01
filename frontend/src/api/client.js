@@ -35,7 +35,11 @@ apiClient.interceptors.response.use(
             refresh: refreshToken,
           });
           localStorage.setItem('access_token', data.access);
-          localStorage.setItem('refresh_token', data.refresh);
+          // Only overwrite refresh_token when server rotates it (ROTATE_REFRESH_TOKENS=True)
+          // If rotation is off, data.refresh is undefined — do NOT overwrite valid stored token
+          if (data.refresh) {
+            localStorage.setItem('refresh_token', data.refresh);
+          }
           originalRequest.headers.Authorization = `Bearer ${data.access}`;
           return apiClient(originalRequest);
         } catch (refreshErr) {
@@ -118,11 +122,13 @@ export const getRealtimeWebSocketUrl = (token) => {
     return `${customBase.replace(/\/$/, '')}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
   }
 
+  // In dev mode, use proxy through React dev server
   const isDevFrontendPort = ['3000', '3001'].includes(window.location.port);
   if (isDevFrontendPort) {
-    return `ws://127.0.0.1:8000/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+    return `ws://localhost:3000/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
   }
 
+  // In production, use same host
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
   return `${protocol}://${window.location.host}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
 };
@@ -137,7 +143,14 @@ export const getPriceAlerts = () => apiClient.get('/stock-management/price-alert
 export const createPriceAlert = (data) => apiClient.post('/stock-management/price-alerts/', data);
 export const updatePriceAlert = (id, data) => apiClient.patch(`/stock-management/price-alerts/${id}/`, data);
 export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/price-alerts/${id}/`);
+
+// --- Health / Observability (public, no auth needed) ---
+export const getRealtimeHealth = () =>
+  axios.get(`${apiBaseURL.replace(/\/api$/, '')}/api/health/realtime/`);
 export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
+
+// --- Health ---
+export const getRealtimeHealth = () => apiClient.get('/health/realtime/');
 
 export default apiClient;
 
