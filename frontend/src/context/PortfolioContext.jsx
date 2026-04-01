@@ -4,7 +4,12 @@
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getPortfolios } from '../api/client';
-import { login, refreshToken, getUserConfig, updateUserConfig } from '../api/auth';
+import {
+  login as loginRequest,
+  refreshToken as refreshTokenRequest,
+  getUserConfig,
+  updateUserConfig,
+} from '../api/auth';
 
 const PortfolioContext = createContext(null);
 
@@ -12,7 +17,7 @@ export function PortfolioProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [activePortfolioId, setActivePortfolioId] = useState(null);
   const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem('refresh_token'));
+  const [refreshTokenValue, setRefreshTokenValue] = useState(localStorage.getItem('refresh_token'));
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -21,12 +26,12 @@ export function PortfolioProvider({ children }) {
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
     setAccessToken(access);
-    setRefreshToken(refresh);
+    setRefreshTokenValue(refresh);
     setIsAuthenticated(true);
   };
 
   const login = useCallback(async (username, password) => {
-    const response = await login({ username, password });
+    const response = await loginRequest(username, password);
     saveTokens(response.data.access, response.data.refresh);
     return response.data;
   }, []);
@@ -35,7 +40,7 @@ export function PortfolioProvider({ children }) {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setAccessToken(null);
-    setRefreshToken(null);
+    setRefreshTokenValue(null);
     setIsAuthenticated(false);
     setPortfolios([]);
     setActivePortfolioId(null);
@@ -44,14 +49,14 @@ export function PortfolioProvider({ children }) {
 
   const refreshAccessToken = useCallback(async () => {
     try {
-      const response = await refreshToken(refreshToken);
+      const response = await refreshTokenRequest(refreshTokenValue);
       saveTokens(response.data.access, response.data.refresh);
       return true;
     } catch {
       logout();
       return false;
     }
-  }, [refreshToken, logout]);
+  }, [refreshTokenValue, logout]);
 
   const fetchPortfolios = useCallback(async () => {
     setLoading(true);
@@ -83,7 +88,7 @@ export function PortfolioProvider({ children }) {
       fetchPortfolios();
       fetchUserConfig();
     }
-  }, [isAuthenticated, accessToken]);
+  }, [isAuthenticated, accessToken, fetchPortfolios, fetchUserConfig]);
 
   return (
     <PortfolioContext.Provider value={{

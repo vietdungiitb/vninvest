@@ -6,6 +6,9 @@ urlpatterns = [
     path('portfolios/', views.PortfolioListCreateView.as_view(), name='portfolio-list'),
     path('portfolios/<int:pk>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
 
+    # --- User Config ---
+    path('userconfig/', views.UserConfigView.as_view(), name='user-config'),
+
 
     # --- SubAccounts ---
     path('subaccounts/', views.SubAccountListCreateView.as_view(), name='subaccount-list'),
@@ -31,8 +34,5 @@ urlpatterns = [
     # path('watchlist/seed/', ...)
     # path('watchlist/sync/', ...)
 
-    # --- Mã Theo dõi (personal tracked symbols) ---
-    path('tracked-symbols/', views.TrackedSymbolListCreateView.as_view(), name='tracked-symbol-list'),
-    path('tracked-symbols/<int:ts_id>/', views.TrackedSymbolDeleteView.as_view(), name='tracked-symbol-delete'),
 ]
 

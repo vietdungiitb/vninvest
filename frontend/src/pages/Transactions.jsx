@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import { getTransactions, createTransaction, deleteTransaction } from '../api/client';
+import { getSubAccounts, getTransactions, createTransaction, deleteTransaction } from '../api/client';
 import { formatVND } from '../components/StatCard';
 
 const EMPTY_FORM = {
@@ -26,11 +26,9 @@ const TYPE_COLORS = {
 
 export default function Transactions() {
 
-
-  const { user, portfolios } = usePortfolio();
+  const { activePortfolioId } = usePortfolio();
   const [subAccounts, setSubAccounts] = useState([]);
   const [subAccountId, setSubAccountId] = useState('');
-
 
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -39,20 +37,53 @@ export default function Transactions() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const fetchSubAccounts = useCallback(async () => {
+    if (!activePortfolioId) {
+      setSubAccounts([]);
+      setSubAccountId('');
+      return;
+    }
+
+    try {
+      const res = await getSubAccounts();
+      const filtered = res.data.filter((subAccount) => subAccount.portfolio === activePortfolioId);
+      setSubAccounts(filtered);
+      setSubAccountId((prev) => {
+        if (prev && filtered.some((subAccount) => String(subAccount.id) === String(prev))) {
+          return prev;
+        }
+        return filtered[0] ? String(filtered[0].id) : '';
+      });
+    } catch (err) {
+      console.error('Load subaccounts failed:', err);
+      setSubAccounts([]);
+      setSubAccountId('');
+    }
+  }, [activePortfolioId]);
+
   const fetchTx = useCallback(async () => {
-    if (!activePortfolioId) return;
+    if (!subAccountId) {
+      setTransactions([]);
+      return;
+    }
     setLoading(true);
     try {
-      const res = await getTransactions(activePortfolioId);
+      const res = await getTransactions(subAccountId);
       setTransactions(res.data);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [activePortfolioId]);
+  }, [subAccountId]);
 
-  useEffect(() => { fetchTx(); }, [fetchTx]);
+  useEffect(() => {
+    fetchSubAccounts();
+  }, [fetchSubAccounts]);
+
+  useEffect(() => {
+    fetchTx();
+  }, [fetchTx]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -64,7 +95,7 @@ export default function Transactions() {
     setSubmitting(true);
     setError('');
     try {
-      await createTransaction(activePortfolioId, {
+      await createTransaction(subAccountId, {
         ...form,
         price: parseFloat(form.price),
         quantity: parseFloat(form.quantity),
@@ -99,10 +130,30 @@ export default function Transactions() {
     );
   }
 
+  if (subAccounts.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        Danh mục này chưa có tiểu khoản. Hãy tạo hoặc seed dữ liệu demo trước.
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-5 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-100">Lịch sử giao dịch</h1>
+        <div className="flex items-center gap-3">
+          <select
+            value={subAccountId}
+            onChange={(e) => setSubAccountId(e.target.value)}
+            className="bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100"
+          >
+            {subAccounts.map((subAccount) => (
+              <option key={subAccount.id} value={subAccount.id}>
+                {subAccount.name}
+              </option>
+            ))}
+          </select>
         <button
           onClick={() => { setShowForm((v) => !v); setError(''); }}
           className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold
@@ -110,6 +161,7 @@ export default function Transactions() {
         >
           {showForm ? 'Huỷ' : '+ Thêm giao dịch'}
         </button>
+        </div>
       </div>
 
       {/* Form thêm giao dịch */}

@@ -3,6 +3,7 @@
  * Bảng danh sách các vị thế đang nắm giữ.
  */
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { formatVND } from './StatCard';
 import EmptyState from './EmptyState';
 
@@ -58,7 +59,11 @@ export default function HoldingsTable({ holdings, loading }) {
         <tbody className="divide-y divide-gray-800">
           {holdings.map((h) => (
             <tr key={h.symbol} className="hover:bg-gray-900/50 transition-colors">
-              <td className="py-3 pr-4 font-bold text-brand-400">{h.symbol}</td>
+              <td className="py-3 pr-4 font-bold text-brand-400">
+                <Link to={`/stocks/${h.symbol}`} className="hover:text-brand-300 transition-colors">
+                  {h.symbol}
+                </Link>
+              </td>
               <td className="py-3 pr-4 text-gray-300">
                 {parseFloat(h.quantity).toLocaleString('vi-VN')}
               </td>

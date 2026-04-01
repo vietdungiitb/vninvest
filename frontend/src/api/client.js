@@ -88,7 +88,7 @@ export const syncPrices = (portfolioId, days = 30) =>
   apiClient.post(`/portfolio/portfolios/${portfolioId}/sync/`, { days });
 
 // --- Sync StockProfile (trigger backend sync) ---
-export const syncStockProfile = () => apiClient.post('/sync-stockprofile/');
+export const syncStockProfile = () => apiClient.post('/admin-sync/stockprofile/');
 
 // --- Watchlist ---
 export const getWatchlistGroups = () => apiClient.get('/portfolio/watchlist/groups/');
@@ -102,21 +102,42 @@ export const seedWatchlist = () => apiClient.post('/portfolio/watchlist/seed/');
 export const syncWatchlistPrices = (days = 5) => apiClient.post('/portfolio/watchlist/sync/', { days });
 
 // --- Securities Groups APIs ---
-export const getSecuritiesGroups = () => apiClient.get('/portfolio/Securities/groups/');
-export const createSecuritiesGroup = (data) => apiClient.post('/portfolio/Securities/groups/', data);
-export const updateSecuritiesGroup = (id, data) => apiClient.patch(`/portfolio/Securities/groups/${id}/`, data);
-export const deleteSecuritiesGroup = (id) => apiClient.delete(`/portfolio/Securities/groups/${id}/`);
-export const addSecuritiesItem = (groupId, data) => apiClient.post(`/portfolio/Securities/groups/${groupId}/items/`, data);
-export const deleteSecuritiesItem = (itemId) => apiClient.delete(`/portfolio/Securities/items/${itemId}/`);
-export const seedSecurities = () => apiClient.post('/portfolio/Securities/seed/');
-export const syncSecuritiesPrices = (days = 5) => apiClient.post('/portfolio/Securities/sync/', { days });
-export const getStockProfile = (symbol) => apiClient.get(`/portfolio/stockprofile/${symbol}/`);
+export const getSecuritiesGroups = () => apiClient.get('/stock-management/groups/');
+export const seedSecurities = () => apiClient.post('/stock-management/seed/');
+export const syncSecuritiesPrices = (days = 5) => apiClient.post('/stock-management/sync/', { days });
+export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stocks/${symbol}/`);
+export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
+export const getStockPriceChart = (symbol, days = 180) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/?days=${days}`);
+export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
+
+export const getRealtimeWebSocketUrl = (token) => {
+  const normalizedToken = token || localStorage.getItem('access_token') || '';
+  const customBase = process.env.REACT_APP_WS_BASE_URL;
+
+  if (customBase) {
+    return `${customBase.replace(/\/$/, '')}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+  }
+
+  const isDevFrontendPort = ['3000', '3001'].includes(window.location.port);
+  if (isDevFrontendPort) {
+    return `ws://127.0.0.1:8000/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+  }
+
+  const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${protocol}://${window.location.host}/ws/realtime/?token=${encodeURIComponent(normalizedToken)}`;
+};
 
 // --- Mã Theo dõi (personal tracked symbols) ---
-export const getTrackedSymbols = () => apiClient.get('/portfolio/tracked-symbols/');
+export const getTrackedSymbols = () => apiClient.get('/stock-management/tracked-symbols/');
 export const addTrackedSymbol = (symbol, sourceGroupId = null) =>
-  apiClient.post('/portfolio/tracked-symbols/', { symbol, source_group_id: sourceGroupId });
-export const deleteTrackedSymbol = (id) => apiClient.delete(`/portfolio/tracked-symbols/${id}/`);
+  apiClient.post('/stock-management/tracked-symbols/', { symbol, source_group_id: sourceGroupId });
+export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`);
+
+export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/');
+export const createPriceAlert = (data) => apiClient.post('/stock-management/price-alerts/', data);
+export const updatePriceAlert = (id, data) => apiClient.patch(`/stock-management/price-alerts/${id}/`, data);
+export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/price-alerts/${id}/`);
+export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
 
 export default apiClient;
 

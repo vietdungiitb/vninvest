@@ -2,10 +2,9 @@
  * components/Layout.jsx
  * Sidebar + Header bao ngoài tất cả các trang.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
-import LoginModal from './LoginModal';
 
 
 const NAV_ITEMS = [
@@ -14,18 +13,13 @@ const NAV_ITEMS = [
 ];
 
 const STOCK_MGMT_ITEMS = [
-  { to: '/watchlist', label: 'Nhóm Chứng khoán' },
+  { to: '/watchlist', label: 'Radar thị trường' },
   // Có thể bổ sung thêm các mục quản lý mã CK khác ở đây
 ];
 
 export default function Layout() {
-  const { isAuthenticated, logout, portfolios, activePortfolioId, setActivePortfolioId } =
+  const { logout, portfolios, activePortfolioId, setActivePortfolioId } =
     usePortfolio();
-  const [showLogin, setShowLogin] = useState(!isAuthenticated);
-
-  if (!isAuthenticated) {
-    return <LoginModal onSuccess={() => setShowLogin(false)} />;
-  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -77,7 +71,7 @@ export default function Layout() {
 
           {/* Divider for Stock Management */}
           <div className="mt-6 mb-1 px-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Quản lý danh mục chứng khoán</span>
+            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Market watch và theo dõi cá nhân</span>
           </div>
           {STOCK_MGMT_ITEMS.map(({ to, label }) => (
             <NavLink

@@ -60,13 +60,13 @@ class WatchlistGroup(models.Model):
         User, on_delete=models.CASCADE,
         related_name='watchlist_groups', verbose_name='Người dùng',
     )
-    name = models.CharField(max_length=100, verbose_name='Tên nhóm')
+    name = models.CharField(max_length=100, verbose_name='Tên danh sách theo dõi')
     description = models.TextField(blank=True, default='', verbose_name='Mô tả')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Nhóm Watchlist'
-        verbose_name_plural = 'Nhóm Watchlist'
+        verbose_name = 'Danh sách theo dõi cá nhân'
+        verbose_name_plural = 'Danh sách theo dõi cá nhân'
         ordering = ['name']
 
     def __str__(self):
@@ -79,14 +79,14 @@ class WatchlistItem(models.Model):
     """
     group = models.ForeignKey(
         WatchlistGroup, on_delete=models.CASCADE,
-        related_name='items', verbose_name='Nhóm watchlist',
+        related_name='items', verbose_name='Danh sách theo dõi cá nhân',
     )
     symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Mã theo dõi'
-        verbose_name_plural = 'Mã theo dõi'
+        verbose_name = 'Mã trong danh sách theo dõi'
+        verbose_name_plural = 'Mã trong danh sách theo dõi'
         unique_together = [('group', 'symbol')]
         ordering = ['-added_at']
 
@@ -311,10 +311,6 @@ class SecuritiesGroup(models.Model):
         MARKET_CAP = 'MARKET_CAP', 'Nhóm vốn hóa'
         CUSTOM = 'CUSTOM', 'Tùy chỉnh'
 
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE,
-        related_name='securities_groups', verbose_name='Người dùng',
-    )
     name = models.CharField(max_length=100, verbose_name='Tên nhóm')
     group_type = models.CharField(
         max_length=20, choices=GroupType.choices,
@@ -326,30 +322,31 @@ class SecuritiesGroup(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Nhóm Chứng khoán'
-        verbose_name_plural = 'Nhóm Chứng khoán'
+        verbose_name = 'Nhóm thị trường'
+        verbose_name_plural = 'Nhóm thị trường'
+        unique_together = [('name', 'group_type')]
         ordering = ['order', 'name']
 
     def __str__(self):
-        return f'{self.name} ({self.user.username})'
+        return self.name
 
 
 SecuritiesGroupAlias = SecuritiesGroup  # backward-compat alias
 
 
 class SecuritiesItem(models.Model):
-    """Một mã chứng khoán trong một nhóm."""
+    """Một mã chứng khoán trong một nhóm thị trường."""
     group = models.ForeignKey(
         SecuritiesGroup, on_delete=models.CASCADE,
-        related_name='items', verbose_name='Nhóm',
+        related_name='items', verbose_name='Nhóm thị trường',
     )
     symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
     order = models.PositiveIntegerField(default=0, verbose_name='Thứ tự')
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Mã chứng khoán'
-        verbose_name_plural = 'Mã chứng khoán'
+        verbose_name = 'Mã trong nhóm thị trường'
+        verbose_name_plural = 'Mã trong nhóm thị trường'
         unique_together = [('group', 'symbol')]
         ordering = ['order', 'symbol']
 
@@ -373,18 +370,170 @@ class TrackedSymbol(models.Model):
     symbol = models.CharField(max_length=10, verbose_name='Mã Chứng khoán', db_index=True)
     source_group = models.ForeignKey(
         SecuritiesGroup, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='tracked_from', verbose_name='Nhóm nguồn',
+        related_name='tracked_from', verbose_name='Nhóm thị trường nguồn',
     )
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'Mã Theo dõi'
-        verbose_name_plural = 'Mã Theo dõi'
+        verbose_name = 'Mã theo dõi tổng hợp'
+        verbose_name_plural = 'Mã theo dõi tổng hợp'
         unique_together = [('user', 'symbol')]
         ordering = ['-added_at']
 
     def __str__(self):
         return f'{self.symbol} ({self.user.username})'
+
+
+class PriceAlertRule(models.Model):
+    class Condition(models.TextChoices):
+        ABOVE = 'ABOVE', 'Vượt lên trên'
+        BELOW = 'BELOW', 'Rơi xuống dưới'
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='price_alert_rules', verbose_name='Người dùng',
+    )
+    symbol = models.CharField(max_length=10, verbose_name='Mã chứng khoán', db_index=True)
+    condition = models.CharField(
+        max_length=10,
+        choices=Condition.choices,
+        default=Condition.ABOVE,
+        verbose_name='Điều kiện cảnh báo',
+    )
+    target_price = models.DecimalField(
+        max_digits=15,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.01'))],
+        verbose_name='Mức giá mục tiêu (VNĐ)',
+    )
+    cooldown_seconds = models.PositiveIntegerField(
+        default=300,
+        verbose_name='Thời gian chờ lặp lại (giây)',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
+    last_triggered_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần trigger gần nhất')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Cảnh báo giá'
+        verbose_name_plural = 'Cảnh báo giá'
+        ordering = ['-created_at']
+        unique_together = [('user', 'symbol', 'condition', 'target_price')]
+
+    def __str__(self):
+        return f'{self.symbol} {self.condition} {self.target_price:,.0f} ({self.user.username})'
+
+
+class MarketGroupSyncLog(models.Model):
+    class ScopeChoices(models.TextChoices):
+        USER = 'USER', 'Theo user'
+        GLOBAL = 'GLOBAL', 'Toàn hệ thống'
+
+    class ModeChoices(models.TextChoices):
+        ALL = 'all', 'Toàn bộ'
+        SECTORS = 'sectors', 'Nhóm ngành'
+        CAPS = 'caps', 'Nhóm vốn hóa'
+        MANUAL = 'manual', 'Danh sách cứng'
+
+    scope = models.CharField(
+        max_length=10,
+        choices=ScopeChoices.choices,
+        default=ScopeChoices.USER,
+        verbose_name='Phạm vi đồng bộ',
+    )
+    target_user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='market_group_sync_logs',
+        verbose_name='User được đồng bộ',
+    )
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requested_market_group_sync_logs',
+        verbose_name='Người chạy đồng bộ',
+    )
+    mode = models.CharField(
+        max_length=20,
+        choices=ModeChoices.choices,
+        default=ModeChoices.ALL,
+        verbose_name='Chế độ đồng bộ',
+    )
+    clear_existing = models.BooleanField(default=False, verbose_name='Xóa nhóm hiện có trước khi sync')
+    success = models.BooleanField(default=False, verbose_name='Thành công')
+    total_users = models.PositiveIntegerField(default=0, verbose_name='Số user ảnh hưởng')
+    total_groups = models.PositiveIntegerField(default=0, verbose_name='Số nhóm đầu vào')
+    created_groups = models.PositiveIntegerField(default=0, verbose_name='Số nhóm tạo mới')
+    updated_groups = models.PositiveIntegerField(default=0, verbose_name='Số nhóm cập nhật')
+    added_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã thêm mới')
+    source = models.CharField(max_length=20, default='vnstock', verbose_name='Nguồn dữ liệu')
+    message = models.TextField(blank=True, default='', verbose_name='Thông báo kết quả')
+    error = models.TextField(blank=True, default='', verbose_name='Lỗi chi tiết')
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name='Bắt đầu lúc')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc lúc')
+
+    class Meta:
+        verbose_name = 'Log đồng bộ nhóm thị trường'
+        verbose_name_plural = 'Log đồng bộ nhóm thị trường'
+        ordering = ['-started_at']
+
+    def __str__(self):
+        target = self.target_user.username if self.target_user else 'toan_he_thong'
+        return f'{self.scope} | {target} | {self.started_at:%Y-%m-%d %H:%M}'
+
+
+class StockProfileSyncLog(models.Model):
+    class ScopeChoices(models.TextChoices):
+        GLOBAL = 'GLOBAL', 'Toàn hệ thống'
+
+    class ModeChoices(models.TextChoices):
+        ALL = 'all', 'Toàn bộ'
+        SECTORS = 'sectors', 'Nhóm ngành'
+        CAPS = 'caps', 'Nhóm vốn hóa'
+        MANUAL = 'manual', 'Danh sách cứng'
+
+    scope = models.CharField(
+        max_length=10,
+        choices=ScopeChoices.choices,
+        default=ScopeChoices.GLOBAL,
+        verbose_name='Phạm vi đồng bộ',
+    )
+    requested_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requested_stock_profile_sync_logs',
+        verbose_name='Người chạy đồng bộ',
+    )
+    mode = models.CharField(
+        max_length=20,
+        choices=ModeChoices.choices,
+        default=ModeChoices.ALL,
+        verbose_name='Chế độ đồng bộ',
+    )
+    success = models.BooleanField(default=False, verbose_name='Thành công')
+    total_symbols = models.PositiveIntegerField(default=0, verbose_name='Tổng số mã đầu vào')
+    created_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã tạo mới')
+    updated_symbols = models.PositiveIntegerField(default=0, verbose_name='Số mã cập nhật')
+    source = models.CharField(max_length=20, default='vnstock', verbose_name='Nguồn dữ liệu')
+    message = models.TextField(blank=True, default='', verbose_name='Thông báo kết quả')
+    error = models.TextField(blank=True, default='', verbose_name='Lỗi chi tiết')
+    started_at = models.DateTimeField(auto_now_add=True, verbose_name='Bắt đầu lúc')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc lúc')
+
+    class Meta:
+        verbose_name = 'Log đồng bộ hồ sơ mã chứng khoán'
+        verbose_name_plural = 'Log đồng bộ hồ sơ mã chứng khoán'
+        ordering = ['-started_at']
+
+    def __str__(self):
+        return f'STOCKPROFILE | {self.mode} | {self.started_at:%Y-%m-%d %H:%M}'
 
 
 

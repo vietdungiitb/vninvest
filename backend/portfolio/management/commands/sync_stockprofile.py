@@ -9,36 +9,22 @@ Cách dùng:
 """
 
 from django.core.management.base import BaseCommand
-from portfolio.models import StockProfile
-from portfolio.services import fetch_market_sectors_and_groups
-from django.db import transaction
+from portfolio.services import sync_stock_profiles
 
 class Command(BaseCommand):
     help = 'Đồng bộ toàn bộ mã chứng khoán, nhóm ngành, sàn giao dịch từ vnstock về StockProfile.'
 
-    def handle(self, *args, **options):
-        self.stdout.write('Đang lấy dữ liệu mã chứng khoán và nhóm ngành từ vnstock...')
-        data = fetch_market_sectors_and_groups()
-        if data['error']:
-            self.stdout.write(self.style.ERROR(f'Lỗi khi lấy dữ liệu từ vnstock: {data["error"]}'))
-            return
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--mode', type=str, default='all', choices=['all', 'sectors', 'caps', 'manual'],
+            help='all=tất cả | sectors=ưu tiên nhóm ngành | caps=nhóm vốn hóa | manual=danh sách cứng',
+        )
 
-        total = 0
-        updated = 0
-        with transaction.atomic():
-            for sector in data['sectors']:
-                industry = sector['name']
-                for symbol in sector['symbols']:
-                    obj, created = StockProfile.objects.update_or_create(
-                        symbol=symbol,
-                        defaults={
-                            'industry': industry,
-                            'exchange': '',  # Có thể cập nhật sau nếu cần
-                            'company_name': '',  # Có thể cập nhật sau nếu cần
-                            'is_active': True,
-                        }
-                    )
-                    total += 1
-                    if not created:
-                        updated += 1
-        self.stdout.write(self.style.SUCCESS(f'Đã đồng bộ {total} mã chứng khoán (cập nhật: {updated}).'))
+    def handle(self, *args, **options):
+        result = sync_stock_profiles(mode=options['mode'])
+        if result['warning']:
+            self.stdout.write(self.style.WARNING(result['warning']))
+        if result['success']:
+            self.stdout.write(self.style.SUCCESS(result['message']))
+            return
+        self.stdout.write(self.style.ERROR(result.get('error') or result['message']))

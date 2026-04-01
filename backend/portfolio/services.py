@@ -12,9 +12,11 @@ import logging
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.contrib.auth.models import User
 from django.db import transaction as db_transaction
+from django.utils import timezone
 
-from .models import DailyPrice, Portfolio, SecuritiesGroup
+from .models import DailyPrice, MarketGroupSyncLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, StockProfileSyncLog, TrackedSymbol, WatchlistItem
 
 logger = logging.getLogger(__name__)
 
@@ -251,16 +253,28 @@ def get_price_changes(symbols: list) -> dict:
 
 def sync_watchlist_prices(user_id: int, days: int = 5) -> list[dict]:
     """
-    Kéo giá EOD mới nhất cho tất cả mã CK trong watchlist của một user.
+    Kéo giá EOD mới nhất cho tất cả mã CK user đang quan tâm trong market groups,
+    tracked symbols và danh sách theo dõi cá nhân.
     Mặc định sync 5 ngày để cập nhật giá nhanh.
     """
-    symbols = list(
+    group_symbols = list(
         SecuritiesGroup.objects
-        .filter(user_id=user_id)
         .values_list('items__symbol', flat=True)
         .distinct()
     )
-    symbols = [s for s in symbols if s]  # loại bỏ None
+    tracked_symbols = list(
+        TrackedSymbol.objects
+        .filter(user_id=user_id)
+        .values_list('symbol', flat=True)
+        .distinct()
+    )
+    watchlist_symbols = list(
+        WatchlistItem.objects
+        .filter(group__user_id=user_id)
+        .values_list('symbol', flat=True)
+        .distinct()
+    )
+    symbols = sorted({symbol for symbol in [*group_symbols, *tracked_symbols, *watchlist_symbols] if symbol})
 
     start_date = date.today() - timedelta(days=days)
     results = []
@@ -286,6 +300,32 @@ _CAP_GROUP_DEFS = [
     ('VN30',  'VN30 — Top 30 vốn hóa lớn HOSE',   '#6366f1'),
     ('VN100', 'VN100 — Top 100 cổ phiếu HOSE',     '#3b82f6'),
     ('HNX30', 'HNX30 — Top 30 cổ phiếu HNX',       '#f59e0b'),
+]
+
+_MANUAL_MARKET_GROUPS = [
+    {'name': 'Ngân hàng', 'group_type': 'SECTOR', 'color': '#3b82f6', 'order': 1,
+     'description': 'Nhóm ngân hàng',
+     'symbols': ['ACB', 'BID', 'CTG', 'EIB', 'HDB', 'LPB', 'MBB', 'MSB', 'OCB', 'SHB', 'SSB', 'STB', 'TCB', 'TPB', 'VCB', 'VIB', 'VPB']},
+    {'name': 'Bất động sản', 'group_type': 'SECTOR', 'color': '#f59e0b', 'order': 2,
+     'description': 'Nhóm bất động sản',
+     'symbols': ['BCM', 'CEO', 'DIG', 'DXG', 'KBC', 'KDH', 'NLG', 'NVL', 'PDR', 'SJS', 'TDH', 'VHM', 'VIC', 'VRE']},
+    {'name': 'Thép & Vật liệu', 'group_type': 'SECTOR', 'color': '#ef4444', 'order': 3,
+     'description': 'Nhóm thép và vật liệu xây dựng',
+     'symbols': ['BMP', 'HPG', 'HSG', 'NKG', 'TLH', 'VGC', 'VIS']},
+    {'name': 'Dầu khí', 'group_type': 'SECTOR', 'color': '#8b5cf6', 'order': 4,
+     'description': 'Nhóm dầu khí và năng lượng',
+     'symbols': ['GAS', 'OIL', 'PLX', 'PVD', 'PVS', 'PVT']},
+    {'name': 'Công nghệ', 'group_type': 'SECTOR', 'color': '#22c55e', 'order': 5,
+     'description': 'Nhóm công nghệ và viễn thông',
+     'symbols': ['CMG', 'ELC', 'FPT', 'SAM', 'VGI']},
+    {'name': 'Bán lẻ & Tiêu dùng', 'group_type': 'SECTOR', 'color': '#ec4899', 'order': 6,
+     'description': 'Nhóm bán lẻ và hàng tiêu dùng',
+     'symbols': ['MSN', 'MWG', 'PNJ', 'SAB', 'VNM']},
+    {'name': 'VN30', 'group_type': 'MARKET_CAP', 'color': '#6366f1', 'order': 7,
+     'description': 'Top 30 cổ phiếu vốn hóa lớn nhất HOSE',
+     'symbols': ['ACB', 'BID', 'CTG', 'DGC', 'FPT', 'GAS', 'GVR', 'HDB', 'HPG', 'LPB', 'MBB', 'MSN',
+                 'MWG', 'PLX', 'SAB', 'SHB', 'SSB', 'SSI', 'STB', 'TCB', 'TPB', 'VCB', 'VHM', 'VIB',
+                 'VIC', 'VJC', 'VNM', 'VPB', 'VPL', 'VRE']},
 ]
 
 
@@ -348,3 +388,326 @@ def fetch_market_sectors_and_groups() -> dict:
     except Exception as exc:
         logger.error('fetch_market_sectors_and_groups thất bại: %s', exc)
         return {'sectors': [], 'cap_groups': [], 'error': str(exc)}
+
+
+def get_manual_market_group_payload() -> list[dict]:
+    return [dict(group) for group in _MANUAL_MARKET_GROUPS]
+
+
+def build_market_group_payload(mode: str = 'all') -> dict:
+    normalized_mode = mode if mode in {'all', 'sectors', 'caps', 'manual'} else 'all'
+    if normalized_mode == 'manual':
+        return {
+            'groups': get_manual_market_group_payload(),
+            'source': 'manual',
+            'warning': None,
+            'mode': normalized_mode,
+        }
+
+    data = fetch_market_sectors_and_groups()
+    if data['error']:
+        return {
+            'groups': get_manual_market_group_payload(),
+            'source': 'manual',
+            'warning': f'vnstock lỗi: {data["error"]}. Dùng danh sách mặc định.',
+            'mode': normalized_mode,
+        }
+
+    groups = []
+    if normalized_mode in ('all', 'sectors'):
+        for index, sector in enumerate(data['sectors']):
+            groups.append({
+                'name': sector['name'],
+                'group_type': 'SECTOR',
+                'description': sector['description'],
+                'color': sector['color'],
+                'order': index + 1,
+                'symbols': sector['symbols'],
+            })
+
+    if normalized_mode in ('all', 'caps'):
+        offset = len(groups)
+        for index, cap in enumerate(data['cap_groups']):
+            groups.append({
+                'name': cap['name'],
+                'group_type': 'MARKET_CAP',
+                'description': cap['description'],
+                'color': cap['color'],
+                'order': offset + index + 1,
+                'symbols': cap['symbols'],
+            })
+
+    return {
+        'groups': groups,
+        'source': 'vnstock',
+        'warning': None,
+        'mode': normalized_mode,
+    }
+
+
+def apply_market_group_payload(groups: list[dict], clear_existing: bool = False) -> dict:
+    created_groups = []
+    updated_groups = []
+    added_symbols = 0
+    deleted_groups = 0
+
+    if clear_existing:
+        deleted_groups = SecuritiesGroup.objects.count()
+        SecuritiesGroup.objects.all().delete()
+
+    for group_data in groups:
+        symbols = [symbol.upper().strip() for symbol in group_data.get('symbols', []) if symbol]
+        group, created = SecuritiesGroup.objects.get_or_create(
+            name=group_data['name'],
+            group_type=group_data['group_type'],
+            defaults={
+                'description': group_data.get('description', ''),
+                'color': group_data.get('color', '#22c55e'),
+                'order': group_data.get('order', 0),
+            },
+        )
+
+        metadata_updates = []
+        for field_name, field_value in {
+            'description': group_data.get('description', ''),
+            'color': group_data.get('color', '#22c55e'),
+            'order': group_data.get('order', 0),
+        }.items():
+            if getattr(group, field_name) != field_value:
+                setattr(group, field_name, field_value)
+                metadata_updates.append(field_name)
+        if metadata_updates:
+            group.save(update_fields=metadata_updates)
+
+        existing_items = {
+            item.symbol: item
+            for item in group.items.all()
+        }
+        group_added_symbols = 0
+        reordered_symbols = 0
+
+        for index, symbol in enumerate(symbols):
+            existing_item = existing_items.get(symbol)
+            if existing_item:
+                if existing_item.order != index:
+                    existing_item.order = index
+                    existing_item.save(update_fields=['order'])
+                    reordered_symbols += 1
+                continue
+
+            SecuritiesItem.objects.create(group=group, symbol=symbol, order=index)
+            group_added_symbols += 1
+
+        removed_symbols = group.items.exclude(symbol__in=symbols)
+        removed_symbols_count = removed_symbols.count()
+        if removed_symbols_count:
+            removed_symbols.delete()
+
+        added_symbols += group_added_symbols
+        if created:
+            created_groups.append({'group': group.name, 'symbols': len(symbols)})
+        elif metadata_updates or group_added_symbols or removed_symbols_count or reordered_symbols:
+            updated_groups.append(
+                {
+                    'group': group.name,
+                    'new_symbols': group_added_symbols,
+                    'removed_symbols': removed_symbols_count,
+                }
+            )
+
+    message_parts = []
+    if deleted_groups:
+        message_parts.append(f'da xoa {deleted_groups} nhom cu')
+    if created_groups:
+        message_parts.append(f'tao moi {len(created_groups)} nhom')
+    if updated_groups:
+        message_parts.append(f'cap nhat {len(updated_groups)} nhom')
+    if not message_parts:
+        message_parts.append('khong co thay doi')
+
+    return {
+        'created': created_groups,
+        'updated': updated_groups,
+        'deleted_groups': deleted_groups,
+        'total_groups': len(groups),
+        'created_groups_count': len(created_groups),
+        'updated_groups_count': len(updated_groups),
+        'added_symbols_count': added_symbols,
+        'message': ', '.join(message_parts) + '.',
+    }
+
+
+def sync_market_groups(
+    requested_by: User | None = None,
+    mode: str = 'all',
+    clear_existing: bool = False,
+    payload: dict | None = None,
+    scope: str = MarketGroupSyncLog.ScopeChoices.GLOBAL,
+    target_user: User | None = None,
+    total_users: int = 0,
+) -> dict:
+    resolved_payload = payload or build_market_group_payload(mode)
+    log = MarketGroupSyncLog.objects.create(
+        scope=scope,
+        target_user=target_user,
+        requested_by=requested_by,
+        mode=resolved_payload['mode'],
+        clear_existing=clear_existing,
+        source=resolved_payload['source'],
+        total_users=total_users,
+        total_groups=len(resolved_payload['groups']),
+    )
+
+    try:
+        result = apply_market_group_payload(resolved_payload['groups'], clear_existing=clear_existing)
+        message = result['message']
+        if resolved_payload['warning']:
+            message = f'{message} {resolved_payload["warning"]}'
+        log.success = True
+        log.created_groups = result['created_groups_count']
+        log.updated_groups = result['updated_groups_count']
+        log.added_symbols = result['added_symbols_count']
+        log.message = message
+        log.finished_at = timezone.now()
+        log.save(update_fields=['success', 'created_groups', 'updated_groups', 'added_symbols', 'message', 'finished_at'])
+        return {
+            **result,
+            'success': True,
+            'warning': resolved_payload['warning'],
+            'source': resolved_payload['source'],
+            'log': log,
+        }
+    except Exception as exc:
+        logger.exception('sync_market_groups thất bại')
+        log.success = False
+        log.error = str(exc)
+        log.message = 'Đồng bộ nhóm thị trường thất bại.'
+        log.finished_at = timezone.now()
+        log.save(update_fields=['success', 'error', 'message', 'finished_at'])
+        return {
+            'success': False,
+            'warning': resolved_payload['warning'],
+            'source': resolved_payload['source'],
+            'error': str(exc),
+            'message': 'Đồng bộ nhóm thị trường thất bại.',
+            'log': log,
+        }
+
+
+def sync_market_groups_for_user(
+    user: User,
+    requested_by: User | None = None,
+    mode: str = 'all',
+    clear_existing: bool = False,
+    payload: dict | None = None,
+) -> dict:
+    return sync_market_groups(
+        requested_by=requested_by,
+        mode=mode,
+        clear_existing=clear_existing,
+        payload=payload,
+        scope=MarketGroupSyncLog.ScopeChoices.USER,
+        target_user=user,
+        total_users=1,
+    )
+
+
+def sync_market_groups_for_users(
+    users,
+    requested_by: User | None = None,
+    mode: str = 'all',
+    clear_existing: bool = False,
+) -> dict:
+    user_list = list(users)
+    return sync_market_groups(
+        requested_by=requested_by,
+        mode=mode,
+        clear_existing=clear_existing,
+        total_users=len(user_list),
+        scope=MarketGroupSyncLog.ScopeChoices.GLOBAL,
+    )
+
+
+def build_stock_profile_payload(mode: str = 'all') -> dict:
+    resolved_payload = build_market_group_payload(mode)
+    symbol_map = {}
+
+    for group in resolved_payload['groups']:
+        industry = group['name'] if group.get('group_type') == 'SECTOR' else ''
+        for symbol in group.get('symbols', []):
+            normalized_symbol = symbol.upper().strip()
+            current = symbol_map.get(normalized_symbol, {'symbol': normalized_symbol, 'industry': '', 'exchange': '', 'company_name': ''})
+            if industry and not current['industry']:
+                current['industry'] = industry
+            symbol_map[normalized_symbol] = current
+
+    return {
+        'symbols': list(symbol_map.values()),
+        'source': resolved_payload['source'],
+        'warning': resolved_payload['warning'],
+        'mode': resolved_payload['mode'],
+    }
+
+
+def sync_stock_profiles(requested_by: User | None = None, mode: str = 'all') -> dict:
+    payload = build_stock_profile_payload(mode)
+    log = StockProfileSyncLog.objects.create(
+        requested_by=requested_by,
+        mode=payload['mode'],
+        source=payload['source'],
+        total_symbols=len(payload['symbols']),
+    )
+
+    created_symbols = 0
+    updated_symbols = 0
+    try:
+        with db_transaction.atomic():
+            for row in payload['symbols']:
+                _, created = StockProfile.objects.update_or_create(
+                    symbol=row['symbol'],
+                    defaults={
+                        'industry': row.get('industry', ''),
+                        'exchange': row.get('exchange', ''),
+                        'company_name': row.get('company_name', ''),
+                        'is_active': True,
+                    },
+                )
+                if created:
+                    created_symbols += 1
+                else:
+                    updated_symbols += 1
+
+        message = f'Da dong bo {len(payload["symbols"])} ma chung khoan (tao moi: {created_symbols}, cap nhat: {updated_symbols}).'
+        if payload['warning']:
+            message = f'{message} {payload["warning"]}'
+        log.success = True
+        log.created_symbols = created_symbols
+        log.updated_symbols = updated_symbols
+        log.message = message
+        log.finished_at = timezone.now()
+        log.save(update_fields=['success', 'created_symbols', 'updated_symbols', 'message', 'finished_at'])
+        return {
+            'success': True,
+            'message': message,
+            'warning': payload['warning'],
+            'source': payload['source'],
+            'total_symbols': len(payload['symbols']),
+            'created_symbols': created_symbols,
+            'updated_symbols': updated_symbols,
+            'log': log,
+        }
+    except Exception as exc:
+        logger.exception('sync_stock_profiles thất bại')
+        log.success = False
+        log.error = str(exc)
+        log.message = 'Đồng bộ hồ sơ mã chứng khoán thất bại.'
+        log.finished_at = timezone.now()
+        log.save(update_fields=['success', 'error', 'message', 'finished_at'])
+        return {
+            'success': False,
+            'message': 'Đồng bộ hồ sơ mã chứng khoán thất bại.',
+            'warning': payload['warning'],
+            'source': payload['source'],
+            'error': str(exc),
+            'log': log,
+        }

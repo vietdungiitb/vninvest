@@ -40,9 +40,9 @@ FLOAT_ROUND = 2  # số chữ số thập phân khi trả về API
 # ---------------------------------------------------------------------------
 
 
-def load_transactions_df(subaccount) -> pd.DataFrame:
+def load_transactions_df(container) -> pd.DataFrame:
     """
-    Load toàn bộ giao dịch của tiểu khoản thành DataFrame.
+    Load toàn bộ giao dịch của portfolio hoặc tiểu khoản thành DataFrame.
 
 
     Columns:
@@ -53,10 +53,17 @@ def load_transactions_df(subaccount) -> pd.DataFrame:
         nhanh hơn khoảng 5-10× với dataset lớn.
     """
 
-    qs = subaccount.transactions.order_by('date', 'created_at').values(
+    if hasattr(container, 'sub_accounts'):
+        qs = Transaction.objects.filter(
+            sub_account__portfolio=container,
+        ).order_by('date', 'created_at').values(
+            'id', 'symbol', 'transaction_type', 'date', 'price', 'quantity', 'fee',
+        )
+    else:
+        qs = container.transactions.order_by('date', 'created_at').values(
+            'id', 'symbol', 'transaction_type', 'date', 'price', 'quantity', 'fee',
+        )
 
-        'id', 'symbol', 'transaction_type', 'date', 'price', 'quantity', 'fee',
-    )
     if not qs.exists():
         return pd.DataFrame(columns=['id', 'symbol', 'transaction_type', 'date', 'price', 'quantity', 'fee'])
 
@@ -303,11 +310,13 @@ def compute_nav_series(portfolio, days: int = 90) -> pd.DataFrame:
 
     # --- Bước 4b: cumsum → quantity held after each date ---
     # reindex để bao gồm tất cả ngày có giá (không chỉ ngày có giao dịch)
+    timeline_index = daily_changes.index.union(all_price_dates).sort_values()
     holdings_pivot = (
         daily_changes
-        .reindex(all_price_dates, fill_value=0.0)
+        .reindex(timeline_index, fill_value=0.0)
         .cumsum()
-        .clip(lower=0)  # không thể âm
+        .clip(lower=0)
+        .reindex(all_price_dates, method='ffill', fill_value=0.0)
     )
 
     # Chỉ giữ các mã có trong cả hai bảng

@@ -19,12 +19,20 @@ from django.http import JsonResponse
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def sync_stockprofile_api(request):
-    from .management.commands.sync_stockprofile import Command as SyncStockProfileCommand
-    try:
-        SyncStockProfileCommand().handle()
-        return JsonResponse({'success': True, 'message': 'Đã đồng bộ mã chứng khoán từ thị trường.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    result = sync_stock_profiles(requested_by=request.user, mode=request.query_params.get('mode', 'all'))
+    return JsonResponse(
+        {
+            'success': result['success'],
+            'message': result['message'],
+            'warning': result.get('warning'),
+            'source': result.get('source'),
+            'total_symbols': result.get('total_symbols', 0),
+            'created_symbols': result.get('created_symbols', 0),
+            'updated_symbols': result.get('updated_symbols', 0),
+            'error': result.get('error', ''),
+        },
+        status=200 if result['success'] else 500,
+    )
 
 # SecuritiesGroup List API
 class SecuritiesGroupListView(generics.ListAPIView):
@@ -32,7 +40,7 @@ class SecuritiesGroupListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return SecuritiesGroup.objects.filter(user=self.request.user)
+        return SecuritiesGroup.objects.all()
 
 # SecuritiesItem List API (liệt kê các mã trong group)
 class SecuritiesItemListView(generics.ListAPIView):
@@ -41,7 +49,7 @@ class SecuritiesItemListView(generics.ListAPIView):
 
     def get_queryset(self):
         group_id = self.kwargs['pk']
-        return SecuritiesItem.objects.filter(group_id=group_id, group__user=self.request.user)
+        return SecuritiesItem.objects.filter(group_id=group_id)
 """
 views.py — DRF API Views.
 
@@ -58,25 +66,30 @@ Endpoints:
 """
 
 from decimal import Decimal
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
+from django.db.models import Max, Min
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
     SecuritiesGroupCreateSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer,
-    TrackedSymbolSerializer, WatchlistGroupSerializer, WatchlistItemSerializer, StockProfileSerializer
+    TrackedSymbolSerializer, WatchlistGroupSerializer, WatchlistItemSerializer, StockProfileSerializer,
+    PriceAlertRuleSerializer, StockWorkspaceChartPointSerializer, StockWorkspaceChartResponseSerializer,
+    StockWorkspaceGroupRefSerializer, StockWorkspaceOverviewSerializer,
+    StockWorkspaceTechnicalSerializer, StockWorkspaceWatchlistMembershipSerializer,
 )
 
 from .services import (
     fetch_and_save_daily_prices, sync_portfolio_prices, get_latest_price,
-    get_price_changes, fetch_market_sectors_and_groups,
+    get_price_changes, get_price_series, sync_market_groups_for_user, sync_stock_profiles, sync_watchlist_prices,
 )
 
 from .analytics import (
@@ -129,6 +142,41 @@ class WatchlistSyncView(APIView):
     permission_classes = [IsAuthenticated]
     def post(self, request):
         return Response({'detail': 'Sync not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
+
+
+class RealtimeTickerView(APIView):
+    """
+    GET /api/realtime/ticker/<symbol>/ — fallback polling endpoint for realtime views.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
+        last_date = price_info.get('last_date')
+        freshness_seconds = None
+        stale = True
+
+        if last_date:
+            try:
+                last_dt = datetime.fromisoformat(str(last_date))
+                freshness_seconds = max(int((datetime.now() - last_dt).total_seconds()), 0)
+                stale = freshness_seconds > 30
+            except ValueError:
+                freshness_seconds = None
+                stale = True
+
+        return Response(
+            {
+                'symbol': normalized_symbol,
+                **price_info,
+                'freshness_seconds': freshness_seconds,
+                'stale': stale,
+            }
+        )
 
 # ---------------------------------------------------------------------------
 # Portfolio Views
@@ -367,9 +415,7 @@ class SecuritiesGroupListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        groups = SecuritiesGroup.objects.filter(
-            user=request.user
-        ).prefetch_related('items')
+        groups = SecuritiesGroup.objects.all().prefetch_related('items')
 
         all_symbols = list({
             item.symbol
@@ -382,11 +428,10 @@ class SecuritiesGroupListCreateView(APIView):
         return Response(data)
 
     def post(self, request):
-        serializer = SecuritiesGroupCreateSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save(user=request.user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'detail': 'Nhóm thị trường là taxonomy dùng chung và chỉ được cập nhật qua admin sync.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -399,21 +444,20 @@ class SecuritiesGroupDetailView(APIView):
 
     def get_object(self, request, group_id):
         return generics.get_object_or_404(
-            SecuritiesGroup, pk=group_id, user=request.user
+            SecuritiesGroup, pk=group_id
         )
 
     def patch(self, request, group_id):
-        group = self.get_object(request, group_id)
-        serializer = SecuritiesGroupCreateSerializer(group, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {'detail': 'Nhóm thị trường là taxonomy dùng chung và chỉ được cập nhật qua admin sync.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
     def delete(self, request, group_id):
-        group = self.get_object(request, group_id)
-        group.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'detail': 'Nhóm thị trường là taxonomy dùng chung và chỉ được cập nhật qua admin sync.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
+        )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -422,23 +466,10 @@ class SecuritiesItemCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, group_id):
-        group = generics.get_object_or_404(
-            SecuritiesGroup, pk=group_id, user=request.user
+        return Response(
+            {'detail': 'Mã trong nhóm thị trường chỉ được cập nhật qua admin sync.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
-        symbol = request.data.get('symbol', '').upper().strip()
-        if not symbol:
-            return Response({'symbol': 'Không được để trống.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        item, created = SecuritiesItem.objects.get_or_create(
-            group=group, symbol=symbol
-        )
-        if not created:
-            return Response(
-                {'detail': f'{symbol} đã có trong nhóm này.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        pc = get_price_changes([symbol]).get(symbol, {})
-        return Response({'id': item.id, 'symbol': item.symbol, **pc}, status=status.HTTP_201_CREATED)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -447,11 +478,10 @@ class SecuritiesItemDeleteView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, item_id):
-        item = generics.get_object_or_404(
-            SecuritiesItem, pk=item_id, group__user=request.user
+        return Response(
+            {'detail': 'Mã trong nhóm thị trường chỉ được cập nhật qua admin sync.'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED,
         )
-        item.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -471,137 +501,25 @@ class SecuritiesSeedView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    # Fallback cứng khi vnstock không trả về dữ liệu
-    _FALLBACK_SECTORS = [
-        {'name': 'Ngân hàng',         'group_type': 'SECTOR',     'color': '#3b82f6', 'order': 1,
-         'description': 'Nhóm ngân hàng',
-         'symbols': ['ACB','BID','CTG','EIB','HDB','LPB','MBB','MSB','OCB','SHB','SSB','STB','TCB','TPB','VCB','VIB','VPB']},
-        {'name': 'Bất động sản',      'group_type': 'SECTOR',     'color': '#f59e0b', 'order': 2,
-         'description': 'Nhóm bất động sản',
-         'symbols': ['BCM','CEO','DIG','DXG','KBC','KDH','NLG','NVL','PDR','SJS','TDH','VHM','VIC','VRE']},
-        {'name': 'Thép & Vật liệu',   'group_type': 'SECTOR',     'color': '#ef4444', 'order': 3,
-         'description': 'Nhóm thép và vật liệu xây dựng',
-         'symbols': ['BMP','HPG','HSG','NKG','TLH','VGC','VIS']},
-        {'name': 'Dầu khí',           'group_type': 'SECTOR',     'color': '#8b5cf6', 'order': 4,
-         'description': 'Nhóm dầu khí và năng lượng',
-         'symbols': ['GAS','OIL','PLX','PVD','PVS','PVT']},
-        {'name': 'Công nghệ',         'group_type': 'SECTOR',     'color': '#22c55e', 'order': 5,
-         'description': 'Nhóm công nghệ và viễn thông',
-         'symbols': ['CMG','ELC','FPT','SAM','VGI']},
-        {'name': 'Bán lẻ & Tiêu dùng','group_type': 'SECTOR',     'color': '#ec4899', 'order': 6,
-         'description': 'Nhóm bán lẻ và hàng tiêu dùng',
-         'symbols': ['MSN','MWG','PNJ','SAB','VNM']},
-        {'name': 'VN30',              'group_type': 'MARKET_CAP', 'color': '#6366f1', 'order': 7,
-         'description': 'Top 30 cổ phiếu vốn hóa lớn nhất HOSE',
-         'symbols': ['ACB','BID','CTG','DGC','FPT','GAS','GVR','HDB','HPG','LPB','MBB','MSN',
-                     'MWG','PLX','SAB','SHB','SSB','SSI','STB','TCB','TPB','VCB','VHM','VIB',
-                     'VIC','VJC','VNM','VPB','VPL','VRE']},
-    ]
-
     def post(self, request):
         mode = request.query_params.get('mode', 'all')
+        result = sync_market_groups_for_user(request.user, requested_by=request.user, mode=mode)
+        response_status = status.HTTP_200_OK if result['success'] and not result['warning'] else status.HTTP_207_MULTI_STATUS
+        if not result['success']:
+            response_status = status.HTTP_500_INTERNAL_SERVER_ERROR
 
-        if mode == 'manual':
-            return self._seed_from_list(request.user, self._FALLBACK_SECTORS)
-
-        # --- Gọi vnstock để lấy dữ liệu thực ---
-        data = fetch_market_sectors_and_groups()
-
-        if data['error']:
-            return Response({
-                'warning': f"vnstock lỗi: {data['error']}. Dùng danh sách mặc định.",
-                **self._apply_seed(request.user, self._FALLBACK_SECTORS),
-            }, status=status.HTTP_207_MULTI_STATUS)
-
-        groups_to_create = []
-
-        if mode in ('all', 'sectors'):
-            for i, sector in enumerate(data['sectors']):
-                groups_to_create.append({
-                    'name': sector['name'],
-                    'group_type': 'SECTOR',
-                    'description': sector['description'],
-                    'color': sector['color'],
-                    'order': i + 1,
-                    'symbols': sector['symbols'],
-                })
-
-        if mode in ('all', 'caps'):
-            offset = len(groups_to_create)
-            for i, cap in enumerate(data['cap_groups']):
-                groups_to_create.append({
-                    'name': cap['name'],
-                    'group_type': 'MARKET_CAP',
-                    'description': cap['description'],
-                    'color': cap['color'],
-                    'order': offset + i + 1,
-                    'symbols': cap['symbols'],
-                })
-
-        return Response(self._apply_seed(request.user, groups_to_create))
-
-    @staticmethod
-    def _apply_seed(user, groups: list) -> dict:
-        """Tạo SecuritiesGroup + SecuritiesItem từ danh sách. Idempotent."""
-        created_groups = []
-        updated_groups = []
-
-        # Removed broken/duplicate get_or_create block. Only use update_or_create below.
-        for group_data in groups:
-            symbols = group_data.get('symbols', [])
-            group_defaults = {
-                'group_type': group_data['group_type'],
-                'description': group_data.get('description', ''),
-                'color': group_data.get('color'),
-                'order': group_data.get('order'),
-            }
-            group, created = SecuritiesGroup.objects.update_or_create(
-                user=user, name=group_data['name'], defaults=group_defaults
-            )
-
-            # Lấy các mã đã có để tránh thêm trùng lặp
-            existing_symbols = set(group.items.values_list('symbol', flat=True))
-            new_items = [
-                SecuritiesItem(group=group, symbol=sym.upper(), order=i)
-                for i, sym in enumerate(symbols) if sym.upper() not in existing_symbols
-            ]
-            added_symbols = 0
-            for i, sym in enumerate(symbols):
-                _, sym_created = SecuritiesItem.objects.get_or_create(
-                    group=group, symbol=sym.upper(),
-                    defaults={'order': i},
-                )
-                if sym_created:
-                    added_symbols += 1
-
-            if new_items:
-                SecuritiesItem.objects.bulk_create(new_items, ignore_conflicts=True)
-                added_symbols = len(new_items)
-            
-            if created:
-                created_groups.append({'group': group.name, 'symbols': len(symbols)})
-            elif added_symbols:
-                updated_groups.append({'group': group.name, 'new_symbols': added_symbols})
-
-            group['symbols'] = symbols  # restore
-
-        msg_parts = []
-        if created_groups:
-            msg_parts.append(f'{len(created_groups)} nhóm mới')
-        if updated_groups:
-            msg_parts.append(f'{len(updated_groups)} nhóm được cập nhật thêm mã')
-        if not msg_parts:
-            msg_parts = ['Tất cả nhóm đã tồn tại, không có thay đổi']
-
-        return {
-            'created': created_groups,
-            'updated': updated_groups,
-            'message': ', '.join(msg_parts) + '.',
-            'total_groups': len(groups),
-        }
-
-    def _seed_from_list(self, user, groups):
-        return Response(self._apply_seed(user, [dict(g) for g in groups]))
+        return Response(
+            {
+                'created': result.get('created', []),
+                'updated': result.get('updated', []),
+                'message': result['message'],
+                'warning': result.get('warning'),
+                'source': result.get('source'),
+                'total_groups': result.get('total_groups', 0),
+                'success': result['success'],
+            },
+            status=response_status,
+        )
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -616,12 +534,16 @@ class SecuritiesSyncView(APIView):
         except (ValueError, TypeError):
             days = 5
 
-        # Giả sử đồng bộ giá cho toàn bộ mã trong SecuritiesGroup của user
-        from .services import fetch_and_save_daily_prices
-        all_symbols = list({item.symbol for group in SecuritiesGroup.objects.filter(user=request.user) for item in group.items.all()})
+        # Đồng bộ giá cho toàn bộ mã trong SecuritiesGroup của user.
+        all_symbols = list({
+            item.symbol
+            for group in SecuritiesGroup.objects.all().prefetch_related('items')
+            for item in group.items.all()
+        })
         if not all_symbols:
             return Response({'detail': 'Securities không có mã nào.'}, status=status.HTTP_200_OK)
-        results = fetch_and_save_daily_prices(all_symbols, days=days)
+
+        results = sync_watchlist_prices(request.user.id, days=days)
         return Response({
             'synced': results,
             'total_symbols': len(all_symbols),
@@ -741,6 +663,353 @@ class TrackedSymbolDeleteView(APIView):
             return Response({'detail': 'Không tìm thấy mã.'}, status=status.HTTP_404_NOT_FOUND)
         ts.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+def _price_alert_is_triggered(rule: PriceAlertRule, current_price: float | None) -> bool:
+    if current_price is None or not rule.is_active:
+        return False
+    target_price = float(rule.target_price)
+    if rule.condition == PriceAlertRule.Condition.ABOVE:
+        return float(current_price) >= target_price
+    return float(current_price) <= target_price
+
+
+def _build_price_alert_rule_row(rule: PriceAlertRule, price_map: dict) -> dict:
+    current_price = price_map.get(rule.symbol, {}).get('current_price')
+    return {
+        'id': rule.id,
+        'symbol': rule.symbol,
+        'condition': rule.condition,
+        'target_price': rule.target_price,
+        'cooldown_seconds': rule.cooldown_seconds,
+        'is_active': rule.is_active,
+        'last_triggered_at': rule.last_triggered_at,
+        'created_at': rule.created_at,
+        'updated_at': rule.updated_at,
+        'current_price': current_price,
+        'is_triggered': _price_alert_is_triggered(rule, current_price),
+    }
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PriceAlertRuleListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rules = list(PriceAlertRule.objects.filter(user=request.user).order_by('-created_at'))
+        price_map = get_price_changes([rule.symbol for rule in rules])
+        rows = [_build_price_alert_rule_row(rule, price_map) for rule in rules]
+        return Response(PriceAlertRuleSerializer(rows, many=True).data)
+
+    def post(self, request):
+        serializer = PriceAlertRuleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        rule, created = PriceAlertRule.objects.get_or_create(
+            user=request.user,
+            symbol=serializer.validated_data['symbol'],
+            condition=serializer.validated_data['condition'],
+            target_price=serializer.validated_data['target_price'],
+            defaults={
+                'cooldown_seconds': serializer.validated_data['cooldown_seconds'],
+                'is_active': serializer.validated_data['is_active'],
+            },
+        )
+
+        if not created:
+            return Response(
+                {'detail': 'Cảnh báo giá này đã tồn tại.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        price_map = get_price_changes([rule.symbol])
+        row = _build_price_alert_rule_row(rule, price_map)
+        return Response(PriceAlertRuleSerializer(row).data, status=status.HTTP_201_CREATED)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PriceAlertRuleDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self, request, rule_id):
+        return generics.get_object_or_404(PriceAlertRule, id=rule_id, user=request.user)
+
+    def patch(self, request, rule_id):
+        rule = self.get_object(request, rule_id)
+        serializer = PriceAlertRuleSerializer(rule, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        serializer.save()
+        price_map = get_price_changes([rule.symbol])
+        row = _build_price_alert_rule_row(rule, price_map)
+        return Response(PriceAlertRuleSerializer(row).data)
+
+    def delete(self, request, rule_id):
+        rule = self.get_object(request, rule_id)
+        rule.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PriceAlertRuleTriggerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, rule_id):
+        rule = generics.get_object_or_404(PriceAlertRule, id=rule_id, user=request.user)
+        rule.last_triggered_at = timezone.now()
+        rule.save(update_fields=['last_triggered_at', 'updated_at'])
+        price_map = get_price_changes([rule.symbol])
+        row = _build_price_alert_rule_row(rule, price_map)
+        return Response(PriceAlertRuleSerializer(row).data)
+
+
+def _to_float(value):
+    return float(value) if value is not None else None
+
+
+def _get_exchange_price_band(exchange):
+    normalized_exchange = (exchange or '').strip().upper()
+    if normalized_exchange == 'HNX':
+        return Decimal('0.10')
+    if normalized_exchange in {'UPCOM', 'UPCOM'}:
+        return Decimal('0.15')
+    return Decimal('0.07')
+
+
+def _build_stock_workspace_overview(symbol, user):
+    normalized_symbol = (symbol or '').strip().upper()
+    profile = generics.get_object_or_404(StockProfile, symbol=normalized_symbol)
+    latest_daily_price = (
+        DailyPrice.objects
+        .filter(symbol=normalized_symbol)
+        .order_by('-date')
+        .values('open_price', 'high_price', 'low_price', 'close_price', 'volume')
+        .first()
+    )
+    price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
+    year_stats = (
+        DailyPrice.objects
+        .filter(symbol=normalized_symbol, date__gte=date.today() - timedelta(days=365))
+        .aggregate(week52_high=Max('high_price'), week52_low=Min('low_price'))
+    )
+
+    average_price = None
+    if latest_daily_price:
+        numeric_prices = [
+            value
+            for value in [
+                latest_daily_price.get('open_price'),
+                latest_daily_price.get('high_price'),
+                latest_daily_price.get('low_price'),
+                latest_daily_price.get('close_price'),
+            ]
+            if value is not None
+        ]
+        if numeric_prices:
+            average_price = _to_float(sum(numeric_prices, Decimal('0')) / Decimal(len(numeric_prices)))
+
+    reference_price = price_info.get('prev_price')
+    if reference_price is None and latest_daily_price:
+        reference_price = _to_float(latest_daily_price.get('close_price'))
+
+    ceiling_price = None
+    floor_price = None
+    if reference_price is not None:
+        reference_decimal = Decimal(str(reference_price))
+        band = _get_exchange_price_band(profile.exchange)
+        ceiling_price = _to_float(reference_decimal * (Decimal('1') + band))
+        floor_price = _to_float(reference_decimal * (Decimal('1') - band))
+
+    tracked_item = None
+    market_groups = []
+    watchlist_groups = []
+    market_group_refs = []
+    watchlist_memberships = []
+    if user and user.is_authenticated:
+        tracked_item = (
+            TrackedSymbol.objects
+            .select_related('source_group')
+            .filter(user=user, symbol=normalized_symbol)
+            .first()
+        )
+        market_group_refs = list(
+            SecuritiesGroup.objects
+            .filter(items__symbol=normalized_symbol)
+            .order_by('name')
+            .values('id', 'name')
+            .distinct()
+        )
+        market_groups = [group['name'] for group in market_group_refs]
+        watchlist_memberships = list(
+            WatchlistItem.objects
+            .filter(group__user=user, symbol=normalized_symbol)
+            .select_related('group')
+            .order_by('group__name')
+            .values('id', 'group_id', 'group__name')
+        )
+        watchlist_groups = [item['group__name'] for item in watchlist_memberships]
+
+    return {
+        'tracked_symbol_id': tracked_item.id if tracked_item else None,
+        'symbol': profile.symbol,
+        'company_name': profile.company_name,
+        'industry': profile.industry,
+        'exchange': profile.exchange,
+        'listed_date': profile.listed_date,
+        'is_active': profile.is_active,
+        'updated_at': profile.updated_at,
+        'current_price': price_info.get('current_price'),
+        'prev_price': price_info.get('prev_price'),
+        'change_value': price_info.get('change_value'),
+        'change_pct': price_info.get('change_pct'),
+        'last_date': price_info.get('last_date'),
+        'open_price': _to_float(latest_daily_price.get('open_price')) if latest_daily_price else None,
+        'high_price': _to_float(latest_daily_price.get('high_price')) if latest_daily_price else None,
+        'low_price': _to_float(latest_daily_price.get('low_price')) if latest_daily_price else None,
+        'close_price': _to_float(latest_daily_price.get('close_price')) if latest_daily_price else None,
+        'volume': latest_daily_price.get('volume') if latest_daily_price else None,
+        'average_price': average_price,
+        'reference_price': reference_price,
+        'ceiling_price': ceiling_price,
+        'floor_price': floor_price,
+        'week52_high': _to_float(year_stats.get('week52_high')),
+        'week52_low': _to_float(year_stats.get('week52_low')),
+        'is_tracked': tracked_item is not None,
+        'source_group_name': tracked_item.source_group.name if tracked_item and tracked_item.source_group else None,
+        'market_groups': market_groups,
+        'watchlist_groups': watchlist_groups,
+        'market_group_refs': market_group_refs,
+        'watchlist_memberships': [
+            {
+                'item_id': item['id'],
+                'group_id': item['group_id'],
+                'group_name': item['group__name'],
+            }
+            for item in watchlist_memberships
+        ],
+    }
+
+
+def _safe_round(value, digits=2):
+    if value is None:
+        return None
+    return round(float(value), digits)
+
+
+def _compute_rsi(values, window=14):
+    if len(values) <= window:
+        return None
+
+    deltas = [values[index] - values[index - 1] for index in range(1, len(values))]
+    gains = [max(delta, 0) for delta in deltas]
+    losses = [abs(min(delta, 0)) for delta in deltas]
+    recent_gains = gains[-window:]
+    recent_losses = losses[-window:]
+
+    average_gain = sum(recent_gains) / window
+    average_loss = sum(recent_losses) / window
+    if average_loss == 0:
+        return 100.0 if average_gain > 0 else 50.0
+
+    rs = average_gain / average_loss
+    return 100 - (100 / (1 + rs))
+
+
+def _compute_stock_workspace_technical(rows, overview):
+    close_values = [float(row['close_price']) for row in rows if row.get('close_price') is not None]
+    volume_values = [float(row['volume']) for row in rows if row.get('volume') is not None]
+    latest_close = close_values[-1] if close_values else None
+
+    sma20 = sum(close_values[-20:]) / 20 if len(close_values) >= 20 else None
+    sma50 = sum(close_values[-50:]) / 50 if len(close_values) >= 50 else None
+    rsi14 = _compute_rsi(close_values, 14)
+    avg_volume_20 = sum(volume_values[-20:]) / 20 if len(volume_values) >= 20 else None
+    momentum_20d_pct = None
+    if len(close_values) >= 21 and close_values[-21] > 0:
+        momentum_20d_pct = ((close_values[-1] - close_values[-21]) / close_values[-21]) * 100
+
+    range_position_pct = None
+    week52_low = overview.get('week52_low')
+    week52_high = overview.get('week52_high')
+    if latest_close is not None and week52_low is not None and week52_high is not None and week52_high > week52_low:
+        range_position_pct = ((latest_close - week52_low) / (week52_high - week52_low)) * 100
+
+    price_vs_sma20_pct = None
+    if latest_close is not None and sma20:
+        price_vs_sma20_pct = ((latest_close - sma20) / sma20) * 100
+
+    price_vs_sma50_pct = None
+    if latest_close is not None and sma50:
+        price_vs_sma50_pct = ((latest_close - sma50) / sma50) * 100
+
+    bias = 'NEUTRAL'
+    if latest_close is not None and sma20 and sma50 and rsi14 is not None:
+        if latest_close > sma20 > sma50 and rsi14 >= 55:
+            bias = 'BULLISH'
+        elif latest_close < sma20 < sma50 and rsi14 <= 45:
+            bias = 'WEAK'
+
+    return {
+        'bias': bias,
+        'sma20': _safe_round(sma20),
+        'sma50': _safe_round(sma50),
+        'rsi14': _safe_round(rsi14),
+        'avg_volume_20': _safe_round(avg_volume_20),
+        'price_vs_sma20_pct': _safe_round(price_vs_sma20_pct),
+        'price_vs_sma50_pct': _safe_round(price_vs_sma50_pct),
+        'momentum_20d_pct': _safe_round(momentum_20d_pct),
+        'range_position_pct': _safe_round(range_position_pct),
+        'latest_close': _safe_round(latest_close),
+    }
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StockWorkspaceOverviewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        payload = _build_stock_workspace_overview(symbol, request.user)
+        return Response(StockWorkspaceOverviewSerializer(payload).data)
+
+
+@method_decorator(csrf_exempt, name='dispatch')
+class StockWorkspaceChartView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        generics.get_object_or_404(StockProfile, symbol=normalized_symbol)
+
+        try:
+            days = int(request.query_params.get('days', 180))
+        except (TypeError, ValueError):
+            days = 180
+
+        days = min(max(days, 30), 365)
+        end_date = date.today()
+        start_date = end_date - timedelta(days=days)
+        price_rows = list(
+            DailyPrice.objects
+            .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
+            .order_by('date')
+            .values('date', 'close_price', 'volume')
+        )
+        series = [
+            {'date': str(row['date']), 'close': float(row['close_price'])}
+            for row in price_rows
+        ]
+        overview = _build_stock_workspace_overview(normalized_symbol, request.user)
+        payload = {
+            'symbol': normalized_symbol,
+            'days': days,
+            'start_date': str(start_date),
+            'end_date': str(end_date),
+            'points': StockWorkspaceChartPointSerializer(series, many=True).data,
+            'technical': StockWorkspaceTechnicalSerializer(_compute_stock_workspace_technical(price_rows, overview)).data,
+        }
+
+        return Response(StockWorkspaceChartResponseSerializer(payload).data)
 
 # --- StockProfile Views ---
 from .models import StockProfile

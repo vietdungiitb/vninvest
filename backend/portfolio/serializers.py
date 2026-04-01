@@ -3,7 +3,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 """
 
 from rest_framework import serializers
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
 from .models import StockProfile
 
 
@@ -184,6 +184,28 @@ class TrackedSymbolSerializer(serializers.Serializer):
     last_date = serializers.CharField(allow_null=True)
     added_at = serializers.DateTimeField()
 
+
+class PriceAlertRuleSerializer(serializers.ModelSerializer):
+    current_price = serializers.FloatField(read_only=True, allow_null=True)
+    is_triggered = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = PriceAlertRule
+        fields = [
+            'id', 'symbol', 'condition', 'target_price', 'cooldown_seconds',
+            'is_active', 'last_triggered_at', 'created_at', 'updated_at',
+            'current_price', 'is_triggered',
+        ]
+        read_only_fields = ['id', 'last_triggered_at', 'created_at', 'updated_at', 'current_price', 'is_triggered']
+
+    def validate_symbol(self, value):
+        return value.upper().strip()
+
+    def validate_cooldown_seconds(self, value):
+        if value < 0:
+            raise serializers.ValidationError('Cooldown phải >= 0 giây.')
+        return value
+
 class WatchlistGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = WatchlistGroup
@@ -202,4 +224,75 @@ class StockProfileSerializer(serializers.ModelSerializer):
         model = StockProfile
         fields = ['symbol', 'company_name', 'industry', 'exchange', 'listed_date', 'is_active', 'updated_at']
         read_only_fields = fields
+
+
+class StockWorkspaceGroupRefSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
+class StockWorkspaceWatchlistMembershipSerializer(serializers.Serializer):
+    item_id = serializers.IntegerField()
+    group_id = serializers.IntegerField()
+    group_name = serializers.CharField()
+
+
+class StockWorkspaceOverviewSerializer(serializers.Serializer):
+    tracked_symbol_id = serializers.IntegerField(allow_null=True)
+    symbol = serializers.CharField()
+    company_name = serializers.CharField(allow_blank=True)
+    industry = serializers.CharField(allow_blank=True)
+    exchange = serializers.CharField(allow_blank=True)
+    listed_date = serializers.DateField(allow_null=True)
+    is_active = serializers.BooleanField()
+    updated_at = serializers.DateTimeField(allow_null=True)
+    current_price = serializers.FloatField(allow_null=True)
+    prev_price = serializers.FloatField(allow_null=True)
+    change_value = serializers.FloatField(allow_null=True)
+    change_pct = serializers.FloatField(allow_null=True)
+    last_date = serializers.CharField(allow_null=True)
+    open_price = serializers.FloatField(allow_null=True)
+    high_price = serializers.FloatField(allow_null=True)
+    low_price = serializers.FloatField(allow_null=True)
+    close_price = serializers.FloatField(allow_null=True)
+    volume = serializers.IntegerField(allow_null=True)
+    average_price = serializers.FloatField(allow_null=True)
+    reference_price = serializers.FloatField(allow_null=True)
+    ceiling_price = serializers.FloatField(allow_null=True)
+    floor_price = serializers.FloatField(allow_null=True)
+    week52_high = serializers.FloatField(allow_null=True)
+    week52_low = serializers.FloatField(allow_null=True)
+    is_tracked = serializers.BooleanField()
+    source_group_name = serializers.CharField(allow_null=True)
+    market_groups = serializers.ListField(child=serializers.CharField(), allow_empty=True)
+    watchlist_groups = serializers.ListField(child=serializers.CharField(), allow_empty=True)
+    market_group_refs = StockWorkspaceGroupRefSerializer(many=True)
+    watchlist_memberships = StockWorkspaceWatchlistMembershipSerializer(many=True)
+
+
+class StockWorkspaceTechnicalSerializer(serializers.Serializer):
+    bias = serializers.CharField()
+    sma20 = serializers.FloatField(allow_null=True)
+    sma50 = serializers.FloatField(allow_null=True)
+    rsi14 = serializers.FloatField(allow_null=True)
+    avg_volume_20 = serializers.FloatField(allow_null=True)
+    price_vs_sma20_pct = serializers.FloatField(allow_null=True)
+    price_vs_sma50_pct = serializers.FloatField(allow_null=True)
+    momentum_20d_pct = serializers.FloatField(allow_null=True)
+    range_position_pct = serializers.FloatField(allow_null=True)
+    latest_close = serializers.FloatField(allow_null=True)
+
+
+class StockWorkspaceChartPointSerializer(serializers.Serializer):
+    date = serializers.CharField()
+    close = serializers.FloatField()
+
+
+class StockWorkspaceChartResponseSerializer(serializers.Serializer):
+    symbol = serializers.CharField()
+    days = serializers.IntegerField()
+    start_date = serializers.CharField()
+    end_date = serializers.CharField()
+    points = StockWorkspaceChartPointSerializer(many=True)
+    technical = StockWorkspaceTechnicalSerializer()
 

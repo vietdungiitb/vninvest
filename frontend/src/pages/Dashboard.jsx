@@ -9,6 +9,7 @@ import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
 import PortfolioLineChart from '../components/PortfolioLineChart';
 import AllocationPieChart from '../components/AllocationPieChart';
+import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 
 export default function Dashboard() {
   const { activePortfolioId } = usePortfolio();
@@ -137,6 +138,8 @@ export default function Dashboard() {
           loading={loadingSummary}
         />
       </div>
+
+      <DashboardRealtimePanel holdings={holdings} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
