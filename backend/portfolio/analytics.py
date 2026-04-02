@@ -657,7 +657,8 @@ def build_risk_metrics(portfolio, days: int = 365) -> dict:
         {
             sharpe_ratio, sortino_ratio, max_drawdown_pct, twr_pct,
             volatility_annual_pct, best_day_pct, worst_day_pct,
-            total_trading_days, period_days
+            total_trading_days, period_days,
+            alpha_annual_pct, beta
         }
     """
     nav_df = compute_nav_series(portfolio, days=days)
@@ -672,6 +673,8 @@ def build_risk_metrics(portfolio, days: int = 365) -> dict:
         'worst_day_pct': None,
         'total_trading_days': 0,
         'period_days': days,
+        'alpha_annual_pct': None,
+        'beta': None,
     }
 
     if nav_df.empty or len(nav_df) < 5:
@@ -685,6 +688,8 @@ def build_risk_metrics(portfolio, days: int = 365) -> dict:
     best_day = round(float(returns.max()) * 100, FLOAT_ROUND)
     worst_day = round(float(returns.min()) * 100, FLOAT_ROUND)
 
+    alpha, beta = compute_alpha_beta(returns)
+
     return {
         'sharpe_ratio': compute_sharpe(returns),
         'sortino_ratio': compute_sortino(returns),
@@ -695,4 +700,79 @@ def build_risk_metrics(portfolio, days: int = 365) -> dict:
         'worst_day_pct': worst_day,
         'total_trading_days': len(nav_df),
         'period_days': days,
+        'alpha_annual_pct': alpha,
+        'beta': beta,
     }
+
+
+# ---------------------------------------------------------------------------
+# Alpha & Beta vs VN-Index
+# ---------------------------------------------------------------------------
+
+VNINDEX_SYMBOL = 'VNINDEX'
+TRADING_DAYS_PER_YEAR = 252
+
+
+def compute_alpha_beta(
+    portfolio_returns: pd.Series,
+    benchmark_symbol: str = VNINDEX_SYMBOL,
+) -> tuple[float | None, float | None]:
+    """
+    Tính Alpha (Jensen's Alpha) và Beta của danh mục so với benchmark VN-Index.
+
+    Alpha (annual %) = (avg_portfolio_return - beta * avg_benchmark_return) * TRADING_DAYS_PER_YEAR * 100
+    Beta = Cov(Rp, Rb) / Var(Rb)
+
+    Trả về (alpha_annual_pct, beta). Trả về (None, None) nếu thiếu dữ liệu.
+    """
+    if portfolio_returns.empty or len(portfolio_returns) < 5:
+        return None, None
+
+    # Load benchmark DailyPrice trong cùng khoảng thời gian
+    date_index = portfolio_returns.index
+    start_date = date_index.min()
+    end_date = date_index.max()
+
+    bench_qs = DailyPrice.objects.filter(
+        symbol=benchmark_symbol,
+        date__gte=start_date,
+        date__lte=end_date,
+    ).order_by('date').values_list('date', 'close_price')
+
+    if not bench_qs:
+        return None, None
+
+    bench_df = pd.DataFrame(list(bench_qs), columns=['date', 'close'])
+    bench_df['date'] = pd.to_datetime(bench_df['date'])
+    bench_df.set_index('date', inplace=True)
+    bench_df['close'] = pd.to_numeric(bench_df['close'], errors='coerce')
+    bench_df.dropna(inplace=True)
+
+    if len(bench_df) < 5:
+        return None, None
+
+    bench_returns = bench_df['close'].pct_change().dropna()
+
+    # Align theo ngày (inner join)
+    aligned = pd.concat(
+        [portfolio_returns.rename('port'), bench_returns.rename('bench')],
+        axis=1,
+        join='inner',
+    ).dropna()
+
+    if len(aligned) < 5:
+        return None, None
+
+    rp = aligned['port']
+    rb = aligned['bench']
+
+    var_b = rb.var()
+    if var_b < 1e-12:
+        return None, None
+
+    beta_val = float(rp.cov(rb) / var_b)
+    alpha_daily = float(rp.mean()) - beta_val * float(rb.mean())
+    alpha_annual = round(alpha_daily * TRADING_DAYS_PER_YEAR * 100, FLOAT_ROUND)
+    beta_val = round(beta_val, FLOAT_ROUND)
+
+    return alpha_annual, beta_val

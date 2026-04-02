@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import StockDetail from './pages/StockDetail';
 import Transactions from './pages/Transactions';
 import Watchlist from './pages/Watchlist';
+import AdminOps from './pages/AdminOps';
+import Screener from './pages/Screener';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 
 function LoginPage() {
@@ -41,6 +43,8 @@ export default function App() {
             <Route path="stocks/:symbol" element={<StockDetail />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="watchlist" element={<Watchlist />} />
+            <Route path="admin-ops" element={<AdminOps />} />
+            <Route path="screener" element={<Screener />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

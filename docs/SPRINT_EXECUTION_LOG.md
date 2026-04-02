@@ -332,3 +332,45 @@ Files da sua:
 Validation:
 - Frontend compiled successfully, khong con Maximum update depth.
 - API POST watchlist item tra 201 Created thay vi 400.
+
+---
+
+## Sprint 13 - COMPLETED (2026-04-02)
+
+Trang thai: DONE — 12/12 tasks Done
+
+### Ket qua dat duoc
+
+**Analytics Backend (S13-01, S13-02, S13-03)**
+- analytics.py: compute_max_drawdown, compute_sharpe (std < 1e-12 guard), compute_sortino, compute_twr, compute_volatility, build_risk_metrics, compute_allocation_by_sector
+- GET /api/portfolio/portfolios/{id}/analytics/?days=365 → 9 risk metrics
+- GET /api/portfolio/portfolios/{id}/allocation/?by=sector → sector allocation
+- 28 unit tests: 28/28 PASS (test_analytics_advanced.py)
+
+**Analytics Frontend (S13-04, S13-05)**
+- PortfolioAnalyticsPanel.jsx da co san: period selector (3T/6T/1N/3N), MetricCard, color coding
+- Dashboard.jsx da import va su dung PortfolioAnalyticsPanel
+
+**Stock Detail (S13-06, S13-07)**
+- Top panel: realtime quote, company profile, session stats, alert badges — da co san
+- Signal summary panel: whale alert + price alerts loc per symbol — them moi
+- CandlestickChart upgrade (ngoai sprint): HistogramSeries volume + OHLC tooltip (DOM mutation) + crosshair magnet
+
+**Admin Ops (S13-08, S13-09, S13-10)**
+- GET /api/admin-ops/stats/ — IsAdminUser (is_staff), tra ve: counts (user/portfolio/tracked/watchlist), last sync logs, Redis/channel health
+- Frontend /admin-ops/: system health panel, stats cards, sync rows, sync shortcuts
+- 13 tests: 13/13 PASS (test_admin_ops.py) — permission tests + data tests
+
+**QA (S13-11)**
+- npm run build: Compiled successfully, 251.69 kB gzip, 0 errors
+
+### Files da sua/tao
+- `backend/portfolio/analytics.py` — fix std < 1e-12 guard
+- `backend/portfolio/views.py` — AdminOpsStatsView + IsAdminUser + redis_lib module-level import
+- `backend/config/urls.py` — /api/admin-ops/stats/
+- `backend/portfolio/tests/test_analytics_advanced.py` — 28 tests (tao moi)
+- `backend/portfolio/tests/test_admin_ops.py` — 13 tests (tao moi)
+- `frontend/src/api/client.js` — getAdminOpsStats()
+- `frontend/src/pages/AdminOps.jsx` — tao moi
+- `frontend/src/App.jsx` — route /admin-ops
+- `docs/TASKBOARD_SPRINT13.csv` — tat ca 12 tasks → Done

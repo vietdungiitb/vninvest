@@ -127,11 +127,17 @@ def fetch_and_save_daily_prices(
                 result['errors'] += 1
                 continue
 
-            _, created = DailyPrice.objects.update_or_create(
-                symbol=symbol,
-                date=price_date,
-                defaults=data,
-            )
+            try:
+                _, created = DailyPrice.objects.update_or_create(
+                    symbol=symbol,
+                    date=price_date,
+                    defaults=data,
+                )
+            except Exception as db_exc:
+                logger.warning('DB error khi lưu %s / %s: %s', symbol, price_date, db_exc)
+                result['errors'] += 1
+                continue
+
             if created:
                 result['created'] += 1
             else:

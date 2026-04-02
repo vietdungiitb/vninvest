@@ -3,6 +3,7 @@
  * Danh sách giao dịch + form thêm giao dịch mới.
  */
 import React, { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { getSubAccounts, getTransactions, createTransaction, deleteTransaction } from '../api/client';
 import { formatVND } from '../components/StatCard';
@@ -249,31 +250,41 @@ export default function Transactions() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-800">
-                {['Ngày', 'Mã', 'Loại', 'Giá', 'KL', 'Phí', 'Tổng giá trị', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                    {h}
-                  </th>
-                ))}
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Ngày</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Mã CK</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Loại lệnh</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Giá</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Khối lượng</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Phí</th>
+                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tổng giá trị</th>
+                <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tác vụ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-gray-800/60">
               {transactions.map((tx) => (
-                <tr key={tx.id} className="hover:bg-gray-800/40 transition-colors">
+                <tr key={tx.id} className="hover:bg-gray-800/50 transition-colors">
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{tx.date}</td>
-                  <td className="px-4 py-3 font-bold text-brand-400">{tx.symbol}</td>
-                  <td className={`px-4 py-3 font-medium ${TYPE_COLORS[tx.transaction_type]}`}>
+                  <td className="px-4 py-3">
+                    <Link
+                      to={`/stocks/${tx.symbol}`}
+                      className="font-bold text-sm px-2 py-0.5 rounded bg-brand-900/40 text-brand-300 hover:text-brand-200 transition-colors"
+                    >
+                      {tx.symbol}
+                    </Link>
+                  </td>
+                  <td className={`px-4 py-3 font-medium whitespace-nowrap ${TYPE_COLORS[tx.transaction_type]}`}>
                     {TYPE_LABELS[tx.transaction_type]}
                   </td>
-                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{formatVND(tx.price)}</td>
-                  <td className="px-4 py-3 text-gray-300">{parseFloat(tx.quantity).toLocaleString('vi-VN')}</td>
-                  <td className="px-4 py-3 text-gray-400">{formatVND(tx.fee)}</td>
-                  <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{formatVND(tx.total_value)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-gray-200 tabular-nums whitespace-nowrap">{formatVND(tx.price)}</td>
+                  <td className="px-4 py-3 text-gray-200 tabular-nums">{parseFloat(tx.quantity).toLocaleString('vi-VN')}</td>
+                  <td className="px-4 py-3 text-gray-400 tabular-nums">{formatVND(tx.fee)}</td>
+                  <td className="px-4 py-3 text-gray-200 tabular-nums whitespace-nowrap">{formatVND(tx.total_value)}</td>
+                  <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => handleDelete(tx.id)}
-                      className="text-gray-600 hover:text-red-400 text-xs transition-colors"
+                      className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors"
                     >
-                      Xoá
+                      Xóa
                     </button>
                   </td>
                 </tr>

@@ -302,3 +302,13 @@ class StockWorkspaceChartResponseSerializer(serializers.Serializer):
     points = StockWorkspaceChartPointSerializer(many=True)
     technical = StockWorkspaceTechnicalSerializer()
 
+
+from .models import ScreenerRule
+
+
+class ScreenerRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScreenerRule
+        fields = ['id', 'name', 'rules_json', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+

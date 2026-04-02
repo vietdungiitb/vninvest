@@ -6,4 +6,7 @@ app_name = "portfolio_realtime"
 
 urlpatterns = [
     path("ticker/<str:symbol>/", views.RealtimeTickerView.as_view(), name="realtime-ticker"),
+    path("intraday/<str:symbol>/", views.IntradayMatchedView.as_view(), name="intraday-matched"),
+    path("price-board/<str:symbol>/", views.PriceBoardView.as_view(), name="price-board"),
+    path("breadth/<str:symbol>/", views.SectorBreadthView.as_view(), name="sector-breadth"),
 ]

@@ -232,14 +232,11 @@ class Command(BaseCommand):
             user=user,
             name='Bluechip tăng thanh khoản',
             defaults={
-                'rules_json': {
-                    'logic': 'AND',
-                    'conditions': [
-                        {'field': 'market_cap_group', 'operator': 'eq', 'value': 'VN30'},
-                        {'field': 'change_pct', 'operator': 'gte', 'value': 1.5},
-                        {'field': 'volume_ratio', 'operator': 'gte', 'value': 1.2},
-                    ],
-                },
+                'rules_json': [
+                    {'field': 'rsi_14', 'op': 'lt', 'value': 50},
+                    {'field': 'momentum_20d_pct', 'op': 'gte', 'value': 1.5},
+                    {'field': 'avg_volume_20', 'op': 'gte', 'value': 500000},
+                ],
                 'is_active': True,
             },
         )
@@ -247,13 +244,10 @@ class Command(BaseCommand):
             user=user,
             name='Ngân hàng giữ nền',
             defaults={
-                'rules_json': {
-                    'logic': 'AND',
-                    'conditions': [
-                        {'field': 'industry', 'operator': 'eq', 'value': 'Ngân hàng'},
-                        {'field': 'price_above_vwap', 'operator': 'eq', 'value': True},
-                    ],
-                },
+                'rules_json': [
+                    {'field': 'price_vs_sma20_pct', 'op': 'gte', 'value': -5},
+                    {'field': 'price_vs_sma50_pct', 'op': 'gte', 'value': 0},
+                ],
                 'is_active': False,
             },
         )

@@ -117,6 +117,12 @@ export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stoc
 export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
 export const getStockPriceChart = (symbol, days = 180) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/?days=${days}`);
 export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
+export const getIntradayMatched = (symbol, pageSize = 50) =>
+  apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`);
+export const getPriceBoard = (symbol) =>
+  apiClient.get(`/realtime/price-board/${encodeURIComponent(symbol)}/`);
+export const getSectorBreadth = (symbol) =>
+  apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 
 export const getRealtimeWebSocketUrl = (token) => {
   const normalizedToken = token || localStorage.getItem('access_token') || '';
@@ -152,6 +158,18 @@ export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/pric
 export const getRealtimeHealth = () =>
   axios.get(`${apiBaseURL.replace(/\/api$/, '')}/api/health/realtime/`);
 export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
+
+// --- Admin Ops (is_staff only) ---
+export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
+export const syncMarketGroups = (mode = 'all', clear = false) =>
+  apiClient.post(`/admin-ops/market-groups/sync/?mode=${mode}&clear=${clear}`);
+
+// --- Screener ---
+export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');
+export const createScreenerRule = (data) => apiClient.post('/portfolio/screener/rules/', data);
+export const updateScreenerRule = (id, data) => apiClient.put(`/portfolio/screener/rules/${id}/`, data);
+export const deleteScreenerRule = (id) => apiClient.delete(`/portfolio/screener/rules/${id}/`);
+export const runScreenerRule = (id) => apiClient.post(`/portfolio/screener/rules/${id}/run/`);
 
 export default apiClient;
 

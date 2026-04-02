@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries } from 'lightweight-charts';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
 import { Link, useParams } from 'react-router-dom';
 import {
   addTrackedSymbol,
@@ -7,6 +7,9 @@ import {
   createPriceAlert,
   deleteTrackedSymbol,
   deleteWatchlistItem,
+  getIntradayMatched,
+  getPriceBoard,
+  getSectorBreadth,
   getStockPriceChart,
   getStockWorkspaceOverview,
   getWatchlistGroups,
@@ -66,14 +69,31 @@ function formatPercentDelta(value) {
   return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
 }
 
-function CandlestickChart({ data }) {
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
-  const seriesRef = useRef(null);
+function fmtPrice(v) {
+  if (v == null || !Number.isFinite(Number(v))) return '—';
+  return Number(v).toLocaleString('vi-VN');
+}
 
-  // Create chart once
+function fmtVol(v) {
+  if (v == null || !Number.isFinite(Number(v))) return '—';
+  const n = Number(v);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString('vi-VN');
+}
+
+function CandlestickChart({ data }) {
+  const wrapRef = useRef(null);
+  const containerRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const chartRef = useRef(null);
+  const candleRef = useRef(null);
+  const volumeRef = useRef(null);
+
+  // Create chart + series once
   useEffect(() => {
     if (!containerRef.current) return;
+
     const chart = createChart(containerRef.current, {
       layout: {
         background: { color: 'transparent' },
@@ -85,22 +105,26 @@ function CandlestickChart({ data }) {
         horzLines: { color: '#1e293b' },
       },
       crosshair: {
-        vertLine: { color: '#475569', labelBackgroundColor: '#1e293b' },
-        horzLine: { color: '#475569', labelBackgroundColor: '#1e293b' },
+        mode: 1, // Magnet — snaps to nearest bar
+        vertLine: { color: '#475569', labelBackgroundColor: '#0f172a', width: 1, style: 0 },
+        horzLine: { color: '#475569', labelBackgroundColor: '#0f172a', width: 1, style: 0 },
       },
       rightPriceScale: {
         borderColor: '#1e293b',
         textColor: '#64748b',
+        scaleMargins: { top: 0.05, bottom: 0.22 }, // leave room for volume
       },
       timeScale: {
         borderColor: '#1e293b',
-        timeVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
       },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });
 
-    const series = chart.addSeries(CandlestickSeries, {
+    // Candlestick series
+    const candle = chart.addSeries(CandlestickSeries, {
       upColor: '#22c55e',
       downColor: '#f43f5e',
       borderUpColor: '#16a34a',
@@ -109,8 +133,41 @@ function CandlestickChart({ data }) {
       wickDownColor: '#be123c',
     });
 
+    // Volume histogram — separate price scale pinned to bottom
+    const volume = chart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'vol',
+    });
+    chart.priceScale('vol').applyOptions({
+      scaleMargins: { top: 0.82, bottom: 0 },
+    });
+
+    // OHLC tooltip via crosshair subscription
+    chart.subscribeCrosshairMove((param) => {
+      const el = tooltipRef.current;
+      if (!el) return;
+      if (!param.point || !param.time || !param.seriesData.get(candle)) {
+        el.style.opacity = '0';
+        return;
+      }
+      const bar = param.seriesData.get(candle);
+      const vol = param.seriesData.get(volume);
+      const isUp = bar.close >= bar.open;
+      el.style.opacity = '1';
+      el.innerHTML = `
+        <span class="ohlc-label" style="color:${isUp ? '#22c55e' : '#f43f5e'}">
+          O <b>${fmtPrice(bar.open)}</b>
+          H <b>${fmtPrice(bar.high)}</b>
+          L <b>${fmtPrice(bar.low)}</b>
+          C <b>${fmtPrice(bar.close)}</b>
+        </span>
+        ${vol ? `<span style="color:#64748b;margin-left:10px">KL <b style="color:#94a3b8">${fmtVol(vol.value)}</b></span>` : ''}
+      `;
+    });
+
     chartRef.current = chart;
-    seriesRef.current = series;
+    candleRef.current = candle;
+    volumeRef.current = volume;
 
     const ro = new ResizeObserver(() => {
       if (containerRef.current && chartRef.current) {
@@ -130,8 +187,9 @@ function CandlestickChart({ data }) {
 
   // Update data when prop changes
   useEffect(() => {
-    if (!seriesRef.current || !data || !data.length) return;
-    const points = data
+    if (!candleRef.current || !data?.length) return;
+
+    const sorted = data
       .filter((d) => d.date && d.open != null && d.high != null && d.low != null && d.close != null)
       .map((d) => ({
         time: d.date,
@@ -139,49 +197,262 @@ function CandlestickChart({ data }) {
         high: Number(d.high),
         low: Number(d.low),
         close: Number(d.close),
+        volume: d.volume != null ? Number(d.volume) : null,
       }))
       .sort((a, b) => (a.time > b.time ? 1 : -1));
-    seriesRef.current.setData(points);
+
+    candleRef.current.setData(sorted.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
+
+    if (volumeRef.current) {
+      const volPoints = sorted
+        .filter((d) => d.volume != null)
+        .map((d) => ({
+          time: d.time,
+          value: d.volume,
+          color: d.close >= d.open ? 'rgba(34,197,94,0.35)' : 'rgba(244,63,94,0.35)',
+        }));
+      volumeRef.current.setData(volPoints);
+    }
+
     chartRef.current.timeScale().fitContent();
   }, [data]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
+  return (
+    <div ref={wrapRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+      {/* OHLC tooltip overlay — top-left, fades in/out */}
+      <div
+        ref={tooltipRef}
+        style={{
+          position: 'absolute',
+          top: 8,
+          left: 8,
+          pointerEvents: 'none',
+          opacity: 0,
+          transition: 'opacity 0.15s',
+          fontSize: '11px',
+          lineHeight: '1.7',
+          background: 'rgba(2,6,23,0.82)',
+          border: '1px solid #1e293b',
+          borderRadius: 8,
+          padding: '4px 10px',
+          color: '#94a3b8',
+          whiteSpace: 'nowrap',
+          backdropFilter: 'blur(4px)',
+        }}
+      />
+    </div>
+  );
 }
 
-function BreadthMiniPanel({ marketGroups, symbol, technicalBias }) {
-  const [peerData, setPeerData] = useState([]);
+function IntradayMatchedPanel({ symbol, liveVolume }) {
+  const [trades, setTrades] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [fetchedAt, setFetchedAt] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const debounceRef = useRef(null);
+  const prevVolumeRef = useRef(null);
+
+  const fetchTrades = useCallback(async () => {
+    if (!symbol) return;
+    setRefreshing(true);
+    setError('');
+    try {
+      const resp = await getIntradayMatched(symbol, 50);
+      setTrades(resp.data.trades || []);
+      setFetchedAt(resp.data.fetched_at || null);
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Không lấy được dữ liệu khớp lệnh.');
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  }, [symbol]);
+
+  // Reset khi đổi mã
+  useEffect(() => {
+    setTrades([]);
+    setFetchedAt(null);
+    setLoading(true);
+    prevVolumeRef.current = null;
+    fetchTrades();
+  }, [fetchTrades]);
+
+  // Fallback polling mỗi 30s
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const interval = setInterval(fetchTrades, 30_000);
+    return () => clearInterval(interval);
+  }, [autoRefresh, fetchTrades]);
+
+  // Trigger khi WebSocket phát hiện volume thay đổi (có giao dịch mới)
+  // Dùng debounce 3s để tránh gọi API quá nhiều
+  useEffect(() => {
+    if (!autoRefresh) return;
+    const vol = Number(liveVolume);
+    if (!Number.isFinite(vol) || vol <= 0) return;
+    if (prevVolumeRef.current !== null && vol === prevVolumeRef.current) return;
+    if (prevVolumeRef.current !== null && vol > prevVolumeRef.current) {
+      // Volume tăng = có lệnh khớp mới → refresh sau 3s debounce
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        fetchTrades();
+      }, 3_000);
+    }
+    prevVolumeRef.current = vol;
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [liveVolume, autoRefresh, fetchTrades]);
+
+  const buyCount = trades.filter((t) => t.side === 'buy').length;
+  const sellCount = trades.filter((t) => t.side === 'sell').length;
+  const totalVol = trades.reduce((sum, t) => sum + (t.volume || 0), 0);
+
+  return (
+    <section className="card-section p-4">
+      <div className="flex items-start justify-between gap-2 border-b border-slate-800 pb-3">
+        <div>
+          <p className="text-label">Khớp lệnh trong phiên</p>
+          <h3 className="mt-1 text-base font-semibold text-white">Thông tin khớp lệnh thực tế</h3>
+          {fetchedAt && (
+            <p className="mt-0.5 text-[10px] text-slate-500">
+              {refreshing && <span className="mr-1 inline-block animate-spin">⟳</span>}
+              Cập nhật: {new Date(fetchedAt).toLocaleTimeString('vi-VN')}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setAutoRefresh((v) => !v)}
+            className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors ${
+              autoRefresh
+                ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300'
+                : 'border-slate-700 bg-slate-900/50 text-slate-400'
+            }`}
+          >
+            {autoRefresh ? '⟳ Tự làm mới' : '⏸ Tạm dừng'}
+          </button>
+          <button
+            onClick={fetchTrades}
+            disabled={refreshing}
+            className="rounded-full border border-slate-700 bg-slate-900/50 px-2.5 py-1 text-[10px] text-slate-400 hover:text-slate-200 disabled:opacity-40"
+          >
+            {loading && !refreshing ? '...' : refreshing ? <span className="inline-block animate-spin">⟳</span> : '↻'}
+          </button>
+        </div>
+      </div>
+
+      {/* Summary bar */}
+      {trades.length > 0 && (
+        <div className="mt-3 flex gap-3 text-[11px]">
+          <span className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 px-2.5 py-1 text-emerald-300">
+            ▲ Mua: {buyCount}
+          </span>
+          <span className="rounded-lg border border-rose-800/50 bg-rose-950/20 px-2.5 py-1 text-rose-300">
+            ▼ Bán: {sellCount}
+          </span>
+          <span className="rounded-lg border border-slate-700 bg-slate-900/50 px-2.5 py-1 text-slate-300">
+            KL: {fmtVol(totalVol)}
+          </span>
+        </div>
+      )}
+
+      <div className="mt-3">
+        {loading && trades.length === 0 ? (
+          <div className="space-y-2">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-8 animate-pulse rounded-lg bg-slate-900" />
+            ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 px-3 py-2.5 text-[12px] text-rose-300">
+            {error}
+          </div>
+        ) : trades.length === 0 ? (
+          <p className="py-4 text-center text-[12px] text-slate-500">
+            Chưa có dữ liệu khớp lệnh (ngoài giờ giao dịch hoặc chưa có giao dịch).
+          </p>
+        ) : (
+          <div className="space-y-1 max-h-[340px] overflow-y-auto pr-1">
+            {/* Header row */}
+            <div className="grid grid-cols-[64px_1fr_80px_64px_56px] gap-1.5 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+              <span>Giờ</span>
+              <span>Giá</span>
+              <span className="text-right">KL</span>
+              <span className="text-right">Loại</span>
+              <span className="text-right">KL mua/bán</span>
+            </div>
+            {trades.map((row, idx) => (
+              <div
+                key={`${row.time}-${idx}`}
+                className={`grid grid-cols-[64px_1fr_80px_64px_56px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] ${
+                  row.side === 'buy'
+                    ? 'border-emerald-900/30 bg-emerald-950/10'
+                    : row.side === 'sell'
+                      ? 'border-rose-900/30 bg-rose-950/10'
+                      : 'border-slate-800/50 bg-slate-950/30'
+                }`}
+              >
+                <span className="text-slate-500">{row.time}</span>
+                <span className={`font-semibold tabular-nums ${row.side === 'buy' ? 'text-emerald-300' : row.side === 'sell' ? 'text-rose-300' : 'text-slate-200'}`}>
+                  {row.price != null ? Number(row.price).toLocaleString('vi-VN') : '—'}
+                </span>
+                <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
+                <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
+                  {row.match_type || (row.side === 'buy' ? 'BU' : row.side === 'sell' ? 'SD' : '—')}
+                </span>
+                <span className={`text-right text-[10px] ${row.side === 'buy' ? 'text-emerald-500' : row.side === 'sell' ? 'text-rose-500' : 'text-slate-500'}`}>
+                  {row.side === 'buy' ? 'Mua' : row.side === 'sell' ? 'Bán' : 'KL'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function BreadthMiniPanel({ symbol }) {
+  const [groups, setGroups] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    // Mock breadth data based on market groups
-    // In production, you would fetch actual peer stocks for each group
-    if (marketGroups && marketGroups.length > 0) {
-      const generatedPeers = marketGroups.slice(0, 3).flatMap((group, groupIdx) => {
-        // Generate 3-5 mock peer symbols per group
-        const peers = [];
-        const peerCount = 3 + (groupIdx % 2);
-        for (let i = 0; i < peerCount; i++) {
-          const mockChange = (Math.random() - 0.5) * 8;
-          peers.push({
-            symbol: `${group.name.substring(0, 3).toUpperCase()}${i + 1}`,
-            groupName: group.name,
-            change: mockChange,
-            status: mockChange > 1 ? 'up' : mockChange < -1 ? 'down' : 'flat',
-          });
+    if (!symbol) return;
+    let cancelled = false;
+    setLoading(true);
+    getSectorBreadth(symbol)
+      .then((resp) => {
+        if (!cancelled) {
+          setGroups(resp.data?.groups || []);
+          setError('');
         }
-        return peers;
-      });
-      setPeerData(generatedPeers);
-    }
-  }, [marketGroups]);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.response?.data?.detail || 'Không lấy được dữ liệu breadth.');
+      })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol]);
 
-  if (!peerData.length) {
+  if (loading) {
     return (
       <section className="card-section p-4">
-        <div className="text-label pb-3 border-b border-slate-800">
-          Chỉ số ngành
-        </div>
+        <div className="h-32 animate-pulse rounded-xl bg-slate-900" />
+      </section>
+    );
+  }
+
+  if (error || !groups.length) {
+    return (
+      <section className="card-section p-4">
+        <div className="text-label pb-3 border-b border-slate-800">Chỉ số ngành</div>
         <div className="mt-3 text-slate-500 text-sm">
-          Không có dữ liệu nhóm ngành để hiển thị breadth.
+          {error || 'Không có dữ liệu nhóm ngành.'}
         </div>
       </section>
     );
@@ -189,73 +460,47 @@ function BreadthMiniPanel({ marketGroups, symbol, technicalBias }) {
 
   return (
     <section className="card-section p-4">
-      <div className="text-label pb-3 border-b border-slate-800">
-        Breadth - Động thái nhóm
-      </div>
-
-      {/* Group headers with breadth bars */}
+      <div className="text-label pb-3 border-b border-slate-800">Breadth — Động thái nhóm</div>
       <div className="mt-4 space-y-3">
-        {marketGroups.map((group) => {
-          const groupPeers = peerData.filter((p) => p.groupName === group.name);
-          if (!groupPeers.length) return null;
-
-          const upCount = groupPeers.filter((p) => p.status === 'up').length;
-          const downCount = groupPeers.filter((p) => p.status === 'down').length;
-          const flatCount = groupPeers.filter((p) => p.status === 'flat').length;
-          const total = groupPeers.length;
-
-          const upPct = (upCount / total) * 100;
-          const downPct = (downCount / total) * 100;
-
+        {groups.map((group) => {
+          const peers = group.peers || [];
+          const upCount = peers.filter((p) => p.status === 'up').length;
+          const downCount = peers.filter((p) => p.status === 'down').length;
+          const flatCount = peers.filter((p) => p.status === 'flat').length;
+          const total = peers.length;
           return (
             <div key={group.name}>
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs font-medium text-slate-300">{group.name}</span>
-                <span className="text-[10px] text-slate-500">
-                  {upCount}↑ {downCount}↓ {flatCount}→
-                </span>
+                <span className="text-[10px] text-slate-500">{upCount}↑ {downCount}↓ {flatCount}→</span>
               </div>
               <div className="flex h-5 gap-0.5 rounded-md overflow-hidden border border-slate-800 bg-slate-950">
                 {upCount > 0 && (
-                  <div
-                    className="bg-emerald-700/70"
-                    style={{ width: `${upPct}%` }}
-                    title={`${upCount} tăng`}
-                  />
+                  <div className="bg-emerald-700/70" style={{ width: `${(upCount / total) * 100}%` }} title={`${upCount} tăng`} />
                 )}
                 {flatCount > 0 && (
-                  <div
-                    className="bg-slate-700/50"
-                    style={{ width: `${(flatCount / total) * 100}%` }}
-                    title={`${flatCount} ngang`}
-                  />
+                  <div className="bg-slate-700/50" style={{ width: `${(flatCount / total) * 100}%` }} title={`${flatCount} ngang`} />
                 )}
                 {downCount > 0 && (
-                  <div
-                    className="bg-rose-700/70"
-                    style={{ width: `${downPct}%` }}
-                    title={`${downCount} giảm`}
-                  />
+                  <div className="bg-rose-700/70" style={{ width: `${(downCount / total) * 100}%` }} title={`${downCount} giảm`} />
                 )}
               </div>
-
-              {/* Peer symbols mini list */}
               <div className="mt-2 flex flex-wrap gap-1">
-                {groupPeers.slice(0, 4).map((peer) => (
+                {peers.slice(0, 6).map((peer) => (
                   <div
-                    key={`${group.name}-${peer.symbol}`}
-                    className={`text-[10px] px-2 py-1 rounded border breadth-${peer.status}`}
+                    key={peer.symbol}
+                    className={`text-[10px] px-2 py-1 rounded border breadth-${peer.status}${peer.is_self ? ' ring-1 ring-cyan-500' : ''}`}
                   >
                     <span>{peer.symbol}</span>
-                    <span className="ml-1 font-semibold">
-                      {peer.change > 0 ? '+' : ''}{peer.change.toFixed(1)}%
-                    </span>
+                    {peer.change_pct != null && (
+                      <span className="ml-1 font-semibold">
+                        {peer.change_pct > 0 ? '+' : ''}{peer.change_pct.toFixed(1)}%
+                      </span>
+                    )}
                   </div>
                 ))}
-                {groupPeers.length > 4 && (
-                  <span className="text-[10px] px-2 py-1 text-slate-500">
-                    +{groupPeers.length - 4}
-                  </span>
+                {peers.length > 6 && (
+                  <span className="text-[10px] px-2 py-1 text-slate-500">+{peers.length - 6}</span>
                 )}
               </div>
             </div>
@@ -288,44 +533,117 @@ function biasMeta(bias) {
   };
 }
 
-function buildMockDepth(currentPrice, volume, referencePrice, ceilingPrice, floorPrice) {
-  if (!Number.isFinite(Number(currentPrice))) {
-    return [];
+function PriceDepthPanel({ symbol, liveVolume }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+  const prevVolumeRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const resp = await getPriceBoard(symbol);
+      setData(resp.data);
+      setError('');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Không lấy được sổ lệnh.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [symbol]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Trigger khi volume thay đổi (debounce 3s)
+  useEffect(() => {
+    if (liveVolume && liveVolume !== prevVolumeRef.current) {
+      prevVolumeRef.current = liveVolume;
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => fetchData(true), 3000);
+    }
+  }, [liveVolume, fetchData]);
+
+  // 30s polling
+  useEffect(() => {
+    const id = setInterval(() => fetchData(true), 30000);
+    return () => clearInterval(id);
+  }, [fetchData]);
+
+  if (loading) {
+    return (
+      <section className="card-section p-4">
+        <div className="h-48 animate-pulse rounded-xl bg-slate-900" />
+      </section>
+    );
   }
 
-  const current = Number(currentPrice);
-  const step = Math.max(current * 0.0018, 10);
-  const baseVolume = Math.max(Math.round(Number(volume || 0) / 18), 500);
-  const buyMultiplier = [2.6, 1.9, 1.3, 0.9];
-  const sellMultiplier = [0.9, 1.4, 2.1, 2.9];
+  const depth = data?.depth || [];
+  const match = data?.match || {};
+  const ref = match.reference_price;
 
-  return buyMultiplier.map((multiplier, index) => {
-    const bid = Math.max(Number(floorPrice || current - step * 4), current - step * (index + 1));
-    const ask = Math.min(Number(ceilingPrice || current + step * 4), current + step * (index + 1));
-    return {
-      bidPrice: bid,
-      askPrice: ask,
-      bidVolume: Math.round(baseVolume * multiplier),
-      askVolume: Math.round(baseVolume * sellMultiplier[index]),
-      spreadPct: referencePrice ? ((ask - bid) / Number(referencePrice)) * 100 : null,
-    };
-  });
-}
+  return (
+    <section className="card-section p-4">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <p className="text-label">Độ sâu thị trường</p>
+          <h3 className="mt-1 text-base font-semibold text-white">Sổ lệnh 3 mức giá</h3>
+        </div>
+        <button
+          onClick={() => fetchData(true)}
+          className="rounded-full border border-slate-700 px-3 py-1.5 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+        >
+          {refreshing ? '⟳' : 'Cập nhật'}
+        </button>
+      </div>
 
-function buildMockTape(symbol, chartData, currentPrice) {
-  const recentPoints = chartData.slice(-10).reverse();
-  return recentPoints.map((point, index) => {
-    const close = Number(point.close || currentPrice || 0);
-    const baseline = Number(currentPrice || close || 0);
-    return {
-      id: `${symbol}-${point.date}-${index}`,
-      time: `${9 + Math.floor(index / 12)}:${String((index * 5) % 60).padStart(2, '0')}`,
-      price: close,
-      volume: Math.round(900 + (index + 1) * 375 + ((close % 7) * 120)),
-      side: close >= baseline ? 'buy' : 'sell',
-      changePct: baseline > 0 ? ((close - baseline) / baseline) * 100 : 0,
-    };
-  });
+      {error ? (
+        <p className="mt-3 text-sm text-rose-400">{error}</p>
+      ) : depth.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">Chưa có dữ liệu sổ lệnh.</p>
+      ) : (
+        <>
+          <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+            <span>KL Mua</span>
+            <span>Giá mua</span>
+            <span>Giá bán</span>
+            <span className="text-right">KL Bán</span>
+          </div>
+          <div className="mt-2 space-y-2">
+            {depth.map((row) => (
+              <div key={row.level} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
+                <span className="text-slate-300">{formatCompactNumber(row.bid_volume)}</span>
+                <span className="font-semibold text-emerald-300">{formatCurrency(row.bid_price)}</span>
+                <span className="font-semibold text-rose-300">{formatCurrency(row.ask_price)}</span>
+                <span className="text-right text-slate-300">{formatCompactNumber(row.ask_volume)}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Nước ngoài */}
+          {(match.foreign_buy_volume != null || match.foreign_sell_volume != null) && (
+            <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-[12px]">
+              <div>
+                <span className="text-slate-500">NN Mua </span>
+                <span className="font-semibold text-cyan-300">{formatCompactNumber(match.foreign_buy_volume)}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-500">NN Bán </span>
+                <span className="font-semibold text-orange-300">{formatCompactNumber(match.foreign_sell_volume)}</span>
+              </div>
+            </div>
+          )}
+          {ref && (
+            <p className="mt-2 text-right text-[10px] text-slate-600">
+              Ref {formatCurrency(ref)} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString('vi-VN') : ''}
+            </p>
+          )}
+        </>
+      )}
+    </section>
+  );
 }
 
 export default function StockDetail() {
@@ -451,6 +769,9 @@ export default function StockDetail() {
   const currentPrice = liveQuote.current_price ?? overview?.current_price ?? overview?.close_price ?? null;
   const changeValue = liveQuote.change_value ?? overview?.change_value ?? null;
   const changePct = liveQuote.change_pct ?? overview?.change_pct ?? null;
+  const liveHighPrice = liveQuote.high_price ?? overview?.high_price ?? null;
+  const liveLowPrice = liveQuote.low_price ?? overview?.low_price ?? null;
+  const liveVolume = liveQuote.volume ?? overview?.volume ?? null;
 
   const changeClass = useMemo(() => {
     if (changeValue > 0) {
@@ -586,15 +907,6 @@ export default function StockDetail() {
     }
   };
 
-  const mockDepth = useMemo(
-    () => buildMockDepth(currentPrice, overview?.volume, overview?.reference_price, overview?.ceiling_price, overview?.floor_price),
-    [currentPrice, overview?.volume, overview?.reference_price, overview?.ceiling_price, overview?.floor_price],
-  );
-
-  const tapeRows = useMemo(
-    () => buildMockTape(normalizedSymbol, chartData, currentPrice),
-    [normalizedSymbol, chartData, currentPrice],
-  );
 
   if (loadingOverview) {
     return (
@@ -706,8 +1018,8 @@ export default function StockDetail() {
               </div>
               <div className="card-compact">
                 <p className="text-label">Range</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.low_price)} → {formatCurrency(overview.high_price)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">Q: {formatCompactNumber(overview.volume)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(liveLowPrice)} → {formatCurrency(liveHighPrice)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">Q: {formatCompactNumber(liveVolume)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">52W Range</p>
@@ -789,10 +1101,10 @@ export default function StockDetail() {
         </div>
       </section>
 
-      {/* Main chart + right sidebar */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.74fr)_380px]">
-        {/* Chart section with candlestick */}
-        <section className="card-section p-4">
+      {/* Main content: chart + panels — 3-column grid at xl */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.74fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        {/* Chart section */}
+        <section className="card-section p-4 xl:row-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <p className="text-label">Biểu đồ giá EOD</p>
@@ -818,7 +1130,7 @@ export default function StockDetail() {
             </div>
           </div>
 
-          <div className="mt-4 h-[470px]">
+          <div className="mt-4 h-[440px]">
             {loadingChart ? (
               <div className="h-full animate-pulse rounded-2xl bg-slate-950" />
             ) : chartData.length < 2 ? (
@@ -831,185 +1143,134 @@ export default function StockDetail() {
           </div>
         </section>
 
-        {/* Right sidebar: depth, tape, breadth, technical */}
-        <aside className="grid gap-4 grid-rows-max">
-          {/* Simulated Depth */}
+        {/* Col 2: Price Depth + Technical */}
+        <div className="flex flex-col gap-4">
+          {/* Price Depth — sổ lệnh 3 mức giá thực từ vnstock */}
+          <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+
+          {/* Technical snapshot — compact */}
           <section className="card-section p-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <p className="text-label">Độ sâu thị trường</p>
-                <h3 className="mt-1 text-base font-semibold text-white">Độ sâu giá lập</h3>
-              </div>
-              <span className="text-[11px] text-slate-500">4 mức quanh giá</span>
-            </div>
-
-            <div className="mt-3 grid grid-cols-4 gap-2 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-              <span>KL Mua</span>
-              <span>Giá mua</span>
-              <span>Giá bán</span>
-              <span className="text-right">KL Bán</span>
-            </div>
-            <div className="mt-2 space-y-2">
-              {mockDepth.map((row, index) => (
-                <div key={`${row.bidPrice}-${row.askPrice}-${index}`} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
-                  <span className="text-slate-300">{formatCompactNumber(row.bidVolume)}</span>
-                  <span className="font-semibold text-emerald-300">{formatCurrency(row.bidPrice)}</span>
-                  <span className="font-semibold text-rose-300">{formatCurrency(row.askPrice)}</span>
-                  <span className="text-right text-slate-300">{formatCompactNumber(row.askVolume)}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Simulated Tape */}
-          <section className="card-section p-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <p className="text-label">Khớp lệnh</p>
-                <h3 className="mt-1 text-base font-semibold text-white">Tape tiến gần nhất</h3>
-              </div>
-              <span className="text-[11px] text-slate-500">10 dòng</span>
-            </div>
-            <div className="mt-3 space-y-2">
-              {tapeRows.map((row) => (
-                <div key={row.id} className="grid grid-cols-[56px_1fr_82px_52px] items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-[12px]">
-                  <span className="text-slate-500">{row.time}</span>
-                  <span className={`font-semibold ${row.side === 'buy' ? 'text-emerald-300' : 'text-rose-300'}`}>{formatCurrency(row.price)}</span>
-                  <span className="text-slate-300">{formatCompactNumber(row.volume)}</span>
-                  <span className={`text-right font-medium ${row.side === 'buy' ? 'text-emerald-400' : 'text-rose-400'}`}>{row.side === 'buy' ? 'Mua' : 'Bán'}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Breadth mini-panel */}
-          <BreadthMiniPanel marketGroups={overview.market_group_refs || []} symbol={normalizedSymbol} technicalBias={technicalBias} />
-
-          {/* Technical snapshot */}
-          <section className="card-section p-4">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3">
-              <div>
-                <p className="text-label">Tóm tắt kỹ thuật</p>
-                <h3 className="mt-1 text-base font-semibold text-white">Technical snapshot</h3>
-                <p className="mt-1 text-[12px] text-slate-400">{technicalBias.description}</p>
-              </div>
-              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${technicalBias.className}`}>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+              <p className="text-label">Technical snapshot</p>
+              <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${technicalBias.className}`}>
                 {technicalBias.label}
               </span>
             </div>
-
-            <div className="mt-3 space-y-2 text-[12px]">
-              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
-                <span className="text-slate-500">SMA20</span>
-                <span className="font-medium text-slate-100">{formatCurrency(technical?.sma20)}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
-                <span className="text-slate-500">SMA50</span>
-                <span className="font-medium text-slate-100">{formatCurrency(technical?.sma50)}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
-                <span className="text-slate-500">RSI14</span>
-                <span className="font-medium text-slate-100">{technical?.rsi14 ?? '—'}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
-                <span className="text-slate-500">KL TB 20</span>
-                <span className="font-medium text-slate-100">{formatCompactNumber(technical?.avg_volume_20)}</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-slate-800/90 py-2 last:border-b-0">
-                <span className="text-slate-500">Momentum 20d</span>
-                <span className={`font-medium ${technical?.momentum_20d_pct >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                  {formatPercentDelta(technical?.momentum_20d_pct)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-slate-500">Vị trí Range 52T</span>
-                <span className="font-medium text-slate-100">{formatPercentDelta(technical?.range_position_pct)}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Personal context: watchlist memberships */}
-          <section className="card-section p-4">
-            <p className="text-label pb-3 border-b border-slate-800">Ngữ cảnh cá nhân</p>
-            <div className="mt-3 space-y-2.5">
-              <div className="card-compact">
-                <p className="text-label">Shortlist</p>
-                <p className={`mt-1 text-sm font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-200'}`}>
-                  {overview.is_tracked ? 'Đang theo dõi' : 'Chưa theo dõi'}
-                </p>
-              </div>
-              {overview.watchlist_memberships.length > 0 ? (
-                <div className="card-compact">
-                  <p className="text-label">DS cá nhân ({overview.watchlist_memberships.length})</p>
-                  <div className="mt-2 space-y-1.5">
-                    {overview.watchlist_memberships.map((item) => (
-                      <div key={item.item_id} className="flex items-center justify-between gap-2 rounded-lg border border-amber-900/30 bg-amber-950/10 px-2.5 py-1.5 text-[12px]">
-                        <span className="font-medium text-amber-300">{item.group_name}</span>
-                        <button
-                          onClick={() => handleRemoveFromWatchlist(item.item_id, item.group_name)}
-                          disabled={!!actionLoading}
-                          className="text-[11px] font-semibold text-slate-300 transition-colors hover:text-white disabled:opacity-50"
-                        >
-                          {actionLoading === `watchlist-remove-${item.item_id}` ? 'Bỏ...' : 'Bỏ'}
-                        </button>
-                      </div>
-                    ))}
-                  </div>
+            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0 text-[12px]">
+              {[
+                ['SMA20', formatCurrency(technical?.sma20)],
+                ['SMA50', formatCurrency(technical?.sma50)],
+                ['RSI14', technical?.rsi14 ?? '—'],
+                ['KL TB20', formatCompactNumber(technical?.avg_volume_20)],
+                ['Mom 20d', formatPercentDelta(technical?.momentum_20d_pct)],
+                ['52T pos', formatPercentDelta(technical?.range_position_pct)],
+              ].map(([label, val]) => (
+                <div key={label} className="flex items-center justify-between border-b border-slate-800/60 py-1.5 last:border-b-0">
+                  <span className="text-slate-500">{label}</span>
+                  <span className="font-medium text-slate-100">{val}</span>
                 </div>
-              ) : (
-                <div className="card-compact">
-                  <p className="text-label">DS cá nhân</p>
-                  <p className="mt-1 text-slate-500">Chưa có trong danh sách nào.</p>
-                </div>
-              )}
+              ))}
             </div>
+            {technicalBias.description && (
+              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">{technicalBias.description}</p>
+            )}
           </section>
-        </aside>
-      </div>
+        </div>
 
-      {/* S13-07: Signal Summary Panel */}
-      {(symbolWhaleAlert || symbolAlerts.length > 0) && (
-        <section className="card-section p-4">
-          <p className="text-label border-b border-slate-800 pb-3 mb-4">Tín hiệu &amp; Cảnh báo — {normalizedSymbol}</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+        {/* Col 3: Intraday + Breadth */}
+        <div className="flex flex-col gap-4">
+          {/* Intraday Matched Orders */}
+          <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+
+          {/* Breadth mini-panel */}
+          <BreadthMiniPanel symbol={normalizedSymbol} />
+        </div>
+
+        {/* Bottom row: Personal context + Signals — spans full width */}
+        <div className="xl:col-span-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {/* Personal context */}
+            <section className="card-section p-4">
+              <p className="text-label pb-2.5 border-b border-slate-800">Ngữ cảnh cá nhân</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
+                <div className="card-compact">
+                  <p className="text-label">Shortlist</p>
+                  <p className={`mt-1 font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-400'}`}>
+                    {overview.is_tracked ? '✓ Theo dõi' : 'Chưa theo dõi'}
+                  </p>
+                </div>
+                <div className="card-compact col-span-1">
+                  <p className="text-label">DS nhóm ({overview.watchlist_memberships.length})</p>
+                  {overview.watchlist_memberships.length > 0 ? (
+                    <div className="mt-1.5 space-y-1">
+                      {overview.watchlist_memberships.map((item) => (
+                        <div key={item.item_id} className="flex items-center justify-between gap-1 rounded border border-amber-900/30 bg-amber-950/10 px-2 py-1">
+                          <span className="text-amber-300 truncate">{item.group_name}</span>
+                          <button
+                            onClick={() => handleRemoveFromWatchlist(item.item_id, item.group_name)}
+                            disabled={!!actionLoading}
+                            className="text-[10px] text-slate-400 hover:text-white shrink-0 disabled:opacity-50"
+                          >
+                            {actionLoading === `watchlist-remove-${item.item_id}` ? '...' : '✕'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-1 text-slate-500">Chưa có</p>
+                  )}
+                </div>
+              </div>
+            </section>
+
             {/* Whale alert */}
             {symbolWhaleAlert && (
-              <div className="rounded-xl border border-amber-700/40 bg-amber-950/20 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-widest text-amber-500 mb-1">🐋 Whale Alert</p>
-                <p className="text-sm font-semibold text-amber-200">
-                  {symbolWhaleAlert.side === 'BUY' ? '↑ Mua lớn' : '↓ Bán lớn'}{' '}
-                  {symbolWhaleAlert.matched_value
-                    ? ` — ${(symbolWhaleAlert.matched_value / 1_000_000_000).toFixed(1)} tỷ`
-                    : ''}
-                </p>
-                {symbolWhaleAlert.ts && (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {new Date(symbolWhaleAlert.ts).toLocaleTimeString('vi-VN')}
+              <section className="card-section p-4">
+                <p className="text-label pb-2.5 border-b border-slate-800">Tín hiệu cá mập</p>
+                <div className="mt-3 rounded-xl border border-amber-700/40 bg-amber-950/20 px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-widest text-amber-500 mb-1">🐋 Whale Alert</p>
+                  <p className="text-sm font-semibold text-amber-200">
+                    {symbolWhaleAlert.side === 'BUY' ? '↑ Mua lớn' : '↓ Bán lớn'}{' '}
+                    {symbolWhaleAlert.matched_value
+                      ? ` — ${(symbolWhaleAlert.matched_value / 1_000_000_000).toFixed(1)} tỷ`
+                      : ''}
                   </p>
-                )}
-              </div>
+                  {symbolWhaleAlert.ts && (
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      {new Date(symbolWhaleAlert.ts).toLocaleTimeString('vi-VN')}
+                    </p>
+                  )}
+                </div>
+              </section>
             )}
 
             {/* Active price alerts */}
-            {symbolAlerts.length > 0 && symbolAlerts.map((alert, idx) => (
-              <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>
-                <p className="text-sm font-semibold text-rose-200">
-                  {alert.condition === 'ABOVE' ? '▲ Vượt' : '▼ Dưới'}{' '}
-                  {alert.target_price
-                    ? Number(alert.target_price).toLocaleString('vi-VN') + ' ₫'
-                    : formatCurrency(alert.price)}
-                </p>
-                {alert.ts && (
-                  <p className="mt-1 text-[11px] text-slate-500">
-                    {new Date(alert.ts).toLocaleTimeString('vi-VN')}
-                  </p>
-                )}
-              </div>
-            ))}
+            {symbolAlerts.length > 0 && (
+              <section className="card-section p-4">
+                <p className="text-label pb-2.5 border-b border-slate-800">Cảnh báo giá ({symbolAlerts.length})</p>
+                <div className="mt-3 space-y-2">
+                  {symbolAlerts.map((alert, idx) => (
+                    <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
+                      <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>
+                      <p className="text-sm font-semibold text-rose-200">
+                        {alert.condition === 'ABOVE' ? '▲ Vượt' : '▼ Dưới'}{' '}
+                        {alert.target_price
+                          ? Number(alert.target_price).toLocaleString('vi-VN') + ' ₫'
+                          : formatCurrency(alert.price)}
+                      </p>
+                      {alert.ts && (
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {new Date(alert.ts).toLocaleTimeString('vi-VN')}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-        </section>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

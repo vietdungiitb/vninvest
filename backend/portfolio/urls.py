@@ -35,5 +35,10 @@ urlpatterns = [
     path('watchlist/seed/', views.WatchlistSeedView.as_view(), name='watchlist-seed'),
     path('watchlist/sync/', views.WatchlistSyncView.as_view(), name='watchlist-sync'),
 
+    # --- Screener ---
+    path('screener/rules/', views.ScreenerRuleListCreateView.as_view(), name='screener-rule-list'),
+    path('screener/rules/<int:rule_id>/', views.ScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
+    path('screener/rules/<int:rule_id>/run/', views.ScreenerRuleRunView.as_view(), name='screener-rule-run'),
+
 ]
 

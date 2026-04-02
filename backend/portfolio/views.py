@@ -1,7 +1,7 @@
 
 # --- Stock Management Modular Views ---
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework import generics
 from .models import StockProfile
 from .serializers import StockProfileSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer
@@ -32,6 +32,45 @@ def sync_stockprofile_api(request):
             'error': result.get('error', ''),
         },
         status=200 if result['success'] else 500,
+    )
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def sync_market_groups_api(request):
+    """
+    POST /api/admin-ops/market-groups/sync/
+    Trigger đồng bộ nhóm thị trườ ng (sectors, market caps) toàn hệ thống.
+    Yêu cầu is_staff.
+    """
+    mode = request.query_params.get('mode', 'all')
+    clear_existing = request.query_params.get('clear', 'false').lower() == 'true'
+
+    result = sync_market_groups(
+        requested_by=request.user,
+        mode=mode,
+        clear_existing=clear_existing,
+        scope=MarketGroupSyncLog.ScopeChoices.GLOBAL,
+    )
+
+    if result.get('warning') and result.get('success'):
+        resp_status = status.HTTP_207_MULTI_STATUS
+    elif result.get('success'):
+        resp_status = status.HTTP_200_OK
+    else:
+        resp_status = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    return Response(
+        {
+            'success': result.get('success', False),
+            'message': result.get('message', ''),
+            'warning': result.get('warning'),
+            'source': result.get('source'),
+            'created_groups': result.get('created_groups_count', 0),
+            'updated_groups': result.get('updated_groups_count', 0),
+            'added_symbols': result.get('added_symbols_count', 0),
+            'error': result.get('error', ''),
+        },
+        status=resp_status,
     )
 
 # SecuritiesGroup List API
@@ -68,6 +107,8 @@ Endpoints:
 from decimal import Decimal
 from datetime import date, datetime, timedelta
 
+import logging
+
 from django.db.models import Max, Min
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -75,8 +116,10 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule
+from django.contrib.auth.models import User
+import redis as redis_lib
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -89,13 +132,15 @@ from .serializers import (
 
 from .services import (
     fetch_and_save_daily_prices, sync_portfolio_prices, get_latest_price,
-    get_price_changes, get_price_series, sync_market_groups_for_user, sync_stock_profiles, sync_watchlist_prices,
+    get_price_changes, get_price_series, sync_market_groups, sync_market_groups_for_user, sync_stock_profiles, sync_watchlist_prices,
 )
 
 from .analytics import (
     compute_holdings, compute_nav_series, compute_allocation, build_summary,
     build_risk_metrics, compute_allocation_by_sector,
 )
+
+logger = logging.getLogger(__name__)
 
 # --- Watchlist Group Views ---
 class WatchlistGroupListCreateView(generics.ListCreateAPIView):
@@ -141,13 +186,31 @@ class WatchlistSeedView(APIView):
 
 class WatchlistSyncView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        return Response({'detail': 'Sync not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
+        days_raw = request.data.get('days', 5)
+        try:
+            days = int(days_raw)
+            if days < 1 or days > 90:
+                raise ValueError
+        except (ValueError, TypeError):
+            return Response({'detail': 'days phải là số nguyên trong khoảng [1, 90].'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            results = sync_watchlist_prices(user_id=request.user.id, days=days)
+        except Exception as exc:
+            logger.error('WatchlistSyncView lỗi: %s', exc, exc_info=True)
+            return Response(
+                {'detail': f'Sync thất bại: {exc}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+        return Response({'synced': len(results), 'days': days})
 
 
 class RealtimeTickerView(APIView):
     """
     GET /api/realtime/ticker/<symbol>/ — fallback polling endpoint for realtime views.
+    Dữ liệu thực từ vnstock price_board, fallback về DB nếu vnstock lỗi.
     """
     permission_classes = [IsAuthenticated]
 
@@ -156,6 +219,61 @@ class RealtimeTickerView(APIView):
         if not normalized_symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # --- Thử lấy dữ liệu thực từ vnstock price_board ---
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.trading.price_board(symbols_list=[normalized_symbol])
+            if df is not None and not df.empty:
+                ls = df['listing'].iloc[0]
+                mt = df['match'].iloc[0]
+
+                def _f(val):
+                    try:
+                        v = float(val)
+                        return v if v == v and v != 0 else None
+                    except (TypeError, ValueError):
+                        return None
+
+                def _i(val):
+                    try:
+                        v = float(val)
+                        return int(v) if v == v else None
+                    except (TypeError, ValueError):
+                        return None
+
+                match_price = _f(mt.get('match_price'))
+                ref_price = _f(ls.get('ref_price')) or _f(mt.get('reference_price'))
+                highest = _f(mt.get('highest'))
+                lowest = _f(mt.get('lowest'))
+                open_price = _f(mt.get('open_price'))
+                accum_vol = _i(mt.get('accumulated_volume'))
+
+                change_value = None
+                change_pct = None
+                if match_price and ref_price:
+                    change_value = round(match_price - ref_price, 2)
+                    change_pct = round((match_price - ref_price) / ref_price * 100, 2)
+
+                return Response({
+                    'symbol': normalized_symbol,
+                    'current_price': match_price,
+                    'prev_price': ref_price,
+                    'change_value': change_value,
+                    'change_pct': change_pct,
+                    'high_price': highest,
+                    'low_price': lowest,
+                    'open_price': open_price,
+                    'volume': accum_vol,
+                    'last_date': timezone.now().isoformat(),
+                    'freshness_seconds': 0,
+                    'stale': False,
+                    'source': 'live',
+                })
+        except Exception as exc:
+            logger.warning('RealtimeTickerView vnstock lỗi %s: %s', normalized_symbol, exc)
+
+        # --- Fallback: DB ---
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
         freshness_seconds = None
@@ -170,14 +288,276 @@ class RealtimeTickerView(APIView):
                 freshness_seconds = None
                 stale = True
 
-        return Response(
-            {
-                'symbol': normalized_symbol,
-                **price_info,
-                'freshness_seconds': freshness_seconds,
-                'stale': stale,
-            }
+        latest_dp = (
+            DailyPrice.objects
+            .filter(symbol=normalized_symbol)
+            .order_by('-date')
+            .values('open_price', 'high_price', 'low_price', 'volume')
+            .first()
         )
+        ohlc_extra = {}
+        if latest_dp:
+            ohlc_extra = {
+                'open_price': float(latest_dp['open_price']) if latest_dp['open_price'] is not None else None,
+                'high_price': float(latest_dp['high_price']) if latest_dp['high_price'] is not None else None,
+                'low_price': float(latest_dp['low_price']) if latest_dp['low_price'] is not None else None,
+                'volume': int(latest_dp['volume']) if latest_dp['volume'] is not None else None,
+            }
+
+        return Response({
+            'symbol': normalized_symbol,
+            **price_info,
+            **ohlc_extra,
+            'freshness_seconds': freshness_seconds,
+            'stale': stale,
+            'source': 'db',
+        })
+
+
+class IntradayMatchedView(APIView):
+    """
+    GET /api/realtime/intraday/<symbol>/?page_size=50
+    Lấy dữ liệu khớp lệnh trong phiên giao dịch hôm nay từ vnstock.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            page_size = int(request.query_params.get('page_size', 50))
+            page_size = max(10, min(200, page_size))
+        except (ValueError, TypeError):
+            page_size = 50
+
+        try:
+            from vnstock import Vnstock  # import trễ
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.quote.intraday(symbol=normalized_symbol, page_size=page_size)
+        except ImportError:
+            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({'symbol': normalized_symbol, 'trades': [], 'total': 0, 'fetched_at': timezone.now().isoformat()})
+
+        trades = []
+        for _, row in df.iterrows():
+            raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
+            raw_price = row.get('price') or row.get('close') or 0
+            raw_vol = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
+
+            # vnstock VCI trả về match_type = 'Buy' / 'Sell' / 'ATO' / 'ATC'
+            match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
+            mt_lower = match_type_raw.lower()
+            if mt_lower in ('buy', 'bu', 'b'):
+                side = 'buy'
+            elif mt_lower in ('sell', 'sd', 's'):
+                side = 'sell'
+            else:
+                side = 'neutral'
+
+            try:
+                price_val = float(raw_price) if raw_price else None
+                vol_val = int(float(raw_vol)) if raw_vol else None
+            except (ValueError, TypeError):
+                price_val = None
+                vol_val = None
+
+            if price_val is None:
+                continue
+
+            time_str = ''
+            try:
+                import pandas as pd
+                ts = pd.Timestamp(raw_time)
+                time_str = ts.strftime('%H:%M:%S')
+            except Exception:
+                time_str = str(raw_time)[:8]
+
+            trades.append({
+                'time': time_str,
+                'price': price_val,
+                'volume': vol_val,
+                'side': side,
+                'match_type': match_type_raw,
+            })
+
+        return Response({
+            'symbol': normalized_symbol,
+            'trades': trades,
+            'total': len(trades),
+            'fetched_at': timezone.now().isoformat(),
+        })
+
+
+class PriceBoardView(APIView):
+    """
+    GET /api/realtime/price-board/<symbol>/
+    Trả về sổ lệnh 3 mức giá (bid/ask) và dữ liệu khớp thực từ vnstock price_board.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.trading.price_board(symbols_list=[normalized_symbol])
+        except ImportError:
+            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}})
+
+        row = df.iloc[0]
+
+        def safe_float(val):
+            try:
+                v = float(val)
+                return v if v == v else None  # NaN check
+            except (TypeError, ValueError):
+                return None
+
+        def safe_int(val):
+            try:
+                v = float(val)
+                return int(v) if v == v else None
+            except (TypeError, ValueError):
+                return None
+
+        ba = df['bid_ask'].iloc[0]
+        mt = df['match'].iloc[0]
+
+        depth = []
+        for i in range(1, 4):
+            bp = safe_float(ba.get(f'bid_{i}_price'))
+            bv = safe_int(ba.get(f'bid_{i}_volume'))
+            ap = safe_float(ba.get(f'ask_{i}_price'))
+            av = safe_int(ba.get(f'ask_{i}_volume'))
+            if bp is not None or ap is not None:
+                depth.append({'level': i, 'bid_price': bp, 'bid_volume': bv, 'ask_price': ap, 'ask_volume': av})
+
+        ref = safe_float(mt.get('reference_price'))
+        match_price = safe_float(mt.get('match_price'))
+        change_pct = round((match_price - ref) / ref * 100, 2) if ref and match_price else None
+
+        match_data = {
+            'match_price': match_price,
+            'open_price': safe_float(mt.get('open_price')),
+            'highest': safe_float(mt.get('highest')),
+            'lowest': safe_float(mt.get('lowest')),
+            'reference_price': ref,
+            'accumulated_volume': safe_int(mt.get('accumulated_volume')),
+            'foreign_buy_volume': safe_int(mt.get('foreign_buy_volume')),
+            'foreign_sell_volume': safe_int(mt.get('foreign_sell_volume')),
+            'change_pct': change_pct,
+        }
+
+        return Response({
+            'symbol': normalized_symbol,
+            'depth': depth,
+            'match': match_data,
+            'fetched_at': timezone.now().isoformat(),
+        })
+
+
+class SectorBreadthView(APIView):
+    """
+    GET /api/realtime/breadth/<symbol>/
+    Trả về diễn biến giá các mã cùng nhóm ngành với symbol, dùng price_board.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Lấy các nhóm mà symbol thuộc về
+        group_items = (
+            SecuritiesItem.objects
+            .filter(symbol=normalized_symbol)
+            .select_related('group')
+            .order_by('group__order', 'group__name')[:5]
+        )
+
+        if not group_items.exists():
+            return Response({'symbol': normalized_symbol, 'groups': [], 'fetched_at': timezone.now().isoformat()})
+
+        # Gom tất cả symbols cần fetch (tối đa 15 mã/nhóm)
+        groups_meta = []
+        all_symbols = set()
+        for item in group_items:
+            group = item.group
+            peers = list(
+                SecuritiesItem.objects
+                .filter(group=group)
+                .exclude(symbol=normalized_symbol)
+                .values_list('symbol', flat=True)
+                .order_by('order', 'symbol')[:14]
+            )
+            peers.insert(0, normalized_symbol)
+            groups_meta.append({'id': group.id, 'name': group.name, 'symbols': peers})
+            all_symbols.update(peers)
+
+        all_symbols = list(all_symbols)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.trading.price_board(symbols_list=all_symbols)
+        except ImportError:
+            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as exc:
+            logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu breadth: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        # Xây dựng lookup: symbol -> change_pct, price, status
+        price_map = {}
+        for _, row in df.iterrows():
+            sym = row.get(('listing', 'symbol'))
+            if not sym:
+                continue
+            try:
+                ref = float(row.get(('match', 'reference_price')) or 0)
+                price = float(row.get(('match', 'match_price')) or 0)
+                chg = round((price - ref) / ref * 100, 2) if ref > 0 else None
+            except (TypeError, ValueError):
+                chg = None
+                price = None
+            status_val = 'up' if chg is not None and chg > 0.5 else 'down' if chg is not None and chg < -0.5 else 'flat'
+            price_map[str(sym).upper()] = {'price': price, 'change_pct': chg, 'status': status_val}
+
+        result_groups = []
+        for gm in groups_meta:
+            peers = []
+            for s in gm['symbols']:
+                info = price_map.get(s.upper(), {})
+                peers.append({
+                    'symbol': s,
+                    'price': info.get('price'),
+                    'change_pct': info.get('change_pct'),
+                    'status': info.get('status', 'flat'),
+                    'is_self': s == normalized_symbol,
+                })
+            result_groups.append({'name': gm['name'], 'peers': peers})
+
+        return Response({
+            'symbol': normalized_symbol,
+            'groups': result_groups,
+            'fetched_at': timezone.now().isoformat(),
+        })
 
 # ---------------------------------------------------------------------------
 # Portfolio Views
@@ -384,7 +764,9 @@ class AllocationView(APIView):
         )
         by = request.query_params.get('by', 'symbol')
         if by == 'sector':
-            data = compute_allocation_by_sector(portfolio)
+            items = compute_allocation_by_sector(portfolio)
+            hhi_score = round(sum(row['hhi_contribution'] for row in items), 2)
+            return Response({'items': items, 'hhi_score': hhi_score})
         else:
             data = compute_allocation(portfolio)
         return Response(data)
@@ -1031,6 +1413,112 @@ class StockWorkspaceOverviewView(APIView):
 
     def get(self, request, symbol):
         payload = _build_stock_workspace_overview(symbol, request.user)
+
+        # Overlay dữ liệu thật từ vnstock price_board
+        normalized_symbol = (symbol or '').strip().upper()
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.trading.price_board(symbols_list=[normalized_symbol])
+            if df is not None and not df.empty:
+                ls = df['listing'].iloc[0]
+                mt = df['match'].iloc[0]
+
+                def _f(val):
+                    try:
+                        v = float(val)
+                        return v if v == v and v != 0 else None
+                    except (TypeError, ValueError):
+                        return None
+
+                def _i(val):
+                    try:
+                        v = float(val)
+                        return int(v) if v == v else None
+                    except (TypeError, ValueError):
+                        return None
+
+                match_price = _f(mt.get('match_price'))
+                ref_price = _f(ls.get('ref_price')) or _f(mt.get('reference_price'))
+                ceil_price = _f(ls.get('ceiling')) or _f(mt.get('ceiling_price'))
+                floor_price = _f(ls.get('floor')) or _f(mt.get('floor_price'))
+                highest = _f(mt.get('highest'))
+                lowest = _f(mt.get('lowest'))
+                open_price = _f(mt.get('open_price'))
+                accum_vol = _i(mt.get('accumulated_volume'))
+                exchange_raw = str(ls.get('exchange') or '').strip()
+
+                if match_price:
+                    payload['current_price'] = match_price
+                    payload['close_price'] = match_price
+                if ref_price:
+                    payload['reference_price'] = ref_price
+                    payload['prev_price'] = ref_price
+                if ceil_price:
+                    payload['ceiling_price'] = ceil_price
+                if floor_price:
+                    payload['floor_price'] = floor_price
+                if highest:
+                    payload['high_price'] = highest
+                if lowest:
+                    payload['low_price'] = lowest
+                if open_price:
+                    payload['open_price'] = open_price
+                if accum_vol and accum_vol > 0:
+                    payload['volume'] = accum_vol
+                if exchange_raw and not payload.get('exchange'):
+                    payload['exchange'] = exchange_raw
+
+                # Tính change từ giá thực
+                if match_price and ref_price:
+                    chg_val = round(match_price - ref_price, 2)
+                    chg_pct = round((match_price - ref_price) / ref_price * 100, 2)
+                    payload['change_value'] = chg_val
+                    payload['change_pct'] = chg_pct
+
+                # average_price: trung bình OHLC thực
+                prices = [v for v in [open_price, highest, lowest, match_price] if v]
+                if len(prices) >= 2:
+                    payload['average_price'] = round(sum(prices) / len(prices), 2)
+
+        except Exception as exc:
+            logger.warning('StockWorkspaceOverviewView vnstock overlay lỗi %s: %s', normalized_symbol, exc)
+
+        # 52W high/low thực từ vnstock history (1D, 365 ngày)
+        try:
+            from vnstock import Vnstock
+            from datetime import date as _date, timedelta as _timedelta
+            stock52 = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            _end = _date.today().strftime('%Y-%m-%d')
+            _start = (_date.today() - _timedelta(days=365)).strftime('%Y-%m-%d')
+            hist_df = stock52.quote.history(symbol=normalized_symbol, start=_start, end=_end, interval='1D')
+            if hist_df is not None and not hist_df.empty and 'high' in hist_df.columns:
+                # vnstock history trả về đơn vị nghìn đồng (VND/1000)
+                _scale = 1000.0
+                w52_high = round(float(hist_df['high'].max()) * _scale, 0)
+                w52_low = round(float(hist_df['low'].min()) * _scale, 0)
+                if w52_high > 0:
+                    payload['week52_high'] = w52_high
+                if w52_low > 0:
+                    payload['week52_low'] = w52_low
+        except Exception as exc4:
+            logger.debug('StockWorkspaceOverviewView 52W overlay lỗi %s: %s', normalized_symbol, exc4)
+
+        # Nếu company_name / exchange vẫn trống, thử lấy từ listing.all_symbols
+        if not payload.get('company_name'):
+            try:
+                from vnstock import Vnstock
+                stock3 = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+                ls_df = stock3.listing.all_symbols()
+                if ls_df is not None and not ls_df.empty:
+                    row = ls_df[ls_df['symbol'] == normalized_symbol]
+                    if not row.empty:
+                        name = str(row.iloc[0].get('organ_name') or '').strip()
+                        if name:
+                            payload['company_name'] = name
+            except Exception as exc3:
+                logger.debug('StockWorkspaceOverviewView listing overlay lỗi %s: %s', normalized_symbol, exc3)
+
         return Response(StockWorkspaceOverviewSerializer(payload).data)
 
 
@@ -1088,4 +1576,314 @@ class StockProfileDetailView(generics.RetrieveAPIView):
     serializer_class = StockProfileSerializer
     lookup_field = 'symbol'
     permission_classes = []  # Public, hoặc thêm quyền nếu cần
+
+
+# ---------------------------------------------------------------------------
+# Admin Ops
+# ---------------------------------------------------------------------------
+
+class AdminOpsStatsView(APIView):
+    """
+    GET /api/admin-ops/stats/
+
+    Trả về thống kê hệ thống để admin theo dõi: số user, danh mục,
+    mã theo dõi, watchlist, lần sync cuối, trạng thái Redis/channel layer.
+    Yêu cầu is_staff (IsAdminUser).
+    """
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        from django.conf import settings
+
+        # --- Counts ---
+        user_count = User.objects.count()
+        portfolio_count = Portfolio.objects.count()
+        tracked_symbol_count = TrackedSymbol.objects.count()
+        watchlist_item_count = WatchlistItem.objects.count()
+
+        # --- Last sync logs ---
+        last_mg_sync = MarketGroupSyncLog.objects.order_by('-started_at').first()
+        last_sp_sync = StockProfileSyncLog.objects.order_by('-started_at').first()
+
+        def _fmt_sync(log):
+            if log is None:
+                return None
+            return {
+                'started_at': log.started_at.isoformat() if log.started_at else None,
+                'finished_at': log.finished_at.isoformat() if log.finished_at else None,
+                'success': log.success,
+                'mode': log.mode,
+                'message': log.message,
+            }
+
+        # --- Redis / channel layer health ---
+        channel_layer_type = getattr(settings, 'REALTIME_CHANNEL_LAYER', 'redis')
+        realtime_enabled = getattr(settings, 'REALTIME_ENABLED', False)
+        redis_ok = None
+        if channel_layer_type != 'inmemory':
+            try:
+                redis_url = getattr(settings, 'REALTIME_REDIS_URL', 'redis://localhost:6379/0')
+                client = redis_lib.from_url(redis_url, socket_connect_timeout=1)
+                client.ping()
+                redis_ok = True
+            except Exception:
+                redis_ok = False
+
+        return Response({
+            'user_count': user_count,
+            'portfolio_count': portfolio_count,
+            'tracked_symbol_count': tracked_symbol_count,
+            'watchlist_item_count': watchlist_item_count,
+            'last_market_group_sync': _fmt_sync(last_mg_sync),
+            'last_stock_profile_sync': _fmt_sync(last_sp_sync),
+            'channel_layer_type': channel_layer_type,
+            'realtime_enabled': realtime_enabled,
+            'redis_ok': redis_ok,
+        })
+
+
+# ---------------------------------------------------------------------------
+# Screener — CRUD + Evaluator
+# ---------------------------------------------------------------------------
+from .models import ScreenerRule
+from .serializers import ScreenerRuleSerializer
+
+# Tập field hợp lệ cho screener conditions
+_SCREENER_ALLOWED_FIELDS = {
+    'close', 'volume', 'rsi_14', 'sma20', 'sma50',
+    'momentum_20d_pct', 'price_vs_sma20_pct', 'price_vs_sma50_pct',
+    'range_position_pct', 'avg_volume_20',
+}
+_SCREENER_ALLOWED_OPS = {'lt', 'lte', 'gt', 'gte', 'eq'}
+
+
+def _validate_screener_rules(rules_json):
+    """
+    Kiểm tra cú pháp rules_json.
+    rules_json phải là list[dict] với mỗi dict có: field (str), op (str), value (number).
+    Trả về (ok: bool, error_msg: str)
+    """
+    if not isinstance(rules_json, list) or len(rules_json) == 0:
+        return False, 'rules_json phải là list không rỗng.'
+    for i, cond in enumerate(rules_json):
+        if not isinstance(cond, dict):
+            return False, f'Condition #{i} phải là object.'
+        field = cond.get('field')
+        op = cond.get('op')
+        value = cond.get('value')
+        if field not in _SCREENER_ALLOWED_FIELDS:
+            return False, f'Field "{field}" không hợp lệ. Cho phép: {sorted(_SCREENER_ALLOWED_FIELDS)}.'
+        if op not in _SCREENER_ALLOWED_OPS:
+            return False, f'Op "{op}" không hợp lệ. Cho phép: {sorted(_SCREENER_ALLOWED_OPS)}.'
+        if not isinstance(value, (int, float)):
+            return False, f'Value của condition #{i} phải là số.'
+    return True, ''
+
+
+def _apply_screener_condition(field_val, op, target_val):
+    if field_val is None:
+        return False
+    try:
+        fv = float(field_val)
+        tv = float(target_val)
+    except (TypeError, ValueError):
+        return False
+    if op == 'lt':  return fv < tv
+    if op == 'lte': return fv <= tv
+    if op == 'gt':  return fv > tv
+    if op == 'gte': return fv >= tv
+    if op == 'eq':  return abs(fv - tv) < 1e-9
+    return False
+
+
+class ScreenerRuleListCreateView(APIView):
+    """
+    GET  /api/portfolio/screener/rules/    — danh sách rule của user
+    POST /api/portfolio/screener/rules/    — tạo rule mới
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        rules = ScreenerRule.objects.filter(user=request.user)
+        return Response(ScreenerRuleSerializer(rules, many=True).data)
+
+    def post(self, request):
+        serializer = ScreenerRuleSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        ok, err = _validate_screener_rules(serializer.validated_data.get('rules_json', []))
+        if not ok:
+            return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+        rule = serializer.save(user=request.user)
+        return Response(ScreenerRuleSerializer(rule).data, status=status.HTTP_201_CREATED)
+
+
+class ScreenerRuleDetailView(APIView):
+    """
+    GET    /api/portfolio/screener/rules/{id}/
+    PUT    /api/portfolio/screener/rules/{id}/
+    DELETE /api/portfolio/screener/rules/{id}/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _get_rule(self, request, rule_id):
+        return generics.get_object_or_404(ScreenerRule, pk=rule_id, user=request.user)
+
+    def get(self, request, rule_id):
+        rule = self._get_rule(request, rule_id)
+        return Response(ScreenerRuleSerializer(rule).data)
+
+    def put(self, request, rule_id):
+        rule = self._get_rule(request, rule_id)
+        serializer = ScreenerRuleSerializer(rule, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if 'rules_json' in serializer.validated_data:
+            ok, err = _validate_screener_rules(serializer.validated_data['rules_json'])
+            if not ok:
+                return Response({'detail': err}, status=status.HTTP_400_BAD_REQUEST)
+        rule = serializer.save()
+        return Response(ScreenerRuleSerializer(rule).data)
+
+    def delete(self, request, rule_id):
+        rule = self._get_rule(request, rule_id)
+        rule.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ScreenerRuleRunView(APIView):
+    """
+    POST /api/portfolio/screener/rules/{id}/run/
+
+    Chạy screener rule trên toàn bộ DailyPrice hiện có.
+    Trả về danh sách mã khớp kèm giá + technical snapshot.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, rule_id):
+        rule = generics.get_object_or_404(ScreenerRule, pk=rule_id, user=request.user)
+        conditions = rule.rules_json  # list[{field, op, value}]
+
+        # Lấy danh sách symbol có dữ liệu giá gần nhất
+        from django.db.models import Max
+        latest_dates = (
+            DailyPrice.objects
+            .values('symbol')
+            .annotate(latest=Max('date'))
+        )
+        symbol_date_map = {row['symbol']: row['latest'] for row in latest_dates}
+
+        if not symbol_date_map:
+            return Response({'matched': [], 'total_scanned': 0, 'rule_id': rule.id})
+
+        # Batch load tất cả DailyPrice mới nhất (1 query)
+        from django.db.models import Q
+        filter_q = Q()
+        for sym, dt in symbol_date_map.items():
+            filter_q |= Q(symbol=sym, date=dt)
+
+        # Nếu quá nhiều symbols, chunk để tránh quá large query
+        all_symbols = list(symbol_date_map.keys())
+        CHUNK = 500
+        rows = []
+        for i in range(0, len(all_symbols), CHUNK):
+            chunk_syms = all_symbols[i:i + CHUNK]
+            chunk_q = Q()
+            for sym in chunk_syms:
+                chunk_q |= Q(symbol=sym, date=symbol_date_map[sym])
+            rows.extend(
+                DailyPrice.objects.filter(chunk_q).values(
+                    'symbol', 'close_price', 'volume', 'open_price', 'high_price', 'low_price', 'date'
+                )
+            )
+
+        # Tính technical fields cần thiết (dùng _compute_rsi + SMA từ lịch sử gần đây)
+        # Lấy 60 ngày gần nhất để tính SMA50 đủ điểm
+        from datetime import timedelta
+        required_fields = {cond['field'] for cond in conditions}
+        needs_history = required_fields & {'rsi_14', 'sma20', 'sma50', 'momentum_20d_pct',
+                                           'price_vs_sma20_pct', 'price_vs_sma50_pct',
+                                           'range_position_pct', 'avg_volume_20'}
+
+        history_map = {}  # symbol -> list of (close, volume) sorted by date asc
+        if needs_history:
+            from datetime import date as date_cls
+            cutoff = date_cls.today() - timedelta(days=70)
+            hist_qs = (
+                DailyPrice.objects
+                .filter(symbol__in=all_symbols, date__gte=cutoff)
+                .values('symbol', 'date', 'close_price', 'volume', 'high_price', 'low_price')
+                .order_by('symbol', 'date')
+            )
+            for row in hist_qs:
+                sym = row['symbol']
+                if sym not in history_map:
+                    history_map[sym] = []
+                history_map[sym].append(row)
+
+        def _build_technical(sym, latest_row):
+            hist = history_map.get(sym, [])
+            closes = [float(r['close_price']) for r in hist if r['close_price'] is not None]
+            volumes = [float(r['volume']) for r in hist if r['volume'] is not None]
+            highs = [float(r['high_price']) for r in hist if r['high_price'] is not None]
+            lows = [float(r['low_price']) for r in hist if r['low_price'] is not None]
+
+            close = float(latest_row['close_price']) if latest_row['close_price'] else None
+
+            sma20 = (sum(closes[-20:]) / 20) if len(closes) >= 20 else None
+            sma50 = (sum(closes[-50:]) / 50) if len(closes) >= 50 else None
+            rsi_14 = _safe_round(_compute_rsi(closes, 14))
+            momentum_20d = _safe_round(
+                ((closes[-1] / closes[-21] - 1) * 100) if len(closes) >= 21 else None
+            )
+            price_vs_sma20 = _safe_round(
+                ((close / sma20 - 1) * 100) if close and sma20 else None
+            )
+            price_vs_sma50 = _safe_round(
+                ((close / sma50 - 1) * 100) if close and sma50 else None
+            )
+            hi52 = max(highs[-52:]) if len(highs) >= 10 else None
+            lo52 = min(lows[-52:]) if len(lows) >= 10 else None
+            range_pos = _safe_round(
+                ((close - lo52) / (hi52 - lo52) * 100) if close and hi52 and lo52 and (hi52 - lo52) > 0 else None
+            )
+            avg_vol20 = _safe_round(
+                (sum(volumes[-20:]) / 20) if len(volumes) >= 20 else None
+            )
+
+            return {
+                'close': close,
+                'volume': float(latest_row['volume']) if latest_row.get('volume') else None,
+                'rsi_14': rsi_14,
+                'sma20': _safe_round(sma20),
+                'sma50': _safe_round(sma50),
+                'momentum_20d_pct': momentum_20d,
+                'price_vs_sma20_pct': price_vs_sma20,
+                'price_vs_sma50_pct': price_vs_sma50,
+                'range_position_pct': range_pos,
+                'avg_volume_20': avg_vol20,
+            }
+
+        matched = []
+        total_scanned = len(rows)
+        for row in rows:
+            sym = row['symbol']
+            tech = _build_technical(sym, row)
+            # Áp dụng tất cả conditions (AND logic)
+            if all(_apply_screener_condition(tech.get(c['field']), c['op'], c['value']) for c in conditions):
+                matched.append({
+                    'symbol': sym,
+                    'date': str(row['date']),
+                    **tech,
+                })
+
+        matched.sort(key=lambda x: x.get('close') or 0, reverse=True)
+
+        return Response({
+            'rule_id': rule.id,
+            'rule_name': rule.name,
+            'total_scanned': total_scanned,
+            'matched_count': len(matched),
+            'matched': matched,
+        })
 

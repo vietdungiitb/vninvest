@@ -14,7 +14,11 @@ const NAV_ITEMS = [
 
 const STOCK_MGMT_ITEMS = [
   { to: '/watchlist', label: 'Radar thị trường' },
-  // Có thể bổ sung thêm các mục quản lý mã CK khác ở đây
+  { to: '/screener', label: 'Screener' },
+];
+
+const TOOL_ITEMS = [
+  { to: '/admin-ops', label: 'Admin Ops' },
 ];
 
 export default function Layout() {
@@ -81,6 +85,25 @@ export default function Layout() {
                 `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive
                     ? 'bg-blue-900 text-blue-200'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                }`
+              }
+            >
+              {label}
+            </NavLink>
+          ))}
+          {/* Divider for Tools */}
+          <div className="mt-6 mb-1 px-2">
+            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Công cụ</span>
+          </div>
+          {TOOL_ITEMS.map(({ to, label }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-gray-700 text-gray-100'
                     : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
                 }`
               }

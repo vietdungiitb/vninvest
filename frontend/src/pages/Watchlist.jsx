@@ -940,20 +940,12 @@ export default function WatchlistPage() {
                               {item.last_date || '—'}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-3">
-                                <button
-                                  onClick={() => openStockWorkspace(item.symbol)}
-                                  className="text-xs text-blue-300 hover:text-blue-200 font-semibold"
-                                >
-                                  Mở workspace
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTracked(item.id, item.symbol)}
-                                  className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                                >
-                                  Xóa
-                                </button>
-                              </div>
+                              <button
+                                onClick={() => handleDeleteTracked(item.id, item.symbol)}
+                                className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                              >
+                                Xóa
+                              </button>
                             </td>
                           </tr>
                         ))}

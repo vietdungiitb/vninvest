@@ -6,8 +6,8 @@ S13-04,PortfolioAnalyticsPanel component,P0,FE-1,5,S13-02,Risk + Return + Alloca
 S13-05,Integrate analytics into Dashboard,P0,FE-1,2,S13-04,Analytics panel appears below summary cards with lazy load,Done
 S13-06,Stock Detail top panel upgrade,P1,FE-1,3,,Top panel shows realtime quote + company profile + session stats + alert badges,Done
 S13-07,Stock Detail signal summary panel,P1,FE-1,3,S13-06,Signal panel shows price alerts and whale alerts per symbol,Done
-S13-08,Admin ops dashboard frontend,P1,FE-2,3,S13-09,Admin route shows system health + user stats + sync shortcuts,Todo
-S13-09,Admin ops stats API endpoint,P1,BE-2,2,,GET /api/admin-ops/stats/ returns counts and health with IsAdminUser permission,Todo
-S13-10,Backend tests for analytics + admin ops,P1,BE-1,3,S13-02|S13-09,At least 8 new tests pass covering Sharpe + Sortino + Drawdown + TWR + admin stats,Todo
-S13-11,Frontend smoke QA,P1,QA,2,S13-05|S13-07|S13-08,Build pass no console errors on Dashboard + StockDetail + AdminOps,Todo
-S13-12,Sprint 13 signoff,P2,PM,1,S13-10|S13-11,Execution log and acceptance checklist updated,Todo
+S13-08,Admin ops dashboard frontend,P1,FE-2,3,S13-09,Admin route shows system health + user stats + sync shortcuts,Done
+S13-09,Admin ops stats API endpoint,P1,BE-2,2,,GET /api/admin-ops/stats/ returns counts and health with IsAdminUser permission,Done
+S13-10,Backend tests for analytics + admin ops,P1,BE-1,3,S13-02|S13-09,At least 8 new tests pass covering Sharpe + Sortino + Drawdown + TWR + admin stats,Done
+S13-11,Frontend smoke QA,P1,QA,2,S13-05|S13-07|S13-08,Build pass no console errors on Dashboard + StockDetail + AdminOps,Done
+S13-12,Sprint 13 signoff,P2,PM,1,S13-10|S13-11,Execution log and acceptance checklist updated,Done
