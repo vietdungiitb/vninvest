@@ -80,8 +80,11 @@ export default function AdminOps() {
       const res = await getAdminOpsStats();
       setStats(res.data);
     } catch (err) {
-      if (err.response?.status === 403 || err.response?.status === 401) {
+      const status = err.response?.status;
+      if (status === 403 || status === 401) {
         setError('403');
+      } else if (status === 429) {
+        setError('429');
       } else {
         setError(err.message || 'Lỗi không xác định');
       }
@@ -125,6 +128,16 @@ export default function AdminOps() {
         >
           ← Trở về Dashboard
         </button>
+      </div>
+    );
+  }
+
+  if (error === '429') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <p className="text-yellow-600 dark:text-yellow-400 font-semibold">429 — Quá nhiều yêu cầu</p>
+        <p className="text-sm text-gray-500">Server đang bận hoặc rate limit tạm thời. Vui lòng chờ vài giây rồi thử lại.</p>
+        <button className="text-blue-500 hover:underline text-sm" onClick={load}>Thử lại</button>
       </div>
     );
   }

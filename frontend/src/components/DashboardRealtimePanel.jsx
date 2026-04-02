@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { getTrackedSymbols, getRealtimeHealth } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import RealtimeDebugPanel from './RealtimeDebugPanel';
 
 const REALTIME_LABELS = {
   idle: 'Chưa kết nối',
@@ -39,6 +41,19 @@ function formatTime(value) {
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function fmtBil(value) {
+  const v = Number(value) || 0;
+  if (v >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)}N`;
+  if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}T`;
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)}Tr`;
+  return formatNumber(v);
+}
+
+function sizeClassEmoji(cls) {
+  if (cls === 'shark') return '🦈';
+  return '🐋';
 }
 
 export default function DashboardRealtimePanel({ holdings }) {
@@ -317,36 +332,69 @@ export default function DashboardRealtimePanel({ holdings }) {
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-gray-200">Whale alerts gần nhất</h3>
-            <span className="text-xs text-gray-500">Nguồn: user alert stream</span>
+            <Link
+              to="/whale-alerts"
+              className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
+            >
+              Xem tất cả →
+            </Link>
           </div>
           {alerts.length === 0 ? (
             <div className="px-4 py-8 text-sm text-gray-500 text-center">
               Chưa có whale alert mới. Panel sẽ tự cập nhật khi có event.
             </div>
           ) : (
-            <div className="divide-y divide-gray-800/60">
-              {alerts.map((alert, index) => (
-                <div key={`${alert.symbol}-${alert.ts}-${index}`} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-100">{alert.symbol}</p>
-                      <p className="text-xs text-gray-500">{formatTime(alert.ts)}</p>
+            <div className="px-3 py-3 flex flex-col gap-2">
+              {alerts.slice(0, 8).map((alert, index) => {
+                const side = alert.side?.toLowerCase();
+                const isBuy = side === 'buy';
+                const sizeClass = (alert.matched_value || 0) >= 5_000_000_000 ? 'shark' : 'whale';
+                const isBig = sizeClass === 'shark';
+                return (
+                  <Link
+                    key={`${alert.symbol}-${alert.ts}-${index}`}
+                    to={`/whale-alerts/${alert.symbol}`}
+                    className="block"
+                  >
+                    <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${
+                      isBuy
+                        ? 'border-emerald-700/60 bg-emerald-950/30'
+                        : side === 'sell'
+                        ? 'border-rose-700/60 bg-rose-950/30'
+                        : 'border-slate-700/60 bg-slate-900/30'
+                    } ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                      {isBig && (
+                        <span className="absolute right-2 top-1.5 text-[18px] opacity-50">
+                          {sizeClassEmoji(sizeClass)}
+                        </span>
+                      )}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-white text-[13px]">{alert.symbol}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                          isBuy
+                            ? 'bg-emerald-900/60 text-emerald-300'
+                            : side === 'sell'
+                            ? 'bg-rose-900/60 text-rose-300'
+                            : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {isBuy ? '▲ MUA LỚN' : side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold text-white">{fmtBil(alert.matched_value)}</span>
+                        <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        Ngưỡng: {fmtBil(alert.threshold)}
+                      </div>
                     </div>
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${alert.side === 'BUY' ? 'bg-emerald-950/40 text-emerald-300' : 'bg-red-950/40 text-red-300'}`}>
-                      {alert.side || 'N/A'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300 mt-2">
-                    Giá trị khớp: <span className="font-semibold text-gray-100">{formatNumber(alert.matched_value)} VNĐ</span>
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Ngưỡng phát hiện: {formatNumber(alert.threshold)} VNĐ
-                  </p>
-                </div>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
+        <RealtimeDebugPanel />
       </div>
     </div>
   );

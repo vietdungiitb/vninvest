@@ -14,6 +14,7 @@ import {
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import RealtimeDebugPanel from '../components/RealtimeDebugPanel';
 
 const TYPE_LABELS = { SECTOR: 'Ngành', MARKET_CAP: 'Vốn hóa', CUSTOM: 'Tùy chỉnh' };
 const REALTIME_LABELS = {
@@ -635,6 +636,7 @@ export default function WatchlistPage() {
           </button>
         </div>
       ) : (
+        <>
         <div className="flex gap-5">
           {/* Sidebar */}
           <aside className="w-52 flex-shrink-0 space-y-0.5">
@@ -1118,6 +1120,8 @@ export default function WatchlistPage() {
             ) : null}
           </div>
         </div>
+        <RealtimeDebugPanel />
+        </>
       )}
     </div>
   );

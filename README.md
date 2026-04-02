@@ -1,30 +1,114 @@
-# VNInvest - Pro Stock Tracker & Robo-Advisor
+# VNInvest — Pro Stock Tracker & Robo-Advisor
 
-Portfolio Tracker cho chứng khoán Việt Nam (HOSE/HNX/UPCOM). React + Django DRF + Pandas + Redis + Celery + vnstock.
+> **Trạng thái**: Sprint 13 ✅ COMPLETE — 41/41 tests pass, build success  
+> **Stack**: React + Django 6.0.3 + Daphne ASGI + Django Channels + Celery + Redis + vnstock  
+> **Tài liệu đầy đủ**: [docs/ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md)
+
+Portfolio Tracker cho chứng khoán Việt Nam (HOSE/HNX/UPCOM) với realtime WebSocket, analytics nâng cao (Sharpe/Sortino/Drawdown/TWR), whale alert detection, và admin operations dashboard.
+
+---
 
 ## Quick Start Local
 
-### Backend
+### 1. Backend
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py seed_user  # tạo testuser/Test@123456
-python manage.py runserver
+python manage.py seed_user              # testuser / Test@123456
+python manage.py seed_demo_data --reset # holdings, snapshots, watchlist demo
+python manage.py sync_stockprofile --mode all  # 3249 stock profiles
+daphne -b 0.0.0.0 -p 8000 config.asgi:application
 ```
 
-### Docker services dùng cho local
-- PostgreSQL: `my-postgres` -> `localhost:5432`
-- Redis: `redis-server` -> `localhost:6379`
-- Backend local đã đọc cấu hình từ `backend/.env` và dùng `DB_ENGINE=postgres`
-
-### Celery và realtime
+### 2. Celery Worker (realtime ticker)
 ```powershell
 cd backend
 .\.venv\Scripts\Activate.ps1
 celery -A config worker -l info --pool=solo
 ```
 
-- Health: http://127.0.0.1:8000/health/
-- API: http://127.0.0.1:8000/
+### 3. Frontend
+```powershell
+cd frontend
+npm install
+npm start   # http://localhost:3000
+```
+
+### Docker services (local)
+- PostgreSQL: `my-postgres` → `localhost:5432`
+- Redis: `redis-server` → `localhost:6379`
+- Cấu hình tại `backend/.env` (xem `backend/.env.example`)
+
+---
+
+## Tính Năng Chính
+
+| Module | Mô tả |
+|--------|-------|
+| **Portfolio** | NAV realtime, P/L chưa chốt, equity curve, cost basis |
+| **Analytics** | Sharpe, Sortino, Max Drawdown, TWR, Volatility, sector allocation |
+| **Watchlist** | Nhóm thị trường + danh sách theo dõi cá nhân + price alerts |
+| **Realtime Radar** | WebSocket ticker updates, market breadth, whale alerts |
+| **Whale Alerts** | Phát hiện lệnh lớn theo ngưỡng VNĐ, 🦈 shark / 🐋 whale |
+| **Stock Detail** | Realtime quote + candlestick chart + company profile + signal summary |
+| **Admin Ops** | System health, user stats, last sync time, Redis status |
+
+---
+
+## Kiến Trúc Realtime
+
+```
+vnstock API → Celery worker (5s) → collector → compute (VWAP/whale) → Redis pub/sub
+  → Django Channels → WebSocket → useRealtimeFeed.js (frontend hook duy nhất)
+    → Dashboard, Watchlist, StockDetail
+```
+
+**Feature flags** (`backend/config/settings.py`):
+- `REALTIME_ENABLED` — bật/tắt Celery realtime  
+- `REALTIME_DEFAULT_WHALE_THRESHOLD` — ngưỡng whale (mặc định 1 tỷ VNĐ)
+- `REALTIME_CHANNEL_LAYER` — `inmemory` (dev) / `redis` (prod)
+
+---
+
+## API Endpoints (tóm tắt)
+
+| Base | Mô tả |
+|------|-------|
+| `/api/portfolio/` | Portfolio CRUD, holdings, analytics |
+| `/api/stock-management/` | Mã CK, nhóm, watchlist, price alerts |
+| `/api/admin-sync/` | Sync StockProfile, market groups |
+| `/api/realtime/` | Fallback ticker HTTP, whale-feed |
+| `/api/admin-ops/` | System stats (is_staff only) |
+| `/ws/realtime/` | WebSocket gateway (JWT auth) |
+| `/health/` | Health check |
+| `/health/realtime/` | Redis + Channels health |
+
+---
+
+## Chạy Tests
+```powershell
+cd backend
+python manage.py test portfolio.tests.test_api_routes portfolio.tests.test_realtime_compute portfolio.tests.test_realtime_gateway portfolio.tests.test_analytics_advanced portfolio.tests.test_admin_ops
+# → 41/41 PASS
+```
+
+## Build Frontend
+```powershell
+cd frontend
+npm run build   # → build/ ready, 0 errors
+```
+
+---
+
+## Tài Liệu Kỹ Thuật
+
+| Tài liệu | Nội dung |
+|----------|----------|
+| [docs/ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md) | Trạng thái toàn dự án, kiến trúc, API contract, quy tắc phát triển |
+| [docs/SPRINT_EXECUTION_LOG.md](docs/SPRINT_EXECUTION_LOG.md) | Lịch sử công việc chi tiết theo sprint |
+| [docs/WEBSOCKET_EVENT_CONTRACT.md](docs/WEBSOCKET_EVENT_CONTRACT.md) | WS message envelope + event types |
+| [docs/SPRINT13_DETAILED_PLAN.md](docs/SPRINT13_DETAILED_PLAN.md) | Kế hoạch Sprint 13 (analytics + admin ops) |
+| [docs/FEATURE_EXPANSION_BACKLOG.md](docs/FEATURE_EXPANSION_BACKLOG.md) | Backlog tính năng P1/P2/P3 |
+

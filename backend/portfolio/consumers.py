@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
@@ -7,13 +8,15 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from django.contrib.auth.models import AnonymousUser, User
 from rest_framework_simplejwt.tokens import AccessToken
 
+logger = logging.getLogger(__name__)
+
 
 class RealtimeConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):
         try:
             user = await self._authenticate_user()
             if not user or isinstance(user, AnonymousUser):
-                print("[WebSocket] Authentication failed - closing connection")
+                logger.warning("WebSocket: Authentication failed - closing connection")
                 await self.close(code=4401)
                 return
 
@@ -22,7 +25,7 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             self.user_alert_group = f"user_{self.user.id}_alerts"
             await self.channel_layer.group_add(self.user_alert_group, self.channel_name)
             await self.accept()
-            print(f"[WebSocket] User {self.user.id} connected")
+            logger.info("WebSocket: User %d connected", self.user.id)
             await self.send_json(
                 {
                     "event_type": "connected",
@@ -30,7 +33,7 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
                 }
             )
         except Exception as e:
-            print(f"[WebSocket] Connect error: {e}")
+            logger.error("WebSocket: Connect error: %s", e)
             await self.close(code=1011)
 
     async def disconnect(self, code):
@@ -39,9 +42,9 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
                 await self.channel_layer.group_discard(self.user_alert_group, self.channel_name)
             for group_name in getattr(self, "symbol_groups", set()):
                 await self.channel_layer.group_discard(group_name, self.channel_name)
-            print(f"[WebSocket] Disconnected with code {code}")
+            logger.info("WebSocket: Disconnected with code %s", code)
         except Exception as e:
-            print(f"[WebSocket] Disconnect error: {e}")
+            logger.warning("WebSocket: Disconnect error: %s", e)
 
     async def receive_json(self, content, **kwargs):
         action = content.get("action")

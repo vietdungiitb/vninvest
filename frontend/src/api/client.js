@@ -57,6 +57,29 @@ apiClient.interceptors.response.use(
   }
 );
 
+/**
+ * Standalone token refresh — dùng cho WebSocket khi nhận close code 4401.
+ * Returns new access token string, or null nếu refresh thất bại.
+ */
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) return null;
+  try {
+    const { data } = await axios.post(`${apiBaseURL}/auth/token/refresh/`, {
+      refresh: refreshToken,
+    });
+    localStorage.setItem('access_token', data.access);
+    if (data.refresh) {
+      localStorage.setItem('refresh_token', data.refresh);
+    }
+    return data.access;
+  } catch {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    return null;
+  }
+};
+
 // --- Portfolio APIs (prefix portfolio/ theo urls.py) ---
 export const getPortfolios = () => apiClient.get('/portfolio/portfolios/');
 export const createPortfolio = (data) => apiClient.post('/portfolio/portfolios/', data);
@@ -73,7 +96,7 @@ export const createTransaction = (subAccountId, data) =>
   apiClient.post(`/portfolio/subaccounts/${subAccountId}/transactions/`, data);
 
 export const updateTransaction = (id, data) =>
-  apiClient.put(`/portfolio/transactions/${id}/`, data);
+  apiClient.patch(`/portfolio/transactions/${id}/`, data);
 export const deleteTransaction = (id) =>
   apiClient.delete(`/portfolio/transactions/${id}/`);
 

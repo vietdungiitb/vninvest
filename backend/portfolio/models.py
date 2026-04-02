@@ -580,7 +580,15 @@ class UserConfig(models.Model):
     Cấu hình cá nhân của người dùng.
     whale_alert_threshold: ngưỡng lệnh cá mập (triệu VNĐ).
     theme: 'dark' hoặc 'light'.
+    plan: gói dịch vụ (free/basic/pro/premium/admin).
     """
+    class PlanChoices(models.TextChoices):
+        FREE    = 'free',    'Miễn phí'
+        BASIC   = 'basic',   'Cơ bản'
+        PRO     = 'pro',     'Chuyên nghiệp'
+        PREMIUM = 'premium', 'Cao cấp'
+        ADMIN   = 'admin',   'Quản trị viên'
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -600,6 +608,32 @@ class UserConfig(models.Model):
         default='dark',
         verbose_name='Chủ đề giao diện',
     )
+    plan = models.CharField(
+        max_length=20,
+        choices=PlanChoices.choices,
+        default=PlanChoices.FREE,
+        verbose_name='Gói dịch vụ',
+        db_index=True,
+    )
+    plan_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Ngày hết hạn gói',
+        help_text='Null = không hết hạn (admin hoặc lifetime)',
+    )
+    oauth_provider = models.CharField(
+        max_length=20,
+        blank=True,
+        default='',
+        verbose_name='OAuth provider',
+        help_text='google | facebook | (trống = username/password)',
+    )
+    oauth_uid = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        verbose_name='OAuth UID',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -608,4 +642,76 @@ class UserConfig(models.Model):
         verbose_name_plural = 'Cấu hình người dùng'
 
     def __str__(self):
-        return f'Cấu hình {self.user.username} (threshold: {self.whale_alert_threshold:,}M)'
+        return f'Cấu hình {self.user.username} (plan={self.plan}, threshold: {self.whale_alert_threshold:,}M)'
+
+
+# ---------------------------------------------------------------------------
+# WhaleAdvisory: Tư vấn AI từ OpenClaw về tín hiệu cá mập
+# ---------------------------------------------------------------------------
+class WhaleAdvisory(models.Model):
+    """
+    Kết quả phân tích AI (OpenClaw) cho mỗi tín hiệu whale_alert.
+    summary: ~50 từ dành cho gói Pro+.
+    detail: ~200 từ dành cho gói Premium+.
+    Cooldown 15 phút / symbol để tránh spam token.
+    """
+    symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
+    matched_value     = models.BigIntegerField(verbose_name='Giá trị khớp lệnh (VNĐ)')
+    side              = models.CharField(max_length=10, verbose_name='Chiều lệnh')   # BUY/SELL/UNKNOWN
+    threshold         = models.FloatField(default=0, verbose_name='Ngưỡng cá mập')
+    ai_summary        = models.TextField(verbose_name='Tóm tắt AI (Pro+)')
+    ai_detail         = models.TextField(blank=True, default='', verbose_name='Phân tích chi tiết (Premium+)')
+    ai_provider       = models.CharField(max_length=50, default='openclaw', verbose_name='AI provider')
+    prompt_tokens     = models.PositiveIntegerField(default=0, verbose_name='Prompt tokens dùng')
+    completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Completion tokens dùng')
+    created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm tạo')
+
+    class Meta:
+        verbose_name = 'Tư vấn AI Whale'
+        verbose_name_plural = 'Tư vấn AI Whale'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['symbol', 'created_at'])]
+
+    def __str__(self):
+        return f'{self.symbol} {self.side} | {self.ai_summary[:60]}'
+
+
+# ---------------------------------------------------------------------------
+# IntradayTick: Lưu từng tick giao dịch trong phiên (từ Redis Streams)
+# ---------------------------------------------------------------------------
+class IntradayTick(models.Model):
+    """
+    Lưu từng tick khớp lệnh intraday, được consumer DbWriter ghi từ Redis Stream.
+    Dùng để phân tích lịch sử trong ngày, VWAP, phát hiện cá mập, v.v.
+    """
+    class Side(models.TextChoices):
+        BUY = 'BUY', 'Mua chủ động'
+        SELL = 'SELL', 'Bán chủ động'
+        UNKNOWN = 'UNKNOWN', 'Không xác định'
+
+    symbol = models.CharField(max_length=10, verbose_name='Mã CK', db_index=True)
+    trade_date = models.DateField(verbose_name='Ngày giao dịch', db_index=True)
+    trade_time = models.TimeField(verbose_name='Giờ khớp lệnh')
+    price = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Giá khớp (VNĐ)')
+    volume = models.BigIntegerField(verbose_name='KL khớp (cổ phiếu)')
+    side = models.CharField(
+        max_length=10, choices=Side.choices,
+        default=Side.UNKNOWN, verbose_name='Chiều lệnh',
+    )
+    match_type = models.CharField(max_length=20, blank=True, default='', verbose_name='Loại khớp')
+    stream_id = models.CharField(
+        max_length=30, blank=True, default='',
+        verbose_name='Redis Stream ID', db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Thời điểm ghi')
+
+    class Meta:
+        verbose_name = 'Tick khớp lệnh intraday'
+        verbose_name_plural = 'Tick khớp lệnh intraday'
+        indexes = [
+            models.Index(fields=['symbol', 'trade_date', 'trade_time']),
+        ]
+        ordering = ['-trade_date', '-trade_time']
+
+    def __str__(self):
+        return f'{self.symbol} | {self.trade_date} {self.trade_time} | {self.side} {self.volume}@{self.price:,.0f}'

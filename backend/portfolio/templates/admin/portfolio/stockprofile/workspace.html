@@ -220,7 +220,30 @@
       grid-template-columns: 1fr;
     }
   }
+  #kline-chart-container {
+    width: 100%;
+    height: 420px;
+    background: #0f172a;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .source-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  .source-badge.db {
+    background: #fef9c3;
+    color: #854d0e;
+    border-color: #fde047;
+  }
 </style>
+<script src="https://unpkg.com/klinecharts@9.8.12/dist/umd/klinecharts.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -258,6 +281,15 @@
               {{ overview_display.change_value }} · {{ overview_display.change_pct }}
             </div>
           </div>
+          <div>
+            <div style="font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:#94a3b8;">Cập nhật lúc</div>
+            <div style="font-size:14px; color:#cbd5e1;">{{ overview_display.last_date }}</div>
+            <div style="margin-top:4px;">
+              <span class="source-badge {% if overview_display.data_source != 'vnstock live' %}db{% endif %}" style="font-size:10px;">
+                {{ overview_display.data_source }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -287,48 +319,16 @@
   <div class="workspace-grid">
     <div style="display:grid; gap:16px;">
       <section class="panel-card">
-        <h2 class="panel-title">Biểu đồ nến EOD 48 phiên gần nhất</h2>
-        <p class="panel-subtitle">Panel nến gọn để nhìn nhanh nhịp giá, biên độ và cấu trúc tăng giảm gần đây.</p>
-        <div class="sparkline-wrap">
-          <div class="sparkline-meta">
-            <span>Số phiên dữ liệu: {{ price_row_count }}</span>
-            <span>Min: {{ sparkline_min }} · Max: {{ sparkline_max }}</span>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <h2 class="panel-title" style="margin-bottom:2px;">Biểu đồ nến EOD — {{ price_row_count }} phiên</h2>
+            <p class="panel-subtitle" style="margin:0;">Min: {{ sparkline_min }} · Max: {{ sparkline_max }}</p>
           </div>
-          {% if candlestick_items %}
-            <svg viewBox="0 0 640 240" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="Biểu đồ nến EOD">
-              {% for candle in candlestick_items %}
-                <line x1="{{ candle.x_center }}" y1="{{ candle.wick_top }}" x2="{{ candle.x_center }}" y2="{{ candle.wick_bottom }}" stroke="{% if candle.tone == 'up' %}#16a34a{% else %}#dc2626{% endif %}" stroke-width="2"></line>
-                <rect x="{{ candle.body_x }}" y="{{ candle.body_top }}" width="{{ candle.body_width }}" height="{{ candle.body_height }}" rx="1.4" fill="{% if candle.tone == 'up' %}#22c55e{% else %}#ef4444{% endif %}"></rect>
-              {% endfor %}
-            </svg>
-          {% else %}
-            <div style="padding:40px 0; text-align:center; color:#64748b;">Chưa đủ dữ liệu giá để hiển thị biểu đồ nến.</div>
-          {% endif %}
+          <span class="source-badge {% if overview_display.data_source != 'vnstock live' %}db{% endif %}">
+            {{ overview_display.data_source }}
+          </span>
         </div>
-      </section>
-
-      <section class="panel-card">
-        <h2 class="panel-title">Đường xu hướng giá EOD</h2>
-        <p class="panel-subtitle">Sparkline giữ lại để nhìn nhanh xu hướng tổng thể trên cùng cửa sổ vận hành.</p>
-        <div class="sparkline-wrap">
-          <div class="sparkline-meta">
-            <span>Khung nhìn: 180 phiên gần nhất</span>
-            <span>Min: {{ sparkline_min }} · Max: {{ sparkline_max }}</span>
-          </div>
-          {% if sparkline_points %}
-            <svg viewBox="0 0 640 210" preserveAspectRatio="none" class="sparkline-svg" role="img" aria-label="Biểu đồ xu hướng giá EOD">
-              <defs>
-                <linearGradient id="adminStockChartFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.28"></stop>
-                  <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.03"></stop>
-                </linearGradient>
-              </defs>
-              <polyline fill="none" stroke="#38bdf8" stroke-width="3" points="{{ sparkline_points }}"></polyline>
-            </svg>
-          {% else %}
-            <div style="padding:40px 0; text-align:center; color:#64748b;">Chưa đủ dữ liệu giá để render sparkline.</div>
-          {% endif %}
-        </div>
+        <div id="kline-chart-container"></div>
       </section>
 
       <section class="panel-card">
@@ -391,8 +391,13 @@
       </section>
 
       <section class="panel-card">
-        <h2 class="panel-title">Độ sâu giả lập</h2>
-        <p class="panel-subtitle">Mô phỏng ba mức mua bán gần giá hiện tại để màn backend gần hơn bố cục trading screen.</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <h2 class="panel-title" style="margin:0;">Độ sâu thị trường</h2>
+          <span class="source-badge {% if depth_panel.source != 'live' %}db{% endif %}">
+            {{ depth_panel.source }}
+          </span>
+        </div>
+        <p class="panel-subtitle">Sổ lệnh 3 mức mua/bán gần giá hiện tại.</p>
         <div class="sparkline-meta" style="margin-bottom:12px;">
           <span>Tổng KL mua: {{ depth_panel.buy_total }}</span>
           <span>Tổng KL bán: {{ depth_panel.sell_total }}</span>
@@ -415,7 +420,7 @@
                 <td>{{ row.ask_volume }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4">Chưa đủ dữ liệu để mô phỏng độ sâu.</td></tr>
+              <tr><td colspan="4">Chưa đủ dữ liệu.</td></tr>
             {% endfor %}
           </tbody>
         </table>
@@ -464,4 +469,91 @@
     </div>
   </div>
 </div>
+
+{% block extrascripts %}
+{{ block.super }}
+<script>
+(function () {
+  const raw = {{ chart_ohlcv_json|safe }};
+  if (!raw || !raw.length || typeof klinecharts === 'undefined') return;
+
+  const container = document.getElementById('kline-chart-container');
+  if (!container) return;
+
+  const chart = klinecharts.init(container, {
+    timezone: 'Asia/Ho_Chi_Minh',
+    styles: {
+      grid: {
+        horizontal: { show: true, size: 1, color: '#1e293b', style: 'dashed' },
+        vertical: { show: false },
+      },
+      candle: {
+        type: 'candle_solid',
+        bar: {
+          upColor: '#22c55e',
+          downColor: '#f43f5e',
+          noChangeColor: '#94a3b8',
+          upBorderColor: '#16a34a',
+          downBorderColor: '#be123c',
+          upWickColor: '#16a34a',
+          downWickColor: '#be123c',
+        },
+        tooltip: {
+          showRule: 'follow_cross',
+          showType: 'rect',
+          labels: ['T', 'M', 'C', 'Đ', 'T', 'KL'],
+          rect: {
+            position: 'fixed',
+            paddingLeft: 8, paddingRight: 8, paddingTop: 4, paddingBottom: 4,
+            borderRadius: 6, borderSize: 1, borderColor: '#1e293b', color: '#0f172a',
+          },
+          text: { size: 11, color: '#94a3b8', marginLeft: 8 },
+        },
+      },
+      xAxis: {
+        axisLine: { color: '#1e293b' },
+        tickText: { color: '#64748b', size: 11 },
+      },
+      yAxis: {
+        position: 'right',
+        axisLine: { color: '#1e293b' },
+        tickText: { color: '#64748b', size: 11 },
+      },
+      crosshair: {
+        horizontal: {
+          line: { style: 'dashed', color: '#475569' },
+          text: { color: '#e2e8f0', borderColor: '#1e293b', backgroundColor: '#0f172a' },
+        },
+        vertical: {
+          line: { style: 'dashed', color: '#475569' },
+          text: { color: '#e2e8f0', borderColor: '#1e293b', backgroundColor: '#0f172a' },
+        },
+      },
+    },
+  });
+
+  chart.createIndicator('MA', false, { id: 'candle_pane' });
+  chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+
+  const kLineData = raw
+    .filter(function (d) { return d.close != null; })
+    .map(function (d) {
+      return {
+        timestamp: d.timestamp,
+        open: d.open != null ? d.open : d.close,
+        high: d.high != null ? d.high : d.close,
+        low: d.low != null ? d.low : d.close,
+        close: d.close,
+        volume: d.volume || 0,
+      };
+    })
+    .sort(function (a, b) { return a.timestamp - b.timestamp; });
+
+  chart.applyNewData(kLineData);
+
+  var ro = new ResizeObserver(function () { chart.resize(); });
+  ro.observe(container);
+})();
+</script>
+{% endblock %}
 {% endblock %}

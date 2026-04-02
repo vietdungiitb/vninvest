@@ -374,3 +374,139 @@ Trang thai: DONE — 12/12 tasks Done
 - `frontend/src/pages/AdminOps.jsx` — tao moi
 - `frontend/src/App.jsx` — route /admin-ops
 - `docs/TASKBOARD_SPRINT13.csv` — tat ca 12 tasks → Done
+
+---
+
+## Session 2026-04-02 — Stock Workspace UI + Admin Workspace nang cap
+
+### 1. Stock Workspace layout refactor (StockDetail.jsx)
+
+Yeu cau: graph chiem 2/3 chieu rong, Do sau thi truong va Technical snapshot xuong duoi graph, 3 cot deu nhau.
+
+Truoc:
+- Grid: `xl:grid-cols-[minmax(0,1.74fr)_minmax(0,1fr)_minmax(0,1fr)]`
+- Chart: `xl:row-span-2` (keo dai 2 hang)
+- Col 2: PriceDepthPanel + TechnicalSnapshot (stack doc)
+- Col 3: Intraday + Breadth (stack doc)
+
+Sau:
+- Grid: `xl:grid-cols-3` (3 cot deu nhau — 1fr each)
+- Row 1: Chart (`xl:col-span-2`) + Intraday/Breadth (`xl:row-span-2`, col 3)
+- Row 2: PriceDepthPanel (col 1) + TechnicalSnapshot (col 2) + [Intraday tiep tuc]
+- Row 3: Ngu canh ca nhan + MoneyFlowDonut + Alerts (3 col full width)
+
+Files sua: `frontend/src/pages/StockDetail.jsx`
+
+### 2. Admin Stock Workspace — KLineChart + du lieu thuc vnstock + depth live
+
+Yeu cau: bieu do nen admin khong hien thi, dung klinecharts, du lieu thuc tu vnstock va Redis.
+
+**2a. admin.py**
+- Them `import json`, `import threading`, `from datetime import datetime`
+- Them ham `_fetch_live_workspace_data(symbol)`:
+  - Goi `vnstock price_board` trong thread daemon, timeout 8s
+  - Lay ticker live: match_price, ref_price, change_value/pct, OHLV, ceiling/floor
+  - Lay `bid_ask` 3 muc gia thuc tu price_board (neu co), tinh buy_total/sell_total
+  - Exception safe — tra ve `{'ticker': None, 'depth': None}` neu loi
+- Trong `_admin_stock_profile_workspace_view`:
+  - Chay live thread song song voi cac DB query
+  - Merge live ticker vao overview neu lay duoc (fallback ve DB)
+  - Them `chart_ohlcv_json`: serialize 180 nen OHLCV thanh JSON (timestamp ms, open/high/low/close/volume)
+  - depth_panel dung du lieu that neu lay duoc, fallback _build_mock_depth_levels, them key `source`
+  - overview_display them `data_source` ('vnstock live' / 'database'), `last_date` tu live ticker
+
+**2b. workspace.html**
+- Load `klinecharts@9.8.12` tu CDN unpkg trong extrastyle block
+- Them CSS: `#kline-chart-container` (420px, background #0f172a), `.source-badge` (xanh = live, vang = db)
+- Xoa hai panel SVG (bieu do nen thu cong + sparkline)
+- Them 1 panel `#kline-chart-container` voi badge data_source
+- Them `{% block extrascripts %}` cuoi trang:
+  - Init klinecharts voi styles toi (mau nen, grid, candle, crosshair giong StockDetail)
+  - Tao indicator MA (tren pane chinh) + VOL (pane phu)
+  - applyNewData tu `chart_ohlcv_json|safe`
+  - ResizeObserver de tu resize
+- Depth panel: doi ten tu "Do sau gia lap" -> "Do sau thi truong", them source badge `live/simulated`
+- Hero card: them dong "Cap nhat luc" + source badge
+
+Files sua:
+- `backend/portfolio/admin.py`
+- `backend/portfolio/templates/admin/portfolio/stockprofile/workspace.html`
+
+Validation: `manage.py check` pass — System check identified no issues (0 silenced).
+
+---
+
+## Session 2026-04-02 — Hotfixes StockProfile + Admin 429 + Dashboard Whale UI
+
+Trang thai: DONE
+
+### 1. Fix StockProfile thiếu company_name / exchange
+
+Vấn đề: `sync_stockprofile --mode all` trả về 3249 profiles nhưng `company_name=''` và `exchange=''` với phần lớn records.
+
+Nguyên nhân: `build_stock_profile_payload()` trong `services.py` chưa merge metadata từ vnstock `listing.symbols_by_exchange()`.
+
+Fix:
+- Thêm `_fetch_exchange_lookup(timeout=20)` trong `services.py`:
+  - Chạy `Vnstock().stock('ACB', source='VCI').listing.symbols_by_exchange()` trong daemon thread.
+  - Timeout 20 giây, bắt `BaseException` (vnstock có thể gọi `sys.exit()` khi bị VCI rate-limit).
+  - Trả `{}` nếu timeout/lỗi, không làm crash sync flow.
+- `build_stock_profile_payload()` gọi `_fetch_exchange_lookup()` 1 lần duy nhất rồi merge `company_name` và `exchange` vào tất cả symbol.
+- Merge symbol từ exchange_lookup nhưng không có trong group nào (đảm bảo không bỏ sót).
+
+Kết quả: `sync_stockprofile --mode all` → 3249 profiles, 0 empty company_name/exchange.
+
+Files sua: `backend/portfolio/services.py`
+
+---
+
+### 2. Fix HTTP 429 trên trang /admin-ops
+
+Vấn đề: `http://localhost:3000/admin-ops Failed to load resource: status 429`
+
+Nguyên nhân: Khi `_fetch_exchange_lookup()` cũ chỉ bắt `Exception`, vnstock gọi `sys.exit()` khiến thread thoát bất thường. Không phải rate-limit thực từ Django, mà là response 429 từ VCI bên trong vnstock không được xử lý.
+
+Fix:
+- `_fetch_exchange_lookup()`: đổi `except Exception` → `except BaseException` (bắt cả `SystemExit`).
+- `AdminOps.jsx`: thêm case `status === 429` trong `load()` → hiển thị UI riêng màu vàng "429 — Quá nhiều yêu cầu, vui lòng thử lại sau vài giây" + nút Retry.
+
+Files sua: `backend/portfolio/services.py`, `frontend/src/pages/AdminOps.jsx`
+
+---
+
+### 3. Fix JSX compilation errors
+
+**DashboardRealtimePanel.jsx**:
+- Lỗi: "Unterminated JSX contents" — thiếu `</div>` đóng outer wrapper.
+- Fix: thêm `</div>` phù hợp với cấu trúc JSX.
+
+**Watchlist.jsx**:
+- Lỗi: "Adjacent JSX elements must be wrapped in enclosing tag" trong ternary branch.
+- Fix: bọc `<div className="flex gap-5">` và `<RealtimeDebugPanel />` trong `<>...</>` fragment.
+
+Kết quả: `Compiled successfully!` tại `http://localhost:3000`.
+
+Files sua: `frontend/src/components/DashboardRealtimePanel.jsx`, `frontend/src/pages/Watchlist.jsx`
+
+---
+
+### 4. Nâng cấp Whale Alerts panel trên Dashboard
+
+Vấn đề: Panel "Whale alerts gần nhất" trên `/dashboard` (DashboardRealtimePanel.jsx) dùng plain cards đơn giản, thiếu nhất quán với WhaleAlertsDashboard đã có UI phong phú.
+
+Thay đổi trong `DashboardRealtimePanel.jsx`:
+- Import `Link` từ `react-router-dom`.
+- Thêm `fmtBil(v)` formatter: `12.3T`, `1.5N`, `500Tr` thay vì raw number.
+- Thêm `sizeClassEmoji(cls)`: 🦈 shark (≥5T) / 🐋 whale.
+- Header panel: thêm link "Xem tất cả →" → `/whale-alerts`.
+- Mỗi card là `<Link>` tới `/whale-alerts/{symbol}`.
+- Border màu emerald (mua) / rose (bán) / slate (neutral).
+- Label "▲ MUA LỚN" / "▼ BÁN LỚN" thay "BUY"/"SELL".
+- Emoji size ở góc phải card khi là shark.
+- `animate-pulse-once` trên alert mới nhất (index 0).
+- Normalize `alert.side` từ uppercase WS → lowercase cho logic màu sắc.
+- Giới hạn tối đa 8 alerts hiển thị.
+
+Files sua: `frontend/src/components/DashboardRealtimePanel.jsx`
+
+

@@ -33,3 +33,42 @@ def realtime_health(request):
 
     return JsonResponse(result)
 
+
+def streams_health(request):
+    """
+    GET /health/streams/
+    Trả về trạng thái Redis Streams: ping, độ dài stream mỗi symbol.
+    Public endpoint không cần auth (chỉ dùng nội bộ / observability).
+    """
+    result = {
+        "stream_redis_url": getattr(settings, "STREAM_REDIS_URL", "redis://localhost:6379/1"),
+        "redis_ok": False,
+        "symbols": {},
+        "total_ticks": 0,
+    }
+
+    try:
+        import redis as redis_lib
+        stream_url = getattr(settings, "STREAM_REDIS_URL", "redis://localhost:6379/1")
+        client = redis_lib.from_url(stream_url, socket_connect_timeout=1, decode_responses=True)
+        client.ping()
+        result["redis_ok"] = True
+    except Exception as exc:
+        result["error"] = str(exc)
+        return JsonResponse(result, status=503)
+
+    # Liệt kê tất cả stream keys
+    try:
+        keys = client.keys("vninvest:ticks:*")
+        total = 0
+        for key in sorted(keys):
+            symbol = key.replace("vninvest:ticks:", "")
+            length = client.xlen(key)
+            total += length
+            result["symbols"][symbol] = {"stream_key": key, "tick_count": length}
+        result["total_ticks"] = total
+    except Exception as exc:
+        result["scan_error"] = str(exc)
+
+    return JsonResponse(result)
+

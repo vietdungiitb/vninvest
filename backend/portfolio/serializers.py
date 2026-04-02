@@ -31,11 +31,11 @@ class TransactionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
         fields = [
-            'id', 'sub_account', 'sub_account_name', 'sub_account_type', 'symbol', 
+            'id', 'sub_account', 'sub_account_name', 'sub_account_type', 'symbol',
             'transaction_type', 'transaction_type_display',
             'date', 'price', 'quantity', 'fee', 'notes', 'total_value', 'created_at',
         ]
-        read_only_fields = ['id', 'created_at']
+        read_only_fields = ['id', 'sub_account', 'created_at']
 
     def validate_symbol(self, value):
         return value.upper().strip()

@@ -54,3 +54,18 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
     price = changes.get("current_price") or 0.0
     now = timezone.now() if hasattr(timezone, "now") else datetime.utcnow()
     return pd.DataFrame([{"ts": now, "price": float(price), "volume": 0.0, "side": "UNKNOWN"}])
+
+
+def collect_and_push(symbol: str, producer) -> int:
+    """
+    Thu thập intraday ticks và push vào Redis Stream qua TickProducer.
+    Trả về số tick đã push. Không ném exception ra ngoài.
+    """
+    try:
+        df = collect_intraday_frame(symbol)
+        pushed = producer.push_intraday_ticks(symbol, df)
+        return pushed
+    except Exception as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning("collect_and_push(%s) error: %s", symbol, exc)
+        return 0

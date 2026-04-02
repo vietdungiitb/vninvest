@@ -106,8 +106,27 @@ Endpoints:
 
 from decimal import Decimal
 from datetime import date, datetime, timedelta
-
+import concurrent.futures as _cf
 import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _vnstock_call(fn, timeout=8):
+    """Chạy fn(vnstock) trong thread riêng với timeout.
+    Bắt cả SystemExit (vnstock gọi sys.exit() khi rate limit).
+    Trả về (result, None) hoặc (None, error_msg).
+    """
+    try:
+        with _cf.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(fn)
+            try:
+                return future.result(timeout=timeout), None
+            except _cf.TimeoutError:
+                return None, f'vnstock timeout after {timeout}s'
+    except (Exception, SystemExit) as exc:
+        return None, str(exc)
+
 
 from django.db.models import Max, Min
 from django.utils import timezone
@@ -117,6 +136,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
@@ -141,7 +161,7 @@ from .analytics import (
     build_risk_metrics, compute_allocation_by_sector,
 )
 
-logger = logging.getLogger(__name__)
+# logger already defined above with _vnstock_call helper
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +237,7 @@ class WatchlistSyncView(APIView):
 
         try:
             results = sync_watchlist_prices(user_id=request.user.id, days=days)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.error('WatchlistSyncView lỗi: %s', exc, exc_info=True)
             return Response(
                 {'detail': f'Sync thất bại: {exc}'},
@@ -232,11 +252,19 @@ class RealtimeTickerView(APIView):
     Dữ liệu thực từ vnstock price_board, fallback về DB nếu vnstock lỗi.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # --- Cache ngắn 10s để giảm call vnstock ---
+        ticker_cache_key = f'ticker:{normalized_symbol}'
+        cached_ticker = _cache_get(ticker_cache_key)
+        if cached_ticker is not None:
+            return Response(cached_ticker)
 
         # --- Thử lấy dữ liệu thực từ vnstock price_board ---
         try:
@@ -274,7 +302,7 @@ class RealtimeTickerView(APIView):
                     change_value = round(match_price - ref_price, 2)
                     change_pct = round((match_price - ref_price) / ref_price * 100, 2)
 
-                return Response({
+                live_data = {
                     'symbol': normalized_symbol,
                     'current_price': match_price,
                     'prev_price': ref_price,
@@ -288,8 +316,10 @@ class RealtimeTickerView(APIView):
                     'freshness_seconds': 0,
                     'stale': False,
                     'source': 'live',
-                })
-        except Exception as exc:
+                }
+                _cache_set(ticker_cache_key, live_data, timeout=10)
+                return Response(live_data)
+        except (Exception, SystemExit) as exc:
             logger.warning('RealtimeTickerView vnstock lỗi %s: %s', normalized_symbol, exc)
 
         # --- Fallback: DB ---
@@ -339,10 +369,12 @@ class IntradayMatchedView(APIView):
     Lấy dữ liệu khớp lệnh trong phiên giao dịch hôm nay từ vnstock.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -356,13 +388,58 @@ class IntradayMatchedView(APIView):
         if cached is not None:
             return Response(cached)
 
+        # Tier 1: đọc từ Redis Stream (nếu có)
+        try:
+            from portfolio.realtime.stream_reader import StreamReader
+            _reader = StreamReader()
+            stream_ticks = _reader.get_intraday_ticks(normalized_symbol, count=page_size)
+            if stream_ticks:
+                trades = []
+                for tick in stream_ticks:
+                    raw_time = tick.get("ts", "")
+                    try:
+                        import pandas as _pd
+                        ts = _pd.Timestamp(raw_time)
+                        time_str = ts.strftime('%H:%M:%S')
+                    except Exception:
+                        time_str = str(raw_time)[:8]
+                    side_raw = tick.get("side", "UNKNOWN").lower()
+                    side = "buy" if side_raw == "buy" else ("sell" if side_raw == "sell" else "neutral")
+                    try:
+                        price_val = float(tick.get("price", 0)) or None
+                        vol_val = int(float(tick.get("volume", 0)))
+                    except (ValueError, TypeError):
+                        price_val = None
+                        vol_val = None
+                    if price_val is None:
+                        continue
+                    trades.append({
+                        "time": time_str,
+                        "price": price_val,
+                        "volume": vol_val,
+                        "side": side,
+                        "match_type": tick.get("side", ""),
+                    })
+                if trades:
+                    result = {
+                        "symbol": normalized_symbol,
+                        "trades": trades,
+                        "total": len(trades),
+                        "source": "stream",
+                        "fetched_at": timezone.now().isoformat(),
+                    }
+                    _cache_set(cache_key, result, timeout=8)
+                    return Response(result)
+        except (Exception, SystemExit) as _exc:
+            logger.debug("Stream fallback failed for %s: %s", normalized_symbol, _exc)
+
         try:
             from vnstock import Vnstock  # import trễ
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             df = stock.quote.intraday(symbol=normalized_symbol, page_size=page_size)
         except ImportError:
             return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -427,10 +504,13 @@ class PriceBoardView(APIView):
     Trả về sổ lệnh 3 mức giá (bid/ask) và dữ liệu khớp thực từ vnstock price_board.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
+        import pandas as pd
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'price_board:{normalized_symbol}'
@@ -444,7 +524,7 @@ class PriceBoardView(APIView):
             df = stock.trading.price_board(symbols_list=[normalized_symbol])
         except ImportError:
             return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -511,10 +591,12 @@ class SectorBreadthView(APIView):
     Trả về diễn biến giá các mã cùng nhóm ngành với symbol, dùng price_board.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'breadth:{normalized_symbol}'
@@ -557,7 +639,7 @@ class SectorBreadthView(APIView):
             df = stock.trading.price_board(symbols_list=all_symbols)
         except ImportError:
             return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu breadth: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -606,11 +688,13 @@ class WhaleFeedView(APIView):
     Trả về các lệnh lớn trong phiên + tóm tắt dòng tiền từ intraday data.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         import pandas as pd
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         config = UserConfig.objects.filter(user=request.user).values('whale_alert_threshold').first()
@@ -622,11 +706,30 @@ class WhaleFeedView(APIView):
         if cached is not None:
             return Response(cached)
 
+        # Tier 1: đọc từ Redis Stream
+        stream_df = None
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
-        except Exception as exc:
+            from portfolio.realtime.stream_reader import StreamReader
+            _reader = StreamReader()
+            stream_ticks = _reader.get_intraday_ticks(normalized_symbol, count=500)
+            if stream_ticks:
+                stream_df = pd.DataFrame([{
+                    "price": float(t.get("price", 0)),
+                    "volume": float(t.get("volume", 0)),
+                    "match_type": t.get("side", "UNKNOWN"),
+                    "side": t.get("side", "UNKNOWN"),
+                } for t in stream_ticks])
+        except (Exception, SystemExit) as _exc:
+            logger.debug("WhaleFeed stream fallback failed for %s: %s", normalized_symbol, _exc)
+
+        try:
+            if stream_df is not None and not stream_df.empty:
+                df = stream_df
+            else:
+                from vnstock import Vnstock
+                stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+                df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
+        except (Exception, SystemExit) as exc:
             logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -725,18 +828,20 @@ class RVOLView(APIView):
     Tính RVOL (Relative Volume) theo bucket 15 phút từ intraday data.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         import pandas as pd
         normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol:
+        if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -808,7 +913,7 @@ class DepthChartView(APIView):
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             df = stock.trading.price_board(symbols_list=[normalized_symbol])
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -905,7 +1010,7 @@ class FinancialMetricsView(APIView):
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             df = stock.finance.ratio(period='year', lang='vi', dropna=True)
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -1063,7 +1168,7 @@ class UserConfigView(generics.RetrieveUpdateAPIView):
             },
         )
         if created:
-            print(f"Created UserConfig for {self.request.user.username}")
+            logger.info("Created UserConfig for user: %s", self.request.user.username)
         return user_config
 
 
@@ -1989,7 +2094,7 @@ class StockWorkspaceOverviewView(APIView):
                 if len(prices) >= 2:
                     payload['average_price'] = round(sum(prices) / len(prices), 2)
 
-        except Exception as exc:
+        except (Exception, SystemExit) as exc:
             logger.warning('StockWorkspaceOverviewView vnstock overlay lỗi %s: %s', normalized_symbol, exc)
 
         # 52W high/low thực từ vnstock history (1D, 365 ngày)
@@ -2035,9 +2140,14 @@ class StockWorkspaceOverviewView(APIView):
 @method_decorator(csrf_exempt, name='dispatch')
 class StockWorkspaceChartView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol or len(normalized_symbol) > 10:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
         generics.get_object_or_404(StockProfile, symbol=normalized_symbol)
 
         try:
@@ -2048,23 +2158,76 @@ class StockWorkspaceChartView(APIView):
         days = min(max(days, 30), 365)
         end_date = date.today()
         start_date = end_date - timedelta(days=days)
-        price_rows = list(
-            DailyPrice.objects
-            .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
-            .order_by('date')
-            .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
-        )
-        series = [
-            {
-                'date': str(row['date']),
-                'open': _to_float(row['open_price']),
-                'high': _to_float(row['high_price']),
-                'low': _to_float(row['low_price']),
-                'close': float(row['close_price']),
-                'volume': _to_float(row['volume']),
-            }
-            for row in price_rows
-        ]
+
+        # --- 1. Redis cache ---
+        cache_key = f'chart:{normalized_symbol}:{days}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        # --- 2. vnstock — dữ liệu thật (source KBS, interval 1D) ---
+        series = None
+        tech_rows = None
+
+        def _fetch_vnstock():
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='KBS')
+            return stock.quote.history(
+                start=str(start_date),
+                end=str(end_date),
+                interval='1D',
+            )
+
+        try:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(_fetch_vnstock)
+                try:
+                    df = future.result(timeout=8)
+                except concurrent.futures.TimeoutError:
+                    logger.warning('StockWorkspaceChartView vnstock timeout %s', normalized_symbol)
+                    df = None
+            if df is not None and not df.empty:
+                series = []
+                for _, row in df.iterrows():
+                    try:
+                        raw_time = row.get('time', row.get('date', ''))
+                        d = raw_time.date() if hasattr(raw_time, 'date') else date.fromisoformat(str(raw_time)[:10])
+                        series.append({
+                            'date': str(d),
+                            'open': float(row['open']) if row.get('open') is not None else None,
+                            'high': float(row['high']) if row.get('high') is not None else None,
+                            'low': float(row['low']) if row.get('low') is not None else None,
+                            'close': float(row['close']),
+                            'volume': float(row['volume']) if row.get('volume') is not None else None,
+                        })
+                    except (TypeError, ValueError, KeyError):
+                        continue
+                tech_rows = [{'close_price': s['close'], 'volume': s['volume']} for s in series]
+        except (Exception, SystemExit) as exc:
+            logger.warning('StockWorkspaceChartView vnstock lỗi %s: %s', normalized_symbol, exc)
+
+        # --- 3. Fallback DB ---
+        if not series:
+            db_rows = list(
+                DailyPrice.objects
+                .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
+                .order_by('date')
+                .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
+            )
+            series = [
+                {
+                    'date': str(row['date']),
+                    'open': _to_float(row['open_price']),
+                    'high': _to_float(row['high_price']),
+                    'low': _to_float(row['low_price']),
+                    'close': float(row['close_price']),
+                    'volume': _to_float(row['volume']),
+                }
+                for row in db_rows
+            ]
+            tech_rows = db_rows  # DB rows already have close_price key
+
         overview = _build_stock_workspace_overview(normalized_symbol, request.user)
         payload = {
             'symbol': normalized_symbol,
@@ -2072,10 +2235,14 @@ class StockWorkspaceChartView(APIView):
             'start_date': str(start_date),
             'end_date': str(end_date),
             'points': StockWorkspaceChartPointSerializer(series, many=True).data,
-            'technical': StockWorkspaceTechnicalSerializer(_compute_stock_workspace_technical(price_rows, overview)).data,
+            'technical': StockWorkspaceTechnicalSerializer(
+                _compute_stock_workspace_technical(tech_rows or [], overview)
+            ).data,
         }
 
-        return Response(StockWorkspaceChartResponseSerializer(payload).data)
+        result = StockWorkspaceChartResponseSerializer(payload).data
+        _cache_set(cache_key, result, timeout=3600)
+        return Response(result)
 
 # --- StockProfile Views ---
 from .models import StockProfile

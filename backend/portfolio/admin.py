@@ -1,3 +1,7 @@
+import json
+import threading
+from datetime import datetime
+
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -12,6 +16,7 @@ import pandas as pd
 from .models import (
     AccountSnapshot,
     DailyPrice,
+    IntradayTick,
     MarketGroupSyncLog,
     Portfolio,
     PriceAlertRule,
@@ -255,6 +260,80 @@ def _build_mock_depth_levels(overview: dict) -> dict:
     }
 
 
+def _fetch_live_workspace_data(symbol):
+    """Lấy ticker live + depth thật từ vnstock (chạy trong thread riêng, timeout 8s)."""
+    result = {'ticker': None, 'depth': None}
+    try:
+        from vnstock import Vnstock
+        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        df = stock.trading.price_board(symbols_list=[symbol])
+        if df is not None and not df.empty:
+            def _f(val):
+                try:
+                    v = float(val)
+                    return v if v == v and v != 0 else None
+                except (TypeError, ValueError):
+                    return None
+
+            def _i(val):
+                try:
+                    v = float(val)
+                    return int(v) if v == v else None
+                except (TypeError, ValueError):
+                    return None
+
+            ls = df['listing'].iloc[0]
+            mt = df['match'].iloc[0]
+            match_price = _f(mt.get('match_price'))
+            ref_price = _f(ls.get('ref_price')) or _f(mt.get('reference_price'))
+            change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
+            change_pct = round((match_price - ref_price) / ref_price * 100, 2) if match_price and ref_price else None
+            result['ticker'] = {
+                'current_price': match_price,
+                'prev_price': ref_price,
+                'change_value': change_value,
+                'change_pct': change_pct,
+                'open_price': _f(mt.get('open_price')),
+                'high_price': _f(mt.get('highest')),
+                'low_price': _f(mt.get('lowest')),
+                'volume': _i(mt.get('accumulated_volume')),
+                'ceiling_price': _f(ls.get('ceiling_price')),
+                'floor_price': _f(ls.get('floor_price')),
+                'last_date': timezone.now().strftime('%d/%m/%Y %H:%M'),
+                'source': 'live',
+            }
+            # depth thật
+            if 'bid_ask' in df.columns:
+                ba = df['bid_ask'].iloc[0]
+                depth_rows = []
+                for i in range(1, 4):
+                    bp = _f(ba.get(f'bid_{i}_price'))
+                    bv = _i(ba.get(f'bid_{i}_volume'))
+                    ap = _f(ba.get(f'ask_{i}_price'))
+                    av = _i(ba.get(f'ask_{i}_volume'))
+                    if bp is not None or ap is not None:
+                        depth_rows.append({
+                            'bid_volume': _format_number(bv),
+                            'bid_price': _format_vnd(bp),
+                            'ask_price': _format_vnd(ap),
+                            'ask_volume': _format_number(av),
+                            'raw_bid_vol': bv or 0,
+                            'raw_ask_vol': av or 0,
+                        })
+                if depth_rows:
+                    total_bid = sum(r['raw_bid_vol'] for r in depth_rows)
+                    total_ask = sum(r['raw_ask_vol'] for r in depth_rows)
+                    result['depth'] = {
+                        'rows': depth_rows,
+                        'buy_total': _format_number(total_bid),
+                        'sell_total': _format_number(total_ask),
+                        'source': 'live',
+                    }
+    except Exception:
+        pass
+    return result
+
+
 def _admin_stock_profile_workspace_view(request, symbol):
     from .views import _build_stock_workspace_overview, _compute_stock_workspace_technical
 
@@ -270,6 +349,25 @@ def _admin_stock_profile_workspace_view(request, symbol):
     price_rows_for_chart = list(reversed(price_rows))
     technical = _compute_stock_workspace_technical(price_rows_for_chart, overview)
     closes = [float(row['close_price']) for row in price_rows_for_chart if row.get('close_price') is not None]
+
+    # --- Live vnstock data trong thread riêng (timeout 8s) ---
+    live_result = {'ticker': None, 'depth': None}
+    live_thread = threading.Thread(
+        target=lambda: live_result.update(_fetch_live_workspace_data(normalized_symbol)),
+        daemon=True,
+    )
+    live_thread.start()
+    live_thread.join(timeout=8)
+    live_ticker = live_result.get('ticker')
+    live_depth = live_result.get('depth')
+
+    # --- Merge live ticker vào overview nếu lấy được ---
+    if live_ticker:
+        for field in ('current_price', 'change_value', 'change_pct', 'open_price',
+                      'high_price', 'low_price', 'volume', 'ceiling_price', 'floor_price'):
+            if live_ticker.get(field) is not None:
+                overview[field] = live_ticker[field]
+
     tracked_users = list(
         TrackedSymbol.objects
         .filter(symbol=normalized_symbol)
@@ -293,7 +391,27 @@ def _admin_stock_profile_workspace_view(request, symbol):
         }
         for row in price_rows[:12]
     ]
-    candlestick_items = _build_candlestick_items(price_rows_for_chart[-48:])
+
+    # --- Serialize OHLCV cho klinecharts ---
+    def _row_ts(d):
+        if isinstance(d, str):
+            from datetime import date as _date
+            d = _date.fromisoformat(d)
+        return int(datetime(d.year, d.month, d.day, 8, 0, 0).timestamp() * 1000)
+
+    chart_ohlcv_json = json.dumps([
+        {
+            'timestamp': _row_ts(row['date']),
+            'open': float(row['open_price']) if row.get('open_price') is not None else float(row['close_price']),
+            'high': float(row['high_price']) if row.get('high_price') is not None else float(row['close_price']),
+            'low': float(row['low_price']) if row.get('low_price') is not None else float(row['close_price']),
+            'close': float(row['close_price']),
+            'volume': int(row['volume']) if row.get('volume') is not None else 0,
+        }
+        for row in price_rows_for_chart
+        if row.get('close_price') is not None
+    ])
+
     overview_display = {
         'current_price': _format_vnd(overview.get('current_price') or overview.get('close_price')),
         'change_value': _format_vnd(overview.get('change_value')),
@@ -302,14 +420,18 @@ def _admin_stock_profile_workspace_view(request, symbol):
         'ceiling_price': _format_vnd(overview.get('ceiling_price')),
         'floor_price': _format_vnd(overview.get('floor_price')),
         'volume': _format_number(overview.get('volume')),
-        'last_date': overview.get('last_date') or '—',
+        'last_date': live_ticker['last_date'] if live_ticker else (overview.get('last_date') or '—'),
         'change_class': 'tone-neutral',
+        'data_source': 'vnstock live' if live_ticker else 'database',
     }
     if overview.get('change_value'):
-        if float(overview['change_value']) > 0:
-            overview_display['change_class'] = 'tone-up'
-        elif float(overview['change_value']) < 0:
-            overview_display['change_class'] = 'tone-down'
+        try:
+            if float(overview['change_value']) > 0:
+                overview_display['change_class'] = 'tone-up'
+            elif float(overview['change_value']) < 0:
+                overview_display['change_class'] = 'tone-down'
+        except (TypeError, ValueError):
+            pass
 
     technical_display = {
         'bias': _technical_bias_label(technical.get('bias')),
@@ -321,7 +443,10 @@ def _admin_stock_profile_workspace_view(request, symbol):
         'momentum_20d_pct': _format_pct(technical.get('momentum_20d_pct')),
         'range_position_pct': _format_pct(technical.get('range_position_pct')),
     }
-    depth_panel = _build_mock_depth_levels(overview)
+
+    depth_panel = live_depth if live_depth else _build_mock_depth_levels(overview)
+    depth_panel['source'] = 'live' if live_depth else 'simulated'
+
     context = {
         **admin.site.each_context(request),
         'opts': StockProfile._meta,
@@ -343,7 +468,7 @@ def _admin_stock_profile_workspace_view(request, symbol):
         'sparkline_points': _build_sparkline_points(closes),
         'sparkline_min': _format_vnd(min(closes)) if closes else '—',
         'sparkline_max': _format_vnd(max(closes)) if closes else '—',
-        'candlestick_items': candlestick_items,
+        'chart_ohlcv_json': chart_ohlcv_json,
         'price_row_count': len(price_rows_for_chart),
         'workspace_back_url': reverse('admin:portfolio_stockprofile_changelist'),
         'change_url': reverse('admin:portfolio_stockprofile_change', args=[profile.pk]),
@@ -852,6 +977,16 @@ class DailyPriceAdmin(admin.ModelAdmin):
     @admin.display(description='Workspace mã')
     def workspace_link(self, obj):
         return format_html('<a href="{}">Mở workspace</a>', _workspace_url_for_symbol(obj.symbol))
+
+
+@admin.register(IntradayTick)
+class IntradayTickAdmin(admin.ModelAdmin):
+    list_display = ('symbol', 'trade_date', 'trade_time', 'price', 'volume', 'side', 'stream_id', 'created_at')
+    list_filter = ('symbol', 'side', 'trade_date')
+    search_fields = ('symbol', 'stream_id')
+    ordering = ('-trade_date', '-trade_time')
+    date_hierarchy = 'trade_date'
+    readonly_fields = ('stream_id', 'created_at')
 
 
 @admin.register(WatchlistGroup)

@@ -634,23 +634,90 @@ def sync_market_groups_for_users(
     )
 
 
+def _fetch_exchange_lookup(timeout: int = 20) -> dict:
+    """Lấy company_name và exchange cho toàn bộ mã từ vnstock symbols_by_exchange().
+    Chạy trong thread daemon với timeout để tránh crash Django do vnstock gọi sys.exit().
+    Trả về dict: symbol → {'company_name': str, 'exchange': str}
+    """
+    import threading
+
+    result: dict = {}
+    exc_holder: list = []
+
+    def _worker():
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol='ACB', source='VCI')
+            df = stock.listing.symbols_by_exchange()
+            result.update({
+                row['symbol'].upper().strip(): {
+                    'company_name': row.get('organ_name', '') or '',
+                    'exchange': row.get('exchange', '') or '',
+                }
+                for _, row in df.iterrows()
+            })
+        except BaseException as exc:  # bắt cả SystemExit từ vnstock
+            exc_holder.append(exc)
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+    t.join(timeout=timeout)
+
+    if t.is_alive():
+        logger.warning('_fetch_exchange_lookup timeout sau %ss — bỏ qua', timeout)
+    elif exc_holder:
+        logger.warning('_fetch_exchange_lookup thất bại: %s', exc_holder[0])
+
+    return result
+
+
 def build_stock_profile_payload(mode: str = 'all') -> dict:
     resolved_payload = build_market_group_payload(mode)
-    symbol_map = {}
 
+    # Lấy company_name + exchange từ vnstock listing (một lần duy nhất)
+    exchange_lookup = _fetch_exchange_lookup()
+
+    symbol_map = {}
     for group in resolved_payload['groups']:
         industry = group['name'] if group.get('group_type') == 'SECTOR' else ''
         for symbol in group.get('symbols', []):
             normalized_symbol = symbol.upper().strip()
-            current = symbol_map.get(normalized_symbol, {'symbol': normalized_symbol, 'industry': '', 'exchange': '', 'company_name': ''})
+            current = symbol_map.get(normalized_symbol, {
+                'symbol': normalized_symbol,
+                'industry': '',
+                'exchange': '',
+                'company_name': '',
+            })
             if industry and not current['industry']:
                 current['industry'] = industry
+            # Bổ sung company_name và exchange nếu còn trống
+            lookup = exchange_lookup.get(normalized_symbol, {})
+            if not current['company_name'] and lookup.get('company_name'):
+                current['company_name'] = lookup['company_name']
+            if not current['exchange'] and lookup.get('exchange'):
+                current['exchange'] = lookup['exchange']
             symbol_map[normalized_symbol] = current
+
+    # Thêm các mã có trong exchange_lookup nhưng chưa có trong symbol_map
+    # (tức là các mã không thuộc nhóm ngành nào, nhưng vẫn là cổ phiếu thật)
+    for symbol, info in exchange_lookup.items():
+        if symbol not in symbol_map:
+            symbol_map[symbol] = {
+                'symbol': symbol,
+                'industry': '',
+                'company_name': info['company_name'],
+                'exchange': info['exchange'],
+            }
+
+    warning = resolved_payload['warning']
+    if not exchange_lookup:
+        note = 'Không lấy được company_name/exchange từ vnstock.'
+        warning = f'{warning} {note}'.strip() if warning else note
 
     return {
         'symbols': list(symbol_map.values()),
         'source': resolved_payload['source'],
-        'warning': resolved_payload['warning'],
+        'warning': warning,
         'mode': resolved_payload['mode'],
     }
 

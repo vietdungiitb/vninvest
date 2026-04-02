@@ -1,5 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getRealtimeTicker, getRealtimeWebSocketUrl } from '../api/client';
+import { getRealtimeTicker, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
 
 function mergeQuote(prev, update) {
   return {
@@ -224,6 +224,18 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
 
       nextWs.onclose = (ev) => {
         if (destroyed || nextWs !== ws) return;
+        // 4401: token expired on the server — refresh then reconnect
+        if (ev.code === 4401) {
+          refreshAccessToken().then((newToken) => {
+            if (newToken && !destroyed) {
+              reconnectTimer = window.setTimeout(connect, 1000);
+            } else {
+              setRealtimeStatus('idle');
+              window.location.href = '/login';
+            }
+          });
+          return;
+        }
         setRealtimeStatus('polling');
         if (ev.code !== 1000) {
           setEventCounts((prev) => ({ ...prev, reconnect_attempts: prev.reconnect_attempts + 1 }));

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createChart, CandlestickSeries, HistogramSeries } from 'lightweight-charts';
+import { init as klineChartInit, dispose as klineChartDispose } from 'klinecharts';
 import { Link, useParams } from 'react-router-dom';
 import {
   addTrackedSymbol,
@@ -85,166 +85,138 @@ function fmtVol(v) {
   return n.toLocaleString('vi-VN');
 }
 
-function CandlestickChart({ data }) {
-  const wrapRef = useRef(null);
+function KLineChartComponent({ data }) {
   const containerRef = useRef(null);
-  const tooltipRef = useRef(null);
   const chartRef = useRef(null);
-  const candleRef = useRef(null);
-  const volumeRef = useRef(null);
 
-  // Create chart + series once
+  // Khởi tạo chart một lần
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const chart = createChart(containerRef.current, {
-      layout: {
-        background: { color: 'transparent' },
-        textColor: '#64748b',
-        fontFamily: 'inherit',
+    const chart = klineChartInit(containerRef.current, {
+      timezone: 'Asia/Ho_Chi_Minh',
+      styles: {
+        grid: {
+          horizontal: { show: true, size: 1, color: '#1e293b', style: 'dashed' },
+          vertical: { show: false },
+        },
+        candle: {
+          type: 'candle_solid',
+          bar: {
+            upColor: '#22c55e',
+            downColor: '#f43f5e',
+            noChangeColor: '#94a3b8',
+            upBorderColor: '#16a34a',
+            downBorderColor: '#be123c',
+            noChangeBorderColor: '#94a3b8',
+            upWickColor: '#16a34a',
+            downWickColor: '#be123c',
+            noChangeWickColor: '#94a3b8',
+          },
+          tooltip: {
+            showRule: 'follow_cross',
+            showType: 'rect',
+            labels: ['T', 'M', 'C', 'Đ', 'T', 'KL'],
+            values: null,
+            defaultValue: 'n/a',
+            rect: {
+              position: 'fixed',
+              paddingLeft: 10,
+              paddingRight: 10,
+              paddingTop: 6,
+              paddingBottom: 6,
+              offsetLeft: 8,
+              offsetTop: 8,
+              offsetRight: 8,
+              borderRadius: 6,
+              borderSize: 1,
+              borderColor: '#1e293b',
+              color: '#0f172a',
+            },
+            text: { size: 11, family: 'inherit', weight: 'normal', color: '#94a3b8', marginLeft: 8 },
+          },
+        },
+        xAxis: {
+          show: true,
+          axisLine: { show: true, color: '#1e293b', size: 1 },
+          tickLine: { show: true, size: 1, length: 3, color: '#1e293b' },
+          tickText: { show: true, color: '#64748b', size: 11, family: 'inherit' },
+        },
+        yAxis: {
+          show: true,
+          type: 'normal',
+          position: 'right',
+          axisLine: { show: true, color: '#1e293b', size: 1 },
+          tickLine: { show: true, size: 1, length: 3, color: '#1e293b' },
+          tickText: { show: true, color: '#64748b', size: 11, family: 'inherit' },
+        },
+        crosshair: {
+          show: true,
+          horizontal: {
+            show: true,
+            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#475569' },
+            text: { show: true, style: 'fill', color: '#e2e8f0', size: 11, borderRadius: 4, borderColor: '#1e293b', backgroundColor: '#0f172a' },
+          },
+          vertical: {
+            show: true,
+            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#475569' },
+            text: { show: true, style: 'fill', color: '#e2e8f0', size: 11, borderRadius: 4, borderColor: '#1e293b', backgroundColor: '#0f172a' },
+          },
+        },
+        separator: {
+          size: 1,
+          color: '#1e293b',
+          fill: true,
+          activeBackgroundColor: 'rgba(30,41,59,0.3)',
+        },
       },
-      grid: {
-        vertLines: { color: '#1e293b' },
-        horzLines: { color: '#1e293b' },
-      },
-      crosshair: {
-        mode: 1, // Magnet — snaps to nearest bar
-        vertLine: { color: '#475569', labelBackgroundColor: '#0f172a', width: 1, style: 0 },
-        horzLine: { color: '#475569', labelBackgroundColor: '#0f172a', width: 1, style: 0 },
-      },
-      rightPriceScale: {
-        borderColor: '#1e293b',
-        textColor: '#64748b',
-        scaleMargins: { top: 0.05, bottom: 0.22 }, // leave room for volume
-      },
-      timeScale: {
-        borderColor: '#1e293b',
-        timeVisible: true,
-        secondsVisible: false,
-      },
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
     });
 
-    // Candlestick series
-    const candle = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c55e',
-      downColor: '#f43f5e',
-      borderUpColor: '#16a34a',
-      borderDownColor: '#be123c',
-      wickUpColor: '#16a34a',
-      wickDownColor: '#be123c',
-    });
-
-    // Volume histogram — separate price scale pinned to bottom
-    const volume = chart.addSeries(HistogramSeries, {
-      priceFormat: { type: 'volume' },
-      priceScaleId: 'vol',
-    });
-    chart.priceScale('vol').applyOptions({
-      scaleMargins: { top: 0.82, bottom: 0 },
-    });
-
-    // OHLC tooltip via crosshair subscription
-    chart.subscribeCrosshairMove((param) => {
-      const el = tooltipRef.current;
-      if (!el) return;
-      if (!param.point || !param.time || !param.seriesData.get(candle)) {
-        el.style.opacity = '0';
-        return;
-      }
-      const bar = param.seriesData.get(candle);
-      const vol = param.seriesData.get(volume);
-      const isUp = bar.close >= bar.open;
-      el.style.opacity = '1';
-      el.innerHTML = `
-        <span class="ohlc-label" style="color:${isUp ? '#22c55e' : '#f43f5e'}">
-          O <b>${fmtPrice(bar.open)}</b>
-          H <b>${fmtPrice(bar.high)}</b>
-          L <b>${fmtPrice(bar.low)}</b>
-          C <b>${fmtPrice(bar.close)}</b>
-        </span>
-        ${vol ? `<span style="color:#64748b;margin-left:10px">KL <b style="color:#94a3b8">${fmtVol(vol.value)}</b></span>` : ''}
-      `;
-    });
+    // MA trên pane chính
+    chart.createIndicator('MA', false, { id: 'candle_pane' });
+    // Volume ở pane phụ (chiều cao 20%)
+    chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
 
     chartRef.current = chart;
-    candleRef.current = candle;
-    volumeRef.current = volume;
 
     const ro = new ResizeObserver(() => {
-      if (containerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
-      }
+      chartRef.current?.resize();
     });
     ro.observe(containerRef.current);
 
     return () => {
       ro.disconnect();
-      chart.remove();
+      if (containerRef.current) {
+        klineChartDispose(containerRef.current);
+      }
+      chartRef.current = null;
     };
   }, []);
 
-  // Update data when prop changes
+  // Cập nhật dữ liệu khi prop thay đổi
   useEffect(() => {
-    if (!candleRef.current || !data?.length) return;
+    if (!chartRef.current || !data?.length) return;
 
-    const sorted = data
-      .filter((d) => d.date && d.open != null && d.high != null && d.low != null && d.close != null)
+    const kLineData = data
+      .filter((d) => d.date && d.close != null)
       .map((d) => ({
-        time: d.date,
-        open: Number(d.open),
-        high: Number(d.high),
-        low: Number(d.low),
+        timestamp: new Date(d.date).getTime(),
+        open: d.open != null ? Number(d.open) : Number(d.close),
+        high: d.high != null ? Number(d.high) : Number(d.close),
+        low: d.low != null ? Number(d.low) : Number(d.close),
         close: Number(d.close),
-        volume: d.volume != null ? Number(d.volume) : null,
+        volume: d.volume != null ? Number(d.volume) : 0,
       }))
-      .sort((a, b) => (a.time > b.time ? 1 : -1));
+      .sort((a, b) => a.timestamp - b.timestamp);
 
-    candleRef.current.setData(sorted.map(({ time, open, high, low, close }) => ({ time, open, high, low, close })));
-
-    if (volumeRef.current) {
-      const volPoints = sorted
-        .filter((d) => d.volume != null)
-        .map((d) => ({
-          time: d.time,
-          value: d.volume,
-          color: d.close >= d.open ? 'rgba(34,197,94,0.35)' : 'rgba(244,63,94,0.35)',
-        }));
-      volumeRef.current.setData(volPoints);
-    }
-
-    chartRef.current.timeScale().fitContent();
+    chartRef.current.applyNewData(kLineData);
   }, [data]);
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-      {/* OHLC tooltip overlay — top-left, fades in/out */}
-      <div
-        ref={tooltipRef}
-        style={{
-          position: 'absolute',
-          top: 8,
-          left: 8,
-          pointerEvents: 'none',
-          opacity: 0,
-          transition: 'opacity 0.15s',
-          fontSize: '11px',
-          lineHeight: '1.7',
-          background: 'rgba(2,6,23,0.82)',
-          border: '1px solid #1e293b',
-          borderRadius: 8,
-          padding: '4px 10px',
-          color: '#94a3b8',
-          whiteSpace: 'nowrap',
-          backdropFilter: 'blur(4px)',
-        }}
-      />
-    </div>
+    <div
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', background: '#0f172a', borderRadius: '0.75rem', overflow: 'hidden' }}
+    />
   );
 }
 
@@ -1244,10 +1216,10 @@ export default function StockDetail() {
         </div>
       </section>
 
-      {/* Main content: chart + panels — 3-column grid at xl */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.74fr)_minmax(0,1fr)_minmax(0,1fr)]">
-        {/* Chart section */}
-        <section className="card-section p-4 xl:row-span-2">
+      {/* Main content: chart + panels — 3-column equal grid at xl */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {/* Chart section — spans 2/3 width */}
+        <section className="card-section p-4 xl:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
             <div>
               <p className="text-label">Biểu đồ giá EOD</p>
@@ -1281,53 +1253,50 @@ export default function StockDetail() {
                 Chưa đủ dữ liệu EOD để dựng chart.
               </div>
             ) : (
-              <CandlestickChart data={chartData} />
+              <KLineChartComponent data={chartData} />
             )}
           </div>
         </section>
 
-        {/* Col 2: Price Depth + Technical */}
-        <div className="flex flex-col gap-4">
-          {/* Price Depth — sổ lệnh 3 mức giá thực từ vnstock */}
-          <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-
-          {/* Technical snapshot — compact */}
-          <section className="card-section p-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-              <p className="text-label">Technical snapshot</p>
-              <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${technicalBias.className}`}>
-                {technicalBias.label}
-              </span>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0 text-[12px]">
-              {[
-                ['SMA20', formatCurrency(technical?.sma20)],
-                ['SMA50', formatCurrency(technical?.sma50)],
-                ['RSI14', technical?.rsi14 ?? '—'],
-                ['KL TB20', formatCompactNumber(technical?.avg_volume_20)],
-                ['Mom 20d', formatPercentDelta(technical?.momentum_20d_pct)],
-                ['52T pos', formatPercentDelta(technical?.range_position_pct)],
-              ].map(([label, val]) => (
-                <div key={label} className="flex items-center justify-between border-b border-slate-800/60 py-1.5 last:border-b-0">
-                  <span className="text-slate-500">{label}</span>
-                  <span className="font-medium text-slate-100">{val}</span>
-                </div>
-              ))}
-            </div>
-            {technicalBias.description && (
-              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">{technicalBias.description}</p>
-            )}
-          </section>
-        </div>
-
-        {/* Col 3: Intraday + Breadth */}
-        <div className="flex flex-col gap-4">
+        {/* Col 3: Intraday + Breadth — spans rows 1 & 2 */}
+        <div className="flex flex-col gap-4 xl:row-span-2">
           {/* Intraday Matched Orders */}
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
 
           {/* Breadth mini-panel */}
           <BreadthMiniPanel symbol={normalizedSymbol} />
         </div>
+
+        {/* Row 2 Col 1: Độ sâu thị trường */}
+        <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+
+        {/* Row 2 Col 2: Technical snapshot */}
+        <section className="card-section p-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <p className="text-label">Technical snapshot</p>
+            <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${technicalBias.className}`}>
+              {technicalBias.label}
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0 text-[12px]">
+            {[
+              ['SMA20', formatCurrency(technical?.sma20)],
+              ['SMA50', formatCurrency(technical?.sma50)],
+              ['RSI14', technical?.rsi14 ?? '—'],
+              ['KL TB20', formatCompactNumber(technical?.avg_volume_20)],
+              ['Mom 20d', formatPercentDelta(technical?.momentum_20d_pct)],
+              ['52T pos', formatPercentDelta(technical?.range_position_pct)],
+            ].map(([label, val]) => (
+              <div key={label} className="flex items-center justify-between border-b border-slate-800/60 py-1.5 last:border-b-0">
+                <span className="text-slate-500">{label}</span>
+                <span className="font-medium text-slate-100">{val}</span>
+              </div>
+            ))}
+          </div>
+          {technicalBias.description && (
+            <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">{technicalBias.description}</p>
+          )}
+        </section>
 
         {/* Bottom row: Personal context + Signals — spans full width */}
         <div className="xl:col-span-3">

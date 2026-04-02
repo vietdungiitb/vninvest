@@ -33,9 +33,9 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -108,6 +108,13 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.ScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'realtime': '60/minute',
+        'auth': '10/minute',
+    },
 }
 
 SIMPLE_JWT = {
@@ -166,11 +173,53 @@ if WATCHLIST_SYNC_ENABLED:
         "args": (WATCHLIST_SYNC_DAYS,),
     }
 
+# Stream consumer batch — chạy mỗi 3 giây khi REALTIME_ENABLED=true
+STREAM_CONSUMER_INTERVAL = int(os.getenv("STREAM_CONSUMER_INTERVAL", "3"))
+_REALTIME_ENABLED_FLAG = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
+if _REALTIME_ENABLED_FLAG:
+    CELERY_BEAT_SCHEDULE["stream-consumer-db-writer"] = {
+        "task": "portfolio.tasks.run_stream_consumer_batch",
+        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+        "args": ("db-writer",),
+    }
+    CELERY_BEAT_SCHEDULE["stream-consumer-ws-broadcaster"] = {
+        "task": "portfolio.tasks.run_stream_consumer_batch",
+        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+        "args": ("ws-broadcaster",),
+    }
+    CELERY_BEAT_SCHEDULE["stream-consumer-alert-engine"] = {
+        "task": "portfolio.tasks.run_stream_consumer_batch",
+        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+        "args": ("alert-engine",),
+    }
+    CELERY_BEAT_SCHEDULE["stream-trim"] = {
+        "task": "portfolio.tasks.trim_streams",
+        "schedule": timedelta(minutes=5),
+    }
+    CELERY_BEAT_SCHEDULE["eod-cleanup-ticks"] = {
+        "task": "portfolio.tasks.cleanup_old_intraday_ticks",
+        "schedule": timedelta(hours=24),
+        "kwargs": {"keep_days": 7},
+    }
+    # Thu thập + publish realtime mỗi 5 giây (giống polling cũ nhưng cũng push vào Stream)
+    _REALTIME_POLL_INTERVAL = int(os.getenv("REALTIME_POLL_INTERVAL", "5"))
+    CELERY_BEAT_SCHEDULE["collect-and-publish-realtime"] = {
+        "task": "portfolio.tasks.collect_and_publish_realtime",
+        "schedule": timedelta(seconds=_REALTIME_POLL_INTERVAL),
+    }
+
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 REALTIME_DEFAULT_WHALE_THRESHOLD = int(os.getenv("REALTIME_DEFAULT_WHALE_THRESHOLD", "500000000"))
 REALTIME_REDIS_URL = os.getenv("REALTIME_REDIS_URL", CELERY_BROKER_URL)
 REALTIME_CHANNEL_LAYER = os.getenv("REALTIME_CHANNEL_LAYER", "redis").lower()
+
+# Redis Streams — db=1 (riêng với Celery db=0 và Cache db=2)
+STREAM_REDIS_URL = os.getenv("STREAM_REDIS_URL", "redis://localhost:6379/1")
+STREAM_MAX_LEN = int(os.getenv("STREAM_MAX_LEN", "50000"))
+STREAM_CONSUMER_BATCH = int(os.getenv("STREAM_CONSUMER_BATCH", "100"))
+STREAM_SNAPSHOT_TTL = int(os.getenv("STREAM_SNAPSHOT_TTL", "60"))
+STREAM_BLOCK_MS = int(os.getenv("STREAM_BLOCK_MS", "2000"))
 
 if REALTIME_CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {

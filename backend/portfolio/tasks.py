@@ -6,7 +6,7 @@ from celery import shared_task
 from django.conf import settings
 
 from portfolio.models import TrackedSymbol, UserConfig, WatchlistGroup, SecuritiesGroup
-from portfolio.realtime.collector import collect_intraday_frame, collect_symbols_for_user
+from portfolio.realtime.collector import collect_intraday_frame, collect_symbols_for_user, collect_and_push
 from portfolio.realtime.compute import (
     build_heartbeat_payload,
     build_ticker_payload,
@@ -42,12 +42,31 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
     if not symbols:
         return {"status": "ok", "symbols": 0, "published": 0}
 
+    # --- Redis Streams: push ticks vào stream trước khi publish WebSocket ---
+    stream_enabled = getattr(settings, "STREAM_REDIS_URL", None)
+    producer = None
+    if stream_enabled:
+        try:
+            from portfolio.realtime.tick_producer import TickProducer
+            producer = TickProducer()
+        except Exception as exc:
+            logger.warning("TickProducer init failed: %s", exc)
+
     publisher = RealtimePublisher()
     thresholds = _whale_thresholds_for_user(user_id)
 
     published = 0
     for symbol in symbols:
+        # Thu thập frame một lần, tái dùng cho cả Stream push lẫn WebSocket publish
         frame = collect_intraday_frame(symbol)
+
+        # Push ticks vào Redis Stream (nếu available) — dùng lại frame đã fetch
+        if producer is not None:
+            try:
+                producer.ensure_consumer_groups(symbol)
+                producer.push_intraday_ticks(symbol, frame)
+            except Exception as exc:
+                logger.warning("Stream push failed for %s: %s", symbol, exc)
 
         ticker_channel = f"ticker:{symbol}"
         ticker_seq = publisher.next_seq(ticker_channel)
@@ -115,3 +134,90 @@ def sync_all_watch_assets(self, days: int | None = None) -> dict:
         'total_users': len(synced_users),
         'total_symbols': total_symbols,
     }
+
+
+# ---------------------------------------------------------------------------
+# M2: Celery task — chạy consumer batch theo group (thay thế cho long-running process)
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={"max_retries": 0})
+def run_stream_consumer_batch(self, group: str = "all") -> dict:
+    """
+    Chạy một batch của stream consumers cho tất cả active symbols.
+    Được gọi định kỳ qua Celery Beat (thay vì long-running process).
+    """
+    from portfolio.realtime.stream_consumers import (
+        DbWriterConsumer,
+        WsBroadcastConsumer,
+        AlertEngineConsumer,
+    )
+
+    consumers = []
+    if group in ("all", "db-writer"):
+        consumers.append(DbWriterConsumer())
+    if group in ("all", "ws-broadcaster"):
+        consumers.append(WsBroadcastConsumer())
+    if group in ("all", "alert-engine"):
+        consumers.append(AlertEngineConsumer())
+
+    symbols = collect_symbols_for_user(user_id=None)
+    if not symbols:
+        return {"status": "ok", "processed": 0}
+
+    total = 0
+    for symbol in symbols:
+        for consumer in consumers:
+            try:
+                total += consumer.run_once(symbol)
+            except Exception as exc:
+                logger.warning("consumer.run_once(%s, %s) error: %s", group, symbol, exc)
+
+    return {"status": "ok", "group": group, "symbols": len(symbols), "processed": total}
+
+
+# ---------------------------------------------------------------------------
+# M4: EOD cleanup — trim stream và xóa IntradayTick cũ
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def cleanup_old_intraday_ticks(self, keep_days: int = 7) -> dict:
+    """
+    Xóa IntradayTick cũ hơn `keep_days` ngày để tránh DB phình to.
+    Chạy mỗi đêm qua Celery Beat.
+    """
+    from datetime import date, timedelta
+    from portfolio.models import IntradayTick
+
+    cutoff = date.today() - timedelta(days=keep_days)
+    deleted, _ = IntradayTick.objects.filter(trade_date__lt=cutoff).delete()
+    logger.info("EOD cleanup: deleted %d IntradayTick records older than %s", deleted, cutoff)
+    return {"status": "ok", "deleted": deleted, "cutoff": str(cutoff)}
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def trim_streams(self) -> dict:
+    """
+    Trim tất cả Redis Streams về STREAM_MAX_LEN để tiết kiệm bộ nhớ.
+    Chạy định kỳ qua Celery Beat.
+    """
+    from portfolio.realtime.tick_producer import TickProducer, _get_stream_client
+
+    max_len = getattr(settings, "STREAM_MAX_LEN", 50_000)
+    symbols = collect_symbols_for_user(user_id=None)
+    if not symbols:
+        return {"status": "ok", "trimmed": 0}
+
+    try:
+        client = _get_stream_client()
+    except Exception as exc:
+        logger.warning("trim_streams: Redis unavailable: %s", exc)
+        return {"status": "skipped", "reason": str(exc)}
+
+    trimmed = 0
+    for symbol in symbols:
+        key = TickProducer.stream_key(symbol)
+        try:
+            client.xtrim(key, maxlen=max_len, approximate=True)
+            trimmed += 1
+        except Exception as exc:
+            logger.warning("trim_streams: xtrim(%s) failed: %s", key, exc)
+
+    return {"status": "ok", "trimmed": trimmed, "max_len": max_len}
