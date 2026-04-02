@@ -10,10 +10,13 @@ import {
   getIntradayMatched,
   getPriceBoard,
   getSectorBreadth,
+  getStockFinancials,
   getStockPriceChart,
   getStockWorkspaceOverview,
   getWatchlistGroups,
+  getWhaleFeed,
 } from '../api/client';
+import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 
 const PERIODS = [30, 90, 180, 365];
@@ -646,6 +649,103 @@ function PriceDepthPanel({ symbol, liveVolume }) {
   );
 }
 
+// ─── FinancialMetricsPanel ─────────────────────────────────────────────────
+
+function MetricRow({ label, value, unit = '', highlight = false }) {
+  const display = value !== null && value !== undefined
+    ? `${Number(value).toLocaleString('vi-VN', { maximumFractionDigits: 2 })}${unit}`
+    : '—';
+  return (
+    <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60 last:border-0">
+      <span className="text-[11px] text-slate-400">{label}</span>
+      <span className={`text-[12px] font-medium tabular-nums ${highlight && value ? 'text-emerald-400' : 'text-slate-200'}`}>
+        {display}
+      </span>
+    </div>
+  );
+}
+
+function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange }) {
+  if (loading) {
+    return (
+      <section className="card-section p-4 xl:col-span-3">
+        <p className="text-label pb-2.5 border-b border-slate-800">Chỉ tiêu tài chính (theo năm)</p>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-48 animate-pulse rounded-xl bg-slate-900" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const years = financials?.years || [];
+  if (!years.length) {
+    return (
+      <section className="card-section p-4 xl:col-span-3">
+        <p className="text-label pb-2.5 border-b border-slate-800">Chỉ tiêu tài chính (theo năm)</p>
+        <p className="mt-4 text-sm text-slate-500">Không có dữ liệu tài chính.</p>
+      </section>
+    );
+  }
+
+  const row = years.find((y) => y.year === selectedYear) || years[0];
+
+  return (
+    <section className="card-section p-4 xl:col-span-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <p className="text-label">Chỉ tiêu tài chính (theo năm)</p>
+        <div className="flex gap-1.5">
+          {years.map((y) => (
+            <button
+              key={y.year}
+              onClick={() => onYearChange(y.year)}
+              className={`rounded px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                y.year === selectedYear
+                  ? 'bg-sky-600 text-white'
+                  : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+              }`}
+            >
+              {y.year}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {/* Định giá */}
+        <div className="card-compact">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-sky-400">Định giá</p>
+          <MetricRow label="EPS (VND)" value={row.eps} />
+          <MetricRow label="P/E" value={row.pe} />
+          <MetricRow label="P/B" value={row.pb} />
+          <MetricRow label="P/S" value={row.ps} />
+          <MetricRow label="BVPS (VND)" value={row.bvps} />
+          <MetricRow label="Vốn hóa (Tỷ đ)" value={row.market_cap_bn} />
+        </div>
+
+        {/* Khả năng sinh lời */}
+        <div className="card-compact">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-400">Khả năng sinh lời</p>
+          <MetricRow label="ROE" value={row.roe} unit="%" highlight />
+          <MetricRow label="ROA" value={row.roa} unit="%" highlight />
+          <MetricRow label="Biên LN ròng" value={row.net_margin} unit="%" highlight />
+          <MetricRow label="Tỷ suất cổ tức" value={row.dividend_yield} unit="%" />
+        </div>
+
+        {/* Sức mạnh tài chính */}
+        <div className="card-compact">
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-400">Sức mạnh tài chính</p>
+          <MetricRow label="Đòn bẩy TC" value={row.leverage} />
+          <MetricRow label="Nợ/VCSH" value={row.debt_equity} />
+          <MetricRow label="TT hiện hành" value={row.current_ratio} />
+          <MetricRow label="TT nhanh" value={row.quick_ratio} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function StockDetail() {
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
@@ -662,6 +762,11 @@ export default function StockDetail() {
   const [loadingChart, setLoadingChart] = useState(true);
   const [activePeriod, setActivePeriod] = useState(180);
   const [error, setError] = useState('');
+  const [whaleFeedData, setWhaleFeedData] = useState(null);
+  const [whaleFeedLoading, setWhaleFeedLoading] = useState(true);
+  const [financials, setFinancials] = useState(null);
+  const [financialsLoading, setFinancialsLoading] = useState(true);
+  const [financialsYear, setFinancialsYear] = useState(null);
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, latestWhaleAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -764,6 +869,36 @@ export default function StockDetail() {
       cancelled = true;
     };
   }, [normalizedSymbol, activePeriod]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) return;
+    let cancelled = false;
+    const fetchWhale = () => {
+      getWhaleFeed(normalizedSymbol)
+        .then((r) => { if (!cancelled) { setWhaleFeedData(r.data); setWhaleFeedLoading(false); } })
+        .catch(() => { if (!cancelled) setWhaleFeedLoading(false); });
+    };
+    setWhaleFeedLoading(true);
+    fetchWhale();
+    const interval = setInterval(fetchWhale, 30_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) return;
+    let cancelled = false;
+    setFinancialsLoading(true);
+    getStockFinancials(normalizedSymbol)
+      .then((r) => {
+        if (!cancelled) {
+          setFinancials(r.data);
+          if (r.data?.years?.length) setFinancialsYear(r.data.years[0].year);
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setFinancialsLoading(false); });
+    return () => { cancelled = true; };
+  }, [normalizedSymbol]);
 
   const liveQuote = quotesBySymbol[normalizedSymbol] || {};
   const currentPrice = liveQuote.current_price ?? overview?.current_price ?? overview?.close_price ?? null;
@@ -950,9 +1085,17 @@ export default function StockDetail() {
               <span>/</span>
               <span>{overview.symbol}</span>
             </div>
-            <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
-              Feed {realtimeStatus === 'live' ? 'Realtime' : realtimeStatus === 'polling' ? 'Fallback polling' : 'Đang kết nối'}
-              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+            <div className="flex items-center gap-2">
+              <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
+                Feed {realtimeStatus === 'live' ? 'Realtime' : realtimeStatus === 'polling' ? 'Fallback polling' : 'Đang kết nối'}
+                {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+              </div>
+              <Link
+                to={`/whale-alerts/${normalizedSymbol}`}
+                className="flex items-center gap-1.5 rounded-full border border-cyan-700/60 bg-cyan-950/30 px-3 py-1.5 text-[11px] font-semibold text-cyan-300 transition-colors hover:bg-cyan-900/30"
+              >
+                🦈 Whale Dashboard
+              </Link>
             </div>
           </div>
         </div>
@@ -1223,26 +1366,8 @@ export default function StockDetail() {
               </div>
             </section>
 
-            {/* Whale alert */}
-            {symbolWhaleAlert && (
-              <section className="card-section p-4">
-                <p className="text-label pb-2.5 border-b border-slate-800">Tín hiệu cá mập</p>
-                <div className="mt-3 rounded-xl border border-amber-700/40 bg-amber-950/20 px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-widest text-amber-500 mb-1">🐋 Whale Alert</p>
-                  <p className="text-sm font-semibold text-amber-200">
-                    {symbolWhaleAlert.side === 'BUY' ? '↑ Mua lớn' : '↓ Bán lớn'}{' '}
-                    {symbolWhaleAlert.matched_value
-                      ? ` — ${(symbolWhaleAlert.matched_value / 1_000_000_000).toFixed(1)} tỷ`
-                      : ''}
-                  </p>
-                  {symbolWhaleAlert.ts && (
-                    <p className="mt-1 text-[11px] text-slate-500">
-                      {new Date(symbolWhaleAlert.ts).toLocaleTimeString('vi-VN')}
-                    </p>
-                  )}
-                </div>
-              </section>
-            )}
+            {/* Whale alert — MoneyFlowDonut */}
+            <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
 
             {/* Active price alerts */}
             {symbolAlerts.length > 0 && (
@@ -1270,6 +1395,22 @@ export default function StockDetail() {
             )}
           </div>
         </div>
+
+        {/* Dòng tiền lớn: Whale Feed (2fr) + Bubble Chart (1fr) */}
+        <div className="xl:col-span-3">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+            <WhaleFeedPanel symbol={normalizedSymbol} realtimeAlerts={symbolAlerts} />
+            <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
+          </div>
+        </div>
+
+        {/* Chỉ tiêu tài chính theo năm */}
+        <FinancialMetricsPanel
+          financials={financials}
+          loading={financialsLoading}
+          selectedYear={financialsYear}
+          onYearChange={setFinancialsYear}
+        />
       </div>
     </div>
   );

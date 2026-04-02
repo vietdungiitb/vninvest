@@ -22,6 +22,9 @@ const FIELD_OPTIONS = [
   { value: 'sma50',               label: 'SMA 50' },
   { value: 'price_vs_sma20_pct',  label: '% so SMA20' },
   { value: 'price_vs_sma50_pct',  label: '% so SMA50' },
+  { value: 'sma20_vs_sma50_pct',  label: 'SMA20 vs SMA50 (Golden/Death Cross)' },
+  { value: 'macd_hist',           label: 'MACD Histogram' },
+  { value: 'volume_rvol',         label: 'Volume tương đối (RVOL)' },
   { value: 'momentum_20d_pct',    label: 'Momentum 20 ngày (%)' },
   { value: 'range_position_pct',  label: 'Vị trí trong biên độ 52 tuần (%)' },
   { value: 'avg_volume_20',       label: 'TB khối lượng 20 ngày' },
@@ -180,6 +183,8 @@ function ResultsTable({ results }) {
                 <th className="pb-2 pr-4 text-right font-medium">SMA20</th>
                 <th className="pb-2 pr-4 text-right font-medium">SMA50</th>
                 <th className="pb-2 pr-4 text-right font-medium">%SMA20</th>
+                <th className="pb-2 pr-4 text-right font-medium">MACD Hist</th>
+                <th className="pb-2 pr-4 text-right font-medium">RVOL</th>
                 <th className="pb-2 pr-4 text-right font-medium">Mom.20d%</th>
                 <th className="pb-2 text-right font-medium">Ngày</th>
               </tr>
@@ -199,6 +204,12 @@ function ResultsTable({ results }) {
                   <td className={`py-2 pr-4 text-right ${
                     (row.price_vs_sma20_pct ?? 0) > 0 ? 'text-green-400' : 'text-red-400'
                   }`}>{fmtNum(row.price_vs_sma20_pct)}%</td>
+                  <td className={`py-2 pr-4 text-right font-medium ${
+                    row.macd_hist == null ? 'text-gray-500' : (row.macd_hist ?? 0) > 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>{row.macd_hist != null ? fmtNum(row.macd_hist) : '—'}</td>
+                  <td className={`py-2 pr-4 text-right ${
+                    row.volume_rvol == null ? 'text-gray-500' : (row.volume_rvol ?? 0) >= 2 ? 'text-amber-400 font-semibold' : 'text-gray-400'
+                  }`}>{row.volume_rvol != null ? `${fmtNum(row.volume_rvol)}×` : '—'}</td>
                   <td className={`py-2 pr-4 text-right ${
                     (row.momentum_20d_pct ?? 0) > 0 ? 'text-green-400' : 'text-red-400'
                   }`}>{fmtNum(row.momentum_20d_pct)}%</td>

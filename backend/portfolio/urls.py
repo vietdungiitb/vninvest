@@ -23,6 +23,7 @@ urlpatterns = [
     path('portfolios/<int:portfolio_id>/holdings/', views.HoldingsView.as_view(), name='portfolio-holdings'),
     path('portfolios/<int:portfolio_id>/summary/', views.SummaryView.as_view(), name='portfolio-summary'),
     path('portfolios/<int:portfolio_id>/chart/', views.ChartDataView.as_view(), name='portfolio-chart'),
+    path('portfolios/<int:portfolio_id>/equity-curve/', views.EquityCurveView.as_view(), name='portfolio-equity-curve'),
     path('portfolios/<int:portfolio_id>/allocation/', views.AllocationView.as_view(), name='portfolio-allocation'),
     path('portfolios/<int:portfolio_id>/analytics/', views.PortfolioAnalyticsView.as_view(), name='portfolio-analytics'),
     path('portfolios/<int:portfolio_id>/sync/', views.SyncPricesView.as_view(), name='portfolio-sync'),

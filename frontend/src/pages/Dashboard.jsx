@@ -11,6 +11,7 @@ import PortfolioLineChart from '../components/PortfolioLineChart';
 import AllocationPieChart from '../components/AllocationPieChart';
 import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
+import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
 
 export default function Dashboard() {
   const { activePortfolioId } = usePortfolio();
@@ -145,7 +146,7 @@ export default function Dashboard() {
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
-          <PortfolioLineChart portfolioId={activePortfolioId} />
+          <EquityVsBenchmarkChart portfolioId={activePortfolioId} />
         </div>
         <div className="lg:col-span-1">
           <AllocationPieChart portfolioId={activePortfolioId} />

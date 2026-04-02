@@ -18,18 +18,39 @@ def collect_symbols_for_user(user_id: int | None = None) -> list[str]:
 
 
 def collect_intraday_frame(symbol: str) -> pd.DataFrame:
+    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday, fallback về synthetic nếu lỗi."""
+    try:
+        from vnstock import Vnstock
+        stock = Vnstock().stock(symbol=symbol, source='VCI')
+        df = stock.quote.intraday(symbol=symbol, page_size=100)
+        if df is not None and not df.empty:
+            rows = []
+            for _, row in df.iterrows():
+                raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
+                raw_price = row.get('price') or row.get('close') or 0
+                raw_vol = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
+                match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
+                mt_lower = match_type_raw.lower()
+                if mt_lower in ('buy', 'bu', 'b'):
+                    side = 'BUY'
+                elif mt_lower in ('sell', 'sd', 's'):
+                    side = 'SELL'
+                else:
+                    side = 'UNKNOWN'
+                try:
+                    price_val = float(raw_price) if raw_price else 0.0
+                    vol_val = float(raw_vol) if raw_vol else 0.0
+                except (ValueError, TypeError):
+                    price_val = 0.0
+                    vol_val = 0.0
+                rows.append({'ts': str(raw_time), 'price': price_val, 'volume': vol_val, 'side': side})
+            if rows:
+                return pd.DataFrame(rows)
+    except Exception:
+        pass
+
+    # Fallback: synthetic one-tick frame từ DB price
     changes = get_price_changes([symbol]).get(symbol.upper(), {})
     price = changes.get("current_price") or 0.0
-
-    # Sprint 11: start with synthetic one-tick frame from latest known price.
     now = timezone.now() if hasattr(timezone, "now") else datetime.utcnow()
-    return pd.DataFrame(
-        [
-            {
-                "ts": now,
-                "price": float(price),
-                "volume": 0.0,
-                "side": "UNKNOWN",
-            }
-        ]
-    )
+    return pd.DataFrame([{"ts": now, "price": float(price), "volume": 0.0, "side": "UNKNOWN"}])

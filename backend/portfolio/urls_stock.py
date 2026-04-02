@@ -8,6 +8,7 @@ urlpatterns = [
     path("stocks/", views.StockProfileListView.as_view(), name="stock-list"),
     path("stocks/<str:symbol>/overview/", views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),
     path("stocks/<str:symbol>/chart/", views.StockWorkspaceChartView.as_view(), name="stock-workspace-chart"),
+    path("stocks/<str:symbol>/financials/", views.FinancialMetricsView.as_view(), name="stock-financials"),
     path("stocks/<str:symbol>/", views.StockProfileDetailView.as_view(), name="stock-detail"),
 
     # Quản lý nhóm chứng khoán

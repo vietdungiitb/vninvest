@@ -84,6 +84,9 @@ export const getSummary = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/summary/`);
 export const getChartData = (portfolioId, days = 90) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/chart/?days=${days}`);
+
+export const getEquityCurve = (portfolioId, days = 180) =>
+  apiClient.get(`/portfolio/portfolios/${portfolioId}/equity-curve/?days=${days}`);
 export const getAllocation = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/`);
 export const getAllocationBySector = (portfolioId) =>
@@ -123,6 +126,15 @@ export const getPriceBoard = (symbol) =>
   apiClient.get(`/realtime/price-board/${encodeURIComponent(symbol)}/`);
 export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
+export const getWhaleFeed = (symbol) =>
+  apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
+export const getRVOL = (symbol) =>
+  apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
+export const getDepthChart = (symbol) =>
+  apiClient.get(`/realtime/depth-chart/${encodeURIComponent(symbol)}/`);
+
+export const getStockFinancials = (symbol) =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/financials/`);
 
 export const getRealtimeWebSocketUrl = (token) => {
   const normalizedToken = token || localStorage.getItem('access_token') || '';

@@ -112,6 +112,7 @@ import logging
 from django.db.models import Max, Min
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from django.core.cache import cache
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -142,7 +143,25 @@ from .analytics import (
 
 logger = logging.getLogger(__name__)
 
-# --- Watchlist Group Views ---
+
+# ---------------------------------------------------------------------------
+# Cache helpers — silent fallback nếu Redis không sẵn sàng
+# ---------------------------------------------------------------------------
+def _cache_get(key):
+    try:
+        return cache.get(key)
+    except Exception:
+        return None
+
+
+def _cache_set(key, value, timeout):
+    try:
+        cache.set(key, value, timeout=timeout)
+    except Exception:
+        pass
+
+
+
 class WatchlistGroupListCreateView(generics.ListCreateAPIView):
     serializer_class = WatchlistGroupSerializer
     permission_classes = [IsAuthenticated]
@@ -332,6 +351,11 @@ class IntradayMatchedView(APIView):
         except (ValueError, TypeError):
             page_size = 50
 
+        cache_key = f'intraday:{normalized_symbol}:{page_size}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
         try:
             from vnstock import Vnstock  # import trễ
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
@@ -387,12 +411,14 @@ class IntradayMatchedView(APIView):
                 'match_type': match_type_raw,
             })
 
-        return Response({
+        result = {
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
             'fetched_at': timezone.now().isoformat(),
-        })
+        }
+        _cache_set(cache_key, result, timeout=8)
+        return Response(result)
 
 
 class PriceBoardView(APIView):
@@ -406,6 +432,11 @@ class PriceBoardView(APIView):
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f'price_board:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
 
         try:
             from vnstock import Vnstock
@@ -464,12 +495,14 @@ class PriceBoardView(APIView):
             'change_pct': change_pct,
         }
 
-        return Response({
+        result = {
             'symbol': normalized_symbol,
             'depth': depth,
             'match': match_data,
             'fetched_at': timezone.now().isoformat(),
-        })
+        }
+        _cache_set(cache_key, result, timeout=8)
+        return Response(result)
 
 
 class SectorBreadthView(APIView):
@@ -483,6 +516,11 @@ class SectorBreadthView(APIView):
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f'breadth:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
 
         # Lấy các nhóm mà symbol thuộc về
         group_items = (
@@ -553,11 +591,369 @@ class SectorBreadthView(APIView):
                 })
             result_groups.append({'name': gm['name'], 'peers': peers})
 
-        return Response({
+        result = {
             'symbol': normalized_symbol,
             'groups': result_groups,
             'fetched_at': timezone.now().isoformat(),
+        }
+        _cache_set(cache_key, result, timeout=30)
+        return Response(result)
+
+
+class WhaleFeedView(APIView):
+    """
+    GET /api/realtime/whale-feed/<symbol>/
+    Trả về các lệnh lớn trong phiên + tóm tắt dòng tiền từ intraday data.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        import pandas as pd
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        config = UserConfig.objects.filter(user=request.user).values('whale_alert_threshold').first()
+        threshold_m = float((config or {}).get('whale_alert_threshold') or 500)
+        threshold_vnd = threshold_m * 1_000_000
+
+        cache_key = f'whale_feed:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
+        except Exception as exc:
+            logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({
+                'symbol': normalized_symbol, 'threshold': threshold_vnd,
+                'whale_orders': [], 'summary': {
+                    'buy_value': 0, 'sell_value': 0, 'flow_net': 0,
+                    'shark_value': 0, 'whale_value': 0, 'small_value': 0,
+                    'shark_pct': 0, 'whale_pct': 0, 'small_pct': 0,
+                },
+                'fetched_at': timezone.now().isoformat(),
+            })
+
+        orders = []
+        total_buy_value = 0.0
+        total_sell_value = 0.0
+        shark_value = 0.0
+        whale_value_total = 0.0
+        small_value = 0.0
+
+        for _, row in df.iterrows():
+            try:
+                raw_price = float(row.get('price') or row.get('close') or 0)
+                raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
+            except (ValueError, TypeError):
+                continue
+            matched_value = raw_price * raw_vol
+
+            match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
+            mt_lower = match_type_raw.lower()
+            if mt_lower in ('buy', 'bu', 'b'):
+                side = 'buy'
+            elif mt_lower in ('sell', 'sd', 's'):
+                side = 'sell'
+            else:
+                side = 'neutral'
+
+            if matched_value >= 5_000_000_000:
+                size_class = 'shark'
+                shark_value += matched_value
+            elif matched_value >= 1_000_000_000:
+                size_class = 'whale'
+                whale_value_total += matched_value
+            else:
+                size_class = 'small'
+                small_value += matched_value
+
+            if side == 'buy':
+                total_buy_value += matched_value
+            elif side == 'sell':
+                total_sell_value += matched_value
+
+            if matched_value >= threshold_vnd:
+                raw_time = row.get('time') or row.get('tradingDate') or ''
+                try:
+                    time_str = pd.Timestamp(str(raw_time)).strftime('%H:%M:%S')
+                except Exception:
+                    time_str = str(raw_time)[:8]
+                orders.append({
+                    'time': time_str,
+                    'price': raw_price,
+                    'volume': int(raw_vol),
+                    'matched_value': matched_value,
+                    'side': side,
+                    'size_class': size_class,
+                })
+
+        orders.sort(key=lambda x: x['matched_value'], reverse=True)
+        total_value = shark_value + whale_value_total + small_value
+
+        result = {
+            'symbol': normalized_symbol,
+            'threshold': threshold_vnd,
+            'whale_orders': orders[:50],
+            'summary': {
+                'buy_value': total_buy_value,
+                'sell_value': total_sell_value,
+                'flow_net': total_buy_value - total_sell_value,
+                'shark_value': shark_value,
+                'whale_value': whale_value_total,
+                'small_value': small_value,
+                'shark_pct': round(shark_value / total_value * 100, 1) if total_value > 0 else 0,
+                'whale_pct': round(whale_value_total / total_value * 100, 1) if total_value > 0 else 0,
+                'small_pct': round(small_value / total_value * 100, 1) if total_value > 0 else 0,
+            },
+            'fetched_at': timezone.now().isoformat(),
+        }
+        _cache_set(cache_key, result, timeout=20)
+        return Response(result)
+
+
+class RVOLView(APIView):
+    """
+    GET /api/realtime/rvol/<symbol>/
+    Tính RVOL (Relative Volume) theo bucket 15 phút từ intraday data.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        import pandas as pd
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
+        except Exception as exc:
+            logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({'symbol': normalized_symbol, 'buckets': [], 'fetched_at': timezone.now().isoformat()})
+
+        rows = []
+        for _, row in df.iterrows():
+            raw_time = row.get('time') or row.get('tradingDate') or ''
+            raw_vol = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
+            try:
+                ts = pd.Timestamp(str(raw_time))
+                vol = float(raw_vol)
+                rows.append({'ts': ts, 'volume': vol})
+            except Exception:
+                continue
+
+        if not rows:
+            return Response({'symbol': normalized_symbol, 'buckets': [], 'fetched_at': timezone.now().isoformat()})
+
+        frame = pd.DataFrame(rows).set_index('ts').sort_index()
+        buckets_df = frame.resample('15min')['volume'].sum().reset_index()
+        buckets_df.columns = ['time', 'volume']
+
+        volumes = buckets_df['volume'].values
+        window = min(20, len(volumes))
+        sma20_vals = []
+        for i in range(len(volumes)):
+            start = max(0, i - window)
+            sma20_vals.append(float(volumes[start:i + 1].mean()) if i >= 0 else 0.0)
+
+        buckets = []
+        for i, row in buckets_df.iterrows():
+            vol = float(row['volume'])
+            sma20 = sma20_vals[i] if i < len(sma20_vals) else 0.0
+            rvol = round(vol / sma20, 2) if sma20 > 0 else 0.0
+            try:
+                time_str = row['time'].strftime('%H:%M')
+            except Exception:
+                time_str = str(row['time'])[:5]
+            buckets.append({
+                'time': time_str,
+                'volume': int(vol),
+                'sma20': int(sma20),
+                'rvol': rvol,
+                'is_spike': rvol >= 2.0,
+            })
+
+        return Response({
+            'symbol': normalized_symbol,
+            'buckets': buckets,
+            'fetched_at': timezone.now().isoformat(),
         })
+
+
+class DepthChartView(APIView):
+    """
+    GET /api/realtime/depth-chart/<symbol>/
+    Tính độ sâu tích lũy từ price_board để vẽ depth chart (bid/ask mountains).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.trading.price_board(symbols_list=[normalized_symbol])
+        except Exception as exc:
+            logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({'symbol': normalized_symbol, 'bids': [], 'asks': [], 'walls': [], 'reference_price': None})
+
+        def safe_f(val):
+            try:
+                v = float(val)
+                return v if v == v else None
+            except (TypeError, ValueError):
+                return None
+
+        def safe_i(val):
+            try:
+                v = float(val)
+                return int(v) if v == v else None
+            except (TypeError, ValueError):
+                return None
+
+        ba = df['bid_ask'].iloc[0]
+        mt = df['match'].iloc[0]
+
+        ref_price = safe_f(mt.get('reference_price')) or 0
+        ceil_price = safe_f(mt.get('ceiling_price')) or (ref_price * 1.07 if ref_price else None)
+        floor_price = safe_f(mt.get('floor_price')) or (ref_price * 0.93 if ref_price else None)
+
+        bids = []
+        cum_bid = 0
+        for i in range(1, 4):
+            bp = safe_f(ba.get(f'bid_{i}_price'))
+            bv = safe_i(ba.get(f'bid_{i}_volume'))
+            if bp and bv:
+                cum_bid += bv
+                bids.append({'price': bp, 'volume': bv, 'cumulative': cum_bid})
+
+        asks = []
+        cum_ask = 0
+        for i in range(1, 4):
+            ap = safe_f(ba.get(f'ask_{i}_price'))
+            av = safe_i(ba.get(f'ask_{i}_volume'))
+            if ap and av:
+                cum_ask += av
+                asks.append({'price': ap, 'volume': av, 'cumulative': cum_ask})
+
+        all_vols = [b['volume'] for b in bids] + [a['volume'] for a in asks]
+        avg_vol = sum(all_vols) / len(all_vols) if all_vols else 1
+        wall_threshold = avg_vol * 2
+
+        walls = []
+        for b in bids:
+            if b['volume'] >= wall_threshold:
+                walls.append({'side': 'bid', 'price': b['price'], 'volume': b['volume'],
+                               'label': f'⚠️ TƯỜNG MUA: {b["volume"]:,}'})
+        for a in asks:
+            if a['volume'] >= wall_threshold:
+                walls.append({'side': 'ask', 'price': a['price'], 'volume': a['volume'],
+                               'label': f'⚠️ TƯỜNG BÁN: {a["volume"]:,}'})
+
+        return Response({
+            'symbol': normalized_symbol,
+            'reference_price': ref_price,
+            'ceiling_price': ceil_price,
+            'floor_price': floor_price,
+            'bids': bids,
+            'asks': asks,
+            'walls': walls,
+            'fetched_at': timezone.now().isoformat(),
+        })
+
+
+# ---------------------------------------------------------------------------
+# Financial Metrics View
+# ---------------------------------------------------------------------------
+
+class FinancialMetricsView(APIView):
+    """
+    GET /api/stock-management/stocks/<symbol>/financials/
+    Trả về chỉ tiêu tài chính theo năm (tối đa 5 năm gần nhất).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, symbol):
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        cache_key = f'financials:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        try:
+            from vnstock import Vnstock
+            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
+            df = stock.finance.ratio(period='year', lang='vi', dropna=True)
+        except Exception as exc:
+            logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
+            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+
+        if df is None or df.empty:
+            return Response({'symbol': normalized_symbol, 'years': []})
+
+        def _f(row, key):
+            val = row.get(key)
+            if val is None:
+                return None
+            try:
+                v = float(val)
+                return round(v, 4) if v == v else None
+            except (TypeError, ValueError):
+                return None
+
+        years = []
+        for _, row in df.head(5).iterrows():
+            year_val = row.get(('Meta', 'Năm')) or row.get('Năm')
+            years.append({
+                'year': int(year_val) if year_val else None,
+                # Định giá
+                'eps':         _f(row, ('Chỉ tiêu định giá', 'EPS (VND)')),
+                'pe':          _f(row, ('Chỉ tiêu định giá', 'P/E')),
+                'pb':          _f(row, ('Chỉ tiêu định giá', 'P/B')),
+                'ps':          _f(row, ('Chỉ tiêu định giá', 'P/S')),
+                'bvps':        _f(row, ('Chỉ tiêu định giá', 'BVPS (VND)')),
+                'market_cap_bn': _f(row, ('Chỉ tiêu định giá', 'Vốn hóa (Tỷ đồng)')),
+                # Sinh lời
+                'roe':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROE (%)')),
+                'roa':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROA (%)')),
+                'net_margin':    _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Biên lợi nhuận ròng (%)')),
+                'dividend_yield': _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Tỷ suất cổ tức (%)')),
+                # Thanh khoản / đòn bẩy
+                'leverage':      _f(row, ('Chỉ tiêu thanh khoản', 'Đòn bẩy tài chính')),
+                'current_ratio': _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán hiện hành')),
+                'quick_ratio':   _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán nhanh')),
+                'debt_equity':   _f(row, ('Chỉ tiêu thanh khoản', 'Nợ/Vốn chủ sở hữu')),
+            })
+
+        result = {
+            'symbol': normalized_symbol,
+            'years': years,
+            'fetched_at': timezone.now().isoformat(),
+        }
+        _cache_set(cache_key, result, timeout=21600)  # 6 giờ
+        return Response(result)
+
 
 # ---------------------------------------------------------------------------
 # Portfolio Views
@@ -720,6 +1116,77 @@ class ChartDataView(APIView):
         chart_data = df.to_dict(orient='records') if not df.empty else []
         serializer = ChartPointSerializer(chart_data, many=True)
         return Response(serializer.data)
+
+
+class EquityCurveView(APIView):
+    """
+    GET /api/portfolio/portfolios/{id}/equity-curve/?days=180
+
+    Trả về chuỗi NAV portfolio và VN-Index chuẩn hóa về % tăng trưởng từ ngày đầu.
+    Response: {
+      points: [{date, portfolio_pct, benchmark_pct}],
+      has_benchmark: bool,
+      period_days: int
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        portfolio = generics.get_object_or_404(Portfolio, pk=portfolio_id, user=request.user)
+        try:
+            days = int(request.query_params.get('days', 180))
+            days = min(max(days, 7), 1825)
+        except ValueError:
+            days = 180
+
+        import pandas as pd
+        nav_df = compute_nav_series(portfolio, days=days)
+        if nav_df.empty:
+            return Response({'points': [], 'has_benchmark': False, 'period_days': days})
+
+        nav_df['date'] = pd.to_datetime(nav_df['date'])
+        nav_df = nav_df.sort_values('date')
+        base_nav = float(nav_df.iloc[0]['value'])
+        if base_nav == 0:
+            return Response({'points': [], 'has_benchmark': False, 'period_days': days})
+
+        nav_df['portfolio_pct'] = ((nav_df['value'].astype(float) / base_nav) - 1) * 100
+
+        # Load VNINDEX từ DailyPrice
+        start_date = nav_df['date'].iloc[0].date()
+        end_date = nav_df['date'].iloc[-1].date()
+        bench_qs = (
+            DailyPrice.objects
+            .filter(symbol='VNINDEX', date__gte=start_date, date__lte=end_date)
+            .order_by('date')
+            .values('date', 'close_price')
+        )
+        has_benchmark = bench_qs.exists()
+        bench_map = {}
+        if has_benchmark:
+            bench_list = list(bench_qs)
+            if bench_list:
+                base_bench = float(bench_list[0]['close_price'])
+                if base_bench > 0:
+                    for row in bench_list:
+                        bench_map[str(row['date'])] = round(
+                            (float(row['close_price']) / base_bench - 1) * 100, 2
+                        )
+
+        points = []
+        for _, row in nav_df.iterrows():
+            date_str = str(row['date'].date())
+            points.append({
+                'date': date_str,
+                'portfolio_pct': round(float(row['portfolio_pct']), 2),
+                'benchmark_pct': bench_map.get(date_str),
+            })
+
+        return Response({
+            'points': points,
+            'has_benchmark': bool(bench_map),
+            'period_days': days,
+        })
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1336,6 +1803,43 @@ def _compute_rsi(values, window=14):
     return 100 - (100 / (1 + rs))
 
 
+def _compute_ema(values, period):
+    """Tính EMA với smoothing factor k = 2 / (period + 1)."""
+    if len(values) < period:
+        return None
+    k = 2.0 / (period + 1)
+    ema = sum(values[:period]) / period  # seed = SMA của period đầu
+    for v in values[period:]:
+        ema = v * k + ema * (1 - k)
+    return ema
+
+
+def _compute_macd_hist(values):
+    """
+    MACD histogram = (EMA12 - EMA26) - EMA9(EMA12 - EMA26).
+    Cần ít nhất 35 giá trị để tính đủ (26 + 9 extra).
+    """
+    if len(values) < 35:
+        return None
+    k12 = 2.0 / 13
+    k26 = 2.0 / 27
+    k9  = 2.0 / 10
+    ema12 = sum(values[:12]) / 12
+    ema26 = sum(values[:26]) / 26
+    macd_series = []
+    for i, v in enumerate(values[1:], start=1):
+        ema12 = v * k12 + ema12 * (1 - k12)
+        ema26 = v * k26 + ema26 * (1 - k26)
+        if i >= 25:
+            macd_series.append(ema12 - ema26)
+    if len(macd_series) < 9:
+        return None
+    signal = sum(macd_series[:9]) / 9
+    for m in macd_series[9:]:
+        signal = m * k9 + signal * (1 - k9)
+    return macd_series[-1] - signal
+
+
 def _technical_bias_meta(bias):
     normalized_bias = (bias or 'NEUTRAL').strip().upper()
     if normalized_bias == 'BULLISH':
@@ -1412,10 +1916,14 @@ class StockWorkspaceOverviewView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, symbol):
-        payload = _build_stock_workspace_overview(symbol, request.user)
-
-        # Overlay dữ liệu thật từ vnstock price_board
         normalized_symbol = (symbol or '').strip().upper()
+
+        cache_key = f'overview:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        payload = _build_stock_workspace_overview(symbol, request.user)
         try:
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
@@ -1519,7 +2027,9 @@ class StockWorkspaceOverviewView(APIView):
             except Exception as exc3:
                 logger.debug('StockWorkspaceOverviewView listing overlay lỗi %s: %s', normalized_symbol, exc3)
 
-        return Response(StockWorkspaceOverviewSerializer(payload).data)
+        serialized = StockWorkspaceOverviewSerializer(payload).data
+        _cache_set(cache_key, serialized, timeout=12)
+        return Response(serialized)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -1803,7 +2313,8 @@ class ScreenerRuleRunView(APIView):
         required_fields = {cond['field'] for cond in conditions}
         needs_history = required_fields & {'rsi_14', 'sma20', 'sma50', 'momentum_20d_pct',
                                            'price_vs_sma20_pct', 'price_vs_sma50_pct',
-                                           'range_position_pct', 'avg_volume_20'}
+                                           'range_position_pct', 'avg_volume_20',
+                                           'macd_hist', 'volume_rvol', 'sma20_vs_sma50_pct'}
 
         history_map = {}  # symbol -> list of (close, volume) sorted by date asc
         if needs_history:
@@ -1850,6 +2361,17 @@ class ScreenerRuleRunView(APIView):
             avg_vol20 = _safe_round(
                 (sum(volumes[-20:]) / 20) if len(volumes) >= 20 else None
             )
+            # MACD histogram (>0 = đà tăng, <0 = đà giảm)
+            macd_hist = _safe_round(_compute_macd_hist(closes), 4)
+            # Volume relative (current vol / avg_vol_20)
+            cur_vol = float(latest_row['volume']) if latest_row.get('volume') else None
+            volume_rvol = _safe_round(
+                (cur_vol / (sum(volumes[-20:]) / 20)) if cur_vol and len(volumes) >= 20 else None
+            )
+            # SMA20 vs SMA50 (>0 = golden cross, <0 = death cross)
+            sma20_vs_sma50_pct = _safe_round(
+                ((sma20 / sma50 - 1) * 100) if sma20 and sma50 else None
+            )
 
             return {
                 'close': close,
@@ -1862,6 +2384,9 @@ class ScreenerRuleRunView(APIView):
                 'price_vs_sma50_pct': price_vs_sma50,
                 'range_position_pct': range_pos,
                 'avg_volume_20': avg_vol20,
+                'macd_hist': macd_hist,
+                'volume_rvol': volume_rvol,
+                'sma20_vs_sma50_pct': sma20_vs_sma50_pct,
             }
 
         matched = []

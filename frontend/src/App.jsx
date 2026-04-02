@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
 import StockDetail from './pages/StockDetail';
+import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
 import Transactions from './pages/Transactions';
 import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
@@ -41,6 +42,7 @@ export default function App() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="stocks/:symbol" element={<StockDetail />} />
+            <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
             <Route path="transactions" element={<Transactions />} />
             <Route path="watchlist" element={<Watchlist />} />
             <Route path="admin-ops" element={<AdminOps />} />

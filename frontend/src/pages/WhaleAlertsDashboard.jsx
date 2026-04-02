@@ -1,0 +1,686 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  Pie,
+  PieChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { getDepthChart, getRVOL, getWhaleFeed } from '../api/client';
+import useRealtimeFeed from '../hooks/useRealtimeFeed';
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function fmtBil(v) {
+  if (v == null) return '—';
+  const n = Number(v);
+  if (n >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}N`;
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
+  return n.toLocaleString('vi-VN');
+}
+
+function fmtVol(v) {
+  if (v == null) return '—';
+  const n = Number(v);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString('vi-VN');
+}
+
+function fmtPrice(v) {
+  if (v == null) return '—';
+  return Number(v).toLocaleString('vi-VN');
+}
+
+function sizeClassEmoji(cls) {
+  if (cls === 'shark') return '🦈';
+  if (cls === 'whale') return '🐋';
+  return '🐟';
+}
+
+function sideColor(side) {
+  if (side === 'buy') return '#22c55e';
+  if (side === 'sell') return '#f43f5e';
+  return '#94a3b8';
+}
+
+// ─── AlertFeedCard ─────────────────────────────────────────────────────────
+
+function AlertFeedCard({ order, animated }) {
+  if (!order) return null;
+  const isBuy = order.side === 'buy';
+  const isBig = order.size_class === 'shark';
+  return (
+    <div
+      className={`relative overflow-hidden rounded-xl border px-4 py-3 text-[12px] transition-all ${
+        isBuy
+          ? 'border-emerald-700/60 bg-emerald-950/30'
+          : order.side === 'sell'
+          ? 'border-rose-700/60 bg-rose-950/30'
+          : 'border-slate-700/60 bg-slate-900/30'
+      } ${animated ? 'animate-pulse-once' : ''}`}
+    >
+      {isBig && (
+        <span className="absolute right-2 top-1.5 text-[18px] leading-none opacity-50">
+          {sizeClassEmoji(order.size_class)}
+        </span>
+      )}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] text-slate-500">{order.time}</span>
+        <span
+          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+            isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
+          }`}
+        >
+          {isBuy ? '▲ MUA LỚN' : order.side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+        </span>
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <span className="text-base font-bold text-white">{fmtBil(order.matched_value)}</span>
+        <span className="text-slate-400">
+          {fmtVol(order.volume)} @ {fmtPrice(order.price)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── WhaleFeedPanel ────────────────────────────────────────────────────────
+
+export function WhaleFeedPanel({ symbol, realtimeAlerts }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const prevCountRef = useRef(0);
+
+  const fetch = useCallback(async () => {
+    try {
+      const resp = await getWhaleFeed(symbol);
+      setData(resp.data);
+    } catch (_) { /* silent */ }
+    finally { setLoading(false); }
+  }, [symbol]);
+
+  useEffect(() => { setData(null); setLoading(true); fetch(); }, [fetch]);
+
+  // Re-fetch khi có whale alert WS mới
+  useEffect(() => {
+    const count = realtimeAlerts?.length || 0;
+    if (count > prevCountRef.current) { fetch(); }
+    prevCountRef.current = count;
+  }, [realtimeAlerts, fetch]);
+
+  const orders = data?.whale_orders || [];
+
+  return (
+    <section className="card-section p-4 flex flex-col h-full">
+      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <p className="text-label">Cảnh báo dòng tiền lớn</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">
+            Realtime · ngưỡng {data ? fmtBil(data.threshold) : '—'}
+          </h3>
+        </div>
+        <button
+          onClick={fetch}
+          className="rounded-full border border-slate-700 px-3 py-1 text-[10px] text-slate-400 hover:text-slate-200"
+        >
+          ↻
+        </button>
+      </div>
+      {loading ? (
+        <div className="mt-3 space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
+        <p className="mt-4 text-center text-[12px] text-slate-500">
+          Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
+        </p>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2 overflow-y-auto max-h-[420px] pr-0.5">
+          {/* WS alerts on top */}
+          {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
+            <AlertFeedCard
+              key={`ws-${a.ts}-${i}`}
+              order={{
+                time: a.ts ? new Date(a.ts).toLocaleTimeString('vi-VN') : '—',
+                matched_value: a.matched_value,
+                side: (a.side || '').toLowerCase(),
+                volume: null,
+                price: null,
+                size_class: (a.matched_value || 0) >= 5_000_000_000 ? 'shark' : 'whale',
+              }}
+              animated={i === 0}
+            />
+          ))}
+          {orders.slice(0, 20).map((o, i) => (
+            <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── MoneyFlowDonut ────────────────────────────────────────────────────────
+
+const DONUT_COLORS = ['#0891b2', '#7c3aed', '#475569'];
+
+export function MoneyFlowDonut({ summary, loading }) {
+  if (loading) {
+    return (
+      <section className="card-section p-4">
+        <div className="h-48 animate-pulse rounded-xl bg-slate-900" />
+      </section>
+    );
+  }
+
+  const totalValue = (summary?.shark_value || 0) + (summary?.whale_value || 0) + (summary?.small_value || 0);
+  const donutData = [
+    { name: `🦈 Cá mập (>5T)`, value: summary?.shark_pct || 0, realValue: summary?.shark_value || 0 },
+    { name: `🐋 Cá voi (1-5T)`, value: summary?.whale_pct || 0, realValue: summary?.whale_value || 0 },
+    { name: `🐟 Nhỏ lẻ`, value: summary?.small_pct || 0, realValue: summary?.small_value || 0 },
+  ].filter((d) => d.value > 0);
+
+  const flowNet = summary?.flow_net || 0;
+  const netColor = flowNet >= 0 ? '#22c55e' : '#f43f5e';
+
+  return (
+    <section className="card-section p-4">
+      <div className="border-b border-slate-800 pb-3">
+        <p className="text-label">Tỷ trọng dòng tiền phiên</p>
+        <h3 className="mt-0.5 text-sm font-semibold text-white">Phân khúc giao dịch</h3>
+      </div>
+      <div className="mt-3 flex items-center gap-4">
+        <div className="relative w-36 h-36 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={donutData.length > 0 ? donutData : [{ value: 1, name: 'Không có dữ liệu' }]}
+                cx="50%"
+                cy="50%"
+                innerRadius="58%"
+                outerRadius="80%"
+                dataKey="value"
+                paddingAngle={2}
+              >
+                {donutData.length > 0
+                  ? donutData.map((entry, index) => (
+                      <Cell key={index} fill={DONUT_COLORS[index % DONUT_COLORS.length]} />
+                    ))
+                  : <Cell fill="#1e293b" />}
+              </Pie>
+              <Tooltip
+                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
+                formatter={(val, name) => [`${val.toFixed(1)}%`, name]}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          {/* Center label */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-[10px] text-slate-400">Flow ròng</span>
+            <span className="text-[13px] font-bold" style={{ color: netColor }}>
+              {flowNet >= 0 ? '+' : ''}{fmtBil(flowNet)}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2 text-[12px]">
+          {donutData.map((d, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: DONUT_COLORS[i] }} />
+              <span className="text-slate-400">{d.name}</span>
+              <span className="ml-auto font-semibold text-white">{d.value.toFixed(1)}%</span>
+            </div>
+          ))}
+          <div className="mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-[11px]">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Mua</span>
+              <span className="text-emerald-300 font-semibold">{fmtBil(summary?.buy_value)}</span>
+            </div>
+            <div className="flex justify-between mt-0.5">
+              <span className="text-slate-500">Bán</span>
+              <span className="text-rose-300 font-semibold">{fmtBil(summary?.sell_value)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── BubbleScatterChart ─────────────────────────────────────────────────────
+
+const CustomBubble = (props) => {
+  const { cx, cy, payload } = props;
+  const r = Math.max(4, Math.min(28, Math.sqrt((payload.matched_value || 0) / 1_000_000_000) * 12));
+  const fill = sideColor(payload.side);
+  return (
+    <circle cx={cx} cy={cy} r={r} fill={fill} fillOpacity={0.55} stroke={fill} strokeWidth={1.5} />
+  );
+};
+
+export function BubbleOrderChart({ orders, loading }) {
+  if (loading) {
+    return (
+      <section className="card-section p-4">
+        <div className="border-b border-slate-800 pb-3">
+          <p className="text-label">Phân bổ lệnh lớn</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+        </div>
+        <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-900" />
+      </section>
+    );
+  }
+
+  const bubbleData = (orders || []).map((o, i) => ({
+    ...o,
+    idx: i,
+    y: o.price || 0,
+    x: i,
+  }));
+
+  if (!bubbleData.length) {
+    return (
+      <section className="card-section p-4">
+        <div className="border-b border-slate-800 pb-3">
+          <p className="text-label">Phân bổ lệnh lớn</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+        </div>
+        <div className="mt-4 flex h-56 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
+          Chưa có lệnh lớn đủ ngưỡng trong phiên.
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card-section p-4">
+      <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <p className="text-label">Phân bổ lệnh lớn</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+        </div>
+        <div className="flex gap-3 text-[10px] text-slate-400">
+          <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Mua</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />Bán</span>
+          <span className="text-slate-600">Bong bóng ∝ Giá trị</span>
+        </div>
+      </div>
+      <div className="mt-3 h-56">
+        <ResponsiveContainer width="100%" height="100%">
+          <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+            <XAxis dataKey="idx" type="number" name="STT" tick={false} axisLine={false} tickLine={false} />
+            <YAxis
+              dataKey="y"
+              type="number"
+              name="Giá"
+              tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
+              tick={{ fontSize: 10, fill: '#64748b' }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              cursor={{ strokeDasharray: '3 3' }}
+              contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
+              content={({ payload }) => {
+                if (!payload?.length) return null;
+                const d = payload[0]?.payload;
+                return (
+                  <div className="space-y-1 p-2 text-[11px]">
+                    <p className="font-semibold text-white">{fmtBil(d.matched_value)}</p>
+                    <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · KL {fmtVol(d.volume)}</p>
+                    <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? '▲ Mua' : d.side === 'sell' ? '▼ Bán' : '—'} {sizeClassEmoji(d.size_class)}</p>
+                  </div>
+                );
+              }}
+            />
+            <Scatter
+              data={bubbleData}
+              shape={<CustomBubble />}
+            />
+          </ScatterChart>
+        </ResponsiveContainer>
+      </div>
+    </section>
+  );
+}
+
+// ─── RVOLChart ──────────────────────────────────────────────────────────────
+
+const CustomBarShape = (props) => {
+  const { x, y, width, height, payload } = props;
+  const fill = payload?.is_spike ? '#a855f7' : '#334155';
+  return <rect x={x} y={y} width={width} height={height} fill={fill} rx={2} />;
+};
+
+function RVOLChartPanel({ symbol, loading: parentLoading }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getRVOL(symbol)
+      .then((r) => { if (!cancelled) setData(r.data); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [symbol]);
+
+  const maxSpike = (data?.buckets || []).reduce((max, b) => b.is_spike && b.rvol > max ? b.rvol : max, 0);
+
+  return (
+    <section className="card-section p-4">
+      <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <p className="text-label">Khối lượng tương đối (RVOL)</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">Volume 15 phút + SMA20</h3>
+        </div>
+        {maxSpike >= 2 && (
+          <span className="rounded-full border border-violet-600/60 bg-violet-950/40 px-2.5 py-1 text-[10px] font-semibold text-violet-300">
+            ⚠️ Đột biến {maxSpike.toFixed(1)}×
+          </span>
+        )}
+      </div>
+      {loading || parentLoading ? (
+        <div className="mt-4 h-44 animate-pulse rounded-xl bg-slate-900" />
+      ) : !data?.buckets?.length ? (
+        <div className="mt-4 flex h-44 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
+          Không có dữ liệu RVOL.
+        </div>
+      ) : (
+        <div className="mt-3 h-44">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={data.buckets} margin={{ top: 4, right: 8, bottom: 4, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <XAxis
+                dataKey="time"
+                tick={{ fontSize: 9, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+              />
+              <YAxis
+                tickFormatter={fmtVol}
+                tick={{ fontSize: 9, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                width={50}
+              />
+              <Tooltip
+                contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
+                formatter={(val, name) => [
+                  name === 'volume' ? fmtVol(val) : fmtVol(val),
+                  name === 'volume' ? 'KL' : 'SMA20',
+                ]}
+              />
+              <Bar dataKey="volume" shape={<CustomBarShape />} />
+              <Line dataKey="sma20" stroke="#f59e0b" dot={false} strokeWidth={1.5} strokeDasharray="4 2" />
+              <ReferenceLine
+                y={(data.buckets.find((b) => b.sma20 > 0)?.sma20 || 0) * 2}
+                stroke="#a855f7"
+                strokeDasharray="4 2"
+                label={{ value: '2× AVG', fill: '#a855f7', fontSize: 10, position: 'insideTopRight' }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div className="mt-2 flex gap-3 text-[10px] text-slate-500">
+        <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-violet-500 mr-1 align-middle" />Đột biến ≥2×</span>
+        <span><span className="inline-block w-2.5 h-0.5 bg-amber-400 mr-1 align-middle" />SMA20</span>
+        <span><span className="inline-block w-2.5 h-0.5 bg-slate-600 mr-1 align-middle" />Bình thường</span>
+      </div>
+    </section>
+  );
+}
+
+// ─── DepthChartPanel ────────────────────────────────────────────────────────
+
+function DepthChartPanel({ symbol }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetch = useCallback(async () => {
+    try {
+      const r = await getDepthChart(symbol);
+      setData(r.data);
+    } catch (_) {}
+    finally { setLoading(false); }
+  }, [symbol]);
+
+  useEffect(() => { setLoading(true); fetch(); }, [fetch]);
+
+  // Xây dựng dữ liệu depth chart từ bids/asks
+  const chartData = React.useMemo(() => {
+    if (!data) return [];
+    const bids = [...(data.bids || [])].reverse(); // giá thấp → cao
+    const asks = data.asks || [];
+    const points = [];
+    bids.forEach((b) => points.push({ price: b.price, cumBid: b.cumulative, cumAsk: 0 }));
+    asks.forEach((a) => points.push({ price: a.price, cumBid: 0, cumAsk: a.cumulative }));
+    return points.sort((a, b) => a.price - b.price);
+  }, [data]);
+
+  return (
+    <section className="card-section p-4">
+      <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
+        <div>
+          <p className="text-label">Độ sâu thị trường</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">Depth Chart — Tường Mua / Bán</h3>
+        </div>
+        <button
+          onClick={fetch}
+          className="rounded-full border border-slate-700 px-3 py-1 text-[10px] text-slate-400 hover:text-slate-200"
+        >
+          ↻ Làm mới
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="mt-4 h-52 animate-pulse rounded-xl bg-slate-900" />
+      ) : !chartData.length ? (
+        <div className="mt-4 flex h-52 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
+          Chưa có dữ liệu sổ lệnh.
+        </div>
+      ) : (
+        <>
+          <div className="mt-3 h-52">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis
+                  dataKey="price"
+                  tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
+                  tick={{ fontSize: 10, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tickFormatter={fmtVol}
+                  tick={{ fontSize: 10, fill: '#64748b' }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={50}
+                />
+                <Tooltip
+                  contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
+                  formatter={(val, name) => [fmtVol(val), name === 'cumBid' ? 'Chờ mua (tích lũy)' : 'Chờ bán (tích lũy)']}
+                  labelFormatter={(label) => `Giá: ${fmtPrice(label)}`}
+                />
+                {data?.reference_price && (
+                  <ReferenceLine
+                    x={data.reference_price}
+                    stroke="#f59e0b"
+                    strokeDasharray="4 2"
+                    label={{ value: 'Ref', fill: '#f59e0b', fontSize: 10, position: 'top' }}
+                  />
+                )}
+                {(data?.walls || []).map((w, i) => (
+                  <ReferenceLine
+                    key={i}
+                    x={w.price}
+                    stroke={w.side === 'bid' ? '#22c55e' : '#f43f5e'}
+                    strokeWidth={2}
+                    label={{ value: w.label, fill: w.side === 'bid' ? '#22c55e' : '#f43f5e', fontSize: 9, position: 'insideTopLeft' }}
+                  />
+                ))}
+                <Area
+                  type="stepAfter"
+                  dataKey="cumBid"
+                  stroke="#22c55e"
+                  fill="rgba(34,197,94,0.15)"
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+                <Area
+                  type="stepBefore"
+                  dataKey="cumAsk"
+                  stroke="#f43f5e"
+                  fill="rgba(244,63,94,0.15)"
+                  strokeWidth={2}
+                  dot={false}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Wall summary */}
+          {(data?.walls || []).length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {data.walls.map((w, i) => (
+                <div
+                  key={i}
+                  className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold ${
+                    w.side === 'bid'
+                      ? 'border-emerald-700/50 bg-emerald-950/20 text-emerald-300'
+                      : 'border-rose-700/50 bg-rose-950/20 text-rose-300'
+                  }`}
+                >
+                  {w.label} @ {fmtPrice(w.price)}
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// ─── Main Dashboard ──────────────────────────────────────────────────────────
+
+export default function WhaleAlertsDashboard() {
+  const { symbol } = useParams();
+  const normalizedSymbol = (symbol || '').toUpperCase();
+
+  const { alerts, latestWhaleAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
+    symbols: normalizedSymbol ? [normalizedSymbol] : [],
+  });
+
+  const symbolAlerts = (alerts || []).filter((a) => a.symbol === normalizedSymbol);
+  const symbolWhaleAlert = latestWhaleAlert?.symbol === normalizedSymbol ? latestWhaleAlert : null;
+
+  // Lấy whale feed + summary
+  const [feedData, setFeedData] = useState(null);
+  const [feedLoading, setFeedLoading] = useState(true);
+
+  const fetchFeed = useCallback(async () => {
+    try {
+      const r = await getWhaleFeed(normalizedSymbol);
+      setFeedData(r.data);
+    } catch (_) {}
+    finally { setFeedLoading(false); }
+  }, [normalizedSymbol]);
+
+  useEffect(() => { setFeedData(null); setFeedLoading(true); fetchFeed(); }, [fetchFeed]);
+
+  // Re-fetch khi có WS whale alert
+  const prevWhaleRef = useRef(null);
+  useEffect(() => {
+    if (symbolWhaleAlert && symbolWhaleAlert?.ts !== prevWhaleRef.current) {
+      prevWhaleRef.current = symbolWhaleAlert.ts;
+      fetchFeed();
+    }
+  }, [symbolWhaleAlert, fetchFeed]);
+
+  // Auto-refresh mỗi 60s
+  useEffect(() => {
+    const id = setInterval(fetchFeed, 60_000);
+    return () => clearInterval(id);
+  }, [fetchFeed]);
+
+  return (
+    <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+      {/* Header */}
+      <section className="card-section px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link to="/watchlist" className="text-label hover:text-slate-300 transition-colors">
+              Radar
+            </Link>
+            <span className="text-slate-700">/</span>
+            <Link to={`/stocks/${normalizedSymbol}`} className="text-label hover:text-slate-300 transition-colors">
+              {normalizedSymbol}
+            </Link>
+            <span className="text-slate-700">/</span>
+            <span className="text-slate-200 text-sm font-semibold">🦈 Whale Alerts</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* WS whale alert badge */}
+            {symbolWhaleAlert && (
+              <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold animate-pulse ${
+                (symbolWhaleAlert.side || '').toLowerCase() === 'buy'
+                  ? 'border-emerald-600/60 bg-emerald-950/40 text-emerald-300'
+                  : 'border-rose-600/60 bg-rose-950/40 text-rose-300'
+              }`}>
+                🚨 {(symbolWhaleAlert.side || '').toUpperCase()} · {fmtBil(symbolWhaleAlert.matched_value)}
+              </div>
+            )}
+            <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
+              {realtimeStatus === 'live' ? '🟢 Realtime' : realtimeStatus === 'polling' ? '🟡 Polling' : '⚪ Kết nối...'}
+              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+            </div>
+            <Link
+              to={`/stocks/${normalizedSymbol}`}
+              className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              ← Stock Workspace
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Row 1: Alert Feed + Donut */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+        <WhaleFeedPanel symbol={normalizedSymbol} realtimeAlerts={symbolAlerts} />
+        <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} />
+      </div>
+
+      {/* Row 2: Bubble Chart + RVOL */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+        <BubbleOrderChart orders={feedData?.whale_orders} loading={feedLoading} />
+        <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
+      </div>
+
+      {/* Row 3: Depth Chart full width */}
+      <DepthChartPanel symbol={normalizedSymbol} />
+    </div>
+  );
+}
