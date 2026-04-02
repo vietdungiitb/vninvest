@@ -2,7 +2,7 @@
  * pages/Watchlist.jsx
  * Radar thị trường — tách rõ 2 lớp dùng dữ liệu:
  * 1) Nhóm thị trường để quét rộng theo ngành/vốn hóa/chủ đề.
- * 2) Danh sách theo dõi cá nhân để giữ shortlist cần bám sát.
+ * 2) Danh sách theo dõi để bám sát realtime.
  */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -578,7 +578,7 @@ export default function WatchlistPage() {
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
           <p className="text-xs uppercase tracking-wider text-brand-300 mb-2">Lớp 2: Danh sách theo dõi cá nhân</p>
-          <h2 className="text-base font-semibold text-gray-100">Dùng để giữ shortlist cần bám sát</h2>
+          <h2 className="text-base font-semibold text-gray-100">Các mã đang bám sát realtime</h2>
           <p className="text-sm text-gray-400 mt-2">
             Đây là tập hợp các mã bạn thật sự muốn theo dõi realtime mỗi ngày. Luồng hợp lý là quét từ nhóm thị trường rồi chọn mã đưa vào danh sách cá nhân.
           </p>
@@ -708,7 +708,7 @@ export default function WatchlistPage() {
                 <div className="flex items-center gap-3 mb-3">
                   <span className="w-4 h-4 rounded-full bg-brand-500 flex-shrink-0" />
                   <h2 className="text-base font-bold text-gray-100">Danh sách theo dõi cá nhân</h2>
-                  <span className="text-xs text-gray-500">Shortlist các mã bạn muốn bám sát realtime</span>
+                  <span className="text-xs text-gray-500">Các mã bạn muốn bám sát realtime</span>
                 </div>
 
                 <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
@@ -987,7 +987,7 @@ export default function WatchlistPage() {
                     <span className="text-green-400">▲ Tăng: {groupStats.up}</span>
                     <span className="text-red-400">▼ Giảm: {groupStats.down}</span>
                     <span className="text-gray-500">— Không đổi: {groupStats.flat}</span>
-                    <span className="text-brand-300">Shortlist còn thiếu: {activeGroupUntrackedCount}</span>
+                    <span className="text-brand-300">Chưa theo dõi: {activeGroupUntrackedCount}</span>
                   </div>
                 )}
 
@@ -1025,7 +1025,7 @@ export default function WatchlistPage() {
                         disabled={!!bulkGroupAction || activeGroupUntrackedCount === 0}
                         className="text-sm font-semibold px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white transition-colors"
                       >
-                        {bulkGroupAction === 'add' ? 'Đang thêm cả nhóm...' : 'Đưa tất cả mã vào DS cá nhân'}
+                        {bulkGroupAction === 'add' ? 'Đang thêm cả nhóm...' : 'Đưa tất cả vào DS theo dõi'}
                       </button>
                     </div>
                   </div>
@@ -1100,7 +1100,7 @@ export default function WatchlistPage() {
                                     }}
                                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
                                   >
-                                    Bỏ khỏi DS cá nhân
+                                    Bỏ khỏi DS theo dõi
                                   </button>
                                 </div>
                               ) : (
@@ -1112,7 +1112,7 @@ export default function WatchlistPage() {
                                   disabled={!!addingFromGroup[item.symbol]}
                                   className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
                                 >
-                                  {addingFromGroup[item.symbol] ? 'Đang thêm...' : 'Đưa vào DS cá nhân'}
+                                  {addingFromGroup[item.symbol] ? 'Đang thêm...' : 'Đưa vào DS theo dõi'}
                                 </button>
                               )}
                             </td>

@@ -10,6 +10,7 @@ import HoldingsTable from '../components/HoldingsTable';
 import PortfolioLineChart from '../components/PortfolioLineChart';
 import AllocationPieChart from '../components/AllocationPieChart';
 import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
+import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 
 export default function Dashboard() {
   const { activePortfolioId } = usePortfolio();
@@ -158,6 +159,9 @@ export default function Dashboard() {
         </h2>
         <HoldingsTable holdings={holdings} loading={loadingHoldings} />
       </div>
+
+      {/* Risk & Performance Analytics */}
+      <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
     </div>
   );
 }

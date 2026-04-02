@@ -94,6 +94,7 @@ from .services import (
 
 from .analytics import (
     compute_holdings, compute_nav_series, compute_allocation, build_summary,
+    build_risk_metrics, compute_allocation_by_sector,
 )
 
 # --- Watchlist Group Views ---
@@ -121,7 +122,7 @@ class WatchlistItemCreateView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         group_id = self.kwargs['group_id']
-        group = generics.get_object_or_400(WatchlistGroup, pk=group_id, user=self.request.user)
+        group = generics.get_object_or_404(WatchlistGroup, pk=group_id, user=self.request.user)
         serializer.save(group=group)
 
 class WatchlistItemDeleteView(generics.DestroyAPIView):
@@ -371,15 +372,52 @@ class SyncPricesView(APIView):
 
 
 class AllocationView(APIView):
-    """GET /api/portfolio/portfolios/{id}/allocation/ — Dữ liệu Pie Chart phân bổ danh mục."""
+    """
+    GET /api/portfolio/portfolios/{id}/allocation/        — Pie Chart theo mã CK
+    GET /api/portfolio/portfolios/{id}/allocation/?by=sector — Pie Chart theo ngành
+    """
     permission_classes = [IsAuthenticated]
 
     def get(self, request, portfolio_id):
         portfolio = generics.get_object_or_404(
             Portfolio, pk=portfolio_id, user=request.user
         )
-        allocation = compute_allocation(portfolio)
-        return Response(allocation)
+        by = request.query_params.get('by', 'symbol')
+        if by == 'sector':
+            data = compute_allocation_by_sector(portfolio)
+        else:
+            data = compute_allocation(portfolio)
+        return Response(data)
+
+
+class PortfolioAnalyticsView(APIView):
+    """
+    GET /api/portfolio/portfolios/{id}/analytics/?days=365
+
+    Trả về risk metrics cho danh mục:
+        sharpe_ratio, sortino_ratio, max_drawdown_pct, twr_pct,
+        volatility_annual_pct, best_day_pct, worst_day_pct,
+        total_trading_days, period_days
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, portfolio_id):
+        portfolio = generics.get_object_or_404(
+            Portfolio, pk=portfolio_id, user=request.user
+        )
+        days_raw = request.query_params.get('days', '365')
+        try:
+            days = int(days_raw)
+            if days < 5 or days > 1825:  # 5 ngày → 5 năm
+                raise ValueError
+        except ValueError:
+            return Response(
+                {'detail': 'days phải là số nguyên trong khoảng [5, 1825].'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        metrics = build_risk_metrics(portfolio, days=days)
+        return Response(metrics)
 
 
 # ---------------------------------------------------------------------------

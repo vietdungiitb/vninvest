@@ -8,4 +8,4 @@ S12-06,Document Redis backed runbook,P1,BE-2,2,,Runbook explains how to switch f
 S12-07,Run QA matrix for realtime UI,P1,QA,3,S12-02|S12-03|S12-04,QA results recorded for Dashboard and Watchlist,Done
 S12-08,Measure publish to UI latency on Redis env,P1,QA,3,S12-06,Latency check recorded with pass fail notes,Done
 S12-09,Bugfix and polish Sprint 12,P1,FE Lead,3,S12-07|S12-08,No open P0 or P1 issues remain for Sprint 12 scope,Done
-S12-10,Prepare Sprint 12 signoff note,P2,PM,1,S12-09,Execution log and acceptance checklist updated,In Progress
+S12-10,Prepare Sprint 12 signoff note,P2,PM,1,S12-09,Execution log and acceptance checklist updated,Done

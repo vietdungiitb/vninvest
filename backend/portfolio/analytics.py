@@ -378,6 +378,51 @@ def compute_allocation(portfolio) -> list[dict]:
     ).to_dict(orient='records')
 
 
+def compute_allocation_by_sector(portfolio) -> list[dict]:
+    """
+    Tính tỷ trọng phân bổ tài sản nhóm theo ngành (industry).
+
+    Join compute_holdings() với StockProfile.industry.
+
+    Returns list[dict]: [{ sector, value, percentage, hhi_contribution }, ...]
+        hhi_contribution: đóng góp vào Herfindahl-Hirschman Index (đo mức độ tập trung)
+        HHI = sum(percentage_i^2), càng nhỏ càng đa dạng hóa
+    """
+    from .models import StockProfile
+
+    df = compute_holdings(portfolio)
+    if df.empty or 'market_value' not in df.columns:
+        return []
+
+    df_alloc = df[df['market_value'].notna() & (df['market_value'] > 0)].copy()
+    if df_alloc.empty:
+        return []
+
+    # Load industry mapping từ StockProfile (1 query duy nhất)
+    symbols = df_alloc['symbol'].tolist()
+    profiles_qs = StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'industry')
+    industry_map = {p['symbol']: p['industry'] or 'Khác' for p in profiles_qs}
+
+    df_alloc['sector'] = df_alloc['symbol'].map(
+        lambda s: industry_map.get(s, 'Khác')
+    )
+
+    # Group by sector: tổng market_value mỗi ngành
+    sector_series = df_alloc.groupby('sector')['market_value'].sum()
+    total = sector_series.sum()
+    if total == 0:
+        return []
+
+    result_df = sector_series.reset_index()
+    result_df.columns = ['sector', 'value']
+    result_df['percentage'] = (result_df['value'] / total * 100).round(FLOAT_ROUND)
+    # HHI contribution: (weight%)^2 — sum toàn bộ = HHI tổng
+    result_df['hhi_contribution'] = (result_df['percentage'] ** 2).round(FLOAT_ROUND)
+    result_df.sort_values('value', ascending=False, inplace=True)
+
+    return result_df[['sector', 'value', 'percentage', 'hhi_contribution']].to_dict(orient='records')
+
+
 # ---------------------------------------------------------------------------
 # Bước 6: Summary — tổng hợp toàn danh mục
 # ---------------------------------------------------------------------------
@@ -444,4 +489,210 @@ def build_summary(portfolio) -> dict:
         'total_realized_pl': round(float(total_realized_pl), FLOAT_ROUND),
         'total_dividends': round(float(total_dividends), FLOAT_ROUND),
         'last_updated': last_price_record['date'] if last_price_record else None,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Bước 7: Risk Metrics — Sharpe, Sortino, Drawdown, TWR, Volatility
+# ---------------------------------------------------------------------------
+
+def compute_daily_returns(nav_df: pd.DataFrame) -> pd.Series:
+    """
+    Tính daily return từ NAV DataFrame.
+
+    Parameters:
+        nav_df: DataFrame với columns ['date', 'value'] từ compute_nav_series()
+
+    Returns:
+        pd.Series of daily returns (float, e.g. 0.012 = 1.2%)
+    """
+    if nav_df.empty or len(nav_df) < 2:
+        return pd.Series(dtype=float)
+
+    values = pd.Series(nav_df['value'].values, index=pd.to_datetime(nav_df['date']))
+    values = values.sort_index()
+    # pct_change() = (V_t - V_{t-1}) / V_{t-1}; dropna() loại bỏ NaN đầu tiên
+    returns = values.pct_change().dropna()
+    return returns
+
+
+def compute_max_drawdown(nav_df: pd.DataFrame) -> float:
+    """
+    Tính Maximum Drawdown (%) từ NAV series.
+
+    Công thức: MDD = min( (V_t - peak_t) / peak_t ) × 100
+    Ý nghĩa: mức sụt giảm lớn nhất từ đỉnh cao nhất đến đáy thấp nhất.
+
+    Returns:
+        float: MDD as negative % (e.g. -15.3), hoặc 0.0 nếu không đủ dữ liệu
+    """
+    if nav_df.empty or len(nav_df) < 2:
+        return 0.0
+
+    values = nav_df['value'].values.astype(float)
+    # rolling maximum (peak) tính đến thời điểm t
+    peaks = np.maximum.accumulate(values)
+    drawdowns = np.where(peaks > 0, (values - peaks) / peaks * 100, 0.0)
+    return round(float(np.min(drawdowns)), FLOAT_ROUND)
+
+
+def compute_volatility(returns: pd.Series) -> float:
+    """
+    Tính Annualized Volatility (độ lệch chuẩn hàng năm).
+
+    Công thức: σ_annual = std(returns_daily) × sqrt(252)
+    252 = số ngày giao dịch trung bình mỗi năm (VN market).
+
+    Returns:
+        float: volatility as % (e.g. 18.5 = 18.5%/năm), hoặc 0.0 nếu không đủ dữ liệu
+    """
+    if returns.empty or len(returns) < 2:
+        return 0.0
+
+    vol = float(returns.std()) * np.sqrt(252) * 100
+    return round(vol, FLOAT_ROUND)
+
+
+def compute_sharpe(returns: pd.Series, risk_free_annual: float = 0.05) -> float:
+    """
+    Tính Sharpe Ratio (annualized).
+
+    Công thức: Sharpe = (R_p - R_f) / σ_p
+        R_p = annualized portfolio return = mean(r_daily) × 252
+        R_f = risk-free rate mỗi năm (default 5% cho VN)
+        σ_p = annualized volatility = std(r_daily) × sqrt(252)
+
+    Returns:
+        float: Sharpe ratio, hoặc 0.0 nếu không đủ dữ liệu / volatility = 0
+    """
+    if returns.empty or len(returns) < 5:
+        return 0.0
+
+    mean_daily = float(returns.mean())
+    std_daily = float(returns.std())
+
+    if std_daily < 1e-12:
+        return 0.0
+
+    # Chuyển risk_free về daily rate: (1 + R_f)^(1/252) - 1 ≈ R_f/252
+    risk_free_daily = risk_free_annual / 252
+
+    sharpe = (mean_daily - risk_free_daily) / std_daily * np.sqrt(252)
+    return round(float(sharpe), FLOAT_ROUND)
+
+
+def compute_sortino(returns: pd.Series, risk_free_annual: float = 0.05) -> float:
+    """
+    Tính Sortino Ratio (annualized) — chỉ phạt downside risk.
+
+    Công thức: Sortino = (R_p - R_f) / σ_downside
+        σ_downside = std(r_i where r_i < 0) × sqrt(252)
+        Chỉ tính độ lệch chuẩn của các ngày thua lỗ (khác Sharpe tính cả upside).
+
+    Returns:
+        float: Sortino ratio, hoặc 0.0 nếu không đủ dữ liệu / không có ngày lỗ
+    """
+    if returns.empty or len(returns) < 5:
+        return 0.0
+
+    mean_daily = float(returns.mean())
+    risk_free_daily = risk_free_annual / 252
+
+    negative_returns = returns[returns < 0]
+    if negative_returns.empty:
+        # Danh mục không có ngày lỗ → Sortino = +∞, trả về 99.0 làm sentinel
+        return 99.0
+
+    downside_std = float(negative_returns.std())
+    if downside_std == 0:
+        return 0.0
+
+    sortino = (mean_daily - risk_free_daily) / downside_std * np.sqrt(252)
+    return round(float(sortino), FLOAT_ROUND)
+
+
+def compute_twr(nav_df: pd.DataFrame) -> float:
+    """
+    Tính Time-Weighted Return (TWR) từ NAV series.
+
+    TWR loại bỏ ảnh hưởng của các khoản nạp/rút tiền, phản ánh
+    đúng hiệu suất đầu tư thuần túy của danh mục.
+
+    Công thức đơn giản (daily chain-linking):
+        TWR = (∏ (1 + r_i)) - 1
+        Trong đó r_i = daily return
+
+    Đây là xấp xỉ Modified Dietz / daily-chaining khi không có
+    timestamp chính xác của cashflow.
+
+    Returns:
+        float: TWR as % (e.g. 23.5 = 23.5% từ đầu kỳ đến cuối kỳ),
+               hoặc 0.0 nếu không đủ dữ liệu
+    """
+    if nav_df.empty or len(nav_df) < 2:
+        return 0.0
+
+    values = pd.Series(nav_df['value'].values, index=pd.to_datetime(nav_df['date']))
+    values = values.sort_index()
+
+    # Tính sub-period returns: (V_t / V_{t-1}) - 1
+    sub_period_factors = (values / values.shift(1)).dropna()
+
+    if sub_period_factors.empty:
+        return 0.0
+
+    # Chain-link: nhân tất cả (1 + r_i)
+    twr = float(sub_period_factors.prod()) - 1.0
+    return round(twr * 100, FLOAT_ROUND)
+
+
+def build_risk_metrics(portfolio, days: int = 365) -> dict:
+    """
+    Tổng hợp tất cả risk metrics cho một portfolio.
+
+    Gọi một lần: tính NAV series → daily returns → tất cả metrics.
+    Không truy vấn DB nhiều lần.
+
+    Returns dict:
+        {
+            sharpe_ratio, sortino_ratio, max_drawdown_pct, twr_pct,
+            volatility_annual_pct, best_day_pct, worst_day_pct,
+            total_trading_days, period_days
+        }
+    """
+    nav_df = compute_nav_series(portfolio, days=days)
+
+    empty_result = {
+        'sharpe_ratio': None,
+        'sortino_ratio': None,
+        'max_drawdown_pct': None,
+        'twr_pct': None,
+        'volatility_annual_pct': None,
+        'best_day_pct': None,
+        'worst_day_pct': None,
+        'total_trading_days': 0,
+        'period_days': days,
+    }
+
+    if nav_df.empty or len(nav_df) < 5:
+        return empty_result
+
+    returns = compute_daily_returns(nav_df)
+
+    if returns.empty:
+        return empty_result
+
+    best_day = round(float(returns.max()) * 100, FLOAT_ROUND)
+    worst_day = round(float(returns.min()) * 100, FLOAT_ROUND)
+
+    return {
+        'sharpe_ratio': compute_sharpe(returns),
+        'sortino_ratio': compute_sortino(returns),
+        'max_drawdown_pct': compute_max_drawdown(nav_df),
+        'twr_pct': compute_twr(nav_df),
+        'volatility_annual_pct': compute_volatility(returns),
+        'best_day_pct': best_day,
+        'worst_day_pct': worst_day,
+        'total_trading_days': len(nav_df),
+        'period_days': days,
     }

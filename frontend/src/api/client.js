@@ -86,6 +86,10 @@ export const getChartData = (portfolioId, days = 90) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/chart/?days=${days}`);
 export const getAllocation = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/`);
+export const getAllocationBySector = (portfolioId) =>
+  apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/?by=sector`);
+export const getAnalytics = (portfolioId, days = 365) =>
+  apiClient.get(`/portfolio/portfolios/${portfolioId}/analytics/?days=${days}`);
 
 // --- Sync ---
 export const syncPrices = (portfolioId, days = 30) =>
@@ -148,9 +152,6 @@ export const deletePriceAlert = (id) => apiClient.delete(`/stock-management/pric
 export const getRealtimeHealth = () =>
   axios.get(`${apiBaseURL.replace(/\/api$/, '')}/api/health/realtime/`);
 export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management/price-alerts/${id}/mark-triggered/`);
-
-// --- Health ---
-export const getRealtimeHealth = () => apiClient.get('/health/realtime/');
 
 export default apiClient;
 

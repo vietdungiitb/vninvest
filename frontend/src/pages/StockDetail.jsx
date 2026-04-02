@@ -1,13 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import {
-  CartesianGrid,
-  ComposedChart,
-  Rectangle,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { createChart, CandlestickSeries } from 'lightweight-charts';
 import { Link, useParams } from 'react-router-dom';
 import {
   addTrackedSymbol,
@@ -74,115 +66,86 @@ function formatPercentDelta(value) {
   return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
 }
 
-function CandlestickChart({ data, width = '100%', height = 300 }) {
-  return (
-    <ComposedChart
-      data={data}
-      width={width}
-      height={height}
-      margin={{ top: 8, right: 14, left: 0, bottom: 8 }}
-    >
-      <defs>
-        <linearGradient id="chart-gradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#06b6d4" stopOpacity={0.12} />
-          <stop offset="100%" stopColor="#06b6d4" stopOpacity={0.02} />
-        </linearGradient>
-      </defs>
-      <CartesianGrid stroke="#1e293b" strokeDasharray="2 4" vertical={false} />
-      <XAxis
-        dataKey="date"
-        axisLine={false}
-        tickLine={false}
-        tick={{ fill: '#64748b', fontSize: 11 }}
-        tickFormatter={(value) => {
-          const dateValue = new Date(value);
-          return `${dateValue.getDate()}/${dateValue.getMonth() + 1}`;
-        }}
-      />
-      <YAxis
-        axisLine={false}
-        tickLine={false}
-        tick={{ fill: '#64748b', fontSize: 11 }}
-        tickFormatter={formatChartAxis}
-        width={70}
-      />
-      <Tooltip content={<CandleTooltip />} />
-      <Rectangle
-        dataKey="candle"
-        fill="url(#chart-gradient)"
-        shape={<CandleShape />}
-        isAnimationActive={false}
-      />
-    </ComposedChart>
-  );
-}
+function CandlestickChart({ data }) {
+  const containerRef = useRef(null);
+  const chartRef = useRef(null);
+  const seriesRef = useRef(null);
 
-function CandleShape(props) {
-  const { x, y, width, height, payload } = props;
-  if (!payload) return null;
+  // Create chart once
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const chart = createChart(containerRef.current, {
+      layout: {
+        background: { color: 'transparent' },
+        textColor: '#64748b',
+        fontFamily: 'inherit',
+      },
+      grid: {
+        vertLines: { color: '#1e293b' },
+        horzLines: { color: '#1e293b' },
+      },
+      crosshair: {
+        vertLine: { color: '#475569', labelBackgroundColor: '#1e293b' },
+        horzLine: { color: '#475569', labelBackgroundColor: '#1e293b' },
+      },
+      rightPriceScale: {
+        borderColor: '#1e293b',
+        textColor: '#64748b',
+      },
+      timeScale: {
+        borderColor: '#1e293b',
+        timeVisible: false,
+      },
+      width: containerRef.current.clientWidth,
+      height: containerRef.current.clientHeight,
+    });
 
-  const chartHeight = 470;
-  const min = Math.min(payload.open || 0, payload.high || 0, payload.low || 0, payload.close || 0);
-  const max = Math.max(payload.open || 0, payload.high || 0, payload.low || 0, payload.close || 0);
-  const range = max - min || 1;
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: '#22c55e',
+      downColor: '#f43f5e',
+      borderUpColor: '#16a34a',
+      borderDownColor: '#be123c',
+      wickUpColor: '#16a34a',
+      wickDownColor: '#be123c',
+    });
 
-  const scale = height / range;
-  const baseY = y + height;
+    chartRef.current = chart;
+    seriesRef.current = series;
 
-  const high_y = baseY - (payload.high - min) * scale;
-  const low_y = baseY - (payload.low - min) * scale;
-  const open_y = baseY - (payload.open - min) * scale;
-  const close_y = baseY - (payload.close - min) * scale;
+    const ro = new ResizeObserver(() => {
+      if (containerRef.current && chartRef.current) {
+        chartRef.current.applyOptions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight,
+        });
+      }
+    });
+    ro.observe(containerRef.current);
 
-  const bodyTop = Math.min(open_y, close_y);
-  const bodyBottom = Math.max(open_y, close_y);
-  const bodyHeight = Math.max(bodyBottom - bodyTop, 1);
-  const isUp = payload.close >= payload.open;
+    return () => {
+      ro.disconnect();
+      chart.remove();
+    };
+  }, []);
 
-  const candleColor = isUp ? '#22c55e' : '#f43f5e';
-  const wickColor = isUp ? '#16a34a' : '#be123c';
-  const wickWidth = Math.max(width * 0.3, 1);
-  const bodyWidth = Math.max(wickWidth * 0.75, 1);
+  // Update data when prop changes
+  useEffect(() => {
+    if (!seriesRef.current || !data || !data.length) return;
+    const points = data
+      .filter((d) => d.date && d.open != null && d.high != null && d.low != null && d.close != null)
+      .map((d) => ({
+        time: d.date,
+        open: Number(d.open),
+        high: Number(d.high),
+        low: Number(d.low),
+        close: Number(d.close),
+      }))
+      .sort((a, b) => (a.time > b.time ? 1 : -1));
+    seriesRef.current.setData(points);
+    chartRef.current.timeScale().fitContent();
+  }, [data]);
 
-  return (
-    <g>
-      {/* Wick */}
-      <line
-        x1={x + width / 2}
-        y1={high_y}
-        x2={x + width / 2}
-        y2={low_y}
-        stroke={wickColor}
-        strokeWidth={Math.max(width * 0.12, 0.5)}
-      />
-      {/* Body */}
-      <rect
-        x={x + (width - bodyWidth) / 2}
-        y={bodyTop}
-        width={bodyWidth}
-        height={bodyHeight}
-        fill={candleColor}
-        stroke={isUp ? '#16a34a' : '#be123c'}
-        strokeWidth={0.5}
-      />
-    </g>
-  );
-}
-
-function CandleTooltip({ active, payload }) {
-  if (!active || !payload?.length) {
-    return null;
-  }
-
-  const data = payload[0].payload;
-  return (
-    <div className="rounded-lg border border-slate-700 bg-slate-950/95 px-3 py-2 shadow-2xl text-[12px]">
-      <p className="text-slate-500">{data.date}</p>
-      <p className="mt-1 font-semibold text-cyan-300">O: {formatCurrency(data.open)} H: {formatCurrency(data.high)}</p>
-      <p className="font-semibold text-cyan-300">L: {formatCurrency(data.low)} C: {formatCurrency(data.close)}</p>
-      <p className="mt-1 text-slate-400">Vol: {formatCompactNumber(data.volume)}</p>
-    </div>
-  );
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }
 
 function BreadthMiniPanel({ marketGroups, symbol, technicalBias }) {
@@ -382,9 +345,13 @@ export default function StockDetail() {
   const [activePeriod, setActivePeriod] = useState(180);
   const [error, setError] = useState('');
 
-  const { quotesBySymbol, realtimeStatus, lastEventAt } = useRealtimeFeed({
+  const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, latestWhaleAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
   });
+
+  // Lọc alerts và whale signals theo symbol hiện tại
+  const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
+  const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -719,7 +686,7 @@ export default function StockDetail() {
             {/* Quick tags: shortlist, groups */}
             <div className="flex flex-wrap gap-2">
               <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${overview.is_tracked ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300' : 'border-slate-700 bg-slate-900/70 text-slate-400'}`}>
-                {overview.is_tracked ? '✓ Shortlist' : '◇ Shortlist'}
+                {overview.is_tracked ? '✓ Theo dõi realtime' : '◇ Theo dõi realtime'}
               </span>
               {overview.market_groups.slice(0, 2).map((groupName) => (
                 <span key={groupName} className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-[11px] text-slate-300">
@@ -774,7 +741,7 @@ export default function StockDetail() {
               disabled={!!actionLoading}
               className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} ${!!actionLoading ? 'opacity-50' : ''}`}
             >
-              {actionLoading === 'tracked' ? 'Cập nhật...' : overview.is_tracked ? 'Bỏ khỏi shortlist' : 'Thêm vào shortlist'}
+              {actionLoading === 'tracked' ? 'Cập nhật...' : overview.is_tracked ? 'Bỏ theo dõi' : 'Theo dõi realtime'}
             </button>
 
             <div className="flex min-w-[280px] flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5">
@@ -796,7 +763,7 @@ export default function StockDetail() {
                 disabled={!!actionLoading || availableWatchlistGroups.length === 0}
                 className={`btn-accent ${!!actionLoading ? 'opacity-50' : ''}`}
               >
-                {actionLoading === 'watchlist-add' ? 'Thêm...' : 'Thêm DS cá nhân'}
+                {actionLoading === 'watchlist-add' ? 'Lưu...' : 'Lưu vào nhóm'}
               </button>
             </div>
 
@@ -804,7 +771,7 @@ export default function StockDetail() {
               <input
                 value={alertTargetPrice}
                 onChange={(event) => setAlertTargetPrice(event.target.value)}
-                placeholder="Giá alert"
+                placeholder="Mức giá cảnh báo"
                 className="w-32 bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
               />
               <button
@@ -812,7 +779,7 @@ export default function StockDetail() {
                 disabled={!!actionLoading}
                 className={`btn-success ${!!actionLoading ? 'opacity-50' : ''}`}
               >
-                {actionLoading === 'alert' ? 'Tạo...' : 'Alert'}
+                {actionLoading === 'alert' ? 'Tạo...' : 'Tạo cảnh báo'}
               </button>
             </div>
           </div>
@@ -859,9 +826,7 @@ export default function StockDetail() {
                 Chưa đủ dữ liệu EOD để dựng chart.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <CandlestickChart data={chartData} />
-              </ResponsiveContainer>
+              <CandlestickChart data={chartData} />
             )}
           </div>
         </section>
@@ -1001,6 +966,50 @@ export default function StockDetail() {
           </section>
         </aside>
       </div>
+
+      {/* S13-07: Signal Summary Panel */}
+      {(symbolWhaleAlert || symbolAlerts.length > 0) && (
+        <section className="card-section p-4">
+          <p className="text-label border-b border-slate-800 pb-3 mb-4">Tín hiệu &amp; Cảnh báo — {normalizedSymbol}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Whale alert */}
+            {symbolWhaleAlert && (
+              <div className="rounded-xl border border-amber-700/40 bg-amber-950/20 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-widest text-amber-500 mb-1">🐋 Whale Alert</p>
+                <p className="text-sm font-semibold text-amber-200">
+                  {symbolWhaleAlert.side === 'BUY' ? '↑ Mua lớn' : '↓ Bán lớn'}{' '}
+                  {symbolWhaleAlert.matched_value
+                    ? ` — ${(symbolWhaleAlert.matched_value / 1_000_000_000).toFixed(1)} tỷ`
+                    : ''}
+                </p>
+                {symbolWhaleAlert.ts && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {new Date(symbolWhaleAlert.ts).toLocaleTimeString('vi-VN')}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Active price alerts */}
+            {symbolAlerts.length > 0 && symbolAlerts.map((alert, idx) => (
+              <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>
+                <p className="text-sm font-semibold text-rose-200">
+                  {alert.condition === 'ABOVE' ? '▲ Vượt' : '▼ Dưới'}{' '}
+                  {alert.target_price
+                    ? Number(alert.target_price).toLocaleString('vi-VN') + ' ₫'
+                    : formatCurrency(alert.price)}
+                </p>
+                {alert.ts && (
+                  <p className="mt-1 text-[11px] text-slate-500">
+                    {new Date(alert.ts).toLocaleTimeString('vi-VN')}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

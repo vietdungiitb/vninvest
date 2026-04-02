@@ -205,7 +205,77 @@ Huong tiep theo theo thu tu uu tien:
 - Chuyen sang nhom P1: whale alert UX + observability.
 - Sau do den analytics nang cao: drawdown, Sharpe, Sortino, TWR, allocation analysis.
 
-## Sprint 12 - QA + signoff (2026-04-01 cuoi ngay)
+## Sprint 12 - COMPLETED (2026-04-01)
+
+**Trang thai: SIGNED OFF**
+
+### Tong ket cong viec da hoan thanh
+
+**S12-01 - Shared realtime hook:**
+- Tao `frontend/src/hooks/useRealtimeFeed.js` gom toan bo websocket lifecycle, polling fallback, reconnect, stale handling.
+- Export: quotesBySymbol, realtimeStatus, lastEventAt, alerts, latestWhaleAlert, metrics.
+
+**S12-02 - Watchlist refactor:**
+- Watchlist.jsx khong con tu quan ly socket rieng.
+- Overlay realtime ticker len ca `Nhom thi truong` va `Danh sach theo doi ca nhan`.
+- Them action hai chieu: them/bo tung ma, them/bo hang loat theo nhom.
+- Bo loc Tat ca / Chua theo doi / Da theo doi kem bo dem.
+
+**S12-03 - Dashboard realtime panel refactor:**
+- DashboardRealtimePanel.jsx dung hook chung, khong con socket rieng.
+- Hien thi: NAV gan realtime, unrealized P/L, delta vs snapshot, stale positions, market breadth (up/down/flat).
+
+**S12-04 - Whale alert UX:**
+- History bounded (maxAlerts=5), dedup theo key `symbol+ts+side`.
+
+**S12-05 - Observability metrics:**
+- eventCounts: ticker_update / whale_alert / heartbeat / reconnect_attempts.
+- lastLatencyMs do tu payload.ts -> browser receive.
+- Observability bar hien thi day du tren Dashboard panel.
+
+**S12-06 - Redis health badge:**
+- Export getRealtimeHealth() trong client.js (axios public, khong can auth).
+- Badge: "🟢 redis" / "🧠 inmemory" / "🔴 redis down" lay tu GET /api/health/realtime/.
+- Verify: {channel_layer_type: "redis", realtime_enabled: true, redis_ok: true}.
+
+**S12-07 - QA matrix:** 12/12 backend tests PASS (9.844s).
+
+**S12-08 - Latency check:** ~1750ms/cycle tren local Redis (collect 4 symbols + publish + heartbeat).
+
+**S12-09 - Bug fixes P0/P1:**
+- Maximum update depth exceeded: fix symbolsKey string dep trong useMemo.
+- 400 POST watchlist item: WatchlistItemSerializer group -> read_only.
+- WS "closed before established": chi close() khi readyState === OPEN.
+- token/refresh 401 loop: ROTATE_REFRESH_TOKENS=True + chi ghi refresh_token khi data.refresh co gia tri.
+- Token lifetime: ACCESS 2h, REFRESH 7d.
+- WS reconnect dung freshToken tu localStorage (tranh dung expired token tu closure).
+- SECRET_KEY tang len 64 chars.
+
+**S12-10 - Git cleanup:**
+- .gitignore chuan: Python bytecode, .venv, db.sqlite3, node_modules, build, .env, OS files.
+- Untrack 46k+ files thua khoi index.
+- 114 files sach duoc track.
+- Commit: e12545b1.
+
+### Ket qua so sanh Sprint 12 DoD
+
+| DoD | Trang thai |
+|-----|-----------|
+| Dashboard va Watchlist dung chung mot layer realtime frontend | DONE |
+| Frontend tu dong reconnect voi backoff, khong spam, khong socket leak | DONE |
+| Fallback polling hoat dong on dinh, co stale indicator | DONE |
+| Whale alert co history, dedup, payload contract dung | DONE |
+| Co runbook staging/local Redis-backed va QA matrix pass | DONE |
+
+### Chuyen tiep sang Sprint 13
+
+Tiep noi tu FEATURE_EXPANSION_BACKLOG.md P1:
+- Portfolio analytics nang cao: Sharpe, Sortino, Drawdown, TWR, Alpha/Beta.
+- Allocation analysis nang cao: sector, market-cap, concentration risk.
+- Stock detail workspace day du: top panel + EOD chart + signal summary.
+- Admin operations dashboard: task status, worker health, quick links.
+
+## Sprint 12 - COMPLETED (2026-04-01)
 
 Trang thai: COMPLETED
 

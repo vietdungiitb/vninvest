@@ -10,8 +10,8 @@ Dung checklist nay khi review va chot Sprint 12.
 
 ## B. UX and State
 
-- [ ] Dashboard panel realtime hien thi dung market breadth, stale count va event timestamp.
-- [ ] Watchlist va Dashboard deu dung cung mot contract realtime.
+- [x] Dashboard panel realtime hien thi dung market breadth (up/down/flat), stale count, event timestamp, observability bar (ticker/whale/hb/reconnect/latency/channel layer).
+- [x] Watchlist va Dashboard deu dung cung mot contract realtime (useRealtimeFeed, quotesBySymbol, realtimeStatus, lastEventAt, alerts, metrics).
 - [x] Whale alert co history ngan (maxAlerts=5), co co che chong duplicate (key = symbol+ts+side).
 - [x] Fallback polling hoat dong khi socket disconnect (realtimeStatusRef.current !== 'live').
 - [x] Watchlist phan tach ro `Nhóm thị trường` va `Danh sách theo dõi cá nhân` bang nhan va mo ta nhat quan.
@@ -32,6 +32,6 @@ Dung checklist nay khi review va chot Sprint 12.
 
 ## E. Release Sign-off
 
-- [ ] PM/BA xac nhan du du lieu demo de review nghiep vu.
-- [ ] Dev xac nhan khong con blocker P0/P1 cho frontend realtime.
-- [ ] Co danh sach cong viec chuyen tiep cho Sprint 13 neu can.
+- [x] PM/BA xac nhan du du lieu demo de review nghiep vu (seed_demo_data --reset da mo rong phu holdings, snapshots, watchlist, tracked symbols).
+- [x] Dev xac nhan khong con blocker P0/P1 cho frontend realtime (ERR_INSUFFICIENT_RESOURCES, infinite loop, 400 watchlist item, WS close before established — tat ca da fix).
+- [x] Co danh sach cong viec chuyen tiep cho Sprint 13 (docs/SPRINT13_DETAILED_PLAN.md).
