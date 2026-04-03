@@ -1,6 +1,6 @@
 /**
  * context/PortfolioContext.jsx
- * Global state: danh sách portfolios, portfolio đang chọn, JWT tokens, userconfig.
+ * Global state: danh sách portfolios, portfolio đang chọn, JWT tokens, userconfig, CASL ability.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getPortfolios } from '../api/client';
@@ -10,6 +10,8 @@ import {
   getUserConfig,
   updateUserConfig,
 } from '../api/auth';
+import apiClient from '../api/client';
+import { AbilityContext, createAbilityFromRules } from './AbilityContext';
 
 const PortfolioContext = createContext(null);
 
@@ -21,6 +23,18 @@ export function PortfolioProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [userPlan, setUserPlan] = useState('free');
+  const [ability, setAbility] = useState(() => createAbilityFromRules([]));
+
+  const _fetchMe = useCallback(async () => {
+    try {
+      const res = await apiClient.get('/auth/me/');
+      setUserPlan(res.data.plan || 'free');
+      setAbility(createAbilityFromRules(res.data.abilities || []));
+    } catch (err) {
+      console.error('Fetch /auth/me failed:', err);
+    }
+  }, []);
 
   const saveTokens = (access, refresh) => {
     localStorage.setItem('access_token', access);
@@ -33,6 +47,12 @@ export function PortfolioProvider({ children }) {
   const login = useCallback(async (username, password) => {
     const response = await loginRequest(username, password);
     saveTokens(response.data.access, response.data.refresh);
+    // Lấy plan + abilities sau khi login
+    try {
+      const meRes = await apiClient.get('/auth/me/');
+      setUserPlan(meRes.data.plan || 'free');
+      setAbility(createAbilityFromRules(meRes.data.abilities || []));
+    } catch (_) { /* non-critical */ }
     return response.data;
   }, []);
 
@@ -45,6 +65,8 @@ export function PortfolioProvider({ children }) {
     setPortfolios([]);
     setActivePortfolioId(null);
     setUserConfig(null);
+    setUserPlan('free');
+    setAbility(createAbilityFromRules([]));
   }, []);
 
   const refreshAccessToken = useCallback(async () => {
@@ -87,25 +109,30 @@ export function PortfolioProvider({ children }) {
     if (isAuthenticated && accessToken) {
       fetchPortfolios();
       fetchUserConfig();
+      _fetchMe();
     }
-  }, [isAuthenticated, accessToken, fetchPortfolios, fetchUserConfig]);
+  }, [isAuthenticated, accessToken, fetchPortfolios, fetchUserConfig, _fetchMe]);
 
   return (
-    <PortfolioContext.Provider value={{
-      portfolios,
-      activePortfolioId,
-      setActivePortfolioId,
-      isAuthenticated,
-      login,
-      logout,
-      refreshAccessToken,
-      userConfig,
-      updateUserConfig,
-      loading,
-      fetchPortfolios,
-    }}>
-      {children}
-    </PortfolioContext.Provider>
+    <AbilityContext.Provider value={ability}>
+      <PortfolioContext.Provider value={{
+        portfolios,
+        activePortfolioId,
+        setActivePortfolioId,
+        isAuthenticated,
+        login,
+        logout,
+        refreshAccessToken,
+        userConfig,
+        updateUserConfig,
+        loading,
+        fetchPortfolios,
+        userPlan,
+        ability,
+      }}>
+        {children}
+      </PortfolioContext.Provider>
+    </AbilityContext.Provider>
   );
 }
 

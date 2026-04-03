@@ -86,6 +86,15 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 user_payload = {**whale_payload, "seq": user_seq}
                 if publisher.publish(user_channel, user_payload):
                     published += 1
+            # Trigger AI advisory — delay 2s để không block main task
+            generate_whale_advisory_task.apply_async(
+                kwargs={
+                    'symbol': signal.symbol,
+                    'matched_value_vnd': signal.matched_value,
+                    'side': signal.side,
+                },
+                countdown=2,
+            )
 
     if user_id is not None:
         heartbeat_channel = f"user:{user_id}:alerts"
@@ -221,3 +230,75 @@ def trim_streams(self) -> dict:
             logger.warning("trim_streams: xtrim(%s) failed: %s", key, exc)
 
     return {"status": "ok", "trimmed": trimmed, "max_len": max_len}
+
+
+# ---------------------------------------------------------------------------
+# AI Advisory: Gọi OpenClaw → lưu WhaleAdvisory → push WebSocket
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
+def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, side: str) -> dict:
+    """
+    1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
+    2. Gọi OpenClaw: summary (Pro) + detail (Premium).
+    3. Lưu WhaleAdvisory vào DB.
+    4. Push WebSocket event whale_advisory tới group whale_{symbol}.
+    """
+    from django.core.cache import cache
+    from asgiref.sync import async_to_sync
+    from channels.layers import get_channel_layer
+    from portfolio.models import WhaleAdvisory
+    from portfolio.openclaw_client import generate_whale_summary, generate_whale_deep
+
+    cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
+    cache_key = f'whale_advisory_lock:{symbol}'
+
+    if cache.get(cache_key):
+        logger.info('Whale advisory cooldown active — skipping %s', symbol)
+        return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
+
+    try:
+        summary_resp = generate_whale_summary(symbol, matched_value_vnd, side)
+        deep_resp    = generate_whale_deep(symbol, matched_value_vnd, side)
+    except Exception as exc:
+        logger.error('OpenClaw API error for %s: %s', symbol, exc)
+        raise  # Celery retry
+
+    advisory = WhaleAdvisory.objects.create(
+        symbol=symbol,
+        matched_value=int(matched_value_vnd),
+        side=side,
+        ai_summary=summary_resp['text'],
+        ai_detail=deep_resp['text'],
+        ai_provider='openclaw',
+        prompt_tokens=summary_resp['prompt_tokens'] + deep_resp['prompt_tokens'],
+        completion_tokens=summary_resp['completion_tokens'] + deep_resp['completion_tokens'],
+    )
+
+    # Set cooldown lock
+    cache.set(cache_key, True, timeout=cooldown)
+
+    # Push WebSocket event tới group whale_{symbol}
+    try:
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f'whale_{symbol}',
+            {
+                'type': 'whale_advisory',
+                'payload': {
+                    'event_type': 'whale_advisory',
+                    'symbol': symbol,
+                    'side': side,
+                    'matched_value': int(matched_value_vnd),
+                    'ai_summary': advisory.ai_summary,
+                    'ai_detail': advisory.ai_detail,
+                    'created_at': advisory.created_at.isoformat(),
+                    'id': advisory.id,
+                },
+            },
+        )
+    except Exception as exc:
+        logger.warning('WebSocket push failed for whale_advisory %s: %s', symbol, exc)
+
+    logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
+    return {'status': 'ok', 'advisory_id': advisory.id, 'symbol': symbol}
+

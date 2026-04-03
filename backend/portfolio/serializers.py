@@ -4,7 +4,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
-from .models import StockProfile
+from .models import StockProfile, WhaleAdvisory
 
 
 
@@ -87,6 +87,20 @@ class UserConfigSerializer(serializers.ModelSerializer):
         if value < 1:
             raise serializers.ValidationError('Ngưỡng phải >= 1 triệu VNĐ.')
         return value
+
+
+# ---------------------------------------------------------------------------
+# WhaleAdvisory serializer — trả về tóm tắt AI & phân tích sâu
+# ---------------------------------------------------------------------------
+
+class WhaleAdvisorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WhaleAdvisory
+        fields = [
+            'id', 'symbol', 'matched_value', 'side', 'threshold',
+            'ai_summary', 'ai_detail', 'ai_provider', 'created_at',
+        ]
+        read_only_fields = fields
 
 
 # ---------------------------------------------------------------------------

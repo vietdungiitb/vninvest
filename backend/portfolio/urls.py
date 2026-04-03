@@ -41,5 +41,7 @@ urlpatterns = [
     path('screener/rules/<int:rule_id>/', views.ScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
     path('screener/rules/<int:rule_id>/run/', views.ScreenerRuleRunView.as_view(), name='screener-rule-run'),
 
+    # --- Whale Advisory (AI — Pro+) ---
+    path('whale-advisory/', views.WhaleAdvisoryListView.as_view(), name='whale-advisory-list'),
 ]
 

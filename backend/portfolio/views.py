@@ -140,7 +140,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -149,6 +149,7 @@ from .serializers import (
     PriceAlertRuleSerializer, StockWorkspaceChartPointSerializer, StockWorkspaceChartResponseSerializer,
     StockWorkspaceGroupRefSerializer, StockWorkspaceOverviewSerializer,
     StockWorkspaceTechnicalSerializer, StockWorkspaceWatchlistMembershipSerializer,
+    WhaleAdvisorySerializer,
 )
 
 from .services import (
@@ -2317,6 +2318,34 @@ class AdminOpsStatsView(APIView):
             'realtime_enabled': realtime_enabled,
             'redis_ok': redis_ok,
         })
+
+
+# ---------------------------------------------------------------------------
+# WhaleAdvisory — Tư vấn AI từ OpenClaw
+# ---------------------------------------------------------------------------
+from .permissions import _get_plan, IsProPlan
+
+
+class WhaleAdvisoryListView(generics.ListAPIView):
+    """
+    GET /api/portfolio/whale-advisory/
+    Pro+: trả về danh sách advisory (ẩn ai_detail nếu chưa Premium).
+    """
+    permission_classes = [IsAuthenticated, IsProPlan]
+    serializer_class = WhaleAdvisorySerializer
+
+    def get_queryset(self):
+        return WhaleAdvisory.objects.order_by('-created_at')[:100]
+
+    def list(self, request, *args, **kwargs):
+        qs = self.get_queryset()
+        plan = _get_plan(request.user)
+        data = WhaleAdvisorySerializer(qs, many=True).data
+        # Pro: ẩn ai_detail (chỉ Premium+ được xem)
+        if plan not in ('premium', 'admin'):
+            for item in data:
+                item['ai_detail'] = ''
+        return Response(data)
 
 
 # ---------------------------------------------------------------------------

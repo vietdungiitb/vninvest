@@ -221,6 +221,13 @@ STREAM_CONSUMER_BATCH = int(os.getenv("STREAM_CONSUMER_BATCH", "100"))
 STREAM_SNAPSHOT_TTL = int(os.getenv("STREAM_SNAPSHOT_TTL", "60"))
 STREAM_BLOCK_MS = int(os.getenv("STREAM_BLOCK_MS", "2000"))
 
+# ---------- OpenClaw AI Advisory ----------
+OPENCLAW_API_KEY  = os.getenv("OPENCLAW_API_KEY", "")
+OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "https://api.openclaw.ai/v1")
+OPENCLAW_MODEL    = os.getenv("OPENCLAW_MODEL", "openclaw-finance-v1")
+# Cooldown: tránh gọi AI 2 lần cho cùng symbol trong khoảng thời gian này (giây)
+WHALE_ADVISORY_COOLDOWN_SECONDS = int(os.getenv("WHALE_ADVISORY_COOLDOWN_SECONDS", "900"))  # 15 phút
+
 if REALTIME_CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {
         "default": {

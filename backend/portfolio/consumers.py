@@ -68,6 +68,29 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
     async def whale_alert(self, event):
         await self.send_json(event["payload"])
 
+    async def whale_advisory(self, event):
+        """
+        Push tư vấn AI từ OpenClaw. Filter theo plan:
+        - free/basic: bỏ qua (không nhận event này)
+        - pro: chỉ nhận ai_summary, loại bỏ ai_detail
+        - premium/admin: nhận đầy đủ
+        """
+        plan = await self._get_user_plan()
+        if plan not in ('pro', 'premium', 'admin'):
+            return
+        payload = dict(event['payload'])
+        if plan == 'pro':
+            payload.pop('ai_detail', None)
+        await self.send_json(payload)
+
+    @database_sync_to_async
+    def _get_user_plan(self) -> str:
+        from portfolio.permissions import _get_plan
+        user = getattr(self, 'user', None)
+        if not user or not user.is_authenticated:
+            return 'free'
+        return _get_plan(user)
+
     async def heartbeat(self, event):
         await self.send_json(event["payload"])
 
