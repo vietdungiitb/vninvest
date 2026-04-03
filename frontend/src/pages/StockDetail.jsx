@@ -1,3 +1,10 @@
+function formatCompactNumber(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const n = Number(value);
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
+  return n.toLocaleString('vi-VN');
+}
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { init as klineChartInit, dispose as klineChartDispose } from 'klinecharts';
 import { Link, useParams } from 'react-router-dom';
@@ -25,20 +32,11 @@ function formatCurrency(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
-
   return Number(value).toLocaleString('vi-VN', {
     style: 'currency',
     currency: 'VND',
     maximumFractionDigits: 0,
   });
-}
-
-function formatCompactNumber(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '—';
-  }
-
-  return Number(value).toLocaleString('vi-VN');
 }
 
 function formatChartAxis(value) {
@@ -88,6 +86,145 @@ function fmtVol(v) {
 function KLineChartComponent({ data }) {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
+  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true });
+  const [drawingMode, setDrawingMode] = useState(null);
+  const [fullScreen, setFullScreen] = useState(false);
+
+  const AVAILABLE_INDICATORS = [
+    { id: 'MA', name: 'Moving Average', default: true },
+    { id: 'EMA', name: 'EMA' },
+    { id: 'BOLL', name: 'Bollinger Bands' },
+    { id: 'MACD', name: 'MACD' },
+    { id: 'RSI', name: 'RSI' },
+    { id: 'KDJ', name: 'KDJ' },
+    { id: 'STOCH', name: 'Stochastic' },
+    { id: 'SAR', name: 'Parabolic SAR' },
+    { id: 'ATR', name: 'Average True Range' },
+    { id: 'OBV', name: 'On-Balance Volume' },
+  ];
+
+  const DRAWING_TOOLS = [
+    { id: 'line', name: '📏 Line' },
+    { id: 'rect', name: '📦 Rectangle' },
+    { id: 'polygon', name: '🔺 Polygon' },
+    { id: 'text', name: '📝 Text' },
+  ];
+
+  const handleToggleIndicator = (indicatorId) => {
+    if (indicatorId === 'VOL') {
+      setActiveIndicators(prev => ({ ...prev, [indicatorId]: !prev[indicatorId] }));
+    } else {
+      setActiveIndicators(prev => {
+        const newState = { ...prev, [indicatorId]: !prev[indicatorId] };
+        if (chartRef.current) {
+          if (newState[indicatorId]) {
+            setTimeout(() => {
+              try {
+                chartRef.current.createIndicator(indicatorId, false, { id: 'candle_pane' });
+              } catch (e) {
+                console.error(`Error creating indicator ${indicatorId}:`, e);
+              }
+            }, 100);
+          } else {
+            try {
+              chartRef.current.removeIndicator('candle_pane', indicatorId);
+            } catch (e) {
+              console.error(`Error removing indicator ${indicatorId}:`, e);
+            }
+          }
+        }
+        return newState;
+      });
+    }
+  };
+
+  const handleDrawingMode = (toolId) => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const legacySetDrawingMode = typeof chart.setDrawingMode === 'function';
+    const hasCreateOverlay = typeof chart.createOverlay === 'function';
+
+    if (legacySetDrawingMode) {
+      if (drawingMode === toolId) {
+        chart.setDrawingMode(false);
+        setDrawingMode(null);
+      } else {
+        const modeMap = {
+          line: 'line',
+          rect: 'rect',
+          polygon: 'polygon',
+          text: 'text',
+        };
+        chart.setDrawingMode(modeMap[toolId]);
+        setDrawingMode(toolId);
+      }
+      return;
+    }
+
+    if (hasCreateOverlay) {
+      const overlayMap = {
+        line: 'segment',
+        rect: 'rect',
+        polygon: 'priceChannelLine',
+        text: 'text',
+      };
+      const overlayName = overlayMap[toolId] || 'segment';
+      try {
+        chart.createOverlay(overlayName);
+        setDrawingMode(toolId);
+      } catch (e) {
+        console.error('Error creating overlay:', e);
+      }
+      return;
+    }
+
+    console.warn('Drawing API is not available on this klinecharts instance.');
+  };
+
+  const handleClearDrawings = () => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    if (typeof chart.removeAllGraphicMarks === 'function') {
+      chart.removeAllGraphicMarks();
+      return;
+    }
+    if (typeof chart.removeOverlay === 'function') {
+      try {
+        // klinecharts v9 overlay API can clear by calling removeOverlay with no id.
+        chart.removeOverlay();
+      } catch (e) {
+        console.error('Error clearing overlays:', e);
+      }
+    }
+  };
+
+  const handleScreenshot = () => {
+    if (chartRef.current) {
+      const canvas = chartRef.current.getConvertPx2PixelRatio();
+      const image = chartRef.current.getImage({
+        type: 'png',
+        backgroundColor: '#0f172a'
+      });
+      if (image) {
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = `chart-${new Date().getTime()}.png`;
+        link.click();
+      }
+    }
+  };
+
+  const handleToggleFullscreen = () => {
+    if (!fullScreen && containerRef.current) {
+      containerRef.current.requestFullscreen?.();
+      setFullScreen(true);
+    } else {
+      document.exitFullscreen?.();
+      setFullScreen(false);
+    }
+  };
 
   // Khởi tạo chart một lần
   useEffect(() => {
@@ -213,10 +350,77 @@ function KLineChartComponent({ data }) {
   }, [data]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: '100%', height: '100%', background: '#0f172a', borderRadius: '0.75rem', overflow: 'hidden' }}
-    />
+    <div className="flex flex-col w-full h-full bg-slate-900 rounded-lg overflow-hidden">
+      {/* Toolbar */}
+      <div className="bg-slate-800 border-b border-slate-700 p-3 flex flex-wrap gap-2">
+        {/* Indicators */}
+        <div className="flex gap-1">
+          {AVAILABLE_INDICATORS.map(ind => (
+            <button
+              key={ind.id}
+              onClick={() => handleToggleIndicator(ind.id)}
+              className={`px-2 py-1 text-xs rounded transition ${
+                activeIndicators[ind.id]
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-slate-700 text-gray-400 hover:bg-slate-600'
+              }`}
+              title={ind.name}
+            >
+              {ind.id}
+            </button>
+          ))}
+        </div>
+
+        {/* Drawing Tools */}
+        <div className="flex gap-1 border-l border-slate-600 pl-2">
+          {DRAWING_TOOLS.map(tool => (
+            <button
+              key={tool.id}
+              onClick={() => handleDrawingMode(tool.id)}
+              className={`px-2 py-1 text-xs rounded transition ${
+                drawingMode === tool.id
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-slate-700 text-gray-400 hover:bg-slate-600'
+              }`}
+              title={tool.name}
+            >
+              {tool.name}
+            </button>
+          ))}
+          <button
+            onClick={handleClearDrawings}
+            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
+            title="Clear all drawings"
+          >
+            🗑️ Clear
+          </button>
+        </div>
+
+        {/* Actions */}
+        <div className="flex gap-1 border-l border-slate-600 pl-2 ml-auto">
+          <button
+            onClick={handleScreenshot}
+            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition"
+            title="Take screenshot"
+          >
+            📸 Screenshot
+          </button>
+          <button
+            onClick={handleToggleFullscreen}
+            className="px-2 py-1 text-xs bg-slate-700 text-gray-400 rounded hover:bg-slate-600 transition"
+            title="Fullscreen"
+          >
+            ⛶ Fullscreen
+          </button>
+        </div>
+      </div>
+
+      {/* Chart Container */}
+      <div
+        ref={containerRef}
+        style={{ width: '100%', flex: 1, background: '#0f172a', overflow: 'hidden' }}
+      />
+    </div>
   );
 }
 
@@ -1236,6 +1440,25 @@ export default function StockDetail() {
                 {actionLoading === 'alert' ? 'Tạo...' : 'Tạo cảnh báo'}
               </button>
             </div>
+
+            <div className="ml-auto w-full xl:w-auto xl:min-w-[406px] grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-950/75 px-3 py-2 text-[12px]">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2.5 py-1">
+                <p className="text-label">Shortlist</p>
+                <p className={`mt-0.5 font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-400'}`}>
+                  {overview.is_tracked ? '✓ Theo dõi' : 'Chưa theo dõi'}
+                </p>
+              </div>
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2.5 py-1">
+                <p className="text-label">DS nhóm ({overview.watchlist_memberships.length})</p>
+                {overview.watchlist_memberships.length > 0 ? (
+                  <p className="mt-0.5 text-amber-300 truncate" title={overview.watchlist_memberships.map((item) => item.group_name).join(', ')}>
+                    {overview.watchlist_memberships.map((item) => item.group_name).join(', ')}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-slate-500">Chưa có</p>
+                )}
+              </div>
+            </div>
           </div>
 
           {workspaceMessage ? <p className="mt-2 text-sm text-emerald-300">{workspaceMessage}</p> : null}
@@ -1245,175 +1468,91 @@ export default function StockDetail() {
 
       {/* Main content: chart + panels — 3-column equal grid at xl */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        {/* Chart section — spans 2/3 width */}
-        <section className="card-section p-4 xl:col-span-2">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
-            <div>
-              <p className="text-label">Biểu đồ giá EOD</p>
-              <h2 className="mt-1 text-lg font-semibold text-white">Diễn biến nến {activePeriod} ngày</h2>
-              {chartPerformance !== null ? (
-                <p className={`mt-1 text-[12px] font-medium ${chartPerformance >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  {chartPerformance >= 0 ? '+' : ''}
-                  {chartPerformance.toFixed(2)}% khung
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-1 rounded-full border border-slate-800 bg-slate-950/80 p-1">
-              {PERIODS.map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setActivePeriod(period)}
-                  className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${activePeriod === period ? 'bg-cyan-700 text-white' : 'text-slate-400 hover:text-slate-200'}`}
-                >
-                  {period >= 365 ? '1N' : `${Math.round(period / 30)}T`}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 h-[440px]">
-            {loadingChart ? (
-              <div className="h-full animate-pulse rounded-2xl bg-slate-950" />
-            ) : chartData.length < 2 ? (
-              <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-800 text-sm text-slate-500">
-                Chưa đủ dữ liệu EOD để dựng chart.
+        {/* 2 cột trái: Chart + Whale Alerts + BubbleOrderChart */}
+        <div className="xl:col-span-2 flex flex-col gap-4">
+          <section className="card-section p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">Kline Workspace</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">Biểu đồ nến {normalizedSymbol}</h2>
               </div>
-            ) : (
-              <KLineChartComponent data={chartData} />
-            )}
-          </div>
-        </section>
+              <div className="flex flex-wrap gap-2">
+                {PERIODS.map((period) => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setActivePeriod(period)}
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                      activePeriod === period
+                        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                        : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                    }`}
+                  >
+                    {period}D
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* Col 3: Intraday + Breadth — spans rows 1 & 2 */}
-        <div className="flex flex-col gap-4 xl:row-span-2">
-          {/* Intraday Matched Orders */}
-          <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+            <div className="mt-3 h-[520px]">
+              {loadingChart ? (
+                <div className="h-full animate-pulse rounded-2xl bg-slate-900" />
+              ) : chartData.length === 0 ? (
+                <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-800 text-sm text-slate-500">
+                  Chưa có dữ liệu giá để hiển thị biểu đồ nến.
+                </div>
+              ) : (
+                <KLineChartComponent data={chartData} />
+              )}
+            </div>
+          </section>
 
-          {/* Breadth mini-panel */}
-          <BreadthMiniPanel symbol={normalizedSymbol} />
+          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         </div>
-
-        {/* Row 2 Col 1: Độ sâu thị trường */}
-        <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-
-        {/* Row 2 Col 2: Technical snapshot */}
-        <section className="card-section p-4">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <p className="text-label">Technical snapshot</p>
-            <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-semibold ${technicalBias.className}`}>
-              {technicalBias.label}
-            </span>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0 text-[12px]">
-            {[
-              ['SMA20', formatCurrency(technical?.sma20)],
-              ['SMA50', formatCurrency(technical?.sma50)],
-              ['RSI14', technical?.rsi14 ?? '—'],
-              ['KL TB20', formatCompactNumber(technical?.avg_volume_20)],
-              ['Mom 20d', formatPercentDelta(technical?.momentum_20d_pct)],
-              ['52T pos', formatPercentDelta(technical?.range_position_pct)],
-            ].map(([label, val]) => (
-              <div key={label} className="flex items-center justify-between border-b border-slate-800/60 py-1.5 last:border-b-0">
-                <span className="text-slate-500">{label}</span>
-                <span className="font-medium text-slate-100">{val}</span>
-              </div>
-            ))}
-          </div>
-          {technicalBias.description && (
-            <p className="mt-2 text-[11px] text-slate-500 leading-relaxed">{technicalBias.description}</p>
-          )}
-        </section>
-
-        {/* Bottom row: Personal context + Signals — spans full width */}
-        <div className="xl:col-span-3">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Personal context */}
+        {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên + Cảnh báo giá */}
+        <div className="flex flex-col gap-4">
+          <WhaleFeedPanel
+            symbol={normalizedSymbol}
+            realtimeAlerts={symbolAlerts}
+            feedData={whaleFeedData}
+            loading={whaleFeedLoading}
+            onRefresh={refreshWhaleFeed}
+          />
+          {/* Tỷ trọng dòng tiền phiên */}
+          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
+          {/* Cảnh báo giá */}
+          {symbolAlerts.length > 0 && (
             <section className="card-section p-4">
-              <p className="text-label pb-2.5 border-b border-slate-800">Ngữ cảnh cá nhân</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
-                <div className="card-compact">
-                  <p className="text-label">Shortlist</p>
-                  <p className={`mt-1 font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-400'}`}>
-                    {overview.is_tracked ? '✓ Theo dõi' : 'Chưa theo dõi'}
-                  </p>
-                </div>
-                <div className="card-compact col-span-1">
-                  <p className="text-label">DS nhóm ({overview.watchlist_memberships.length})</p>
-                  {overview.watchlist_memberships.length > 0 ? (
-                    <div className="mt-1.5 space-y-1">
-                      {overview.watchlist_memberships.map((item) => (
-                        <div key={item.item_id} className="flex items-center justify-between gap-1 rounded border border-amber-900/30 bg-amber-950/10 px-2 py-1">
-                          <span className="text-amber-300 truncate">{item.group_name}</span>
-                          <button
-                            onClick={() => handleRemoveFromWatchlist(item.item_id, item.group_name)}
-                            disabled={!!actionLoading}
-                            className="text-[10px] text-slate-400 hover:text-white shrink-0 disabled:opacity-50"
-                          >
-                            {actionLoading === `watchlist-remove-${item.item_id}` ? '...' : '✕'}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-1 text-slate-500">Chưa có</p>
-                  )}
-                </div>
+              <p className="text-label pb-2.5 border-b border-slate-800">Cảnh báo giá ({symbolAlerts.length})</p>
+              <div className="mt-3 space-y-2">
+                {symbolAlerts.map((alert, idx) => (
+                  <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
+                    <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>
+                    <p className="text-sm font-semibold text-rose-200">
+                      {alert.condition === 'ABOVE' ? '▲ Vượt' : '▼ Dưới'}{' '}
+                      {alert.target_price
+                        ? Number(alert.target_price).toLocaleString('vi-VN') + ' ₫'
+                        : formatCurrency(alert.price)}
+                    </p>
+                    {alert.ts && (
+                      <p className="mt-1 text-[11px] text-slate-500">
+                        {new Date(alert.ts).toLocaleTimeString('vi-VN')}
+                      </p>
+                    )}
+                  </div>
+                ))}
               </div>
             </section>
-
-            {/* Whale alert — MoneyFlowDonut */}
-            <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
-
-            {/* Active price alerts */}
-            {symbolAlerts.length > 0 && (
-              <section className="card-section p-4">
-                <p className="text-label pb-2.5 border-b border-slate-800">Cảnh báo giá ({symbolAlerts.length})</p>
-                <div className="mt-3 space-y-2">
-                  {symbolAlerts.map((alert, idx) => (
-                    <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
-                      <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>
-                      <p className="text-sm font-semibold text-rose-200">
-                        {alert.condition === 'ABOVE' ? '▲ Vượt' : '▼ Dưới'}{' '}
-                        {alert.target_price
-                          ? Number(alert.target_price).toLocaleString('vi-VN') + ' ₫'
-                          : formatCurrency(alert.price)}
-                      </p>
-                      {alert.ts && (
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          {new Date(alert.ts).toLocaleTimeString('vi-VN')}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
+          )}
         </div>
-
-        {/* Dòng tiền lớn: Whale Feed (2fr) + Bubble Chart (1fr) */}
-        <div className="xl:col-span-3">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            <WhaleFeedPanel
-              symbol={normalizedSymbol}
-              realtimeAlerts={symbolAlerts}
-              feedData={whaleFeedData}
-              loading={whaleFeedLoading}
-              onRefresh={refreshWhaleFeed}
-            />
-            <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
-          </div>
-        </div>
-
-        {/* Chỉ tiêu tài chính theo năm */}
-        <FinancialMetricsPanel
-          financials={financials}
-          loading={financialsLoading}
-          selectedYear={financialsYear}
-          onYearChange={setFinancialsYear}
-        />
       </div>
+      {/* Panel tài chính */}
+      <FinancialMetricsPanel
+        financials={financials}
+        loading={financialsLoading}
+        selectedYear={financialsYear}
+        onYearChange={setFinancialsYear}
+      />
     </div>
   );
 }

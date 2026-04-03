@@ -109,43 +109,140 @@ function buildTrackedSymbolBuckets(trackedSymbols) {
   return unique;
 }
 
-function AdvisoryPreviewCard({ item }) {
+function buildSymbolStatsFromFeed(feedItems) {
+  const map = {};
+  for (const item of feedItems || []) {
+    const sym = String(item.symbol || '').trim().toUpperCase();
+    if (!sym) continue;
+    if (!map[sym]) map[sym] = { buyCount: 0, sellCount: 0, totalValue: 0, count: 0 };
+    const side = String(item.side || '').toUpperCase();
+    if (side === 'BUY') map[sym].buyCount += 1;
+    else if (side === 'SELL') map[sym].sellCount += 1;
+    map[sym].totalValue += Number(item.matched_value || 0);
+    map[sym].count += 1;
+  }
+  return map;
+}
+
+function getFrequencyLabel(count) {
+  if (count >= 6) return { label: 'Bùng nổ', color: 'text-rose-400', bg: 'bg-rose-900/40 border-rose-800/50' };
+  if (count >= 3) return { label: 'Cao', color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
+  if (count >= 1) return { label: 'Trung bình', color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
+  return { label: 'Thấp', color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
+}
+
+function TrackedSymbolCard({ symbol, stats }) {
+  const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, count: 0 };
+  const avgValue = st.count > 0 ? st.totalValue / st.count : 0;
+  const totalOrders = st.buyCount + st.sellCount;
+  const buyRatio = totalOrders > 0 ? (st.buyCount / totalOrders) * 100 : 0;
+  const freq = getFrequencyLabel(st.count);
+
+  return (
+    <Link
+      to={`/whale-alerts/${symbol}`}
+      className="block rounded-2xl border border-slate-800 bg-slate-950/70 p-4 transition-colors hover:border-cyan-700/60"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-base font-bold text-slate-100">{symbol}</p>
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${freq.bg} ${freq.color}`}>
+          {freq.label}
+        </span>
+      </div>
+
+      {/* Mua / Bán */}
+      <div className="mt-2 flex flex-wrap gap-3 text-xs">
+        <span className="flex items-center gap-1 text-emerald-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          Mua: {st.buyCount}
+        </span>
+        <span className="flex items-center gap-1 text-rose-400">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
+          Bán: {st.sellCount}
+        </span>
+      </div>
+
+      {/* Bar */}
+      {totalOrders > 0 && (
+        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-rose-900/60">
+          <div
+            className="h-full rounded-full bg-emerald-500 transition-all"
+            style={{ width: `${buyRatio}%` }}
+          />
+        </div>
+      )}
+
+      {/* Avg & Tổng */}
+      <p className="mt-2 text-xs text-slate-400">
+        Avg: <span className="font-medium text-slate-200">{formatCompactMoney(avgValue)} VND</span>
+      </p>
+      <p className="mt-0.5 text-xs text-slate-500">Tổng {st.count} lệnh lớn</p>
+    </Link>
+  );
+}
+
+function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
   const side = String(item.side || '').toUpperCase();
   const isBuy = side === 'BUY';
 
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link to={`/whale-alerts/${item.symbol}`} className="text-lg font-semibold text-slate-100 hover:text-cyan-300 transition-colors">
-              {item.symbol}
-            </Link>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-              isBuy ? 'bg-emerald-950/50 text-emerald-300' : 'bg-rose-950/50 text-rose-300'
-            }`}>
-              {side || 'UNKNOWN'}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">{formatTime(item.created_at)}</p>
+    <div className="grid grid-cols-[220px_1fr] divide-x divide-slate-800 border-t border-slate-800">
+      {/* Cột trái: thông tin mã */}
+      <div className={`p-4 border-l-2 ${isBuy ? 'border-emerald-500' : 'border-rose-500'}`}>
+        <p className="text-sm font-bold text-slate-100">{item.symbol}</p>
+        <div className="mt-1.5">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+            isBuy ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
+          }`}>
+            {side || 'UNKNOWN'}
+          </span>
         </div>
-        <div className="text-right text-xs text-slate-400">
-          <p>{formatMoney(item.matched_value)} VND</p>
-          <p className="mt-1">Ngưỡng: {formatMoney(item.threshold)} VND</p>
+        <p className="mt-2 text-xs text-slate-400">
+          <span className="font-medium text-slate-200">{formatCompactMoney(item.matched_value)} VND</span>
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">Ngưỡng: {formatCompactMoney(item.threshold)} VND</p>
+        <p className="mt-0.5 text-xs text-slate-500">{formatTime(item.created_at)}</p>
+      </div>
+
+      {/* Cột phải: AI Advisory */}
+      <div className="p-4">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-3">
+          <span className="text-[11px] uppercase tracking-widest text-slate-500">
+            {item.ai_provider || 'openclaw'}
+          </span>
+        </div>
+        <p className="text-xs leading-6 text-slate-300 line-clamp-3">
+          {item.ai_summary || 'Chưa có tóm tắt AI.'}
+        </p>
+        {canReadAdvisoryDetail && item.ai_detail ? (
+          <p className="mt-2 text-xs leading-6 text-slate-400 line-clamp-2 border-t border-slate-800 pt-2">
+            {item.ai_detail}
+          </p>
+        ) : !canReadAdvisoryDetail ? (
+          <Link
+            to="/upgrade"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300"
+          >
+            🔒 Phân tích sâu (Premium+)
+          </Link>
+        ) : null}
+        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
+          <Link
+            to={`/whale-alerts/${item.symbol}`}
+            className="btn-secondary inline-flex items-center justify-center text-[11px]"
+          >
+            Mở dashboard mã
+          </Link>
+          <Link
+            to={`/stocks/${item.symbol}`}
+            className="btn-secondary inline-flex items-center justify-center text-[11px]"
+          >
+            Mở stock workspace
+          </Link>
         </div>
       </div>
-      <p className="mt-3 text-sm leading-6 text-slate-300 line-clamp-3">
-        {item.ai_summary || 'Chưa có tóm tắt AI.'}
-      </p>
-      <div className="mt-4 flex gap-2">
-        <Link to={`/whale-alerts/${item.symbol}`} className="btn-secondary inline-flex items-center justify-center">
-          Mở dashboard mã
-        </Link>
-        <Link to={`/stocks/${item.symbol}`} className="btn-secondary inline-flex items-center justify-center">
-          Mở stock workspace
-        </Link>
-      </div>
-    </article>
+    </div>
   );
 }
 
@@ -274,6 +371,8 @@ export default function WhaleAlertsHub() {
   }, [fetchData]);
 
   const symbolShortcuts = useMemo(() => buildTrackedSymbolBuckets(trackedSymbols), [trackedSymbols]);
+
+  const symbolStatsMap = useMemo(() => buildSymbolStatsFromFeed(aggregateFeed), [aggregateFeed]);
 
   const handleLoadMore = useCallback(async () => {
     if (!aggregateHasMore || !aggregateCursor) return;
@@ -448,9 +547,9 @@ export default function WhaleAlertsHub() {
           </p>
 
           {loading ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-              {[...Array(8)].map((_, index) => (
-                <div key={index} className="h-12 animate-pulse rounded-xl bg-slate-900" />
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {[...Array(6)].map((_, index) => (
+                <div key={index} className="h-32 animate-pulse rounded-2xl bg-slate-900" />
               ))}
             </div>
           ) : symbolShortcuts.length === 0 ? (
@@ -458,27 +557,15 @@ export default function WhaleAlertsHub() {
               Chưa có mã tracked riêng. Có thể thêm mã trong Radar thị trường rồi quay lại đây để mở nhanh Whale Alerts dashboard.
             </div>
           ) : (
-            <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-5">
-              {symbolShortcuts.map((symbol) => (
-                <Link
-                  key={symbol}
-                  to={`/whale-alerts/${symbol}`}
-                  className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3 text-center text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-700/70 hover:text-cyan-200"
-                >
-                  {symbol}
-                </Link>
-              ))}
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {symbolShortcuts
+                .filter((symbol) => (symbolStatsMap[symbol]?.count ?? 0) > 0)
+                .map((symbol) => (
+                  <TrackedSymbolCard key={symbol} symbol={symbol} stats={symbolStatsMap[symbol]} />
+                ))}
             </div>
           )}
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Link to="/watchlist" className="btn-secondary inline-flex items-center justify-center">
-              Mở Radar thị trường
-            </Link>
-            <Link to="/dashboard" className="btn-secondary inline-flex items-center justify-center">
-              Về Tổng quan
-            </Link>
-          </div>
         </article>
 
         <article className="card-section px-5 py-4">
@@ -498,41 +585,6 @@ export default function WhaleAlertsHub() {
         </article>
       </section>
 
-      <section className="card-section px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-label">AI advisory gần đây</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-100">Recent whale intelligence</h2>
-          </div>
-          {canReadAdvisory && (
-            <Link to="/whale-advisory" className="btn-secondary inline-flex items-center justify-center">
-              Mở AI Advisory feed
-            </Link>
-          )}
-        </div>
-
-        {!canReadAdvisory ? (
-          <div className="mt-4 rounded-2xl border border-amber-800/60 bg-amber-950/20 px-4 py-5 text-sm leading-6 text-amber-100">
-            Gói hiện tại chưa mở AI Advisory. Anh vẫn có thể dùng WhaleAlertsDashboard theo mã để theo dõi feed whale và biểu đồ realtime.
-          </div>
-        ) : loading ? (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-900" />
-            ))}
-          </div>
-        ) : advisories.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
-            Chưa có advisory mới. Advisory chỉ xuất hiện sau khi backend phát hiện whale signal và Celery task AI hoàn tất.
-          </div>
-        ) : (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {advisories.map((item) => (
-              <AdvisoryPreviewCard key={item.id} item={item} />
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

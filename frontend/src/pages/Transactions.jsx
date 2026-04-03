@@ -11,6 +11,7 @@ import {
   createTransaction,
   updateTransaction,
   deleteTransaction,
+  getStockProfile,
 } from '../api/client';
 import { formatVND } from '../components/StatCard';
 
@@ -222,8 +223,22 @@ export default function Transactions() {
     e.preventDefault();
     setSubmitting(true);
     setError('');
+    const normalizedSymbol = (form.symbol || '').trim().toUpperCase();
+
+    try {
+      await getStockProfile(normalizedSymbol);
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setError('Mã chứng khoán chưa có trong danh mục hệ thống, không thể lưu giao dịch.');
+      } else {
+        setError('Không thể kiểm tra mã chứng khoán lúc này. Vui lòng thử lại.');
+      }
+      setSubmitting(false);
+      return;
+    }
+
     const payload = {
-      symbol: form.symbol,
+      symbol: normalizedSymbol,
       transaction_type: form.transaction_type,
       date: form.date,
       price: parseFloat(form.price),

@@ -472,6 +472,61 @@
 
 {% block extrascripts %}
 {{ block.super }}
+<style>
+.kline-toolbar {
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  padding: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.toolbar-group {
+  display: flex;
+  gap: 4px;
+  border-left: 1px solid #475569;
+  padding-left: 8px;
+}
+
+.toolbar-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: #334155;
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s;
+}
+
+.toolbar-btn:hover {
+  background: #475569;
+  color: #e2e8f0;
+}
+
+.toolbar-btn.active {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.toolbar-btn.drawing-active {
+  background: #a855f7;
+  color: #fff;
+}
+
+.chart-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 600px;
+  background: #0f172a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+</style>
+
 <script>
 (function () {
   const raw = {{ chart_ohlcv_json|safe }};
@@ -480,6 +535,125 @@
   const container = document.getElementById('kline-chart-container');
   if (!container) return;
 
+  // Create toolbar
+  const wrapper = document.createElement('div');
+  wrapper.className = 'chart-wrapper';
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'kline-toolbar';
+
+  // State
+  const state = {
+    activeIndicators: { MA: true, VOL: true },
+    drawingMode: null
+  };
+
+  // Indicator definitions
+  const INDICATORS = [
+    { id: 'MA', name: 'MA' },
+    { id: 'EMA', name: 'EMA' },
+    { id: 'BOLL', name: 'Bollinger' },
+    { id: 'MACD', name: 'MACD' },
+    { id: 'RSI', name: 'RSI' },
+    { id: 'KDJ', name: 'KDJ' },
+    { id: 'STOCH', name: 'Stochastic' },
+    { id: 'SAR', name: 'SAR' },
+    { id: 'ATR', name: 'ATR' },
+    { id: 'OBV', name: 'OBV' }
+  ];
+
+  const DRAWING_TOOLS = [
+    { id: 'line', name: '📏 Line', mode: 'line' },
+    { id: 'rect', name: '📦 Rect', mode: 'rect' },
+    { id: 'polygon', name: '🔺 Poly', mode: 'polygon' },
+    { id: 'text', name: '📝 Text', mode: 'text' }
+  ];
+
+  // Create indicator buttons
+  const indicatorGroup = document.createElement('div');
+  indicatorGroup.className = 'toolbar-group';
+  INDICATORS.forEach(ind => {
+    const btn = document.createElement('button');
+    btn.className = 'toolbar-btn' + (state.activeIndicators[ind.id] ? ' active' : '');
+    btn.textContent = ind.name;
+    btn.dataset.indicator = ind.id;
+    btn.onclick = function() {
+      toggleIndicator(ind.id, btn, chart);
+    };
+    indicatorGroup.appendChild(btn);
+  });
+  toolbar.appendChild(indicatorGroup);
+
+  // Create drawing tool buttons
+  const drawGroup = document.createElement('div');
+  drawGroup.className = 'toolbar-group';
+  DRAWING_TOOLS.forEach(tool => {
+    const btn = document.createElement('button');
+    btn.className = 'toolbar-btn';
+    btn.textContent = tool.name;
+    btn.dataset.tool = tool.id;
+    btn.onclick = function() {
+      toggleDrawingMode(tool.id, tool.mode, btn, chart, drawGroup);
+    };
+    drawGroup.appendChild(btn);
+  });
+
+  // Clear drawing button
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'toolbar-btn';
+  clearBtn.textContent = '🗑️ Clear';
+  clearBtn.style.background = '#dc2626';
+  clearBtn.onclick = function() {
+    if (chart) chart.removeAllGraphicMarks();
+  };
+  drawGroup.appendChild(clearBtn);
+  toolbar.appendChild(drawGroup);
+
+  // Action buttons
+  const actionGroup = document.createElement('div');
+  actionGroup.className = 'toolbar-group';
+  actionGroup.style.marginLeft = 'auto';
+
+  const screenshotBtn = document.createElement('button');
+  screenshotBtn.className = 'toolbar-btn';
+  screenshotBtn.textContent = '📸 Screenshot';
+  screenshotBtn.style.background = '#16a34a';
+  screenshotBtn.onclick = function() {
+    if (chart) {
+      try {
+        const image = chart.getImage({ type: 'png', backgroundColor: '#0f172a' });
+        if (image) {
+          const link = document.createElement('a');
+          link.href = image;
+          link.download = 'chart-' + new Date().getTime() + '.png';
+          link.click();
+        }
+      } catch (e) {
+        console.error('Screenshot error:', e);
+      }
+    }
+  };
+  actionGroup.appendChild(screenshotBtn);
+
+  const fullscreenBtn = document.createElement('button');
+  fullscreenBtn.className = 'toolbar-btn';
+  fullscreenBtn.textContent = '⛶ Fullscreen';
+  fullscreenBtn.onclick = function() {
+    if (wrapper.requestFullscreen) {
+      wrapper.requestFullscreen();
+    }
+  };
+  actionGroup.appendChild(fullscreenBtn);
+
+  toolbar.appendChild(actionGroup);
+
+  // Replace container with wrapper
+  const parent = container.parentNode;
+  parent.insertBefore(wrapper, container);
+  wrapper.appendChild(toolbar);
+  wrapper.appendChild(container);
+
+  // Initialize chart
   const chart = klinecharts.init(container, {
     timezone: 'Asia/Ho_Chi_Minh',
     styles: {
@@ -532,9 +706,15 @@
     },
   });
 
-  chart.createIndicator('MA', false, { id: 'candle_pane' });
-  chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+  // Initialize default indicators
+  try {
+    chart.createIndicator('MA', false, { id: 'candle_pane' });
+    chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+  } catch (e) {
+    console.error('Error initializing indicators:', e);
+  }
 
+  // Create kline data
   const kLineData = raw
     .filter(function (d) { return d.close != null; })
     .map(function (d) {
@@ -553,6 +733,59 @@
 
   var ro = new ResizeObserver(function () { chart.resize(); });
   ro.observe(container);
+
+  // Helper functions
+  window.toggleIndicator = function(indicatorId, btn, chart) {
+    if (!chart) return;
+    const isActive = state.activeIndicators[indicatorId];
+    
+    if (!isActive && indicatorId === 'VOL') {
+      // Only create VOL indicator
+      chart.createIndicator(indicatorId, false, { height: 80, minHeight: 40 });
+      state.activeIndicators[indicatorId] = true;
+      btn.classList.add('active');
+    } else if (isActive && indicatorId === 'VOL') {
+      chart.removeIndicator('__main__', indicatorId);
+      state.activeIndicators[indicatorId] = false;
+      btn.classList.remove('active');
+    } else if (!isActive) {
+      try {
+        chart.createIndicator(indicatorId, false, { id: 'candle_pane' });
+        state.activeIndicators[indicatorId] = true;
+        btn.classList.add('active');
+      } catch (e) {
+        console.error('Error adding indicator:', e);
+      }
+    } else {
+      try {
+        chart.removeIndicator('candle_pane', indicatorId);
+        state.activeIndicators[indicatorId] = false;
+        btn.classList.remove('active');
+      } catch (e) {
+        console.error('Error removing indicator:', e);
+      }
+    }
+  };
+
+  window.toggleDrawingMode = function(toolId, mode, btn, chart, group) {
+    if (!chart) return;
+    
+    const isActive = state.drawingMode === toolId;
+    
+    if (isActive) {
+      chart.setDrawingMode(false);
+      state.drawingMode = null;
+      btn.classList.remove('drawing-active');
+    } else {
+      if (state.drawingMode) {
+        const prevBtn = group.querySelector('[data-tool="' + state.drawingMode + '"]');
+        if (prevBtn) prevBtn.classList.remove('drawing-active');
+      }
+      chart.setDrawingMode(mode);
+      state.drawingMode = toolId;
+      btn.classList.add('drawing-active');
+    }
+  };
 })();
 </script>
 {% endblock %}

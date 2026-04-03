@@ -38,7 +38,12 @@ class TransactionSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'sub_account', 'created_at']
 
     def validate_symbol(self, value):
-        return value.upper().strip()
+        normalized_symbol = value.upper().strip()
+        if not StockProfile.objects.filter(symbol=normalized_symbol).exists():
+            raise serializers.ValidationError(
+                'Mã chứng khoán không tồn tại trong danh mục hệ thống. Vui lòng kiểm tra lại.'
+            )
+        return normalized_symbol
 
     def validate(self, attrs):
         t_type = attrs.get('transaction_type', '')

@@ -91,6 +91,53 @@
 - DoD:
   - Có dashboard trạng thái + hành động vận hành cốt lõi + error UX chuẩn.
 
+### P1-4 Whale Volume Weighting & Avg Price [NEW]
+- Nguồn: Đề xuất phân tích dòng tiền nâng cao (2026-04-03)
+- Mục tiêu:
+  - Màu badge tần suất dựa trên `totalValue` (giá trị tổng) thay vì chỉ đếm số lần.
+  - Hiển thị "Whale Avg Price" = `totalValue / totalVolume` (cần thêm field `volume` vào aggregate feed endpoint).
+  - `TrackedSymbolCard` + `WhaleAdvisory` SymbolCell cập nhật tương ứng.
+- Owner: FE + BE (nhỏ)
+- DoD:
+  - BE: endpoint aggregate trả thêm `total_volume` per symbol.
+  - FE: `getFrequencyLabel` dùng `totalValue` ngưỡng tỷ (5T/20T/100T+).
+  - Avg Price hiển thị trong card nếu `volume > 0`.
+- Rủi ro: Nguồn data `volume` có thể không khả dụng với vnstock fallback — cần fallback graceful.
+
+### P1-5 Severity Tag hệ thống (Urgent/Warning/Info) [NEW]
+- Nguồn: Đề xuất UX/UI nâng cao (2026-04-03)
+- Mục tiêu:
+  - AI Advisory hiển thị tag màu: 🔴 Urgent / 🟡 Warning / 🟢 Info dựa trên field `severity`.
+  - Field `severity` đã có trong `AggregateFeedCard` — cần đồng bộ vào `WhaleAdvisory` model + AI task.
+- Owner: BE + FE (nhỏ)
+- DoD:
+  - `WhaleAdvisory` model có field `severity` (choice: urgent/warning/info, default info).
+  - OpenClaw task set severity dựa trên matched_value + threshold ratio.
+  - `AdvisoryCell` hiển thị tag tương ứng.
+
+### P1-6 Timeframe Filter cho Aggregate Feed [NEW]
+- Nguồn: Đề xuất kỹ thuật (2026-04-03)
+- Mục tiêu:
+  - Cho phép lọc aggregate feed theo timeframe: 5p, 15p, 1h, Toàn phiên.
+  - Dòng tiền 5 phút cuối phiên quan trọng hơn buổi sáng.
+- Owner: BE + FE (trung bình)
+- DoD:
+  - BE: `getAggregateWhaleFeed` nhận param `?since=<iso_timestamp>` hoặc `?window=5m|15m|1h|session`.
+  - FE: `WhaleAlertsHub` + `WhaleAdvisory` có dropdown timeframe, tự động refetch khi thay đổi.
+  - Không ảnh hưởng cursor pagination hiện tại.
+
+### P1-7 Reversal Alert Detection [NEW]
+- Nguồn: Đề xuất AI Advisory nâng cao (2026-04-03)
+- Mục tiêu:
+  - Celery task phát hiện dấu hiệu "rút củi đáy nồi": N lệnh BUY liên tiếp → đột ngột chuyển SELL với giá trị lớn.
+  - Tạo advisory type `REVERSAL` với severity `urgent`.
+- Owner: BE (Celery task)
+- DoD:
+  - Task `detect_whale_reversal` chạy sau mỗi batch ingest.
+  - Logic: nếu symbol có ≥3 BUY trong 15p rồi xuất hiện SELL > threshold → tạo advisory.
+  - Advisory type field thêm choice `REVERSAL`.
+  - FE hiển thị badge "⚠ Đảo chiều" trong `AdvisoryCell`.
+
 ---
 
 ## 6) P2 — Nâng cấp nghiệp vụ trung hạn
@@ -104,14 +151,58 @@
 ### P2-3 Risk management pack
 - Diversification/HHI nâng cao, VaR, stress scenarios.
 
+### P2-4 Whale History Chart (Lịch sử dòng tiền) [NEW]
+- Nguồn: Đề xuất Historical Data (2026-04-03)
+- Mục tiêu:
+  - Biểu đồ cột dòng tiền lớn theo ngày/tuần per symbol: gom ròng hay bán ròng.
+  - Người dùng xem lại 30/60/90 ngày để đánh giá xu hướng tích lũy.
+- Owner: BE + FE (trung bình)
+- DoD:
+  - BE: endpoint `/api/portfolio/whale-history/?symbol=XXX&days=30` aggregate từ `IntradayTick` DB.
+  - FE: component `WhaleHistoryChart` dùng KlineCharts hoặc Recharts trong `WhaleAlertsDashboard`.
+- Phụ thuộc: `IntradayTick` model có đủ dữ liệu lịch sử (cần verify retention policy).
+
+### P2-5 Trading Journal tự động [NEW]
+- Nguồn: Đề xuất Historical Data (2026-04-03)
+- Mục tiêu:
+  - AI tự ghi lại mọi khuyến nghị đã cho + outcome (giá T+1, T+3, T+5 thực tế).
+  - Tính win rate per symbol cho AI: "AI từng dự báo đúng X% với mã FPT".
+- Owner: BE (Celery scheduler)
+- DoD:
+  - Model `AdvisoryOutcome` lưu: advisory_id, price_at_signal, price_t1/t3/t5, outcome (win/loss/neutral).
+  - Celery beat task cập nhật outcome sau T+1/T+3/T+5 ngày giao dịch.
+  - API `/api/portfolio/advisory-winrate/?symbol=XXX` trả win rate theo symbol.
+  - FE hiển thị win rate badge trong `AdvisoryCell` nếu có đủ dữ liệu (≥5 lần).
+- Rủi ro: Cần nguồn giá đóng cửa chính xác — đã có `DailyPrice` model.
+
+### P2-6 Watchlist Sync Filter cho Advisory [NEW]
+- Nguồn: Đề xuất UX (2026-04-03)
+- Mục tiêu:
+  - Người dùng chỉ nhận advisory cho mã trong watchlist/holdings của họ.
+  - Giảm noise cho user theo dõi ít mã.
+- Owner: BE + FE (nhỏ-trung bình)
+- DoD:
+  - BE: `getWhaleAdvisories` hỗ trợ param `?watchlist_only=true`.
+  - FE: Toggle "Chỉ mã đang theo dõi" trong header `WhaleAdvisory.jsx`.
+
 ---
 
 ## 7) P3 — Phụ thuộc ngoài hệ thống
 
 ### P3-1 News/events feed theo symbol
-### P3-2 Brokerage integration
+### P3-2 Brokerage integration (Copy Trade / Quick Order)
+- Liên kết TCBS/SSI API để đặt lệnh trực tiếp từ AI Advisory.
+- Ưu tiên thấp do rủi ro pháp lý + phụ thuộc partner API.
 ### P3-3 Order book/depth nâng cao theo vendor data
 ### P3-4 Social/community features
+### P3-5 Order Flow Analysis (Sweep/Iceberg/Put-through) [NEW]
+- Phân loại lệnh: quét thị trường (sweep), tảng băng (iceberg), khớp nội khối (put-through).
+- **Phụ thuộc cứng**: cần tick-by-tick data với timestamp microsecond — vnstock hiện không đủ.
+- Chỉ khả thi khi có FireAnt API hoặc nguồn dữ liệu level-2 market.
+### P3-6 Sentiment Gauge (Tâm lý đám đông) [NEW]
+- Tổng hợp tâm lý từ diễn đàn (CafeF, vndirect forum) + tin tức tài chính.
+- Phụ thuộc: web scraping + NLP model tiếng Việt (underthesea/PhoBERT).
+- Chỉ đưa vào sprint khi có nguồn dữ liệu sạch và stable.
 
 > Các mục P3 chỉ đưa vào sprint khi P0/P1 ổn định và đã có nguồn dữ liệu/đối tác rõ ràng.
 

@@ -55,7 +55,7 @@ export default function Layout() {
         {/* Chọn Portfolio */}
         {portfolios.length > 0 && (
           <div className="px-3 py-3 border-b border-gray-800">
-            <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">
+            <label className="text-xs text-emerald-500 uppercase tracking-wider font-semibold block mb-1">
               Danh mục
             </label>
             <select
@@ -92,7 +92,7 @@ export default function Layout() {
 
           {/* Divider for Stock Management */}
           <div className="mt-6 mb-1 px-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Market watch và theo dõi cá nhân</span>
+            <span className="text-xs text-emerald-500 uppercase tracking-wider font-semibold">Theo dõi thị trường</span>
           </div>
           {stockManagementItems.map(({ to, label }) => (
             <NavLink

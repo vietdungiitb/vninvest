@@ -356,7 +356,7 @@ export default function DashboardRealtimePanel({ holdings }) {
               Chưa có mã để theo dõi realtime trên dashboard.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800">
@@ -372,7 +372,14 @@ export default function DashboardRealtimePanel({ holdings }) {
                     const isDown = (item.change_pct ?? 0) < 0;
                     return (
                       <tr key={item.symbol} className="hover:bg-gray-800/30 transition-colors">
-                        <td className="px-4 py-3 font-bold text-brand-300">{item.symbol}</td>
+                        <td className="px-4 py-3 font-bold text-brand-300">
+                          <Link
+                            to={`/stocks/${item.symbol}`}
+                            className="inline-flex items-center hover:text-cyan-300 transition-colors"
+                          >
+                            {item.symbol}
+                          </Link>
+                        </td>
                         <td className="px-4 py-3 text-gray-200">{formatPrice(item.current_price)}</td>
                         <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
                           {item.change_pct === null || item.change_pct === undefined
@@ -410,7 +417,7 @@ export default function DashboardRealtimePanel({ holdings }) {
               Chưa có whale alert mới. Panel sẽ tự cập nhật khi có event hoặc nạp snapshot từ aggregate feed.
             </div>
           ) : (
-            <div className="px-3 py-3 flex flex-col gap-2">
+            <div className="max-h-[420px] overflow-y-auto px-3 py-3 flex flex-col gap-2">
               {mergedAlerts.map((alert, index) => {
                 const side = alert.side?.toLowerCase();
                 const isBuy = side === 'buy';

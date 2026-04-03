@@ -18,7 +18,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getDepthChart, getRVOL, getWhaleFeed } from '../api/client';
+import { getDepthChart, getRVOL, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -225,7 +225,7 @@ export function WhaleFeedPanel({
         </button>
       </div>
       {loading ? (
-        <div className="panel-scrollbar mt-3 h-[420px] overflow-y-auto pr-1" style={feedViewportStyle}>
+        <div className="panel-scrollbar mt-3 h-[540px] overflow-y-auto pr-1" style={feedViewportStyle}>
           <div className="space-y-2">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
@@ -233,13 +233,13 @@ export function WhaleFeedPanel({
           </div>
         </div>
       ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
-        <div className="panel-scrollbar mt-3 flex h-[420px] items-center justify-center overflow-y-auto pr-1" style={feedViewportStyle}>
+        <div className="panel-scrollbar mt-3 flex h-[540px] items-center justify-center overflow-y-auto pr-1" style={feedViewportStyle}>
           <p className="text-center text-[12px] text-slate-500">
             Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
           </p>
         </div>
       ) : (
-        <div className="panel-scrollbar mt-3 h-[420px] overflow-y-auto pr-1" style={feedViewportStyle}>
+        <div className="panel-scrollbar mt-3 h-[540px] overflow-y-auto pr-1" style={feedViewportStyle}>
           <div className="flex flex-col gap-2">
           {/* WS alerts on top */}
             {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
@@ -275,10 +275,10 @@ export function WhaleFeedPanel({
 
 const DONUT_COLORS = ['#0891b2', '#7c3aed', '#475569'];
 
-export function MoneyFlowDonut({ summary, loading }) {
+export function MoneyFlowDonut({ summary, loading, compact = false }) {
   if (loading) {
     return (
-      <section className="card-section p-4">
+      <section className={`card-section p-4 ${compact ? 'h-full min-h-0' : ''}`}>
         <div className="h-48 animate-pulse rounded-xl bg-slate-900" />
       </section>
     );
@@ -295,13 +295,13 @@ export function MoneyFlowDonut({ summary, loading }) {
   const netColor = flowNet >= 0 ? '#22c55e' : '#f43f5e';
 
   return (
-    <section className="card-section p-4">
+    <section className={`card-section p-4 ${compact ? 'flex h-full min-h-0 flex-col' : ''}`}>
       <div className="border-b border-slate-800 pb-3">
         <p className="text-label">Tỷ trọng dòng tiền phiên</p>
         <h3 className="mt-0.5 text-sm font-semibold text-white">Phân khúc giao dịch</h3>
       </div>
-      <div className="mt-3 flex items-center gap-4">
-        <div className="relative w-36 h-36 shrink-0">
+      <div className={`mt-3 flex items-center gap-4 ${compact ? 'flex-1' : ''}`}>
+        <div className={`relative shrink-0 ${compact ? 'h-48 w-48' : 'h-36 w-36'}`}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -333,11 +333,11 @@ export function MoneyFlowDonut({ summary, loading }) {
             </span>
           </div>
         </div>
-        <div className="flex flex-col gap-2 text-[12px]">
+        <div className="flex min-w-0 flex-1 flex-col gap-2 text-[12px]">
           {donutData.map((d, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: DONUT_COLORS[i] }} />
-              <span className="text-slate-400">{d.name}</span>
+              <span className="truncate text-slate-400">{d.name}</span>
               <span className="ml-auto font-semibold text-white">{d.value.toFixed(1)}%</span>
             </div>
           ))}
@@ -548,7 +548,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
 
 // ─── DepthChartPanel ────────────────────────────────────────────────────────
 
-function DepthChartPanel({ symbol }) {
+function DepthChartPanel({ symbol, compact = false }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -574,7 +574,7 @@ function DepthChartPanel({ symbol }) {
   }, [data]);
 
   return (
-    <section className="card-section p-4">
+    <section className={`card-section p-4 ${compact ? 'flex h-full min-h-0 flex-col' : ''}`}>
       <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
         <div>
           <p className="text-label">Độ sâu thị trường</p>
@@ -589,14 +589,14 @@ function DepthChartPanel({ symbol }) {
       </div>
 
       {loading ? (
-        <div className="mt-4 h-52 animate-pulse rounded-xl bg-slate-900" />
+        <div className={`mt-4 animate-pulse rounded-xl bg-slate-900 ${compact ? 'h-full min-h-0 flex-1' : 'h-52'}`} />
       ) : !chartData.length ? (
-        <div className="mt-4 flex h-52 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
+        <div className={`mt-4 flex items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl ${compact ? 'h-full min-h-0 flex-1' : 'h-52'}`}>
           Chưa có dữ liệu sổ lệnh.
         </div>
       ) : (
         <>
-          <div className="mt-3 h-52">
+          <div className={`mt-3 ${compact ? 'h-full min-h-0 flex-1' : 'h-52'}`}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={{ top: 4, right: 16, bottom: 4, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
@@ -696,12 +696,22 @@ export default function WhaleAlertsDashboard() {
   // Lấy whale feed + summary
   const [feedData, setFeedData] = useState(null);
   const [feedLoading, setFeedLoading] = useState(true);
+  const [companyName, setCompanyName] = useState('');
 
   const fetchFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
-      const r = await getWhaleFeed(normalizedSymbol);
-      setFeedData(r.data);
+      const [feedResp, overviewResp] = await Promise.allSettled([
+        getWhaleFeed(normalizedSymbol),
+        getStockWorkspaceOverview(normalizedSymbol),
+      ]);
+
+      if (feedResp.status === 'fulfilled') {
+        setFeedData(feedResp.value.data);
+      }
+      if (overviewResp.status === 'fulfilled') {
+        setCompanyName(overviewResp.value.data?.company_name || '');
+      }
     } catch (_) {}
     finally { setFeedLoading(false); }
   }, [normalizedSymbol]);
@@ -738,6 +748,13 @@ export default function WhaleAlertsDashboard() {
             </Link>
             <span className="text-slate-700">/</span>
             <span className="text-slate-200 text-sm font-semibold">🦈 Whale Alerts</span>
+
+            <div className="w-full mt-1 text-xs text-slate-400">
+              <span className="text-slate-500">Mã chứng khoán:</span> <span className="font-semibold text-slate-200">{normalizedSymbol}</span>
+              <span className="mx-2 text-slate-700">|</span>
+              <span className="text-slate-500">Tên công ty:</span>{' '}
+              <span className="font-semibold text-slate-200">{companyName || 'Đang cập nhật...'}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {/* WS whale alert badge */}
@@ -764,7 +781,7 @@ export default function WhaleAlertsDashboard() {
         </div>
       </section>
 
-      {/* Row 1: Alert Feed + Donut */}
+      {/* Row 1: Alert Feed + (Donut + Depth stacked) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
         <WhaleFeedPanel
           symbol={normalizedSymbol}
@@ -773,7 +790,10 @@ export default function WhaleAlertsDashboard() {
           loading={feedLoading}
           onRefresh={fetchFeed}
         />
-        <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} />
+        <div className="grid h-full min-h-0 grid-rows-2 gap-4">
+          <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
+          <DepthChartPanel symbol={normalizedSymbol} compact />
+        </div>
       </div>
 
       {/* Row 2: Bubble Chart + RVOL */}
@@ -781,9 +801,6 @@ export default function WhaleAlertsDashboard() {
         <BubbleOrderChart orders={feedData?.whale_orders} loading={feedLoading} />
         <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
       </div>
-
-      {/* Row 3: Depth Chart full width */}
-      <DepthChartPanel symbol={normalizedSymbol} />
     </div>
   );
 }
