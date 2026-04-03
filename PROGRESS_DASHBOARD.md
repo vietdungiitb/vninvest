@@ -1,6 +1,6 @@
 # 🎯 SPRINT 12 BƯỚC 16 - PROGRESS DASHBOARD
-**Date**: 2026-04-02  
-**Status**: Day 1 - 75% Complete ✅
+**Date**: 2026-04-03  
+**Status**: Day 2 - Core implementation complete, validation in progress ✅
 
 ---
 
@@ -59,7 +59,31 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 
 ---
 
-## ⏳ REMAINING TODAY (Day 1 - Afternoon)
+## ✅ LATEST DELTA (Day 2)
+
+### Advisory + Plan Gating
+- ✅ Added `/api/auth/me/` consumption into frontend ability context
+- ✅ Added CASL-gated route `/whale-advisory`
+- ✅ Added upgrade fallback route `/upgrade`
+- ✅ Added advisory feed UI with Premium-only detail masking
+
+### Validation
+- ✅ `npm run build` passes after advisory UI integration
+- ✅ `manage.py test portfolio.tests.test_api_routes` passes (12 tests)
+- ✅ Stock workspace smoke test stabilized by mocking vnstock live overlay in test
+- ✅ Redis-backed local validation: 4 stream keys / 400 ticks / consumer batch writes 400 `IntradayTick`
+- ✅ Advisory backend no longer crashes when `OPENCLAW_API_KEY` is missing
+
+### User Registration Extension
+- ✅ Backend `/api/auth/register/` now requires email and returns JWT for auto-login
+- ✅ Frontend auth modal now supports `Dang ky` mode with field-level validation
+- ✅ Auto-login after register wired into `PortfolioContext`
+- ✅ Backend route suite now passes 15 tests including register cases
+- ⏳ Browser smoke QA for `register -> auto-login -> dashboard` still pending
+
+---
+
+## ⏳ REMAINING
 
 ### Task 1.4: Verify Subscription Patterns & Cleanup
 **Est. Time**: 1.5 hours  
@@ -101,22 +125,13 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 - [ ] Create final VERIFICATION_REPORT_DAY1.md (already drafted)
 - [ ] Update todo list
 
-### Tomorrow Morning (Day 2 - 2026-04-03)
-**Focus**: Add Observability Metrics
+### Next Focus
+**Focus**: Redis-backed validation + runtime QA
 
-**Task 2.1**: Modify useRealtimeFeed.js (+40 lines)
-- Add event counters (ticker_update, whale_alert, heartbeat, reconnect)
-- Add latency tracking (publish_ts vs received_ts)
-- Export metrics in return object
-
-**Task 2.2**: Modify useRealtimeFeed.js (+20 lines)
-- Integrate latency measurement
-- Calculate last latency in milliseconds
-
-**Task 2.3**: Create RealtimeDebugPanel.jsx (+150 lines)
-- Component to show metrics
-- Trigger with ?debug=realtime param
-- Display event counts, latency, connection timeline
+- Run Redis-backed checklist
+- Browser QA for reconnect/unmount cleanup
+- Validate live advisory generation path with Celery + WebSocket
+- Measure publish->push latency p95 under browser runtime
 
 ---
 
@@ -132,7 +147,7 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 ### ⏳ Still Need
 - [ ] Verify subscription patterns
 - [ ] Test memory/cleanup
-- [ ] Add metrics (Day 2-3)
+- [x] Add metrics (Day 2-3)
 - [ ] Test fallback/reconnect (Day 4)
 - [ ] Redis validation (Day 5-6)
 - [ ] QA matrix (Day 6-7)
@@ -143,13 +158,16 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 
 ```
 Consolidation Progress:
-├─ Code review:     ✅ 100% (Watchlist + Dashboard)
+├─ Code review:        ✅ 100% (Watchlist + Dashboard)
 ├─ Duplication search: ✅ 100% (Zero found)
-├─ Clean build:     ✅ (npm run build passes)
-├─ Runtime test:    ⏳ Pending (Task 1.4)
-└─ Observability:   ⏳ Day 2
+├─ Metrics panel:      ✅ Implemented
+├─ AI advisory gating: ✅ Implemented
+├─ Redis streams:      ✅ Local validation pass
+├─ Clean build:        ✅ Pass
+├─ API smoke suite:    ✅ Pass (12 tests)
+└─ Runtime QA:         ⏳ Pending
 
-Overall Day 1:      ✅ 75% COMPLETE
+Overall Day 2:         ✅ Core implementation complete
 ```
 
 ---
@@ -185,6 +203,6 @@ Get-ChildItem -Recurse -Include "*.jsx","*.js" | Select-String "new WebSocket"
 
 ---
 
-**Last Updated**: 2026-04-02 09:45  
-**Next Update**: 2026-04-02 17:00 (after Task 1.4)  
-**Target**: 100% by 2026-04-02 EOD
+**Last Updated**: 2026-04-03 11:20  
+**Next Update**: after Redis-backed validation  
+**Target**: close Sprint 12 validation checklist

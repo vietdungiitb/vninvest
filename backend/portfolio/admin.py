@@ -1,10 +1,12 @@
 import json
 import threading
+from urllib.parse import urlencode
 from datetime import datetime
 
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django import forms
 from django.db.models import Max
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -26,12 +28,15 @@ from .models import (
     StockProfile,
     StockProfileSyncLog,
     SubAccount,
+    SystemEmailAccount,
     TrackedSymbol,
     Transaction,
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
 )
+from .mail_service import get_active_email_account, send_test_email
+from .email_verification import send_verification_email
 from .services import sync_market_groups_for_user, sync_market_groups_for_users, sync_stock_profiles
 
 
@@ -107,6 +112,45 @@ def _admin_stock_profile_sync_view(request):
     result = sync_stock_profiles(requested_by=request.user, mode=mode)
     _push_stock_profile_sync_messages(request, result)
     return HttpResponseRedirect(next_url)
+
+
+def _admin_resend_latest_verification_view(request):
+    if request.method != 'POST':
+        return redirect('admin:index')
+
+    next_url = request.POST.get('next') or reverse('admin:index')
+    pending_config = (
+        UserConfig.objects
+        .select_related('user')
+        .filter(email_verified=False)
+        .order_by('-email_verification_sent_at', '-created_at')
+        .first()
+    )
+
+    if not pending_config:
+        messages.warning(request, 'Khong con tai khoan nao dang cho xac thuc email.')
+        return HttpResponseRedirect(next_url)
+
+    try:
+        _resend_verification_for_user_config(pending_config)
+    except Exception as exc:
+        messages.error(
+            request,
+            f'Gui lai email xac thuc that bai cho {pending_config.user.username}: {exc}',
+        )
+        return HttpResponseRedirect(next_url)
+
+    messages.success(
+        request,
+        f'Da gui lai email xac thuc cho {pending_config.user.username}.',
+    )
+    return HttpResponseRedirect(next_url)
+
+
+def _resend_verification_for_user_config(user_config: UserConfig):
+    send_verification_email(user_config.user)
+    user_config.email_verification_sent_at = timezone.now()
+    user_config.save(update_fields=['email_verification_sent_at', 'updated_at'])
 
 
 def _format_vnd(value):
@@ -496,6 +540,11 @@ def _vninvest_admin_get_urls():
             admin.site.admin_view(_admin_stock_profile_workspace_view),
             name='stock-profile-workspace',
         ),
+        path(
+            'user-configs/resend-latest-verification/',
+            admin.site.admin_view(_admin_resend_latest_verification_view),
+            name='resend-latest-verification',
+        ),
         *_original_admin_get_urls(),
     ]
 
@@ -514,6 +563,7 @@ def _duration_display(started_at, finished_at):
 def _vninvest_each_context(request):
     context = _original_each_context(request)
     today = timezone.localdate()
+    now = timezone.now()
     allowed_windows = [30, 90, 180]
     try:
         selected_window = int(request.GET.get('window_days', 90))
@@ -603,6 +653,29 @@ def _vninvest_each_context(request):
         }
 
     context['pandas_insights'] = insights
+    pending_verification_qs = UserConfig.objects.select_related('user').filter(email_verified=False)
+    latest_pending_verification = pending_verification_qs.order_by('-email_verification_sent_at', '-created_at').first()
+    default_email_account = get_active_email_account()
+    context['verification_ops'] = {
+        'verified_count': UserConfig.objects.filter(email_verified=True).count(),
+        'unverified_count': pending_verification_qs.count(),
+        'unsent_count': pending_verification_qs.filter(email_verification_sent_at__isnull=True).count(),
+        'sent_last_24h_count': UserConfig.objects.filter(
+            email_verification_sent_at__gte=now - timezone.timedelta(hours=24)
+        ).count(),
+        'latest_pending': latest_pending_verification,
+        'default_mail_account': default_email_account,
+        'unverified_admin_url': (
+            f"{reverse('admin:portfolio_userconfig_changelist')}?"
+            f"{urlencode({'email_verified__exact': 0})}"
+        ),
+        'verified_admin_url': (
+            f"{reverse('admin:portfolio_userconfig_changelist')}?"
+            f"{urlencode({'email_verified__exact': 1})}"
+        ),
+        'mail_account_admin_url': reverse('admin:portfolio_systememailaccount_changelist'),
+        'resend_latest_url': reverse('admin:resend-latest-verification'),
+    }
     latest_market_sync = MarketGroupSyncLog.objects.select_related('target_user', 'requested_by').first()
     recent_market_sync_logs = list(
         MarketGroupSyncLog.objects
@@ -649,6 +722,7 @@ def _vninvest_get_app_list(request, app_label=None):
         'StockProfile': 'Hồ sơ mã chứng khoán',
         'DailyPrice': 'Dữ liệu giá hàng ngày',
         'UserConfig': 'Cấu hình người dùng',
+        'SystemEmailAccount': 'Tài khoản gửi mail',
         'User': 'Người dùng',
         'Group': 'Nhóm quyền',
     }
@@ -712,6 +786,7 @@ def _vninvest_get_app_list(request, app_label=None):
             '04. Cấu hình hệ thống',
             [
                 'UserConfig',
+                'SystemEmailAccount',
             ],
         ),
     ]
@@ -829,10 +904,207 @@ class AccountSnapshotAdmin(admin.ModelAdmin):
 
 @admin.register(UserConfig)
 class UserConfigAdmin(admin.ModelAdmin):
-    list_display = ('user', 'whale_alert_threshold', 'theme', 'updated_at')
-    list_filter = ('theme',)
-    search_fields = ('user__username',)
+    list_display = (
+        'user',
+        'verification_status',
+        'email_verification_sent_at',
+        'email_verified_at',
+        'whale_alert_threshold',
+        'theme',
+        'updated_at',
+    )
+    list_filter = ('theme', 'email_verified')
+    search_fields = ('user__username', 'user__email')
     ordering = ('user__username',)
+    change_form_template = 'admin/portfolio/userconfig/change_form.html'
+    actions = ('resend_verification_email_to_selected_users',)
+    readonly_fields = ('email_verified', 'email_verification_sent_at', 'email_verified_at', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Nguoi dung', {'fields': ('user',)}),
+        ('Xac thuc email', {'fields': ('email_verified', 'email_verification_sent_at', 'email_verified_at')}),
+        ('Cau hinh ca nhan', {'fields': ('whale_alert_threshold', 'theme')}),
+        ('Goi dich vu', {'fields': ('plan', 'plan_expires_at')}),
+        ('OAuth', {'fields': ('oauth_provider', 'oauth_uid')}),
+        ('He thong', {'fields': ('created_at', 'updated_at')}),
+    )
+
+    @admin.display(description='Trang thai email')
+    def verification_status(self, obj):
+        return 'Da xac thuc' if obj.email_verified else 'Chua xac thuc'
+
+    def get_urls(self):
+        return [
+            path(
+                '<path:object_id>/resend-verification/',
+                self.admin_site.admin_view(self.resend_verification_view),
+                name='portfolio_userconfig_resend_verification',
+            ),
+            *super().get_urls(),
+        ]
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        user_config = self.get_object(request, object_id)
+        extra_context['show_resend_verification_button'] = bool(user_config and not user_config.email_verified)
+        if user_config:
+            extra_context['resend_verification_url'] = reverse(
+                'admin:portfolio_userconfig_resend_verification',
+                args=[user_config.pk],
+            )
+        return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
+
+    def resend_verification_view(self, request, object_id):
+        if request.method != 'POST':
+            return redirect('admin:portfolio_userconfig_change', object_id)
+
+        user_config = get_object_or_404(UserConfig.objects.select_related('user'), pk=object_id)
+        change_url = reverse('admin:portfolio_userconfig_change', args=[user_config.pk])
+
+        if user_config.email_verified:
+            messages.info(request, f'Tai khoan {user_config.user.username} da xac thuc email, khong can gui lai.')
+            return HttpResponseRedirect(change_url)
+
+        try:
+            _resend_verification_for_user_config(user_config)
+        except Exception as exc:
+            messages.error(request, f'Gui lai email xac thuc that bai cho {user_config.user.username}: {exc}')
+            return HttpResponseRedirect(change_url)
+
+        messages.success(request, f'Da gui lai email xac thuc cho {user_config.user.username}.')
+        return HttpResponseRedirect(change_url)
+
+    @admin.action(description='Gui lai email xac thuc cho cac tai khoan chua verify')
+    def resend_verification_email_to_selected_users(self, request, queryset):
+        success_count = 0
+        skipped_count = 0
+        failure_count = 0
+
+        for user_config in queryset.select_related('user'):
+            if user_config.email_verified:
+                skipped_count += 1
+                continue
+
+            try:
+                _resend_verification_for_user_config(user_config)
+                success_count += 1
+            except Exception as exc:
+                failure_count += 1
+                self.message_user(
+                    request,
+                    f'Gui lai email xac thuc that bai cho {user_config.user.username}: {exc}',
+                    level=messages.ERROR,
+                )
+
+        if success_count:
+            self.message_user(request, f'Da gui lai email xac thuc cho {success_count} tai khoan.', level=messages.SUCCESS)
+        if skipped_count:
+            self.message_user(request, f'Bo qua {skipped_count} tai khoan da xac thuc email.', level=messages.INFO)
+        if failure_count and not success_count:
+            self.message_user(request, 'Khong co email xac thuc nao duoc gui thanh cong.', level=messages.WARNING)
+
+
+class SystemEmailAccountAdminForm(forms.ModelForm):
+    smtp_password = forms.CharField(
+        label='Mật khẩu SMTP',
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Để trống nếu không thay đổi mật khẩu đã lưu.',
+    )
+
+    class Meta:
+        model = SystemEmailAccount
+        exclude = ('password_ciphertext',)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        raw_password = self.cleaned_data.get('smtp_password')
+        if raw_password:
+            instance.set_smtp_password(raw_password)
+
+        if commit:
+            instance.save()
+        return instance
+
+
+@admin.register(SystemEmailAccount)
+class SystemEmailAccountAdmin(admin.ModelAdmin):
+    form = SystemEmailAccountAdminForm
+    list_display = (
+        'name',
+        'host',
+        'port',
+        'username',
+        'from_email',
+        'is_active',
+        'is_default',
+        'last_test_status',
+        'last_tested_at',
+    )
+    list_filter = ('is_active', 'is_default', 'use_tls', 'use_ssl', 'last_test_status')
+    search_fields = ('name', 'host', 'username', 'from_email')
+    ordering = ('-is_default', 'name')
+    actions = ('mark_as_default', 'send_test_email_to_selected_accounts')
+    readonly_fields = ('password_status', 'last_tested_at', 'last_test_status', 'last_test_message', 'created_at', 'updated_at')
+    fieldsets = (
+        ('Nhận diện', {'fields': ('name', 'notes', 'is_active', 'is_default')}),
+        ('Máy chủ SMTP', {'fields': ('host', 'port', 'username', 'smtp_password', 'password_status', 'use_tls', 'use_ssl', 'timeout_seconds')}),
+        ('Thông tin người gửi', {'fields': ('from_email', 'from_name', 'reply_to_email')}),
+        ('Kết quả kiểm tra', {'fields': ('last_tested_at', 'last_test_status', 'last_test_message', 'created_at', 'updated_at')}),
+    )
+
+    @admin.display(description='Mật khẩu SMTP')
+    def password_status(self, obj):
+        return 'Đã lưu' if obj.password_ciphertext else 'Chưa cấu hình'
+
+    @admin.action(description='Đặt làm cấu hình gửi mail mặc định')
+    def mark_as_default(self, request, queryset):
+        selected_account = queryset.order_by('pk').first()
+        if not selected_account:
+            self.message_user(request, 'Không có cấu hình mail nào được chọn.', level=messages.WARNING)
+            return
+
+        selected_account.is_default = True
+        selected_account.is_active = True
+        selected_account.save(update_fields=['is_default', 'is_active', 'updated_at'])
+        self.message_user(
+            request,
+            f'Đã đặt cấu hình {selected_account.name} làm mail mặc định.',
+            level=messages.SUCCESS,
+        )
+
+    @admin.action(description='Gửi mail kiểm tra tới email của tài khoản admin đang đăng nhập')
+    def send_test_email_to_selected_accounts(self, request, queryset):
+        recipient_email = (request.user.email or '').strip()
+        if not recipient_email:
+            self.message_user(
+                request,
+                'Tài khoản admin hiện tại chưa có email, không thể gửi mail kiểm tra.',
+                level=messages.ERROR,
+            )
+            return
+
+        success_count = 0
+        failure_count = 0
+        for account in queryset:
+            try:
+                send_test_email(account, recipient_email)
+                success_count += 1
+            except Exception as exc:
+                failure_count += 1
+                self.message_user(
+                    request,
+                    f'Gửi mail kiểm tra thất bại cho cấu hình {account.name}: {exc}',
+                    level=messages.ERROR,
+                )
+
+        if success_count:
+            self.message_user(
+                request,
+                f'Đã gửi {success_count} mail kiểm tra tới {recipient_email}.',
+                level=messages.SUCCESS,
+            )
+        if failure_count and not success_count:
+            self.message_user(request, 'Không có mail kiểm tra nào gửi thành công.', level=messages.WARNING)
 
 
 @admin.register(SecuritiesGroup)

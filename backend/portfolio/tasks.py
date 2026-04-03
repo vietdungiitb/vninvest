@@ -92,6 +92,7 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                     'symbol': signal.symbol,
                     'matched_value_vnd': signal.matched_value,
                     'side': signal.side,
+                    'threshold': signal.threshold,
                 },
                 countdown=2,
             )
@@ -236,7 +237,7 @@ def trim_streams(self) -> dict:
 # AI Advisory: Gọi OpenClaw → lưu WhaleAdvisory → push WebSocket
 # ---------------------------------------------------------------------------
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
-def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, side: str) -> dict:
+def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, side: str, threshold: float = 0) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
     2. Gọi OpenClaw: summary (Pro) + detail (Premium).
@@ -267,6 +268,7 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         symbol=symbol,
         matched_value=int(matched_value_vnd),
         side=side,
+        threshold=float(threshold or 0),
         ai_summary=summary_resp['text'],
         ai_detail=deep_resp['text'],
         ai_provider='openclaw',
@@ -289,8 +291,10 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
                     'symbol': symbol,
                     'side': side,
                     'matched_value': int(matched_value_vnd),
+                    'threshold': float(threshold or 0),
                     'ai_summary': advisory.ai_summary,
                     'ai_detail': advisory.ai_detail,
+                    'ts': advisory.created_at.isoformat(),
                     'created_at': advisory.created_at.isoformat(),
                     'id': advisory.id,
                 },

@@ -112,7 +112,7 @@ export default function DashboardRealtimePanel({ holdings }) {
     lastEventAt,
     alerts,
     metrics,
-  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 5 });
+  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
 
   const quoteList = useMemo(
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),

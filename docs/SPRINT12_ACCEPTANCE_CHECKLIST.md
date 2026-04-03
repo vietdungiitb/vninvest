@@ -35,3 +35,16 @@ Dung checklist nay khi review va chot Sprint 12.
 - [x] PM/BA xac nhan du du lieu demo de review nghiep vu (seed_demo_data --reset da mo rong phu holdings, snapshots, watchlist, tracked symbols).
 - [x] Dev xac nhan khong con blocker P0/P1 cho frontend realtime (ERR_INSUFFICIENT_RESOURCES, infinite loop, 400 watchlist item, WS close before established — tat ca da fix).
 - [x] Co danh sach cong viec chuyen tiep cho Sprint 13 (docs/SPRINT13_DETAILED_PLAN.md).
+
+## F. User Registration Extension
+
+- [x] Co tai lieu ke hoach implementation cho registration flow: `docs/SPRINT12_USER_REGISTRATION_PLAN.md`.
+- [x] Chot nghiep vu: email required, auto-login sau dang ky.
+- [x] Frontend co mode `Dang ky` canh `Dang nhap` tai auth entrypoint.
+- [x] API helper frontend cho `POST /api/auth/register/` duoc them va dung dung contract.
+- [x] Dang ky thanh cong tao duoc `User` + `UserConfig(plan=free)`.
+- [x] Hien thi dung loi cho duplicate username, invalid email, password mismatch, password qua ngan.
+- [x] Backend targeted tests cho register flow pass.
+- [ ] Frontend smoke test: dang ky moi -> auto-login -> vao duoc dashboard.
+- [x] Docs va taskboard Sprint 12 duoc cap nhat sau implementation.
+- [ ] QA regression mo rong cho login/register flow duoc chay tren browser that.

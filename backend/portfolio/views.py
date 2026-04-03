@@ -702,7 +702,7 @@ class WhaleFeedView(APIView):
         threshold_m = float((config or {}).get('whale_alert_threshold') or 500)
         threshold_vnd = threshold_m * 1_000_000
 
-        cache_key = f'whale_feed:{normalized_symbol}'
+        cache_key = f'whale_feed:{request.user.id}:{normalized_symbol}:{int(threshold_vnd)}'
         cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)

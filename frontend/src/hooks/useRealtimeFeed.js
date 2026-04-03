@@ -1,6 +1,10 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getRealtimeTicker, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
 
+function readEventField(payload, key) {
+  return payload?.[key] ?? payload?.data?.[key];
+}
+
 function mergeQuote(prev, update) {
   return {
     ...prev,
@@ -21,10 +25,10 @@ function mergeQuote(prev, update) {
 function normalizeAlert(payload) {
   return {
     symbol: payload.symbol,
-    side: payload.data?.side,
-    matched_value: payload.data?.matched_value,
-    threshold: payload.data?.threshold,
-    ts: payload.ts,
+    side: readEventField(payload, 'side'),
+    matched_value: readEventField(payload, 'matched_value'),
+    threshold: readEventField(payload, 'threshold'),
+    ts: payload.ts || payload.created_at,
   };
 }
 
@@ -188,9 +192,10 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
           if (payload.event_type === 'ticker_update') {
             applyTickerUpdate({
               symbol: payload.symbol,
-              price: payload.data?.price,
-              change_value: payload.data?.change_value,
-              change_pct: payload.data?.change_pct,
+              price: readEventField(payload, 'price'),
+              change_value: readEventField(payload, 'change_value'),
+              change_pct: readEventField(payload, 'change_pct'),
+              volume: readEventField(payload, 'volume'),
               ts: payload.ts,
             });
             setLastEventAt(payload.ts || new Date().toISOString());
@@ -204,6 +209,9 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, whale_alert: prev.whale_alert + 1 }));
+          } else if (payload.event_type === 'whale_advisory') {
+            setLastEventAt(payload.ts || payload.created_at || new Date().toISOString());
+            setRealtimeStatus('live');
           } else if (payload.event_type === 'heartbeat') {
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');

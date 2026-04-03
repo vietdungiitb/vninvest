@@ -6,6 +6,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { getPortfolios } from '../api/client';
 import {
   login as loginRequest,
+  register as registerRequest,
+  resendVerification as resendVerificationRequest,
   refreshToken as refreshTokenRequest,
   getUserConfig,
   updateUserConfig,
@@ -37,22 +39,55 @@ export function PortfolioProvider({ children }) {
   }, []);
 
   const saveTokens = (access, refresh) => {
+    const nextRefresh = refresh || localStorage.getItem('refresh_token');
     localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
+    if (nextRefresh) {
+      localStorage.setItem('refresh_token', nextRefresh);
+    }
     setAccessToken(access);
-    setRefreshTokenValue(refresh);
+    setRefreshTokenValue(nextRefresh);
     setIsAuthenticated(true);
   };
 
+  const syncAuthState = useCallback(async () => {
+    const [meResult, userConfigResult] = await Promise.allSettled([
+      apiClient.get('/auth/me/'),
+      getUserConfig(),
+    ]);
+
+    if (meResult.status === 'fulfilled') {
+      setUserPlan(meResult.value.data.plan || 'free');
+      setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
+    } else {
+      console.error('Sync /auth/me failed:', meResult.reason);
+    }
+
+    if (userConfigResult.status === 'fulfilled') {
+      setUserConfig(userConfigResult.value.data);
+    } else {
+      console.error('Sync user config failed:', userConfigResult.reason);
+    }
+  }, []);
+
   const login = useCallback(async (username, password) => {
-    const response = await loginRequest(username, password);
+    const response = await loginRequest(username.trim(), password);
     saveTokens(response.data.access, response.data.refresh);
-    // Lấy plan + abilities sau khi login
-    try {
-      const meRes = await apiClient.get('/auth/me/');
-      setUserPlan(meRes.data.plan || 'free');
-      setAbility(createAbilityFromRules(meRes.data.abilities || []));
-    } catch (_) { /* non-critical */ }
+    await syncAuthState();
+    return response.data;
+  }, [syncAuthState]);
+
+  const register = useCallback(async ({ username, email, password, passwordConfirm }) => {
+    const response = await registerRequest({
+      username: username.trim(),
+      email: email.trim(),
+      password,
+      password_confirm: passwordConfirm,
+    });
+    return response.data;
+  }, []);
+
+  const resendVerification = useCallback(async (identifier) => {
+    const response = await resendVerificationRequest(identifier.trim());
     return response.data;
   }, []);
 
@@ -71,7 +106,12 @@ export function PortfolioProvider({ children }) {
 
   const refreshAccessToken = useCallback(async () => {
     try {
-      const response = await refreshTokenRequest(refreshTokenValue);
+      const activeRefreshToken = refreshTokenValue || localStorage.getItem('refresh_token');
+      if (!activeRefreshToken) {
+        logout();
+        return false;
+      }
+      const response = await refreshTokenRequest(activeRefreshToken);
       saveTokens(response.data.access, response.data.refresh);
       return true;
     } catch {
@@ -121,6 +161,8 @@ export function PortfolioProvider({ children }) {
         setActivePortfolioId,
         isAuthenticated,
         login,
+        register,
+        resendVerification,
         logout,
         refreshAccessToken,
         userConfig,

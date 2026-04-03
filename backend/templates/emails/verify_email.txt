@@ -1,0 +1,12 @@
+Xin chao {{ user.username }},
+
+Tai khoan {{ product_name }} cua ban da duoc tao thanh cong. Truoc khi dang nhap, vui long xac thuc dia chi email bang lien ket ben duoi:
+
+{{ verify_url }}
+
+Lien ket nay co hieu luc trong {{ expiry_label }}.
+
+Neu ban khong thuc hien dang ky tai khoan nay, vui long bo qua email.
+
+Tran trong,
+Doi ngu {{ product_name }}

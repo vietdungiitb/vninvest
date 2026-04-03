@@ -80,8 +80,34 @@ class DailyPriceSerializer(serializers.ModelSerializer):
 class UserConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserConfig
-        fields = '__all__'
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        fields = [
+            'id',
+            'user',
+            'whale_alert_threshold',
+            'theme',
+            'plan',
+            'plan_expires_at',
+            'oauth_provider',
+            'oauth_uid',
+            'email_verified',
+            'email_verification_sent_at',
+            'email_verified_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'user',
+            'plan',
+            'plan_expires_at',
+            'oauth_provider',
+            'oauth_uid',
+            'email_verified',
+            'email_verification_sent_at',
+            'email_verified_at',
+            'created_at',
+            'updated_at',
+        ]
 
     def validate_whale_alert_threshold(self, value):
         if value < 1:

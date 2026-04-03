@@ -27,6 +27,114 @@
     color: #134e4a;
     line-height: 1;
   }
+  .ops-overview {
+    margin: 8px 0 20px;
+    background: linear-gradient(180deg, #fffdf8 0%, #fffaf0 100%);
+    border: 1px solid #f3e2b7;
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .ops-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .ops-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #7c2d12;
+  }
+  .ops-header a {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #0f766e;
+    color: #ffffff;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .ops-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .ops-card {
+    border-radius: 14px;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    background: #ffffff;
+  }
+  .ops-card.warning {
+    background: #fff7ed;
+    border-color: #fed7aa;
+  }
+  .ops-card.success {
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+  }
+  .ops-card.info {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+  }
+  .ops-card.danger {
+    background: #fef2f2;
+    border-color: #fecaca;
+  }
+  .ops-card .label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #92400e;
+    margin-bottom: 8px;
+  }
+  .ops-card .value {
+    font-size: 28px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+  .ops-card .value.value-text {
+    font-size: 18px;
+    line-height: 1.3;
+  }
+  .ops-card p {
+    margin: 0 0 10px;
+    color: #475569;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .ops-card a {
+    color: #0f766e;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .ops-card a:hover {
+    text-decoration: underline;
+  }
+  .inline-action-form {
+    margin: 0;
+  }
+  .inline-action-form button {
+    border: 0;
+    border-radius: 999px;
+    background: #c2410c;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 10px 14px;
+    cursor: pointer;
+  }
+  .inline-action-form button:hover {
+    background: #9a3412;
+  }
   .function-map {
     margin: 20px 0 24px;
     display: grid;
@@ -196,6 +304,58 @@
       <div class="value">{{ system_quick_stats.daily_price_count }}</div>
     </div>
   </div>
+
+  <section class="ops-overview">
+    <div class="ops-header">
+      <h2>Vận hành xác thực email</h2>
+      <a href="{{ verification_ops.mail_account_admin_url }}">Mở cấu hình SMTP</a>
+    </div>
+    <div class="ops-grid">
+      <article class="ops-card warning">
+        <div class="label">Tài khoản chưa xác thực</div>
+        <div class="value">{{ verification_ops.unverified_count }}</div>
+        <p>{{ verification_ops.unsent_count }} tài khoản chưa từng được gửi mail xác thực.</p>
+        <a href="{{ verification_ops.unverified_admin_url }}">Xem danh sách chờ xác thực</a>
+      </article>
+
+      <article class="ops-card success">
+        <div class="label">Tài khoản đã xác thực</div>
+        <div class="value">{{ verification_ops.verified_count }}</div>
+        <p>{{ verification_ops.sent_last_24h_count }} email xác thực đã được gửi trong 24 giờ gần nhất.</p>
+        <a href="{{ verification_ops.verified_admin_url }}">Xem tài khoản đã xác thực</a>
+      </article>
+
+      <article class="ops-card {% if verification_ops.default_mail_account %}info{% else %}danger{% endif %}">
+        <div class="label">SMTP mặc định</div>
+        <div class="value value-text">{% if verification_ops.default_mail_account %}{{ verification_ops.default_mail_account.name }}{% else %}Chưa cấu hình{% endif %}</div>
+        {% if verification_ops.default_mail_account %}
+          <p>
+            Gửi từ {{ verification_ops.default_mail_account.from_email }}.
+            {% if verification_ops.latest_pending %}
+              Người dùng chờ xác thực gần nhất: {{ verification_ops.latest_pending.user.username }}
+              {% if verification_ops.latest_pending.email_verification_sent_at %}
+                lúc {{ verification_ops.latest_pending.email_verification_sent_at|date:"d/m/Y H:i" }}.
+              {% else %}
+                và chưa được gửi mail xác thực.
+              {% endif %}
+            {% else %}
+              Hiện không có tài khoản nào đang chờ xác thực.
+            {% endif %}
+          </p>
+          {% if verification_ops.latest_pending %}
+          <form method="post" action="{{ verification_ops.resend_latest_url }}" class="inline-action-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button type="submit">Gửi lại mail cho user gần nhất</button>
+          </form>
+          {% endif %}
+        {% else %}
+          <p>Đăng ký mới sẽ không gửi được mail xác thực cho tới khi cấu hình tài khoản mail mặc định.</p>
+        {% endif %}
+        <a href="{{ verification_ops.mail_account_admin_url }}">Quản lý tài khoản gửi mail</a>
+      </article>
+    </div>
+  </section>
 
   <div class="insight-grid">
     <section class="insight-card">

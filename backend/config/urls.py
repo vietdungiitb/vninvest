@@ -1,17 +1,25 @@
 from django.contrib import admin
 from django.urls import path, include
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework_simplejwt.views import TokenRefreshView
 from .health import healthcheck, realtime_health, streams_health
 import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
-from portfolio.auth_views import UserMeView, RegisterView
+from portfolio.auth_views import (
+    RegisterView,
+    ResendVerificationEmailView,
+    UserMeView,
+    VerifiedEmailTokenObtainPairView,
+    VerifyEmailView,
+)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/auth/token/', VerifiedEmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
     path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
+    path('api/auth/verify-email/', VerifyEmailView.as_view(), name='auth-verify-email'),
+    path('api/auth/resend-verification/', ResendVerificationEmailView.as_view(), name='auth-resend-verification'),
     path('api/portfolio/', include('portfolio.urls')),
     # Tách biệt route stock-management
     path('api/stock-management/', include('portfolio.urls_stock')),

@@ -39,3 +39,13 @@
 - Dashboard da co panel realtime rieng cho market breadth + whale alerts.
 - Watchlist da co websocket + polling fallback + connection status.
 - Redis-backed end-to-end van la hang muc can chot tren staging/local co Redis that su.
+
+## Delta validation local Redis (2026-04-03)
+
+- `REALTIME_CHANNEL_LAYER=redis`, `REALTIME_ENABLED=true`, Redis local `localhost:6379` reachable.
+- `manage.py test portfolio.tests.test_api_routes portfolio.tests.test_realtime_compute portfolio.tests.test_realtime_gateway` PASS.
+- `manage.py realtime_tick --sync` tra ve `symbols=4, published=4` trong mode Redis.
+- `/api/health/realtime/` tra ve `redis_ok=true`, `/api/health/streams/` tra ve 4 stream keys va `total_ticks=400`.
+- `run_stream_consumer_batch(group='all')` xu ly `processed=1200`, ghi `400` ban ghi `IntradayTick` vao DB.
+- Khi ha `whale_alert_threshold` cua demo user xuong `1` trieu, collect cycle tra ve `published=7`, xac nhan co phat sinh them whale signal.
+- AI advisory task da duoc sua lazy import `httpx`; local path khong co `OPENCLAW_API_KEY` se tra placeholder thay vi crash.

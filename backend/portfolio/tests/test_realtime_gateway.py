@@ -1,12 +1,16 @@
 import asyncio
 
+from channels.layers import get_channel_layer
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import User
 from django.test import TransactionTestCase
 from django.test.utils import override_settings
 from rest_framework_simplejwt.tokens import AccessToken
+from unittest.mock import MagicMock, patch
 
 from config.asgi import application
+from portfolio.models import UserConfig
+from portfolio.realtime.stream_consumers import WsBroadcastConsumer
 
 
 @override_settings(
@@ -59,3 +63,82 @@ class RealtimeGatewayTests(TransactionTestCase):
             await communicator.disconnect()
 
         asyncio.run(run_test())
+
+    def test_websocket_masks_whale_advisory_detail_for_pro_plan(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True},
+        )
+
+        async def run_test():
+            token = str(AccessToken.for_user(self.user))
+            communicator = WebsocketCommunicator(application, f"/ws/realtime/?token={token}")
+            connected, _ = await communicator.connect()
+            self.assertTrue(connected)
+
+            await communicator.receive_json_from()
+            await communicator.send_json_to({"action": "subscribe", "symbols": ["VNM"]})
+            await communicator.receive_json_from()
+
+            channel_layer = get_channel_layer()
+            await channel_layer.group_send(
+                'whale_VNM',
+                {
+                    'type': 'whale_advisory',
+                    'payload': {
+                        'event_type': 'whale_advisory',
+                        'symbol': 'VNM',
+                        'side': 'BUY',
+                        'matched_value': 5_500_000_000,
+                        'threshold': 5_000_000_000,
+                        'ai_summary': 'Tom tat advisory',
+                        'ai_detail': 'Chi tiet premium',
+                        'ts': '2026-04-03T09:31:00+07:00',
+                        'created_at': '2026-04-03T09:31:00+07:00',
+                        'id': 99,
+                    },
+                },
+            )
+
+            advisory = await communicator.receive_json_from()
+            self.assertEqual(advisory['event_type'], 'whale_advisory')
+            self.assertEqual(advisory['symbol'], 'VNM')
+            self.assertEqual(advisory['matched_value'], 5_500_000_000)
+            self.assertEqual(advisory['threshold'], 5_000_000_000)
+            self.assertEqual(advisory['ai_summary'], 'Tom tat advisory')
+            self.assertEqual(advisory['ts'], '2026-04-03T09:31:00+07:00')
+            self.assertNotIn('ai_detail', advisory)
+
+            await communicator.disconnect()
+
+        asyncio.run(run_test())
+
+
+    def test_stream_broadcaster_delivers_ticker_payload_shape(self):
+        mock_sender = MagicMock()
+        mock_channel_layer = MagicMock()
+
+        with patch('channels.layers.get_channel_layer', return_value=mock_channel_layer), patch('asgiref.sync.async_to_sync', return_value=mock_sender):
+            consumer = WsBroadcastConsumer()
+            consumer.process_batch(
+                'FPT',
+                [
+                    (
+                        '1-0',
+                        {
+                            'ts': '2026-04-03T09:30:00+07:00',
+                            'price': '75.4',
+                            'volume': '100',
+                            'side': 'BUY',
+                        },
+                    )
+                ],
+            )
+
+        mock_sender.assert_called_once()
+        group_name, event = mock_sender.call_args.args
+        self.assertEqual(group_name, 'ticker_FPT')
+        self.assertEqual(event['type'], 'ticker_update')
+        self.assertEqual(event['payload']['event_type'], 'ticker_update')
+        self.assertEqual(event['payload']['symbol'], 'FPT')
+        self.assertEqual(event['payload']['price'], 75.4)

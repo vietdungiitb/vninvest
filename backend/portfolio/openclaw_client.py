@@ -8,7 +8,6 @@ Settings đọc từ .env:
 """
 import logging
 
-import httpx
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -59,6 +58,12 @@ def _call(prompt: str, max_tokens: int) -> dict:
             'prompt_tokens': 0,
             'completion_tokens': 0,
         }
+
+    try:
+        import httpx
+    except ImportError as exc:
+        logger.error('Thiếu dependency httpx cho OpenClaw client: %s', exc)
+        raise RuntimeError('Thiếu dependency httpx cho OpenClaw client.') from exc
 
     headers = {
         'Authorization': f'Bearer {api_key}',

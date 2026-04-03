@@ -1,6 +1,8 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
+from django.core import signing
+from django.core.exceptions import ValidationError
 from decimal import Decimal
 # ---------------------------------------------------------------------------
 # ScreenerRule: Bộ lọc động do user tự định nghĩa
@@ -634,6 +636,17 @@ class UserConfig(models.Model):
         default='',
         verbose_name='OAuth UID',
     )
+    email_verified = models.BooleanField(default=False, verbose_name='Email da xac thuc')
+    email_verification_sent_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Lan gui email xac thuc gan nhat',
+    )
+    email_verified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Thoi diem xac thuc email',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -643,6 +656,72 @@ class UserConfig(models.Model):
 
     def __str__(self):
         return f'Cấu hình {self.user.username} (plan={self.plan}, threshold: {self.whale_alert_threshold:,}M)'
+
+
+class SystemEmailAccount(models.Model):
+    class TestStatusChoices(models.TextChoices):
+        NEVER = 'never', 'Chưa kiểm tra'
+        SUCCESS = 'success', 'Kiểm tra thành công'
+        FAILED = 'failed', 'Kiểm tra thất bại'
+
+    name = models.CharField(max_length=120, unique=True, verbose_name='Tên cấu hình')
+    host = models.CharField(max_length=255, verbose_name='SMTP host')
+    port = models.PositiveIntegerField(default=587, verbose_name='SMTP port')
+    username = models.CharField(max_length=255, blank=True, default='', verbose_name='Tên đăng nhập SMTP')
+    password_ciphertext = models.TextField(blank=True, default='', verbose_name='Mật khẩu SMTP đã mã hóa')
+    use_tls = models.BooleanField(default=True, verbose_name='Dùng TLS')
+    use_ssl = models.BooleanField(default=False, verbose_name='Dùng SSL')
+    timeout_seconds = models.PositiveIntegerField(default=20, verbose_name='Timeout kết nối (giây)')
+    from_email = models.EmailField(verbose_name='Email người gửi mặc định')
+    from_name = models.CharField(max_length=255, blank=True, default='', verbose_name='Tên người gửi')
+    reply_to_email = models.EmailField(blank=True, default='', verbose_name='Reply-to email')
+    is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
+    is_default = models.BooleanField(default=False, verbose_name='Là cấu hình mặc định')
+    notes = models.TextField(blank=True, default='', verbose_name='Ghi chú vận hành')
+    last_tested_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần kiểm tra gần nhất')
+    last_test_status = models.CharField(
+        max_length=20,
+        choices=TestStatusChoices.choices,
+        default=TestStatusChoices.NEVER,
+        verbose_name='Trạng thái kiểm tra',
+    )
+    last_test_message = models.TextField(blank=True, default='', verbose_name='Kết quả kiểm tra gần nhất')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Tài khoản gửi mail'
+        verbose_name_plural = 'Tài khoản gửi mail'
+        ordering = ['-is_default', 'name']
+
+    def __str__(self):
+        default_suffix = ' [default]' if self.is_default else ''
+        return f'{self.name} ({self.from_email}){default_suffix}'
+
+    def set_smtp_password(self, raw_password: str):
+        if raw_password:
+            self.password_ciphertext = signing.dumps(raw_password, salt='portfolio.system-email-account')
+
+    def get_smtp_password(self) -> str:
+        if not self.password_ciphertext:
+            return ''
+        try:
+            return signing.loads(self.password_ciphertext, salt='portfolio.system-email-account')
+        except signing.BadSignature:
+            return ''
+
+    def clean(self):
+        if self.use_tls and self.use_ssl:
+            raise ValidationError('Không thể bật đồng thời cả TLS và SSL cho cùng một cấu hình SMTP.')
+
+    def save(self, *args, **kwargs):
+        if self.is_default:
+            self.is_active = True
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if self.is_default:
+                type(self).objects.exclude(pk=self.pk).filter(is_default=True).update(is_default=False)
 
 
 # ---------------------------------------------------------------------------

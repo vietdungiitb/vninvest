@@ -12,6 +12,9 @@ Scope:
 4. Stale indicator, reconnect/backoff, fallback polling on dinh.
 5. Observability metrics va checklist test Redis-backed.
 
+Sprint 12 extension duoc them sau khi chot realtime scope:
+6. User registration flow planning truoc khi code, theo tai lieu `SPRINT12_USER_REGISTRATION_PLAN.md`.
+
 Out-of-scope:
 1. Production scale load test > 1k concurrent.
 2. Backtest strategy tuning.
@@ -74,3 +77,11 @@ Day 10:
 3. Tao widget lich su whale alerts co dismiss va gioi han history.
 4. Bo sung observability nhe: event count, stale count, reconnect count.
 5. Chot test Redis-backed env va cap nhat acceptance checklist.
+6. Chot ke hoach implementation cho user registration truoc khi bat dau code.
+
+## Scope extension - User Registration
+
+- Ly do bo sung: Sprint 12 da duoc chot la moc `User Management Core`, nhung hien trang moi co `/api/auth/me/`, plan/CASL va backend register API co ban; user-facing registration flow chua duoc trien khai hoan chinh.
+- Trang thai hien tai: Planning only, chua bat dau implementation.
+- Tai lieu tham chieu chinh: `docs/SPRINT12_USER_REGISTRATION_PLAN.md`.
+- Nguyen tac: khong danh dau completed cho den khi co frontend flow, backend tests, QA matrix va docs sign-off.

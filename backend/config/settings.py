@@ -131,6 +131,8 @@ SIMPLE_JWT = {
 # CORS / CSRF (frontend origins)
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001").split(",") if origin.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001").split(",") if origin.strip()]
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS = int(os.getenv("EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS", "86400"))
 
 # Celery / Redis
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")

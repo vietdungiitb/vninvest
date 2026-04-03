@@ -1,4 +1,11 @@
-# VNInvest Roadmap Status (2026-04-01)
+# VNInvest Roadmap Status (2026-04-03)
+
+## Terminology Normalization
+
+- Canonical naming: `User Management Core` belongs to `Sprint 12`.
+- `Sprint 1-2` is an internal planning bucket for plan/tier/CASL design, not the official sprint label for delivered user management.
+- `Sprint 13` extends admin operations and user statistics, not the core user management milestone.
+- User registration is now implemented as a `Sprint 12 extension`; broader browser QA and sign-off remain open.
 
 ## Sprint Completion Overview
 
@@ -89,9 +96,27 @@
 
 ---
 
-### 📌 Sprint 12 - READY TO START (Next Priority)
-**Focus**: Frontend Realtime Consolidation & Observability  
-**Status**: NOT STARTED  
+### 📌 Sprint 12 - IN PROGRESS
+**Focus**: User Management Core + Frontend Realtime Consolidation & Observability  
+**Status**: Day 2 underway  
+
+**Đã hoàn thành thêm:**
+- ✅ `useRealtimeFeed` dùng chung cho Watchlist + Dashboard
+- ✅ Metrics/latency panel cho realtime debug
+- ✅ Canonical sprint cho `User Management Core`: plan/CASL/auth-me/protected-route được quy chiếu về Sprint 12
+- ✅ Plan/CASL gating cho tính năng AI Advisory
+- ✅ Route `/api/auth/me/` + `/api/portfolio/whale-advisory/` được nối end-to-end với frontend
+- ✅ Frontend build pass sau khi thêm `WhaleAdvisory`, `Upgrade`, `ProtectedRoute`
+- ✅ `manage.py test portfolio.tests.test_api_routes` PASS (12 tests)
+- ✅ Local Redis-backed validation: health endpoint pass, 4 stream keys / 400 ticks, consumer batch ghi DB thành công
+- ✅ Advisory backend hardening: thêm `httpx`, sửa lazy import để path placeholder không crash khi chưa có API key
+
+**Implemented extension awaiting QA/sign-off:**
+- ✅ User registration flow đã được đưa vào Sprint 12 như một phần mở rộng của `User Management Core`.
+- ✅ Backend `POST /api/auth/register/` hiện yêu cầu email và trả JWT cho auto-login.
+- ✅ Frontend auth modal đã có flow đăng ký và auto-login end-to-end ở mức code + build/test route.
+- ⏳ Browser QA và sign-off cuối vẫn chưa hoàn tất.
+- 📄 Chi tiết tại `docs/SPRINT12_USER_REGISTRATION_PLAN.md`.
 
 **Kế hoạch (10 ngày):**
 
@@ -118,8 +143,8 @@ Day 10: RC signoff
 
 ### Priority 1: Hoàn thành Sprint 11 Validation (Today - Tomorrow)
 Target: Xác nhận Redis-backed environment hoạt động thực tế
-- [ ] Setup Redis queue trên local/staging
-- [ ] Test `REALTIME_CHANNEL_LAYER=redis` mode
+- [x] Setup Redis queue trên local/staging
+- [x] Test `REALTIME_CHANNEL_LAYER=redis` mode
 - [ ] Validate p95 latency publish→push < 1.5s
 - [ ] Run QA matrix (disconnect/reconnect, load test)
 - [ ] Final acceptance checklist sign-off
@@ -165,7 +190,7 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 ### Code Quality
 - ✅ No compilation errors
 - ✅ No ESLint/TypeScript errors
-- ✅ All unit tests pass
+- ✅ API smoke tests pass (`portfolio.tests.test_api_routes`)
 - ✅ Build size optimal (202 kB gzipped)
 
 ### Browser Testing
@@ -196,5 +221,5 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 
 ---
 
-*Last Updated: 2026-04-01*  
+*Last Updated: 2026-04-03*  
 *Compiled by: GitHub Copilot*

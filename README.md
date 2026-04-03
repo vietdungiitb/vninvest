@@ -109,6 +109,7 @@ npm run build   # → build/ ready, 0 errors
 | [docs/ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md) | Trạng thái toàn dự án, kiến trúc, API contract, quy tắc phát triển |
 | [docs/SPRINT_EXECUTION_LOG.md](docs/SPRINT_EXECUTION_LOG.md) | Lịch sử công việc chi tiết theo sprint |
 | [docs/WEBSOCKET_EVENT_CONTRACT.md](docs/WEBSOCKET_EVENT_CONTRACT.md) | WS message envelope + event types |
+| [docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md](docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md) | Tài liệu tổng hợp duy nhất cho hiện trạng, hardening, roadmap và admin của Whale Alerts |
 | [docs/SPRINT13_DETAILED_PLAN.md](docs/SPRINT13_DETAILED_PLAN.md) | Kế hoạch Sprint 13 (analytics + admin ops) |
 | [docs/FEATURE_EXPANSION_BACKLOG.md](docs/FEATURE_EXPANSION_BACKLOG.md) | Backlog tính năng P1/P2/P3 |
 

@@ -151,6 +151,7 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
+export const getWhaleAdvisories = () => apiClient.get('/portfolio/whale-advisory/');
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
 export const getDepthChart = (symbol) =>

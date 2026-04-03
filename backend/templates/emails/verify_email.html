@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xac thuc email {{ product_name }}</title>
+</head>
+<body style="margin:0; padding:0; background:#f4efe6; font-family:Arial, Helvetica, sans-serif; color:#1f2937;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4efe6; padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px; background:#fffdf8; border-radius:20px; overflow:hidden; border:1px solid #eadfce;">
+          <tr>
+            <td style="padding:24px 28px; background:linear-gradient(135deg, #0f766e 0%, #164e63 100%); color:#ffffff;">
+              <div style="font-size:12px; letter-spacing:1.6px; text-transform:uppercase; opacity:0.78;">VNInvest Account Security</div>
+              <h1 style="margin:10px 0 6px; font-size:28px; line-height:1.2;">Kich hoat dang nhap bang email xac thuc</h1>
+              <p style="margin:0; font-size:14px; line-height:1.6; max-width:440px;">He thong da tao tai khoan cho ban. Buoc tiep theo la xac thuc email de mo quyen dang nhap va su dung toan bo luong quan ly danh muc.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 14px; font-size:16px; line-height:1.7;">Xin chao <strong>{{ user.username }}</strong>,</p>
+              <p style="margin:0 0 18px; font-size:15px; line-height:1.7;">De bao dam tai khoan duoc kich hoat dung chu so huu, vui long bam nut duoi day. Sau khi xac thuc xong, ban moi co the dang nhap vao {{ product_name }}.</p>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 20px;">
+                <tr>
+                  <td align="center" style="border-radius:999px; background:#c2410c;">
+                    <a href="{{ verify_url }}" style="display:inline-block; padding:14px 26px; color:#ffffff; text-decoration:none; font-size:15px; font-weight:700;">Xac thuc email ngay</a>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:0 0 18px; border:1px solid #fed7aa; border-radius:16px; background:#fff7ed;">
+                <tr>
+                  <td style="padding:16px 18px;">
+                    <div style="font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#9a3412; margin-bottom:8px;">Thong tin nhanh</div>
+                    <p style="margin:0 0 8px; font-size:14px; line-height:1.6;"><strong>Han xac thuc:</strong> {{ expiry_label }}</p>
+                    <p style="margin:0; font-size:14px; line-height:1.6;"><strong>Link du phong:</strong> <a href="{{ verify_url }}" style="color:#0f766e; word-break:break-all;">{{ verify_url }}</a></p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 12px; font-size:14px; line-height:1.7; color:#475569;">Neu ban khong thuc hien dang ky tai khoan nay, ban co the bo qua email. Khong co thay doi nao duoc ap dung neu khong bam vao lien ket xac thuc.</p>
+              <p style="margin:0; font-size:13px; line-height:1.6; color:#64748b;">Mo ung dung: <a href="{{ frontend_base_url }}" style="color:#0f766e;">{{ frontend_base_url }}</a></p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

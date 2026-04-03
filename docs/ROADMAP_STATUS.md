@@ -4,6 +4,13 @@
 > **Phiên bản codebase**: Sprint 13 COMPLETE  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–13
 
+## Chuẩn hóa thuật ngữ
+
+- Tên gọi chính thức: `User Management Core` được quy chiếu về `Sprint 12`.
+- `Sprint 1-2` chỉ là bucket kế hoạch nội bộ cho plan/tier/CASL/auth design, không phải mốc sprint chính thức của chức năng đã deliver.
+- `Sprint 13` là phần mở rộng `Admin Operations` và thống kê người dùng, không phải mốc `User Management Core`.
+- Chức năng `Đăng ký người dùng` da duoc implement trong `Sprint 12 extension`; browser QA va sign-off van con mo.
+
 ---
 
 ## 1. Tổng Quan Dự Án
@@ -281,7 +288,7 @@ frontend/src/
 - Dev mode `REALTIME_CHANNEL_LAYER=inmemory`.
 - 9 backend tests pass.
 
-### Sprint 12 — Frontend Realtime UX + Resilience ✅ DONE  
+### Sprint 12 — User Management Core + Frontend Realtime UX + Resilience ✅ DONE  
 *Chốt ngày 2026-04-02, 100% checklist pass*
 
 **Backend**:
@@ -289,6 +296,8 @@ frontend/src/
 - 12 backend tests pass (test_api_routes + test_realtime_compute + test_realtime_gateway).
 - StockProfile sync: `sync_stockprofile --mode all` → 3249 profiles.
 - SECRET_KEY 64 chars, JWT token 2h access / 7d refresh.
+- Chuẩn hóa mốc `User Management Core`: `/api/auth/me/`, plan, CASL abilities, protected route flow quy chiếu về Sprint 12.
+- Scope mo rong `Đăng ký người dùng` da duoc implement voi email required + auto-login (xem `docs/SPRINT12_USER_REGISTRATION_PLAN.md`).
 
 **Frontend**:
 - `useRealtimeFeed.js` là SINGLE SOURCE OF TRUTH cho toàn bộ WebSocket logic (243 lines).

@@ -195,10 +195,13 @@ class WsBroadcastConsumer(TickConsumerBase):
 
         group = f"ticker_{symbol.upper()}"
         try:
-            async_to_sync(channel_layer.group_send)(group, {
-                "type": "ticker_update",
-                **payload,
-            })
+            async_to_sync(channel_layer.group_send)(
+                group,
+                {
+                    "type": "ticker_update",
+                    "payload": payload,
+                },
+            )
         except Exception as exc:
             logger.warning("WsBroadcast: group_send(%s) failed: %s", group, exc)
 

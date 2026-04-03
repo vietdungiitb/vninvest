@@ -318,6 +318,25 @@ Bug da fix:
    - Fix: doi dep tu `[symbols]` sang `[symbolsKey]` voi `symbolsKey = symbols.join(',')` (stable string).
 
 2. `400 Bad Request` khi them item vao watchlist group.
+
+## Sprint 12 - User registration extension (2026-04-03)
+
+Trang thai: IMPLEMENTED, QA browser pending
+
+Da thuc hien:
+- Backend `POST /api/auth/register/` bat buoc `email`, giu username regex hien tai, va van tao `UserConfig` mac dinh `plan=free`.
+- Register response duoc mo rong tra `access` + `refresh` JWT de frontend auto-login ngay sau khi tao tai khoan.
+- Frontend auth context them `register()` va dong bo lai `userPlan`, `ability`, `userConfig` sau khi luu token.
+- `LoginModal.jsx` duoc nang cap thanh 2 mode `Dang nhap` / `Dang ky`, co field `email`, `password_confirm`, hien field error va submit error ro rang.
+- Sau dang ky thanh cong, user vao app ngay qua cung token flow voi login thong thuong.
+
+Validation da chay:
+- `manage.py test portfolio.tests.test_api_routes` -> 15/15 PASS.
+- `npm run build` -> Compiled successfully.
+
+Con lai truoc khi dong han muc:
+- Browser smoke test cho flow `dang ky -> auto-login -> vao dashboard`.
+- Regression QA cho login cu va cac loi field tren browser that.
    - Nguyen nhan: `WatchlistItemSerializer` yeu cau field `group` trong request body nhung frontend chi gui `{ symbol }` - `group` dc set tu URL kwarg trong `perform_create`.
    - Fix: bo sung `'group'` vao `read_only_fields` cua `WatchlistItemSerializer`.
 

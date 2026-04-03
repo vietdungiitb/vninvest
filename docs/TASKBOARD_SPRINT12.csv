@@ -9,3 +9,9 @@ S12-07,Run QA matrix for realtime UI,P1,QA,3,S12-02|S12-03|S12-04,QA results rec
 S12-08,Measure publish to UI latency on Redis env,P1,QA,3,S12-06,Latency check recorded with pass fail notes,Done
 S12-09,Bugfix and polish Sprint 12,P1,FE Lead,3,S12-07|S12-08,No open P0 or P1 issues remain for Sprint 12 scope,Done
 S12-10,Prepare Sprint 12 signoff note,P2,PM,1,S12-09,Execution log and acceptance checklist updated,Done
+S12-11,Freeze registration contract and UX,P0,PM/BE/FE,2,,Registration contract and post-success UX decision approved,Done
+S12-12,Backend register hardening and tests,P0,BE,2,S12-11,Register API handles success and validation branches with tests,Done
+S12-13,Frontend register API integration,P0,FE,2,S12-11,Frontend has register helper and error mapping,Done
+S12-14,Login/Register modal implementation,P0,FE,3,S12-13,User can switch modes and submit registration from auth UI,Done
+S12-15,Registration QA and regression,P1,QA,3,S12-12|S12-14,Registration flow and existing login flow verified,In Progress
+S12-16,Registration docs and signoff,P1,PM,1,S12-15,Roadmap checklist and execution log updated for registration scope,In Progress

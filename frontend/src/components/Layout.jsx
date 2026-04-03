@@ -14,6 +14,7 @@ const NAV_ITEMS = [
 
 const STOCK_MGMT_ITEMS = [
   { to: '/watchlist', label: 'Radar thị trường' },
+  { to: '/whale-alerts', label: 'Whale Alerts' },
   { to: '/screener', label: 'Screener' },
 ];
 
@@ -21,9 +22,21 @@ const TOOL_ITEMS = [
   { to: '/admin-ops', label: 'Admin Ops' },
 ];
 
+const PLAN_LABELS = {
+  free: 'Free',
+  basic: 'Basic',
+  pro: 'Pro',
+  premium: 'Premium',
+  admin: 'Admin',
+};
+
 export default function Layout() {
-  const { logout, portfolios, activePortfolioId, setActivePortfolioId } =
+  const { logout, portfolios, activePortfolioId, setActivePortfolioId, ability, userPlan } =
     usePortfolio();
+  const stockManagementItems = ability.can('read', 'WhaleAdvisory')
+    ? [...STOCK_MGMT_ITEMS, { to: '/whale-advisory', label: 'AI Advisory' }]
+    : STOCK_MGMT_ITEMS;
+  const toolItems = ability.can('manage', 'all') ? TOOL_ITEMS : [];
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -33,6 +46,10 @@ export default function Layout() {
         <div className="px-5 py-4 border-b border-gray-800">
           <span className="text-brand-500 font-bold text-xl tracking-tight">VNInvest</span>
           <p className="text-gray-500 text-xs mt-0.5">Portfolio Tracker</p>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-900/70 bg-cyan-950/30 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
+            Gói {PLAN_LABELS[userPlan] || 'Free'}
+          </div>
         </div>
 
         {/* Chọn Portfolio */}
@@ -77,7 +94,7 @@ export default function Layout() {
           <div className="mt-6 mb-1 px-2">
             <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Market watch và theo dõi cá nhân</span>
           </div>
-          {STOCK_MGMT_ITEMS.map(({ to, label }) => (
+          {stockManagementItems.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -92,25 +109,28 @@ export default function Layout() {
               {label}
             </NavLink>
           ))}
-          {/* Divider for Tools */}
-          <div className="mt-6 mb-1 px-2">
-            <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Công cụ</span>
-          </div>
-          {TOOL_ITEMS.map(({ to, label }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-gray-700 text-gray-100'
-                    : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
-                }`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
+          {toolItems.length > 0 && (
+            <>
+              <div className="mt-6 mb-1 px-2">
+                <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Công cụ</span>
+              </div>
+              {toolItems.map(({ to, label }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'bg-gray-700 text-gray-100'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                    }`
+                  }
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </>
+          )}
         </nav>
 
         {/* Logout */}
