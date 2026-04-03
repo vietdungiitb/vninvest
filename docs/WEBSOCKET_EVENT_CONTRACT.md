@@ -70,21 +70,28 @@ Bat buoc:
 {
   "contract_version": "1.0",
   "event_type": "whale_alert",
+  "event_id": "whale:SSI:2026-04-01T10:15:03.111+07:00:buy:1250000000:1000000000",
+  "config_version": "threshold-v1",
   "symbol": "SSI",
   "ts": "2026-04-01T10:15:03.111+07:00",
   "seq": 557,
   "source": "intraday-engine",
-  "data": {
-    "matched_value": 1250000000,
-    "threshold": 1000000000,
-    "side": "BUY",
-    "price": 34900,
-    "matched_volume": 35800,
-    "vwap": 34780,
-    "confidence": 0.91
-  }
+  "matched_value": 1250000000,
+  "threshold": 1000000000,
+  "side": "buy",
+  "size_class": "whale",
+  "event_score": 71.25,
+  "display_score": 69.82,
+  "severity": "high",
+  "weights_version": "weights-v1"
 }
 ```
+
+Ghi chu contract:
+- Backend WS va REST dung chung scoring contract cho `severity`, `event_score`, `display_score`, `weights_version`.
+- `event_id`, `config_version`, `source` la lifecycle fields de dedupe, trace va doi chieu WS/REST.
+- Frontend khong tu suy luan `severity` tu `matched_value`; UI render truc tiep tu payload WS.
+- Client can tuong thich nguoc voi payload cu co the doc field o root hoac trong `data`, nhung payload chuan hien tai dat cac field scoring o root level.
 
 ### 3.3 heartbeat
 

@@ -28,6 +28,13 @@ const PRICE_ALERT_CONDITION_LABELS = {
   BELOW: 'Rơi xuống dưới',
 };
 
+function severityTone(severity) {
+  if (severity === 'extreme') return 'bg-rose-500 text-white border-rose-400/40';
+  if (severity === 'high') return 'bg-amber-400 text-slate-950 border-amber-300/40';
+  if (severity === 'medium') return 'bg-cyan-400 text-slate-950 border-cyan-300/40';
+  return 'bg-slate-800 text-slate-200 border-slate-600/40';
+}
+
 function mergeTickerIntoItem(item, update) {
   if (item.symbol !== update.symbol) {
     return item;
@@ -591,9 +598,19 @@ export default function WatchlistPage() {
           <span className="text-amber-300 font-semibold">Whale alert</span>
           <span className="text-gray-200 font-bold">{latestWhaleAlert.symbol}</span>
           <span className="text-gray-400">{latestWhaleAlert.side || 'N/A'}</span>
+          {typeof latestWhaleAlert.severity === 'string' && (
+            <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${severityTone(latestWhaleAlert.severity.toLowerCase())}`}>
+              {latestWhaleAlert.severity.toLowerCase()}
+            </span>
+          )}
           <span className="text-gray-300 tabular-nums">
             {Number(latestWhaleAlert.matched_value || 0).toLocaleString('vi-VN')} VNĐ
           </span>
+          {(latestWhaleAlert.display_score != null || latestWhaleAlert.event_score != null) && (
+            <span className="text-xs text-gray-400">
+              Score {latestWhaleAlert.display_score ?? '—'} / Event {latestWhaleAlert.event_score ?? '—'}
+            </span>
+          )}
           <span className="text-xs text-gray-500">
             Ngưỡng cá nhân: {Number(userConfig?.whale_alert_threshold || latestWhaleAlert.threshold || 0).toLocaleString('vi-VN')} triệu
           </span>

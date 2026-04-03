@@ -6,6 +6,8 @@ from typing import Iterable
 
 import pandas as pd
 
+from portfolio.whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
+
 
 @dataclass
 class WhaleSignal:
@@ -18,6 +20,29 @@ class WhaleSignal:
 
 def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _normalize_signal_side(side_value: str) -> str:
+    side_raw = str(side_value or "").strip().lower()
+    if side_raw in ("buy", "bu", "b"):
+        return "buy"
+    if side_raw in ("sell", "sd", "s"):
+        return "sell"
+    return "neutral"
+
+
+def _classify_signal_size(matched_value: float) -> str:
+    if matched_value >= 5_000_000_000:
+        return "shark"
+    if matched_value >= 1_000_000_000:
+        return "whale"
+    return "small"
+
+
+def _build_whale_event_id(signal: WhaleSignal, normalized_side: str) -> str:
+    matched_value = int(round(float(signal.matched_value or 0.0)))
+    threshold = int(round(float(signal.threshold or 0.0)))
+    return f"whale:{signal.symbol}:{signal.ts}:{normalized_side}:{matched_value}:{threshold}"
 
 
 def compute_vwap(trades_df: pd.DataFrame) -> float:
@@ -92,14 +117,49 @@ def detect_whale_signals(
     return signals
 
 
-def build_whale_payload(signal: WhaleSignal, seq: int, contract_version: str = "1.0") -> dict:
+def build_whale_payload(
+    signal: WhaleSignal,
+    seq: int,
+    contract_version: str = "1.0",
+    config_version: str = "threshold-v1",
+    source: str = "intraday-engine",
+) -> dict:
+    score_config = resolve_whale_score_config()
+    normalized_side = _normalize_signal_side(signal.side)
+    event_id = _build_whale_event_id(signal, normalized_side)
+    score_result = calculate_event_score(
+        trade={
+            "matched_value": signal.matched_value,
+            "threshold": signal.threshold,
+            "side": normalized_side,
+        },
+        context={
+            "threshold_vnd": signal.threshold,
+            "side": normalized_side,
+        },
+        config=score_config,
+    )
+    display_result = calculate_display_score(
+        event_score=score_result["event_score"],
+        occurred_at=signal.ts,
+        config=score_config,
+    )
+
     return {
         "event_type": "whale_alert",
+        "event_id": event_id,
         "contract_version": contract_version,
+        "config_version": config_version,
+        "source": source,
         "symbol": signal.symbol,
         "matched_value": signal.matched_value,
-        "side": signal.side,
+        "side": normalized_side,
         "threshold": signal.threshold,
+        "size_class": _classify_signal_size(signal.matched_value),
+        "event_score": score_result["event_score"],
+        "display_score": display_result["display_score"],
+        "severity": display_result["severity"],
+        "weights_version": score_result["weights_version"],
         "ts": signal.ts,
         "seq": seq,
     }

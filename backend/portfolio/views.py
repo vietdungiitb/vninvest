@@ -105,7 +105,9 @@ Endpoints:
 """
 
 from decimal import Decimal
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
+import base64
+import json
 import concurrent.futures as _cf
 import logging
 
@@ -128,7 +130,7 @@ def _vnstock_call(fn, timeout=8):
         return None, str(exc)
 
 
-from django.db.models import Max, Min
+from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
@@ -140,7 +142,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
+from .models import Portfolio, Transaction, DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -156,6 +158,8 @@ from .services import (
     fetch_and_save_daily_prices, sync_portfolio_prices, get_latest_price,
     get_price_changes, get_price_series, sync_market_groups, sync_market_groups_for_user, sync_stock_profiles, sync_watchlist_prices,
 )
+from .permissions import IsProPlan, _get_plan, resolve_user_entitlements
+from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 
 from .analytics import (
     compute_holdings, compute_nav_series, compute_allocation, build_summary,
@@ -180,6 +184,229 @@ def _cache_set(key, value, timeout):
         cache.set(key, value, timeout=timeout)
     except Exception:
         pass
+
+
+def _get_user_whale_threshold_vnd(user) -> float:
+    config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
+    threshold_m = float((config or {}).get('whale_alert_threshold') or 500)
+    return threshold_m * 1_000_000
+
+
+def _normalize_signal_side(side_value: str) -> str:
+    side_raw = str(side_value or '').strip().lower()
+    if side_raw in ('buy', 'bu', 'b'):
+        return 'buy'
+    if side_raw in ('sell', 'sd', 's'):
+        return 'sell'
+    return 'neutral'
+
+
+def _classify_signal_size(matched_value: float) -> str:
+    if matched_value >= 5_000_000_000:
+        return 'shark'
+    if matched_value >= 1_000_000_000:
+        return 'whale'
+    return 'small'
+
+
+def _encode_whale_feed_cursor(payload: dict) -> str:
+    raw = json.dumps(payload, separators=(',', ':')).encode('utf-8')
+    return base64.urlsafe_b64encode(raw).decode('ascii')
+
+
+def _decode_whale_feed_cursor(raw_cursor: str | None) -> dict | None:
+    if not raw_cursor:
+        return None
+    try:
+        padded = raw_cursor + '=' * (-len(raw_cursor) % 4)
+        decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+        payload = json.loads(decoded)
+        return payload if isinstance(payload, dict) else None
+    except (ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
+def _resolve_whale_feed_symbols(request) -> tuple[list[str], str, list[int]]:
+    explicit_symbols = request.query_params.get('symbols', '')
+    if explicit_symbols:
+        symbols = sorted({
+            str(symbol).strip().upper()
+            for symbol in explicit_symbols.split(',')
+            if str(symbol).strip()
+        })
+        return symbols, 'custom', []
+
+    watchlist_group_ids_raw = request.query_params.get('watchlist_group_ids', '')
+    if watchlist_group_ids_raw:
+        group_ids = []
+        for chunk in watchlist_group_ids_raw.split(','):
+            chunk = str(chunk).strip()
+            if not chunk:
+                continue
+            try:
+                group_ids.append(int(chunk))
+            except (TypeError, ValueError):
+                continue
+        groups = WatchlistGroup.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items')
+        symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+        return symbols, 'watchlist', group_ids
+
+    tracked_symbols = list(
+        TrackedSymbol.objects.filter(user=request.user)
+        .order_by('-added_at')
+        .values_list('symbol', flat=True)
+    )
+    symbols = sorted({str(symbol).strip().upper() for symbol in tracked_symbols if str(symbol).strip()})
+    return symbols, 'tracked', []
+
+
+def _build_tick_timestamp(row) -> str:
+    try:
+        dt = timezone.make_aware(
+            datetime.combine(row.trade_date, row.trade_time),
+            timezone.get_current_timezone(),
+        )
+        return dt.isoformat()
+    except Exception:
+        return row.created_at.isoformat() if getattr(row, 'created_at', None) else timezone.now().isoformat()
+
+
+def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
+    matched_value = float(getattr(row, 'matched_value', 0) or 0)
+    occurred_at = _build_tick_timestamp(row)
+    score_result = calculate_event_score(
+        trade={
+            'matched_value': matched_value,
+            'threshold': threshold_vnd,
+            'side': getattr(row, 'side', ''),
+        },
+        context={
+            'threshold_vnd': threshold_vnd,
+            'side': getattr(row, 'side', ''),
+        },
+        config=score_config,
+    )
+    display_result = calculate_display_score(
+        event_score=score_result['event_score'],
+        occurred_at=occurred_at,
+        now=now,
+        config=score_config,
+    )
+    return {
+        'id': row.id,
+        'event_id': f'tick:{row.id}',
+        'contract_version': '1.0',
+        'config_version': 'threshold-v1',
+        'weights_version': score_result['weights_version'],
+        'symbol': row.symbol.upper(),
+        'side': _normalize_signal_side(getattr(row, 'side', '')),
+        'matched_value': round(matched_value, 2),
+        'threshold': threshold_vnd,
+        'size_class': _classify_signal_size(matched_value),
+        'ts': occurred_at,
+        'source': 'intraday_tick_db',
+        'event_score': score_result['event_score'],
+        'display_score': display_result['display_score'],
+        'severity': display_result['severity'],
+        'score_breakdown': score_result['score_breakdown'],
+        'normalized_features': score_result['normalized_features'],
+        'raw_features': score_result['raw_features'],
+        'score_decay': {
+            'age_seconds': display_result['age_seconds'],
+            'decay_factor': display_result['decay_factor'],
+        },
+    }
+
+
+def _parse_cursor_datetime(cursor_payload: dict) -> tuple[date, time, int] | None:
+    try:
+        trade_date = date.fromisoformat(str(cursor_payload['trade_date']))
+        trade_time = time.fromisoformat(str(cursor_payload['trade_time']))
+        row_id = int(cursor_payload['id'])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return trade_date, trade_time, row_id
+
+
+def _parse_cursor_matched_value(cursor_payload: dict) -> tuple[float, int] | None:
+    try:
+        matched_value = float(cursor_payload['matched_value'])
+        row_id = int(cursor_payload['id'])
+    except (KeyError, TypeError, ValueError):
+        return None
+    return matched_value, row_id
+
+
+def _build_whale_order_payload(
+    *,
+    raw_time,
+    raw_price: float,
+    raw_vol: float,
+    matched_value: float,
+    side: str,
+    size_class: str,
+    threshold_vnd: float,
+    score_config: dict | None = None,
+    now=None,
+) -> dict:
+    try:
+        occurred_at = timezone.make_aware(
+            datetime.fromisoformat(str(raw_time).replace('Z', '+00:00')),
+            timezone.get_current_timezone(),
+        ).isoformat()
+    except Exception:
+        try:
+            occurred_at = timezone.make_aware(
+                datetime.combine(date.today(), datetime.strptime(str(raw_time)[:8], '%H:%M:%S').time()),
+                timezone.get_current_timezone(),
+            ).isoformat()
+        except Exception:
+            occurred_at = timezone.now().isoformat()
+
+    score_result = calculate_event_score(
+        trade={
+            'matched_value': matched_value,
+            'threshold': threshold_vnd,
+            'side': side,
+        },
+        context={
+            'threshold_vnd': threshold_vnd,
+            'side': side,
+        },
+        config=score_config,
+    )
+    display_result = calculate_display_score(
+        event_score=score_result['event_score'],
+        occurred_at=occurred_at,
+        now=now,
+        config=score_config,
+    )
+
+    try:
+        time_str = datetime.fromisoformat(occurred_at.replace('Z', '+00:00')).strftime('%H:%M:%S')
+    except Exception:
+        time_str = str(raw_time)[:8]
+
+    return {
+        'time': time_str,
+        'ts': occurred_at,
+        'price': raw_price,
+        'volume': int(raw_vol),
+        'matched_value': matched_value,
+        'side': side,
+        'size_class': size_class,
+        'event_score': score_result['event_score'],
+        'display_score': display_result['display_score'],
+        'severity': display_result['severity'],
+        'score_breakdown': score_result['score_breakdown'],
+        'normalized_features': score_result['normalized_features'],
+        'raw_features': score_result['raw_features'],
+        'score_decay': {
+            'age_seconds': display_result['age_seconds'],
+            'decay_factor': display_result['decay_factor'],
+        },
+        'weights_version': score_result['weights_version'],
+    }
 
 
 
@@ -698,9 +925,9 @@ class WhaleFeedView(APIView):
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        config = UserConfig.objects.filter(user=request.user).values('whale_alert_threshold').first()
-        threshold_m = float((config or {}).get('whale_alert_threshold') or 500)
-        threshold_vnd = threshold_m * 1_000_000
+        threshold_vnd = _get_user_whale_threshold_vnd(request.user)
+        score_config = resolve_whale_score_config()
+        request_now = timezone.now()
 
         cache_key = f'whale_feed:{request.user.id}:{normalized_symbol}:{int(threshold_vnd)}'
         cached = _cache_get(cache_key)
@@ -786,18 +1013,19 @@ class WhaleFeedView(APIView):
 
             if matched_value >= threshold_vnd:
                 raw_time = row.get('time') or row.get('tradingDate') or ''
-                try:
-                    time_str = pd.Timestamp(str(raw_time)).strftime('%H:%M:%S')
-                except Exception:
-                    time_str = str(raw_time)[:8]
-                orders.append({
-                    'time': time_str,
-                    'price': raw_price,
-                    'volume': int(raw_vol),
-                    'matched_value': matched_value,
-                    'side': side,
-                    'size_class': size_class,
-                })
+                orders.append(
+                    _build_whale_order_payload(
+                        raw_time=raw_time,
+                        raw_price=raw_price,
+                        raw_vol=raw_vol,
+                        matched_value=matched_value,
+                        side=side,
+                        size_class=size_class,
+                        threshold_vnd=threshold_vnd,
+                        score_config=score_config,
+                        now=request_now,
+                    )
+                )
 
         orders.sort(key=lambda x: x['matched_value'], reverse=True)
         total_value = shark_value + whale_value_total + small_value
@@ -805,6 +1033,7 @@ class WhaleFeedView(APIView):
         result = {
             'symbol': normalized_symbol,
             'threshold': threshold_vnd,
+            'weights_version': score_config['version'],
             'whale_orders': orders[:50],
             'summary': {
                 'buy_value': total_buy_value,
@@ -895,6 +1124,129 @@ class RVOLView(APIView):
             'symbol': normalized_symbol,
             'buckets': buckets,
             'fetched_at': timezone.now().isoformat(),
+        })
+
+
+class WhaleFeedAggregateView(APIView):
+    """
+    GET /api/realtime/whale-feed/aggregate/
+    Aggregate whale events phase 1 dựa trên IntradayTick read model với cursor pagination.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime'
+
+    def get(self, request):
+        threshold_vnd = _get_user_whale_threshold_vnd(request.user)
+        entitlements = resolve_user_entitlements(request.user)
+        symbols, scope, watchlist_group_ids = _resolve_whale_feed_symbols(request)
+        score_config = resolve_whale_score_config()
+        request_now = timezone.now()
+
+        try:
+            limit = int(request.query_params.get('limit', 20))
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(1, min(50, limit))
+
+        sort = str(request.query_params.get('sort', 'ts')).strip().lower()
+        if sort not in ('ts', 'matched_value'):
+            sort = 'ts'
+
+        cursor_payload = _decode_whale_feed_cursor(request.query_params.get('cursor'))
+        if request.query_params.get('cursor') and cursor_payload is None:
+            return Response({'detail': 'cursor không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not symbols:
+            return Response({
+                'results': [],
+                'next_cursor': None,
+                'has_more': False,
+                'server_time': timezone.now().isoformat(),
+                'source': 'intraday_tick_db',
+                'filters': {
+                    'scope': scope,
+                    'symbols': [],
+                    'watchlist_group_ids': watchlist_group_ids,
+                    'sort': sort,
+                    'limit': limit,
+                    'threshold': threshold_vnd,
+                },
+                'entitlements': entitlements,
+                'weights_version': score_config['version'],
+            })
+
+        queryset = (
+            IntradayTick.objects
+            .filter(trade_date=date.today(), symbol__in=symbols)
+            .annotate(
+                matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField())
+            )
+            .filter(matched_value__gte=threshold_vnd)
+        )
+
+        if sort == 'matched_value':
+            if cursor_payload is not None:
+                parsed_cursor = _parse_cursor_matched_value(cursor_payload)
+                if parsed_cursor is None:
+                    return Response({'detail': 'cursor không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+                cursor_value, cursor_id = parsed_cursor
+                queryset = queryset.filter(
+                    Q(matched_value__lt=cursor_value) |
+                    Q(matched_value=cursor_value, id__lt=cursor_id)
+                )
+            queryset = queryset.order_by('-matched_value', '-id')
+        else:
+            if cursor_payload is not None:
+                parsed_cursor = _parse_cursor_datetime(cursor_payload)
+                if parsed_cursor is None:
+                    return Response({'detail': 'cursor không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+                cursor_date, cursor_time, cursor_id = parsed_cursor
+                queryset = queryset.filter(
+                    Q(trade_date__lt=cursor_date) |
+                    Q(trade_date=cursor_date, trade_time__lt=cursor_time) |
+                    Q(trade_date=cursor_date, trade_time=cursor_time, id__lt=cursor_id)
+                )
+            queryset = queryset.order_by('-trade_date', '-trade_time', '-id')
+
+        rows = list(queryset[: limit + 1])
+        has_more = len(rows) > limit
+        page_rows = rows[:limit]
+
+        next_cursor = None
+        if has_more and page_rows:
+            last_row = page_rows[-1]
+            if sort == 'matched_value':
+                next_cursor = _encode_whale_feed_cursor({
+                    'sort': sort,
+                    'matched_value': float(getattr(last_row, 'matched_value', 0) or 0),
+                    'id': last_row.id,
+                })
+            else:
+                next_cursor = _encode_whale_feed_cursor({
+                    'sort': sort,
+                    'trade_date': last_row.trade_date.isoformat(),
+                    'trade_time': last_row.trade_time.isoformat(),
+                    'id': last_row.id,
+                })
+
+        results = [_build_aggregate_event_payload(row, threshold_vnd, score_config=score_config, now=request_now) for row in page_rows]
+        return Response({
+            'results': results,
+            'next_cursor': next_cursor,
+            'has_more': has_more,
+            'server_time': timezone.now().isoformat(),
+            'source': 'intraday_tick_db',
+            'weights_version': score_config['version'],
+            'filters': {
+                'scope': scope,
+                'symbols': symbols,
+                'watchlist_group_ids': watchlist_group_ids,
+                'sort': sort,
+                'limit': limit,
+                'threshold': threshold_vnd,
+            },
+            'entitlements': entitlements,
         })
 
 
@@ -2323,9 +2675,6 @@ class AdminOpsStatsView(APIView):
 # ---------------------------------------------------------------------------
 # WhaleAdvisory — Tư vấn AI từ OpenClaw
 # ---------------------------------------------------------------------------
-from .permissions import _get_plan, IsProPlan
-
-
 class WhaleAdvisoryListView(generics.ListAPIView):
     """
     GET /api/portfolio/whale-advisory/

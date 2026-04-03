@@ -2,7 +2,7 @@
 
 **Sprint**: Sprint 12  
 **Bước**: 16 - Tách layer realtime frontend dùng chung  
-**Status**: 95% COMPLETE (Need verification + observability)  
+**Status**: CODE COMPLETE, RUNTIME QA PENDING  
 **Timeline**: 5-8 ngày làm việc  
 
 ---
@@ -80,8 +80,8 @@
   - [ ] Dynamic update on holdings change
   
 - [ ] Cleanup on unmount ✅
-  - [ ] Verify unsubscribe sent to WebSocket
-  - [ ] Verify interval cleared
+  - [x] Hook da gui explicit `unsubscribe` truoc khi close socket khi `readyState === OPEN`
+  - [x] Interval polling da duoc clear trong cleanup
   - [ ] Verify no memory leaks (use Profiler React DevTools)
 
 **Deliverable**: VERIFIED document listing:
@@ -101,6 +101,10 @@
 - [ ] Add tracking: `lastEventTypes` array
 - [ ] Update hook return object: `{ ..., metrics: { eventCounts, reconnectAttempts, lastLatencyMs } }`
 
+Cap nhat thuc te:
+- [x] `eventCounts` da mo rong them `subscribed`, `unsubscribed`, `polling_successes`, `polling_failures`
+- [x] Hook da export `connectionState` cho QA runtime (`transport`, `lastSubscribedAt`, `lastUnsubscribedAt`, `lastReconnectAt`, `lastErrorAt`, `lastCloseCode`, `lastCloseReason`, `subscribedSymbols`)
+
 **Task 2.2: Create metrics context (optional)**
 - [ ] Create `frontend/src/context/RealtimeMetricsContext.js` (NEW)
 - [ ] Expose hook: `useRealtimeMetrics()` → returns global metrics
@@ -117,10 +121,19 @@
 - [ ] Trigger: `?debug=realtime` URL param
 - [ ] Render: bottom-right corner (fixed pos, z-index)
 
+Cap nhat thuc te:
+- [x] `RealtimeDebugPanel.jsx` da hien event lifecycle (`event_id`, `config_version`, `source`) va runtime connection metrics.
+
 **Deliverable**: 
 - useRealtimeFeed.js updated (metrics +20 lines)
 - RealtimeDebugPanel.jsx created (150 lines)
 - Metrics visible on screen when ?debug=realtime param set
+
+Cap nhat them ve contract whale event:
+- [x] Backend WS `whale_alert` da phat `severity`, `event_score`, `display_score`, `weights_version`
+- [x] Backend WS `whale_alert` da co them `event_id`, `config_version`, `source`
+- [x] Frontend dedup whale alerts uu tien theo `event_id`
+- [x] Realtime whale panels da dung truc tiep `severity` va `size_class` tu backend contract
 
 ---
 
@@ -258,6 +271,11 @@ Reference: [SPRINT11_ACCEPTANCE_CHECKLIST.md](SPRINT11_ACCEPTANCE_CHECKLIST.md)
 **Task 6.1: Update docs**
 - [ ] Update [SPRINT12_DETAILED_PLAN.md](SPRINT12_DETAILED_PLAN.md) with actual completion
 - [ ] Add notes on any issues found/fixed
+
+Trang thai tam dung hien tai:
+- [x] Contract whale realtime da duoc hardening xong o muc code + targeted tests.
+- [x] Route smoke suite va realtime gateway suite da pass.
+- [ ] Browser runtime QA va do p95 publish -> push tren runtime that van la buoc tiep theo.
 - [ ] Update DoD checklist
 
 **Task 6.2: Code cleanup (if needed)**

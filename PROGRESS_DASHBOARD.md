@@ -69,10 +69,12 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 
 ### Validation
 - ✅ `npm run build` passes after advisory UI integration
-- ✅ `manage.py test portfolio.tests.test_api_routes` passes (12 tests)
+- ✅ `manage.py test portfolio.tests.test_api_routes` passes (28 tests)
 - ✅ Stock workspace smoke test stabilized by mocking vnstock live overlay in test
 - ✅ Redis-backed local validation: 4 stream keys / 400 ticks / consumer batch writes 400 `IntradayTick`
 - ✅ Advisory backend no longer crashes when `OPENCLAW_API_KEY` is missing
+- ✅ `useRealtimeFeed` now sends explicit `unsubscribe` on cleanup and exposes runtime connection metrics for reconnect/fallback QA
+- ✅ `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_realtime_compute` passes (6 tests)
 
 ### User Registration Extension
 - ✅ Backend `/api/auth/register/` now requires email and returns JWT for auto-login
@@ -106,7 +108,7 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 - [ ] Test cleanup on unmount
   ```
   - Close component
-  - Verify unsubscribe sent
+  - Verify unsubscribe sent (hook instrumentation implemented)
   - Verify no memory leaks
   ```
 - [ ] DevTools Profiler check
@@ -149,6 +151,7 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 - [ ] Test memory/cleanup
 - [x] Add metrics (Day 2-3)
 - [ ] Test fallback/reconnect (Day 4)
+- [x] Add reconnect/cleanup observability into shared hook
 - [ ] Redis validation (Day 5-6)
 - [ ] QA matrix (Day 6-7)
 
@@ -164,7 +167,8 @@ Consolidation Progress:
 ├─ AI advisory gating: ✅ Implemented
 ├─ Redis streams:      ✅ Local validation pass
 ├─ Clean build:        ✅ Pass
-├─ API smoke suite:    ✅ Pass (12 tests)
+├─ API smoke suite:    ✅ Pass (28 tests)
+├─ Realtime gateway:   ✅ Pass (6 tests)
 └─ Runtime QA:         ⏳ Pending
 
 Overall Day 2:         ✅ Core implementation complete

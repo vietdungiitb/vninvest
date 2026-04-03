@@ -14,7 +14,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .email_verification import resolve_email_verification_token, send_verification_email
 from .models import UserConfig
-from .permissions import _get_plan, build_abilities
+from .permissions import _get_plan, resolve_user_entitlements
 
 
 class EmailDeliveryFailed(APIException):
@@ -35,7 +35,8 @@ class UserMeView(RetrieveAPIView):
     def get(self, request, *args, **kwargs):
         user = request.user
         cfg = getattr(user, 'user_config', None)
-        plan = _get_plan(user)
+        entitlements = resolve_user_entitlements(user)
+        plan = entitlements['plan']
 
         return Response({
             'id': user.id,
@@ -50,7 +51,8 @@ class UserMeView(RetrieveAPIView):
             'theme': cfg.theme if cfg else 'dark',
             'email_verified': bool(cfg.email_verified) if cfg else False,
             'email_verified_at': cfg.email_verified_at.isoformat() if cfg and cfg.email_verified_at else None,
-            'abilities': build_abilities(plan),
+            'abilities': entitlements['abilities'],
+            'entitlements': entitlements,
         })
 
 

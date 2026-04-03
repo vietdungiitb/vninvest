@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTrackedSymbols, getWhaleAdvisories } from '../api/client';
+import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 
 function formatMoney(value) {
@@ -8,10 +8,61 @@ function formatMoney(value) {
   return Number(value).toLocaleString('vi-VN');
 }
 
+function formatCompactMoney(value) {
+  if (value == null || Number.isNaN(Number(value))) return '—';
+  return new Intl.NumberFormat('vi-VN', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(Number(value));
+}
+
 function formatTime(value) {
   if (!value) return '—';
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN');
+}
+
+function getSideTone(side) {
+  const normalizedSide = String(side || '').toLowerCase();
+  if (normalizedSide === 'buy') {
+    return {
+      container: 'border-emerald-800/60 bg-emerald-950/20',
+      badge: 'bg-emerald-950/70 text-emerald-300',
+      label: 'Mua lớn',
+    };
+  }
+  if (normalizedSide === 'sell') {
+    return {
+      container: 'border-rose-800/60 bg-rose-950/20',
+      badge: 'bg-rose-950/70 text-rose-300',
+      label: 'Bán lớn',
+    };
+  }
+  return {
+    container: 'border-slate-800 bg-slate-950/70',
+    badge: 'bg-slate-900 text-slate-300',
+    label: 'Trung lập',
+  };
+}
+
+function getSizeClassLabel(sizeClass) {
+  if (sizeClass === 'shark') return 'Shark';
+  if (sizeClass === 'whale') return 'Whale';
+  return 'Large';
+}
+
+function getSeverityTone(severity) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'extreme') {
+    return 'bg-rose-500 text-white';
+  }
+  if (normalizedSeverity === 'high') {
+    return 'bg-amber-400 text-slate-950';
+  }
+  if (normalizedSeverity === 'medium') {
+    return 'bg-cyan-400 text-slate-950';
+  }
+  return 'bg-slate-800 text-slate-200';
 }
 
 function buildTrackedSymbolBuckets(trackedSymbols) {
@@ -68,41 +119,152 @@ function AdvisoryPreviewCard({ item }) {
   );
 }
 
+function AggregateFeedCard({ item }) {
+  const tone = getSideTone(item.side);
+  const severityTone = getSeverityTone(item.severity);
+
+  return (
+    <Link
+      to={`/whale-alerts/${item.symbol}`}
+      className={`block rounded-2xl border p-4 transition-colors hover:border-cyan-700/60 ${tone.container}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold text-slate-100">{item.symbol}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${tone.badge}`}>
+              {tone.label}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">{formatTime(item.ts)}</p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+            {getSizeClassLabel(item.size_class)}
+          </div>
+          <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${severityTone}`}>
+            {item.severity || 'low'}
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Giá trị khớp</p>
+          <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value)} VND</p>
+        </div>
+        <div className="text-right text-xs text-slate-400">
+          <p>Display score: {item.display_score ?? '—'}</p>
+          <p>Ngưỡng: {formatCompactMoney(item.threshold)} VND</p>
+          <p className="mt-1">Nguồn: {item.source || 'realtime'}</p>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function WhaleAlertsHub() {
   const { ability, userPlan } = usePortfolio();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
+  const [watchlistGroups, setWatchlistGroups] = useState([]);
   const [advisories, setAdvisories] = useState([]);
+  const [aggregateFeed, setAggregateFeed] = useState([]);
+  const [aggregateCursor, setAggregateCursor] = useState(null);
+  const [aggregateHasMore, setAggregateHasMore] = useState(false);
+  const [aggregateLoadingMore, setAggregateLoadingMore] = useState(false);
+  const [aggregateEntitlements, setAggregateEntitlements] = useState(null);
+  const [aggregateFilters, setAggregateFilters] = useState(null);
+  const [feedSort, setFeedSort] = useState('ts');
+  const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const canReadAdvisory = ability.can('read', 'WhaleAdvisory');
+
+  const activeWatchlistGroupId = useMemo(() => {
+    if (!selectedFeedScope.startsWith('watchlist:')) return null;
+    const parsedId = Number(selectedFeedScope.split(':')[1]);
+    return Number.isFinite(parsedId) ? parsedId : null;
+  }, [selectedFeedScope]);
+
+  const activeWatchlistGroup = useMemo(
+    () => watchlistGroups.find((group) => group.id === activeWatchlistGroupId) || null,
+    [activeWatchlistGroupId, watchlistGroups]
+  );
+
+  const loadAggregateFeed = useCallback(async ({ cursor = null, append = false, sort = feedSort, scope = selectedFeedScope } = {}) => {
+    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
+    const response = await getAggregateWhaleFeed({
+      cursor,
+      sort,
+      limit: 12,
+      watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
+    });
+    const payload = response.data || {};
+    const nextItems = payload.results || [];
+
+    setAggregateFeed((prev) => (append ? [...prev, ...nextItems] : nextItems));
+    setAggregateCursor(payload.next_cursor || null);
+    setAggregateHasMore(Boolean(payload.has_more));
+    setAggregateEntitlements(payload.entitlements || null);
+    setAggregateFilters(payload.filters || null);
+  }, [feedSort, selectedFeedScope]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
 
     try {
-      const trackedResult = await getTrackedSymbols();
-      setTrackedSymbols(trackedResult.data || []);
+      const requests = [
+        getTrackedSymbols(),
+        getWatchlistGroups(),
+        loadAggregateFeed({ cursor: null, append: false, sort: feedSort, scope: selectedFeedScope }),
+      ];
 
       if (canReadAdvisory) {
-        const advisoryResult = await getWhaleAdvisories();
-        setAdvisories((advisoryResult.data || []).slice(0, 6));
-      } else {
-        setAdvisories([]);
+        requests.push(getWhaleAdvisories());
       }
+
+      const [trackedResult, watchlistGroupsResult, _aggregateResult, advisoryResult] = await Promise.all(requests);
+      setTrackedSymbols(trackedResult.data || []);
+      setWatchlistGroups(watchlistGroupsResult.data || []);
+      setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
     } catch (err) {
       setError(err.response?.data?.detail || 'Không tải được Whale Alerts hub.');
     } finally {
       setLoading(false);
     }
-  }, [canReadAdvisory]);
+  }, [canReadAdvisory, feedSort, loadAggregateFeed, selectedFeedScope]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const symbolShortcuts = useMemo(() => buildTrackedSymbolBuckets(trackedSymbols), [trackedSymbols]);
+
+  const handleLoadMore = useCallback(async () => {
+    if (!aggregateHasMore || !aggregateCursor) return;
+
+    setAggregateLoadingMore(true);
+    try {
+      await loadAggregateFeed({ cursor: aggregateCursor, append: true, sort: feedSort, scope: selectedFeedScope });
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Không tải thêm được aggregate whale feed.');
+    } finally {
+      setAggregateLoadingMore(false);
+    }
+  }, [aggregateCursor, aggregateHasMore, feedSort, loadAggregateFeed, selectedFeedScope]);
+
+  const handleSortChange = useCallback((nextSort) => {
+    if (nextSort === feedSort) return;
+    setFeedSort(nextSort);
+  }, [feedSort]);
+
+  const scopeLabel = useMemo(() => {
+    if (aggregateFilters?.scope === 'watchlist' && activeWatchlistGroup) {
+      return `watchlist: ${activeWatchlistGroup.name}`;
+    }
+    return 'tracked symbols';
+  }, [activeWatchlistGroup, aggregateFilters?.scope]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
@@ -125,6 +287,102 @@ export default function WhaleAlertsHub() {
             </button>
           </div>
         </div>
+      </section>
+
+      <section className="card-section px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-label">Aggregate feed</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-100">Live whale board</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+              Bảng tổng hợp tín hiệu whale theo danh sách mã đang theo dõi. Phase 1 đang đọc từ read model `IntradayTick`
+              với cursor pagination để tránh trùng hoặc mất item khi feed tiếp tục đổ về.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Scope</span>
+              <select
+                value={selectedFeedScope}
+                onChange={(event) => setSelectedFeedScope(event.target.value)}
+                className="min-w-[180px] bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
+              >
+                <option value="tracked">Tracked symbols</option>
+                {watchlistGroups.map((group) => (
+                  <option key={group.id} value={`watchlist:${group.id}`}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+              <button
+                type="button"
+                onClick={() => handleSortChange('ts')}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                }`}
+              >
+                Mới nhất
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSortChange('matched_value')}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                }`}
+              >
+                Giá trị lớn nhất
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            Scope: {loading ? 'đang tải' : scopeLabel}
+          </div>
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            Advisory summary: {aggregateEntitlements?.can_read_whale_advisory ? 'Pro+' : 'chưa mở'}
+          </div>
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            Advisory detail: {aggregateEntitlements?.can_read_whale_advisory_detail ? 'Premium+' : 'chưa mở'}
+          </div>
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            Weights: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || 'weights-v1' : 'đang tải'}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {[...Array(6)].map((_, index) => (
+              <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-900" />
+            ))}
+          </div>
+        ) : aggregateFeed.length === 0 ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
+            Chưa có whale event vượt ngưỡng trong danh sách mã đang theo dõi. Khi backend detect thêm lệnh lớn,
+            aggregate board này sẽ là điểm vào nhanh nhất trước khi mở dashboard theo mã.
+          </div>
+        ) : (
+          <>
+            <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+              {aggregateFeed.map((item) => (
+                <AggregateFeedCard key={item.event_id} item={item} />
+              ))}
+            </div>
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs text-slate-500">
+                Đang hiển thị {aggregateFeed.length} tín hiệu gần nhất cho scope hiện tại.
+              </div>
+              {aggregateHasMore && (
+                <button type="button" onClick={handleLoadMore} disabled={aggregateLoadingMore} className="btn-secondary">
+                  {aggregateLoadingMore ? 'Đang tải thêm...' : 'Tải thêm'}
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       {error && (

@@ -151,6 +151,26 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
+export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', limit = 12, cursor } = {}) => {
+  const params = new URLSearchParams();
+  if (Array.isArray(symbols) && symbols.length > 0) {
+    params.set('symbols', symbols.join(','));
+  }
+  if (Array.isArray(watchlistGroupIds) && watchlistGroupIds.length > 0) {
+    params.set('watchlist_group_ids', watchlistGroupIds.join(','));
+  }
+  if (sort) {
+    params.set('sort', sort);
+  }
+  if (limit) {
+    params.set('limit', String(limit));
+  }
+  if (cursor) {
+    params.set('cursor', cursor);
+  }
+  const queryString = params.toString();
+  return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`);
+};
 export const getWhaleAdvisories = () => apiClient.get('/portfolio/whale-advisory/');
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);

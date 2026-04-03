@@ -107,7 +107,8 @@
 - ✅ Plan/CASL gating cho tính năng AI Advisory
 - ✅ Route `/api/auth/me/` + `/api/portfolio/whale-advisory/` được nối end-to-end với frontend
 - ✅ Frontend build pass sau khi thêm `WhaleAdvisory`, `Upgrade`, `ProtectedRoute`
-- ✅ `manage.py test portfolio.tests.test_api_routes` PASS (12 tests)
+- ✅ `manage.py test portfolio.tests.test_api_routes` PASS (28 tests)
+- ✅ `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_realtime_compute` PASS (6 tests)
 - ✅ Local Redis-backed validation: health endpoint pass, 4 stream keys / 400 ticks, consumer batch ghi DB thành công
 - ✅ Advisory backend hardening: thêm `httpx`, sửa lazy import để path placeholder không crash khi chưa có API key
 

@@ -59,6 +59,18 @@ def build_abilities(plan: str) -> list:
     return abilities
 
 
+def resolve_user_entitlements(user) -> dict:
+    """Trả về contract quyền dùng chung cho Whale Alerts và auth/me."""
+    plan = _get_plan(user)
+    return {
+        'plan': plan,
+        'abilities': build_abilities(plan),
+        'can_read_whale_feed': True,
+        'can_read_whale_advisory': has_plan(user, 'pro'),
+        'can_read_whale_advisory_detail': has_plan(user, 'premium'),
+    }
+
+
 # ---------- DRF Permission Classes ----------
 
 class IsBasicPlan(BasePermission):

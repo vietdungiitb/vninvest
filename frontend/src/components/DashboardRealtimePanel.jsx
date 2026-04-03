@@ -56,6 +56,13 @@ function sizeClassEmoji(cls) {
   return '🐋';
 }
 
+function severityTone(severity) {
+  if (severity === 'extreme') return 'bg-rose-500 text-white';
+  if (severity === 'high') return 'bg-amber-400 text-slate-950';
+  if (severity === 'medium') return 'bg-cyan-400 text-slate-950';
+  return 'bg-slate-800 text-slate-200';
+}
+
 export default function DashboardRealtimePanel({ holdings }) {
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [realtimeHealth, setRealtimeHealth] = useState(null);
@@ -348,11 +355,12 @@ export default function DashboardRealtimePanel({ holdings }) {
               {alerts.slice(0, 8).map((alert, index) => {
                 const side = alert.side?.toLowerCase();
                 const isBuy = side === 'buy';
-                const sizeClass = (alert.matched_value || 0) >= 5_000_000_000 ? 'shark' : 'whale';
+                const sizeClass = alert.size_class ?? null;
+                const severity = typeof alert.severity === 'string' ? alert.severity.toLowerCase() : null;
                 const isBig = sizeClass === 'shark';
                 return (
                   <Link
-                    key={`${alert.symbol}-${alert.ts}-${index}`}
+                    key={alert.event_id || `${alert.symbol}-${alert.ts}-${index}`}
                     to={`/whale-alerts/${alert.symbol}`}
                     className="block"
                   >
@@ -370,15 +378,22 @@ export default function DashboardRealtimePanel({ holdings }) {
                       )}
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-white text-[13px]">{alert.symbol}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                          isBuy
-                            ? 'bg-emerald-900/60 text-emerald-300'
-                            : side === 'sell'
-                            ? 'bg-rose-900/60 text-rose-300'
-                            : 'bg-slate-800 text-slate-400'
-                        }`}>
-                          {isBuy ? '▲ MUA LỚN' : side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                            isBuy
+                              ? 'bg-emerald-900/60 text-emerald-300'
+                              : side === 'sell'
+                              ? 'bg-rose-900/60 text-rose-300'
+                              : 'bg-slate-800 text-slate-400'
+                          }`}>
+                            {isBuy ? '▲ MUA LỚN' : side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+                          </span>
+                          {severity && (
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityTone(severity)}`}>
+                              {severity}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <div className="mt-1 flex items-baseline justify-between gap-2">
                         <span className="text-sm font-bold text-white">{fmtBil(alert.matched_value)}</span>
@@ -387,6 +402,11 @@ export default function DashboardRealtimePanel({ holdings }) {
                       <div className="mt-0.5 text-[11px] text-slate-500">
                         Ngưỡng: {fmtBil(alert.threshold)}
                       </div>
+                      {(alert.display_score != null || alert.event_score != null) && (
+                        <div className="mt-0.5 text-[11px] text-slate-500">
+                          Score: {alert.display_score ?? '—'} / Event: {alert.event_score ?? '—'}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 );

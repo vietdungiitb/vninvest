@@ -57,12 +57,21 @@ function sideColor(side) {
   return '#94a3b8';
 }
 
+function severityTone(severity) {
+  if (severity === 'extreme') return 'bg-rose-500 text-white';
+  if (severity === 'high') return 'bg-amber-400 text-slate-950';
+  if (severity === 'medium') return 'bg-cyan-400 text-slate-950';
+  return 'bg-slate-800 text-slate-200';
+}
+
 // ─── AlertFeedCard ─────────────────────────────────────────────────────────
 
 function AlertFeedCard({ order, animated }) {
   if (!order) return null;
   const isBuy = order.side === 'buy';
   const isBig = order.size_class === 'shark';
+  const severity = typeof order.severity === 'string' ? order.severity.toLowerCase() : null;
+  const severityClass = severity ? severityTone(severity) : '';
   return (
     <div
       className={`relative overflow-hidden rounded-xl border px-4 py-3 text-[12px] transition-all ${
@@ -80,13 +89,20 @@ function AlertFeedCard({ order, animated }) {
       )}
       <div className="flex items-center justify-between gap-2">
         <span className="text-[11px] text-slate-500">{order.time}</span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-            isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
-          }`}
-        >
-          {isBuy ? '▲ MUA LỚN' : order.side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+              isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
+            }`}
+          >
+            {isBuy ? '▲ MUA LỚN' : order.side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+          </span>
+          {severity && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityClass}`}>
+              {severity}
+            </span>
+          )}
+        </div>
       </div>
       <div className="mt-1 flex items-baseline gap-2">
         <span className="text-base font-bold text-white">{fmtBil(order.matched_value)}</span>
@@ -94,6 +110,11 @@ function AlertFeedCard({ order, animated }) {
           {fmtVol(order.volume)} @ {fmtPrice(order.price)}
         </span>
       </div>
+      {(order.display_score != null || order.event_score != null) && (
+        <div className="mt-1 text-[11px] text-slate-400">
+          Score {order.display_score ?? '—'} / Event {order.event_score ?? '—'}
+        </div>
+      )}
     </div>
   );
 }
@@ -146,7 +167,7 @@ export function WhaleFeedPanel({ symbol, realtimeAlerts }) {
             <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
           ))}
         </div>
-      ) : orders.length === 0 ? (
+      ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
         <p className="mt-4 text-center text-[12px] text-slate-500">
           Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
         </p>
@@ -155,14 +176,19 @@ export function WhaleFeedPanel({ symbol, realtimeAlerts }) {
           {/* WS alerts on top */}
           {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
             <AlertFeedCard
-              key={`ws-${a.ts}-${i}`}
+              key={a.event_id || `ws-${a.ts}-${i}`}
               order={{
                 time: a.ts ? new Date(a.ts).toLocaleTimeString('vi-VN') : '—',
+                ts: a.ts || null,
                 matched_value: a.matched_value,
                 side: (a.side || '').toLowerCase(),
                 volume: null,
                 price: null,
-                size_class: (a.matched_value || 0) >= 5_000_000_000 ? 'shark' : 'whale',
+                size_class: a.size_class ?? null,
+                severity: a.severity ?? null,
+                display_score: a.display_score ?? null,
+                event_score: a.event_score ?? null,
+                weights_version: a.weights_version ?? null,
               }}
               animated={i === 0}
             />
@@ -345,6 +371,7 @@ export function BubbleOrderChart({ orders, loading }) {
                     <p className="font-semibold text-white">{fmtBil(d.matched_value)}</p>
                     <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · KL {fmtVol(d.volume)}</p>
                     <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? '▲ Mua' : d.side === 'sell' ? '▼ Bán' : '—'} {sizeClassEmoji(d.size_class)}</p>
+                    <p className="text-slate-400">Severity: {d.severity ?? '—'} · Score: {d.display_score ?? '—'}</p>
                   </div>
                 );
               }}

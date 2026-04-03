@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 
+function formatSeverity(severity) {
+  return typeof severity === 'string' ? severity.toUpperCase() : '—';
+}
+
 export default function RealtimeDebugPanel() {
   const urlParams = new URLSearchParams(window.location.search);
   const debugParam = urlParams.get('debug');
@@ -26,6 +30,8 @@ export default function RealtimeDebugPanel() {
     };
     setRecentEvents(prev => [event, ...prev].slice(0, 5));
   }, [realtimeStatus, metrics.lastLatencyMs, alerts.length]);
+
+  const connectionState = metrics.connectionState || {};
 
   if (!isOpen) return null;
 
@@ -74,6 +80,18 @@ export default function RealtimeDebugPanel() {
         <div>
           <span className="text-gray-400">Reconnects:</span> {metrics.eventCounts.reconnect_attempts}
         </div>
+        <div>
+          <span className="text-gray-400">Subscribed:</span> {metrics.eventCounts.subscribed}
+        </div>
+        <div>
+          <span className="text-gray-400">Unsubscribed:</span> {metrics.eventCounts.unsubscribed}
+        </div>
+        <div>
+          <span className="text-gray-400">Poll ok:</span> {metrics.eventCounts.polling_successes}
+        </div>
+        <div>
+          <span className="text-gray-400">Poll fail:</span> {metrics.eventCounts.polling_failures}
+        </div>
         {metrics.lastLatencyMs && (
           <div className="col-span-2">
             <span className="text-gray-400">Latency:</span> {metrics.lastLatencyMs.toFixed(0)}ms
@@ -84,10 +102,34 @@ export default function RealtimeDebugPanel() {
       {/* Alerts */}
       {latestWhaleAlert && (
         <div className="mb-3 p-2 bg-rose-500/20 border border-rose-500/50 rounded text-[11px]">
-          <span className="font-medium">Latest Whale:</span> {latestWhaleAlert.symbol} {latestWhaleAlert.side} 
-          {latestWhaleAlert.matched_value?.toLocaleString()}đ
+          <div>
+            <span className="font-medium">Latest Whale:</span> {latestWhaleAlert.symbol} {latestWhaleAlert.side} {latestWhaleAlert.matched_value?.toLocaleString()}đ
+          </div>
+          <div className="mt-1 text-gray-300">
+            Severity: {formatSeverity(latestWhaleAlert.severity)} | Display: {latestWhaleAlert.display_score ?? '—'} | Event: {latestWhaleAlert.event_score ?? '—'}
+          </div>
+          <div className="mt-1 text-gray-400">
+            Weights: {latestWhaleAlert.weights_version ?? '—'}
+          </div>
+          <div className="mt-1 text-gray-400">
+            Config: {latestWhaleAlert.config_version ?? '—'} | Source: {latestWhaleAlert.source ?? '—'}
+          </div>
+          <div className="mt-1 break-all text-gray-500">
+            Event ID: {latestWhaleAlert.event_id ?? '—'}
+          </div>
         </div>
       )}
+
+      <div className="mb-3 rounded border border-gray-800 bg-gray-950/60 p-2 text-[10px] text-gray-400">
+        <div>Transport: {connectionState.transport || '—'}</div>
+        <div>Close code: {connectionState.lastCloseCode ?? '—'}</div>
+        <div>Close reason: {connectionState.lastCloseReason || '—'}</div>
+        <div>Last subscribed: {connectionState.lastSubscribedAt ? new Date(connectionState.lastSubscribedAt).toLocaleTimeString() : '—'}</div>
+        <div>Last unsubscribed: {connectionState.lastUnsubscribedAt ? new Date(connectionState.lastUnsubscribedAt).toLocaleTimeString() : '—'}</div>
+        <div>Last reconnect: {connectionState.lastReconnectAt ? new Date(connectionState.lastReconnectAt).toLocaleTimeString() : '—'}</div>
+        <div>Last error: {connectionState.lastErrorAt ? new Date(connectionState.lastErrorAt).toLocaleTimeString() : '—'}</div>
+        <div>Symbols: {(connectionState.subscribedSymbols || []).join(', ') || '—'}</div>
+      </div>
 
       {/* Timeline */}
       <div className="mb-2">

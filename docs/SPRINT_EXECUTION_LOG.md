@@ -305,6 +305,39 @@ Gia tri dat duoc Sprint 12:
 - Token session on dinh hon: khong con mat session sau 5 phut.
 - Backend 12 tests pass, health endpoint hoat dong.
 
+## Sprint 12 - Realtime contract hardening update (2026-04-03)
+
+Trang thai: IN PROGRESS - CODE COMPLETE, TARGETED VALIDATION COMPLETE, BROWSER QA PENDING
+
+Noi dung da thuc hien:
+- Chuan hoa contract `whale_alert` xuyen suot giua backend WebSocket, REST va frontend hook/UI.
+- Backend WS phat them `severity`, `event_score`, `display_score`, `weights_version` thay vi de frontend tu suy luan.
+- Bo sung lifecycle fields `event_id`, `config_version`, `source` vao payload `whale_alert`.
+- Frontend `useRealtimeFeed` giu nguyen toan bo field contract moi va dedup uu tien theo `event_id`.
+- Cac realtime panels chuyen sang dung `severity`/`size_class` do backend cap, khong doan tu `matched_value`.
+- Loai bo fallback `severity=low` va fallback `size_class` o cac panel whale realtime chinh.
+- Tang observability runtime cho hook:
+	- explicit `unsubscribe` khi cleanup/unmount
+	- counters `subscribed`, `unsubscribed`, `polling_successes`, `polling_failures`
+	- `connectionState` gom `transport`, `lastSubscribedAt`, `lastUnsubscribedAt`, `lastReconnectAt`, `lastErrorAt`, `lastCloseCode`, `lastCloseReason`, `subscribedSymbols`
+- Mo rong `RealtimeDebugPanel` de hien lifecycle fields (`event_id`, `config_version`, `source`) va score contract (`severity`, `display_score`, `event_score`, `weights_version`).
+- Cap nhat docs contract WebSocket va dashboard tien do cho trang thai moi nhat.
+
+Validation da chay:
+- `manage.py test portfolio.tests.test_whale_scoring` pass.
+- `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_realtime_compute` pass (6 tests).
+- `manage.py test portfolio.tests.test_api_routes` pass (28 tests).
+- `npm run build` pass sau moi dot sua frontend trong phase nay.
+
+Tai lieu da cap nhat:
+- `docs/WEBSOCKET_EVENT_CONTRACT.md`
+- `PROGRESS_DASHBOARD.md`
+- `ROADMAP_STATUS.md`
+
+Ket luan tam dung:
+- Contract whale realtime da du on dinh de lam nen cho phase aggregate/replay/advisory tiep theo.
+- Phan con mo chu yeu la browser runtime QA: subscribe/unsubscribe khi mount/unmount that, reconnect/fallback va do p95 publish -> push trong runtime that.
+
 Buoc chuyen tiep sang Sprint 13:
 - Analytics nang cao: drawdown, Sharpe, Sortino, TWR, allocation analysis.
 - Backtest strategy UI.

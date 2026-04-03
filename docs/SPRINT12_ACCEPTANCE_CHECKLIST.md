@@ -7,28 +7,31 @@ Dung checklist nay khi review va chot Sprint 12.
 - [x] Co service/hook realtime dung chung cho Dashboard va Watchlist.
 - [x] Subscription management khong lap logic giua cac page.
 - [x] Reconnect/backoff co gioi han va khong tao socket leak (1000 = no reconnect, stale ref guard, destroyed flag).
+- [x] Cleanup hook co explicit `unsubscribe` truoc khi close socket neu ket noi dang OPEN.
 
 ## B. UX and State
 
 - [x] Dashboard panel realtime hien thi dung market breadth (up/down/flat), stale count, event timestamp, observability bar (ticker/whale/hb/reconnect/latency/channel layer).
 - [x] Watchlist va Dashboard deu dung cung mot contract realtime (useRealtimeFeed, quotesBySymbol, realtimeStatus, lastEventAt, alerts, metrics).
-- [x] Whale alert co history ngan (maxAlerts=5), co co che chong duplicate (key = symbol+ts+side).
+- [x] Whale alert co history ngan (maxAlerts=5), co co che chong duplicate (uu tien `event_id`, fallback `symbol+ts+side` de tuong thich nguoc).
 - [x] Fallback polling hoat dong khi socket disconnect (realtimeStatusRef.current !== 'live').
 - [x] Watchlist phan tach ro `Nhóm thị trường` va `Danh sách theo dõi cá nhân` bang nhan va mo ta nhat quan.
 - [x] Watchlist ho tro thao tac hai chieu ngay tai bang `Nhóm thị trường`: them tung ma, them ca nhom, bo tung ma, bo cac ma da theo doi cua nhom.
 - [x] Bo loc `Tat ca / Chua theo doi / Da theo doi` hien thi bo dem va cap nhat dung theo shortlist hien tai.
+- [x] Realtime whale panels dung `severity` va `size_class` do backend WS cap, khong con tu suy luan tu `matched_value`.
 
 ## C. Reliability and Observability
 
-- [x] Co event counters hoac logging hook cho connect, disconnect, fallback, stale (eventCounts: ticker_update/whale_alert/heartbeat/reconnect + lastLatencyMs).
+- [x] Co event counters hoac logging hook cho connect, disconnect, fallback, stale (eventCounts: ticker_update/whale_alert/heartbeat/reconnect/subscribed/unsubscribed/polling_successes/polling_failures + lastLatencyMs).
 - [x] Co cach phan biet local `inmemory` va env Redis-backed (badge tren DashboardRealtimePanel lay tu GET /api/health/realtime/).
 - [x] Runbook Redis-backed duoc cap nhat va test lai (GET /api/health/realtime/ tra {channel_layer_type:redis, redis_ok:true}, realtime_tick --sync pass 4 symbols + heartbeat).
+- [x] Realtime debug panel hien duoc whale lifecycle fields (`event_id`, `config_version`, `source`) va connection state runtime.
 
 ## D. QA
 
 - [x] Frontend build pass (Compiled successfully, no ERR_INSUFFICIENT_RESOURCES).
-- [x] Backend targeted realtime tests pass (12/12 tests OK, Ran in 9.844s).
-- [x] QA matrix cho Dashboard + Watchlist realtime da chay (12 backend tests pass, health endpoint verified, latency ~1750ms/cycle local Redis).
+- [x] Backend targeted realtime tests pass (route smoke 28 tests, realtime gateway/compute 6 tests, whale scoring/contract targeted tests pass).
+- [ ] Browser QA matrix cho Dashboard + Watchlist realtime con mo o phan reconnect/fallback/unmount runtime that.
 
 ## E. Release Sign-off
 
