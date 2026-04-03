@@ -5,7 +5,7 @@ import logging
 from celery import shared_task
 from django.conf import settings
 
-from portfolio.models import TrackedSymbol, UserConfig, WatchlistGroup, SecuritiesGroup
+from portfolio.models import SecuritiesGroup, TrackedSymbol, UserConfig, WatchlistGroup, WhaleConfigRollout
 from portfolio.realtime.collector import collect_intraday_frame, collect_symbols_for_user, collect_and_push
 from portfolio.realtime.compute import (
     build_heartbeat_payload,
@@ -14,9 +14,91 @@ from portfolio.realtime.compute import (
     detect_whale_signals,
 )
 from portfolio.realtime.publisher import RealtimePublisher
-from portfolio.services import sync_watchlist_prices
+from portfolio.services import (
+    activate_due_scheduled_whale_config_rollouts,
+    ensure_rollout_worker_ack_records,
+    get_live_celery_worker_names,
+    monitor_whale_config_rollout_anomalies,
+    record_whale_config_worker_ack,
+    resolve_whale_runtime_config,
+    refresh_rollout_propagation_status,
+    sync_watchlist_prices,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def activate_due_whale_config_rollouts(self) -> dict:
+    activated = activate_due_scheduled_whale_config_rollouts()
+    return {
+        'status': 'ok',
+        'activated_count': len(activated),
+        'activated': activated,
+    }
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def monitor_whale_config_anomalies(self, auto_revert: bool = True) -> dict:
+    results = monitor_whale_config_rollout_anomalies(auto_revert=auto_revert)
+    auto_reverted = [result for result in results if result.get('auto_reverted')]
+    anomalies = [result for result in results if not result.get('anomaly', {}).get('healthy', True)]
+    return {
+        'status': 'ok',
+        'checked_count': len(results),
+        'anomaly_count': len(anomalies),
+        'auto_reverted_count': len(auto_reverted),
+        'results': results,
+    }
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def refresh_whale_config_rollout_status(self, rollout_id: int) -> dict:
+    rollout = WhaleConfigRollout.objects.select_related('version').get(pk=rollout_id)
+    worker_result = get_live_celery_worker_names()
+    ensure_rollout_worker_ack_records(rollout, worker_names=worker_result['workers'])
+    snapshot = refresh_rollout_propagation_status(rollout)
+    return {
+        'status': rollout.status,
+        'rollout_id': rollout.id,
+        'version_code': rollout.version.version_code,
+        'signal': snapshot['signal'],
+        'acked_count': snapshot['acked_count'],
+        'expected_count': snapshot['expected_count'],
+        'missing_workers': snapshot['missing_workers'],
+        'stale_workers': snapshot['stale_workers'],
+    }
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def ack_whale_config_rollout(
+    self,
+    rollout_id: int,
+    worker_name: str | None = None,
+    worker_version: str | None = None,
+    details: str = '',
+) -> dict:
+    rollout = WhaleConfigRollout.objects.select_related('version').get(pk=rollout_id)
+    resolved_worker_name = worker_name or getattr(self.request, 'hostname', '') or 'unknown-worker'
+    resolved_version = worker_version or rollout.version.version_code
+
+    ack = record_whale_config_worker_ack(
+        rollout,
+        worker_name=resolved_worker_name,
+        worker_version=resolved_version,
+        acked=True,
+        details=details or 'ack_from_task',
+    )
+    snapshot = refresh_rollout_propagation_status(rollout)
+    return {
+        'status': rollout.status,
+        'rollout_id': rollout.id,
+        'worker_name': ack.worker_name,
+        'worker_version': ack.worker_version,
+        'signal': snapshot['signal'],
+        'acked_count': snapshot['acked_count'],
+        'expected_count': snapshot['expected_count'],
+    }
 
 
 def _whale_thresholds_for_user(user_id: int | None) -> list[float]:
@@ -53,10 +135,17 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
             logger.warning("TickProducer init failed: %s", exc)
 
     publisher = RealtimePublisher()
-    thresholds = _whale_thresholds_for_user(user_id)
+    worker_name = getattr(self.request, 'hostname', '') or 'collect-and-publish'
 
     published = 0
     for symbol in symbols:
+        runtime_config = resolve_whale_runtime_config(
+            symbol=symbol,
+            worker_name=worker_name,
+            source='collect_and_publish',
+        )
+        thresholds = _whale_thresholds_for_user(user_id) if user_id is not None else (runtime_config['thresholds_vnd'] or _whale_thresholds_for_user(user_id))
+
         # Thu thập frame một lần, tái dùng cho cả Stream push lẫn WebSocket publish
         frame = collect_intraday_frame(symbol)
 
@@ -77,7 +166,13 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
         whale_channel = f"whale:{symbol}"
         for signal in detect_whale_signals(symbol=symbol, trades_df=frame, thresholds=thresholds):
             whale_seq = publisher.next_seq(whale_channel)
-            whale_payload = build_whale_payload(signal=signal, seq=whale_seq)
+            whale_payload = build_whale_payload(
+                signal=signal,
+                seq=whale_seq,
+                config_version=runtime_config['version_code'],
+                source=f"collect-and-publish:{runtime_config['mode']}",
+                score_config=runtime_config['score_config'],
+            )
             if publisher.publish(whale_channel, whale_payload):
                 published += 1
             if user_id is not None:
@@ -161,13 +256,14 @@ def run_stream_consumer_batch(self, group: str = "all") -> dict:
         AlertEngineConsumer,
     )
 
+    worker_name = getattr(self.request, 'hostname', '') or f'{group}-worker'
     consumers = []
     if group in ("all", "db-writer"):
-        consumers.append(DbWriterConsumer())
+        consumers.append(DbWriterConsumer(consumer_name=worker_name))
     if group in ("all", "ws-broadcaster"):
-        consumers.append(WsBroadcastConsumer())
+        consumers.append(WsBroadcastConsumer(consumer_name=worker_name))
     if group in ("all", "alert-engine"):
-        consumers.append(AlertEngineConsumer())
+        consumers.append(AlertEngineConsumer(consumer_name=worker_name))
 
     symbols = collect_symbols_for_user(user_id=None)
     if not symbols:

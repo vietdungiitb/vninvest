@@ -794,3 +794,184 @@ class IntradayTick(models.Model):
 
     def __str__(self):
         return f'{self.symbol} | {self.trade_date} {self.trade_time} | {self.side} {self.volume}@{self.price:,.0f}'
+
+
+# ---------------------------------------------------------------------------
+# Sprint 14 Mission Control - Global Whale Alerts Config
+# ---------------------------------------------------------------------------
+class WhaleConfigVersion(models.Model):
+    class StatusChoices(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        APPROVED = 'approved', 'Approved'
+        ACTIVE = 'active', 'Active'
+        ARCHIVED = 'archived', 'Archived'
+        ROLLED_BACK = 'rolled_back', 'Rolled back'
+
+    version_code = models.CharField(max_length=64, unique=True, verbose_name='Mã phiên bản')
+    config_json = models.JSONField(default=dict, verbose_name='Cấu hình JSON')
+    status = models.CharField(
+        max_length=20, choices=StatusChoices.choices, default=StatusChoices.DRAFT, db_index=True
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='whale_config_versions_created'
+    )
+    approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name='whale_config_versions_approved'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    rollback_of = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='rollback_children'
+    )
+    notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Version'
+        verbose_name_plural = 'Whale Config Versions'
+
+    def __str__(self):
+        return f'{self.version_code} ({self.status})'
+
+
+class WhaleConfigDraft(models.Model):
+    class StatusChoices(models.TextChoices):
+        DRAFT = 'draft', 'Draft'
+        SUBMITTED = 'submitted', 'Submitted'
+        REJECTED = 'rejected', 'Rejected'
+        APPROVED = 'approved', 'Approved'
+
+    name = models.CharField(max_length=120)
+    config_json = models.JSONField(default=dict)
+    status = models.CharField(max_length=20, choices=StatusChoices.choices, default=StatusChoices.DRAFT, db_index=True)
+    created_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='whale_config_drafts_created'
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    linked_version = models.ForeignKey(
+        WhaleConfigVersion, on_delete=models.SET_NULL, null=True, blank=True, related_name='source_drafts'
+    )
+    reason = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Draft'
+        verbose_name_plural = 'Whale Config Drafts'
+
+    def __str__(self):
+        return f'{self.name} ({self.status})'
+
+
+class WhaleConfigApproval(models.Model):
+    class DecisionChoices(models.TextChoices):
+        APPROVED = 'approved', 'Approved'
+        REJECTED = 'rejected', 'Rejected'
+
+    draft = models.ForeignKey(WhaleConfigDraft, on_delete=models.CASCADE, related_name='approvals')
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='whale_config_reviews')
+    decision = models.CharField(max_length=20, choices=DecisionChoices.choices, db_index=True)
+    comment = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Approval'
+        verbose_name_plural = 'Whale Config Approvals'
+
+    def clean(self):
+        if self.draft and self.reviewer_id and self.draft.created_by_id == self.reviewer_id:
+            raise ValidationError('Maker-checker violation: người tạo draft không được tự phê duyệt.')
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.draft_id} - {self.decision} by {self.reviewer_id}'
+
+
+class WhaleConfigRollout(models.Model):
+    class ModeChoices(models.TextChoices):
+        NOW = 'now', 'Apply now'
+        SCHEDULED = 'scheduled', 'Scheduled'
+        CANARY = 'canary', 'Canary'
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'pending', 'Pending'
+        RUNNING = 'running', 'Running'
+        COMPLETED = 'completed', 'Completed'
+        FAILED = 'failed', 'Failed'
+        ROLLED_BACK = 'rolled_back', 'Rolled back'
+
+    version = models.ForeignKey(WhaleConfigVersion, on_delete=models.CASCADE, related_name='rollouts')
+    mode = models.CharField(max_length=20, choices=ModeChoices.choices, default=ModeChoices.NOW, db_index=True)
+    status = models.CharField(max_length=20, choices=StatusChoices.choices, default=StatusChoices.PENDING, db_index=True)
+    initiated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='whale_config_rollouts')
+    effective_from = models.DateTimeField(null=True, blank=True)
+    canary_scope_json = models.JSONField(default=dict, blank=True)
+    note = models.TextField(blank=True, default='')
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Rollout'
+        verbose_name_plural = 'Whale Config Rollouts'
+
+    def __str__(self):
+        return f'rollout#{self.id} {self.mode}/{self.status}'
+
+
+class WhaleConfigWorkerAck(models.Model):
+    rollout = models.ForeignKey(WhaleConfigRollout, on_delete=models.CASCADE, related_name='worker_acks')
+    worker_name = models.CharField(max_length=120)
+    worker_version = models.CharField(max_length=64, blank=True, default='')
+    acked = models.BooleanField(default=False)
+    acked_at = models.DateTimeField(null=True, blank=True)
+    details = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('rollout', 'worker_name')]
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Worker ACK'
+        verbose_name_plural = 'Whale Config Worker ACKs'
+
+    def __str__(self):
+        return f'{self.worker_name} ack={self.acked}'
+
+
+class WhaleConfigAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('create_draft', 'Create draft'),
+        ('update_draft', 'Update draft'),
+        ('submit_draft', 'Submit draft'),
+        ('approve', 'Approve'),
+        ('reject', 'Reject'),
+        ('apply', 'Apply'),
+        ('rollback', 'Rollback'),
+    ]
+
+    actor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='whale_config_audit_logs')
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES, db_index=True)
+    draft = models.ForeignKey(WhaleConfigDraft, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    version = models.ForeignKey(WhaleConfigVersion, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    rollout = models.ForeignKey(WhaleConfigRollout, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    reason = models.TextField(blank=True, default='')
+    before_json = models.JSONField(default=dict, blank=True)
+    after_json = models.JSONField(default=dict, blank=True)
+    ticket_ref = models.CharField(max_length=120, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Whale Config Audit Log'
+        verbose_name_plural = 'Whale Config Audit Logs'
+
+    def __str__(self):
+        return f'{self.action} by {self.actor_id} at {self.created_at}'

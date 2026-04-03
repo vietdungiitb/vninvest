@@ -13,7 +13,7 @@ load_dotenv(BASE_DIR / ".env")
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production-use-env-variable")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host.strip()]
+ALLOWED_HOSTS = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver").split(",") if host.strip()]
 
 INSTALLED_APPS = [
     'daphne',
@@ -168,6 +168,24 @@ WATCHLIST_SYNC_MINUTES = int(os.getenv("WATCHLIST_SYNC_MINUTES", "15"))
 WATCHLIST_SYNC_DAYS = int(os.getenv("WATCHLIST_SYNC_DAYS", "5"))
 
 CELERY_BEAT_SCHEDULE = {}
+MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED = os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED", "True").lower() == "true"
+MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS = int(
+    os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS", "60")
+)
+MISSION_CONTROL_ANOMALY_MONITOR_ENABLED = os.getenv("MISSION_CONTROL_ANOMALY_MONITOR_ENABLED", "True").lower() == "true"
+MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS = int(
+    os.getenv("MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS", "60")
+)
+if MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED:
+    CELERY_BEAT_SCHEDULE["activate-due-whale-config-rollouts"] = {
+        "task": "portfolio.tasks.activate_due_whale_config_rollouts",
+        "schedule": timedelta(seconds=max(MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS, 30)),
+    }
+if MISSION_CONTROL_ANOMALY_MONITOR_ENABLED:
+    CELERY_BEAT_SCHEDULE["monitor-whale-config-anomalies"] = {
+        "task": "portfolio.tasks.monitor_whale_config_anomalies",
+        "schedule": timedelta(seconds=max(MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS, 30)),
+    }
 if WATCHLIST_SYNC_ENABLED:
     CELERY_BEAT_SCHEDULE["sync-all-watch-assets"] = {
         "task": "portfolio.tasks.sync_all_watch_assets",
@@ -229,6 +247,16 @@ OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "https://api.openclaw.ai/v1")
 OPENCLAW_MODEL    = os.getenv("OPENCLAW_MODEL", "openclaw-finance-v1")
 # Cooldown: tránh gọi AI 2 lần cho cùng symbol trong khoảng thời gian này (giây)
 WHALE_ADVISORY_COOLDOWN_SECONDS = int(os.getenv("WHALE_ADVISORY_COOLDOWN_SECONDS", "900"))  # 15 phút
+MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES = int(os.getenv("MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES", "5"))
+MISSION_CONTROL_ANOMALY_BASELINE_MINUTES = int(os.getenv("MISSION_CONTROL_ANOMALY_BASELINE_MINUTES", "30"))
+MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS = int(os.getenv("MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS", "3"))
+MISSION_CONTROL_ANOMALY_MIN_ADVISORIES = int(os.getenv("MISSION_CONTROL_ANOMALY_MIN_ADVISORIES", "1"))
+MISSION_CONTROL_ANOMALY_SPIKE_RATIO = float(os.getenv("MISSION_CONTROL_ANOMALY_SPIKE_RATIO", "3.0"))
+MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO = float(os.getenv("MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO", "2.0"))
+MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND = float(
+    os.getenv("MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND", "5000000000")
+)
+MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT = int(os.getenv("MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT", "200"))
 
 if REALTIME_CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {

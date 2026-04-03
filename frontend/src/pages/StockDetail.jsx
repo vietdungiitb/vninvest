@@ -748,6 +748,17 @@ export default function StockDetail() {
   const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
   const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
 
+  const refreshWhaleFeed = useCallback(async () => {
+    setWhaleFeedLoading(true);
+    try {
+      const response = await getWhaleFeed(normalizedSymbol);
+      setWhaleFeedData(response.data);
+    } catch (_) {
+    } finally {
+      setWhaleFeedLoading(false);
+    }
+  }, [normalizedSymbol]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -845,16 +856,32 @@ export default function StockDetail() {
   useEffect(() => {
     if (!normalizedSymbol) return;
     let cancelled = false;
-    const fetchWhale = () => {
-      getWhaleFeed(normalizedSymbol)
-        .then((r) => { if (!cancelled) { setWhaleFeedData(r.data); setWhaleFeedLoading(false); } })
-        .catch(() => { if (!cancelled) setWhaleFeedLoading(false); });
+    const runRefresh = async () => {
+      setWhaleFeedLoading(true);
+      try {
+        const response = await getWhaleFeed(normalizedSymbol);
+        if (!cancelled) {
+          setWhaleFeedData(response.data);
+        }
+      } catch (_) {
+      } finally {
+        if (!cancelled) {
+          setWhaleFeedLoading(false);
+        }
+      }
     };
-    setWhaleFeedLoading(true);
-    fetchWhale();
-    const interval = setInterval(fetchWhale, 30_000);
+    runRefresh();
+    const interval = setInterval(runRefresh, 30_000);
     return () => { cancelled = true; clearInterval(interval); };
   }, [normalizedSymbol]);
+
+  const prevWhaleRef = useRef(null);
+  useEffect(() => {
+    if (symbolWhaleAlert && symbolWhaleAlert?.ts !== prevWhaleRef.current) {
+      prevWhaleRef.current = symbolWhaleAlert.ts;
+      refreshWhaleFeed();
+    }
+  }, [symbolWhaleAlert, refreshWhaleFeed]);
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -1368,7 +1395,13 @@ export default function StockDetail() {
         {/* Dòng tiền lớn: Whale Feed (2fr) + Bubble Chart (1fr) */}
         <div className="xl:col-span-3">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            <WhaleFeedPanel symbol={normalizedSymbol} realtimeAlerts={symbolAlerts} />
+            <WhaleFeedPanel
+              symbol={normalizedSymbol}
+              realtimeAlerts={symbolAlerts}
+              feedData={whaleFeedData}
+              loading={whaleFeedLoading}
+              onRefresh={refreshWhaleFeed}
+            />
             <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
           </div>
         </div>

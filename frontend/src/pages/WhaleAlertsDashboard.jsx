@@ -64,6 +64,38 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
+function formatFeedTime(value) {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN');
+}
+
+function getFeedSourceMeta(source) {
+  const normalizedSource = String(source || '').toLowerCase();
+  if (normalizedSource === 'redis_stream') {
+    return {
+      label: 'Redis stream',
+      tone: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200',
+    };
+  }
+  if (normalizedSource === 'intraday_tick_db') {
+    return {
+      label: 'IntradayTick DB',
+      tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200',
+    };
+  }
+  if (normalizedSource === 'vnstock') {
+    return {
+      label: 'vnstock',
+      tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
+    };
+  }
+  return {
+    label: 'Không xác định',
+    tone: 'border-slate-700 bg-slate-950/70 text-slate-300',
+  };
+}
+
 // ─── AlertFeedCard ─────────────────────────────────────────────────────────
 
 function AlertFeedCard({ order, animated }) {
@@ -121,29 +153,52 @@ function AlertFeedCard({ order, animated }) {
 
 // ─── WhaleFeedPanel ────────────────────────────────────────────────────────
 
-export function WhaleFeedPanel({ symbol, realtimeAlerts }) {
+export function WhaleFeedPanel({
+  symbol,
+  realtimeAlerts,
+  feedData = null,
+  loading: controlledLoading,
+  onRefresh = null,
+}) {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [internalLoading, setInternalLoading] = useState(true);
   const prevCountRef = useRef(0);
+  const feedViewportStyle = { scrollbarGutter: 'stable' };
+  const isControlled = typeof onRefresh === 'function' || controlledLoading !== undefined || feedData !== null;
 
   const fetch = useCallback(async () => {
     try {
       const resp = await getWhaleFeed(symbol);
       setData(resp.data);
     } catch (_) { /* silent */ }
-    finally { setLoading(false); }
+    finally { setInternalLoading(false); }
   }, [symbol]);
 
-  useEffect(() => { setData(null); setLoading(true); fetch(); }, [fetch]);
+  useEffect(() => {
+    if (isControlled) {
+      return undefined;
+    }
+    setData(null);
+    setInternalLoading(true);
+    fetch();
+    return undefined;
+  }, [fetch, isControlled]);
 
   // Re-fetch khi có whale alert WS mới
   useEffect(() => {
+    if (isControlled) {
+      return;
+    }
     const count = realtimeAlerts?.length || 0;
     if (count > prevCountRef.current) { fetch(); }
     prevCountRef.current = count;
-  }, [realtimeAlerts, fetch]);
+  }, [realtimeAlerts, fetch, isControlled]);
 
-  const orders = data?.whale_orders || [];
+  const activeData = isControlled ? feedData : data;
+  const loading = isControlled ? Boolean(controlledLoading) : internalLoading;
+  const orders = activeData?.whale_orders || [];
+  const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
+  const sourceMeta = getFeedSourceMeta(activeData?.source);
 
   return (
     <section className="card-section p-4 flex flex-col h-full">
@@ -151,51 +206,65 @@ export function WhaleFeedPanel({ symbol, realtimeAlerts }) {
         <div>
           <p className="text-label">Cảnh báo dòng tiền lớn</p>
           <h3 className="mt-0.5 text-sm font-semibold text-white">
-            Realtime · ngưỡng {data ? fmtBil(data.threshold) : '—'}
+            Realtime · ngưỡng {activeData ? fmtBil(activeData.threshold) : '—'}
           </h3>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+            <span className={`rounded-full border px-2.5 py-1 font-semibold ${sourceMeta.tone}`}>
+              Nguồn: {sourceMeta.label}
+            </span>
+            <span className="rounded-full border border-slate-700 bg-slate-950/70 px-2.5 py-1">
+              Cập nhật: {formatFeedTime(activeData?.fetched_at)}
+            </span>
+          </div>
         </div>
         <button
-          onClick={fetch}
+          onClick={handleRefresh}
           className="rounded-full border border-slate-700 px-3 py-1 text-[10px] text-slate-400 hover:text-slate-200"
         >
           ↻
         </button>
       </div>
       {loading ? (
-        <div className="mt-3 space-y-2">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
-          ))}
+        <div className="panel-scrollbar mt-3 h-[420px] overflow-y-auto pr-1" style={feedViewportStyle}>
+          <div className="space-y-2">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
+            ))}
+          </div>
         </div>
       ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
-        <p className="mt-4 text-center text-[12px] text-slate-500">
-          Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
-        </p>
+        <div className="panel-scrollbar mt-3 flex h-[420px] items-center justify-center overflow-y-auto pr-1" style={feedViewportStyle}>
+          <p className="text-center text-[12px] text-slate-500">
+            Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
+          </p>
+        </div>
       ) : (
-        <div className="mt-3 flex flex-col gap-2 overflow-y-auto max-h-[420px] pr-0.5">
+        <div className="panel-scrollbar mt-3 h-[420px] overflow-y-auto pr-1" style={feedViewportStyle}>
+          <div className="flex flex-col gap-2">
           {/* WS alerts on top */}
-          {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
-            <AlertFeedCard
-              key={a.event_id || `ws-${a.ts}-${i}`}
-              order={{
-                time: a.ts ? new Date(a.ts).toLocaleTimeString('vi-VN') : '—',
-                ts: a.ts || null,
-                matched_value: a.matched_value,
-                side: (a.side || '').toLowerCase(),
-                volume: null,
-                price: null,
-                size_class: a.size_class ?? null,
-                severity: a.severity ?? null,
-                display_score: a.display_score ?? null,
-                event_score: a.event_score ?? null,
-                weights_version: a.weights_version ?? null,
-              }}
-              animated={i === 0}
-            />
-          ))}
-          {orders.slice(0, 20).map((o, i) => (
-            <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
-          ))}
+            {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
+              <AlertFeedCard
+                key={a.event_id || `ws-${a.ts}-${i}`}
+                order={{
+                  time: a.ts ? new Date(a.ts).toLocaleTimeString('vi-VN') : '—',
+                  ts: a.ts || null,
+                  matched_value: a.matched_value,
+                  side: (a.side || '').toLowerCase(),
+                  volume: null,
+                  price: null,
+                  size_class: a.size_class ?? null,
+                  severity: a.severity ?? null,
+                  display_score: a.display_score ?? null,
+                  event_score: a.event_score ?? null,
+                  weights_version: a.weights_version ?? null,
+                }}
+                animated={i === 0}
+              />
+            ))}
+            {orders.slice(0, 20).map((o, i) => (
+              <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
+            ))}
+          </div>
         </div>
       )}
     </section>
@@ -629,6 +698,7 @@ export default function WhaleAlertsDashboard() {
   const [feedLoading, setFeedLoading] = useState(true);
 
   const fetchFeed = useCallback(async () => {
+    setFeedLoading(true);
     try {
       const r = await getWhaleFeed(normalizedSymbol);
       setFeedData(r.data);
@@ -636,7 +706,7 @@ export default function WhaleAlertsDashboard() {
     finally { setFeedLoading(false); }
   }, [normalizedSymbol]);
 
-  useEffect(() => { setFeedData(null); setFeedLoading(true); fetchFeed(); }, [fetchFeed]);
+  useEffect(() => { setFeedData(null); fetchFeed(); }, [fetchFeed]);
 
   // Re-fetch khi có WS whale alert
   const prevWhaleRef = useRef(null);
@@ -696,7 +766,13 @@ export default function WhaleAlertsDashboard() {
 
       {/* Row 1: Alert Feed + Donut */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-        <WhaleFeedPanel symbol={normalizedSymbol} realtimeAlerts={symbolAlerts} />
+        <WhaleFeedPanel
+          symbol={normalizedSymbol}
+          realtimeAlerts={symbolAlerts}
+          feedData={feedData}
+          loading={feedLoading}
+          onRefresh={fetchFeed}
+        />
         <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} />
       </div>
 

@@ -65,6 +65,36 @@ function getSeverityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
+function getAggregateSourceMeta(source) {
+  const normalizedSource = String(source || '').toLowerCase();
+  if (normalizedSource === 'redis_stream') {
+    return {
+      label: 'Redis stream',
+      tone: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200',
+      description: 'Ưu tiên realtime stream mới nhất từ worker ingestion.',
+    };
+  }
+  if (normalizedSource === 'intraday_tick_db') {
+    return {
+      label: 'IntradayTick DB',
+      tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200',
+      description: 'Fallback sang read model trong DB khi stream chưa có dữ liệu phù hợp.',
+    };
+  }
+  if (normalizedSource === 'vnstock') {
+    return {
+      label: 'vnstock',
+      tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
+      description: 'Fallback cuối cùng ra nguồn bên ngoài khi stream và DB đều trống.',
+    };
+  }
+  return {
+    label: 'Không xác định',
+    tone: 'border-slate-800 bg-slate-950/70 text-slate-300',
+    description: 'Chưa xác định được nguồn aggregate hiện tại.',
+  };
+}
+
 function buildTrackedSymbolBuckets(trackedSymbols) {
   const unique = [];
   const seen = new Set();
@@ -173,6 +203,8 @@ export default function WhaleAlertsHub() {
   const [aggregateLoadingMore, setAggregateLoadingMore] = useState(false);
   const [aggregateEntitlements, setAggregateEntitlements] = useState(null);
   const [aggregateFilters, setAggregateFilters] = useState(null);
+  const [aggregateSource, setAggregateSource] = useState('');
+  const [aggregateServerTime, setAggregateServerTime] = useState('');
   const [feedSort, setFeedSort] = useState('ts');
   const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
   const [loading, setLoading] = useState(true);
@@ -207,6 +239,8 @@ export default function WhaleAlertsHub() {
     setAggregateHasMore(Boolean(payload.has_more));
     setAggregateEntitlements(payload.entitlements || null);
     setAggregateFilters(payload.filters || null);
+    setAggregateSource(payload.source || '');
+    setAggregateServerTime(payload.server_time || '');
   }, [feedSort, selectedFeedScope]);
 
   const fetchData = useCallback(async () => {
@@ -266,6 +300,8 @@ export default function WhaleAlertsHub() {
     return 'tracked symbols';
   }, [activeWatchlistGroup, aggregateFilters?.scope]);
 
+  const aggregateSourceMeta = useMemo(() => getAggregateSourceMeta(aggregateSource), [aggregateSource]);
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
       <section className="card-section px-5 py-4">
@@ -295,8 +331,8 @@ export default function WhaleAlertsHub() {
             <p className="text-label">Aggregate feed</p>
             <h2 className="mt-2 text-lg font-semibold text-slate-100">Live whale board</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Bảng tổng hợp tín hiệu whale theo danh sách mã đang theo dõi. Phase 1 đang đọc từ read model `IntradayTick`
-              với cursor pagination để tránh trùng hoặc mất item khi feed tiếp tục đổ về.
+              Bảng tổng hợp tín hiệu whale theo danh sách mã đang theo dõi. Nguồn dữ liệu chạy theo thứ tự
+              Redis stream, sau đó fallback về IntradayTick trong DB, và cuối cùng mới dùng vnstock nếu hai tầng nội bộ chưa có dữ liệu.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
@@ -342,6 +378,9 @@ export default function WhaleAlertsHub() {
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
             Scope: {loading ? 'đang tải' : scopeLabel}
           </div>
+          <div className={`rounded-full border px-3 py-1.5 ${aggregateSourceMeta.tone}`}>
+            Nguồn feed: {loading ? 'đang tải' : aggregateSourceMeta.label}
+          </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
             Advisory summary: {aggregateEntitlements?.can_read_whale_advisory ? 'Pro+' : 'chưa mở'}
           </div>
@@ -351,7 +390,16 @@ export default function WhaleAlertsHub() {
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
             Weights: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || 'weights-v1' : 'đang tải'}
           </div>
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            Server time: {aggregateServerTime ? formatTime(aggregateServerTime) : 'đang tải'}
+          </div>
         </div>
+
+        {!loading && (
+          <div className="mt-3 text-xs text-slate-500">
+            {aggregateSourceMeta.description}
+          </div>
+        )}
 
         {loading ? (
           <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
@@ -373,7 +421,7 @@ export default function WhaleAlertsHub() {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-slate-500">
-                Đang hiển thị {aggregateFeed.length} tín hiệu gần nhất cho scope hiện tại.
+                Đang hiển thị {aggregateFeed.length} tín hiệu gần nhất cho scope hiện tại từ {aggregateSourceMeta.label.toLowerCase()}.
               </div>
               {aggregateHasMore && (
                 <button type="button" onClick={handleLoadMore} disabled={aggregateLoadingMore} className="btn-secondary">

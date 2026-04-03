@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getTrackedSymbols, getRealtimeHealth } from '../api/client';
+import { getAggregateWhaleFeed, getTrackedSymbols, getRealtimeHealth } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
 
@@ -66,6 +66,7 @@ function severityTone(severity) {
 export default function DashboardRealtimePanel({ holdings }) {
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [realtimeHealth, setRealtimeHealth] = useState(null);
+  const [snapshotAlerts, setSnapshotAlerts] = useState([]);
 
   const holdingSymbols = useMemo(
     () => [...new Set((holdings || []).map((item) => item.symbol).filter(Boolean))],
@@ -113,6 +114,42 @@ export default function DashboardRealtimePanel({ holdings }) {
       .catch(() => setRealtimeHealth(null));
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadSnapshotAlerts = async () => {
+      if (!monitoredSymbols.length) {
+        if (!cancelled) {
+          setSnapshotAlerts([]);
+        }
+        return;
+      }
+
+      try {
+        const response = await getAggregateWhaleFeed({
+          symbols: monitoredSymbols,
+          sort: 'ts',
+          limit: 8,
+        });
+        if (!cancelled) {
+          setSnapshotAlerts(response.data?.results || []);
+        }
+      } catch (_err) {
+        if (!cancelled) {
+          setSnapshotAlerts([]);
+        }
+      }
+    };
+
+    loadSnapshotAlerts();
+    const intervalId = window.setInterval(loadSnapshotAlerts, 30000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [monitoredKey, monitoredSymbols]);
+
   const {
     quotesBySymbol,
     realtimeStatus,
@@ -120,6 +157,28 @@ export default function DashboardRealtimePanel({ holdings }) {
     alerts,
     metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
+
+  const mergedAlerts = useMemo(() => {
+    const combined = [];
+    const seen = new Set();
+
+    [...alerts, ...snapshotAlerts].forEach((item, index) => {
+      const key = item.event_id || `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.side || 'NA'}-${index}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      combined.push(item);
+    });
+
+    combined.sort((left, right) => {
+      const leftTs = new Date(left.ts || left.created_at || 0).getTime();
+      const rightTs = new Date(right.ts || right.created_at || 0).getTime();
+      return rightTs - leftTs;
+    });
+
+    return combined.slice(0, 8);
+  }, [alerts, snapshotAlerts]);
 
   const quoteList = useMemo(
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
@@ -346,13 +405,13 @@ export default function DashboardRealtimePanel({ holdings }) {
               Xem tất cả →
             </Link>
           </div>
-          {alerts.length === 0 ? (
+          {mergedAlerts.length === 0 ? (
             <div className="px-4 py-8 text-sm text-gray-500 text-center">
-              Chưa có whale alert mới. Panel sẽ tự cập nhật khi có event.
+              Chưa có whale alert mới. Panel sẽ tự cập nhật khi có event hoặc nạp snapshot từ aggregate feed.
             </div>
           ) : (
             <div className="px-3 py-3 flex flex-col gap-2">
-              {alerts.slice(0, 8).map((alert, index) => {
+              {mergedAlerts.map((alert, index) => {
                 const side = alert.side?.toLowerCase();
                 const isBuy = side === 'buy';
                 const sizeClass = alert.size_class ?? null;
@@ -401,6 +460,9 @@ export default function DashboardRealtimePanel({ holdings }) {
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
                         Ngưỡng: {fmtBil(alert.threshold)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        Nguồn: {alert.source || 'realtime'}
                       </div>
                       {(alert.display_score != null || alert.event_score != null) && (
                         <div className="mt-0.5 text-[11px] text-slate-500">

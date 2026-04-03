@@ -283,6 +283,7 @@ class TestBuildRiskMetrics(TestCase):
             'sharpe_ratio', 'sortino_ratio', 'max_drawdown_pct',
             'twr_pct', 'volatility_annual_pct', 'best_day_pct',
             'worst_day_pct', 'total_trading_days', 'period_days',
+            'beta', 'alpha_annual_pct',
         }
         self.assertEqual(set(result.keys()), expected_keys)
 

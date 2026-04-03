@@ -23,7 +23,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import DailyPrice, ScreenerRule
+from portfolio.models import DailyPrice, ScreenerRule, UserConfig
 from datetime import date
 
 LIST_URL = '/api/portfolio/screener/rules/'
@@ -32,7 +32,12 @@ RUN_URL = lambda pk: f'/api/portfolio/screener/rules/{pk}/run/'
 
 
 def get_token(client, username, password='Test@123456'):
-    resp = client.post('/api/auth/token/', {'username': username, 'password': password})
+    user = User.objects.get(username=username)
+    cfg, _ = UserConfig.objects.get_or_create(user=user)
+    if not cfg.email_verified:
+        cfg.email_verified = True
+        cfg.save(update_fields=['email_verified', 'updated_at'])
+    resp = client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
     return resp.data.get('access')
 
 

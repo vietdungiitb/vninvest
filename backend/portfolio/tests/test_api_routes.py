@@ -363,6 +363,142 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(order['weights_version'], response.data['weights_version'])
         self.assertLessEqual(order['display_score'], order['event_score'])
 
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('vnstock.Vnstock')
+    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_and_vnstock_unavailable(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = []
+        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:31:15', '%H:%M:%S').time(),
+            price=Decimal('61800'),
+            volume=16000,
+            side='BUY',
+            stream_id='mwg-db-1',
+        )
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('11:22:33', '%H:%M:%S').time(),
+            price=Decimal('60500'),
+            volume=21000,
+            side='SELL',
+            stream_id='mwg-db-2',
+        )
+
+        response = self.client.get('/api/realtime/whale-feed/MWG/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertGreaterEqual(len(response.data['whale_orders']), 2)
+        self.assertEqual(response.data['whale_orders'][0]['side'], 'sell')
+
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('vnstock.Vnstock')
+    def test_whale_feed_falls_back_to_intraday_tick_db_when_stream_has_no_threshold_hits(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 750},
+        )
+        self.authenticate()
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = [
+            {'price': 61800, 'volume': 60, 'side': 'BUY', 'ts': '2026-04-03T10:31:15+07:00'},
+            {'price': 60500, 'volume': 120, 'side': 'SELL', 'ts': '2026-04-03T11:22:33+07:00'},
+        ]
+        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:31:15', '%H:%M:%S').time(),
+            price=Decimal('61800'),
+            volume=16000,
+            side='BUY',
+            stream_id='mwg-db-threshold-1',
+        )
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('11:22:33', '%H:%M:%S').time(),
+            price=Decimal('60500'),
+            volume=21000,
+            side='SELL',
+            stream_id='mwg-db-threshold-2',
+        )
+
+        response = self.client.get('/api/realtime/whale-feed/MWG/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertGreaterEqual(len(response.data['whale_orders']), 2)
+        self.assertEqual(response.data['whale_orders'][0]['side'], 'sell')
+
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('vnstock.Vnstock')
+    def test_whale_feed_db_fallback_keeps_older_threshold_hits_beyond_latest_500_ticks(self, mock_vnstock, _mock_cache_get, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 750},
+        )
+        self.authenticate()
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = [
+            {'price': 79.3, 'volume': 697800, 'side': 'UNKNOWN', 'ts': '2026-04-03T14:45:00+07:00'},
+        ]
+        mock_vnstock.return_value.stock.return_value.quote.intraday.side_effect = RuntimeError('vnstock unavailable')
+
+        older_hits = [
+            IntradayTick(
+                symbol='MWG',
+                trade_date=date.today(),
+                trade_time=datetime.strptime('10:31:15', '%H:%M:%S').time(),
+                price=Decimal('61800'),
+                volume=16000,
+                side='BUY',
+                stream_id='mwg-older-hit-1',
+            ),
+            IntradayTick(
+                symbol='MWG',
+                trade_date=date.today(),
+                trade_time=datetime.strptime('11:22:33', '%H:%M:%S').time(),
+                price=Decimal('60500'),
+                volume=21000,
+                side='SELL',
+                stream_id='mwg-older-hit-2',
+            ),
+        ]
+        newer_small_ticks = [
+            IntradayTick(
+                symbol='MWG',
+                trade_date=date.today(),
+                trade_time=datetime.strptime('14:45:00', '%H:%M:%S').time(),
+                price=Decimal('79.30'),
+                volume=697800,
+                side='UNKNOWN',
+                stream_id=f'mwg-small-{index}',
+            )
+            for index in range(501)
+        ]
+        IntradayTick.objects.bulk_create(older_hits + newer_small_ticks)
+
+        response = self.client.get('/api/realtime/whale-feed/MWG/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertGreaterEqual(len(response.data['whale_orders']), 2)
+        returned_sides = {item['side'] for item in response.data['whale_orders']}
+        self.assertIn('buy', returned_sides)
+        self.assertIn('sell', returned_sides)
+
     def test_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements(self):
         UserConfig.objects.update_or_create(
             user=self.user,
@@ -405,6 +541,55 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertLessEqual(response.data['results'][0]['display_score'], response.data['results'][0]['event_score'])
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
+
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    def test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db(self, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='db-fpt-1',
+        )
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = [
+            {'price': 101000, 'volume': 10000, 'side': 'BUY', 'ts': '2026-04-03T09:20:00+07:00'},
+        ]
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['source'], 'redis_stream')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['source'], 'redis_stream')
+
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    @patch('vnstock.Vnstock')
+    def test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss(self, mock_vnstock, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = []
+        mock_vnstock.return_value.stock.return_value.quote.intraday.return_value = pd.DataFrame([
+            {'time': '2026-04-03T09:30:00+07:00', 'price': 100000, 'volume': 12000, 'match_type': 'buy'},
+        ])
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['source'], 'vnstock')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['symbol'], 'FPT')
 
     def test_whale_feed_aggregate_supports_watchlist_filter(self):
         UserConfig.objects.update_or_create(
@@ -488,6 +673,187 @@ class ApiRouteSmokeTests(APITestCase):
             f"/api/realtime/whale-feed/aggregate/?sort=matched_value&limit=2&cursor={page_one.data['next_cursor']}"
         )
 
+        self.assertEqual(page_two.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(page_two.data['results']), 1)
+        self.assertFalse(page_two.data['has_more'])
+        self.assertNotIn(page_two.data['results'][0]['id'], page_one_ids)
+
+    def test_whale_feed_aggregate_rejects_invalid_limit_sort_and_cursor_sort_mismatch(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=9000,
+            side='BUY',
+            stream_id='fpt-invalid-1',
+        )
+        self.authenticate()
+
+        invalid_limit_resp = self.client.get('/api/realtime/whale-feed/aggregate/?limit=0')
+        self.assertEqual(invalid_limit_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        invalid_sort_resp = self.client.get('/api/realtime/whale-feed/aggregate/?sort=bad_sort')
+        self.assertEqual(invalid_sort_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        page_one = self.client.get('/api/realtime/whale-feed/aggregate/?sort=matched_value&limit=1')
+        self.assertEqual(page_one.status_code, status.HTTP_200_OK)
+
+        forced_cursor = page_one.data['next_cursor']
+        if forced_cursor is None and len(page_one.data.get('results', [])) == 1:
+            row = page_one.data['results'][0]
+            import base64
+            import json
+            forced_cursor = base64.urlsafe_b64encode(
+                json.dumps(
+                    {
+                        'sort': 'matched_value',
+                        'matched_value': float(row['matched_value']),
+                        'id': int(row['id']),
+                    },
+                    separators=(',', ':'),
+                ).encode('utf-8')
+            ).decode('ascii')
+
+        self.assertIsNotNone(forced_cursor)
+
+        cursor_mismatch_resp = self.client.get(
+            f"/api/realtime/whale-feed/aggregate/?sort=ts&limit=1&cursor={forced_cursor}"
+        )
+        self.assertEqual(cursor_mismatch_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        malformed_cursor_resp = self.client.get('/api/realtime/whale-feed/aggregate/?cursor=@@not_base64@@')
+        self.assertEqual(malformed_cursor_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        import base64
+        import json
+        bad_shape_cursor = base64.urlsafe_b64encode(
+            json.dumps({'sort': 'matched_value', 'id': 1}, separators=(',', ':')).encode('utf-8')
+        ).decode('ascii')
+        bad_shape_resp = self.client.get(
+            f'/api/realtime/whale-feed/aggregate/?sort=matched_value&cursor={bad_shape_cursor}'
+        )
+        self.assertEqual(bad_shape_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+        wrong_field_cursor = base64.urlsafe_b64encode(
+            json.dumps(
+                {'sort': 'ts', 'trade_date': str(date.today()), 'trade_time': '09:15:00', 'id': 1, 'matched_value': 100},
+                separators=(',', ':'),
+            ).encode('utf-8')
+        ).decode('ascii')
+        wrong_field_resp = self.client.get(
+            f'/api/realtime/whale-feed/aggregate/?sort=ts&cursor={wrong_field_cursor}'
+        )
+        self.assertEqual(wrong_field_resp.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_whale_feed_aggregate_supports_scope_param_and_meta_payload(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        WatchlistGroup.objects.create(user=self.user, name='WL empty')
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?scope=watchlist&watchlist_group_ids=999999&limit=10&sort=ts')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['filters']['scope'], 'watchlist')
+        self.assertIn('scope_source', response.data['filters'])
+        self.assertIn('meta', response.data)
+        self.assertEqual(response.data['meta']['contract_version'], '1.1')
+        self.assertEqual(response.data['meta']['pagination']['limit'], 10)
+        self.assertEqual(response.data['meta']['pagination']['sort'], 'ts')
+        self.assertEqual(response.data['meta']['scope']['value'], 'watchlist')
+
+    def test_whale_feed_aggregate_symbols_are_deduplicated(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=9000,
+            side='BUY',
+            stream_id='fpt-dedup-1',
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?symbols=fpt,FPT,fpt')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['filters']['scope'], 'custom')
+        self.assertEqual(response.data['filters']['symbols'], ['FPT'])
+
+    def test_whale_feed_aggregate_empty_symbols_returns_empty_payload(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?scope=symbols&symbols=,, ,')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['results'], [])
+        self.assertFalse(response.data['has_more'])
+        self.assertIsNone(response.data['next_cursor'])
+        self.assertEqual(response.data['filters']['scope'], 'custom')
+        self.assertEqual(response.data['filters']['symbols'], [])
+
+    def test_whale_feed_aggregate_cursor_is_stable_for_ts_sort(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:02', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=9000,
+            side='BUY',
+            stream_id='fpt-ts-1',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:01', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=8000,
+            side='SELL',
+            stream_id='fpt-ts-2',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='fpt-ts-3',
+        )
+        self.authenticate()
+
+        page_one = self.client.get('/api/realtime/whale-feed/aggregate/?sort=ts&limit=2')
+        self.assertEqual(page_one.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(page_one.data['results']), 2)
+        self.assertTrue(page_one.data['has_more'])
+        self.assertGreaterEqual(page_one.data['results'][0]['ts'], page_one.data['results'][1]['ts'])
+        page_one_ids = [item['id'] for item in page_one.data['results']]
+
+        page_two = self.client.get(
+            f"/api/realtime/whale-feed/aggregate/?sort=ts&limit=2&cursor={page_one.data['next_cursor']}"
+        )
         self.assertEqual(page_two.status_code, status.HTTP_200_OK)
         self.assertEqual(len(page_two.data['results']), 1)
         self.assertFalse(page_two.data['has_more'])

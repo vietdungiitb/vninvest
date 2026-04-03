@@ -123,8 +123,9 @@ def build_whale_payload(
     contract_version: str = "1.0",
     config_version: str = "threshold-v1",
     source: str = "intraday-engine",
+    score_config: dict | None = None,
 ) -> dict:
-    score_config = resolve_whale_score_config()
+    score_config = score_config or resolve_whale_score_config()
     normalized_side = _normalize_signal_side(signal.side)
     event_id = _build_whale_event_id(signal, normalized_side)
     score_result = calculate_event_score(

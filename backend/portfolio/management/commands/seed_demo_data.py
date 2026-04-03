@@ -1,12 +1,14 @@
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from portfolio.models import (
     AccountSnapshot,
     DailyPrice,
+    IntradayTick,
     Portfolio,
     ScreenerRule,
     SecuritiesGroup,
@@ -18,6 +20,7 @@ from portfolio.models import (
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
+    WhaleAdvisory,
 )
 
 
@@ -58,12 +61,18 @@ class Command(BaseCommand):
             WatchlistGroup.objects.filter(user=user).delete()
             ScreenerRule.objects.filter(user=user).delete()
             UserConfig.objects.filter(user=user).delete()
+            WhaleAdvisory.objects.filter(ai_provider='seed_demo_data').delete()
+            IntradayTick.objects.filter(stream_id__startswith='seed-demo-').delete()
 
         UserConfig.objects.update_or_create(
             user=user,
             defaults={
                 'whale_alert_threshold': Decimal('750'),
                 'theme': 'dark',
+                'plan': UserConfig.PlanChoices.PREMIUM,
+                'plan_expires_at': timezone.now() + timedelta(days=365),
+                'email_verified': True,
+                'email_verified_at': timezone.now(),
             },
         )
 
@@ -251,6 +260,179 @@ class Command(BaseCommand):
                 'is_active': False,
             },
         )
+
+        advisory_specs = [
+            {
+                'symbol': 'FPT',
+                'matched_value': 1_480_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'Dong tien lon quay lai FPT trong nhom cong nghe, ben mua chu dong dang chiem uu the o cac nhat gan day.',
+                'ai_detail': 'Frontend demo: FPT duoc dua vao advisory feed de testuser thay ro section Tom tat AI va Phan tich sau. Tin hieu nay phu hop voi tracked symbols va watchlist Theo doi sat, giup Whale Alerts Hub hien dong luc uu tien cao.',
+                'created_at': timezone.now() - timedelta(minutes=6),
+            },
+            {
+                'symbol': 'HPG',
+                'matched_value': 1_120_000_000,
+                'side': 'SELL',
+                'threshold': 750_000_000,
+                'ai_summary': 'Ap luc ban khoi luong lon xuat hien tren HPG sau nhung nhat hoi phuc ngan, can theo doi kha nang phan phoi.',
+                'ai_detail': 'Frontend demo: HPG tao mot advisory doi xung voi FPT de giao dien co ca BUY va SELL. Noi dung duoc viet du dai de kiem tra card layout, line wrap va khung Phan tich sau tren trang Whale Advisory.',
+                'created_at': timezone.now() - timedelta(minutes=13),
+            },
+            {
+                'symbol': 'VCB',
+                'matched_value': 2_060_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'Lenh mua lon tren VCB xuat hien gan vung gia tro, co the la dau hieu do dong tien to chuan bi mo rong sang nhom ngan hang.',
+                'ai_detail': 'Frontend demo: VCB duoc seed cho user testuser vi day la ma nam trong tracked list va watchlist gia tri. Advisory nay giup Whale Alerts Workspace hien du advisory trong hub cung luc voi aggregate feed.',
+                'created_at': timezone.now() - timedelta(minutes=21),
+            },
+            {
+                'symbol': 'MWG',
+                'matched_value': 910_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'MWG co dong tien bat day o cuoi phien, quy mo chua lon nhu FPT nhung du de dua vao radar uu tien.',
+                'ai_detail': 'Frontend demo: MWG bo sung cho watchlist nhom Theo doi sat va giup danh sach advisory khong bi qua don dieu. Card nay duoc dung de test danh sach 4 advisory tro len.',
+                'created_at': timezone.now() - timedelta(minutes=29),
+            },
+            {
+                'symbol': 'VNM',
+                'matched_value': 5_420_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'VNM xuat hien lenh mua quy mo shark, rat phu hop de demo severity cao va scope watchlist gia tri.',
+                'ai_detail': 'Frontend demo: VNM duoc seed de khi chuyen Whale Alerts Workspace sang watchlist Tich luy dai han, user nhin thay ngay khac biet so voi scope tracked. Gia tri khop cao hon 5 ty cung giup card hien size class shark tren aggregate feed.',
+                'created_at': timezone.now() - timedelta(minutes=37),
+            },
+            {
+                'symbol': 'FPT',
+                'matched_value': 820_000_000,
+                'side': 'SELL',
+                'threshold': 750_000_000,
+                'ai_summary': 'FPT co mot nhip xa hang ngan sau khi tang manh, advisory nay dung de test nhieu card cung mot ma voi side khac nhau.',
+                'ai_detail': 'Frontend demo: advisory nay bo sung tinh da dang cho feed. Khi user lam moi AI Advisory feed, ho se thay cung mot ma nhung ngu canh giao dich khac nhau, giup test line wrap va thu tu theo created_at.',
+                'created_at': timezone.now() - timedelta(minutes=48),
+            },
+            {
+                'symbol': 'MWG',
+                'matched_value': 1_680_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'MWG buoc vao pha bung no theo da khi dong tien lon quay lai lien tuc o nhung nhip retest ngan.',
+                'ai_detail': 'Momentum breakout demo: MWG duoc seed them mot lenh mua lon nua de mo phong kich ban co phieu bung no theo da, lien tuc co ben mua chu dong hap thu cung quanh vung breakout.',
+                'created_at': timezone.now() - timedelta(minutes=4),
+            },
+            {
+                'symbol': 'FPT',
+                'matched_value': 2_240_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'FPT tiep tuc duoc xoay vong dong tien, lenh mua lon xuat hien sau khi co phieu vuot nen tich luy ngan han.',
+                'ai_detail': 'Momentum breakout demo: seed them advisory mua cho FPT de trang Whale Alerts co nhieu card cung mot ma nhung o cac thoi diem khac nhau, phu hop voi boi canh bung no theo da.',
+                'created_at': timezone.now() - timedelta(minutes=9),
+            },
+            {
+                'symbol': 'HPG',
+                'matched_value': 1_360_000_000,
+                'side': 'BUY',
+                'threshold': 750_000_000,
+                'ai_summary': 'HPG co nhip xoay tru mua tro lai sau pha rung lac, gop phan tao nen boi canh momentum mo rong sang nhom chu ky.',
+                'ai_detail': 'Momentum breakout demo: advisory nay bo sung kich ban dong tien bung no khong chi tap trung vao mot ma, ma lan sang HPG khi thi truong bat dau giao dich manh hon.',
+                'created_at': timezone.now() - timedelta(minutes=16),
+            },
+            {
+                'symbol': 'MWG',
+                'matched_value': 1_140_000_000,
+                'side': 'SELL',
+                'threshold': 750_000_000,
+                'ai_summary': 'Xen giua pha tang toc cua MWG van co cac lenh ban lon chot lai, giup giao dien demo duoc ca hai mat cua dong tien momentum.',
+                'ai_detail': 'Momentum breakout demo: seed mot lenh ban lon tren MWG de giao dien hien ro su tranh chap trong phien bung no, khong chi co mua mot chieu.',
+                'created_at': timezone.now() - timedelta(minutes=24),
+            },
+            {
+                'symbol': 'VNM',
+                'matched_value': 1_260_000_000,
+                'side': 'SELL',
+                'threshold': 750_000_000,
+                'ai_summary': 'VNM xuat hien lenh ban lon sau khi da co lenh mua shark truoc do, mo phong kich ban rung lac khi co phieu thu hut su chu y cao.',
+                'ai_detail': 'Momentum breakout demo: cap card sell cho VNM giup test advisory feed trong boi canh mot ma co dong tien rat manh nhung van co luc chot loi.',
+                'created_at': timezone.now() - timedelta(minutes=33),
+            },
+            {
+                'symbol': 'VCB',
+                'matched_value': 1_340_000_000,
+                'side': 'SELL',
+                'threshold': 750_000_000,
+                'ai_summary': 'VCB co lenh ban lon chen vao sau chuoi mua manh, mo phong pha rung lac ky thuat khi dong tien nong lan rong ra bluechip.',
+                'ai_detail': 'Momentum breakout demo: them advisory ban tren VCB de feed AI co them mot tinh huong chot loi o nhom ngan hang trong luc thi truong van dang giao dich so dong.',
+                'created_at': timezone.now() - timedelta(minutes=19),
+            },
+        ]
+        for spec in advisory_specs:
+            advisory, _ = WhaleAdvisory.objects.update_or_create(
+                ai_provider='seed_demo_data',
+                symbol=spec['symbol'],
+                side=spec['side'],
+                matched_value=spec['matched_value'],
+                defaults={
+                    'threshold': spec['threshold'],
+                    'ai_summary': spec['ai_summary'],
+                    'ai_detail': spec['ai_detail'],
+                    'prompt_tokens': 320,
+                    'completion_tokens': 140,
+                },
+            )
+            WhaleAdvisory.objects.filter(pk=advisory.pk).update(created_at=spec['created_at'])
+
+        tick_specs = [
+            ('FPT', 'BUY', Decimal('118500'), 12500, time(10, 12, 5)),
+            ('HPG', 'SELL', Decimal('28950'), 42000, time(10, 18, 10)),
+            ('VCB', 'BUY', Decimal('89200'), 24000, time(10, 25, 40)),
+            ('MWG', 'BUY', Decimal('61800'), 16000, time(10, 31, 15)),
+            ('FPT', 'BUY', Decimal('119200'), 8200, time(10, 42, 8)),
+            ('HPG', 'SELL', Decimal('29100'), 30000, time(10, 47, 50)),
+            ('VNM', 'BUY', Decimal('71200'), 78000, time(11, 2, 5)),
+            ('VCB', 'SELL', Decimal('88800'), 10500, time(11, 9, 42)),
+            ('VNM', 'BUY', Decimal('71500'), 16000, time(11, 15, 18)),
+            ('MWG', 'SELL', Decimal('60500'), 21000, time(11, 22, 33)),
+            ('MWG', 'BUY', Decimal('62400'), 27000, time(11, 28, 5)),
+            ('FPT', 'BUY', Decimal('120800'), 19000, time(11, 35, 48)),
+            ('MWG', 'BUY', Decimal('63100'), 35000, time(11, 44, 12)),
+            ('HPG', 'BUY', Decimal('29400'), 46000, time(11, 51, 37)),
+            ('FPT', 'SELL', Decimal('121300'), 14500, time(13, 2, 14)),
+            ('MWG', 'SELL', Decimal('62800'), 18000, time(13, 7, 56)),
+            ('VNM', 'SELL', Decimal('70900'), 18500, time(13, 15, 22)),
+            ('MWG', 'BUY', Decimal('63900'), 41000, time(13, 26, 18)),
+            ('FPT', 'BUY', Decimal('122100'), 24000, time(13, 33, 44)),
+            ('VCB', 'BUY', Decimal('89600'), 21000, time(13, 41, 9)),
+            ('MWG', 'BUY', Decimal('64500'), 52000, time(13, 49, 31)),
+            ('HPG', 'SELL', Decimal('29250'), 37000, time(13, 57, 6)),
+            ('MWG', 'SELL', Decimal('63800'), 22000, time(14, 6, 43)),
+            ('FPT', 'BUY', Decimal('123400'), 28000, time(14, 14, 20)),
+            ('MWG', 'BUY', Decimal('64800'), 61000, time(14, 21, 55)),
+            ('MWG', 'SELL', Decimal('64200'), 26000, time(14, 28, 11)),
+            ('FPT', 'SELL', Decimal('122800'), 17500, time(14, 34, 47)),
+            ('MWG', 'BUY', Decimal('65100'), 47000, time(14, 39, 32)),
+        ]
+        today = timezone.localdate()
+        for index, (symbol, side, price, volume, trade_time) in enumerate(tick_specs, start=1):
+            tick, _ = IntradayTick.objects.update_or_create(
+                stream_id=f'seed-demo-{username}-{symbol.lower()}-{index}',
+                defaults={
+                    'symbol': symbol,
+                    'trade_date': today,
+                    'trade_time': trade_time,
+                    'price': price,
+                    'volume': volume,
+                    'side': side,
+                    'match_type': 'ATO' if index % 2 else 'LO',
+                },
+            )
+            tick_created_at = timezone.make_aware(datetime.combine(today, trade_time))
+            IntradayTick.objects.filter(pk=tick.pk).update(created_at=tick_created_at)
 
         self.stdout.write(self.style.SUCCESS(
             f'Seeded comprehensive demo data for {username} / {password}'

@@ -41,10 +41,12 @@ class TickConsumerBase:
     group_name: str = ""
     consumer_name: str = "worker-1"
 
-    def __init__(self) -> None:
+    def __init__(self, consumer_name: str | None = None) -> None:
         self._client: redis.Redis | None = None
         self._batch_size: int = getattr(settings, "STREAM_CONSUMER_BATCH", 100)
         self._block_ms: int = getattr(settings, "STREAM_BLOCK_MS", 2000)
+        if consumer_name:
+            self.consumer_name = consumer_name
 
     @property
     def client(self) -> redis.Redis:
@@ -219,9 +221,7 @@ class AlertEngineConsumer(TickConsumerBase):
         import pandas as pd
         from portfolio.realtime.compute import detect_whale_signals, build_whale_payload
         from portfolio.realtime.publisher import RealtimePublisher
-        from django.conf import settings
-
-        default_threshold = float(getattr(settings, "REALTIME_DEFAULT_WHALE_THRESHOLD", 500_000_000))
+        from portfolio.services import resolve_whale_runtime_config
 
         rows = []
         for stream_id, fields in messages:
@@ -240,9 +240,21 @@ class AlertEngineConsumer(TickConsumerBase):
 
         df = pd.DataFrame(rows)
         publisher = RealtimePublisher()
+        runtime_config = resolve_whale_runtime_config(
+            symbol=symbol,
+            worker_name=self.consumer_name,
+            source='stream_consumer',
+        )
+        thresholds = runtime_config['thresholds_vnd'] or [float(getattr(settings, "REALTIME_DEFAULT_WHALE_THRESHOLD", 500_000_000))]
 
-        for signal in detect_whale_signals(symbol=symbol, trades_df=df, thresholds=[default_threshold]):
+        for signal in detect_whale_signals(symbol=symbol, trades_df=df, thresholds=thresholds):
             seq = int(time.time() * 1000) % 2**31
-            payload = build_whale_payload(signal=signal, seq=seq)
+            payload = build_whale_payload(
+                signal=signal,
+                seq=seq,
+                config_version=runtime_config['version_code'],
+                source=f"intraday-engine:{runtime_config['mode']}",
+                score_config=runtime_config['score_config'],
+            )
             channel = f"whale:{symbol.upper()}"
             publisher.publish(channel, payload)

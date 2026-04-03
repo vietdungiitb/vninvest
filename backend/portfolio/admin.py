@@ -34,10 +34,26 @@ from .models import (
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
+    WhaleAdvisory,
+    WhaleConfigApproval,
+    WhaleConfigAuditLog,
+    WhaleConfigDraft,
+    WhaleConfigRollout,
+    WhaleConfigVersion,
+    WhaleConfigWorkerAck,
 )
 from .mail_service import get_active_email_account, send_test_email
 from .email_verification import send_verification_email
-from .services import sync_market_groups_for_user, sync_market_groups_for_users, sync_stock_profiles
+from .services import (
+    build_whale_rollout_anomaly_snapshot,
+    build_whale_config_runtime_preview,
+    build_rollout_propagation_snapshot,
+    get_latest_rollout_for_version,
+    initialize_whale_config_rollout,
+    sync_market_groups_for_user,
+    sync_market_groups_for_users,
+    sync_stock_profiles,
+)
 
 
 admin.site.site_header = 'VNInvest - Trang quản trị hệ thống'
@@ -723,6 +739,13 @@ def _vninvest_get_app_list(request, app_label=None):
         'DailyPrice': 'Dữ liệu giá hàng ngày',
         'UserConfig': 'Cấu hình người dùng',
         'SystemEmailAccount': 'Tài khoản gửi mail',
+        'WhaleAdvisory': 'Whale Alerts AI',
+        'WhaleConfigDraft': 'Whale Config Drafts',
+        'WhaleConfigApproval': 'Whale Config Approvals',
+        'WhaleConfigVersion': 'Whale Config Versions',
+        'WhaleConfigRollout': 'Whale Config Rollouts',
+        'WhaleConfigWorkerAck': 'Whale Worker ACKs',
+        'WhaleConfigAuditLog': 'Whale Audit Logs',
         'User': 'Người dùng',
         'Group': 'Nhóm quyền',
     }
@@ -787,6 +810,19 @@ def _vninvest_get_app_list(request, app_label=None):
             [
                 'UserConfig',
                 'SystemEmailAccount',
+            ],
+        ),
+        (
+            'whale_alerts_mission_control',
+            '05. Whale Alerts và Mission Control',
+            [
+                'WhaleAdvisory',
+                'WhaleConfigDraft',
+                'WhaleConfigApproval',
+                'WhaleConfigVersion',
+                'WhaleConfigRollout',
+                'WhaleConfigWorkerAck',
+                'WhaleConfigAuditLog',
             ],
         ),
     ]
@@ -1307,6 +1343,536 @@ class MarketGroupSyncLogAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
+        return False
+
+
+def _is_supervisor(user):
+    return bool(user and user.is_staff)
+
+
+def _is_analyst(user):
+    return bool(user and user.is_authenticated)
+
+
+def _log_whale_config_audit(
+    *,
+    actor,
+    action,
+    draft=None,
+    version=None,
+    rollout=None,
+    reason='',
+    before_json=None,
+    after_json=None,
+    ticket_ref='',
+):
+    WhaleConfigAuditLog.objects.create(
+        actor=actor if getattr(actor, 'is_authenticated', False) else None,
+        action=action,
+        draft=draft,
+        version=version,
+        rollout=rollout,
+        reason=reason or '',
+        before_json=before_json or {},
+        after_json=after_json or {},
+        ticket_ref=ticket_ref or '',
+    )
+
+
+def _push_whale_config_preview_messages(model_admin, request, preview):
+    diff_lines = preview.get('diff_lines') or []
+    if diff_lines:
+        preview_text = ' | '.join(diff_lines[:4])
+        if len(diff_lines) > 4:
+            preview_text = f'{preview_text} | ...'
+        model_admin.message_user(request, f'Diff preview: {preview_text}', level=messages.INFO)
+    else:
+        model_admin.message_user(
+            request,
+            'Diff preview: khong co thay doi tren cac truong quan trong.',
+            level=messages.INFO,
+        )
+
+    dependency_summary = preview.get('dependency_summary') or {}
+    if dependency_summary:
+        status_label = 'healthy' if not dependency_summary.get('blocking_issues') else 'degraded'
+        model_admin.message_user(
+            request,
+            f'Dependency check ({status_label}): {dependency_summary.get("summary", "n/a")}',
+            level=messages.INFO,
+        )
+
+    for warning in preview.get('warnings') or []:
+        model_admin.message_user(request, warning, level=messages.WARNING)
+
+    for issue in preview.get('blocking_issues') or []:
+        model_admin.message_user(request, issue, level=messages.ERROR)
+
+
+def _render_signal_badge(signal: str, summary: str):
+    palette = {
+        'green': ('#166534', '#dcfce7', 'GREEN'),
+        'amber': ('#92400e', '#fef3c7', 'AMBER'),
+        'red': ('#991b1b', '#fee2e2', 'RED'),
+    }
+    fg, bg, label = palette.get(signal, palette['red'])
+    return format_html(
+        '<span style="display:inline-block;padding:2px 8px;border-radius:999px;font-weight:600;color:{};background:{};">{}: {}</span>',
+        fg,
+        bg,
+        label,
+        summary,
+    )
+
+
+@admin.register(WhaleConfigDraft)
+class WhaleConfigDraftAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name', 'status', 'created_by', 'submitted_at', 'linked_version', 'updated_at')
+    list_filter = ('status', 'created_by')
+    search_fields = ('name', 'created_by__username')
+    readonly_fields = ('submitted_at', 'created_at', 'updated_at')
+    actions = ('submit_selected_drafts',)
+
+    fieldsets = (
+        ('Draft', {'fields': ('name', 'config_json', 'status', 'reason')}),
+        ('Workflow', {'fields': ('created_by', 'submitted_at', 'linked_version')}),
+        ('System', {'fields': ('created_at', 'updated_at')}),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        readonly = list(self.readonly_fields)
+        if not _is_supervisor(request.user):
+            readonly.append('status')
+            readonly.append('linked_version')
+        if obj and obj.status != WhaleConfigDraft.StatusChoices.DRAFT:
+            readonly.extend(['name', 'config_json'])
+        return tuple(dict.fromkeys(readonly))
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_analyst(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        if not _is_analyst(request.user):
+            return False
+        if _is_supervisor(request.user):
+            return True
+        if obj is None:
+            return True
+        return obj.created_by_id == request.user.id and obj.status == WhaleConfigDraft.StatusChoices.DRAFT
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def save_model(self, request, obj, form, change):
+        before_json = {}
+        if change:
+            original = WhaleConfigDraft.objects.get(pk=obj.pk)
+            before_json = {
+                'name': original.name,
+                'status': original.status,
+                'reason': original.reason,
+                'config_json': original.config_json,
+            }
+
+        if not obj.created_by_id:
+            obj.created_by = request.user
+
+        super().save_model(request, obj, form, change)
+
+        _log_whale_config_audit(
+            actor=request.user,
+            action='update_draft' if change else 'create_draft',
+            draft=obj,
+            reason=obj.reason,
+            before_json=before_json,
+            after_json={
+                'name': obj.name,
+                'status': obj.status,
+                'reason': obj.reason,
+                'config_json': obj.config_json,
+            },
+        )
+
+    @admin.action(description='Submit selected drafts')
+    def submit_selected_drafts(self, request, queryset):
+        updated = 0
+        for draft in queryset:
+            if not _is_supervisor(request.user) and draft.created_by_id != request.user.id:
+                continue
+            if draft.status != WhaleConfigDraft.StatusChoices.DRAFT:
+                continue
+
+            preview = build_whale_config_runtime_preview(
+                draft.config_json,
+                rollout_mode='draft',
+                current_config=draft.linked_version.config_json if draft.linked_version_id else None,
+            )
+            _push_whale_config_preview_messages(self, request, preview)
+            if preview.get('blocking_issues'):
+                continue
+
+            before = {'status': draft.status}
+            draft.status = WhaleConfigDraft.StatusChoices.SUBMITTED
+            draft.submitted_at = timezone.now()
+            draft.save(update_fields=['status', 'submitted_at', 'updated_at'])
+            updated += 1
+
+            _log_whale_config_audit(
+                actor=request.user,
+                action='submit_draft',
+                draft=draft,
+                reason=draft.reason,
+                before_json=before,
+                after_json={
+                    'status': draft.status,
+                    'submitted_at': draft.submitted_at.isoformat() if draft.submitted_at else None,
+                    'diff_preview': preview.get('diff_items') or [],
+                },
+            )
+
+        if updated:
+            self.message_user(request, f'Da submit {updated} draft.', level=messages.SUCCESS)
+        else:
+            self.message_user(request, 'Khong co draft hop le de submit.', level=messages.WARNING)
+
+
+@admin.register(WhaleAdvisory)
+class WhaleAdvisoryAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'symbol', 'side', 'matched_value', 'threshold', 'ai_provider',
+        'prompt_tokens', 'completion_tokens', 'created_at',
+    )
+    list_filter = ('side', 'ai_provider', 'created_at')
+    search_fields = ('symbol', 'ai_summary', 'ai_detail')
+    ordering = ('-created_at',)
+    readonly_fields = (
+        'symbol', 'matched_value', 'side', 'threshold', 'ai_summary', 'ai_detail',
+        'ai_provider', 'prompt_tokens', 'completion_tokens', 'created_at',
+    )
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+
+@admin.register(WhaleConfigApproval)
+class WhaleConfigApprovalAdmin(admin.ModelAdmin):
+    list_display = ('id', 'draft', 'reviewer', 'decision', 'created_at')
+    list_filter = ('decision', 'reviewer')
+    search_fields = ('draft__name', 'reviewer__username', 'comment')
+    readonly_fields = ('created_at',)
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def save_model(self, request, obj, form, change):
+        if not _is_supervisor(request.user):
+            self.message_user(request, 'Ban khong co quyen phe duyet.', level=messages.ERROR)
+            return
+
+        if obj.draft and obj.draft.created_by_id == request.user.id:
+            self.message_user(request, 'Maker-checker violation: creator khong duoc tu approve.', level=messages.ERROR)
+            return
+
+        super().save_model(request, obj, form, change)
+
+        if obj.decision == WhaleConfigApproval.DecisionChoices.APPROVED:
+            obj.draft.status = WhaleConfigDraft.StatusChoices.APPROVED
+            obj.draft.save(update_fields=['status', 'updated_at'])
+            action = 'approve'
+        else:
+            obj.draft.status = WhaleConfigDraft.StatusChoices.REJECTED
+            obj.draft.save(update_fields=['status', 'updated_at'])
+            action = 'reject'
+
+        _log_whale_config_audit(
+            actor=request.user,
+            action=action,
+            draft=obj.draft,
+            reason=obj.comment,
+            before_json={'status': WhaleConfigDraft.StatusChoices.SUBMITTED},
+            after_json={'status': obj.draft.status, 'decision': obj.decision},
+        )
+
+
+@admin.register(WhaleConfigVersion)
+class WhaleConfigVersionAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'version_code', 'status', 'created_by', 'approved_by', 'approved_at', 'activated_at',
+        'latest_rollout_signal', 'latest_anomaly_signal',
+    )
+    list_filter = ('status', 'created_by', 'approved_by')
+    search_fields = ('version_code', 'notes')
+    readonly_fields = (
+        'approved_by', 'approved_at', 'activated_at', 'latest_rollout_signal', 'latest_anomaly_signal',
+        'created_at', 'updated_at',
+    )
+    actions = ('mark_as_active_version', 'mark_as_rolled_back')
+
+    def latest_rollout_signal(self, obj):
+        rollout = get_latest_rollout_for_version(obj)
+        if not rollout:
+            return 'No rollout'
+        snapshot = build_rollout_propagation_snapshot(rollout)
+        return _render_signal_badge(snapshot['signal'], snapshot['summary'])
+
+    latest_rollout_signal.short_description = 'Propagation'
+
+    def latest_anomaly_signal(self, obj):
+        rollout = get_latest_rollout_for_version(obj)
+        if not rollout:
+            return 'No anomaly scan'
+        snapshot = build_whale_rollout_anomaly_snapshot(rollout)
+        signal = 'green' if snapshot['healthy'] else 'red'
+        return _render_signal_badge(signal, snapshot['summary'])
+
+    latest_anomaly_signal.short_description = 'Anomaly'
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    @admin.action(description='Approve & mark selected version as active')
+    def mark_as_active_version(self, request, queryset):
+        if not _is_supervisor(request.user):
+            self.message_user(request, 'Ban khong co quyen apply config.', level=messages.ERROR)
+            return
+
+        target = queryset.order_by('-id').first()
+        if not target:
+            self.message_user(request, 'Khong co version nao duoc chon.', level=messages.WARNING)
+            return
+
+        preview = build_whale_config_runtime_preview(target.config_json, rollout_mode='now')
+        _push_whale_config_preview_messages(self, request, preview)
+        if preview.get('blocking_issues'):
+            self.message_user(request, 'Apply bi chan boi integrity checks.', level=messages.ERROR)
+            return
+
+        before_status = target.status
+        target.status = WhaleConfigVersion.StatusChoices.ACTIVE
+        target.approved_by = request.user
+        now = timezone.now()
+        target.approved_at = now
+        target.activated_at = now
+        target.save(update_fields=['status', 'approved_by', 'approved_at', 'activated_at', 'updated_at'])
+
+        WhaleConfigVersion.objects.exclude(pk=target.pk).filter(
+            status=WhaleConfigVersion.StatusChoices.ACTIVE
+        ).update(status=WhaleConfigVersion.StatusChoices.ARCHIVED, updated_at=now)
+
+        rollout, propagation = initialize_whale_config_rollout(
+            target,
+            initiated_by=request.user,
+            mode=WhaleConfigRollout.ModeChoices.NOW,
+            note='created_from_admin_apply',
+        )
+
+        _log_whale_config_audit(
+            actor=request.user,
+            action='apply',
+            version=target,
+            rollout=rollout,
+            reason='approve_and_apply_from_admin',
+            before_json={'status': before_status},
+            after_json={
+                'status': target.status,
+                'diff_preview': preview.get('diff_items') or [],
+                'dependency_check': (preview.get('dependency_summary') or {}).get('checks', {}),
+                'propagation': propagation,
+            },
+        )
+
+        self.message_user(request, f'Version {target.version_code} da duoc kich hoat.', level=messages.SUCCESS)
+        self.message_user(request, f'Propagation: {propagation["summary"]}', level=messages.INFO)
+
+    @admin.action(description='Mark selected versions as rolled back')
+    def mark_as_rolled_back(self, request, queryset):
+        if not _is_supervisor(request.user):
+            self.message_user(request, 'Ban khong co quyen rollback.', level=messages.ERROR)
+            return
+
+        count = 0
+        for version in queryset:
+            before_status = version.status
+            version.status = WhaleConfigVersion.StatusChoices.ROLLED_BACK
+            version.save(update_fields=['status', 'updated_at'])
+            count += 1
+
+            _log_whale_config_audit(
+                actor=request.user,
+                action='rollback',
+                version=version,
+                reason='rollback_from_admin',
+                before_json={'status': before_status},
+                after_json={'status': version.status},
+            )
+
+        if count:
+            self.message_user(request, f'Da rollback {count} version.', level=messages.SUCCESS)
+        else:
+            self.message_user(request, 'Khong co version nao de rollback.', level=messages.WARNING)
+
+
+@admin.register(WhaleConfigRollout)
+class WhaleConfigRolloutAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'version', 'mode', 'status', 'propagation_signal', 'anomaly_signal', 'ack_progress', 'initiated_by',
+        'effective_from', 'started_at', 'finished_at',
+    )
+    list_filter = ('mode', 'status', 'initiated_by')
+    search_fields = ('version__version_code', 'note')
+    readonly_fields = ('propagation_signal', 'anomaly_signal', 'ack_progress', 'started_at', 'finished_at', 'created_at')
+
+    def propagation_signal(self, obj):
+        snapshot = build_rollout_propagation_snapshot(obj)
+        return _render_signal_badge(snapshot['signal'], snapshot['summary'])
+
+    propagation_signal.short_description = 'Signal'
+
+    def anomaly_signal(self, obj):
+        snapshot = build_whale_rollout_anomaly_snapshot(obj)
+        signal = 'green' if snapshot['healthy'] else 'red'
+        return _render_signal_badge(signal, snapshot['summary'])
+
+    anomaly_signal.short_description = 'Anomaly'
+
+    def ack_progress(self, obj):
+        snapshot = build_rollout_propagation_snapshot(obj)
+        return f"{snapshot['acked_count']}/{snapshot['expected_count']}"
+
+    ack_progress.short_description = 'ACK progress'
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def save_model(self, request, obj, form, change):
+        preview = build_whale_config_runtime_preview(
+            obj.version.config_json if obj.version_id else {},
+            rollout_mode=obj.mode,
+            canary_scope_json=obj.canary_scope_json,
+            effective_from=obj.effective_from,
+        )
+        _push_whale_config_preview_messages(self, request, preview)
+        if preview.get('blocking_issues'):
+            self.message_user(request, 'Rollout bi chan boi integrity checks.', level=messages.ERROR)
+            return
+
+        if not obj.initiated_by_id:
+            obj.initiated_by = request.user
+        if change:
+            super().save_model(request, obj, form, change)
+        else:
+            rollout, propagation = initialize_whale_config_rollout(
+                obj.version,
+                initiated_by=obj.initiated_by,
+                mode=obj.mode,
+                effective_from=obj.effective_from,
+                canary_scope_json=obj.canary_scope_json,
+                note=obj.note,
+            )
+            obj.pk = rollout.pk
+            obj.status = rollout.status
+            obj.started_at = rollout.started_at
+            obj.finished_at = rollout.finished_at
+            obj.created_at = rollout.created_at
+            self.message_user(request, f'Propagation: {propagation["summary"]}', level=messages.INFO)
+
+
+@admin.register(WhaleConfigWorkerAck)
+class WhaleConfigWorkerAckAdmin(admin.ModelAdmin):
+    list_display = ('id', 'rollout', 'worker_name', 'worker_version', 'ack_state', 'acked_at', 'created_at')
+    list_filter = ('acked', 'rollout')
+    search_fields = ('worker_name', 'worker_version', 'details')
+    readonly_fields = ('created_at',)
+
+    def ack_state(self, obj):
+        if obj.acked and obj.worker_version == obj.rollout.version.version_code:
+            return _render_signal_badge('green', 'acked')
+        if obj.acked:
+            return _render_signal_badge('amber', f'version={obj.worker_version or "unknown"}')
+        return _render_signal_badge('red', 'awaiting_ack')
+
+    ack_state.short_description = 'State'
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return _is_supervisor(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return _is_supervisor(request.user)
+
+
+@admin.register(WhaleConfigAuditLog)
+class WhaleConfigAuditLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at', 'actor', 'action', 'draft', 'version', 'rollout', 'ticket_ref')
+    list_filter = ('action', 'actor')
+    search_fields = ('reason', 'ticket_ref', 'actor__username', 'draft__name', 'version__version_code')
+    readonly_fields = (
+        'actor',
+        'action',
+        'draft',
+        'version',
+        'rollout',
+        'reason',
+        'before_json',
+        'after_json',
+        'ticket_ref',
+        'created_at',
+    )
+
+    def has_view_permission(self, request, obj=None):
+        return _is_analyst(request.user)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
 

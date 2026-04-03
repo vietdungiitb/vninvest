@@ -16,6 +16,7 @@ Coverage:
   12. Staff user → last_market_group_sync khi có log
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
@@ -29,6 +30,11 @@ from portfolio.models import (
     WatchlistItem,
     MarketGroupSyncLog,
     StockProfileSyncLog,
+    UserConfig,
+    WhaleAdvisory,
+    WhaleConfigRollout,
+    WhaleConfigVersion,
+    WhaleConfigWorkerAck,
 )
 
 URL = '/api/admin-ops/stats/'
@@ -46,6 +52,11 @@ class AdminOpsStatsPermissionTests(APITestCase):
         )
 
     def _login(self, username):
+        user = User.objects.get(username=username)
+        cfg, _ = UserConfig.objects.get_or_create(user=user)
+        if not cfg.email_verified:
+            cfg.email_verified = True
+            cfg.save(update_fields=['email_verified', 'updated_at'])
         resp = self.client.post(
             '/api/auth/token/',
             {'username': username, 'password': 'Test@123456'},
@@ -96,6 +107,10 @@ class AdminOpsStatsDataTests(APITestCase):
         WatchlistItem.objects.create(group=group, symbol='MWG')
 
         # Đăng nhập
+        cfg, _ = UserConfig.objects.get_or_create(user=self.staff)
+        if not cfg.email_verified:
+            cfg.email_verified = True
+            cfg.save(update_fields=['email_verified', 'updated_at'])
         resp = self.client.post(
             '/api/auth/token/',
             {'username': 'admin_ops_staff', 'password': 'Test@123456'},
@@ -117,6 +132,7 @@ class AdminOpsStatsDataTests(APITestCase):
             'user_count', 'portfolio_count', 'tracked_symbol_count',
             'watchlist_item_count', 'last_market_group_sync', 'last_stock_profile_sync',
             'channel_layer_type', 'realtime_enabled', 'redis_ok',
+            'whale_config_propagation', 'whale_config_anomaly', 'whale_config_dashboard',
         ]
         for key in required_keys:
             self.assertIn(key, data, f"Missing key: {key}")
@@ -173,3 +189,101 @@ class AdminOpsStatsDataTests(APITestCase):
         self.assertIn('started_at', log_data)
         self.assertIn('success', log_data)
         self.assertTrue(log_data['success'])
+
+    @patch('portfolio.services.get_live_celery_worker_summary')
+    def test_whale_dashboard_includes_rollout_postcheck_summary(self, mock_worker_summary):
+        mock_worker_summary.return_value = {
+            'ok': True,
+            'source': 'test',
+            'detail': 'workers=1',
+            'live_count': 1,
+            'reporting_stats_count': 1,
+            'ack_expected_count': 1,
+            'acknowledged_count': 1,
+            'pending_ack_count': 0,
+            'stale_ack_count': 0,
+            'pool_process_count': 1,
+            'total_cpu_seconds': 3.5,
+            'total_maxrss_mb': 128.0,
+            'avg_maxrss_mb': 128.0,
+            'workers': [
+                {
+                    'worker_name': 'mission-control@win',
+                    'live': True,
+                    'ack_state': 'acked',
+                    'acked': True,
+                    'acked_at': None,
+                    'worker_version': 'v2026.04.03-active',
+                    'stats_available': True,
+                    'cpu_user_seconds': 2.5,
+                    'cpu_system_seconds': 1.0,
+                    'maxrss_mb': 128.0,
+                    'pool_processes': ['4321'],
+                    'pool_process_count': 1,
+                    'max_concurrency': 1,
+                    'details': 'loaded_ok',
+                }
+            ],
+        }
+
+        active_version = WhaleConfigVersion.objects.create(
+            version_code='v2026.04.03-active',
+            config_json={'whale_threshold': 700},
+            created_by=self.staff,
+            status=WhaleConfigVersion.StatusChoices.ACTIVE,
+        )
+        active_rollout = WhaleConfigRollout.objects.create(
+            version=active_version,
+            mode=WhaleConfigRollout.ModeChoices.NOW,
+            status=WhaleConfigRollout.StatusChoices.RUNNING,
+            initiated_by=self.staff,
+        )
+        WhaleConfigWorkerAck.objects.create(
+            rollout=active_rollout,
+            worker_name='mission-control@win',
+            worker_version=active_version.version_code,
+            acked=True,
+        )
+
+        pending_version = WhaleConfigVersion.objects.create(
+            version_code='v2026.04.03-pending',
+            config_json={'whale_threshold': 900},
+            created_by=self.staff,
+            status=WhaleConfigVersion.StatusChoices.APPROVED,
+        )
+        pending_rollout = WhaleConfigRollout.objects.create(
+            version=pending_version,
+            mode=WhaleConfigRollout.ModeChoices.SCHEDULED,
+            status=WhaleConfigRollout.StatusChoices.PENDING,
+            initiated_by=self.staff,
+        )
+
+        advisory_5m = WhaleAdvisory.objects.create(
+            symbol='FPT',
+            matched_value=1_200_000_000,
+            side='BUY',
+            threshold=700_000_000,
+            ai_summary='recent advisory',
+            ai_detail='recent advisory detail',
+        )
+        WhaleAdvisory.objects.filter(pk=advisory_5m.pk).update(created_at=advisory_5m.created_at - timedelta(minutes=3))
+        advisory_10m = WhaleAdvisory.objects.create(
+            symbol='HPG',
+            matched_value=900_000_000,
+            side='SELL',
+            threshold=700_000_000,
+            ai_summary='older advisory',
+            ai_detail='older advisory detail',
+        )
+        WhaleAdvisory.objects.filter(pk=advisory_10m.pk).update(created_at=advisory_10m.created_at - timedelta(minutes=8))
+
+        data = self._get_stats()
+
+        dashboard = data['whale_config_dashboard']
+        self.assertEqual(dashboard['active_version']['version_code'], active_version.version_code)
+        self.assertEqual(dashboard['active_rollout']['rollout_id'], active_rollout.id)
+        self.assertEqual(dashboard['pending_rollout']['rollout_id'], pending_rollout.id)
+        self.assertEqual(dashboard['alerts']['last_5m_count'], 1)
+        self.assertEqual(dashboard['alerts']['last_10m_count'], 2)
+        self.assertEqual(dashboard['worker_summary']['live_count'], 1)
+        self.assertEqual(dashboard['propagation']['signal'], 'green')
