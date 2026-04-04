@@ -405,7 +405,14 @@ def trim_streams(self) -> dict:
 # AI Advisory: Gọi OpenClaw → lưu WhaleAdvisory → push WebSocket
 # ---------------------------------------------------------------------------
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
-def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, side: str, threshold: float = 0) -> dict:
+def generate_whale_advisory_task(
+    self,
+    symbol: str,
+    matched_value_vnd: float,
+    side: str,
+    threshold: float = 0,
+    force_refresh: bool = False,
+) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
     2. Gọi provider AI được cấu hình trong UserConfig: summary (Pro) + detail (Premium).
@@ -422,7 +429,11 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
     cache_key = f'whale_advisory_lock:{symbol}'
 
-    if cache.get(cache_key):
+    if not force_refresh and WhaleAdvisory.objects.filter(symbol=symbol).exists():
+        logger.info('Whale advisory already exists — skipping auto generation for %s', symbol)
+        return {'status': 'skipped', 'symbol': symbol, 'reason': 'existing_advisory'}
+
+    if not force_refresh and cache.get(cache_key):
         logger.info('Whale advisory cooldown active — skipping %s', symbol)
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
 
@@ -475,8 +486,9 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         completion_tokens=summary_resp['completion_tokens'] + deep_resp['completion_tokens'],
     )
 
-    # Set cooldown lock
-    cache.set(cache_key, True, timeout=cooldown)
+    # Set cooldown lock cho luồng auto; refresh thủ công có cooldown riêng ở API endpoint.
+    if not force_refresh:
+        cache.set(cache_key, True, timeout=cooldown)
 
     # Push WebSocket event tới group whale_{symbol}
     try:
@@ -510,6 +522,7 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         'symbol': symbol,
         'ai_provider': provider,
         'ai_model': model,
+        'force_refresh': bool(force_refresh),
     }
 
 

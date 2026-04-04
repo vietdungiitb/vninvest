@@ -257,6 +257,7 @@ def _vnstock_call(fn, timeout=8):
 
 
 from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
+from django.conf import settings
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
@@ -3288,6 +3289,70 @@ class WhaleAdvisoryListView(generics.ListAPIView):
             for item in data:
                 item['ai_detail'] = ''
         return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsProPlan])
+def refresh_whale_advisory_api(request, symbol: str):
+    """
+    POST /api/portfolio/whale-advisory/<symbol>/refresh/
+    Làm mới advisory thủ công để tiết kiệm token: chỉ gọi khi user chủ động bấm Refresh.
+    """
+    from portfolio.tasks import generate_whale_advisory_task
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'queued': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
+    refresh_lock_key = f'whale_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
+
+    # Chặn spam refresh liên tiếp để tiết kiệm token cho user.
+    last_refresh_ts = _cache_get(refresh_lock_key)
+    if last_refresh_ts:
+        retry_after = refresh_cooldown
+        return Response(
+            {
+                'queued': False,
+                'symbol': normalized_symbol,
+                'message': 'Bạn vừa refresh gần đây, vui lòng thử lại sau.',
+                'retry_after_seconds': retry_after,
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    if latest is None:
+        return Response(
+            {
+                'queued': False,
+                'symbol': normalized_symbol,
+                'message': 'Chưa có advisory để refresh. Hệ thống sẽ tạo tự động khi có tín hiệu whale mới.',
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    task = generate_whale_advisory_task.apply_async(
+        kwargs={
+            'symbol': normalized_symbol,
+            'matched_value_vnd': float(latest.matched_value),
+            'side': latest.side,
+            'threshold': float(latest.threshold or 0),
+            'force_refresh': True,
+        },
+        countdown=0,
+    )
+    _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+
+    return Response(
+        {
+            'queued': True,
+            'symbol': normalized_symbol,
+            'task_id': task.id,
+            'message': 'Đã nhận yêu cầu refresh advisory.',
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
 
 
 # ---------------------------------------------------------------------------

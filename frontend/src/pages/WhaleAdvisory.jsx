@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   getAIOptions,
   getUserConfig,
+  refreshWhaleAdvisory,
   getWhaleAdvisories,
   testAIConnection,
   updateUserConfig,
@@ -108,7 +109,7 @@ function SymbolCell({ stats, isActive, onClick }) {
 }
 
 // ─── Ô cột phải: AI Advisory tương ứng ────────────────────────
-function AdvisoryCell({ item }) {
+function AdvisoryCell({ item, onRefresh, refreshing }) {
   const side = (item.side || '').toUpperCase();
   const isBuy = side === 'BUY';
 
@@ -159,6 +160,14 @@ function AdvisoryCell({ item }) {
 
       {/* Liên kết nhanh */}
       <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
+        <button
+          type="button"
+          onClick={() => onRefresh?.(item.symbol)}
+          disabled={Boolean(refreshing)}
+          className="btn-secondary inline-flex items-center justify-center text-[11px]"
+        >
+          {refreshing ? 'Đang refresh...' : 'Refresh AI'}
+        </button>
         <Link
           to={`/whale-alerts/${item.symbol}`}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
@@ -220,6 +229,8 @@ export default function WhaleAdvisory() {
   const [testingAi, setTestingAi] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
+  const [refreshingSymbol, setRefreshingSymbol] = useState('');
+  const [refreshMessage, setRefreshMessage] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -317,6 +328,22 @@ export default function WhaleAdvisory() {
       setTestingAi(false);
     }
   }, [aiModel, aiProvider, apiKey]);
+
+  const handleRefreshAdvisory = useCallback(async (symbol) => {
+    if (!symbol) return;
+    setRefreshingSymbol(symbol);
+    setRefreshMessage('');
+    try {
+      const resp = await refreshWhaleAdvisory(symbol);
+      setRefreshMessage(resp?.data?.message || `Đã gửi yêu cầu refresh cho ${symbol}.`);
+      await fetchData();
+    } catch (err) {
+      const message = err?.response?.data?.message || 'Refresh advisory thất bại.';
+      setRefreshMessage(message);
+    } finally {
+      setRefreshingSymbol('');
+    }
+  }, [fetchData]);
 
   const symbolStats = useMemo(() => buildSymbolStats(items), [items]);
 
@@ -429,6 +456,12 @@ export default function WhaleAdvisory() {
         </section>
       )}
 
+      {refreshMessage && (
+        <section className="rounded-2xl border border-cyan-800/60 bg-cyan-950/20 px-5 py-4 text-sm text-cyan-200">
+          {refreshMessage}
+        </section>
+      )}
+
       {/* Bảng */}
       <section className="card-section overflow-hidden">
         {/* Table Header */}
@@ -489,7 +522,11 @@ export default function WhaleAdvisory() {
                   {/* Cột phải: Advisory mới nhất */}
                   <div>
                     {latest ? (
-                      <AdvisoryCell item={latest} />
+                      <AdvisoryCell
+                        item={latest}
+                        onRefresh={handleRefreshAdvisory}
+                        refreshing={refreshingSymbol === latest.symbol}
+                      />
                     ) : (
                       <div className="flex items-center p-4 text-xs text-slate-600">
                         Chưa có advisory.

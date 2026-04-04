@@ -58,3 +58,59 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(event['payload']['matched_value'], 8_200_000_000)
         self.assertIn('ai_provider', event['payload'])
         self.assertIn('ts', event['payload'])
+
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_auto_generation_skips_if_existing_advisory(self, mock_generate_text):
+        symbol = 'AAA'
+        WhaleAdvisory.objects.create(
+            symbol=symbol,
+            matched_value=1_000_000_000,
+            side='BUY',
+            threshold=500_000_000,
+            ai_summary='existing summary',
+            ai_detail='existing detail',
+            ai_provider='openclaw',
+        )
+
+        result = generate_whale_advisory_task(
+            symbol=symbol,
+            matched_value_vnd=2_000_000_000,
+            side='SELL',
+            threshold=500_000_000,
+        )
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason'], 'existing_advisory')
+        self.assertEqual(WhaleAdvisory.objects.filter(symbol=symbol).count(), 1)
+        mock_generate_text.assert_not_called()
+
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_force_refresh_generates_new_advisory_even_if_existing(self, mock_generate_text):
+        symbol = 'BBB'
+        WhaleAdvisory.objects.create(
+            symbol=symbol,
+            matched_value=1_000_000_000,
+            side='BUY',
+            threshold=500_000_000,
+            ai_summary='existing summary',
+            ai_detail='existing detail',
+            ai_provider='openclaw',
+        )
+        mock_generate_text.side_effect = [
+            {'text': 'new summary', 'prompt_tokens': 11, 'completion_tokens': 22},
+            {'text': 'new detail', 'prompt_tokens': 33, 'completion_tokens': 44},
+        ]
+
+        result = generate_whale_advisory_task(
+            symbol=symbol,
+            matched_value_vnd=3_000_000_000,
+            side='SELL',
+            threshold=500_000_000,
+            force_refresh=True,
+        )
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertTrue(result['force_refresh'])
+        self.assertEqual(WhaleAdvisory.objects.filter(symbol=symbol).count(), 2)
+        latest = WhaleAdvisory.objects.filter(symbol=symbol).order_by('-created_at').first()
+        self.assertEqual(latest.ai_summary, 'new summary')

@@ -19,11 +19,15 @@
 - ✅ API endpoint `POST /api/ai-config/test-connection/`
 - ✅ Dispatcher task advisory theo provider/model thay vì hard-code OpenClaw
 - ✅ UI WhaleAdvisory có form Provider -> Model, API key, Test Connection
+- ✅ Chính sách tiết kiệm token: chỉ auto-generate khi chưa có advisory cho symbol
+- ✅ Nếu đã có advisory, chỉ refresh khi user bấm nút Refresh thủ công
+- ✅ API refresh thủ công `POST /api/portfolio/whale-advisory/<symbol>/refresh/`
 
 **Mục tiêu cuối Sprint 15:**
 - Hoàn tất migration và rollout an toàn
 - Xác nhận chuyển model on-the-fly từ UI hoạt động end-to-end
 - Theo dõi token/provider trong log vận hành
+- Đảm bảo AI call giảm nhờ cơ chế skip_existing + manual refresh cooldown
 
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  

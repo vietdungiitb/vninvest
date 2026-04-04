@@ -310,6 +310,39 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['ai_detail'], 'Chi tiet premium day du')
 
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+        )
+
+        mock_task = MagicMock()
+        mock_task.id = 'task-123'
+        mock_apply_async.return_value = mock_task
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['queued'])
+        kwargs = mock_apply_async.call_args.kwargs['kwargs']
+        self.assertEqual(kwargs['symbol'], 'FPT')
+        self.assertTrue(kwargs['force_refresh'])
+
+    def test_whale_advisory_refresh_endpoint_returns_404_if_no_existing(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+
+        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     @patch('portfolio.views._cache_set')
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('vnstock.Vnstock')
