@@ -3081,6 +3081,7 @@ class AdminOpsStatsView(APIView):
 
     def get(self, request):
         from django.conf import settings
+        from config.health import build_prefetch_health_snapshot
         from portfolio.services import (
             get_latest_whale_config_anomaly_overview,
             get_whale_config_dashboard_overview,
@@ -3131,6 +3132,7 @@ class AdminOpsStatsView(APIView):
             'channel_layer_type': channel_layer_type,
             'realtime_enabled': realtime_enabled,
             'redis_ok': redis_ok,
+            'ticker_prefetch': build_prefetch_health_snapshot(),
             'whale_config_propagation': get_whale_config_propagation_overview(),
             'whale_config_anomaly': get_latest_whale_config_anomaly_overview(),
             'whale_config_dashboard': get_whale_config_dashboard_overview(),

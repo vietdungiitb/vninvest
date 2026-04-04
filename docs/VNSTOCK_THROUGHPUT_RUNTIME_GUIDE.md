@@ -98,6 +98,15 @@ cd backend
 python -m daphne --bind 127.0.0.1 --port 8000 --threads 20 config.asgi:application
 ```
 
+### Khoi dong nhanh ca stack tren Windows
+
+```powershell
+cd backend
+.\start_stack.ps1
+```
+
+Script nay mo 3 cua so rieng cho backend, Celery worker va Celery beat.
+
 ### Celery worker
 
 ```powershell
@@ -155,6 +164,17 @@ Neu thay `source = db` thi nghia la he thong dang fallback, can kiem tra:
 - Beat co thuc su gui task `prefetch-ticker-price-board` hay khong.
 - Worker co consume task va ghi cache hay khong.
 - Symbol co nam trong bang `TrackedSymbol` hay khong.
+
+### 4. Kiem tra endpoint health cho prefetch
+
+```powershell
+curl http://127.0.0.1:8000/api/health/prefetch/
+```
+
+Ky vong:
+- `healthy = true`
+- `meta_present = true`
+- `sample_cache_hits > 0`
 
 ## Benchmark da xac minh
 

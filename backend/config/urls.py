@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from .health import healthcheck, realtime_health, streams_health
+from .health import healthcheck, prefetch_health, realtime_health, streams_health
 import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/health/', healthcheck, name='healthcheck'),
     path('api/health/realtime/', realtime_health, name='realtime-health'),
     path('api/health/streams/', streams_health, name='streams-health'),
+    path('api/health/prefetch/', prefetch_health, name='prefetch-health'),
     path('api/admin-ops/stats/', AdminOpsStatsView.as_view(), name='admin-ops-stats'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
 ]

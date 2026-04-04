@@ -46,6 +46,13 @@ npm start   # http://localhost:3000
 Để ticker API chạy theo fast path `source=prefetch` thay vì fallback DB, cần đủ 4 thành phần:
 
 ```powershell
+cd backend
+.\start_stack.ps1
+```
+
+Hoặc chạy thủ công từng tiến trình như dưới đây:
+
+```powershell
 # Terminal 1 - Backend
 cd backend
 .\.venv\Scripts\Activate.ps1
@@ -65,6 +72,7 @@ python -m celery -A config beat -l info
 Xác minh nhanh:
 - Redis db=2 có key `vninvest:1:ticker:*`
 - `/api/realtime/ticker/<symbol>/` trả `source=prefetch`
+- `/api/health/prefetch/` trả `healthy=true`
 - Benchmark kỳ vọng: ticker p95 khoảng 50-60ms
 
 ---
@@ -107,6 +115,7 @@ vnstock API → Celery worker (5s) → collector → compute (VWAP/whale) → Re
 | `/api/admin-sync/` | Sync StockProfile, market groups |
 | `/api/realtime/` | Fallback ticker HTTP, whale-feed |
 | `/api/admin-ops/` | System stats (is_staff only) |
+| `/api/health/prefetch/` | Prefetch cache health, freshness và sample cache hits |
 | `/ws/realtime/` | WebSocket gateway (JWT auth) |
 | `/health/` | Health check |
 | `/health/realtime/` | Redis + Channels health |

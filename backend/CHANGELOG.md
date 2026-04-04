@@ -5,6 +5,10 @@
 - Lý do: sử dụng bản fork riêng có các thay đổi chưa merge vào upstream.
 - Cập nhật theo hướng thư viện nâng cấp throughput: bỏ monkey-patch bypass rate-limit trong `config/settings.py` và dùng đúng runtime từ thư viện.
 - Bổ sung dependency `asyncio-throttle>=1.0.2` trong `backend/requirements.txt` (yêu cầu mới từ bản vnstock nâng cấp).
+- Bổ sung endpoint `GET /api/health/prefetch/` để theo dõi trạng thái ticker prefetch, metadata lần chạy gần nhất và sample cache hits.
+- Mở rộng phạm vi symbol cho task `prefetch_ticker_price_board`: gom từ `TrackedSymbol`, `WatchlistItem`, `PriceAlertRule`, `Transaction`; hỗ trợ batch size và symbol limit qua biến môi trường.
+- Bổ sung script `backend/start_stack.ps1` để khởi động nhanh backend + Celery worker + Celery beat trên Windows.
+- Mở rộng `GET /api/admin-ops/stats/` với payload `ticker_prefetch` để admin theo dõi fast path cache-first ngay trong dashboard thống kê.
 
 ---
 

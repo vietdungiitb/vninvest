@@ -1,11 +1,24 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from celery import shared_task
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
 
-from portfolio.models import SecuritiesGroup, TrackedSymbol, UserConfig, WatchlistGroup, WhaleConfigRollout
+from portfolio.models import (
+    PriceAlertRule,
+    SecuritiesGroup,
+    SecuritiesItem,
+    TrackedSymbol,
+    Transaction,
+    UserConfig,
+    WatchlistGroup,
+    WatchlistItem,
+    WhaleConfigRollout,
+)
 from portfolio.realtime.collector import collect_intraday_frame, collect_symbols_for_user, collect_and_push
 from portfolio.realtime.compute import (
     build_heartbeat_payload,
@@ -26,6 +39,54 @@ from portfolio.services import (
 )
 
 logger = logging.getLogger(__name__)
+
+TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
+
+
+def _distinct_symbols(queryset) -> list[str]:
+    return sorted({
+        str(symbol).strip().upper()
+        for symbol in queryset
+        if symbol and str(symbol).strip()
+    })
+
+
+def _collect_prefetch_symbols() -> tuple[list[str], dict]:
+    include_group_symbols = os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true'
+    symbol_limit = max(int(os.getenv('TICKER_PREFETCH_SYMBOL_LIMIT', '120')), 0)
+
+    source_lists = {
+        'tracked_symbols': _distinct_symbols(TrackedSymbol.objects.values_list('symbol', flat=True).distinct()),
+        'watchlist_items': _distinct_symbols(WatchlistItem.objects.values_list('symbol', flat=True).distinct()),
+        'price_alerts': _distinct_symbols(PriceAlertRule.objects.values_list('symbol', flat=True).distinct()),
+        'portfolio_transactions': _distinct_symbols(Transaction.objects.values_list('symbol', flat=True).distinct()),
+    }
+    if include_group_symbols:
+        source_lists['market_group_items'] = _distinct_symbols(
+            SecuritiesItem.objects.values_list('symbol', flat=True).distinct()
+        )
+
+    merged_symbols = []
+    seen = set()
+    for _, symbols in source_lists.items():
+        for symbol in symbols:
+            if symbol in seen:
+                continue
+            seen.add(symbol)
+            merged_symbols.append(symbol)
+
+    if symbol_limit:
+        merged_symbols = merged_symbols[:symbol_limit]
+
+    source_counts = {name: len(symbols) for name, symbols in source_lists.items()}
+    return merged_symbols, source_counts
+
+
+def _store_prefetch_meta(payload: dict, timeout: int = 600) -> None:
+    try:
+        cache.set(TICKER_PREFETCH_META_CACHE_KEY, payload, timeout=timeout)
+    except Exception:
+        pass
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
@@ -415,27 +476,21 @@ def prefetch_ticker_price_board(self) -> dict:
     HTTP handler RealtimeTickerView chỉ đọc cache, không gọi vnstock nữa.
     Chạy mỗi 20s qua Celery Beat (luôn bật, không cần REALTIME_ENABLED).
     """
-    from django.core.cache import cache
-    from django.utils import timezone
-
-    symbols = sorted({
-        s.upper() for s in
-        TrackedSymbol.objects.values_list('symbol', flat=True).distinct()
-        if s
-    })
+    batch_size = max(int(os.getenv('TICKER_PREFETCH_BATCH_SIZE', '30')), 1)
+    symbols, source_counts = _collect_prefetch_symbols()
     if not symbols:
-        return {'status': 'ok', 'symbols': 0}
-
-    try:
-        from vnstock import Vnstock
-        stock = Vnstock().stock(symbol=symbols[0], source='VCI')
-        df = stock.trading.price_board(symbols_list=symbols)
-    except (Exception, SystemExit) as exc:
-        logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
-        return {'status': 'error', 'reason': str(exc)}
-
-    if df is None or df.empty:
-        return {'status': 'ok', 'symbols': len(symbols), 'cached': 0, 'reason': 'empty_df'}
+        payload = {
+            'status': 'ok',
+            'symbols': 0,
+            'cached': 0,
+            'source_counts': source_counts,
+            'generated_at': timezone.now().isoformat(),
+            'batch_size': batch_size,
+            'batches': 0,
+            'sample_symbols': [],
+        }
+        _store_prefetch_meta(payload)
+        return payload
 
     def _f(val):
         try:
@@ -453,41 +508,85 @@ def prefetch_ticker_price_board(self) -> dict:
 
     now_iso = timezone.now().isoformat()
     cached_count = 0
-    for _, row in df.iterrows():
-        try:
-            sym = str(row.get(('listing', 'symbol')) or '').upper()
-            if not sym:
-                continue
-            match_price = _f(row.get(('match', 'match_price')))
-            ref_price = (_f(row.get(('listing', 'ref_price')))
-                         or _f(row.get(('match', 'reference_price'))))
-            highest = _f(row.get(('match', 'highest')))
-            lowest = _f(row.get(('match', 'lowest')))
-            open_price = _f(row.get(('match', 'open_price')))
-            accum_vol = _i(row.get(('match', 'accumulated_volume')))
-            change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
-            change_pct = (round((match_price - ref_price) / ref_price * 100, 2)
-                          if match_price and ref_price else None)
-            data = {
-                'symbol': sym,
-                'current_price': match_price,
-                'prev_price': ref_price,
-                'change_value': change_value,
-                'change_pct': change_pct,
-                'high_price': highest,
-                'low_price': lowest,
-                'open_price': open_price,
-                'volume': accum_vol,
-                'last_date': now_iso,
-                'freshness_seconds': 0,
-                'stale': False,
-                'source': 'prefetch',
-            }
-            cache.set(f'ticker:{sym}', data, timeout=60)
-            cached_count += 1
-        except Exception as exc:
-            logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
+    processed_batches = 0
+    try:
+        from vnstock import Vnstock
 
-    logger.info('prefetch_ticker_price_board: symbols=%d cached=%d', len(symbols), cached_count)
-    return {'status': 'ok', 'symbols': len(symbols), 'cached': cached_count}
+        for start in range(0, len(symbols), batch_size):
+            batch_symbols = symbols[start:start + batch_size]
+            stock = Vnstock().stock(symbol=batch_symbols[0], source='VCI')
+            df = stock.trading.price_board(symbols_list=batch_symbols)
+            processed_batches += 1
+
+            if df is None or df.empty:
+                continue
+
+            for _, row in df.iterrows():
+                try:
+                    sym = str(row.get(('listing', 'symbol')) or '').upper()
+                    if not sym:
+                        continue
+                    match_price = _f(row.get(('match', 'match_price')))
+                    ref_price = (_f(row.get(('listing', 'ref_price')))
+                                 or _f(row.get(('match', 'reference_price'))))
+                    highest = _f(row.get(('match', 'highest')))
+                    lowest = _f(row.get(('match', 'lowest')))
+                    open_price = _f(row.get(('match', 'open_price')))
+                    accum_vol = _i(row.get(('match', 'accumulated_volume')))
+                    change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
+                    change_pct = (round((match_price - ref_price) / ref_price * 100, 2)
+                                  if match_price and ref_price else None)
+                    data = {
+                        'symbol': sym,
+                        'current_price': match_price,
+                        'prev_price': ref_price,
+                        'change_value': change_value,
+                        'change_pct': change_pct,
+                        'high_price': highest,
+                        'low_price': lowest,
+                        'open_price': open_price,
+                        'volume': accum_vol,
+                        'last_date': now_iso,
+                        'freshness_seconds': 0,
+                        'stale': False,
+                        'source': 'prefetch',
+                    }
+                    cache.set(f'ticker:{sym}', data, timeout=60)
+                    cached_count += 1
+                except Exception as exc:
+                    logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
+    except (Exception, SystemExit) as exc:
+        logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
+        payload = {
+            'status': 'error',
+            'reason': str(exc),
+            'symbols': len(symbols),
+            'cached': cached_count,
+            'source_counts': source_counts,
+            'generated_at': timezone.now().isoformat(),
+            'batch_size': batch_size,
+            'batches': processed_batches,
+            'sample_symbols': symbols[:10],
+        }
+        _store_prefetch_meta(payload)
+        return payload
+
+    payload = {
+        'status': 'ok',
+        'symbols': len(symbols),
+        'cached': cached_count,
+        'source_counts': source_counts,
+        'generated_at': now_iso,
+        'batch_size': batch_size,
+        'batches': processed_batches,
+        'sample_symbols': symbols[:10],
+    }
+    _store_prefetch_meta(payload)
+    logger.info(
+        'prefetch_ticker_price_board: symbols=%d cached=%d batches=%d',
+        len(symbols),
+        cached_count,
+        processed_batches,
+    )
+    return payload
 

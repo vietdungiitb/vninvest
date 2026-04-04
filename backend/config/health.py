@@ -1,5 +1,60 @@
 from django.conf import settings
+from django.core.cache import cache
 from django.http import JsonResponse
+from django.utils import timezone
+
+
+def build_prefetch_health_snapshot():
+    result = {
+        "cache_backend": settings.CACHES["default"]["BACKEND"],
+        "cache_location": settings.CACHES["default"].get("LOCATION"),
+        "healthy": False,
+        "meta_present": False,
+        "freshness_seconds": None,
+        "sample_cache_hits": 0,
+        "sample_cache_total": 0,
+        "prefetch": None,
+    }
+
+    try:
+        meta = cache.get('ticker:prefetch:meta')
+    except Exception as exc:
+        result["error"] = str(exc)
+        return result
+
+    if not meta:
+        return result
+
+    result["meta_present"] = True
+    result["prefetch"] = meta
+
+    generated_at = meta.get('generated_at')
+    if generated_at:
+        try:
+            generated_dt = timezone.datetime.fromisoformat(str(generated_at))
+            if timezone.is_naive(generated_dt):
+                generated_dt = timezone.make_aware(generated_dt, timezone.get_current_timezone())
+            result["freshness_seconds"] = max(int((timezone.now() - generated_dt).total_seconds()), 0)
+        except Exception:
+            result["freshness_seconds"] = None
+
+    sample_symbols = meta.get('sample_symbols') or []
+    sample_hits = 0
+    for symbol in sample_symbols:
+        try:
+            if cache.get(f'ticker:{symbol}') is not None:
+                sample_hits += 1
+        except Exception:
+            break
+
+    result["sample_cache_hits"] = sample_hits
+    result["sample_cache_total"] = len(sample_symbols)
+    result["healthy"] = (
+        meta.get('status') == 'ok'
+        and (result["freshness_seconds"] is None or result["freshness_seconds"] <= 90)
+        and sample_hits > 0
+    )
+    return result
 
 
 def healthcheck(request):
@@ -71,4 +126,14 @@ def streams_health(request):
         result["scan_error"] = str(exc)
 
     return JsonResponse(result)
+
+
+def prefetch_health(request):
+    """
+    GET /api/health/prefetch/
+    Trả về trạng thái ticker prefetch: metadata lần chạy gần nhất,
+    độ tươi của cache và số sample key còn đọc được từ shared cache.
+    """
+    snapshot = build_prefetch_health_snapshot()
+    return JsonResponse(snapshot, status=200 if snapshot.get('healthy') else 503)
 
