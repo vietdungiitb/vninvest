@@ -9,6 +9,14 @@ urlpatterns = [
     path("stocks/<str:symbol>/overview/", views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),
     path("stocks/<str:symbol>/chart/", views.StockWorkspaceChartView.as_view(), name="stock-workspace-chart"),
     path("stocks/<str:symbol>/financials/", views.FinancialMetricsView.as_view(), name="stock-financials"),
+    path("stocks/<str:symbol>/order-flow/", views.stock_order_flow_api, name="stock-order-flow"),
+    path("stocks/<str:symbol>/ai-advisory-session/", views.stock_ai_advisory_session_api, name="stock-ai-advisory-session"),
+    path("stocks/<str:symbol>/ai-advisory-components/generate/", views.stock_ai_advisory_components_generate_api, name="stock-ai-advisory-components-generate"),
+    path("ai-advisory-components/<int:component_id>/toggle-include/", views.stock_ai_advisory_component_toggle_include_api, name="stock-ai-advisory-component-toggle-include"),
+    path("ai-advisory-components/<int:component_id>/refresh/", views.stock_ai_advisory_component_refresh_api, name="stock-ai-advisory-component-refresh"),
+    path("ai-advisory-components/<int:component_id>/restore/", views.stock_ai_advisory_component_restore_api, name="stock-ai-advisory-component-restore"),
+    path("ai-advisory-components/<int:component_id>/", views.stock_ai_advisory_component_delete_api, name="stock-ai-advisory-component-delete"),
+    path("stocks/<str:symbol>/ai-advisory-summary/regenerate/", views.stock_ai_advisory_summary_regenerate_api, name="stock-ai-advisory-summary-regenerate"),
     path("stocks/<str:symbol>/", views.StockProfileDetailView.as_view(), name="stock-detail"),
 
     # Quản lý nhóm chứng khoán

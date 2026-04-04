@@ -83,6 +83,11 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             payload.pop('ai_detail', None)
         await self.send_json(payload)
 
+    async def dark_flow_alert(self, event):
+        payload = dict(event.get('data') or event.get('payload') or {})
+        payload['event_type'] = 'dark_flow_alert'
+        await self.send_json(payload)
+
     @database_sync_to_async
     def _get_user_plan(self) -> str:
         from portfolio.permissions import _get_plan

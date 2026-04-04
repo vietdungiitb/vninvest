@@ -41,6 +41,7 @@ from .models import (
     WhaleConfigRollout,
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
+    OrderFlowSignal,
 )
 from .mail_service import get_active_email_account, send_test_email
 from .email_verification import send_verification_email
@@ -1878,6 +1879,31 @@ class WhaleConfigAuditLogAdmin(admin.ModelAdmin):
 
 @admin.register(StockProfileSyncLog)
 class StockProfileSyncLogAdmin(admin.ModelAdmin):
+
+
+    @admin.register(OrderFlowSignal)
+    class OrderFlowSignalAdmin(admin.ModelAdmin):
+        list_display = (
+            'id', 'symbol', 'signal_type', 'strength', 'confidence',
+            'tick_rate', 'small_order_ratio', 'created_at',
+        )
+        list_filter = ('signal_type', 'confidence', 'created_at')
+        search_fields = ('symbol',)
+        ordering = ('-created_at',)
+        readonly_fields = (
+            'symbol', 'signal_type', 'strength', 'confidence', 'tick_rate',
+            'small_order_ratio', 'cvd_at_signal', 'price_at_signal',
+            'window_seconds', 'components_json', 'created_at',
+        )
+
+        def has_add_permission(self, request):
+            return False
+
+        def has_change_permission(self, request, obj=None):
+            return False
+
+        def has_delete_permission(self, request, obj=None):
+            return request.user.is_superuser
     list_display = ('started_at', 'finished_at', 'duration_display', 'requested_by', 'mode', 'source', 'success', 'total_symbols', 'created_symbols', 'updated_symbols')
     list_filter = ('mode', 'source', 'success')
     search_fields = ('requested_by__username', 'message', 'error')

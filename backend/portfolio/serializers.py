@@ -4,7 +4,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
-from .models import StockProfile, WhaleAdvisory
+from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
 from .ai_options import get_default_model, is_valid_model, is_valid_provider
 
 
@@ -162,6 +162,28 @@ class WhaleAdvisorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'symbol', 'matched_value', 'side', 'threshold',
             'ai_summary', 'ai_detail', 'ai_provider', 'created_at',
+        ]
+        read_only_fields = fields
+
+
+class AIAdvisoryComponentRecordSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIAdvisoryComponentRecord
+        fields = [
+            'id', 'symbol', 'component_type', 'indicator_name', 'status',
+            'confidence_score', 'suggested_action', 'rationale_text',
+            'timeframe', 'include_in_summary', 'is_deleted', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'symbol', 'is_deleted', 'created_at', 'updated_at']
+
+
+class AIAdvisoryExecutiveSummarySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AIAdvisoryExecutiveSummary
+        fields = [
+            'id', 'symbol', 'strategy_action', 'synthesis_text', 'target_price_zone',
+            'stop_loss_zone', 'risk_level', 'overall_confidence', 'used_component_ids',
+            'summary_version', 'created_at',
         ]
         read_only_fields = fields
 

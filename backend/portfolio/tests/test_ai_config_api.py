@@ -26,6 +26,8 @@ class AIConfigApiTests(APITestCase):
         self.assertIn('providers', response.data)
         self.assertIn('defaults', response.data)
         self.assertIn('openai', response.data['providers'])
+        self.assertIn('copilot', response.data['providers'])
+        self.assertEqual(response.data['defaults']['copilot'], 'openai/gpt-4.1-mini')
 
     def test_ai_config_get_and_put(self):
         get_resp = self.client.get('/api/ai-config/')
@@ -48,6 +50,21 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(cfg.ai_provider, 'claude')
         self.assertEqual(cfg.ai_model, 'claude-3-5-sonnet-20240620')
         self.assertTrue(cfg.ai_api_key_configured)
+
+    @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_env_test_token'}, clear=False)
+    def test_ai_config_get_uses_env_key_for_configured_flag(self):
+        cfg = UserConfig.objects.get(user=self.user)
+        cfg.ai_provider = 'copilot'
+        cfg.ai_model = 'openai/gpt-4.1-mini'
+        cfg.ai_api_key = ''
+        cfg.save(update_fields=['ai_provider', 'ai_model', 'ai_api_key'])
+
+        response = self.client.get('/api/ai-config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['ai_provider'], 'copilot')
+        self.assertEqual(response.data['ai_model'], 'openai/gpt-4.1-mini')
+        self.assertTrue(response.data['ai_api_key_configured'])
 
     def test_update_user_config_with_provider_and_model(self):
         response = self.client.put(

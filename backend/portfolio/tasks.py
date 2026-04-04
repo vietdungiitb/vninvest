@@ -41,6 +41,7 @@ from portfolio.services import (
 logger = logging.getLogger(__name__)
 
 TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
+VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnstock:rate-limit:price_board'
 
 
 def _distinct_symbols(queryset) -> list[str]:
@@ -98,6 +99,21 @@ def _prefetch_retry_countdown(retries: int) -> int:
     base = max(int(os.getenv('TICKER_PREFETCH_RETRY_BASE_SECONDS', '15')), 1)
     max_seconds = max(int(os.getenv('TICKER_PREFETCH_RETRY_MAX_SECONDS', '180')), base)
     return min(max_seconds, base * (2 ** max(retries, 0)))
+
+
+def _mark_price_board_rate_limited(exc: Exception) -> None:
+    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '45')), 5)
+    try:
+        cache.set(
+            VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
+            {
+                'triggered_at': timezone.now().isoformat(),
+                'reason': str(exc or '')[:200],
+            },
+            timeout=cooldown_seconds,
+        )
+    except Exception:
+        pass
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
@@ -423,7 +439,7 @@ def generate_whale_advisory_task(
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
     from portfolio.ai_options import get_default_model, is_valid_model, is_valid_provider
-    from portfolio.ai_service import generate_whale_text
+    from portfolio.ai_service import generate_whale_text, _resolve_provider_api_key
     from portfolio.models import WhaleAdvisory
 
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
@@ -450,6 +466,7 @@ def generate_whale_advisory_task(
     api_key = ''
     if cfg:
         api_key = cfg.get_ai_api_key()
+    api_key = _resolve_provider_api_key(provider, api_key)
 
     try:
         summary_resp = generate_whale_text(
@@ -572,6 +589,20 @@ def prefetch_ticker_price_board(self) -> dict:
     cached_count = 0
     processed_batches = 0
     max_retries = max(int(os.getenv('TICKER_PREFETCH_MAX_RETRIES', '4')), 0)
+    if cache.get(VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY):
+        payload = {
+            'status': 'backoff',
+            'reason': 'price_board rate limit cooldown active',
+            'symbols': len(symbols),
+            'cached': 0,
+            'source_counts': source_counts,
+            'generated_at': timezone.now().isoformat(),
+            'batch_size': batch_size,
+            'batches': 0,
+            'sample_symbols': symbols[:10],
+        }
+        _store_prefetch_meta(payload)
+        return payload
     try:
         from vnstock import Vnstock
 
@@ -621,6 +652,7 @@ def prefetch_ticker_price_board(self) -> dict:
     except (Exception, SystemExit) as exc:
         logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
         if _is_rate_limited_error(exc):
+            _mark_price_board_rate_limited(exc)
             countdown = _prefetch_retry_countdown(getattr(self.request, 'retries', 0))
             payload = {
                 'status': 'retrying',
@@ -672,4 +704,128 @@ def prefetch_ticker_price_board(self) -> dict:
         processed_batches,
     )
     return payload
+
+
+# ---------------------------------------------------------------------------
+# Sprint 15 — Order Flow Detection Task
+# ---------------------------------------------------------------------------
+ORDER_FLOW_COOLDOWN_SECONDS = 300   # 5 phut / symbol
+ORDER_FLOW_MAX_SYMBOLS = 30
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
+def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
+    """
+    Chay detect_dark_flow() cho moi symbol dang duoc theo doi.
+    Luu OrderFlowSignal neu signal_type != 'none' hoac strength > 20.
+    Publish dark_flow_alert WS event neu strength > 50.
+    Cooldown: ORDER_FLOW_COOLDOWN_SECONDS / symbol (5 phut).
+    Bi tat khi ORDER_FLOW_DETECTION_ENABLED=false.
+    """
+    if not getattr(settings, 'ORDER_FLOW_DETECTION_ENABLED', True):
+        return {'status': 'disabled'}
+
+    from portfolio.models import OrderFlowSignal
+    from portfolio.order_flow import detect_dark_flow
+
+    if symbol:
+        symbols = [symbol.upper()]
+    else:
+        tracked = list(TrackedSymbol.objects.values_list('symbol', flat=True).distinct())
+        watchlisted = list(WatchlistItem.objects.values_list('symbol', flat=True).distinct())
+        symbols = sorted({s.upper() for s in tracked + watchlisted if s})[:ORDER_FLOW_MAX_SYMBOLS]
+
+    processed = 0
+    stored = 0
+    alerted = 0
+    errors = 0
+
+    for sym in symbols:
+        lock_key = f'order_flow_lock:{sym}'
+        if cache.get(lock_key):
+            continue
+
+        try:
+            result = detect_dark_flow(sym)
+        except Exception as exc:
+            logger.warning('detect_dark_flow error for %s: %s', sym, exc)
+            errors += 1
+            continue
+
+        processed += 1
+        strength = float(result.get('strength', 0) or 0)
+        signal_type = str(result.get('signal_type', 'none') or 'none')
+        comps = result.get('components', {}) or {}
+        tick_rate_info = comps.get('tick_rate', {}) or {}
+        size_dist = comps.get('size_distribution', {}) or {}
+        cvd_change = comps.get('absorption', {}).get('cvd_change', 0)
+
+        if signal_type != 'none' or strength > 20:
+            OrderFlowSignal.objects.create(
+                symbol=sym,
+                signal_type=signal_type,
+                strength=strength,
+                confidence=result.get('confidence', 'low'),
+                tick_rate=tick_rate_info.get('tick_rate_per_min', 0),
+                small_order_ratio=size_dist.get('small_ratio', 0),
+                cvd_at_signal=cvd_change,
+                price_at_signal=0,
+                window_seconds=300,
+                components_json=comps,
+            )
+            stored += 1
+            cache.set(lock_key, True, timeout=ORDER_FLOW_COOLDOWN_SECONDS)
+
+        if strength > 50:
+            try:
+                from asgiref.sync import async_to_sync
+                from channels.layers import get_channel_layer
+
+                channel_layer = get_channel_layer()
+                iceberg = comps.get('iceberg', {}) or {}
+                if iceberg.get('level'):
+                    description = (
+                        f"Phat hien {iceberg.get('repeat_count', 0)} lenh lap tai "
+                        f"{iceberg.get('level', 0):,.0f} VND"
+                    )
+                else:
+                    description = f"Tin hieu {signal_type} strength={strength:.0f}"
+
+                event_id = f"dark_flow:{sym}:{result.get('triggered_at', timezone.now().isoformat())}:{signal_type}"
+                async_to_sync(channel_layer.group_send)(
+                    f'whale_{sym}',
+                    {
+                        'type': 'dark_flow_alert',
+                        'data': {
+                            'event_type': 'dark_flow_alert',
+                            'contract_version': '1.0',
+                            'symbol': sym,
+                            'signal_type': signal_type,
+                            'strength': strength,
+                            'confidence': result.get('confidence', 'low'),
+                            'tick_rate': tick_rate_info.get('tick_rate_per_min', 0),
+                            'small_order_ratio': size_dist.get('small_ratio', 0),
+                            'cvd_at_signal': cvd_change,
+                            'description': description,
+                            'event_id': event_id,
+                            'ts': result.get('triggered_at', timezone.now().isoformat()),
+                        },
+                    },
+                )
+                alerted += 1
+            except Exception as exc:
+                logger.warning('dark_flow_alert WS push failed for %s: %s', sym, exc)
+
+    logger.info(
+        'detect_and_store_order_flow: symbols=%d processed=%d stored=%d alerted=%d errors=%d',
+        len(symbols), processed, stored, alerted, errors,
+    )
+    return {
+        'status': 'ok',
+        'symbols': len(symbols),
+        'processed': processed,
+        'stored': stored,
+        'alerted': alerted,
+        'errors': errors,
+    }
 

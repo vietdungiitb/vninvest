@@ -1010,3 +1010,133 @@ class WhaleConfigAuditLog(models.Model):
 
     def __str__(self):
         return f'{self.action} by {self.actor_id} at {self.created_at}'
+
+
+# ---------------------------------------------------------------------------
+# Sprint 15 — Order Flow & Dark Money Detection
+# ---------------------------------------------------------------------------
+class OrderFlowSignal(models.Model):
+    """
+    Lưu kết quả phân tích Order Flow cho mỗi lần chạy detector.
+    Ghi khi signal_type != 'none' hoặc strength > 20.
+    """
+    class SignalType(models.TextChoices):
+        NONE       = 'none',        'Không có tín hiệu'
+        ABSORPTION = 'absorption',  'Hấp thụ (Absorption)'
+        ICEBERG    = 'iceberg',     'Lệnh tảng băng (Iceberg)'
+        TWAP_BOT   = 'twap_bot',    'TWAP Bot'
+        MIXED      = 'mixed',       'Kết hợp nhiều dấu hiệu'
+
+    symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
+    signal_type       = models.CharField(
+        max_length=20, choices=SignalType.choices, default=SignalType.NONE,
+        verbose_name='Loại tín hiệu',
+    )
+    strength          = models.FloatField(default=0, verbose_name='Cường độ (0-100)')
+    confidence        = models.CharField(max_length=10, default='low', verbose_name='Mức độ tin cậy')
+    tick_rate         = models.FloatField(default=0, verbose_name='Tick rate/phút')
+    small_order_ratio = models.FloatField(default=0, verbose_name='Tỷ lệ lệnh nhỏ')
+    cvd_at_signal     = models.FloatField(default=0, verbose_name='CVD tại lúc phát tín hiệu')
+    price_at_signal   = models.FloatField(default=0, verbose_name='Giá tại lúc phát tín hiệu')
+    window_seconds    = models.PositiveIntegerField(default=300, verbose_name='Cửa sổ phân tích (s)')
+    components_json   = models.JSONField(default=dict, verbose_name='Chi tiết các thành phần')
+    created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm ghi')
+
+    class Meta:
+        verbose_name = 'Order Flow Signal'
+        verbose_name_plural = 'Order Flow Signals'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['symbol', 'created_at'])]
+
+    def __str__(self):
+        return f'{self.symbol} | {self.signal_type} | strength={self.strength:.1f} | {self.created_at}'
+
+
+# ---------------------------------------------------------------------------
+# Sprint 17 — AI Advisory Multi-Tab Component Records
+# ---------------------------------------------------------------------------
+class AIAdvisoryComponentRecord(models.Model):
+    class ComponentType(models.TextChoices):
+        PRICE_ACTION = 'price_action', 'Price Action'
+        INDICATOR = 'indicator', 'Indicator'
+        VOLUME_ORDERFLOW = 'volume_orderflow', 'Volume / Order Flow'
+        SENTIMENT = 'sentiment', 'Sentiment'
+
+    class StatusChoice(models.TextChoices):
+        OVERBOUGHT = 'overbought', 'Qua mua'
+        OVERSOLD = 'oversold', 'Qua ban'
+        ACCUMULATION = 'accumulation', 'Dang tich luy'
+        BREAKOUT = 'breakout', 'Pha vo'
+        NEUTRAL = 'neutral', 'Trung tinh'
+
+    class SuggestedAction(models.TextChoices):
+        WATCH = 'watch', 'Theo doi'
+        BUY = 'buy', 'Mua'
+        SELL = 'sell', 'Ban'
+        HOLD_OFF = 'hold_off', 'Dung ngoai'
+
+    class TimeframeChoice(models.TextChoices):
+        M5 = '5m', '5m'
+        M15 = '15m', '15m'
+        M30 = '30m', '30m'
+        H1 = '1h', '1h'
+        D1 = '1d', '1d'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_advisory_components')
+    symbol = models.CharField(max_length=10, db_index=True)
+    component_type = models.CharField(max_length=30, choices=ComponentType.choices, default=ComponentType.INDICATOR)
+    indicator_name = models.CharField(max_length=100, default='General')
+    status = models.CharField(max_length=20, choices=StatusChoice.choices, default=StatusChoice.NEUTRAL)
+    confidence_score = models.PositiveSmallIntegerField(default=5)
+    suggested_action = models.CharField(max_length=20, choices=SuggestedAction.choices, default=SuggestedAction.WATCH)
+    rationale_text = models.TextField(blank=True, default='')
+    timeframe = models.CharField(max_length=10, choices=TimeframeChoice.choices, default=TimeframeChoice.M30)
+    include_in_summary = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'symbol', 'created_at']),
+            models.Index(fields=['symbol', 'include_in_summary', 'is_deleted']),
+        ]
+
+    def __str__(self):
+        return f'{self.symbol} | {self.component_type} | {self.indicator_name}'
+
+
+class AIAdvisoryExecutiveSummary(models.Model):
+    class StrategyAction(models.TextChoices):
+        BUY = 'BUY', 'BUY'
+        SELL = 'SELL', 'SELL'
+        HOLD = 'HOLD', 'HOLD'
+        STAND_ASIDE = 'STAND_ASIDE', 'STAND_ASIDE'
+
+    class RiskLevel(models.TextChoices):
+        LOW = 'low', 'Low'
+        MEDIUM = 'medium', 'Medium'
+        HIGH = 'high', 'High'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_advisory_summaries')
+    symbol = models.CharField(max_length=10, db_index=True)
+    strategy_action = models.CharField(max_length=20, choices=StrategyAction.choices, default=StrategyAction.HOLD)
+    synthesis_text = models.TextField(blank=True, default='')
+    target_price_zone = models.CharField(max_length=120, blank=True, default='')
+    stop_loss_zone = models.CharField(max_length=120, blank=True, default='')
+    risk_level = models.CharField(max_length=10, choices=RiskLevel.choices, default=RiskLevel.MEDIUM)
+    overall_confidence = models.PositiveSmallIntegerField(default=5)
+    used_component_ids = models.JSONField(default=list)
+    summary_version = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'symbol', 'summary_version']),
+            models.Index(fields=['symbol', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.symbol} v{self.summary_version} | {self.strategy_action}'

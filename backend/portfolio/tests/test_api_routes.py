@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 import pandas as pd
-from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory
+from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
 from portfolio.email_verification import generate_email_verification_token
 from datetime import date, datetime, timedelta
 from rest_framework import status
@@ -310,8 +310,9 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['ai_detail'], 'Chi tiet premium day du')
 
+    @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async):
+    def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async, _mock_cache_get):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
         WhaleAdvisory.objects.create(
@@ -342,6 +343,446 @@ class ApiRouteSmokeTests(APITestCase):
         response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
+    def test_whale_advisory_refresh_endpoint_returns_429_when_manual_cooldown_active(self, _mock_cache_get):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+        )
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertIn('retry_after_seconds', response.data)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_stock_ai_advisory_session_get_queues_generation_when_missing(self, mock_apply_async, _mock_cache_get):
+        self.authenticate()
+        mock_task = MagicMock()
+        mock_task.id = 'stock-ai-task-1'
+        mock_apply_async.return_value = mock_task
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['queued'])
+        kwargs = mock_apply_async.call_args.kwargs['kwargs']
+        self.assertEqual(kwargs['symbol'], 'BCM')
+        self.assertFalse(kwargs['force_refresh'])
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
+    def test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_cache_get):
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertFalse(response.data['ok'])
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertIn('queue', response.data['message'].lower())
+
+    def test_stock_ai_advisory_session_get_returns_latest_advisory(self):
+        self.authenticate()
+        advisory = WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['advisory']['id'], advisory.id)
+        self.assertEqual(response.data['advisory']['symbol'], 'BCM')
+        self.assertIn('components', response.data)
+        self.assertIn('deleted_components', response.data)
+        self.assertIn('executive_summary', response.data)
+        self.assertIn('executive_summaries', response.data)
+
+    def test_stock_ai_advisory_components_generate_creates_component_records(self):
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '15m'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data['ok'])
+        self.assertGreaterEqual(response.data['created_count'], 3)
+        self.assertIn('generated_by_ai', response.data)
+        self.assertEqual(AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(), response.data['created_count'])
+
+    def test_stock_ai_advisory_component_toggle_include_flips_flag(self):
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/toggle-include/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        component.refresh_from_db()
+        self.assertFalse(component.include_in_summary)
+        self.assertFalse(response.data['component']['include_in_summary'])
+
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai')
+    def test_stock_ai_advisory_component_refresh_updates_only_target_component(self, mock_generate_with_ai):
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+        target = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='old-target',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        untouched = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='price_action',
+            indicator_name='Price Action',
+            status='neutral',
+            confidence_score=6,
+            suggested_action='watch',
+            rationale_text='old-untouched',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        mock_generate_with_ai.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI Làm mới',
+                'status': 'breakout',
+                'confidence_score': 8,
+                'suggested_action': 'buy',
+                'rationale_text': 'new-target',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            }
+        ]
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{target.id}/refresh/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['component']['id'], target.id)
+        self.assertEqual(response.data['component']['indicator_name'], 'RSI Làm mới')
+        self.assertEqual(response.data['component']['status'], 'breakout')
+        self.assertEqual(response.data['component']['suggested_action'], 'buy')
+        target.refresh_from_db()
+        untouched.refresh_from_db()
+        self.assertEqual(target.rationale_text, 'new-target')
+        self.assertEqual(untouched.rationale_text, 'old-untouched')
+
+    def test_stock_ai_advisory_component_refresh_returns_404_when_component_missing(self):
+        self.authenticate()
+
+        response = self.client.post('/api/stock-management/ai-advisory-components/999999/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(response.data['ok'])
+
+    def test_stock_ai_advisory_component_delete_soft_deletes_record(self):
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.delete(f'/api/stock-management/ai-advisory-components/{component.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        component.refresh_from_db()
+        self.assertTrue(component.is_deleted)
+        self.assertFalse(component.include_in_summary)
+
+    def test_stock_ai_advisory_component_restore_reactivates_record(self):
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/restore/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        component.refresh_from_db()
+        self.assertFalse(component.is_deleted)
+        self.assertTrue(component.include_in_summary)
+        self.assertEqual(response.data['component']['id'], component.id)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    def test_stock_ai_advisory_summary_regenerate_creates_version(self, _mock_cache_get):
+        self.authenticate()
+        first = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='price_action',
+            indicator_name='Price Action',
+            status='accumulation',
+            confidence_score=7,
+            suggested_action='buy',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        second = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=6,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {'component_ids': [first.id, second.id]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data['ok'])
+        summary = AIAdvisoryExecutiveSummary.objects.filter(user=self.user, symbol='BCM').latest('created_at')
+        self.assertEqual(summary.summary_version, 1)
+        self.assertEqual(set(summary.used_component_ids), {first.id, second.id})
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._sprint17_generate_executive_synthesis_with_ai', return_value='- Dong 1\n- Dong 2\n- Dong 3')
+    def test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis(self, _mock_ai_synthesis, _mock_cache_get):
+        self.authenticate()
+        first = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='price_action',
+            indicator_name='Price Action',
+            status='accumulation',
+            confidence_score=7,
+            suggested_action='buy',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {'component_ids': [first.id]},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        summary = AIAdvisoryExecutiveSummary.objects.filter(user=self.user, symbol='BCM').latest('created_at')
+        self.assertIn('- Dong 1', summary.synthesis_text)
+        self.assertIn('- Dong 2', summary.synthesis_text)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet')
+    def test_stock_ai_advisory_summary_regenerate_passes_synthesis_preference(self, mock_ai_synthesis, _mock_cache_get):
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=6,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {
+                'component_ids': [component.id],
+                'synthesis_preference': 'risk_management',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(mock_ai_synthesis.called)
+        self.assertEqual(mock_ai_synthesis.call_args.kwargs.get('synthesis_preference'), 'risk_management')
+
+    @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
+    def test_stock_ai_advisory_summary_regenerate_returns_429_when_cooldown_active(self, _mock_cache_get):
+        self.authenticate()
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertFalse(response.data['ok'])
+        self.assertIn('retry_after_seconds', response.data)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    def test_stock_ai_advisory_session_returns_summary_history_desc_by_version(self, _mock_cache_get):
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='price_action',
+            indicator_name='Price Action',
+            status='accumulation',
+            confidence_score=7,
+            suggested_action='buy',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        first = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {'component_ids': [component.id]},
+            format='json',
+        )
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+
+        with patch('portfolio.views._cache_get', return_value=None):
+            second = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                {'component_ids': [component.id]},
+                format='json',
+            )
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+
+        session_response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+        self.assertEqual(session_response.status_code, status.HTTP_200_OK)
+        self.assertTrue(session_response.data['executive_summaries'])
+        versions = [item['summary_version'] for item in session_response.data['executive_summaries']]
+        self.assertEqual(versions[0], 2)
+        self.assertIn(1, versions)
+
+    @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
+    def test_stock_ai_advisory_session_post_returns_429_when_refresh_cooldown_active(self, _mock_cache_get):
+        self.authenticate()
+
+        response = self.client.post('/api/stock-management/stocks/BCM/ai-advisory-session/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertIn('retry_after_seconds', response.data)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
+    def test_stock_ai_advisory_session_post_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_cache_get):
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+
+        response = self.client.post('/api/stock-management/stocks/BCM/ai-advisory-session/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertFalse(response.data['ok'])
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertIn('queue', response.data['message'].lower())
 
     @patch('portfolio.views._cache_set')
     @patch('portfolio.views._cache_get', return_value=None)
@@ -623,6 +1064,26 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['source'], 'vnstock')
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['symbol'], 'FPT')
+
+    @patch.dict('os.environ', {'WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS': '2'}, clear=False)
+    @patch('portfolio.realtime.stream_reader.StreamReader')
+    @patch('vnstock.Vnstock')
+    def test_whale_feed_aggregate_skips_vnstock_fallback_for_large_symbol_sets(self, mock_vnstock, mock_stream_reader):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        for symbol in ['FPT', 'HPG', 'VCB']:
+            TrackedSymbol.objects.create(user=self.user, symbol=symbol)
+        mock_stream_reader.return_value.get_intraday_ticks.return_value = []
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['source'], 'intraday_tick_db')
+        self.assertEqual(response.data['results'], [])
+        mock_vnstock.assert_not_called()
 
     def test_whale_feed_aggregate_supports_watchlist_filter(self):
         UserConfig.objects.update_or_create(

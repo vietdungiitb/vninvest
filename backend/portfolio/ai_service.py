@@ -7,19 +7,31 @@ from typing import Any
 import httpx
 from django.conf import settings
 
+from .ai_context import build_symbol_ai_context, render_context_for_prompt
 from .ai_options import get_default_model
 from .openclaw_client import generate_whale_deep, generate_whale_summary
 
 logger = logging.getLogger(__name__)
 
 
-def _openai_compatible_completion(base_url: str, api_key: str, model: str, prompt: str, max_tokens: int) -> dict[str, Any]:
+def _openai_compatible_completion(
+    base_url: str,
+    api_key: str,
+    model: str,
+    prompt: str,
+    max_tokens: int,
+    extra_headers: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+
     resp = httpx.post(
         f"{base_url.rstrip('/')}/chat/completions",
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-        },
+        headers=headers,
         json={
             'model': model,
             'messages': [{'role': 'user', 'content': prompt}],
@@ -85,14 +97,21 @@ def generate_whale_text(provider: str, model: str, api_key: str, symbol: str, ma
     model_id = str(model or get_default_model(provider_key)).strip() or get_default_model(provider_key)
     max_tokens = 450 if deep else 130
     mode_text = '200 từ' if deep else '50 từ'
+    context_payload = build_symbol_ai_context(symbol)
+    context_block = render_context_for_prompt(context_payload)
     prompt = (
         f"Phân tích tín hiệu giao dịch tại TTCK Việt Nam cho mã {symbol}. "
         f"Lệnh {side}, giá trị khoảng {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ. "
         f"Viết khoảng {mode_text}, nêu ý nghĩa tín hiệu, rủi ro và điểm cần theo dõi."
+        f"{context_block}"
     )
 
     if provider_key == 'openclaw':
-        return generate_whale_deep(symbol, matched_value_vnd, side) if deep else generate_whale_summary(symbol, matched_value_vnd, side)
+        return (
+            generate_whale_deep(symbol, matched_value_vnd, side, extra_context=context_block)
+            if deep
+            else generate_whale_summary(symbol, matched_value_vnd, side, extra_context=context_block)
+        )
 
     if not api_key:
         raise RuntimeError(f'Missing API key for provider {provider_key}')
@@ -110,8 +129,20 @@ def generate_whale_text(provider: str, model: str, api_key: str, symbol: str, ma
         return _openai_compatible_completion(base_url=base_url, api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
 
     if provider_key == 'copilot':
-        base_url = os.getenv('COPILOT_BASE_URL', 'https://api.githubcopilot.com/v1')
-        return _openai_compatible_completion(base_url=base_url, api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
+        # GitHub Models inference API is OpenAI-compatible at /inference/chat/completions.
+        base_url = os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference')
+        api_version = os.getenv('COPILOT_API_VERSION', '2026-03-10')
+        return _openai_compatible_completion(
+            base_url=base_url,
+            api_key=api_key,
+            model=model_id,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            extra_headers={
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': api_version,
+            },
+        )
 
     raise RuntimeError(f'Unsupported AI provider: {provider_key}')
 

@@ -113,6 +113,49 @@ class RealtimeGatewayTests(TransactionTestCase):
 
         asyncio.run(run_test())
 
+    def test_websocket_forwards_dark_flow_alert(self):
+        async def run_test():
+            token = str(AccessToken.for_user(self.user))
+            communicator = WebsocketCommunicator(application, f"/ws/realtime/?token={token}")
+            connected, _ = await communicator.connect()
+            self.assertTrue(connected)
+
+            await communicator.receive_json_from()
+            await communicator.send_json_to({"action": "subscribe", "symbols": ["VNM"]})
+            await communicator.receive_json_from()
+
+            channel_layer = get_channel_layer()
+            await channel_layer.group_send(
+                'whale_VNM',
+                {
+                    'type': 'dark_flow_alert',
+                    'data': {
+                        'contract_version': '1.0',
+                        'symbol': 'VNM',
+                        'signal_type': 'iceberg',
+                        'strength': 72.5,
+                        'confidence': 'high',
+                        'tick_rate': 18.3,
+                        'small_order_ratio': 0.82,
+                        'cvd_at_signal': -1_200_000_000,
+                        'description': 'Phat hien 23 lenh nho lap tai 78,200 VND trong 5 phut',
+                        'event_id': 'dark_flow:VNM:2026-04-04T13:00:00Z:iceberg',
+                        'ts': '2026-04-04T13:00:00Z',
+                    },
+                },
+            )
+
+            event = await communicator.receive_json_from()
+            self.assertEqual(event['event_type'], 'dark_flow_alert')
+            self.assertEqual(event['symbol'], 'VNM')
+            self.assertEqual(event['signal_type'], 'iceberg')
+            self.assertEqual(event['confidence'], 'high')
+            self.assertEqual(event['event_id'], 'dark_flow:VNM:2026-04-04T13:00:00Z:iceberg')
+
+            await communicator.disconnect()
+
+        asyncio.run(run_test())
+
 
     def test_stream_broadcaster_delivers_ticker_payload_shape(self):
         mock_sender = MagicMock()

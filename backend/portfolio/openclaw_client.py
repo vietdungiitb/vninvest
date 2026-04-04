@@ -20,7 +20,7 @@ _API_KEY  = lambda: getattr(settings, 'OPENCLAW_API_KEY', '')
 _DISCLAIMER = '[Thông tin tham khảo, không phải lời khuyên đầu tư tài chính.]'
 
 
-def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str) -> dict:
+def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
     """
     Tạo tóm tắt ~50 từ cho tier Pro.
     Returns: {text: str, prompt_tokens: int, completion_tokens: int}
@@ -29,12 +29,13 @@ def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str) -> 
         f"Phân tích ngắn gọn trong 50 từ về tín hiệu giao dịch tại TTCK Việt Nam: "
         f"lệnh {side} mã {symbol}, giá trị {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ. "
         f"Nêu ngắn gọn: động lực có thể và mức độ chú ý. "
+        f"{extra_context or ''} "
         f"{_DISCLAIMER}"
     )
     return _call(prompt, max_tokens=130)
 
 
-def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str) -> dict:
+def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
     """
     Tạo phân tích sâu ~200 từ cho tier Premium.
     Returns: {text: str, prompt_tokens: int, completion_tokens: int}
@@ -44,6 +45,7 @@ def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str) -> dic
         f"lệnh {side} mã {symbol}, tổng giá trị {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ. "
         f"Bao gồm: (1) bối cảnh ngành/công ty, (2) động lực giao dịch có thể, "
         f"(3) mức rủi ro và cơ hội, (4) khuyến nghị theo dõi ngắn hạn. "
+        f"{extra_context or ''} "
         f"{_DISCLAIMER}"
     )
     return _call(prompt, max_tokens=450)

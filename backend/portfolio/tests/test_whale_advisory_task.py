@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
+from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.core.cache import cache
 
-from portfolio.models import WhaleAdvisory
+from portfolio.models import UserConfig, WhaleAdvisory
 from portfolio.tasks import generate_whale_advisory_task
 
 
@@ -114,3 +115,42 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(WhaleAdvisory.objects.filter(symbol=symbol).count(), 2)
         latest = WhaleAdvisory.objects.filter(symbol=symbol).order_by('-created_at').first()
         self.assertEqual(latest.ai_summary, 'new summary')
+
+    @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_test_env_token'}, clear=False)
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_task_uses_env_api_key_when_staff_config_has_no_saved_key(
+        self,
+        mock_generate_text,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        staff_user = User.objects.create_user(username='staff-copilot', password='Test@123456', is_staff=True)
+        UserConfig.objects.create(
+            user=staff_user,
+            ai_provider='copilot',
+            ai_model='openai/gpt-4.1-mini',
+            ai_api_key='',
+        )
+        mock_generate_text.side_effect = [
+            {'text': 'summary from env', 'prompt_tokens': 12, 'completion_tokens': 23},
+            {'text': 'detail from env', 'prompt_tokens': 34, 'completion_tokens': 45},
+        ]
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        result = generate_whale_advisory_task(
+            symbol='FPT',
+            matched_value_vnd=4_000_000_000,
+            side='BUY',
+            threshold=1_000_000_000,
+            force_refresh=True,
+        )
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['ai_provider'], 'copilot')
+        first_call = mock_generate_text.call_args_list[0]
+        self.assertEqual(first_call.kwargs['provider'], 'copilot')
+        self.assertEqual(first_call.kwargs['model'], 'openai/gpt-4.1-mini')
+        self.assertEqual(first_call.kwargs['api_key'], 'ghp_test_env_token')

@@ -175,6 +175,14 @@ CELERY_BEAT_SCHEDULE["prefetch-ticker-price-board"] = {
     "task": "portfolio.tasks.prefetch_ticker_price_board",
     "schedule": timedelta(seconds=max(_TICKER_PREFETCH_INTERVAL, 10)),
 }
+ORDER_FLOW_DETECTION_ENABLED = os.getenv("ORDER_FLOW_DETECTION_ENABLED", "True").lower() == "true"
+ORDER_FLOW_DETECTION_INTERVAL_SECONDS = int(os.getenv("ORDER_FLOW_DETECTION_INTERVAL_SECONDS", "30"))
+if ORDER_FLOW_DETECTION_ENABLED:
+    CELERY_BEAT_SCHEDULE["detect-order-flow"] = {
+        "task": "portfolio.tasks.detect_and_store_order_flow",
+        "schedule": timedelta(seconds=max(ORDER_FLOW_DETECTION_INTERVAL_SECONDS, 30)),
+    }
+
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED = os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED", "True").lower() == "true"
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS = int(
     os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS", "60")

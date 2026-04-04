@@ -156,14 +156,19 @@ def ai_test_connection_api(request):
 @permission_classes([IsAuthenticated])
 def ai_config_api(request):
     """GET/PUT /api/ai-config/ - đọc/cập nhật cấu hình AI cho user hiện tại."""
+    from .ai_service import _resolve_provider_api_key
+
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+
+    def _has_effective_ai_key(provider: str) -> bool:
+        return bool(_resolve_provider_api_key(provider, user_cfg.get_ai_api_key()))
 
     if request.method == 'GET':
         return Response(
             {
                 'ai_provider': user_cfg.ai_provider,
                 'ai_model': user_cfg.get_effective_ai_model(),
-                'ai_api_key_configured': user_cfg.ai_api_key_configured,
+                'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
             },
             status=status.HTTP_200_OK,
         )
@@ -194,7 +199,7 @@ def ai_config_api(request):
             'message': 'Đã cập nhật cấu hình AI.',
             'ai_provider': user_cfg.ai_provider,
             'ai_model': user_cfg.get_effective_ai_model(),
-            'ai_api_key_configured': user_cfg.ai_api_key_configured,
+            'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
         },
         status=status.HTTP_200_OK,
     )
@@ -234,8 +239,10 @@ from decimal import Decimal
 from datetime import date, datetime, time, timedelta
 import base64
 import json
+import re
 import concurrent.futures as _cf
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -269,7 +276,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Portfolio, Transaction, DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
+from .models import Portfolio, Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -278,7 +285,7 @@ from .serializers import (
     PriceAlertRuleSerializer, StockWorkspaceChartPointSerializer, StockWorkspaceChartResponseSerializer,
     StockWorkspaceGroupRefSerializer, StockWorkspaceOverviewSerializer,
     StockWorkspaceTechnicalSerializer, StockWorkspaceWatchlistMembershipSerializer,
-    WhaleAdvisorySerializer,
+    WhaleAdvisorySerializer, AIAdvisoryComponentRecordSerializer, AIAdvisoryExecutiveSummarySerializer,
 )
 
 from .services import (
@@ -311,6 +318,44 @@ def _cache_set(key, value, timeout):
         cache.set(key, value, timeout=timeout)
     except Exception:
         pass
+
+
+def _is_rate_limited_error(exc: Exception) -> bool:
+    message = str(exc or '').lower()
+    return (
+        '429' in message
+        or 'too many requests' in message
+        or 'rate limit' in message
+        or 'giới hạn api' in message
+    )
+
+
+def _vnstock_rate_limit_cache_key(channel: str = 'intraday') -> str:
+    normalized_channel = str(channel or 'default').strip().lower() or 'default'
+    return f'vnstock:rate-limit:{normalized_channel}'
+
+
+def _is_vnstock_rate_limited(channel: str = 'intraday') -> bool:
+    return bool(_cache_get(_vnstock_rate_limit_cache_key(channel)))
+
+
+def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None = None) -> None:
+    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '45')), 5)
+    _cache_set(
+        _vnstock_rate_limit_cache_key(channel),
+        {
+            'triggered_at': timezone.now().isoformat(),
+            'reason': str(exc or '')[:200],
+        },
+        timeout=cooldown_seconds,
+    )
+
+
+def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
+    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', '2')), 0)
+    if max_symbols == 0:
+        return False
+    return len(symbols) <= max_symbols
 
 
 def _get_user_whale_threshold_vnd(user) -> float:
@@ -457,6 +502,7 @@ def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict
         'symbol': row.symbol.upper(),
         'side': _normalize_signal_side(getattr(row, 'side', '')),
         'matched_value': round(matched_value, 2),
+        'volume': int(getattr(row, 'volume', 0) or 0),
         'threshold': threshold_vnd,
         'size_class': _classify_signal_size(matched_value),
         'ts': occurred_at,
@@ -509,6 +555,7 @@ def _build_aggregate_event_payload_from_record(record: dict, threshold_vnd: floa
         'symbol': symbol,
         'side': side,
         'matched_value': round(matched_value, 2),
+        'volume': int(record.get('volume') or 0),
         'threshold': threshold_vnd,
         'size_class': record.get('size_class') or _classify_signal_size(matched_value),
         'ts': occurred_at,
@@ -621,6 +668,7 @@ def _build_stream_aggregate_records(symbols: list[str], threshold_vnd: float) ->
                 'symbol': symbol,
                 'side': side,
                 'matched_value': matched_value,
+                'volume': int(volume),
                 'ts': ts_value,
                 'size_class': _classify_signal_size(matched_value),
                 'source': 'redis_stream',
@@ -632,6 +680,11 @@ def _build_stream_aggregate_records(symbols: list[str], threshold_vnd: float) ->
 def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
     records = []
     synthetic_id = 1
+    if not _allow_vnstock_aggregate_fallback(symbols):
+        logger.info('Skip vnstock aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
+        return []
+    if _is_vnstock_rate_limited('intraday'):
+        return []
     try:
         from vnstock import Vnstock
     except Exception as exc:
@@ -643,6 +696,10 @@ def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -
             stock = Vnstock().stock(symbol=symbol, source='VCI')
             df = stock.quote.intraday(symbol=symbol, page_size=150)
         except (Exception, SystemExit) as exc:
+            if _is_rate_limited_error(exc):
+                _mark_vnstock_rate_limited('intraday', exc)
+                logger.info('Aggregate whale vnstock rate-limited for %s; activate cooldown.', symbol)
+                break
             logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
             continue
 
@@ -676,6 +733,7 @@ def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -
                 'symbol': symbol,
                 'side': side,
                 'matched_value': matched_value,
+                'volume': int(volume),
                 'ts': ts_value,
                 'size_class': _classify_signal_size(matched_value),
                 'source': 'vnstock',
@@ -959,6 +1017,16 @@ class IntradayMatchedView(APIView):
         if cached is not None:
             return Response(cached)
 
+        if _is_vnstock_rate_limited('intraday'):
+            return Response({
+                'symbol': normalized_symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'vnstock_backoff',
+                'rate_limited': True,
+                'fetched_at': timezone.now().isoformat(),
+            })
+
         # Tier 1: đọc từ Redis Stream (nếu có)
         try:
             from portfolio.realtime.stream_reader import StreamReader
@@ -1011,6 +1079,16 @@ class IntradayMatchedView(APIView):
         except ImportError:
             return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except (Exception, SystemExit) as exc:
+            if _is_rate_limited_error(exc):
+                _mark_vnstock_rate_limited('intraday', exc)
+                return Response({
+                    'symbol': normalized_symbol,
+                    'trades': [],
+                    'total': 0,
+                    'source': 'vnstock_backoff',
+                    'rate_limited': True,
+                    'fetched_at': timezone.now().isoformat(),
+                })
             logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -1089,6 +1167,9 @@ class PriceBoardView(APIView):
         if cached is not None:
             return Response(cached)
 
+        if _is_vnstock_rate_limited('price_board'):
+            return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
+
         try:
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
@@ -1096,6 +1177,9 @@ class PriceBoardView(APIView):
         except ImportError:
             return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except (Exception, SystemExit) as exc:
+            if _is_rate_limited_error(exc):
+                _mark_vnstock_rate_limited('price_board', exc)
+                return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
             logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -1361,30 +1445,35 @@ class WhaleFeedView(APIView):
                 df = db_df
                 data_source = 'intraday_tick_db'
             else:
-                import concurrent.futures
-
-                def _fetch_intraday(sym):
-                    from vnstock import Vnstock
-                    st = Vnstock().stock(symbol=sym, source='VCI')
-                    return st.quote.intraday(symbol=sym, page_size=500)
-
-                try:
-                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(_fetch_intraday, normalized_symbol)
-                        df = future.result(timeout=8)
-                    data_source = 'vnstock'
-                except concurrent.futures.TimeoutError:
-                    logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                if _is_vnstock_rate_limited('intraday'):
                     df = None
-                    data_source = 'timeout'
-                except (Exception, SystemExit) as exc:
-                    exc_str = str(exc)
-                    if 'GIỚI HẠN API' in exc_str or 'Rate Limit' in exc_str or 'rate limit' in exc_str.lower():
-                        logger.info('WhaleFeedView vnstock rate-limited %s — trả về empty', normalized_symbol)
-                    else:
-                        logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
-                    df = None
-                    data_source = 'unavailable'
+                    data_source = 'vnstock_backoff'
+                else:
+                    import concurrent.futures
+
+                    def _fetch_intraday(sym):
+                        from vnstock import Vnstock
+                        st = Vnstock().stock(symbol=sym, source='VCI')
+                        return st.quote.intraday(symbol=sym, page_size=500)
+
+                    try:
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(_fetch_intraday, normalized_symbol)
+                            df = future.result(timeout=8)
+                        data_source = 'vnstock'
+                    except concurrent.futures.TimeoutError:
+                        logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                        df = None
+                        data_source = 'timeout'
+                    except (Exception, SystemExit) as exc:
+                        if _is_rate_limited_error(exc):
+                            _mark_vnstock_rate_limited('intraday', exc)
+                            logger.info('WhaleFeedView vnstock rate-limited %s — activate cooldown', normalized_symbol)
+                            data_source = 'vnstock_backoff'
+                        else:
+                            logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
+                            data_source = 'unavailable'
+                        df = None
         except Exception as exc:
             logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
             df = None
@@ -1394,7 +1483,7 @@ class WhaleFeedView(APIView):
             return Response({
                 'symbol': normalized_symbol, 'threshold': threshold_vnd,
                 'source': locals().get('data_source', 'unknown'),
-                'rate_limited': locals().get('data_source') in ('unavailable', 'timeout'),
+                'rate_limited': locals().get('data_source') in ('unavailable', 'timeout', 'vnstock_backoff'),
                 'whale_orders': [], 'summary': {
                     'buy_value': 0, 'sell_value': 0, 'flow_net': 0,
                     'shark_value': 0, 'whale_value': 0, 'small_value': 0,
@@ -1499,11 +1588,22 @@ class RVOLView(APIView):
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        cache_key = f'rvol:{normalized_symbol}'
+        cached = _cache_get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        if _is_vnstock_rate_limited('intraday'):
+            return Response({'symbol': normalized_symbol, 'buckets': [], 'source': 'vnstock_backoff', 'rate_limited': True, 'fetched_at': timezone.now().isoformat()})
+
         try:
             from vnstock import Vnstock
             stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
         except (Exception, SystemExit) as exc:
+            if _is_rate_limited_error(exc):
+                _mark_vnstock_rate_limited('intraday', exc)
+                return Response({'symbol': normalized_symbol, 'buckets': [], 'source': 'vnstock_backoff', 'rate_limited': True, 'fetched_at': timezone.now().isoformat()})
             logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
 
@@ -1552,11 +1652,13 @@ class RVOLView(APIView):
                 'is_spike': rvol >= 2.0,
             })
 
-        return Response({
+        result = {
             'symbol': normalized_symbol,
             'buckets': buckets,
             'fetched_at': timezone.now().isoformat(),
-        })
+        }
+        _cache_set(cache_key, result, timeout=20)
+        return Response(result)
 
 
 class WhaleFeedAggregateView(APIView):
@@ -1756,7 +1858,7 @@ class WhaleFeedAggregateView(APIView):
                 'next_cursor': next_cursor,
                 'has_more': has_more,
                 'server_time': timezone.now().isoformat(),
-                'source': 'vnstock',
+                'source': 'vnstock' if page_rows else 'intraday_tick_db',
                 'weights_version': score_config['version'],
                 'filters': {
                     'scope': scope,
@@ -3350,6 +3452,907 @@ def refresh_whale_advisory_api(request, symbol: str):
             'symbol': normalized_symbol,
             'task_id': task.id,
             'message': 'Đã nhận yêu cầu refresh advisory.',
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def stock_order_flow_api(request, symbol: str):
+    """
+    GET /api/stock-management/stocks/<symbol>/order-flow/
+    Tra summary order flow cho stock detail page.
+    Query params:
+      - window: 5m | 15m | 30m (default) | 1h — khung thời gian CVD và tick rate.
+    """
+    from portfolio.order_flow import compute_cvd_series, detect_dark_flow
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    _window_map = {'5m': 5, '15m': 15, '30m': 30, '1h': 60}
+    window_param = str(request.query_params.get('window', '30m')).strip().lower()
+    window_minutes = _window_map.get(window_param, 30)
+
+    dark_flow = detect_dark_flow(normalized_symbol)
+    cvd_series = compute_cvd_series(normalized_symbol, window_minutes=window_minutes, bucket_seconds=60)
+    recent_signals = list(
+        OrderFlowSignal.objects.filter(symbol=normalized_symbol)
+        .order_by('-created_at')
+        .values(
+            'id', 'symbol', 'signal_type', 'strength', 'confidence', 'tick_rate',
+            'small_order_ratio', 'cvd_at_signal', 'price_at_signal', 'created_at'
+        )[:8]
+    )
+    latest_signal = recent_signals[0] if recent_signals else None
+
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'window': window_param,
+            'window_minutes': window_minutes,
+            'latest_signal': latest_signal,
+            'signals': recent_signals,
+            'cvd_series': cvd_series,
+            'dark_flow': dark_flow,
+            'tick_rate': (dark_flow.get('components') or {}).get('tick_rate') or {},
+            'size_distribution': (dark_flow.get('components') or {}).get('size_distribution') or {},
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+def _sprint17_suggested_action_from_status(status_value: str) -> str:
+    mapping = {
+        'oversold': AIAdvisoryComponentRecord.SuggestedAction.BUY,
+        'breakout': AIAdvisoryComponentRecord.SuggestedAction.BUY,
+        'overbought': AIAdvisoryComponentRecord.SuggestedAction.SELL,
+        'accumulation': AIAdvisoryComponentRecord.SuggestedAction.WATCH,
+        'neutral': AIAdvisoryComponentRecord.SuggestedAction.WATCH,
+    }
+    return mapping.get(status_value, AIAdvisoryComponentRecord.SuggestedAction.WATCH)
+
+
+def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
+    side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
+    signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
+    signal_strength = float((dark_flow or {}).get('strength') or 0)
+
+    if side == 'BUY':
+        pa_status = AIAdvisoryComponentRecord.StatusChoice.ACCUMULATION
+    elif side == 'SELL':
+        pa_status = AIAdvisoryComponentRecord.StatusChoice.OVERBOUGHT
+    else:
+        pa_status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
+
+    if signal_type in ('iceberg', 'twap_bot') and signal_strength >= 50:
+        vo_status = AIAdvisoryComponentRecord.StatusChoice.BREAKOUT
+    elif signal_type == 'absorption':
+        vo_status = AIAdvisoryComponentRecord.StatusChoice.ACCUMULATION
+    else:
+        vo_status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
+
+    indicator_status = (
+        AIAdvisoryComponentRecord.StatusChoice.OVERBOUGHT
+        if side == 'SELL'
+        else AIAdvisoryComponentRecord.StatusChoice.OVERSOLD
+        if side == 'BUY'
+        else AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
+    )
+
+    return [
+        {
+            'symbol': symbol,
+            'component_type': AIAdvisoryComponentRecord.ComponentType.PRICE_ACTION,
+            'indicator_name': 'Price Action',
+            'status': pa_status,
+            'confidence_score': 6,
+            'suggested_action': _sprint17_suggested_action_from_status(pa_status),
+            'rationale_text': f'Gia dang phan ung theo dong lenh {side}; can theo doi phan ung vung ho tro/khang cu gan nhat.',
+            'timeframe': timeframe,
+        },
+        {
+            'symbol': symbol,
+            'component_type': AIAdvisoryComponentRecord.ComponentType.INDICATOR,
+            'indicator_name': 'RSI + Bollinger Bands',
+            'status': indicator_status,
+            'confidence_score': 5,
+            'suggested_action': _sprint17_suggested_action_from_status(indicator_status),
+            'rationale_text': 'Indicator component duoc sinh tu context advisory hien tai va can duoc xac nhan boi du lieu thuc te.',
+            'timeframe': timeframe,
+        },
+        {
+            'symbol': symbol,
+            'component_type': AIAdvisoryComponentRecord.ComponentType.VOLUME_ORDERFLOW,
+            'indicator_name': 'Volume / Order Flow',
+            'status': vo_status,
+            'confidence_score': int(max(3, min(10, round(signal_strength / 10)))) if signal_strength > 0 else 4,
+            'suggested_action': _sprint17_suggested_action_from_status(vo_status),
+            'rationale_text': f"Order flow signal={signal_type}, strength={signal_strength:.1f}. Dung de kiem chung xac suat dong tien lon.",
+            'timeframe': timeframe,
+        },
+    ]
+
+
+def _sprint17_extract_json_block(raw_text: str) -> str:
+    text = str(raw_text or '').strip()
+    if not text:
+        return ''
+    fenced_match = re.search(r'```(?:json)?\s*(\{[\s\S]*\}|\[[\s\S]*\])\s*```', text, flags=re.IGNORECASE)
+    if fenced_match:
+        return fenced_match.group(1).strip()
+    object_match = re.search(r'(\{[\s\S]*\})', text)
+    if object_match:
+        return object_match.group(1).strip()
+    array_match = re.search(r'(\[[\s\S]*\])', text)
+    if array_match:
+        return array_match.group(1).strip()
+    return ''
+
+
+def _sprint17_normalize_ai_component_payload(raw_item: dict, symbol: str, timeframe: str) -> dict | None:
+    if not isinstance(raw_item, dict):
+        return None
+
+    valid_component_types = {choice for choice, _ in AIAdvisoryComponentRecord.ComponentType.choices}
+    valid_statuses = {choice for choice, _ in AIAdvisoryComponentRecord.StatusChoice.choices}
+    valid_actions = {choice for choice, _ in AIAdvisoryComponentRecord.SuggestedAction.choices}
+    valid_timeframes = {choice for choice, _ in AIAdvisoryComponentRecord.TimeframeChoice.choices}
+
+    component_type = str(raw_item.get('component_type') or '').strip().lower()
+    status = str(raw_item.get('status') or '').strip().lower()
+    suggested_action = str(raw_item.get('suggested_action') or '').strip().lower()
+    indicator_name = str(raw_item.get('indicator_name') or 'General').strip()[:100] or 'General'
+    rationale_text = str(raw_item.get('rationale_text') or '').strip()
+
+    if component_type not in valid_component_types:
+        return None
+    if status not in valid_statuses:
+        status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
+    if suggested_action not in valid_actions:
+        suggested_action = _sprint17_suggested_action_from_status(status)
+
+    try:
+        confidence_score = int(raw_item.get('confidence_score', 5) or 5)
+    except (TypeError, ValueError):
+        confidence_score = 5
+    confidence_score = int(max(1, min(10, confidence_score)))
+
+    include_in_summary = bool(raw_item.get('include_in_summary', True))
+    resolved_timeframe = timeframe if timeframe in valid_timeframes else AIAdvisoryComponentRecord.TimeframeChoice.M30
+
+    return {
+        'symbol': symbol,
+        'component_type': component_type,
+        'indicator_name': indicator_name,
+        'status': status,
+        'confidence_score': confidence_score,
+        'suggested_action': suggested_action,
+        'rationale_text': rationale_text,
+        'timeframe': resolved_timeframe,
+        'include_in_summary': include_in_summary,
+    }
+
+
+def _sprint17_generate_component_templates_with_ai(user, symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
+    from portfolio.ai_options import get_default_model
+    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
+    from portfolio.openclaw_client import _call as _openclaw_call
+
+    cfg, _ = UserConfig.objects.get_or_create(user=user)
+    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
+    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
+    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
+
+    side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
+    signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
+    signal_strength = float((dark_flow or {}).get('strength') or 0)
+    tick_rate = float(((dark_flow or {}).get('components') or {}).get('tick_rate', {}).get('score') or 0)
+
+    prompt = (
+        'Ban la AI analyst cho TTCK Viet Nam. '\
+        'Hay tra ve JSON DUY NHAT theo dung schema sau, khong giai thich them:\n'
+        '{"components":[{'
+        '"component_type":"price_action|indicator|volume_orderflow|sentiment",'
+        '"indicator_name":"string<=100",'
+        '"status":"overbought|oversold|accumulation|breakout|neutral",'
+        '"confidence_score":1-10,'
+        '"suggested_action":"watch|buy|sell|hold_off",'
+        '"rationale_text":"string",'
+        '"include_in_summary":true'
+        '}]}\n'
+        'Yeu cau: sinh dung 3 components theo thu tu: price_action, indicator, volume_orderflow. '
+        'Khong duoc lap component_type, khong them field khac.\n'
+        f'Input context: symbol={symbol}, timeframe={timeframe}, advisory_side={side}, '
+        f'order_flow_signal={signal_type}, order_flow_strength={signal_strength:.1f}, tick_rate_score={tick_rate:.1f}.\n'
+        'Output phai la JSON hop le.'
+    )
+
+    if provider != 'openclaw' and not api_key:
+        return []
+
+    try:
+        if provider == 'openclaw':
+            if not api_key:
+                return []
+            ai_response = _openclaw_call(prompt, max_tokens=420)
+        elif provider == 'claude':
+            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=420)
+        elif provider == 'openai':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=420,
+            )
+        elif provider == 'gemini':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=420,
+            )
+        elif provider == 'copilot':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=420,
+                extra_headers={
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
+                },
+            )
+        else:
+            return []
+
+        raw_text = str((ai_response or {}).get('text') or '').strip()
+        if not raw_text:
+            return []
+        json_block = _sprint17_extract_json_block(raw_text)
+        if not json_block:
+            return []
+
+        parsed = json.loads(json_block)
+        if isinstance(parsed, dict):
+            raw_components = parsed.get('components') or []
+        elif isinstance(parsed, list):
+            raw_components = parsed
+        else:
+            raw_components = []
+
+        templates: list[dict] = []
+        seen_types: set[str] = set()
+        for raw_item in raw_components:
+            normalized = _sprint17_normalize_ai_component_payload(raw_item, symbol=symbol, timeframe=timeframe)
+            if not normalized:
+                continue
+            ctype = normalized['component_type']
+            if ctype in seen_types:
+                continue
+            seen_types.add(ctype)
+            templates.append(normalized)
+            if len(templates) >= 4:
+                break
+        return templates
+    except Exception as exc:
+        logger.warning('Sprint17 AI component generation fallback to template symbol=%s err=%s', symbol, exc)
+        return []
+
+
+def _sprint17_compute_summary_from_components(components: list[AIAdvisoryComponentRecord]) -> dict:
+    if not components:
+        return {
+            'strategy_action': AIAdvisoryExecutiveSummary.StrategyAction.STAND_ASIDE,
+            'synthesis_text': 'Khong co component active de tong hop.',
+            'target_price_zone': '',
+            'stop_loss_zone': '',
+            'risk_level': AIAdvisoryExecutiveSummary.RiskLevel.MEDIUM,
+            'overall_confidence': 1,
+            'used_component_ids': [],
+        }
+
+    weight_map = {
+        AIAdvisoryComponentRecord.ComponentType.PRICE_ACTION: 35,
+        AIAdvisoryComponentRecord.ComponentType.INDICATOR: 25,
+        AIAdvisoryComponentRecord.ComponentType.VOLUME_ORDERFLOW: 30,
+        AIAdvisoryComponentRecord.ComponentType.SENTIMENT: 10,
+    }
+    score = 0.0
+    confidence_weighted = 0.0
+    total_weight = 0.0
+    for item in components:
+        w = float(weight_map.get(item.component_type, 10))
+        total_weight += w
+        confidence_weighted += float(item.confidence_score or 0) * w
+        if item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.BUY:
+            score += 1.0 * w
+        elif item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.SELL:
+            score -= 1.0 * w
+        elif item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.HOLD_OFF:
+            score -= 0.3 * w
+
+    normalized = score / total_weight if total_weight else 0.0
+    avg_conf = (confidence_weighted / total_weight) if total_weight else 5.0
+
+    if normalized >= 0.25:
+        action = AIAdvisoryExecutiveSummary.StrategyAction.BUY
+    elif normalized <= -0.25:
+        action = AIAdvisoryExecutiveSummary.StrategyAction.SELL
+    elif abs(normalized) <= 0.08:
+        action = AIAdvisoryExecutiveSummary.StrategyAction.HOLD
+    else:
+        action = AIAdvisoryExecutiveSummary.StrategyAction.STAND_ASIDE
+
+    if avg_conf >= 7.5:
+        risk = AIAdvisoryExecutiveSummary.RiskLevel.LOW
+    elif avg_conf >= 5.5:
+        risk = AIAdvisoryExecutiveSummary.RiskLevel.MEDIUM
+    else:
+        risk = AIAdvisoryExecutiveSummary.RiskLevel.HIGH
+
+    summary_text = (
+        f"Tong hop {len(components)} component: score={normalized:.2f}, confidence TB={avg_conf:.1f}. "
+        "Khuyen nghi duoc tao theo weighting Trend/Momentum/Volume/Sentiment."
+    )
+
+    return {
+        'strategy_action': action,
+        'synthesis_text': summary_text,
+        'target_price_zone': 'Xac dinh theo khang cu gan nhat (manual confirm).',
+        'stop_loss_zone': 'Xac dinh theo ho tro gan nhat (manual confirm).',
+        'risk_level': risk,
+        'overall_confidence': int(max(1, min(10, round(avg_conf)))),
+        'used_component_ids': [item.id for item in components],
+    }
+
+
+def _sprint17_generate_executive_synthesis_with_ai(
+    user,
+    symbol: str,
+    components: list[AIAdvisoryComponentRecord],
+    summary_payload: dict,
+    synthesis_preference: str = 'balanced',
+) -> str | None:
+    from portfolio.ai_options import get_default_model
+    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
+    from portfolio.openclaw_client import _call as _openclaw_call
+
+    cfg, _ = UserConfig.objects.get_or_create(user=user)
+    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
+    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
+    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
+
+    if not api_key:
+        return None
+
+    preference = str(synthesis_preference or 'balanced').strip().lower()
+    preference_map = {
+        'short_term_action': 'Thien ve hanh dong giao dich ngan han (uu tien diem vao/ra, trigger va xac nhan).',
+        'risk_management': 'Thien ve quan tri rui ro (uu tien drawdown control, dieu kien vo hieu, va kich ban phong thu).',
+        'balanced': 'Can bang 50/50 giua hanh dong giao dich va quan tri rui ro.',
+    }
+    preference_instruction = preference_map.get(preference, preference_map['balanced'])
+
+    component_lines = []
+    for item in components[:6]:
+        rationale = str(item.rationale_text or '').strip().replace('\n', ' ')
+        rationale = rationale[:220]
+        component_lines.append(
+            f"- {item.indicator_name} | type={item.component_type} | status={item.status} | "
+            f"confidence={item.confidence_score}/10 | action={item.suggested_action} | rationale={rationale}"
+        )
+    component_block = '\n'.join(component_lines) if component_lines else '- khong co component'
+
+    prompt = (
+        "Ban la chuyen gia tu van chung khoan Viet Nam. "
+        "Hay viet phan 'Thong tin tong hop' CHI TIET theo dung cac dau vao ben duoi.\n"
+        "Yeu cau bat buoc:\n"
+        "1) Viet khoang 20 dong (tu 18 den 22 dong).\n"
+        "2) Moi dong bat dau bang '- '.\n"
+        "3) Noi dung phai cu the, khong viet chung chung, khong nhac den viec ban la AI.\n"
+        "4) Bao gom: tong quan xu huong, xung dot tin hieu, kich ban tang/giam, "
+        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu.\n"
+        "5) Khong dua ra cam ket loi nhuan.\n\n"
+        f"Input: symbol={symbol}, strategy_action={summary_payload.get('strategy_action')}, "
+        f"risk_level={summary_payload.get('risk_level')}, "
+        f"overall_confidence={summary_payload.get('overall_confidence')}/10.\n"
+        f"So thich tong hop: {preference_instruction}\n"
+        "Danh sach components:\n"
+        f"{component_block}\n\n"
+        "Chi tra ve noi dung 18-22 dong bat dau bang '- '."
+    )
+
+    try:
+        if provider == 'openclaw':
+            ai_response = _openclaw_call(prompt, max_tokens=780)
+        elif provider == 'claude':
+            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=780)
+        elif provider == 'openai':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=780,
+            )
+        elif provider == 'gemini':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=780,
+            )
+        elif provider == 'copilot':
+            ai_response = _openai_compatible_completion(
+                base_url=os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
+                api_key=api_key,
+                model=model,
+                prompt=prompt,
+                max_tokens=780,
+                extra_headers={
+                    'Accept': 'application/vnd.github+json',
+                    'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
+                },
+            )
+        else:
+            return None
+
+        raw_text = str((ai_response or {}).get('text') or '').strip()
+        if not raw_text:
+            return None
+
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+        if not lines:
+            return None
+
+        normalized_lines = []
+        for line in lines[:22]:
+            normalized_lines.append(line if line.startswith('- ') else f'- {line.lstrip("- ").strip()}')
+
+        return '\n'.join(normalized_lines)
+    except Exception as exc:
+        logger.warning('Sprint17 executive synthesis AI fallback symbol=%s err=%s', symbol, exc)
+        return None
+
+
+def _sprint17_serialize_stock_advisory_session(user, symbol: str, advisory_obj):
+    components_qs = AIAdvisoryComponentRecord.objects.filter(
+        user=user,
+        symbol=symbol,
+        is_deleted=False,
+    ).order_by('-created_at')
+    deleted_components_qs = AIAdvisoryComponentRecord.objects.filter(
+        user=user,
+        symbol=symbol,
+        is_deleted=True,
+    ).order_by('-updated_at', '-created_at')
+    latest_summary = AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=symbol).order_by('-summary_version', '-created_at').first()
+    summary_history = list(
+        AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=symbol)
+        .order_by('-summary_version', '-created_at')[:8]
+    )
+    return {
+        'advisory': WhaleAdvisorySerializer(advisory_obj).data if advisory_obj else None,
+        'components': AIAdvisoryComponentRecordSerializer(components_qs, many=True).data,
+        'deleted_components': AIAdvisoryComponentRecordSerializer(deleted_components_qs, many=True).data,
+        'executive_summary': AIAdvisoryExecutiveSummarySerializer(latest_summary).data if latest_summary else None,
+        'executive_summaries': AIAdvisoryExecutiveSummarySerializer(summary_history, many=True).data,
+        'components_count': components_qs.count(),
+        'active_components_count': components_qs.filter(include_in_summary=True).count(),
+    }
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_components_generate_api(request, symbol: str):
+    from portfolio.order_flow import detect_dark_flow
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    if latest is None:
+        return Response({'ok': False, 'message': 'Chua co advisory goc de tao components.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    timeframe = str(request.data.get('timeframe', '30m')).strip().lower()
+    valid_timeframes = {choice for choice, _ in AIAdvisoryComponentRecord.TimeframeChoice.choices}
+    if timeframe not in valid_timeframes:
+        timeframe = '30m'
+
+    dark_flow = detect_dark_flow(normalized_symbol)
+    templates = _sprint17_generate_component_templates_with_ai(
+        user=request.user,
+        symbol=normalized_symbol,
+        latest_advisory=latest,
+        dark_flow=dark_flow,
+        timeframe=timeframe,
+    )
+    generated_by_ai = bool(templates)
+    if not templates:
+        templates = _sprint17_build_component_templates(normalized_symbol, latest, dark_flow, timeframe)
+    created = [
+        AIAdvisoryComponentRecord.objects.create(user=request.user, **payload)
+        for payload in templates
+    ]
+
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'created_count': len(created),
+            'generated_by_ai': generated_by_ai,
+            'components': AIAdvisoryComponentRecordSerializer(created, many=True).data,
+        },
+        status=status.HTTP_201_CREATED,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_component_toggle_include_api(request, component_id: int):
+    component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
+    if component is None:
+        return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+    component.include_in_summary = not component.include_in_summary
+    component.save(update_fields=['include_in_summary', 'updated_at'])
+    return Response({'ok': True, 'component': AIAdvisoryComponentRecordSerializer(component).data}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_component_refresh_api(request, component_id: int):
+    from portfolio.order_flow import detect_dark_flow
+
+    component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
+    if component is None:
+        return Response({'ok': False, 'message': 'Component không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
+
+    latest = WhaleAdvisory.objects.filter(symbol=component.symbol).order_by('-created_at').first()
+    if latest is None:
+        return Response({'ok': False, 'message': 'Chưa có advisory gốc để làm mới tab.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    timeframe = component.timeframe or AIAdvisoryComponentRecord.TimeframeChoice.M30
+    dark_flow = detect_dark_flow(component.symbol)
+    templates = _sprint17_generate_component_templates_with_ai(
+        user=request.user,
+        symbol=component.symbol,
+        latest_advisory=latest,
+        dark_flow=dark_flow,
+        timeframe=timeframe,
+    )
+    generated_by_ai = bool(templates)
+    if not templates:
+        templates = _sprint17_build_component_templates(component.symbol, latest, dark_flow, timeframe)
+
+    refreshed_payload = next((item for item in templates if item.get('component_type') == component.component_type), None)
+    if refreshed_payload is None and templates:
+        refreshed_payload = templates[0]
+    if refreshed_payload is None:
+        return Response({'ok': False, 'message': 'Không tạo được dữ liệu làm mới cho tab này.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    component.indicator_name = refreshed_payload.get('indicator_name') or component.indicator_name
+    component.status = refreshed_payload.get('status') or component.status
+    component.confidence_score = int(refreshed_payload.get('confidence_score') or component.confidence_score or 5)
+    component.suggested_action = refreshed_payload.get('suggested_action') or component.suggested_action
+    component.rationale_text = refreshed_payload.get('rationale_text') or component.rationale_text
+    component.timeframe = refreshed_payload.get('timeframe') or component.timeframe
+    component.save(update_fields=['indicator_name', 'status', 'confidence_score', 'suggested_action', 'rationale_text', 'timeframe', 'updated_at'])
+
+    return Response(
+        {
+            'ok': True,
+            'generated_by_ai': generated_by_ai,
+            'component': AIAdvisoryComponentRecordSerializer(component).data,
+            'message': 'Đã làm mới tab AI đang chọn.',
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_component_delete_api(request, component_id: int):
+    component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
+    if component is None:
+        return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+    component.is_deleted = True
+    component.include_in_summary = False
+    component.save(update_fields=['is_deleted', 'include_in_summary', 'updated_at'])
+    return Response({'ok': True, 'message': 'Da xoa component (soft delete).'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_component_restore_api(request, component_id: int):
+    component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=True).first()
+    if component is None:
+        return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
+
+    component.is_deleted = False
+    component.include_in_summary = True
+    component.save(update_fields=['is_deleted', 'include_in_summary', 'updated_at'])
+    return Response({'ok': True, 'component': AIAdvisoryComponentRecordSerializer(component).data}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    cooldown = max(int(getattr(settings, 'AI_ADVISORY_SUMMARY_REGEN_COOLDOWN_SECONDS', 30)), 5)
+    lock_key = f'ai_advisory_summary_regen:{request.user.id}:{normalized_symbol}'
+    if _cache_get(lock_key):
+        return Response(
+            {
+                'ok': False,
+                'message': 'Ban vua regenerate gan day, vui long thu lai sau.',
+                'retry_after_seconds': cooldown,
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    component_ids = request.data.get('component_ids')
+    synthesis_preference = str(request.data.get('synthesis_preference') or 'balanced').strip().lower()
+    if synthesis_preference not in {'short_term_action', 'risk_management', 'balanced'}:
+        synthesis_preference = 'balanced'
+
+    qs = AIAdvisoryComponentRecord.objects.filter(
+        user=request.user,
+        symbol=normalized_symbol,
+        is_deleted=False,
+        include_in_summary=True,
+    )
+    if isinstance(component_ids, list) and component_ids:
+        qs = qs.filter(id__in=component_ids)
+
+    components = list(qs.order_by('-created_at'))
+    if not components:
+        return Response({'ok': False, 'message': 'Khong co component active de tong hop.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    latest = AIAdvisoryExecutiveSummary.objects.filter(user=request.user, symbol=normalized_symbol).order_by('-summary_version').first()
+    summary_payload = _sprint17_compute_summary_from_components(components)
+    ai_synthesis_text = _sprint17_generate_executive_synthesis_with_ai(
+        user=request.user,
+        symbol=normalized_symbol,
+        components=components,
+        summary_payload=summary_payload,
+        synthesis_preference=synthesis_preference,
+    )
+    if ai_synthesis_text:
+        summary_payload['synthesis_text'] = ai_synthesis_text
+    summary = AIAdvisoryExecutiveSummary.objects.create(
+        user=request.user,
+        symbol=normalized_symbol,
+        summary_version=(latest.summary_version + 1) if latest else 1,
+        **summary_payload,
+    )
+    _cache_set(lock_key, timezone.now().isoformat(), timeout=cooldown)
+
+    return Response({'ok': True, 'executive_summary': AIAdvisoryExecutiveSummarySerializer(summary).data}, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_session_api(request, symbol: str):
+    """
+    GET/POST /api/stock-management/stocks/<symbol>/ai-advisory-session/
+    - GET: trả advisory mới nhất; nếu chưa có thì tự queue tạo advisory.
+    - POST: refresh thủ công advisory cho mã hiện tại.
+    """
+    from portfolio.tasks import generate_whale_advisory_task
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    threshold_m = float(user_cfg.whale_alert_threshold or 500)
+    threshold_vnd = threshold_m * 1_000_000
+
+    def _should_use_sync_fallback() -> bool:
+        if not bool(getattr(settings, 'DEBUG', False)):
+            return False
+        try:
+            host = str(request.get_host() or '').lower()
+        except Exception:
+            host = ''
+        # Giữ hành vi async trong test suite để tránh làm flaky unit tests.
+        return 'testserver' not in host
+
+    def _queue_or_run(payload_kwargs: dict) -> dict:
+        if _should_use_sync_fallback():
+            try:
+                from celery import current_app
+                worker_responses = current_app.control.inspect(timeout=0.6).ping() or {}
+            except Exception:
+                worker_responses = {}
+
+            if not worker_responses:
+                try:
+                    result = generate_whale_advisory_task.run(**payload_kwargs)
+                    return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
+                except Exception as exc:
+                    logger.warning('stock_ai_advisory_session_api sync fallback failed %s: %s', normalized_symbol, exc)
+
+        try:
+            task = generate_whale_advisory_task.apply_async(kwargs=payload_kwargs, countdown=0)
+            return {'queued': True, 'task_id': task.id, 'sync': False}
+        except Exception as exc:
+            logger.error('stock_ai_advisory_session_api queue failed %s: %s', normalized_symbol, exc)
+            return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': str(exc)}
+
+    def _serialize_latest(latest_advisory):
+        if latest_advisory is None:
+            return None
+        data = WhaleAdvisorySerializer(latest_advisory).data
+        if _get_plan(request.user) not in ('premium', 'admin'):
+            data['ai_detail'] = ''
+        return data
+
+    def _build_session_payload(latest_advisory):
+        payload = _sprint17_serialize_stock_advisory_session(request.user, normalized_symbol, latest_advisory)
+        advisory_data = payload.get('advisory')
+        if advisory_data and _get_plan(request.user) not in ('premium', 'admin'):
+            advisory_data['ai_detail'] = ''
+        return payload
+
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+
+    if request.method == 'GET':
+        if latest is not None:
+            return Response(
+                {
+                    'ok': True,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    **_build_session_payload(latest),
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        auto_cooldown = max(int(getattr(settings, 'STOCK_AI_ADVISORY_AUTOGEN_COOLDOWN_SECONDS', 45)), 10)
+        auto_lock_key = f'stock_ai_advisory_autogen_lock:{request.user.id}:{normalized_symbol}'
+        if _cache_get(auto_lock_key):
+            return Response(
+                {
+                    'ok': True,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    'advisory': None,
+                    'message': 'Đang chờ advisory AI được tạo, vui lòng tải lại sau ít giây.',
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+
+        payload_kwargs = {
+            'symbol': normalized_symbol,
+            'matched_value_vnd': threshold_vnd,
+            'side': 'UNKNOWN',
+            'threshold': threshold_vnd,
+            'force_refresh': False,
+        }
+        submit_result = _queue_or_run(payload_kwargs)
+        if submit_result.get('queue_error'):
+            return Response(
+                {
+                    'ok': False,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    'advisory': None,
+                    'components': [],
+                    'deleted_components': [],
+                    'executive_summary': None,
+                    'executive_summaries': [],
+                    'components_count': 0,
+                    'active_components_count': 0,
+                    'message': 'Khong the tao advisory luc nay (queue service tam thoi khong san sang). Vui long thu lai sau.',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        _cache_set(auto_lock_key, timezone.now().isoformat(), timeout=auto_cooldown)
+
+        latest_after_submit = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+        if submit_result.get('sync') and latest_after_submit is not None:
+            return Response(
+                {
+                    'ok': True,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    **_build_session_payload(latest_after_submit),
+                    'message': 'Đã tạo AI Advisory trực tiếp trong phiên hiện tại.',
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        return Response(
+            {
+                'ok': True,
+                'queued': bool(submit_result.get('queued')),
+                'symbol': normalized_symbol,
+                'task_id': submit_result.get('task_id'),
+                'advisory': None,
+                'components': [],
+                'executive_summary': None,
+                'components_count': 0,
+                'active_components_count': 0,
+                'message': 'Đã gửi yêu cầu tạo AI Advisory cho mã này.' if submit_result.get('queued') else 'Đang xử lý AI Advisory trực tiếp.',
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
+    refresh_lock_key = f'stock_ai_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
+    if _cache_get(refresh_lock_key):
+        return Response(
+            {
+                'ok': False,
+                'queued': False,
+                'symbol': normalized_symbol,
+                'message': 'Bạn vừa refresh gần đây, vui lòng thử lại sau.',
+                'retry_after_seconds': refresh_cooldown,
+            },
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    matched_value_vnd = float(latest.matched_value) if latest else threshold_vnd
+    advisory_side = latest.side if latest else 'UNKNOWN'
+    advisory_threshold = float(latest.threshold or 0) if latest else threshold_vnd
+    payload_kwargs = {
+        'symbol': normalized_symbol,
+        'matched_value_vnd': matched_value_vnd,
+        'side': advisory_side,
+        'threshold': advisory_threshold,
+        'force_refresh': True,
+    }
+    submit_result = _queue_or_run(payload_kwargs)
+    if submit_result.get('queue_error'):
+        return Response(
+            {
+                'ok': False,
+                'queued': False,
+                'symbol': normalized_symbol,
+                **_build_session_payload(latest),
+                'message': 'Khong the refresh advisory luc nay (queue service tam thoi khong san sang). Vui long thu lai sau.',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+    _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+
+    latest_after_refresh = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    if submit_result.get('sync') and latest_after_refresh is not None:
+        return Response(
+            {
+                'ok': True,
+                'queued': False,
+                'symbol': normalized_symbol,
+                'task_id': None,
+                **_build_session_payload(latest_after_refresh),
+                'message': 'Đã refresh AI Advisory trực tiếp trong phiên hiện tại.',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    return Response(
+        {
+            'ok': True,
+            'queued': bool(submit_result.get('queued')),
+            'symbol': normalized_symbol,
+            'task_id': submit_result.get('task_id'),
+            **_build_session_payload(latest),
+            'message': 'Đã gửi yêu cầu refresh AI Advisory cho mã này.' if submit_result.get('queued') else 'Đang refresh AI Advisory trực tiếp.',
         },
         status=status.HTTP_202_ACCEPTED,
     )

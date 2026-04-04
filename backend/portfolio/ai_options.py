@@ -6,7 +6,7 @@ AVAILABLE_MODELS = {
     'openai': ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     'claude': ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
     'gemini': ['gemini-1.5-pro', 'gemini-1.5-flash'],
-    'copilot': ['copilot-pro'],
+    'copilot': ['openai/gpt-4.1-mini', 'openai/gpt-4.1'],
     'openclaw': ['default'],
 }
 
@@ -14,7 +14,7 @@ DEFAULT_MODELS = {
     'openai': 'gpt-4o',
     'claude': 'claude-3-5-sonnet-20240620',
     'gemini': 'gemini-1.5-pro',
-    'copilot': 'copilot-pro',
+    'copilot': 'openai/gpt-4.1-mini',
     'openclaw': 'default',
 }
 
