@@ -217,6 +217,8 @@ export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management
 
 // --- Admin Ops (is_staff only) ---
 export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
+export const warmTickerPrefetch = (mode = 'async') =>
+  apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>
   apiClient.post(`/admin-ops/market-groups/sync/?mode=${mode}&clear=${clear}`);
 

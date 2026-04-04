@@ -89,6 +89,17 @@ def _store_prefetch_meta(payload: dict, timeout: int = 600) -> None:
         pass
 
 
+def _is_rate_limited_error(exc: Exception) -> bool:
+    message = str(exc or '').lower()
+    return '429' in message or 'too many requests' in message
+
+
+def _prefetch_retry_countdown(retries: int) -> int:
+    base = max(int(os.getenv('TICKER_PREFETCH_RETRY_BASE_SECONDS', '15')), 1)
+    max_seconds = max(int(os.getenv('TICKER_PREFETCH_RETRY_MAX_SECONDS', '180')), base)
+    return min(max_seconds, base * (2 ** max(retries, 0)))
+
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def activate_due_whale_config_rollouts(self) -> dict:
     activated = activate_due_scheduled_whale_config_rollouts()
@@ -468,7 +479,7 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
 # Tier-2 Cache pre-fetch: batch price_board cho tất cả tracked symbols
 # Giải quyết thread pool exhaustion — 1 vnstock call thay vì N calls
 # ---------------------------------------------------------------------------
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True)
 def prefetch_ticker_price_board(self) -> dict:
     """
     Gọi vnstock price_board MỘT LẦN cho tất cả tracked symbols.
@@ -509,6 +520,7 @@ def prefetch_ticker_price_board(self) -> dict:
     now_iso = timezone.now().isoformat()
     cached_count = 0
     processed_batches = 0
+    max_retries = max(int(os.getenv('TICKER_PREFETCH_MAX_RETRIES', '4')), 0)
     try:
         from vnstock import Vnstock
 
@@ -557,6 +569,25 @@ def prefetch_ticker_price_board(self) -> dict:
                     logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
     except (Exception, SystemExit) as exc:
         logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
+        if _is_rate_limited_error(exc):
+            countdown = _prefetch_retry_countdown(getattr(self.request, 'retries', 0))
+            payload = {
+                'status': 'retrying',
+                'reason': str(exc),
+                'symbols': len(symbols),
+                'cached': cached_count,
+                'source_counts': source_counts,
+                'generated_at': timezone.now().isoformat(),
+                'batch_size': batch_size,
+                'batches': processed_batches,
+                'sample_symbols': symbols[:10],
+                'retry_after_seconds': countdown,
+                'retry_count': getattr(self.request, 'retries', 0) + 1,
+                'max_retries': max_retries,
+            }
+            _store_prefetch_meta(payload)
+            raise self.retry(exc=exc, countdown=countdown, max_retries=max_retries)
+
         payload = {
             'status': 'error',
             'reason': str(exc),
@@ -580,6 +611,7 @@ def prefetch_ticker_price_board(self) -> dict:
         'batch_size': batch_size,
         'batches': processed_batches,
         'sample_symbols': symbols[:10],
+        'retry_count': getattr(self.request, 'retries', 0),
     }
     _store_prefetch_meta(payload)
     logger.info(

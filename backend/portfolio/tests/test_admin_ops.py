@@ -38,6 +38,7 @@ from portfolio.models import (
 )
 
 URL = '/api/admin-ops/stats/'
+WARM_URL = '/api/admin-ops/prefetch/warm/'
 
 
 class AdminOpsStatsPermissionTests(APITestCase):
@@ -132,10 +133,80 @@ class AdminOpsStatsDataTests(APITestCase):
             'user_count', 'portfolio_count', 'tracked_symbol_count',
             'watchlist_item_count', 'last_market_group_sync', 'last_stock_profile_sync',
             'channel_layer_type', 'realtime_enabled', 'redis_ok',
+            'ticker_prefetch',
             'whale_config_propagation', 'whale_config_anomaly', 'whale_config_dashboard',
         ]
         for key in required_keys:
             self.assertIn(key, data, f"Missing key: {key}")
+
+    @patch('config.health.build_prefetch_health_snapshot')
+    def test_ticker_prefetch_payload_present(self, mock_prefetch_snapshot):
+        mock_prefetch_snapshot.return_value = {
+            'healthy': True,
+            'meta_present': True,
+            'freshness_seconds': 5,
+            'sample_cache_hits': 3,
+            'sample_cache_total': 3,
+            'prefetch': {'status': 'ok'},
+        }
+        data = self._get_stats()
+        self.assertIn('ticker_prefetch', data)
+        self.assertTrue(data['ticker_prefetch']['healthy'])
+
+
+class AdminOpsWarmPrefetchTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='warm_staff', password='Test@123456', is_staff=True
+        )
+        self.user2 = User.objects.create_user(
+            username='warm_user2', password='Test@123456'
+        )
+        self.portfolio = Portfolio.objects.create(
+            user=self.staff, name='Warm Test Portfolio'
+        )
+        TrackedSymbol.objects.create(user=self.staff, symbol='VNM')
+        TrackedSymbol.objects.create(user=self.staff, symbol='HPG')
+        group = WatchlistGroup.objects.create(user=self.staff, name='WarmG1')
+        WatchlistItem.objects.create(group=group, symbol='FPT')
+        WatchlistItem.objects.create(group=group, symbol='MWG')
+        cfg, _ = UserConfig.objects.get_or_create(user=self.staff)
+        if not cfg.email_verified:
+            cfg.email_verified = True
+            cfg.save(update_fields=['email_verified', 'updated_at'])
+        resp = self.client.post(
+            '/api/auth/token/',
+            {'username': 'warm_staff', 'password': 'Test@123456'},
+            format='json',
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+
+    def _get_stats(self):
+        with patch('portfolio.views.redis_lib') as mock_r:
+            mock_r.from_url.return_value.ping.return_value = True
+            resp = self.client.get(URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        return resp.data
+
+    def test_warm_prefetch_requires_auth(self):
+        self.client.credentials()
+        resp = self.client.post(WARM_URL)
+        self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+
+    @patch('config.health.build_prefetch_health_snapshot')
+    @patch('portfolio.tasks.prefetch_ticker_price_board.apply_async')
+    def test_staff_can_queue_async_prefetch_warm(self, mock_apply_async, mock_prefetch_snapshot):
+        class _Task:
+            id = 'task-123'
+
+        mock_apply_async.return_value = _Task()
+        mock_prefetch_snapshot.return_value = {'healthy': False, 'meta_present': True}
+
+        resp = self.client.post(WARM_URL)
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(resp.data['queued'])
+        self.assertEqual(resp.data['task_id'], 'task-123')
 
     def test_user_count_includes_all_users(self):
         data = self._get_stats()

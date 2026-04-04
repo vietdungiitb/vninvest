@@ -73,6 +73,48 @@ def sync_market_groups_api(request):
         status=resp_status,
     )
 
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def warm_ticker_prefetch_api(request):
+    """
+    POST /api/admin-ops/prefetch/warm/
+    Trigger warm cache ticker thủ công từ giao diện admin/dashboard.
+
+    Query/body:
+      - mode=async (mặc định): queue Celery task ngay lập tức.
+      - mode=sync: chạy ngay trong request để debug/verify.
+    """
+    from config.health import build_prefetch_health_snapshot
+    from portfolio.tasks import prefetch_ticker_price_board
+
+    mode = str(request.query_params.get('mode') or request.data.get('mode') or 'async').strip().lower()
+
+    if mode == 'sync':
+        result = prefetch_ticker_price_board.run()
+        snapshot = build_prefetch_health_snapshot()
+        ok = result.get('status') == 'ok'
+        return Response(
+            {
+                'queued': False,
+                'mode': 'sync',
+                'result': result,
+                'prefetch': snapshot,
+            },
+            status=status.HTTP_200_OK if ok else status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    task = prefetch_ticker_price_board.apply_async(countdown=0)
+    return Response(
+        {
+            'queued': True,
+            'mode': 'async',
+            'task_id': task.id,
+            'prefetch': build_prefetch_health_snapshot(),
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
 # SecuritiesGroup List API
 class SecuritiesGroupListView(generics.ListAPIView):
     serializer_class = SecuritiesGroupDetailSerializer

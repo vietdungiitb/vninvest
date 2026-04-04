@@ -30,5 +30,6 @@ urlpatterns = [
     path('api/health/streams/', streams_health, name='streams-health'),
     path('api/health/prefetch/', prefetch_health, name='prefetch-health'),
     path('api/admin-ops/stats/', AdminOpsStatsView.as_view(), name='admin-ops-stats'),
+    path('api/admin-ops/prefetch/warm/', portfolio_views.warm_ticker_prefetch_api, name='admin-ops-prefetch-warm'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
 ]

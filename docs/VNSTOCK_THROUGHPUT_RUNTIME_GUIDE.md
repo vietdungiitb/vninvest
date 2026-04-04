@@ -176,6 +176,31 @@ Ky vong:
 - `meta_present = true`
 - `sample_cache_hits > 0`
 
+### 5. Trigger warm cache thu cong tu admin/dashboard
+
+```powershell
+curl -X POST http://127.0.0.1:8000/api/admin-ops/prefetch/warm/ \
+  -H "Authorization: Bearer <staff_jwt>"
+```
+
+Ky vong:
+- Response `202 Accepted` voi `queued = true` khi chay async.
+- Sau vai giay, `GET /api/health/prefetch/` se cap nhat metadata moi.
+
+## Retry/backoff khi upstream tra 429
+
+Task `prefetch_ticker_price_board` co co che rieng cho rate-limit tu upstream:
+
+- Neu message loi chua `429` hoac `Too Many Requests`, task chuyen sang trang thai `retrying`.
+- Metadata health ghi lai `retry_after_seconds`, `retry_count`, `max_retries`.
+- Celery task tu retry theo exponential backoff.
+
+Bien moi truong co the tuning:
+
+- `TICKER_PREFETCH_RETRY_BASE_SECONDS` (mac dinh `15`)
+- `TICKER_PREFETCH_RETRY_MAX_SECONDS` (mac dinh `180`)
+- `TICKER_PREFETCH_MAX_RETRIES` (mac dinh `4`)
+
 ## Benchmark da xac minh
 
 ### Khi cache chua warm

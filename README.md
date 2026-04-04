@@ -74,6 +74,7 @@ Xác minh nhanh:
 - `/api/realtime/ticker/<symbol>/` trả `source=prefetch`
 - `/api/health/prefetch/` trả `healthy=true`
 - Benchmark kỳ vọng: ticker p95 khoảng 50-60ms
+- Admin Ops có badge `Prefetch health` và nút `Warm Ticker Cache`
 
 ---
 
@@ -116,6 +117,7 @@ vnstock API → Celery worker (5s) → collector → compute (VWAP/whale) → Re
 | `/api/realtime/` | Fallback ticker HTTP, whale-feed |
 | `/api/admin-ops/` | System stats (is_staff only) |
 | `/api/health/prefetch/` | Prefetch cache health, freshness và sample cache hits |
+| `/api/admin-ops/prefetch/warm/` | Staff trigger warm cache ticker thủ công từ Admin Ops |
 | `/ws/realtime/` | WebSocket gateway (JWT auth) |
 | `/health/` | Health check |
 | `/health/realtime/` | Redis + Channels health |

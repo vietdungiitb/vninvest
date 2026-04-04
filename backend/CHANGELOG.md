@@ -9,6 +9,8 @@
 - Mở rộng phạm vi symbol cho task `prefetch_ticker_price_board`: gom từ `TrackedSymbol`, `WatchlistItem`, `PriceAlertRule`, `Transaction`; hỗ trợ batch size và symbol limit qua biến môi trường.
 - Bổ sung script `backend/start_stack.ps1` để khởi động nhanh backend + Celery worker + Celery beat trên Windows.
 - Mở rộng `GET /api/admin-ops/stats/` với payload `ticker_prefetch` để admin theo dõi fast path cache-first ngay trong dashboard thống kê.
+- Bổ sung endpoint `POST /api/admin-ops/prefetch/warm/` để staff trigger warm cache thủ công từ giao diện Admin Ops.
+- Bổ sung retry/backoff riêng cho `prefetch_ticker_price_board` khi upstream trả `429 Too Many Requests`, đồng thời phản ánh trạng thái `retrying` trong metadata health.
 
 ---
 

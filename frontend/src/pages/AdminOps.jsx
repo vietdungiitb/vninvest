@@ -10,7 +10,7 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAdminOpsStats, syncMarketGroups, syncStockProfile, syncWatchlistPrices } from '../api/client';
+import { getAdminOpsStats, syncMarketGroups, syncStockProfile, syncWatchlistPrices, warmTickerPrefetch } from '../api/client';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,20 @@ function StatusBadge({ ok }) {
   return ok
     ? <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">OK</span>
     : <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300">FAIL</span>;
+}
+
+function PrefetchHealthBadge({ snapshot }) {
+  if (!snapshot || !snapshot.meta_present) {
+    return <Pill>Chưa có meta</Pill>;
+  }
+  if (snapshot.healthy) {
+    return <Pill tone="green">HEALTHY</Pill>;
+  }
+  const statusValue = String(snapshot.prefetch?.status || '').toLowerCase();
+  if (statusValue === 'retrying') {
+    return <Pill tone="amber">RETRYING</Pill>;
+  }
+  return <Pill tone="red">DEGRADED</Pill>;
 }
 
 function SyncRow({ label, log }) {
@@ -236,6 +250,7 @@ export default function AdminOps() {
   const alerts = dashboard.alerts || {};
   const workerSummary = dashboard.worker_summary || {};
   const workerRows = Array.isArray(workerSummary.workers) ? workerSummary.workers.slice(0, 5) : [];
+  const prefetch = stats.ticker_prefetch || {};
 
   const syncBtn = (key, label, fn, ...args) => {
     const st = syncStates[key];
@@ -299,6 +314,37 @@ export default function AdminOps() {
             <span className="text-sm text-gray-600 dark:text-gray-300">Redis</span>
             <StatusBadge ok={stats.redis_ok} />
           </div>
+          <div className="flex items-center justify-between px-5 py-3">
+            <span className="text-sm text-gray-600 dark:text-gray-300">Prefetch health</span>
+            <PrefetchHealthBadge snapshot={prefetch} />
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MiniMetric label="Freshness" value={prefetch.freshness_seconds != null ? `${fmtNumber(prefetch.freshness_seconds)}s` : '—'} />
+              <MiniMetric label="Cache hits" value={`${fmtNumber(prefetch.sample_cache_hits || 0)}/${fmtNumber(prefetch.sample_cache_total || 0)}`} />
+              <MiniMetric label="Prefetch status" value={prefetch.prefetch?.status || '—'} hint={prefetch.prefetch?.retry_after_seconds ? `retry in ${fmtNumber(prefetch.prefetch.retry_after_seconds)}s` : (prefetch.prefetch?.reason || '—')} />
+            </div>
+            <div className="rounded-xl border border-gray-100 p-4 dark:border-gray-700">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Ticker Prefetch</h3>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Last run {fmtDateTime(prefetch.prefetch?.generated_at)} · symbols {fmtNumber(prefetch.prefetch?.symbols)} · cached {fmtNumber(prefetch.prefetch?.cached)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <PrefetchHealthBadge snapshot={prefetch} />
+                  {prefetch.prefetch?.batch_size ? <Pill tone="blue">batch {prefetch.prefetch.batch_size}</Pill> : null}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <KeyValueRow label="Tracked" value={fmtNumber(prefetch.prefetch?.source_counts?.tracked_symbols)} />
+                <KeyValueRow label="Watchlist" value={fmtNumber(prefetch.prefetch?.source_counts?.watchlist_items)} />
+                <KeyValueRow label="Alerts" value={fmtNumber(prefetch.prefetch?.source_counts?.price_alerts)} />
+                <KeyValueRow label="Transactions" value={fmtNumber(prefetch.prefetch?.source_counts?.portfolio_transactions)} />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -318,6 +364,7 @@ export default function AdminOps() {
           {syncBtn('stockprofile', 'Sync Stock Profiles', syncStockProfile)}
           {syncBtn('watchlist', 'Sync Watchlist Prices', syncWatchlistPrices, 5)}
           {syncBtn('marketgroups', 'Đồng bộ Nhóm Thị trường', syncMarketGroups)}
+          {syncBtn('prefetchwarm', 'Warm Ticker Cache', warmTickerPrefetch, 'async')}
         </div>
       </section>
 
