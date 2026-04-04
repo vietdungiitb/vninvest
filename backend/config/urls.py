@@ -32,4 +32,7 @@ urlpatterns = [
     path('api/admin-ops/stats/', AdminOpsStatsView.as_view(), name='admin-ops-stats'),
     path('api/admin-ops/prefetch/warm/', portfolio_views.warm_ticker_prefetch_api, name='admin-ops-prefetch-warm'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
+    path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
+    path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),
+    path('api/ai-config/test-connection/', portfolio_views.ai_test_connection_api, name='ai-test-connection'),
 ]

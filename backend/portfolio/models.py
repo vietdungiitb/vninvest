@@ -4,6 +4,9 @@ from django.core.validators import MinValueValidator
 from django.core import signing
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+
+from .ai_options import PROVIDER_CHOICES, get_default_model
+from .encryption_utils import decrypt_text, encrypt_text
 # ---------------------------------------------------------------------------
 # ScreenerRule: Bộ lọc động do user tự định nghĩa
 # ---------------------------------------------------------------------------
@@ -647,6 +650,24 @@ class UserConfig(models.Model):
         blank=True,
         verbose_name='Thoi diem xac thuc email',
     )
+    ai_provider = models.CharField(
+        max_length=50,
+        choices=PROVIDER_CHOICES,
+        default='openclaw',
+        verbose_name='AI provider',
+    )
+    ai_model = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='AI model',
+        help_text='VD: gpt-4o, claude-3-5-sonnet-20240620',
+    )
+    ai_api_key = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='AI API key (encrypted)',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -656,6 +677,20 @@ class UserConfig(models.Model):
 
     def __str__(self):
         return f'Cấu hình {self.user.username} (plan={self.plan}, threshold: {self.whale_alert_threshold:,}M)'
+
+    @property
+    def ai_api_key_configured(self) -> bool:
+        return bool(self.ai_api_key)
+
+    def get_effective_ai_model(self) -> str:
+        return (self.ai_model or '').strip() or get_default_model(self.ai_provider)
+
+    def set_ai_api_key(self, raw_key: str) -> None:
+        raw = str(raw_key or '').strip()
+        self.ai_api_key = encrypt_text(raw) if raw else ''
+
+    def get_ai_api_key(self) -> str:
+        return decrypt_text(self.ai_api_key)
 
 
 class SystemEmailAccount(models.Model):

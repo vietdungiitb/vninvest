@@ -115,6 +115,90 @@ def warm_ticker_prefetch_api(request):
         status=status.HTTP_202_ACCEPTED,
     )
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ai_options_api(request):
+    """GET /api/ai-options/ - provider/model khả dụng cho frontend dropdown."""
+    from .ai_options import AVAILABLE_MODELS, get_default_model
+
+    return Response(
+        {
+            'providers': AVAILABLE_MODELS,
+            'defaults': {provider: get_default_model(provider) for provider in AVAILABLE_MODELS.keys()},
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_test_connection_api(request):
+    """POST /api/ai-config/test-connection/ - kiểm tra provider/model/api key trước khi lưu."""
+    from .ai_options import is_valid_model, is_valid_provider
+    from .ai_service import test_ai_connection
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    provider = str(request.data.get('ai_provider') or user_cfg.ai_provider or 'openclaw').strip().lower()
+    model = str(request.data.get('ai_model') or user_cfg.get_effective_ai_model() or '').strip()
+    api_key = str(request.data.get('ai_api_key') or '').strip() or user_cfg.get_ai_api_key()
+
+    if not is_valid_provider(provider):
+        return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not is_valid_model(provider, model):
+        return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = test_ai_connection(provider=provider, model=model, api_key=api_key)
+    return Response(payload, status=status.HTTP_200_OK if payload.get('ok') else status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def ai_config_api(request):
+    """GET/PUT /api/ai-config/ - đọc/cập nhật cấu hình AI cho user hiện tại."""
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+
+    if request.method == 'GET':
+        return Response(
+            {
+                'ai_provider': user_cfg.ai_provider,
+                'ai_model': user_cfg.get_effective_ai_model(),
+                'ai_api_key_configured': user_cfg.ai_api_key_configured,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    provider = str(request.data.get('ai_provider') or user_cfg.ai_provider or 'openclaw').strip().lower()
+    model = str(request.data.get('ai_model') or '').strip()
+    api_key = request.data.get('ai_api_key', None)
+
+    from .ai_options import get_default_model, is_valid_model, is_valid_provider
+
+    if not is_valid_provider(provider):
+        return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not model:
+        model = get_default_model(provider)
+    if not is_valid_model(provider, model):
+        return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_cfg.ai_provider = provider
+    user_cfg.ai_model = model
+    if api_key is not None:
+        user_cfg.set_ai_api_key(str(api_key or '').strip())
+    user_cfg.save()
+
+    return Response(
+        {
+            'ok': True,
+            'message': 'Đã cập nhật cấu hình AI.',
+            'ai_provider': user_cfg.ai_provider,
+            'ai_model': user_cfg.get_effective_ai_model(),
+            'ai_api_key_configured': user_cfg.ai_api_key_configured,
+        },
+        status=status.HTTP_200_OK,
+    )
+
 # SecuritiesGroup List API
 class SecuritiesGroupListView(generics.ListAPIView):
     serializer_class = SecuritiesGroupDetailSerializer

@@ -1,8 +1,22 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getWhaleAdvisories } from '../api/client';
+import {
+  getAIOptions,
+  getUserConfig,
+  getWhaleAdvisories,
+  testAIConnection,
+  updateUserConfig,
+} from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import Can from '../components/Can';
+
+const FALLBACK_MODELS = {
+  openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
+  claude: ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
+  gemini: ['gemini-1.5-pro', 'gemini-1.5-flash'],
+  copilot: ['copilot-pro'],
+  openclaw: ['default'],
+};
 
 function fmtCurrency(value) {
   return Number(value || 0).toLocaleString('vi-VN');
@@ -197,6 +211,15 @@ export default function WhaleAdvisory() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [aiProviders, setAiProviders] = useState(FALLBACK_MODELS);
+  const [aiProvider, setAiProvider] = useState('openclaw');
+  const [aiModel, setAiModel] = useState('default');
+  const [apiKey, setApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [savingAi, setSavingAi] = useState(false);
+  const [testingAi, setTestingAi] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
+  const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -214,6 +237,86 @@ export default function WhaleAdvisory() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchAiSettings() {
+      try {
+        const [optionsResp, cfgResp] = await Promise.all([getAIOptions(), getUserConfig()]);
+        if (!mounted) return;
+
+        const providers = optionsResp?.data?.providers || FALLBACK_MODELS;
+        const cfg = cfgResp?.data || {};
+        const provider = (cfg.ai_provider || 'openclaw').toLowerCase();
+        const providerModels = providers[provider] || FALLBACK_MODELS[provider] || ['default'];
+        const model = cfg.ai_model || providerModels[0] || 'default';
+
+        setAiProviders(providers);
+        setAiProvider(provider);
+        setAiModel(model);
+        setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
+      } catch (_) {
+        // Không chặn trang advisory khi API options lỗi.
+      }
+    }
+
+    fetchAiSettings();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const modelOptions = useMemo(() => aiProviders[aiProvider] || ['default'], [aiProvider, aiProviders]);
+
+  useEffect(() => {
+    if (!modelOptions.includes(aiModel)) {
+      setAiModel(modelOptions[0] || 'default');
+    }
+  }, [aiModel, modelOptions]);
+
+  const handleSaveAiConfig = useCallback(async () => {
+    setSavingAi(true);
+    setAiMessage('');
+    try {
+      const payload = {
+        ai_provider: aiProvider,
+        ai_model: aiModel,
+      };
+      if (apiKey.trim()) {
+        payload.ai_api_key = apiKey.trim();
+      }
+      const resp = await updateUserConfig(payload);
+      setAiKeyConfigured(Boolean(resp?.data?.ai_api_key_configured) || Boolean(apiKey.trim()));
+      setApiKey('');
+      setAiMessage('Đã lưu cấu hình AI thành công.');
+    } catch (err) {
+      setAiMessage(err?.response?.data?.detail || 'Không lưu được cấu hình AI.');
+    } finally {
+      setSavingAi(false);
+    }
+  }, [aiModel, aiProvider, apiKey]);
+
+  const handleTestAiConnection = useCallback(async () => {
+    setTestingAi(true);
+    setAiMessage('');
+    try {
+      const payload = {
+        ai_provider: aiProvider,
+        ai_model: aiModel,
+      };
+      if (apiKey.trim()) {
+        payload.ai_api_key = apiKey.trim();
+      }
+      const resp = await testAIConnection(payload);
+      const message = resp?.data?.message || 'Kết nối thành công.';
+      setAiMessage(message);
+    } catch (err) {
+      setAiMessage(err?.response?.data?.message || 'Kiểm tra kết nối thất bại.');
+    } finally {
+      setTestingAi(false);
+    }
+  }, [aiModel, aiProvider, apiKey]);
 
   const symbolStats = useMemo(() => buildSymbolStats(items), [items]);
 
@@ -235,6 +338,89 @@ export default function WhaleAdvisory() {
             Làm mới
           </button>
         </div>
+      </section>
+
+      <section className="card-section px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-label">AI provider config</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-100">Tuỳ chọn model cho Whale Advisory</h2>
+            <p className="mt-1 text-xs text-slate-400">
+              API key: {aiKeyConfigured ? 'Đã cấu hình' : 'Chưa cấu hình'}.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <label className="text-xs text-slate-400">
+            Provider
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              value={aiProvider}
+              onChange={(e) => setAiProvider(e.target.value)}
+            >
+              {Object.keys(aiProviders).map((provider) => (
+                <option key={provider} value={provider}>{provider}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs text-slate-400">
+            Model
+            <select
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              value={aiModel}
+              onChange={(e) => setAiModel(e.target.value)}
+            >
+              {modelOptions.map((model) => (
+                <option key={model} value={model}>{model}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs text-slate-400">
+            API key (optional)
+            <div className="mt-1 flex gap-2">
+              <input
+                type={showApiKey ? 'text' : 'password'}
+                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Nhập để override key hệ thống"
+              />
+              <button
+                type="button"
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200"
+                onClick={() => setShowApiKey((prev) => !prev)}
+              >
+                {showApiKey ? 'Ẩn' : 'Hiện'}
+              </button>
+            </div>
+          </label>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleSaveAiConfig}
+            disabled={savingAi}
+          >
+            {savingAi ? 'Đang lưu...' : 'Lưu cấu hình'}
+          </button>
+          <button
+            type="button"
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
+            onClick={handleTestAiConnection}
+            disabled={testingAi}
+          >
+            {testingAi ? 'Đang test...' : 'Test connection'}
+          </button>
+        </div>
+
+        {aiMessage && (
+          <p className="mt-3 text-xs text-cyan-300">{aiMessage}</p>
+        )}
       </section>
 
       {error && (

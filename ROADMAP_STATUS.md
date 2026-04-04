@@ -9,6 +9,22 @@
 
 ## Sprint Completion Overview
 
+### 🚀 Sprint 15 - STARTED (Multi-AI Providers)
+**Focus**: Mở rộng AI Advisory từ OpenClaw-only sang đa provider/model  
+**Status**: IN PROGRESS
+
+**Scope đã chốt Sprint 15:**
+- ✅ UserConfig bổ sung `ai_provider`, `ai_model`, `ai_api_key` (encrypted)
+- ✅ API endpoint `GET /api/ai-options/`
+- ✅ API endpoint `POST /api/ai-config/test-connection/`
+- ✅ Dispatcher task advisory theo provider/model thay vì hard-code OpenClaw
+- ✅ UI WhaleAdvisory có form Provider -> Model, API key, Test Connection
+
+**Mục tiêu cuối Sprint 15:**
+- Hoàn tất migration và rollout an toàn
+- Xác nhận chuyển model on-the-fly từ UI hoạt động end-to-end
+- Theo dõi token/provider trong log vận hành
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  

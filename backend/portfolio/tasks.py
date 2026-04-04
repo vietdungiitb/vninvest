@@ -408,15 +408,16 @@ def trim_streams(self) -> dict:
 def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, side: str, threshold: float = 0) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
-    2. Gọi OpenClaw: summary (Pro) + detail (Premium).
+    2. Gọi provider AI được cấu hình trong UserConfig: summary (Pro) + detail (Premium).
     3. Lưu WhaleAdvisory vào DB.
     4. Push WebSocket event whale_advisory tới group whale_{symbol}.
     """
     from django.core.cache import cache
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
+    from portfolio.ai_options import get_default_model, is_valid_model, is_valid_provider
+    from portfolio.ai_service import generate_whale_text
     from portfolio.models import WhaleAdvisory
-    from portfolio.openclaw_client import generate_whale_summary, generate_whale_deep
 
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
     cache_key = f'whale_advisory_lock:{symbol}'
@@ -425,11 +426,41 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         logger.info('Whale advisory cooldown active — skipping %s', symbol)
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
 
+    # Ưu tiên cấu hình từ user staff đầu tiên để vận hành tập trung.
+    cfg = UserConfig.objects.filter(user__is_staff=True).select_related('user').order_by('id').first()
+    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
+    model = str(getattr(cfg, 'ai_model', '') or '').strip() or get_default_model(provider)
+    if not is_valid_provider(provider):
+        provider = 'openclaw'
+        model = get_default_model(provider)
+    if not is_valid_model(provider, model):
+        model = get_default_model(provider)
+
+    api_key = ''
+    if cfg:
+        api_key = cfg.get_ai_api_key()
+
     try:
-        summary_resp = generate_whale_summary(symbol, matched_value_vnd, side)
-        deep_resp    = generate_whale_deep(symbol, matched_value_vnd, side)
+        summary_resp = generate_whale_text(
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            symbol=symbol,
+            matched_value_vnd=matched_value_vnd,
+            side=side,
+            deep=False,
+        )
+        deep_resp = generate_whale_text(
+            provider=provider,
+            model=model,
+            api_key=api_key,
+            symbol=symbol,
+            matched_value_vnd=matched_value_vnd,
+            side=side,
+            deep=True,
+        )
     except Exception as exc:
-        logger.error('OpenClaw API error for %s: %s', symbol, exc)
+        logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
         raise  # Celery retry
 
     advisory = WhaleAdvisory.objects.create(
@@ -439,7 +470,7 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         threshold=float(threshold or 0),
         ai_summary=summary_resp['text'],
         ai_detail=deep_resp['text'],
-        ai_provider='openclaw',
+        ai_provider=provider,
         prompt_tokens=summary_resp['prompt_tokens'] + deep_resp['prompt_tokens'],
         completion_tokens=summary_resp['completion_tokens'] + deep_resp['completion_tokens'],
     )
@@ -462,6 +493,7 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
                     'threshold': float(threshold or 0),
                     'ai_summary': advisory.ai_summary,
                     'ai_detail': advisory.ai_detail,
+                    'ai_provider': advisory.ai_provider,
                     'ts': advisory.created_at.isoformat(),
                     'created_at': advisory.created_at.isoformat(),
                     'id': advisory.id,
@@ -472,7 +504,13 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
         logger.warning('WebSocket push failed for whale_advisory %s: %s', symbol, exc)
 
     logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
-    return {'status': 'ok', 'advisory_id': advisory.id, 'symbol': symbol}
+    return {
+        'status': 'ok',
+        'advisory_id': advisory.id,
+        'symbol': symbol,
+        'ai_provider': provider,
+        'ai_model': model,
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
 from .models import StockProfile, WhaleAdvisory
+from .ai_options import get_default_model, is_valid_model, is_valid_provider
 
 
 
@@ -83,6 +84,9 @@ class DailyPriceSerializer(serializers.ModelSerializer):
 
 
 class UserConfigSerializer(serializers.ModelSerializer):
+    ai_api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    ai_api_key_configured = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = UserConfig
         fields = [
@@ -97,6 +101,10 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'email_verified',
             'email_verification_sent_at',
             'email_verified_at',
+            'ai_provider',
+            'ai_model',
+            'ai_api_key',
+            'ai_api_key_configured',
             'created_at',
             'updated_at',
         ]
@@ -110,6 +118,7 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'email_verified',
             'email_verification_sent_at',
             'email_verified_at',
+            'ai_api_key_configured',
             'created_at',
             'updated_at',
         ]
@@ -118,6 +127,29 @@ class UserConfigSerializer(serializers.ModelSerializer):
         if value < 1:
             raise serializers.ValidationError('Ngưỡng phải >= 1 triệu VNĐ.')
         return value
+
+    def validate_ai_provider(self, value):
+        provider = str(value or '').strip().lower()
+        if not is_valid_provider(provider):
+            raise serializers.ValidationError('AI provider không hợp lệ.')
+        return provider
+
+    def validate(self, attrs):
+        provider = attrs.get('ai_provider')
+        model = attrs.get('ai_model')
+        if provider and not model:
+            attrs['ai_model'] = get_default_model(provider)
+        if provider and not is_valid_model(provider, attrs.get('ai_model')):
+            raise serializers.ValidationError({'ai_model': 'Model không thuộc provider đã chọn.'})
+        return attrs
+
+    def update(self, instance, validated_data):
+        api_key = validated_data.pop('ai_api_key', None)
+        instance = super().update(instance, validated_data)
+        if api_key is not None:
+            instance.set_ai_api_key(api_key)
+            instance.save(update_fields=['ai_api_key'])
+        return instance
 
 
 # ---------------------------------------------------------------------------

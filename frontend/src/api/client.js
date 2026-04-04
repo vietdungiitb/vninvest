@@ -172,6 +172,10 @@ export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts',
   return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`);
 };
 export const getWhaleAdvisories = () => apiClient.get('/portfolio/whale-advisory/');
+export const getAIOptions = () => apiClient.get('/ai-options/');
+export const getUserConfig = () => apiClient.get('/ai-config/');
+export const updateUserConfig = (data) => apiClient.put('/ai-config/', data);
+export const testAIConnection = (data) => apiClient.post('/ai-config/test-connection/', data);
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
 export const getDepthChart = (symbol) =>
