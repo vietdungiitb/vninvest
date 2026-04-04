@@ -142,6 +142,23 @@ export const syncSecuritiesPrices = (days = 5) => apiClient.post('/stock-managem
 export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stocks/${symbol}/`);
 export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
 export const getStockPriceChart = (symbol, days = 180) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/?days=${days}`);
+export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
+export const getStockAIAdvisorySession = (symbol) =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
+export const refreshStockAIAdvisorySession = (symbol) =>
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
+export const generateStockAIAdvisoryComponents = (symbol, payload = {}) =>
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/generate/`, payload);
+export const toggleStockAIAdvisoryComponentInclude = (componentId) =>
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/toggle-include/`);
+export const refreshStockAIAdvisoryComponent = (componentId) =>
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/refresh/`);
+export const restoreStockAIAdvisoryComponent = (componentId) =>
+  apiClient.post(`/stock-management/ai-advisory-components/${componentId}/restore/`);
+export const deleteStockAIAdvisoryComponent = (componentId) =>
+  apiClient.delete(`/stock-management/ai-advisory-components/${componentId}/`);
+export const regenerateStockAIExecutiveSummary = (symbol, payload = {}) =>
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/regenerate/`, payload);
 export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
 export const getIntradayMatched = (symbol, pageSize = 50) =>
   apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`);

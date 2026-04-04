@@ -274,6 +274,11 @@ export default function DashboardRealtimePanel({ holdings }) {
           <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
             🐋 {metrics?.eventCounts?.whale_alert ?? 0} whale
           </span>
+          {(metrics?.eventCounts?.dark_flow_alert ?? 0) > 0 && (
+            <span className="px-2 py-0.5 rounded border border-violet-800 bg-violet-950/20 text-violet-400">
+              🌊 {metrics.eventCounts.dark_flow_alert} dark flow
+            </span>
+          )}
           <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
             💓 {metrics?.eventCounts?.heartbeat ?? 0} hb
           </span>

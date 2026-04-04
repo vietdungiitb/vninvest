@@ -8,6 +8,7 @@ function formatCompactNumber(value) {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { init as klineChartInit, dispose as klineChartDispose } from 'klinecharts';
 import { Link, useParams } from 'react-router-dom';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   addTrackedSymbol,
   addWatchlistItem,
@@ -18,10 +19,18 @@ import {
   getPriceBoard,
   getSectorBreadth,
   getStockFinancials,
+  getStockAIAdvisorySession,
+  generateStockAIAdvisoryComponents,
+  getStockOrderFlow,
   getStockPriceChart,
   getStockWorkspaceOverview,
   getWatchlistGroups,
   getWhaleFeed,
+  deleteStockAIAdvisoryComponent,
+  regenerateStockAIExecutiveSummary,
+  restoreStockAIAdvisoryComponent,
+  refreshStockAIAdvisoryComponent,
+  toggleStockAIAdvisoryComponentInclude,
 } from '../api/client';
 import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
@@ -81,6 +90,45 @@ function fmtVol(v) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return n.toLocaleString('vi-VN');
+}
+
+function advisoryStatusLabel(status) {
+  const map = {
+    overbought: 'Quá mua',
+    oversold: 'Quá bán',
+    accumulation: 'Đang tích lũy',
+    breakout: 'Phá vỡ',
+    neutral: 'Trung tính',
+  };
+  return map[String(status || '').toLowerCase()] || 'Trung tính';
+}
+
+function advisoryActionLabel(action) {
+  const map = {
+    watch: 'Theo dõi',
+    buy: 'Mua',
+    sell: 'Bán',
+    hold_off: 'Đứng ngoài',
+  };
+  return map[String(action || '').toLowerCase()] || 'Theo dõi';
+}
+
+function advisoryRiskLabel(riskLevel) {
+  const map = {
+    low: 'Thấp',
+    medium: 'Trung bình',
+    high: 'Cao',
+  };
+  return map[String(riskLevel || '').toLowerCase()] || 'Trung bình';
+}
+
+function advisorySynthesisPreferenceLabel(preference) {
+  const map = {
+    short_term_action: 'Thiên về hành động giao dịch ngắn hạn',
+    risk_management: 'Thiên về quản trị rủi ro',
+    balanced: 'Cân bằng 50/50 giữa hành động và rủi ro',
+  };
+  return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
 function KLineChartComponent({ data }) {
@@ -922,6 +970,146 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
   );
 }
 
+function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, window: selectedWindow, onWindowChange }) {
+  const cvdSeries = orderFlowData?.cvd_series || [];
+  const darkFlow = orderFlowData?.dark_flow || {};
+  const latestSignal = orderFlowData?.latest_signal || null;
+  const signals = orderFlowData?.signals || [];
+  const tickRate = orderFlowData?.tick_rate || {};
+  const sizeDistribution = orderFlowData?.size_distribution || {};
+
+  const chartData = cvdSeries.map((item) => ({
+    ...item,
+    label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—',
+    cumulative_cvd: Number(item.cumulative_cvd || 0),
+  }));
+
+  const liveSignal = latestRealtimeAlert || latestSignal;
+  const liveStrength = Number(liveSignal?.strength || darkFlow?.strength || 0);
+  const smallOrderRatio = Number(
+    liveSignal?.small_order_ratio ?? tickRate?.small_order_ratio ?? sizeDistribution?.small_ratio ?? 0
+  );
+
+  if (loading) {
+    return <section className="card-section p-4"><div className="h-80 animate-pulse rounded-2xl bg-slate-900" /></section>;
+  }
+
+  return (
+    <section className="card-section p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+        <div>
+          <p className="text-label">Order Flow Radar</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-100">Dark money detection cho {symbol}</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Window selector */}
+          <div className="flex rounded-lg border border-slate-700 overflow-hidden text-[10px]">
+            {['5m', '15m', '30m', '1h'].map((w) => (
+              <button
+                key={w}
+                type="button"
+                onClick={() => onWindowChange?.(w)}
+                className={`px-2.5 py-1 transition-colors ${
+                  selectedWindow === w
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                {w}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-[11px] text-slate-400">
+            <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
+              {String(darkFlow?.confidence || liveSignal?.confidence || 'low')}
+            </span>
+            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-cyan-300">
+              {String(darkFlow?.signal_type || liveSignal?.signal_type || 'none')}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <p className="text-label">Strength</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{liveStrength.toFixed(1)}</p>
+          <div className="mt-3 h-2 rounded-full bg-slate-800">
+            <div
+              className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400"
+              style={{ width: `${Math.max(4, Math.min(100, liveStrength))}%` }}
+            />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <p className="text-label">Tick rate / min</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{Number(tickRate?.tick_rate_per_min || 0).toFixed(1)}</p>
+          <p className="mt-2 text-xs text-slate-400">Lệnh nhỏ: {(smallOrderRatio * 100).toFixed(1)}%</p>
+        </div>
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <p className="text-label">Realtime event</p>
+          <p className="mt-2 text-sm font-medium text-slate-100">{liveSignal?.description || darkFlow?.components?.absorption?.description || 'Chưa có event realtime mới.'}</p>
+          <p className="mt-2 text-[11px] text-slate-500">{liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString('vi-VN') : '—'}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-200">CVD 30 phút</p>
+            <span className="text-[11px] text-slate-500">{chartData.length} buckets</span>
+          </div>
+          <div className="h-56">
+            {chartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 text-sm text-slate-500">
+                Chưa có dữ liệu intraday để dựng CVD.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="orderFlowCvd" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.04} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+                  <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={formatCompactNumber} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    formatter={(value) => [formatCompactNumber(value), 'CVD']}
+                    labelStyle={{ color: '#cbd5e1' }}
+                    contentStyle={{ background: '#020617', border: '1px solid #1e293b', borderRadius: 12 }}
+                  />
+                  <Area type="monotone" dataKey="cumulative_cvd" stroke="#22d3ee" fill="url(#orderFlowCvd)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
+          <p className="text-sm font-semibold text-slate-200">Recent signals</p>
+          <div className="mt-3 space-y-2">
+            {signals.length === 0 ? (
+              <p className="text-sm text-slate-500">Chưa có signal nào được lưu.</p>
+            ) : signals.slice(0, 4).map((item) => (
+              <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
+                  <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString('vi-VN') : '—'}</p>
+                </div>
+                <p className="mt-1 text-sm text-slate-200">Strength {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
+                <p className="mt-1 text-[11px] text-slate-400">Tick rate {Number(item.tick_rate || 0).toFixed(1)} • Small {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function StockDetail() {
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
@@ -943,14 +1131,30 @@ export default function StockDetail() {
   const [financials, setFinancials] = useState(null);
   const [financialsLoading, setFinancialsLoading] = useState(true);
   const [financialsYear, setFinancialsYear] = useState(null);
+  const [advisorySession, setAdvisorySession] = useState(null);
+  const [advisoryComponents, setAdvisoryComponents] = useState([]);
+  const [advisoryDeletedComponents, setAdvisoryDeletedComponents] = useState([]);
+  const [advisoryExecutiveSummary, setAdvisoryExecutiveSummary] = useState(null);
+  const [advisoryExecutiveSummaries, setAdvisoryExecutiveSummaries] = useState([]);
+  const [activeAdvisoryComponentId, setActiveAdvisoryComponentId] = useState(null);
+  const [advisoryLoading, setAdvisoryLoading] = useState(true);
+  const [advisoryComponentBusyId, setAdvisoryComponentBusyId] = useState(null);
+  const [advisoryGeneratingComponents, setAdvisoryGeneratingComponents] = useState(false);
+  const [advisoryRegeneratingSummary, setAdvisoryRegeneratingSummary] = useState(false);
+  const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
+  const [advisoryMessage, setAdvisoryMessage] = useState('');
+  const [orderFlowData, setOrderFlowData] = useState(null);
+  const [orderFlowLoading, setOrderFlowLoading] = useState(true);
+  const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
 
-  const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, latestWhaleAlert } = useRealtimeFeed({
+  const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
   });
 
   // Lọc alerts và whale signals theo symbol hiện tại
   const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
   const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
+  const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -962,6 +1166,54 @@ export default function StockDetail() {
       setWhaleFeedLoading(false);
     }
   }, [normalizedSymbol]);
+
+  const fetchAdvisorySession = useCallback(async ({ silent = false } = {}) => {
+    if (!normalizedSymbol) return;
+    if (!silent) {
+      setAdvisoryLoading(true);
+    }
+    try {
+      const response = await getStockAIAdvisorySession(normalizedSymbol);
+      const payload = response?.data || {};
+      setAdvisorySession(payload.advisory || null);
+      const nextComponents = Array.isArray(payload.components) ? payload.components : [];
+      const nextDeletedComponents = Array.isArray(payload.deleted_components) ? payload.deleted_components : [];
+      setAdvisoryComponents(nextComponents);
+      setAdvisoryDeletedComponents(nextDeletedComponents);
+      const nextSummaries = Array.isArray(payload.executive_summaries) ? payload.executive_summaries : [];
+      setAdvisoryExecutiveSummaries(nextSummaries);
+      setAdvisoryExecutiveSummary(payload.executive_summary || nextSummaries[0] || null);
+      setActiveAdvisoryComponentId((prev) => {
+        if (prev && nextComponents.some((item) => item.id === prev)) {
+          return prev;
+        }
+        return nextComponents[0]?.id || null;
+      });
+      if (payload.message) {
+        setAdvisoryMessage(payload.message);
+      }
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không tải được AI Advisory cho mã này.');
+    } finally {
+      if (!silent) {
+        setAdvisoryLoading(false);
+      }
+    }
+  }, [normalizedSymbol]);
+
+  const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
+    if (!normalizedSymbol) return;
+    if (!silent) setOrderFlowLoading(true);
+    try {
+      const response = await getStockOrderFlow(normalizedSymbol, orderFlowWindow);
+      setOrderFlowData(response?.data || null);
+    } catch (err) {
+      console.error('getStockOrderFlow:', err);
+      setOrderFlowData(null);
+    } finally {
+      if (!silent) setOrderFlowLoading(false);
+    }
+  }, [normalizedSymbol, orderFlowWindow]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1079,6 +1331,48 @@ export default function StockDetail() {
     return () => { cancelled = true; clearInterval(interval); };
   }, [normalizedSymbol]);
 
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      return;
+    }
+    let cancelled = false;
+
+    const run = async (silent = false) => {
+      if (cancelled) return;
+      await fetchAdvisorySession({ silent });
+    };
+
+    run(false);
+    const interval = setInterval(() => {
+      run(true);
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [fetchAdvisorySession, normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) return;
+    let cancelled = false;
+
+    const run = async (silent = false) => {
+      if (cancelled) return;
+      await fetchOrderFlow({ silent });
+    };
+
+    run(false);
+    const interval = setInterval(() => {
+      run(true);
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [fetchOrderFlow, normalizedSymbol]);
+
   const prevWhaleRef = useRef(null);
   useEffect(() => {
     if (symbolWhaleAlert && symbolWhaleAlert?.ts !== prevWhaleRef.current) {
@@ -1086,6 +1380,14 @@ export default function StockDetail() {
       refreshWhaleFeed();
     }
   }, [symbolWhaleAlert, refreshWhaleFeed]);
+
+  const prevDarkFlowRef = useRef(null);
+  useEffect(() => {
+    if (symbolDarkFlowAlert && symbolDarkFlowAlert?.ts !== prevDarkFlowRef.current) {
+      prevDarkFlowRef.current = symbolDarkFlowAlert.ts;
+      fetchOrderFlow({ silent: true });
+    }
+  }, [symbolDarkFlowAlert, fetchOrderFlow]);
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -1244,6 +1546,127 @@ export default function StockDetail() {
       setActionLoading('');
     }
   };
+
+  const handleRefreshActiveAdvisoryComponent = async (componentId) => {
+    if (!componentId) return;
+    setAdvisoryComponentBusyId(componentId);
+    try {
+      const response = await refreshStockAIAdvisoryComponent(componentId);
+      const payload = response?.data || {};
+      const refreshed = payload.component;
+      if (refreshed?.id) {
+        setAdvisoryComponents((prev) => prev.map((item) => (item.id === refreshed.id ? refreshed : item)));
+        setActiveAdvisoryComponentId(refreshed.id);
+      }
+      setAdvisoryMessage(payload.message || 'Đã làm mới tab AI đang chọn.');
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không làm mới được tab AI đang chọn.');
+    } finally {
+      setAdvisoryComponentBusyId(null);
+    }
+  };
+
+  const handleGenerateAdvisoryComponents = async () => {
+    if (!normalizedSymbol) return;
+    setAdvisoryGeneratingComponents(true);
+    try {
+      const response = await generateStockAIAdvisoryComponents(normalizedSymbol, { timeframe: orderFlowWindow || '30m' });
+      const payload = response?.data || {};
+      const nextComponents = Array.isArray(payload.components) ? payload.components : [];
+      setAdvisoryComponents(nextComponents);
+      setAdvisoryDeletedComponents([]);
+      setActiveAdvisoryComponentId(nextComponents[0]?.id || null);
+      const generationSource = payload.generated_by_ai ? 'AI schema' : 'template fallback';
+      setAdvisoryMessage(payload.message || `Đã tạo ${payload.created_count || nextComponents.length || 0} tab thành phần (${generationSource}).`);
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không tạo được tab thành phần AI.');
+    } finally {
+      setAdvisoryGeneratingComponents(false);
+    }
+  };
+
+  const handleToggleComponentInclude = async (componentId) => {
+    setAdvisoryComponentBusyId(componentId);
+    try {
+      const response = await toggleStockAIAdvisoryComponentInclude(componentId);
+      const updated = response?.data?.component;
+      if (updated) {
+        setAdvisoryComponents((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      }
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không cập nhật được trạng thái đưa vào tổng hợp.');
+    } finally {
+      setAdvisoryComponentBusyId(null);
+    }
+  };
+
+  const handleDeleteAdvisoryComponent = async (componentId) => {
+    setAdvisoryComponentBusyId(componentId);
+    try {
+      await deleteStockAIAdvisoryComponent(componentId);
+      setAdvisoryComponents((prev) => {
+        const deletedComponent = prev.find((item) => item.id === componentId);
+        if (deletedComponent) {
+          setAdvisoryDeletedComponents((deletedPrev) => [
+            { ...deletedComponent, is_deleted: true, include_in_summary: false },
+            ...deletedPrev.filter((item) => item.id !== componentId),
+          ].slice(0, 20));
+        }
+        const next = prev.filter((item) => item.id !== componentId);
+        if (activeAdvisoryComponentId === componentId) {
+          setActiveAdvisoryComponentId(next[0]?.id || null);
+        }
+        return next;
+      });
+      setAdvisoryMessage('Đã xóa tab khỏi phiên tổng hợp.');
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không xóa được tab thành phần.');
+    } finally {
+      setAdvisoryComponentBusyId(null);
+    }
+  };
+
+  const handleRestoreAdvisoryComponent = async (componentId) => {
+    setAdvisoryComponentBusyId(componentId);
+    try {
+      const response = await restoreStockAIAdvisoryComponent(componentId);
+      const restored = response?.data?.component;
+      if (restored) {
+        setAdvisoryDeletedComponents((prev) => prev.filter((item) => item.id !== restored.id));
+        setAdvisoryComponents((prev) => [restored, ...prev.filter((item) => item.id !== restored.id)]);
+        setActiveAdvisoryComponentId(restored.id);
+      }
+      setAdvisoryMessage('Đã khôi phục tab thành phần.');
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không khôi phục được tab thành phần.');
+    } finally {
+      setAdvisoryComponentBusyId(null);
+    }
+  };
+
+  const handleRegenerateExecutiveSummary = async () => {
+    if (!normalizedSymbol) return;
+    setAdvisoryRegeneratingSummary(true);
+    try {
+      const activeIds = advisoryComponents.filter((item) => item.include_in_summary).map((item) => item.id);
+      const response = await regenerateStockAIExecutiveSummary(normalizedSymbol, {
+        component_ids: activeIds,
+        synthesis_preference: advisorySynthesisPreference,
+      });
+      const summary = response?.data?.executive_summary || null;
+      setAdvisoryExecutiveSummary(summary);
+      if (summary) {
+        setAdvisoryExecutiveSummaries((prev) => [summary, ...prev.filter((item) => item.id !== summary.id)].slice(0, 8));
+      }
+      setAdvisoryMessage(summary ? `Đã tổng hợp lại bản tóm tắt v${summary.summary_version}.` : 'Đã tổng hợp lại bản tóm tắt.');
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Tổng hợp lại bản tóm tắt thất bại.');
+    } finally {
+      setAdvisoryRegeneratingSummary(false);
+    }
+  };
+
+  const activeAdvisoryComponent = advisoryComponents.find((item) => item.id === activeAdvisoryComponentId) || advisoryComponents[0] || null;
 
 
   if (loadingOverview) {
@@ -1507,10 +1930,228 @@ export default function StockDetail() {
             </div>
           </section>
 
-          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
+          <section className="card-section p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">Phiên tư vấn AI</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">Tư vấn AI cho {normalizedSymbol}</h2>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerateAdvisoryComponents}
+                  disabled={advisoryGeneratingComponents || advisoryLoading}
+                  className="btn-secondary"
+                >
+                  {advisoryGeneratingComponents ? 'Đang tạo tab...' : 'Tạo tab AI'}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-3">
+              {advisoryLoading ? (
+                <div className="h-24 animate-pulse rounded-xl bg-slate-900" />
+              ) : advisorySession ? (
+                <>
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 border-b border-slate-800 pb-2">
+                    <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
+                      {advisorySession.ai_provider || 'openclaw'}
+                    </span>
+                    <span>
+                      {advisorySession.created_at ? new Date(advisorySession.created_at).toLocaleString('vi-VN') : '—'}
+                    </span>
+                    <span className="text-slate-600">• {advisoryComponents.length} tab</span>
+                    <span className="text-slate-600">• {(advisoryComponents.filter((item) => item.include_in_summary)).length} tab đang dùng</span>
+                  </div>
+
+                  {advisoryDeletedComponents.length > 0 ? (
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">Tab đã xóa</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {advisoryDeletedComponents.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => handleRestoreAdvisoryComponent(item.id)}
+                            disabled={advisoryComponentBusyId === item.id}
+                            className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300 hover:border-cyan-500/60 hover:text-cyan-300"
+                          >
+                            Khôi phục {item.indicator_name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-2">
+                    <div className="flex flex-wrap gap-2">
+                      {advisoryComponents.length === 0 ? (
+                        <p className="px-2 py-1 text-xs text-slate-500">Chưa có tab thành phần. Bấm "Tạo tab AI" để sinh các góc nhìn.</p>
+                      ) : advisoryComponents.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => setActiveAdvisoryComponentId(item.id)}
+                          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                            activeAdvisoryComponent?.id === item.id
+                              ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                              : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                          }`}
+                        >
+                          {item.indicator_name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {activeAdvisoryComponent ? (
+                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-xs font-semibold text-slate-200">{activeAdvisoryComponent.indicator_name}</p>
+                          <p className="text-[11px] text-slate-500">
+                            {activeAdvisoryComponent.created_at ? new Date(activeAdvisoryComponent.created_at).toLocaleString('vi-VN') : '—'}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300">
+                            {advisoryStatusLabel(activeAdvisoryComponent.status)}
+                          </span>
+                          <span className="rounded-full border border-amber-700/70 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
+                            {activeAdvisoryComponent.confidence_score}/10
+                          </span>
+                          <span className="rounded-full border border-emerald-700/70 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
+                            {advisoryActionLabel(activeAdvisoryComponent.suggested_action)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs leading-6 text-slate-300 whitespace-pre-line">{activeAdvisoryComponent.rationale_text || 'Không có mô tả thêm.'}</p>
+
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleComponentInclude(activeAdvisoryComponent.id)}
+                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
+                          className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/70"
+                        >
+                          {activeAdvisoryComponent.include_in_summary ? 'Loại khỏi tổng hợp' : 'Đưa vào tổng hợp'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRefreshActiveAdvisoryComponent(activeAdvisoryComponent.id)}
+                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
+                          className="rounded-full border border-cyan-700/60 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300 hover:bg-cyan-500/20"
+                        >
+                          Làm mới tab
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAdvisoryComponent(activeAdvisoryComponent.id)}
+                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
+                          className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20"
+                        >
+                          Xóa tab
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">Thông tin tổng hợp</p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          Chế độ hiện tại: {advisorySynthesisPreferenceLabel(advisorySynthesisPreference)}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={advisorySynthesisPreference}
+                          onChange={(e) => setAdvisorySynthesisPreference(e.target.value)}
+                          disabled={advisoryRegeneratingSummary}
+                          className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-200 outline-none hover:border-slate-500"
+                        >
+                          <option value="short_term_action">Thiên về hành động giao dịch ngắn hạn</option>
+                          <option value="risk_management">Thiên về quản trị rủi ro</option>
+                          <option value="balanced">Cân bằng 50/50 giữa hành động và rủi ro</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={handleRegenerateExecutiveSummary}
+                          disabled={advisoryRegeneratingSummary || advisoryComponents.length === 0}
+                          className="btn-secondary"
+                        >
+                          {advisoryRegeneratingSummary ? 'Đang tổng hợp...' : 'Tổng hợp lại'}
+                        </button>
+                      </div>
+                    </div>
+                    {advisoryExecutiveSummary ? (
+                      <>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                          <span className="rounded-full border border-cyan-700/70 bg-cyan-500/10 px-2 py-0.5 text-cyan-300">
+                            {advisoryExecutiveSummary.strategy_action}
+                          </span>
+                          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-slate-300">
+                            Mức rủi ro: {advisoryRiskLabel(advisoryExecutiveSummary.risk_level)}
+                          </span>
+                          <span className="rounded-full border border-amber-700/70 bg-amber-500/10 px-2 py-0.5 text-amber-300">
+                            Độ tin cậy: {advisoryExecutiveSummary.overall_confidence}/10
+                          </span>
+                          <span className="text-slate-500">v{advisoryExecutiveSummary.summary_version}</span>
+                        </div>
+                        {advisoryExecutiveSummaries.length > 1 ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {advisoryExecutiveSummaries.map((summaryItem) => (
+                              <button
+                                key={summaryItem.id}
+                                type="button"
+                                onClick={() => setAdvisoryExecutiveSummary(summaryItem)}
+                                className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                                  advisoryExecutiveSummary?.id === summaryItem.id
+                                    ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                                    : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                                }`}
+                              >
+                                v{summaryItem.summary_version}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        <p className="mt-2 text-xs leading-6 whitespace-pre-line text-slate-300">
+                          {advisoryExecutiveSummary.synthesis_text || 'Chưa có nội dung tổng hợp.'}
+                        </p>
+                        <p className="mt-2 text-[11px] text-slate-500">
+                          Bản tóm tắt sử dụng {Array.isArray(advisoryExecutiveSummary.used_component_ids) ? advisoryExecutiveSummary.used_component_ids.length : 0} tab thành phần
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-2 text-xs text-slate-500">Chưa có bản tóm tắt điều hành. Tạo tab AI và bấm "Tổng hợp lại" để tạo nội dung.</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-slate-400">
+                  Hệ thống đang tạo tư vấn AI cho mã này. Vui lòng đợi trong giây lát.
+                </p>
+              )}
+
+              {advisoryMessage ? (
+                <p className="text-xs text-cyan-300">{advisoryMessage}</p>
+              ) : null}
+            </div>
+          </section>
+
+          <OrderFlowPanel
+            symbol={normalizedSymbol}
+            loading={orderFlowLoading}
+            orderFlowData={orderFlowData}
+            latestRealtimeAlert={symbolDarkFlowAlert}
+            window={orderFlowWindow}
+            onWindowChange={setOrderFlowWindow}
+          />
         </div>
         {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên + Cảnh báo giá */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3 md:gap-4 xl:gap-5">
           <WhaleFeedPanel
             symbol={normalizedSymbol}
             realtimeAlerts={symbolAlerts}
@@ -1518,13 +2159,14 @@ export default function StockDetail() {
             loading={whaleFeedLoading}
             onRefresh={refreshWhaleFeed}
           />
+          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
           {/* Tỷ trọng dòng tiền phiên */}
           <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
           {/* Cảnh báo giá */}
           {symbolAlerts.length > 0 && (
             <section className="card-section p-4">
               <p className="text-label pb-2.5 border-b border-slate-800">Cảnh báo giá ({symbolAlerts.length})</p>
-              <div className="mt-3 space-y-2">
+              <div className="mt-3 space-y-2.5">
                 {symbolAlerts.map((alert, idx) => (
                   <div key={`${alert.symbol}-${alert.ts}-${idx}`} className="rounded-xl border border-rose-700/40 bg-rose-950/20 px-4 py-3">
                     <p className="text-[11px] uppercase tracking-widest text-rose-400 mb-1">🔔 Cảnh báo giá</p>

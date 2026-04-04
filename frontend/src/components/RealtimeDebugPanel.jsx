@@ -11,7 +11,7 @@ export default function RealtimeDebugPanel() {
   if (debugParam !== 'realtime') return null;
 
   // Use hook with empty symbols to get global metrics (not symbol-specific)
-  const { realtimeStatus, lastEventAt, alerts, metrics, latestWhaleAlert } = useRealtimeFeed({ 
+  const { realtimeStatus, lastEventAt, alerts, metrics, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({ 
     symbols: [], 
     pollInterval: 30000, 
     maxAlerts: 5 
@@ -75,6 +75,9 @@ export default function RealtimeDebugPanel() {
           <span className="text-gray-400">Whale:</span> {metrics.eventCounts.whale_alert}
         </div>
         <div>
+          <span className="text-gray-400">Dark Flow:</span> {metrics.eventCounts.dark_flow_alert}
+        </div>
+        <div>
           <span className="text-gray-400">Heartbeat:</span> {metrics.eventCounts.heartbeat}
         </div>
         <div>
@@ -116,6 +119,24 @@ export default function RealtimeDebugPanel() {
           </div>
           <div className="mt-1 break-all text-gray-500">
             Event ID: {latestWhaleAlert.event_id ?? '—'}
+          </div>
+        </div>
+      )}
+
+      {/* Dark Flow Alert */}
+      {latestDarkFlowAlert && (
+        <div className="mb-3 p-2 bg-violet-500/20 border border-violet-500/50 rounded text-[11px]">
+          <div>
+            <span className="font-medium">Latest Dark Flow:</span> {latestDarkFlowAlert.symbol} — {latestDarkFlowAlert.signal_type}
+          </div>
+          <div className="mt-1 text-gray-300">
+            Strength: {latestDarkFlowAlert.strength?.toFixed(1) ?? '—'} | Confidence: {latestDarkFlowAlert.confidence ?? '—'}
+          </div>
+          <div className="mt-1 text-gray-400">
+            Tick rate: {latestDarkFlowAlert.tick_rate ?? '—'}/min | Small ratio: {latestDarkFlowAlert.small_order_ratio != null ? (latestDarkFlowAlert.small_order_ratio * 100).toFixed(0) + '%' : '—'}
+          </div>
+          <div className="mt-1 break-all text-gray-500">
+            Event ID: {latestDarkFlowAlert.event_id ?? '—'}
           </div>
         </div>
       )}

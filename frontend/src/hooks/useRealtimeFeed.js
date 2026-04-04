@@ -45,14 +45,32 @@ function normalizeAlert(payload) {
   };
 }
 
+function normalizeDarkFlowAlert(payload) {
+  return {
+    event_id: readEventField(payload, 'event_id'),
+    contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
+    symbol: readEventField(payload, 'symbol') ?? payload.symbol,
+    signal_type: readEventField(payload, 'signal_type'),
+    strength: readEventField(payload, 'strength'),
+    confidence: readEventField(payload, 'confidence'),
+    tick_rate: readEventField(payload, 'tick_rate'),
+    small_order_ratio: readEventField(payload, 'small_order_ratio'),
+    cvd_at_signal: readEventField(payload, 'cvd_at_signal'),
+    description: readEventField(payload, 'description'),
+    ts: readEventField(payload, 'ts') || payload.ts || payload.created_at,
+  };
+}
+
 export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAlerts = 5 }) {
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
   const [lastEventAt, setLastEventAt] = useState(null);
   const [alerts, setAlerts] = useState([]);
+  const [darkFlowAlerts, setDarkFlowAlerts] = useState([]);
   const [eventCounts, setEventCounts] = useState({
     ticker_update: 0,
     whale_alert: 0,
+    dark_flow_alert: 0,
     heartbeat: 0,
     reconnect_attempts: 0,
     subscribed: 0,
@@ -112,6 +130,17 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
     setAlerts((prev) => {
       const filtered = prev.filter(
         (item) => (item.event_id || `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.side || 'NA'}`) !== nextKey
+      );
+      return [nextAlert, ...filtered].slice(0, maxAlerts);
+    });
+  }, [maxAlerts]);
+
+  const applyDarkFlowAlert = useCallback((payload) => {
+    const nextAlert = normalizeDarkFlowAlert(payload);
+    const nextKey = nextAlert.event_id || `${nextAlert.symbol || 'NA'}-${nextAlert.ts || 'NA'}-${nextAlert.signal_type || 'NA'}`;
+    setDarkFlowAlerts((prev) => {
+      const filtered = prev.filter(
+        (item) => (item.event_id || `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.signal_type || 'NA'}`) !== nextKey
       );
       return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
@@ -280,6 +309,11 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, whale_alert: prev.whale_alert + 1 }));
+          } else if (payload.event_type === 'dark_flow_alert') {
+            applyDarkFlowAlert(payload);
+            setLastEventAt(payload.ts || new Date().toISOString());
+            setRealtimeStatus('live');
+            setEventCounts((prev) => ({ ...prev, dark_flow_alert: prev.dark_flow_alert + 1 }));
           } else if (payload.event_type === 'whale_advisory') {
             setLastEventAt(payload.ts || payload.created_at || new Date().toISOString());
             setRealtimeStatus('live');
@@ -342,14 +376,16 @@ export default function useRealtimeFeed({ symbols, pollInterval = 15000, maxAler
       window.clearTimeout(initTimer);
       cleanup();
     };
-  }, [normalizedSymbols.join(','), applyAlert, applyTickerUpdate]); // eslint-disable-line
+  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate]); // eslint-disable-line
 
   return {
     quotesBySymbol,
     realtimeStatus,
     lastEventAt,
     alerts,
+    darkFlowAlerts,
     latestWhaleAlert: alerts[0] || null,
+    latestDarkFlowAlert: darkFlowAlerts[0] || null,
     metrics: { eventCounts, lastLatencyMs, connectionState },
   };
 }

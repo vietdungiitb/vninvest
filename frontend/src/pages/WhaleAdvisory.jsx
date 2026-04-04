@@ -15,7 +15,7 @@ const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
   claude: ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
   gemini: ['gemini-1.5-pro', 'gemini-1.5-flash'],
-  copilot: ['copilot-pro'],
+  copilot: ['openai/gpt-4.1-mini', 'openai/gpt-4.1'],
   openclaw: ['default'],
 };
 
@@ -43,20 +43,23 @@ function buildSymbolStats(items) {
   for (const item of items) {
     const sym = item.symbol;
     if (!map[sym]) {
-      map[sym] = { symbol: sym, buyCount: 0, sellCount: 0, totalValue: 0, count: 0 };
+      map[sym] = { symbol: sym, buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
     }
     const side = (item.side || '').toUpperCase();
     if (side === 'BUY') map[sym].buyCount += 1;
     else if (side === 'SELL') map[sym].sellCount += 1;
     map[sym].totalValue += Number(item.matched_value || 0);
+    map[sym].totalVolume += Number(item.volume || 0);
     map[sym].count += 1;
   }
-  return Object.values(map).sort((a, b) => b.count - a.count);
+  // šắp theo tổng giá trị (cao nhất trước)
+  return Object.values(map).sort((a, b) => b.totalValue - a.totalValue);
 }
 
 // ─── Ô cột trái: thông tin mã ──────────────────────────────────
 function SymbolCell({ stats, isActive, onClick }) {
   const avgValue = stats.count > 0 ? stats.totalValue / stats.count : 0;
+  const whaleAvgPrice = stats.totalVolume > 0 ? stats.totalValue / stats.totalVolume : 0;
   const totalOrders = stats.buyCount + stats.sellCount;
   const buyRatio = totalOrders > 0 ? (stats.buyCount / totalOrders) * 100 : 0;
 
@@ -99,10 +102,15 @@ function SymbolCell({ stats, isActive, onClick }) {
 
       {/* Giá trị trung bình */}
       <p className="mt-2 text-xs text-slate-400">
-        Avg: <span className="font-medium text-slate-200">{fmtCompact(avgValue)} VND</span>
+        Avg lệnh: <span className="font-medium text-slate-200">{fmtCompact(avgValue)} VND</span>
       </p>
+      {whaleAvgPrice > 0 && (
+        <p className="mt-0.5 text-xs text-cyan-400">
+          Avg giá: <span className="font-medium">{whaleAvgPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND/CP</span>
+        </p>
+      )}
       <p className="mt-0.5 text-xs text-slate-500">
-        Tổng {stats.count} lệnh lớn
+        Tổng {stats.count} lệnh · {fmtCompact(stats.totalValue)} VND
       </p>
     </button>
   );
@@ -134,9 +142,11 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
       </div>
 
       {/* AI Summary */}
-      <p className="mt-3 text-xs leading-6 text-slate-300 line-clamp-3">
-        {item.ai_summary || 'Chưa có tóm tắt AI.'}
-      </p>
+      <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+        <p className="text-xs leading-6 whitespace-pre-line text-slate-300">
+          {item.ai_summary || 'Chưa có tóm tắt AI.'}
+        </p>
+      </div>
 
       {/* AI Detail (Premium) */}
       <Can
@@ -152,9 +162,11 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
         }
       >
         {item.ai_detail ? (
-          <p className="mt-2 text-xs leading-6 text-slate-400 line-clamp-2 border-t border-slate-800 pt-2">
-            {item.ai_detail}
-          </p>
+          <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+            <p className="text-xs leading-6 whitespace-pre-line text-slate-400">
+              {item.ai_detail}
+            </p>
+          </div>
         ) : null}
       </Can>
 
@@ -504,7 +516,7 @@ export default function WhaleAdvisory() {
           <div className="px-5 py-12 text-center">
             <p className="text-sm text-slate-400">Chưa có advisory nào được tạo.</p>
             <p className="mt-2 text-xs text-slate-600">
-              Advisory xuất hiện sau khi backend ghi nhận whale signal và task OpenClaw hoàn tất.
+              Advisory xuất hiện sau khi backend ghi nhận whale signal và task AI hoàn tất.
             </p>
           </div>
         ) : (

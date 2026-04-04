@@ -114,29 +114,32 @@ function buildSymbolStatsFromFeed(feedItems) {
   for (const item of feedItems || []) {
     const sym = String(item.symbol || '').trim().toUpperCase();
     if (!sym) continue;
-    if (!map[sym]) map[sym] = { buyCount: 0, sellCount: 0, totalValue: 0, count: 0 };
+    if (!map[sym]) map[sym] = { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
     const side = String(item.side || '').toUpperCase();
     if (side === 'BUY') map[sym].buyCount += 1;
     else if (side === 'SELL') map[sym].sellCount += 1;
     map[sym].totalValue += Number(item.matched_value || 0);
+    map[sym].totalVolume += Number(item.volume || 0);
     map[sym].count += 1;
   }
   return map;
 }
 
-function getFrequencyLabel(count) {
-  if (count >= 6) return { label: 'Bùng nổ', color: 'text-rose-400', bg: 'bg-rose-900/40 border-rose-800/50' };
-  if (count >= 3) return { label: 'Cao', color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
-  if (count >= 1) return { label: 'Trung bình', color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
+function getFrequencyLabel(totalValue) {
+  // Dựa trên tổng giá trị (VNĐ) thay vì đếm số lần
+  if (totalValue >= 5_000_000_000) return { label: 'Bùng nổ', color: 'text-rose-400', bg: 'bg-rose-900/40 border-rose-800/50' };
+  if (totalValue >= 2_000_000_000) return { label: 'Cao', color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
+  if (totalValue >= 500_000_000) return { label: 'Trung bình', color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
   return { label: 'Thấp', color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
 }
 
 function TrackedSymbolCard({ symbol, stats }) {
-  const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, count: 0 };
+  const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
   const avgValue = st.count > 0 ? st.totalValue / st.count : 0;
+  const whaleAvgPrice = st.totalVolume > 0 ? st.totalValue / st.totalVolume : 0;
   const totalOrders = st.buyCount + st.sellCount;
   const buyRatio = totalOrders > 0 ? (st.buyCount / totalOrders) * 100 : 0;
-  const freq = getFrequencyLabel(st.count);
+  const freq = getFrequencyLabel(st.totalValue);
 
   return (
     <Link
@@ -175,9 +178,14 @@ function TrackedSymbolCard({ symbol, stats }) {
 
       {/* Avg & Tổng */}
       <p className="mt-2 text-xs text-slate-400">
-        Avg: <span className="font-medium text-slate-200">{formatCompactMoney(avgValue)} VND</span>
+        Avg lệnh: <span className="font-medium text-slate-200">{formatCompactMoney(avgValue)} VND</span>
       </p>
-      <p className="mt-0.5 text-xs text-slate-500">Tổng {st.count} lệnh lớn</p>
+      {whaleAvgPrice > 0 && (
+        <p className="mt-0.5 text-xs text-cyan-400">
+          Avg giá: <span className="font-medium">{whaleAvgPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND/CP</span>
+        </p>
+      )}
+      <p className="mt-0.5 text-xs text-slate-500">Tổng {st.count} lệnh · {formatCompactMoney(st.totalValue)} VND</p>
     </Link>
   );
 }
