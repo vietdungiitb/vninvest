@@ -70,6 +70,15 @@
 | B4-6 | Safety net auto-revert | Guardrails cứng + anomaly detect spike alerts + rollback tự động + notify | BE/DevOps | 2d | B4-5 | Tự rollback khi vượt ngưỡng bất thường, có audit + cảnh báo | Todo |
 | B4-7 | Symbol coverage UX | Bulk upload CSV/XLSX + dynamic group theo sàn/ngành | FE/BE | 1.5d | B4-3 | Quản lý danh sách lớn thuận tiện, validation chuẩn | Todo |
 
+### Epic B5 — Django Admin Google Mail OAuth2 (Sprint 18)
+| ID | Story | Task chi tiết | Owner | Estimate | Phụ thuộc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B5-1 | OAuth2 schema foundation | Mo rong `SystemEmailAccount` voi `auth_type` + truong token Google + migration an toan | BE | 1d | B1-1 | Migration pass, khong regression SMTP cu | Todo |
+| B5-2 | Admin connect/callback flow | Them connect URL, callback handler, state validation va luu refresh token | BE | 2d | B5-1 | Connect Google thanh cong tu Django Admin | Todo |
+| B5-3 | Gmail send transport | Tich hop Gmail API vao `send_system_email` theo branch `google_oauth2` | BE | 1.5d | B5-2 | Gui mail thanh cong qua OAuth2 account | Todo |
+| B5-4 | Token lifecycle hardening | Auto-refresh token, status badge, last_error, revoke action | BE | 1d | B5-3 | Admin co the triage va revoke token an toan | Todo |
+| B5-5 | QA + rollout + rollback | Test matrix SMTP/OAuth2, canary rollout, rollback ve SMTP | QA/DevOps/BE | 1.5d | B5-4 | Checklist Sprint 18 duoc sign-off | Todo |
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)

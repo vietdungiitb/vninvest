@@ -89,6 +89,20 @@
 - DoD:
   - Có danh sách signal cảnh báo chính và runbook phản ứng sự cố mức cơ bản.
 
+### P0-4 Django Admin Google Mail OAuth2 token management [NEW]
+- Nguon: De xuat van hanh mail account (2026-04-04)
+- Muc tieu:
+  - Quan tri tai khoan gui mail Google tren Django Admin bang OAuth2 token thay cho SMTP password.
+  - Ho tro connect/callback/revoke/test mail trong admin.
+  - Tich hop Gmail API vao `send_system_email` va giu SMTP legacy de fallback.
+- Owner: BE + DevOps + QA
+- DoD:
+  - Co auth mode `google_oauth2` trong `SystemEmailAccount`.
+  - Co flow OAuth2 admin chay end-to-end.
+  - Co test matrix SMTP/OAuth2 va rollback plan.
+  - Checklist Sprint 18 duoc sign-off.
+- Tai lieu sprint: `docs/SPRINT18_DETAILED_PLAN.md`, `docs/SPRINT18_ACCEPTANCE_CHECKLIST.md`
+
 ---
 
 ## 5) P1 — Product expansion gần hạn

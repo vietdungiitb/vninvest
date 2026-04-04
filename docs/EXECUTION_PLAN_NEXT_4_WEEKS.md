@@ -182,3 +182,53 @@ Day 5:
 2. PR lien quan namespace phai duoc review boi BE Lead va FE owner.
 3. Khong merge neu contract tests endpoint critical dang fail.
 4. Moi tuan co 1 smoke report va 1 risk log.
+
+---
+
+## Rebaseline 2026-04-04 - Sprint 18 (Google Mail OAuth2 in Django Admin)
+
+Muc tieu bo sung:
+- Dua sprint moi ve quan tri tai khoan gui mail Google theo OAuth2 token.
+- Giu tuong thich nguoc voi SMTP legacy, rollout an toan theo canary.
+
+### Tuan R1 - Schema + OAuth foundation
+
+Day 1:
+- BE: Finalize model fields + migration cho `SystemEmailAccount` OAuth2.
+- DevOps: Chot env var matrix cho OAuth client id/secret va callback URI.
+
+Day 2:
+- BE: Implement admin connect URL + callback handler + state validation.
+- QA: Viet test case callback success/failure/state mismatch.
+
+Day 3:
+- BE: Luu refresh token encrypted + metadata status trong admin.
+- QA: Chay regression SMTP legacy gui test mail.
+
+Deliverables:
+- Migration pass.
+- Connect Google flow chay duoc tren local/staging.
+
+### Tuan R2 - Gmail send integration + hardening
+
+Day 1:
+- BE: Implement gmail send adapter va token refresh service.
+- BE: Noi adapter vao `send_system_email` branch theo `auth_type`.
+
+Day 2:
+- BE + QA: Mapping loi API va message van hanh.
+- QA: Integration test `send_test_email` qua OAuth2 account (mock + staging).
+
+Day 3:
+- DevOps: Canary rollout 1 account default.
+- Team: Theo doi metric gui mail + refresh fail trong 24h.
+
+Deliverables:
+- OAuth2 send mail end-to-end.
+- Checklist Sprint 18 sign-off.
+
+### KPI bo sung cho sprint moi
+
+- Test mail thanh cong voi OAuth2 >= 98% tren moi truong test.
+- 0 regression flow email verification.
+- 100% secret/token duoc mask trong logs.

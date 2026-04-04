@@ -1,10 +1,47 @@
 from email.utils import formataddr
+import json
 
+import httpx
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.utils import timezone
 
+from .gmail_service import send_gmail_api_message
+from .google_oauth_service import refresh_google_access_token
 from .models import SystemEmailAccount
+
+
+def _humanize_gmail_error(exc: Exception) -> str:
+    if not isinstance(exc, httpx.HTTPStatusError):
+        return str(exc)
+
+    status_code = exc.response.status_code
+    reason = ''
+    payload_error = ''
+    try:
+        payload = exc.response.json()
+    except json.JSONDecodeError:
+        payload = {}
+    except Exception:
+        payload = {}
+
+    if isinstance(payload, dict):
+        error_obj = payload.get('error')
+        if isinstance(error_obj, dict):
+            reason = str(error_obj.get('message') or '').strip()
+            payload_error = str(error_obj.get('status') or error_obj.get('code') or '').strip()
+
+    if status_code == 401:
+        return 'Google OAuth token không hợp lệ hoặc đã hết hạn. Vui lòng Revoke và Connect lại Google.'
+    if status_code == 403:
+        return 'Google từ chối quyền gửi mail (403). Kiểm tra scope gmail.send, OAuth consent hoặc quota dự án.'
+    if status_code == 429:
+        return 'Google API rate limit exceeded (429). Hãy giảm tần suất gửi và thử lại sau.'
+    if status_code >= 500:
+        return 'Google API đang lỗi phía máy chủ (5xx). Vui lòng thử lại sau.'
+
+    details = reason or payload_error or str(exc)
+    return f'Gmail API lỗi HTTP {status_code}: {details}'
 
 
 def get_active_email_account() -> SystemEmailAccount | None:
@@ -48,6 +85,41 @@ def send_system_email(
     fail_silently: bool = False,
 ) -> int:
     selected_account = account or get_active_email_account()
+
+    if selected_account and selected_account.auth_type == SystemEmailAccount.AuthTypeChoices.GOOGLE_OAUTH2:
+        refresh_token = selected_account.get_google_refresh_token()
+        if not refresh_token:
+            raise ValueError('Google OAuth2 account chưa có refresh token. Vui lòng kết nối Google trong Admin.')
+
+        try:
+            token_payload = refresh_google_access_token(
+                client_id=selected_account.google_client_id,
+                client_secret=selected_account.get_google_client_secret(),
+                refresh_token=refresh_token,
+                timeout_seconds=selected_account.timeout_seconds,
+            )
+            access_token = token_payload['access_token']
+            sent_count = send_gmail_api_message(
+                access_token=access_token,
+                subject=subject,
+                text_body=message,
+                html_body=html_message,
+                from_email=build_sender_address(selected_account),
+                recipient_list=recipient_list,
+                reply_to_email=selected_account.reply_to_email or None,
+                timeout_seconds=selected_account.timeout_seconds,
+            )
+            selected_account.token_last_refreshed_at = timezone.now()
+            selected_account.token_last_error = ''
+            selected_account.save(update_fields=['token_last_refreshed_at', 'token_last_error', 'updated_at'])
+            return sent_count
+        except Exception as exc:
+            selected_account.token_last_error = _humanize_gmail_error(exc)
+            selected_account.save(update_fields=['token_last_error', 'updated_at'])
+            if fail_silently:
+                return 0
+            raise RuntimeError(selected_account.token_last_error) from exc
+
     connection = build_email_connection(selected_account, fail_silently=fail_silently)
     email = EmailMultiAlternatives(
         subject=subject,
@@ -64,9 +136,11 @@ def send_system_email(
 
 def send_test_email(account: SystemEmailAccount, recipient_email: str) -> int:
     subject = '[VNInvest] Kiểm tra cấu hình gửi mail'
+    transport_name = 'Google OAuth2' if account.auth_type == SystemEmailAccount.AuthTypeChoices.GOOGLE_OAUTH2 else 'SMTP'
     message = (
-        'VNInvest đã gửi email kiểm tra bằng cấu hình SMTP trong trang quản trị.\n\n'
+        'VNInvest đã gửi email kiểm tra bằng cấu hình mail trong trang quản trị.\n\n'
         f'Cấu hình: {account.name}\n'
+        f'Kiểu gửi: {transport_name}\n'
         f'Host: {account.host}:{account.port}\n'
         f'Thời điểm: {timezone.localtime().strftime("%Y-%m-%d %H:%M:%S")}\n'
     )

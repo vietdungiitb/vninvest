@@ -13,6 +13,40 @@
 
 ---
 
+## 0.1 Sprint 18 — IN PROGRESS (Django Admin Google Mail OAuth2)
+
+**Focus**: Quan tri tai khoan gui mail Google bang OAuth2 token trong Django Admin (thay vi phu thuoc SMTP password)
+
+**Muc tieu chinh**:
+- Them auth mode `google_oauth2` cho `SystemEmailAccount` ben canh flow SMTP legacy.
+- Hoan tat admin flow `Connect Google -> Callback -> Test mail -> Revoke`.
+- Tich hop Gmail API send transport vao `send_system_email`.
+- Bao dam secret/token duoc luu an toan va co audit/observability.
+
+**Trang thai hien tai**: In progress, da hoan tat foundation backend.
+
+**Da hoan tat (foundation):**
+- Mo rong model `SystemEmailAccount` voi `auth_type=google_oauth2` va OAuth token fields.
+- Da co migration `portfolio.0014_systememailaccount_google_oauth2`.
+- Da co service refresh token + Gmail API send transport.
+- Da noi branch send mail theo `auth_type` trong mail service.
+- Da bo sung actions trong Admin: Connect Google, Callback, Revoke Token.
+- Da co test tu dong cho OAuth callback va Gmail branch.
+
+**Con lai (next):**
+- Hardening env config theo moi truong dev/staging/prod.
+- Mo rong regression test matrix va canary rollout monitoring.
+
+**Tai lieu chuan cho sprint nay**:
+- `docs/SPRINT18_DETAILED_PLAN.md`
+- `docs/SPRINT18_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT18_GOOGLE_OAUTH_RUNBOOK.md`
+- `docs/SPRINT18_STAGING_CANARY_CHECKLIST.md`
+
+**Du kien timeline**: 7 ngay cong (Phase 0-5)
+
+---
+
 ## 1. Tổng Quan Dự Án
 
 **VNInvest** là ứng dụng theo dõi danh mục đầu tư chứng khoán Việt Nam (HOSE/HNX/UPCOM) kết hợp robo-advisor. Mục tiêu cung cấp công cụ theo dõi realtime, phân tích hiệu suất, cảnh báo whale, và tư vấn giao dịch tự động cho nhà đầu tư cá nhân người Việt.

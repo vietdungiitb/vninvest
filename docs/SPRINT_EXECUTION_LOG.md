@@ -134,6 +134,56 @@ Huong chuyen tiep ngay sau dot nay:
 Buoc ke tiep da chot:
 - Uu tien cao nhat la tach logic websocket/polling lap lai giua Watchlist va Dashboard thanh hook/service `useRealtimeFeed`, sau do moi di tiep sang observability va Redis-backed validation.
 
+## Sprint 18 - Google OAuth2 Mail Admin foundation (2026-04-04)
+
+Trang thai: IN PROGRESS
+
+Da thuc hien:
+- Mo rong `SystemEmailAccount` de ho tro song song:
+	- `auth_type=smtp_password`
+	- `auth_type=google_oauth2`
+- Them cac truong OAuth2:
+	- google_client_id/client_secret(refresh token encrypted)
+	- google_account_email, token_last_refreshed_at, token_last_error, oauth_connected_at
+- Tao migration `0014_systememailaccount_google_oauth2` va da apply local.
+- Them service moi:
+	- `portfolio/google_oauth_service.py` (authorize URL, exchange code, refresh token, userinfo)
+	- `portfolio/gmail_service.py` (MIME + Gmail API send)
+- Noi `mail_service.py` theo branch auth_type:
+	- Google OAuth2 -> refresh token -> Gmail API send
+	- SMTP legacy -> giu nguyen luong cu
+- Mo rong Django Admin cho `SystemEmailAccount`:
+	- fields OAuth2 masked
+	- status token fields
+	- actions: Connect Google / Revoke Token / callback flow
+- Bo sung tests `test_admin_mail_accounts.py`:
+	- callback success/state mismatch
+	- Gmail OAuth2 send branch
+
+Validation:
+- `python manage.py check` PASS
+- `python manage.py test portfolio.tests.test_admin_mail_accounts` PASS (9 tests)
+- `python manage.py migrate` PASS cho migration 0014
+
+Cap nhat hardening tiep theo (cuoi ngay 2026-04-04):
+- Tang cuong bao mat OAuth callback:
+	- state token co TTL (`max_age=600s`)
+	- verify state signature (`signing.loads`)
+	- rang buoc payload `account_id` + `user_id` phai khop session/request user
+- Bo sung test bao mat callback:
+	- state mismatch
+	- state expired
+	- user/account payload mismatch
+- Bo sung migration index rename pending (`0015`) va apply local de schema sach.
+
+Validation bo sung:
+- `python manage.py test portfolio.tests.test_admin_mail_accounts` PASS (11 tests)
+- `python manage.py makemigrations --check` PASS (No changes detected)
+
+Con mo:
+- Hoan tat canary rollout tren staging voi OAuth app credentials that.
+- Theo doi metric loi token refresh trong 24-48h sau rollout.
+
 ## Sprint 12 - UX clarity update (2026-04-01)
 
 Trang thai: IN PROGRESS

@@ -694,16 +694,35 @@ class UserConfig(models.Model):
 
 
 class SystemEmailAccount(models.Model):
+    class AuthTypeChoices(models.TextChoices):
+        SMTP_PASSWORD = 'smtp_password', 'SMTP Password'
+        GOOGLE_OAUTH2 = 'google_oauth2', 'Google OAuth2'
+
     class TestStatusChoices(models.TextChoices):
         NEVER = 'never', 'Chưa kiểm tra'
         SUCCESS = 'success', 'Kiểm tra thành công'
         FAILED = 'failed', 'Kiểm tra thất bại'
 
     name = models.CharField(max_length=120, unique=True, verbose_name='Tên cấu hình')
+    auth_type = models.CharField(
+        max_length=20,
+        choices=AuthTypeChoices.choices,
+        default=AuthTypeChoices.SMTP_PASSWORD,
+        verbose_name='Kiểu xác thực gửi mail',
+    )
+    oauth_provider = models.CharField(max_length=30, blank=True, default='', verbose_name='OAuth provider')
     host = models.CharField(max_length=255, verbose_name='SMTP host')
     port = models.PositiveIntegerField(default=587, verbose_name='SMTP port')
     username = models.CharField(max_length=255, blank=True, default='', verbose_name='Tên đăng nhập SMTP')
     password_ciphertext = models.TextField(blank=True, default='', verbose_name='Mật khẩu SMTP đã mã hóa')
+    google_client_id = models.CharField(max_length=255, blank=True, default='', verbose_name='Google Client ID')
+    google_client_secret_ciphertext = models.TextField(blank=True, default='', verbose_name='Google Client Secret đã mã hóa')
+    google_refresh_token_ciphertext = models.TextField(blank=True, default='', verbose_name='Google Refresh Token đã mã hóa')
+    google_token_scope = models.TextField(blank=True, default='', verbose_name='Google token scope')
+    google_account_email = models.EmailField(blank=True, default='', verbose_name='Google account email')
+    oauth_connected_at = models.DateTimeField(null=True, blank=True, verbose_name='Thời điểm kết nối OAuth')
+    token_last_refreshed_at = models.DateTimeField(null=True, blank=True, verbose_name='Lần refresh token gần nhất')
+    token_last_error = models.TextField(blank=True, default='', verbose_name='Lỗi token gần nhất')
     use_tls = models.BooleanField(default=True, verbose_name='Dùng TLS')
     use_ssl = models.BooleanField(default=False, verbose_name='Dùng SSL')
     timeout_seconds = models.PositiveIntegerField(default=20, verbose_name='Timeout kết nối (giây)')
@@ -745,9 +764,47 @@ class SystemEmailAccount(models.Model):
         except signing.BadSignature:
             return ''
 
+    def set_google_client_secret(self, raw_secret: str):
+        if raw_secret:
+            self.google_client_secret_ciphertext = signing.dumps(raw_secret, salt='portfolio.system-email-google-client-secret')
+
+    def get_google_client_secret(self) -> str:
+        if not self.google_client_secret_ciphertext:
+            return ''
+        try:
+            return signing.loads(self.google_client_secret_ciphertext, salt='portfolio.system-email-google-client-secret')
+        except signing.BadSignature:
+            return ''
+
+    def set_google_refresh_token(self, raw_token: str):
+        if raw_token:
+            self.google_refresh_token_ciphertext = signing.dumps(raw_token, salt='portfolio.system-email-google-refresh-token')
+
+    def clear_google_refresh_token(self):
+        self.google_refresh_token_ciphertext = ''
+
+    def get_google_refresh_token(self) -> str:
+        if not self.google_refresh_token_ciphertext:
+            return ''
+        try:
+            return signing.loads(self.google_refresh_token_ciphertext, salt='portfolio.system-email-google-refresh-token')
+        except signing.BadSignature:
+            return ''
+
+    @property
+    def has_google_refresh_token(self) -> bool:
+        return bool(self.google_refresh_token_ciphertext)
+
     def clean(self):
         if self.use_tls and self.use_ssl:
             raise ValidationError('Không thể bật đồng thời cả TLS và SSL cho cùng một cấu hình SMTP.')
+
+        if self.auth_type == self.AuthTypeChoices.GOOGLE_OAUTH2:
+            if not self.google_client_id:
+                raise ValidationError('Google Client ID là bắt buộc khi dùng Google OAuth2.')
+            if not self.google_client_secret_ciphertext:
+                raise ValidationError('Google Client Secret là bắt buộc khi dùng Google OAuth2.')
+            self.oauth_provider = 'google'
 
     def save(self, *args, **kwargs):
         if self.is_default:

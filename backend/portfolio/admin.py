@@ -7,6 +7,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django import forms
+from django.core import signing
 from django.db.models import Max
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -44,6 +45,11 @@ from .models import (
     OrderFlowSignal,
 )
 from .mail_service import get_active_email_account, send_test_email
+from .google_oauth_service import (
+    build_google_oauth_authorize_url,
+    exchange_google_oauth_code,
+    fetch_google_user_email,
+)
 from .email_verification import send_verification_email
 from .services import (
     build_whale_rollout_anomaly_snapshot,
@@ -60,6 +66,9 @@ from .services import (
 admin.site.site_header = 'VNInvest - Trang quản trị hệ thống'
 admin.site.site_title = 'VNInvest Admin'
 admin.site.index_title = 'Sơ đồ chức năng hệ thống'
+
+
+MAIL_GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS = 600
 
 
 _original_each_context = admin.site.each_context
@@ -1047,16 +1056,36 @@ class SystemEmailAccountAdminForm(forms.ModelForm):
         widget=forms.PasswordInput(render_value=False),
         help_text='Để trống nếu không thay đổi mật khẩu đã lưu.',
     )
+    google_client_secret = forms.CharField(
+        label='Google Client Secret',
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Để trống nếu không thay đổi client secret đã lưu.',
+    )
+    google_refresh_token = forms.CharField(
+        label='Google Refresh Token',
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Để trống nếu không thay đổi refresh token đã lưu.',
+    )
 
     class Meta:
         model = SystemEmailAccount
-        exclude = ('password_ciphertext',)
+        exclude = ('password_ciphertext', 'google_client_secret_ciphertext', 'google_refresh_token_ciphertext')
 
     def save(self, commit=True):
         instance = super().save(commit=False)
         raw_password = self.cleaned_data.get('smtp_password')
         if raw_password:
             instance.set_smtp_password(raw_password)
+
+        raw_google_secret = self.cleaned_data.get('google_client_secret')
+        if raw_google_secret:
+            instance.set_google_client_secret(raw_google_secret)
+
+        raw_refresh_token = self.cleaned_data.get('google_refresh_token')
+        if raw_refresh_token:
+            instance.set_google_refresh_token(raw_refresh_token)
 
         if commit:
             instance.save()
@@ -1068,6 +1097,7 @@ class SystemEmailAccountAdmin(admin.ModelAdmin):
     form = SystemEmailAccountAdminForm
     list_display = (
         'name',
+        'auth_type',
         'host',
         'port',
         'username',
@@ -1077,14 +1107,45 @@ class SystemEmailAccountAdmin(admin.ModelAdmin):
         'last_test_status',
         'last_tested_at',
     )
-    list_filter = ('is_active', 'is_default', 'use_tls', 'use_ssl', 'last_test_status')
+    list_filter = ('auth_type', 'is_active', 'is_default', 'use_tls', 'use_ssl', 'last_test_status')
     search_fields = ('name', 'host', 'username', 'from_email')
     ordering = ('-is_default', 'name')
     actions = ('mark_as_default', 'send_test_email_to_selected_accounts')
-    readonly_fields = ('password_status', 'last_tested_at', 'last_test_status', 'last_test_message', 'created_at', 'updated_at')
+    readonly_fields = (
+        'password_status',
+        'google_client_secret_status',
+        'google_refresh_token_status',
+        'last_tested_at',
+        'last_test_status',
+        'last_test_message',
+        'oauth_connected_at',
+        'token_last_refreshed_at',
+        'token_last_error',
+        'created_at',
+        'updated_at',
+        'oauth_actions',
+    )
     fieldsets = (
-        ('Nhận diện', {'fields': ('name', 'notes', 'is_active', 'is_default')}),
+        ('Nhận diện', {'fields': ('name', 'auth_type', 'oauth_provider', 'notes', 'is_active', 'is_default')}),
         ('Máy chủ SMTP', {'fields': ('host', 'port', 'username', 'smtp_password', 'password_status', 'use_tls', 'use_ssl', 'timeout_seconds')}),
+        (
+            'Google OAuth2',
+            {
+                'fields': (
+                    'google_client_id',
+                    'google_client_secret',
+                    'google_client_secret_status',
+                    'google_refresh_token',
+                    'google_refresh_token_status',
+                    'google_account_email',
+                    'google_token_scope',
+                    'oauth_connected_at',
+                    'token_last_refreshed_at',
+                    'token_last_error',
+                    'oauth_actions',
+                )
+            },
+        ),
         ('Thông tin người gửi', {'fields': ('from_email', 'from_name', 'reply_to_email')}),
         ('Kết quả kiểm tra', {'fields': ('last_tested_at', 'last_test_status', 'last_test_message', 'created_at', 'updated_at')}),
     )
@@ -1092,6 +1153,179 @@ class SystemEmailAccountAdmin(admin.ModelAdmin):
     @admin.display(description='Mật khẩu SMTP')
     def password_status(self, obj):
         return 'Đã lưu' if obj.password_ciphertext else 'Chưa cấu hình'
+
+    @admin.display(description='Google Client Secret')
+    def google_client_secret_status(self, obj):
+        return 'Đã lưu' if obj.google_client_secret_ciphertext else 'Chưa cấu hình'
+
+    @admin.display(description='Google Refresh Token')
+    def google_refresh_token_status(self, obj):
+        return 'Đã lưu' if obj.google_refresh_token_ciphertext else 'Chưa cấu hình'
+
+    @admin.display(description='OAuth2 actions')
+    def oauth_actions(self, obj):
+        if not obj or not obj.pk:
+            return 'Lưu cấu hình trước khi thao tác OAuth2.'
+        connect_url = reverse('admin:portfolio_systememailaccount_google_connect', args=[obj.pk])
+        revoke_url = reverse('admin:portfolio_systememailaccount_google_revoke', args=[obj.pk])
+        return format_html(
+            '<a class="button" href="{}">Connect Google</a>&nbsp;'
+            '<a class="button" href="{}">Revoke Token</a>',
+            connect_url,
+            revoke_url,
+        )
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                '<path:object_id>/google/connect/',
+                self.admin_site.admin_view(self.google_connect_view),
+                name='portfolio_systememailaccount_google_connect',
+            ),
+            path(
+                'google/callback/',
+                self.admin_site.admin_view(self.google_callback_view),
+                name='portfolio_systememailaccount_google_callback',
+            ),
+            path(
+                '<path:object_id>/google/revoke/',
+                self.admin_site.admin_view(self.google_revoke_view),
+                name='portfolio_systememailaccount_google_revoke',
+            ),
+        ]
+        return custom_urls + urls
+
+    def google_connect_view(self, request, object_id):
+        account = get_object_or_404(SystemEmailAccount, pk=object_id)
+        change_url = reverse('admin:portfolio_systememailaccount_change', args=[account.pk])
+        if account.auth_type != SystemEmailAccount.AuthTypeChoices.GOOGLE_OAUTH2:
+            self.message_user(request, 'Cấu hình này chưa chọn auth_type=google_oauth2.', level=messages.ERROR)
+            return HttpResponseRedirect(change_url)
+
+        if not account.google_client_id or not account.get_google_client_secret():
+            self.message_user(request, 'Thiếu Google Client ID/Secret.', level=messages.ERROR)
+            return HttpResponseRedirect(change_url)
+
+        state_payload = signing.dumps(
+            {'account_id': account.pk, 'user_id': request.user.pk},
+            salt='portfolio.system-email-google-oauth-state',
+        )
+        request.session['mail_google_oauth_state'] = state_payload
+        request.session['mail_google_oauth_account_id'] = account.pk
+
+        redirect_uri = request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
+        scope = (account.google_token_scope or '').strip() or 'https://www.googleapis.com/auth/gmail.send openid email'
+        authorize_url = build_google_oauth_authorize_url(
+            client_id=account.google_client_id,
+            redirect_uri=redirect_uri,
+            state=state_payload,
+            scope=scope,
+        )
+        return redirect(authorize_url)
+
+    def google_callback_view(self, request):
+        state = request.GET.get('state', '')
+        code = request.GET.get('code', '')
+        oauth_error = request.GET.get('error', '')
+        session_state_token = request.session.get('mail_google_oauth_state', '')
+        account_id = request.session.get('mail_google_oauth_account_id')
+
+        if oauth_error:
+            self.message_user(request, f'Google OAuth lỗi: {oauth_error}', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+
+        if not state or not session_state_token or state != session_state_token:
+            self.message_user(request, 'OAuth state không hợp lệ. Vui lòng thử lại.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+
+        try:
+            state_payload = signing.loads(
+                state,
+                salt='portfolio.system-email-google-oauth-state',
+                max_age=MAIL_GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS,
+            )
+        except signing.SignatureExpired:
+            self.message_user(request, 'OAuth state đã hết hạn. Vui lòng kết nối lại Google.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+        except signing.BadSignature:
+            self.message_user(request, 'OAuth state bị sai chữ ký. Vui lòng thử lại.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+
+        if not code or not account_id:
+            self.message_user(request, 'Thiếu authorization code hoặc account context.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+
+        payload_account_id = state_payload.get('account_id')
+        payload_user_id = state_payload.get('user_id')
+        if payload_account_id != account_id or payload_user_id != request.user.pk:
+            self.message_user(request, 'OAuth state không khớp account/user hiện tại.', level=messages.ERROR)
+            return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_changelist'))
+
+        account = get_object_or_404(SystemEmailAccount, pk=account_id)
+        change_url = reverse('admin:portfolio_systememailaccount_change', args=[account.pk])
+
+        try:
+            redirect_uri = request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
+            token_payload = exchange_google_oauth_code(
+                client_id=account.google_client_id,
+                client_secret=account.get_google_client_secret(),
+                code=code,
+                redirect_uri=redirect_uri,
+                timeout_seconds=account.timeout_seconds,
+            )
+            refresh_token = str(token_payload.get('refresh_token') or '').strip()
+            access_token = str(token_payload.get('access_token') or '').strip()
+            scope = str(token_payload.get('scope') or '').strip()
+
+            if refresh_token:
+                account.set_google_refresh_token(refresh_token)
+            elif not account.has_google_refresh_token:
+                raise ValueError('Google không trả refresh_token. Hãy cấp lại consent với prompt=consent.')
+            if scope:
+                account.google_token_scope = scope
+
+            email = fetch_google_user_email(access_token=access_token, timeout_seconds=account.timeout_seconds)
+            if email:
+                account.google_account_email = email
+            account.oauth_provider = 'google'
+            account.oauth_connected_at = timezone.now()
+            account.token_last_error = ''
+            account.save(update_fields=[
+                'google_refresh_token_ciphertext',
+                'google_token_scope',
+                'google_account_email',
+                'oauth_provider',
+                'oauth_connected_at',
+                'token_last_error',
+                'updated_at',
+            ])
+            self.message_user(request, f'Kết nối Google thành công cho cấu hình {account.name}.', level=messages.SUCCESS)
+        except Exception as exc:
+            account.token_last_error = str(exc)
+            account.save(update_fields=['token_last_error', 'updated_at'])
+            self.message_user(request, f'Kết nối Google thất bại: {exc}', level=messages.ERROR)
+        finally:
+            request.session.pop('mail_google_oauth_state', None)
+            request.session.pop('mail_google_oauth_account_id', None)
+
+        return HttpResponseRedirect(change_url)
+
+    def google_revoke_view(self, request, object_id):
+        account = get_object_or_404(SystemEmailAccount, pk=object_id)
+        account.clear_google_refresh_token()
+        account.google_account_email = ''
+        account.oauth_connected_at = None
+        account.token_last_error = ''
+        account.save(update_fields=[
+            'google_refresh_token_ciphertext',
+            'google_account_email',
+            'oauth_connected_at',
+            'token_last_error',
+            'updated_at',
+        ])
+        self.message_user(request, f'Đã gỡ token Google cho cấu hình {account.name}.', level=messages.SUCCESS)
+        return HttpResponseRedirect(reverse('admin:portfolio_systememailaccount_change', args=[account.pk]))
 
     @admin.action(description='Đặt làm cấu hình gửi mail mặc định')
     def mark_as_default(self, request, queryset):
