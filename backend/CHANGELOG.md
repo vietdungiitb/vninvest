@@ -1,7 +1,7 @@
 ## Ghi chú thay đổi ngày 04/04/2026
 
-- Thay thư viện `vnstock3>=0.3.0.9` bằng fork tùy chỉnh `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@pr-to-thinh-vu` trong `backend/requirements.txt`.
-- Phiên bản được cài: `vnstock 3.5.0` (branch `pr-to-thinh-vu`, commit `34b61cb`).
+- Thay thư viện `vnstock3>=0.3.0.9` bằng fork tùy chỉnh `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@main` trong `backend/requirements.txt`.
+- Phiên bản runtime hiện tại được cài từ branch `main` của fork `vietdung-edusuccess/vnstock`.
 - Lý do: sử dụng bản fork riêng có các thay đổi chưa merge vào upstream.
 - Cập nhật theo hướng thư viện nâng cấp throughput: bỏ monkey-patch bypass rate-limit trong `config/settings.py` và dùng đúng runtime từ thư viện.
 - Bổ sung dependency `asyncio-throttle>=1.0.2` trong `backend/requirements.txt` (yêu cầu mới từ bản vnstock nâng cấp).
