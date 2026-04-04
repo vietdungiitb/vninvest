@@ -18,6 +18,9 @@ env/
 # ── Django ───────────────────────────────────────────────────────────────────
 backend/db.sqlite3
 backend/db.sqlite3-journal
+backend/celerybeat-schedule
+backend/celerybeat-schedule-shm
+backend/celerybeat-schedule-wal
 backend/staticfiles/
 backend/mediafiles/
 backend/*.log
@@ -47,6 +50,7 @@ frontend/.eslintcache
 Thumbs.db
 .idea/
 .vscode/settings.json
+*.code-workspace
 *.swp
 *.swo
 *~
