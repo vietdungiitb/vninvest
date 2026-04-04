@@ -2117,12 +2117,14 @@ export default function StockDetail() {
                             ))}
                           </div>
                         ) : null}
-                        <p className="mt-2 text-xs leading-6 whitespace-pre-line text-slate-300">
-                          {advisoryExecutiveSummary.synthesis_text || 'Chưa có nội dung tổng hợp.'}
-                        </p>
-                        <p className="mt-2 text-[11px] text-slate-500">
-                          Bản tóm tắt sử dụng {Array.isArray(advisoryExecutiveSummary.used_component_ids) ? advisoryExecutiveSummary.used_component_ids.length : 0} tab thành phần
-                        </p>
+                        <div className="mt-2 max-h-56 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
+                          <p className="text-sm leading-6 whitespace-pre-line text-slate-200">
+                            {advisoryExecutiveSummary.synthesis_text || 'Chưa có nội dung tổng hợp.'}
+                          </p>
+                          <p className="mt-2 text-[11px] text-slate-500">
+                            Bản tóm tắt sử dụng {Array.isArray(advisoryExecutiveSummary.used_component_ids) ? advisoryExecutiveSummary.used_component_ids.length : 0} tab thành phần
+                          </p>
+                        </div>
                       </>
                     ) : (
                       <p className="mt-2 text-xs text-slate-500">Chưa có bản tóm tắt điều hành. Tạo tab AI và bấm "Tổng hợp lại" để tạo nội dung.</p>
@@ -2152,16 +2154,19 @@ export default function StockDetail() {
         </div>
         {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên + Cảnh báo giá */}
         <div className="flex flex-col gap-3 md:gap-4 xl:gap-5">
+          <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+          <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+          {/* Tỷ trọng dòng tiền phiên */}
+          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
           <WhaleFeedPanel
             symbol={normalizedSymbol}
             realtimeAlerts={symbolAlerts}
             feedData={whaleFeedData}
             loading={whaleFeedLoading}
             onRefresh={refreshWhaleFeed}
+            feedHeightClass="h-[210px] sm:h-[250px] xl:h-[280px]"
           />
           <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
-          {/* Tỷ trọng dòng tiền phiên */}
-          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
           {/* Cảnh báo giá */}
           {symbolAlerts.length > 0 && (
             <section className="card-section p-4">
