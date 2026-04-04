@@ -6,7 +6,7 @@ Tai lieu nay mo ta cach du an VNInvest van hanh sau khi chuyen sang ban `vnstock
 
 ## Pham vi thay doi
 
-- Runtime backend su dung `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@main`.
+- Runtime backend su dung `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@bde1be5b69bafa19b7d9438412473753c16d3e80` (vnstock 3.5.0).
 - Khong con duy tri monkey-patch bypass rate-limit trong Django settings.
 - Throughput duoc dam bao bang kien truc cache-first + background prefetch, khong phu thuoc vao HTTP request handler.
 - Bo sung dependency `asyncio-throttle>=1.0.2` do ban vnstock nang cap yeu cau.
@@ -197,9 +197,20 @@ Task `prefetch_ticker_price_board` co co che rieng cho rate-limit tu upstream:
 
 Bien moi truong co the tuning:
 
-- `TICKER_PREFETCH_RETRY_BASE_SECONDS` (mac dinh `15`)
-- `TICKER_PREFETCH_RETRY_MAX_SECONDS` (mac dinh `180`)
-- `TICKER_PREFETCH_MAX_RETRIES` (mac dinh `4`)
+- `TICKER_PREFETCH_RETRY_BASE_SECONDS` (mac dinh `8`)
+- `TICKER_PREFETCH_RETRY_MAX_SECONDS` (mac dinh `120`)
+- `TICKER_PREFETCH_MAX_RETRIES` (mac dinh `6`)
+
+### Profile khuyen nghi sau khi nang cap vnstock 3.5.0
+
+- `VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS=20`
+- `TICKER_PREFETCH_INTERVAL=12`
+- `TICKER_PREFETCH_BATCH_SIZE=60`
+- `TICKER_PREFETCH_SYMBOL_LIMIT=240`
+- `TICKER_PREFETCH_MAX_RETRIES=6`
+- `TICKER_PREFETCH_RETRY_BASE_SECONDS=8`
+- `TICKER_PREFETCH_RETRY_MAX_SECONDS=120`
+- `WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS=6`
 
 ## Benchmark da xac minh
 

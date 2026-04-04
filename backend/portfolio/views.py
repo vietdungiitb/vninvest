@@ -340,7 +340,7 @@ def _is_vnstock_rate_limited(channel: str = 'intraday') -> bool:
 
 
 def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None = None) -> None:
-    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '45')), 5)
+    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
     _cache_set(
         _vnstock_rate_limit_cache_key(channel),
         {
@@ -352,7 +352,7 @@ def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None 
 
 
 def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
-    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', '2')), 0)
+    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', '6')), 0)
     if max_symbols == 0:
         return False
     return len(symbols) <= max_symbols

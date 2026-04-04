@@ -54,7 +54,7 @@ def _distinct_symbols(queryset) -> list[str]:
 
 def _collect_prefetch_symbols() -> tuple[list[str], dict]:
     include_group_symbols = os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true'
-    symbol_limit = max(int(os.getenv('TICKER_PREFETCH_SYMBOL_LIMIT', '120')), 0)
+    symbol_limit = max(int(os.getenv('TICKER_PREFETCH_SYMBOL_LIMIT', '240')), 0)
 
     source_lists = {
         'tracked_symbols': _distinct_symbols(TrackedSymbol.objects.values_list('symbol', flat=True).distinct()),
@@ -96,13 +96,13 @@ def _is_rate_limited_error(exc: Exception) -> bool:
 
 
 def _prefetch_retry_countdown(retries: int) -> int:
-    base = max(int(os.getenv('TICKER_PREFETCH_RETRY_BASE_SECONDS', '15')), 1)
-    max_seconds = max(int(os.getenv('TICKER_PREFETCH_RETRY_MAX_SECONDS', '180')), base)
+    base = max(int(os.getenv('TICKER_PREFETCH_RETRY_BASE_SECONDS', '8')), 1)
+    max_seconds = max(int(os.getenv('TICKER_PREFETCH_RETRY_MAX_SECONDS', '120')), base)
     return min(max_seconds, base * (2 ** max(retries, 0)))
 
 
 def _mark_price_board_rate_limited(exc: Exception) -> None:
-    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '45')), 5)
+    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
     try:
         cache.set(
             VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
@@ -555,7 +555,7 @@ def prefetch_ticker_price_board(self) -> dict:
     HTTP handler RealtimeTickerView chỉ đọc cache, không gọi vnstock nữa.
     Chạy mỗi 20s qua Celery Beat (luôn bật, không cần REALTIME_ENABLED).
     """
-    batch_size = max(int(os.getenv('TICKER_PREFETCH_BATCH_SIZE', '30')), 1)
+    batch_size = max(int(os.getenv('TICKER_PREFETCH_BATCH_SIZE', '60')), 1)
     symbols, source_counts = _collect_prefetch_symbols()
     if not symbols:
         payload = {
@@ -588,7 +588,7 @@ def prefetch_ticker_price_board(self) -> dict:
     now_iso = timezone.now().isoformat()
     cached_count = 0
     processed_batches = 0
-    max_retries = max(int(os.getenv('TICKER_PREFETCH_MAX_RETRIES', '4')), 0)
+    max_retries = max(int(os.getenv('TICKER_PREFETCH_MAX_RETRIES', '6')), 0)
     if cache.get(VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY):
         payload = {
             'status': 'backoff',
