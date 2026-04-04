@@ -41,6 +41,32 @@ npm start   # http://localhost:3000
 - Redis: `redis-server` → `localhost:6379`
 - Cấu hình tại `backend/.env` (xem `backend/.env.example`)
 
+### Operational Runbook
+
+Để ticker API chạy theo fast path `source=prefetch` thay vì fallback DB, cần đủ 4 thành phần:
+
+```powershell
+# Terminal 1 - Backend
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m daphne --bind 127.0.0.1 --port 8000 --threads 20 config.asgi:application
+
+# Terminal 2 - Celery worker
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m celery -A config worker -l info -P solo
+
+# Terminal 3 - Celery beat
+cd backend
+.\.venv\Scripts\Activate.ps1
+python -m celery -A config beat -l info
+```
+
+Xác minh nhanh:
+- Redis db=2 có key `vninvest:1:ticker:*`
+- `/api/realtime/ticker/<symbol>/` trả `source=prefetch`
+- Benchmark kỳ vọng: ticker p95 khoảng 50-60ms
+
 ---
 
 ## Tính Năng Chính

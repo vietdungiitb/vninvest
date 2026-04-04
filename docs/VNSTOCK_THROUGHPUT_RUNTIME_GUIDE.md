@@ -29,6 +29,20 @@ Admin / API khac
   -> khong bi giu thread de cho vnstock
 ```
 
+### So do Mermaid
+
+```mermaid
+flowchart LR
+    A[vnstock fork runtime] --> B[Celery task prefetch_ticker_price_board]
+    C[Celery Beat 20s] --> B
+    B --> D[Redis cache db=2]
+    D --> E[GET /api/realtime/ticker/<symbol>]
+    E -->|cache hit| F[source=prefetch stale=false]
+    E -->|cache miss| G[trigger prefetch async]
+    E -->|cache miss| H[fallback DB source=db]
+    I[Admin va API khac] --> J[Khong bi block boi vnstock request]
+```
+
 ## Thanh phan bat buoc
 
 ### 1. Backend ASGI
