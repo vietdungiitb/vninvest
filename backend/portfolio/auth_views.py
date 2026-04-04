@@ -1,4 +1,5 @@
 """Auth views for registration, verification, login gating, and /api/auth/me."""
+from django.conf import settings
 from django.core import signing
 from django.db import transaction
 from django.utils import timezone
@@ -118,25 +119,42 @@ class RegisterView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        try:
-            with transaction.atomic():
-                user = serializer.save()
-                user_config = user.user_config
+
+        verification_required = True
+        response_message = 'Dang ky thanh cong. Vui long kiem tra email de xac thuc tai khoan truoc khi dang nhap.'
+
+        with transaction.atomic():
+            user = serializer.save()
+            user_config = user.user_config
+
+            try:
                 send_verification_email(user)
                 user_config.email_verified = False
                 user_config.email_verification_sent_at = timezone.now()
                 user_config.email_verified_at = None
-                user_config.save(update_fields=['email_verified', 'email_verification_sent_at', 'email_verified_at', 'updated_at'])
-        except Exception as exc:
-            raise EmailDeliveryFailed(detail=f'Khong the gui email xac thuc: {exc}') from exc
+            except Exception as exc:
+                if settings.DEBUG:
+                    # Dev fallback: tránh kẹt luồng đăng ký khi chưa cấu hình SMTP.
+                    user_config.email_verified = True
+                    user_config.email_verification_sent_at = None
+                    user_config.email_verified_at = timezone.now()
+                    verification_required = False
+                    response_message = (
+                        'Dang ky thanh cong (DEV mode). He thong chua gui duoc email xac thuc '
+                        'nen tai khoan da duoc kich hoat tam thoi.'
+                    )
+                else:
+                    raise EmailDeliveryFailed(detail=f'Khong the gui email xac thuc: {exc}') from exc
+
+            user_config.save(update_fields=['email_verified', 'email_verification_sent_at', 'email_verified_at', 'updated_at'])
 
         return Response(
             {
                 'username': user.username,
                 'email': user.email,
                 'plan': _get_plan(user),
-                'verification_required': True,
-                'message': 'Dang ky thanh cong. Vui long kiem tra email de xac thuc tai khoan truoc khi dang nhap.',
+                'verification_required': verification_required,
+                'message': response_message,
             },
             status=status.HTTP_201_CREATED,
         )

@@ -435,12 +435,13 @@ export default function WhaleAlertsHub() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Scope</span>
+            <div className="flex items-center gap-2 rounded-2xl border border-cyan-700/60 bg-slate-900 px-3 py-2 shadow-[0_0_0_1px_rgba(8,145,178,0.15)]">
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Scope</span>
               <select
                 value={selectedFeedScope}
                 onChange={(event) => setSelectedFeedScope(event.target.value)}
-                className="min-w-[180px] bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
+                className="min-w-[190px] rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-sm font-medium text-slate-100 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30"
+                style={{ colorScheme: 'dark' }}
               >
                 <option value="tracked">Tracked symbols</option>
                 {watchlistGroups.map((group) => (

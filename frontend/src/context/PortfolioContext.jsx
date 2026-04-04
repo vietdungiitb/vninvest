@@ -26,6 +26,7 @@ export function PortfolioProvider({ children }) {
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
+  const [userIdentity, setUserIdentity] = useState({ username: '', email: '' });
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
   const _fetchMe = useCallback(async () => {
@@ -33,6 +34,10 @@ export function PortfolioProvider({ children }) {
       const res = await apiClient.get('/auth/me/');
       setUserPlan(res.data.plan || 'free');
       setAbility(createAbilityFromRules(res.data.abilities || []));
+      setUserIdentity({
+        username: res.data.username || '',
+        email: res.data.email || '',
+      });
     } catch (err) {
       console.error('Fetch /auth/me failed:', err);
     }
@@ -58,6 +63,10 @@ export function PortfolioProvider({ children }) {
     if (meResult.status === 'fulfilled') {
       setUserPlan(meResult.value.data.plan || 'free');
       setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
+      setUserIdentity({
+        username: meResult.value.data.username || '',
+        email: meResult.value.data.email || '',
+      });
     } else {
       console.error('Sync /auth/me failed:', meResult.reason);
     }
@@ -101,6 +110,7 @@ export function PortfolioProvider({ children }) {
     setActivePortfolioId(null);
     setUserConfig(null);
     setUserPlan('free');
+    setUserIdentity({ username: '', email: '' });
     setAbility(createAbilityFromRules([]));
   }, []);
 
@@ -170,6 +180,7 @@ export function PortfolioProvider({ children }) {
         loading,
         fetchPortfolios,
         userPlan,
+        userIdentity,
         ability,
       }}>
         {children}

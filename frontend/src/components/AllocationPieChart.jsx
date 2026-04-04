@@ -43,7 +43,7 @@ function CustomLegend({ data, mode }) {
   return (
     <ul className="space-y-1.5 mt-2">
       {data.map((entry, i) => (
-        <li key={mode === 'sector' ? entry.sector : entry.symbol}
+        <li key={`${mode === 'sector' ? entry.sector : entry.symbol}-${i}`}
             className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <span
@@ -137,7 +137,7 @@ export default function AllocationPieChart({ portfolioId }) {
               >
                 {data.map((entry, index) => (
                   <Cell
-                    key={mode === 'sector' ? entry.sector : entry.symbol}
+                    key={`${mode === 'sector' ? entry.sector : entry.symbol}-${index}`}
                     fill={COLORS[index % COLORS.length]}
                     stroke="transparent"
                   />
