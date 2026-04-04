@@ -1,3 +1,11 @@
+## Ghi chú thay đổi ngày 04/04/2026
+
+- Thay thư viện `vnstock3>=0.3.0.9` bằng fork tùy chỉnh `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@pr-to-thinh-vu` trong `backend/requirements.txt`.
+- Phiên bản được cài: `vnstock 3.5.0` (branch `pr-to-thinh-vu`, commit `34b61cb`).
+- Lý do: sử dụng bản fork riêng có các thay đổi chưa merge vào upstream.
+
+---
+
 ## Ghi chú thay đổi ngày 03/04/2026
 
 - Bổ sung model `Tài khoản gửi mail` trong Django admin để quản trị viên cấu hình SMTP trực tiếp trên hệ thống.

@@ -402,3 +402,92 @@ def generate_whale_advisory_task(self, symbol: str, matched_value_vnd: float, si
     logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
     return {'status': 'ok', 'advisory_id': advisory.id, 'symbol': symbol}
 
+
+# ---------------------------------------------------------------------------
+# Tier-2 Cache pre-fetch: batch price_board cho tất cả tracked symbols
+# Giải quyết thread pool exhaustion — 1 vnstock call thay vì N calls
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={'max_retries': 1})
+def prefetch_ticker_price_board(self) -> dict:
+    """
+    Gọi vnstock price_board MỘT LẦN cho tất cả tracked symbols.
+    Kết quả được lưu vào Django cache (ticker:{symbol}) với TTL 60s.
+    HTTP handler RealtimeTickerView chỉ đọc cache, không gọi vnstock nữa.
+    Chạy mỗi 20s qua Celery Beat (luôn bật, không cần REALTIME_ENABLED).
+    """
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    symbols = sorted({
+        s.upper() for s in
+        TrackedSymbol.objects.values_list('symbol', flat=True).distinct()
+        if s
+    })
+    if not symbols:
+        return {'status': 'ok', 'symbols': 0}
+
+    try:
+        from vnstock import Vnstock
+        stock = Vnstock().stock(symbol=symbols[0], source='VCI')
+        df = stock.trading.price_board(symbols_list=symbols)
+    except (Exception, SystemExit) as exc:
+        logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
+        return {'status': 'error', 'reason': str(exc)}
+
+    if df is None or df.empty:
+        return {'status': 'ok', 'symbols': len(symbols), 'cached': 0, 'reason': 'empty_df'}
+
+    def _f(val):
+        try:
+            v = float(val)
+            return v if v == v and v != 0 else None
+        except (TypeError, ValueError):
+            return None
+
+    def _i(val):
+        try:
+            v = float(val)
+            return int(v) if v == v else None
+        except (TypeError, ValueError):
+            return None
+
+    now_iso = timezone.now().isoformat()
+    cached_count = 0
+    for _, row in df.iterrows():
+        try:
+            sym = str(row.get(('listing', 'symbol')) or '').upper()
+            if not sym:
+                continue
+            match_price = _f(row.get(('match', 'match_price')))
+            ref_price = (_f(row.get(('listing', 'ref_price')))
+                         or _f(row.get(('match', 'reference_price'))))
+            highest = _f(row.get(('match', 'highest')))
+            lowest = _f(row.get(('match', 'lowest')))
+            open_price = _f(row.get(('match', 'open_price')))
+            accum_vol = _i(row.get(('match', 'accumulated_volume')))
+            change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
+            change_pct = (round((match_price - ref_price) / ref_price * 100, 2)
+                          if match_price and ref_price else None)
+            data = {
+                'symbol': sym,
+                'current_price': match_price,
+                'prev_price': ref_price,
+                'change_value': change_value,
+                'change_pct': change_pct,
+                'high_price': highest,
+                'low_price': lowest,
+                'open_price': open_price,
+                'volume': accum_vol,
+                'last_date': now_iso,
+                'freshness_seconds': 0,
+                'stale': False,
+                'source': 'prefetch',
+            }
+            cache.set(f'ticker:{sym}', data, timeout=60)
+            cached_count += 1
+        except Exception as exc:
+            logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
+
+    logger.info('prefetch_ticker_price_board: symbols=%d cached=%d', len(symbols), cached_count)
+    return {'status': 'ok', 'symbols': len(symbols), 'cached': cached_count}
+

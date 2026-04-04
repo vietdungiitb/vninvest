@@ -741,7 +741,8 @@ class WatchlistSyncView(APIView):
 class RealtimeTickerView(APIView):
     """
     GET /api/realtime/ticker/<symbol>/ — fallback polling endpoint for realtime views.
-    Dữ liệu thực từ vnstock price_board, fallback về DB nếu vnstock lỗi.
+    Phục vụ từ cache (được làm ấm bởi Celery task prefetch_ticker_price_board).
+    Không gọi vnstock trực tiếp trong HTTP handler để tránh block thread pool.
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
@@ -752,69 +753,20 @@ class RealtimeTickerView(APIView):
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # --- Cache ngắn 10s để giảm call vnstock ---
+        # --- Cache được làm ấm bởi prefetch_ticker_price_board Celery task ---
         ticker_cache_key = f'ticker:{normalized_symbol}'
         cached_ticker = _cache_get(ticker_cache_key)
         if cached_ticker is not None:
             return Response(cached_ticker)
 
-        # --- Thử lấy dữ liệu thực từ vnstock price_board ---
+        # --- Cache miss: trigger background prefetch để làm ấm cache cho lần sau ---
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.trading.price_board(symbols_list=[normalized_symbol])
-            if df is not None and not df.empty:
-                ls = df['listing'].iloc[0]
-                mt = df['match'].iloc[0]
+            from portfolio.tasks import prefetch_ticker_price_board
+            prefetch_ticker_price_board.apply_async(countdown=0)
+        except Exception:
+            pass
 
-                def _f(val):
-                    try:
-                        v = float(val)
-                        return v if v == v and v != 0 else None
-                    except (TypeError, ValueError):
-                        return None
-
-                def _i(val):
-                    try:
-                        v = float(val)
-                        return int(v) if v == v else None
-                    except (TypeError, ValueError):
-                        return None
-
-                match_price = _f(mt.get('match_price'))
-                ref_price = _f(ls.get('ref_price')) or _f(mt.get('reference_price'))
-                highest = _f(mt.get('highest'))
-                lowest = _f(mt.get('lowest'))
-                open_price = _f(mt.get('open_price'))
-                accum_vol = _i(mt.get('accumulated_volume'))
-
-                change_value = None
-                change_pct = None
-                if match_price and ref_price:
-                    change_value = round(match_price - ref_price, 2)
-                    change_pct = round((match_price - ref_price) / ref_price * 100, 2)
-
-                live_data = {
-                    'symbol': normalized_symbol,
-                    'current_price': match_price,
-                    'prev_price': ref_price,
-                    'change_value': change_value,
-                    'change_pct': change_pct,
-                    'high_price': highest,
-                    'low_price': lowest,
-                    'open_price': open_price,
-                    'volume': accum_vol,
-                    'last_date': timezone.now().isoformat(),
-                    'freshness_seconds': 0,
-                    'stale': False,
-                    'source': 'live',
-                }
-                _cache_set(ticker_cache_key, live_data, timeout=10)
-                return Response(live_data)
-        except (Exception, SystemExit) as exc:
-            logger.warning('RealtimeTickerView vnstock lỗi %s: %s', normalized_symbol, exc)
-
-        # --- Fallback: DB ---
+        # --- Fallback ngay lập tức về DB, không block thread ---
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
         freshness_seconds = None
@@ -1125,31 +1077,59 @@ class SectorBreadthView(APIView):
 
         all_symbols = list(all_symbols)
 
-        try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.trading.price_board(symbols_list=all_symbols)
-        except ImportError:
-            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except (Exception, SystemExit) as exc:
-            logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu breadth: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
-
-        # Xây dựng lookup: symbol -> change_pct, price, status
+        # --- Cache-first: đọc từ ticker cache (được làm ấm bởi prefetch_ticker_price_board) ---
         price_map = {}
-        for _, row in df.iterrows():
-            sym = row.get(('listing', 'symbol'))
-            if not sym:
-                continue
+        missing_syms = []
+        for sym in all_symbols:
+            cached_t = _cache_get(f'ticker:{sym}')
+            if cached_t:
+                match_price = cached_t.get('current_price')
+                ref_price = cached_t.get('prev_price')
+                try:
+                    chg = (round((match_price - ref_price) / ref_price * 100, 2)
+                           if match_price and ref_price else None)
+                except (TypeError, ZeroDivisionError):
+                    chg = None
+                status_val = 'up' if chg and chg > 0.5 else 'down' if chg and chg < -0.5 else 'flat'
+                price_map[sym.upper()] = {'price': match_price, 'change_pct': chg, 'status': status_val}
+            else:
+                missing_syms.append(sym)
+
+        # --- Chỉ gọi vnstock cho symbols chưa có trong cache, với timeout 8s ---
+        if missing_syms:
+            import concurrent.futures
+
+            def _fetch_missing(anchor, syms):
+                from vnstock import Vnstock
+                st = Vnstock().stock(symbol=anchor, source='VCI')
+                return st.trading.price_board(symbols_list=syms)
+
+            df = None
             try:
-                ref = float(row.get(('match', 'reference_price')) or 0)
-                price = float(row.get(('match', 'match_price')) or 0)
-                chg = round((price - ref) / ref * 100, 2) if ref > 0 else None
-            except (TypeError, ValueError):
-                chg = None
-                price = None
-            status_val = 'up' if chg is not None and chg > 0.5 else 'down' if chg is not None and chg < -0.5 else 'flat'
-            price_map[str(sym).upper()] = {'price': price, 'change_pct': chg, 'status': status_val}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(_fetch_missing, normalized_symbol, missing_syms)
+                    df = future.result(timeout=8)
+            except concurrent.futures.TimeoutError:
+                logger.warning('SectorBreadthView timeout fetching %d missing syms for %s',
+                               len(missing_syms), normalized_symbol)
+            except (Exception, SystemExit) as exc:
+                logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
+
+            if df is not None and not df.empty:
+                for _, row in df.iterrows():
+                    sym = str(row.get(('listing', 'symbol')) or '').upper()
+                    if not sym:
+                        continue
+                    try:
+                        ref = float(row.get(('match', 'reference_price')) or 0)
+                        price = float(row.get(('match', 'match_price')) or 0)
+                        chg = round((price - ref) / ref * 100, 2) if ref > 0 else None
+                    except (TypeError, ValueError):
+                        chg = None
+                        price = None
+                    status_val = 'up' if chg and chg > 0.5 else 'down' if chg and chg < -0.5 else 'flat'
+                    price_map[sym] = {'price': price, 'change_pct': chg, 'status': status_val}
+
 
         result_groups = []
         for gm in groups_meta:
@@ -1254,18 +1234,40 @@ class WhaleFeedView(APIView):
                 df = db_df
                 data_source = 'intraday_tick_db'
             else:
-                from vnstock import Vnstock
-                stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-                df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
-                data_source = 'vnstock'
-        except (Exception, SystemExit) as exc:
-            logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+                import concurrent.futures
+
+                def _fetch_intraday(sym):
+                    from vnstock import Vnstock
+                    st = Vnstock().stock(symbol=sym, source='VCI')
+                    return st.quote.intraday(symbol=sym, page_size=500)
+
+                try:
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(_fetch_intraday, normalized_symbol)
+                        df = future.result(timeout=8)
+                    data_source = 'vnstock'
+                except concurrent.futures.TimeoutError:
+                    logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                    df = None
+                    data_source = 'timeout'
+                except (Exception, SystemExit) as exc:
+                    exc_str = str(exc)
+                    if 'GIỚI HẠN API' in exc_str or 'Rate Limit' in exc_str or 'rate limit' in exc_str.lower():
+                        logger.info('WhaleFeedView vnstock rate-limited %s — trả về empty', normalized_symbol)
+                    else:
+                        logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
+                    df = None
+                    data_source = 'unavailable'
+        except Exception as exc:
+            logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
+            df = None
+            data_source = 'error'
 
         if df is None or df.empty:
             return Response({
                 'symbol': normalized_symbol, 'threshold': threshold_vnd,
                 'source': locals().get('data_source', 'unknown'),
+                'rate_limited': locals().get('data_source') in ('unavailable', 'timeout'),
                 'whale_orders': [], 'summary': {
                     'buy_value': 0, 'sell_value': 0, 'flow_net': 0,
                     'shark_value': 0, 'whale_value': 0, 'small_value': 0,
