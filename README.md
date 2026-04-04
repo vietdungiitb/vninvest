@@ -1,6 +1,6 @@
 # VNInvest — Pro Stock Tracker & Robo-Advisor
 
-> **Trạng thái**: Sprint 13 ✅ COMPLETE — 41/41 tests pass, build success  
+> **Trạng thái**: Sprint 17 ✅ COMPLETE — advisory multi-tab, preference-based synthesis, build success  
 > **Stack**: React + Django 6.0.3 + Daphne ASGI + Django Channels + Celery + Redis + vnstock  
 > **Tài liệu đầy đủ**: [docs/ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md)
 

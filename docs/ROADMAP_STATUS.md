@@ -1,8 +1,8 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
-> **Cập nhật lần cuối**: 2026-04-02  
-> **Phiên bản codebase**: Sprint 13 COMPLETE  
-> **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–13
+> **Cập nhật lần cuối**: 2026-04-04  
+> **Phiên bản codebase**: Sprint 17 COMPLETE  
+> **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–16
 
 ## Chuẩn hóa thuật ngữ
 
@@ -171,6 +171,11 @@ frontend/src/
 | `MarketGroupMember` | Thành viên nhóm |
 | `ScreenerRule` | Quy tắc lọc cổ phiếu JSON |
 | `UserConfig` | Cấu hình user (ngưỡng whale, ...) |
+| `WhaleConfigVersion` | Phiên bản config whale (immutable) |
+| `WhaleConfigDraft` | Draft config chờ approve |
+| `WhaleConfigApproval` | Bản ghi approve/reject maker-checker |
+| `WhaleConfigAuditLog` | Lịch sử thay đổi config (who/when/why) |
+| `OrderFlowSignal` | Tín hiệu dark flow (iceberg/absorption/twap) |
 
 ---
 
@@ -200,6 +205,8 @@ frontend/src/
 | CRUD | `/api/stock-management/watchlist/` | Watchlist |
 | CRUD | `/api/stock-management/watchlist/{id}/items/` | Watchlist items |
 | CRUD | `/api/stock-management/screener-rules/` | Screener rules |
+| GET | `/api/stock-management/stocks/{symbol}/order-flow/` | Order flow CVD + dark flow (auth, `?window=5m\|15m\|30m\|1h`) |
+| GET/POST | `/api/stock-management/stocks/{symbol}/ai-advisory-session/` | AI advisory session (auth, sync fallback khi không có Celery) |
 
 ### Realtime
 | Method | Endpoint | Mô tả |
@@ -340,19 +347,100 @@ frontend/src/
 
 ---
 
-## 9. Sprint 14 — Kế Hoạch Tiếp Theo (PLANNING)
+### Sprint 14 — Mission Control Foundation & Stock AI Advisory ✅ DONE
+*Chốt ngày 2026-04-04*
 
-**Mục tiêu dự kiến**:
-- Backtest UI: chạy backtest strategy SMA/RSI trên DailyPrice 3-5 năm qua.
-- HHI concentration score trong allocation API.
-- Allocation by sector toggle trên pie chart.
-- Telegram Bot push notification cho whale alerts.
-- Production hardening: PostgreSQL migration guide, Redis sentinel config.
-- Load test: p95 WS latency < 1.5s với 50+ symbols.
+**Backend**:
+- `WhaleConfigVersion` + `WhaleConfigDraft` + `WhaleConfigApproval` + `WhaleConfigAuditLog`: immutable config versioning với maker-checker 2 vai trò (Analyst/Supervisor).
+- `stock_ai_advisory_session_api`: `GET/POST /api/stock-management/stocks/<symbol>/ai-advisory-session/` — sync fallback khi DEBUG=True + không có Celery worker.
+- `_should_use_sync_fallback()` + `_queue_or_run()`: detect Celery worker availability, chạy task đồng bộ khi không có worker.
+- AI advisor trả về `queued=false, advisory.ai_provider='copilot'` qua sync path — đã verify live với JWT Bearer + BCM symbol.
+- 3 advisory session tests pass (`test_stock_advisory.py`).
+
+**Hotfixes Sprint 14**:
+- Rate-limit mitigation cho vnstock VCI API: daemon thread 20s timeout + `BaseException` guard.
+- StockDetail.jsx: realtime quote + company profile + whale alerts lọc theo symbol.
+- Sync fallback guard: chỉ bật khi `DEBUG=True` và host != `testserver`.
 
 ---
 
-## 10. Hướng Dẫn Môi Trường Dev
+## 9. Sprint 15 — Order Flow & Dark Money Detection ✅ DONE
+*Chốt ngày 2026-04-04*
+
+**Backend**:
+- `backend/portfolio/order_flow.py` (file mới): `compute_cvd_series`, `compute_tick_rate`, `compute_size_distribution`, `detect_absorption`, `detect_iceberg_clustering`, `detect_dark_flow`.
+- `OrderFlowSignal` model + migration `0012_add_order_flow_signal`.
+- Celery task `detect_and_store_order_flow` chạy mỗi 30s, env flag `ORDER_FLOW_DETECTION_ENABLED`, cooldown 300s/symbol.
+- WebSocket event `dark_flow_alert` publish khi `strength > 50`, handler trong `consumers.py`.
+- `build_symbol_ai_context()` mở rộng: key `order_flow` với `recent_signals`, `latest_signal_type`, `strength`, `confidence`.
+- Endpoint `GET /api/stock-management/stocks/<symbol>/order-flow/` (authenticated, cache 15s).
+- 38 unit tests (`test_order_flow.py`) PASS.
+
+**Frontend**:
+- `OrderFlowPanel` trong `StockDetail.jsx`: CVD AreaChart (recharts), strength meter, tick-rate, absorption badges, realtime dark_flow_alert block.
+- `useRealtimeFeed` mở rộng: export `darkFlowAlerts`, `latestDarkFlowAlert`.
+- `RealtimeDebugPanel.jsx`: Dark Flow counter + detail block.
+- `DashboardRealtimePanel.jsx`: badge `🌊 N dark flow`.
+- `getStockOrderFlow` trong `client.js`.
+
+**QA**:
+- `manage.py test portfolio.tests.test_order_flow` — 38/38 PASS
+- `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_ai_context` — 7/7 PASS
+- `npm run build` — Compiled successfully (293.13 kB gz)
+
+---
+
+## 10. Sprint 16 — Whale Volume Weighting & Order Flow Time Window ✅ DONE
+*Chốt ngày 2026-04-04*
+
+**Backend**:
+- Aggregate whale feed (`_build_aggregate_event_payload`, `_build_aggregate_event_payload_from_record`, `_build_stream_aggregate_records`, `_build_vnstock_aggregate_records`): thêm field `volume: int` vào tất cả 4 builders, graceful fallback `or 0`.
+- `stock_order_flow_api`: thêm `?window=5m|15m|30m|1h` query param, `_window_map`, fallback `30m`, trả `window` + `window_minutes` trong response.
+
+**Frontend**:
+- `WhaleAlertsHub.jsx`: tích lũy `totalVolume`, `getFrequencyLabel` dùng `totalValue` ngưỡng tỷ (5B/2B/500M), `TrackedSymbolCard` hiển thị "Avg giá: X VND/CP".
+- `WhaleAdvisory.jsx`: tích lũy `totalVolume`, sort by `totalValue` desc, `SymbolCell` hiển thị "Avg giá: X VND/CP".
+- `client.js`: `getStockOrderFlow(symbol, window = '30m')`.
+- `StockDetail.jsx`: `orderFlowWindow` state + dependency, window selector UI 4 buttons (5m/15m/30m/1h).
+
+**QA**:
+- `manage.py test portfolio.tests.test_api_routes portfolio.tests.test_order_flow` — **83/83 PASS** (49.2s)
+- `npm run build` — Compiled successfully
+
+---
+
+## 11. Sprint 17 — AI Advisory Multi-Tab & Executive Summary ✅ DONE
+*Chốt ngày 2026-04-04*
+
+**Muc tieu da dat**: Nang cap AI Advisory Session thanh mo hinh da-thanh-phan voi tab component, co include/exclude, soft delete/restore, va Executive Summary co versioning va tong hop theo preference.
+
+**Backend**:
+- Migration + model cho component records va executive summary versions.
+- API session/generate/toggle include/soft delete/restore/regenerate summary hoat dong end-to-end.
+- Bo sung endpoint refresh theo component active (`ai-advisory-components/<id>/refresh/`).
+- Nang cap regenerate summary nhan `synthesis_preference` (`short_term_action`, `risk_management`, `balanced`) de dieu huong prompt AI.
+- Co fallback deterministic khi AI synthesis khong tra ket qua hop le.
+
+**Frontend**:
+- StockDetail AI Advisory panel da tab, co timestamp, include/exclude, xoa tab.
+- Nut refresh AI theo tab active duoc dat canh nut xoa tab.
+- Section "Thong tin tong hop" ho tro combobox preference + nut tong hop lai.
+- Hien line "Che do hien tai" de user xac nhan mode tong hop dang ap dung.
+- Chuan hoa nhan UI sang tieng Viet co dau cho advisory panel.
+
+**Validation**:
+- Targeted backend tests cho flow component refresh + summary regenerate PASS.
+- Frontend `npm run build` PASS sau cac dot refactor UI/UX.
+
+**Tai lieu cap nhat**:
+- `docs/SPRINT17_DETAILED_PLAN.md`
+- `docs/SPRINT17_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT_EXECUTION_LOG.md`
+- `docs/TASKBOARD_SPRINT17.csv`
+
+---
+
+## 12. Hướng Dẫn Môi Trường Dev
 
 ### Khởi động backend
 ```powershell
@@ -410,14 +498,14 @@ python manage.py realtime_tick --sync --user-id 3
 
 ---
 
-## 12. Metrics Hiện Tại
+## 13. Metrics Hiện Tại
 
 | Metric | Giá trị |
 |--------|---------|
-| Backend tests pass | 41/41 |
-| Frontend build | ✅ 0 errors |
+| Backend tests pass | **83/83** |
+| Frontend build | ✅ 0 errors (293 kB gz) |
 | StockProfiles synced | 3249 |
 | Web routes working | 100% |
 | WebSocket duplication | 0 (single hook) |
-| Sprint hoàn thành | 7, 8, 9, 10, 11, 12, 13 |
-| Sprint tiếp theo | 14 (PLANNING) |
+| Sprint hoàn thành | 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 |
+| Sprint tiếp theo | 18 (planning cua sprint tiep theo) |

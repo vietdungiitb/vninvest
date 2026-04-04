@@ -484,6 +484,99 @@ Files sua:
 - `backend/portfolio/admin.py`
 - `backend/portfolio/templates/admin/portfolio/stockprofile/workspace.html`
 
+---
+
+## Sprint 14 — Mission Control Foundation (2026-04-03)
+
+Trang thai: COMPLETED
+
+Noi dung da hoan tat (5 phases):
+
+**Phase 1 — Mission Control Foundation:**
+- Tao 6 models: `WhaleConfigVersion`, `WhaleConfigDraft`, `WhaleConfigApproval`, `WhaleConfigRollout`, `WhaleConfigWorkerAck`, `WhaleConfigAuditLog`.
+- Them migration `0010_whaleconfigdraft_whaleconfigapproval_and_more.py`.
+- Admin workflow phan quyen 2 vai tro: Analyst tao draft, Supervisor approve va apply.
+- Maker-checker: nguoi tao khong duoc tu approve.
+- `WhaleConfigAuditLog` ghi lai moi hanh dong: who/when/why/before/after.
+
+**Phase 2 — Warm-up & Safety Guardrails:**
+- Diff preview so sanh config truoc/sau khi apply.
+- Guardrail validator: kiem tra truoc khi allow rollout (threshold range, symbol coverage, field validity).
+- Dependency gate: block apply neu co worker dang dung config cu ma chua ACK phien ban truoc.
+- Admin blocker flow: admin redirect den preview truoc khi cho apply.
+
+**Phase 3 — Worker ACK va Propagation Visibility:**
+- Rollout initialization + worker discovery helpers trong `services.py`.
+- Worker ACK recording + propagation snapshot/status helpers.
+- Celery tasks `refresh_rollout_status`, `ack_worker_config` trong `tasks.py`.
+- Propagation visibility badges/progress trong admin Mission Control.
+- Admin-ops stats API tich hop propagation summary.
+
+**Phase 4 — Scheduled Activation va Canary Rollout:**
+- Runtime config resolver: lay active/canary rollout tu cache + DB fallback.
+- Canary scope matching: symbol/exchange/group/percentage.
+- Scheduled rollout activation (Celery beat `activate_scheduled_rollouts`).
+- Runtime auto-ACK: worker tu ACK khi load rollout config trong realtime path.
+- Whale realtime payloads dinh kem `config_version` va scoring config that.
+
+**Phase 5 — Auto-Revert va Anomaly Detection:**
+- Anomaly snapshot detector tren `IntradayTick` + `WhaleAdvisory`.
+- Auto-revert helper: fallback ve version stable truoc + gui notification.
+- Celery task/beat monitor cho anomaly scan va auto-revert.
+- Admin Mission Control hien thi anomaly visibility.
+
+Validation:
+- `manage.py test portfolio.tests.test_admin_whale_mission_control` PASS.
+- `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_whale_scoring portfolio.tests.test_api_routes` PASS.
+- `manage.py check` 0 issues.
+- `npm run build` Compiled successfully.
+
+---
+
+## Sprint 15 — Order Flow & Dark Money Detection (2026-04-04)
+
+Trang thai: COMPLETED
+
+Muc tieu: Xay dung Order Flow Engine phat hien dong tien an (iceberg orders, TWAP bots, smart money absorption) — lop phan tich thu 2 ben tren Whale Alert, nham vao pattern nhieu lenh nho thay vi mot lenh lon.
+
+**Phase 1 — Order Flow Compute Engine (`order_flow.py`):**
+- `compute_cvd_series(symbol, window_minutes, bucket_seconds)`: CVD theo bucket 60s.
+- `compute_tick_rate(symbol, window_seconds)`: tick rate/min va small_order_ratio.
+- `compute_size_distribution(ticks)`: phan phoi kich thuoc lenh, histogram 5 buckets.
+- `detect_absorption(cvd_buckets)`: phat hien gia "bi khoa" trong khi CVD tang manh.
+- `detect_iceberg_clustering(ticks, window_seconds)`: phat hien nhieu lenh nho lap lai cung muc gia.
+- `detect_dark_flow(symbol)`: diem vao tong hop, tra `signal_type`, `strength`, `confidence`.
+
+**Phase 2 — OrderFlowSignal Model + Celery:**
+- Model `OrderFlowSignal` trong `models.py` voi migration `0012_add_order_flow_signal.py`.
+- `OrderFlowSignalAdmin` trong `admin.py`.
+- Celery task `detect_and_store_order_flow`: cooldown 300s/symbol, toi da 30 symbols/run.
+- Beat schedule `detect-order-flow` chay moi 30s, env flag `ORDER_FLOW_DETECTION_ENABLED`.
+- Publish `dark_flow_alert` WS event khi `strength > 50`.
+
+**Phase 3 — WebSocket + AI Context:**
+- `dark_flow_alert` handler trong `consumers.py`.
+- `build_symbol_ai_context()` mo rong: key `order_flow` voi `recent_signals`, `latest_signal_type`, `latest_strength`, `latest_confidence`.
+- `render_context_for_prompt()` in them dong order flow cho AI advisory.
+- `WEBSOCKET_EVENT_CONTRACT.md` cap nhat section 3.3 `dark_flow_alert`.
+- Test gateway + AI context: 7/7 PASS.
+
+**Phase 4 — REST API + Frontend Panel:**
+- Endpoint `GET /api/stock-management/stocks/<symbol>/order-flow/` (authenticated).
+- `OrderFlowPanel` component trong `StockDetail.jsx`: CVD AreaChart (recharts), strength meter, tick-rate, recent signals, realtime event block.
+- `getStockOrderFlow` client function trong `client.js`.
+- `darkFlowAlerts`, `latestDarkFlowAlert` export tu `useRealtimeFeed`.
+
+**Sprint 15 Finalization (polish):**
+- `RealtimeDebugPanel.jsx`: them `Dark Flow:` counter va `latestDarkFlowAlert` detail block.
+- `DashboardRealtimePanel.jsx`: them badge `🌊 N dark flow` khi `dark_flow_alert > 0`.
+
+Validation:
+- `manage.py test portfolio.tests.test_order_flow` — 38/38 PASS.
+- `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_ai_context` — 7/7 PASS.
+- `manage.py check` 0 issues.
+- `npm run build` Compiled successfully (293.13 kB gz).
+
 Validation: `manage.py check` pass — System check identified no issues (0 silenced).
 
 ---
@@ -560,5 +653,240 @@ Thay đổi trong `DashboardRealtimePanel.jsx`:
 - Giới hạn tối đa 8 alerts hiển thị.
 
 Files sua: `frontend/src/components/DashboardRealtimePanel.jsx`
+
+---
+
+## Session 2026-04-04 — vnstock Rate-Limit Mitigation + AI Advisory Session
+
+Trang thai: COMPLETED — tất cả tests pass, live JWT verify xong
+
+---
+
+### 1. vnstock Rate-Limit Backoff (backend/portfolio/views.py)
+
+Vấn đề: Các endpoint realtime gọi vnstock guest API theo cụm lớn → bị throttle liên tục.
+
+Thêm helpers vào `views.py`:
+- `_is_rate_limited_error(exc)` — nhận diện lỗi rate-limit từ vnstock
+- `_vnstock_rate_limit_cache_key(channel)` / `_is_vnstock_rate_limited(channel)` / `_mark_vnstock_rate_limited(channel)` — cache-based cooldown per channel (`intraday`, `price_board`, `whale`, `rvol`)
+- `_allow_vnstock_aggregate_fallback(symbols)` — chặn fan-out nếu danh sách symbol quá lớn (tránh storm yêu cầu)
+
+Tích hợp cooldown vào:
+- `IntradayMatchedView` — skip fallback nếu đang rate-limited, ghi cooldown khi bị lỗi
+- `PriceBoardView` — tương tự
+- `WhaleFeedView` — tương tự
+- `RVOLView` — thêm short cache + backoff
+
+### 2. vnstock Rate-Limit trong tasks.py
+
+Thêm vào `backend/portfolio/tasks.py`:
+- `VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY`
+- `_mark_price_board_rate_limited()`
+- Task `prefetch_ticker_price_board`: early-return nếu đang cooldown, ghi cooldown khi bắt lỗi rate-limit
+
+---
+
+### 3. AI Advisory Session — Stock Workspace (/stocks/:symbol)
+
+**Backend:**
+
+Endpoint `stock_ai_advisory_session_api` (`GET/POST`) trong `views.py`:
+- `@api_view(['GET','POST'])` + `@permission_classes([IsAuthenticated])`
+- GET: trả advisory mới nhất (200) hoặc auto-queue tạo nếu chưa có (202, với lock cache `stock_ai_advisory_autogen_lock:{user_id}:{symbol}`, cooldown = `STOCK_AI_ADVISORY_AUTOGEN_COOLDOWN_SECONDS`, mặc định 45s)
+- POST: manual refresh với cooldown `stock_ai_advisory_refresh_lock:{user_id}:{symbol}` (= `WHALE_ADVISORY_COOLDOWN_SECONDS`)
+- **Local debug sync fallback** (`_should_use_sync_fallback()` + `_queue_or_run()`): khi `DEBUG=True` và host != `testserver` và không có Celery worker nào alive → chạy `generate_whale_advisory_task.run(...)` đồng bộ ngay, trả 200 với advisory thực thay vì chờ async mãi
+- `ai_detail` bị xóa cho user không phải premium/admin
+
+Route: `backend/portfolio/urls_stock.py`
+```
+stocks/<symbol>/ai-advisory-session/  →  stock_ai_advisory_session_api
+```
+
+Tests thêm vào `backend/portfolio/tests/test_api_routes.py`:
+- `test_vnstock_aggregate_fallback_suppressed_large_symbol_count`
+- `test_stock_ai_advisory_session_get_queues_generation_when_missing`
+- `test_stock_ai_advisory_session_get_returns_latest_advisory`
+- `test_stock_ai_advisory_session_post_returns_429_when_refresh_cooldown_active`
+
+**Frontend:**
+
+`frontend/src/api/client.js`:
+- `getStockAIAdvisorySession(symbol)` — GET
+- `refreshStockAIAdvisorySession(symbol)` — POST
+
+`frontend/src/pages/StockDetail.jsx`:
+- State advisory session + `fetchAdvisory()` gọi lúc mount
+- Polling mỗi 15s khi advisory == null (dừng khi có kết quả)
+- Panel bên dưới KlineChart: hiển thị `ai_summary`, nút "Refresh" gọi POST
+- Unmount cleanup: clear interval
+
+`frontend/src/pages/WhaleAdvisory.jsx`:
+- Đổi `line-clamp` → `max-h-48 overflow-y-auto` để advisory hiển thị đầy đủ và có scroll
+
+---
+
+### Validation 2026-04-04
+
+- `manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_stock_ai_advisory_session_*` → 3/3 PASS
+- `get_errors` trên `views.py` và `StockDetail.jsx` → 0 errors
+- Live JWT call (GET BCM): status 200, `queued=false`, advisory tạo đồng bộ ngay trong local debug
+- Live JWT call (POST BCM): status 200, `queued=false`, advisory refresh đồng bộ ngay
+
+---
+
+## Sprint 16 — Whale Volume Weighting & Order Flow Time Window (2026-04-04)
+
+Trang thai: COMPLETED
+
+Muc tieu: Bo sung field `volume` vao aggregate whale feed, tinh "Whale Avg Price" tren FE, va them `?window` param cho order flow API de trader chon khung thoi gian CVD.
+
+### Phase 1 — BE: `volume` field trong aggregate feed
+
+Files sua: `backend/portfolio/views.py`
+
+Bo sung `'volume': int(...)` vao 4 ham builder:
+- `_build_aggregate_event_payload(row, ...)` — `getattr(row, 'volume', 0) or 0`
+- `_build_aggregate_event_payload_from_record(record, ...)` — `record.get('volume') or 0`
+- `_build_stream_aggregate_records(symbols, ...)` — `tick.get('volume') or 0`
+- `_build_vnstock_aggregate_records(symbols, ...)` — thu lan luot `volume / vol / matchVolume`
+
+Graceful fallback: `or 0` tren moi key — khong crash khi vnstock khong tra volume.
+
+### Phase 2 — FE: Whale Avg Price
+
+Files sua: `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAdvisory.jsx`
+
+**WhaleAlertsHub.jsx**:
+- `buildSymbolStatsFromFeed`: tich luy `totalVolume += Number(item.volume || 0)`
+- `getFrequencyLabel(totalValue)`: chuyen tu count-based sang value-based (nguong 5B / 2B / 500M VND)
+- `TrackedSymbolCard`: hien thi `whaleAvgPrice = totalValue / totalVolume`, an khi volume = 0
+
+**WhaleAdvisory.jsx**:
+- `buildSymbolStats`: tich luy `totalVolume`, sort theo `b.totalValue - a.totalValue`
+- `SymbolCell`: hien thi "Avg gia: X VND/CP" conditional
+
+### Phase 3 — Order flow `?window` param
+
+Files sua: `backend/portfolio/views.py`, `frontend/src/api/client.js`, `frontend/src/pages/StockDetail.jsx`
+
+**Backend** (`stock_order_flow_api`):
+- `_window_map = {'5m': 5, '15m': 15, '30m': 30, '1h': 60}`
+- Default `'30m'`, fallback 30 khi param khong hop le
+- Response them `window`, `window_minutes`
+
+**Client** (`client.js`):
+- `getStockOrderFlow(symbol, window = '30m')` voi `{ params: { window } }`
+
+**StockDetail** (`StockDetail.jsx`):
+- State `orderFlowWindow` (default `'30m'`)
+- `fetchOrderFlow` phu thuoc `orderFlowWindow`
+- Window selector UI 4 nut: 5m / 15m / 30m / 1h
+
+### Validation
+
+- `manage.py test portfolio.tests.test_api_routes portfolio.tests.test_order_flow` — **83/83 PASS** (49.2s)
+- `npm run build` — **Compiled successfully** (293 kB gz)
+- `manage.py check` — 0 issues
+
+### Tai lieu da cap nhat
+
+- `docs/SPRINT16_DETAILED_PLAN.md` — tao moi
+- `docs/SPRINT16_ACCEPTANCE_CHECKLIST.md` — tao moi, tat ca [x]
+- `docs/TASKBOARD_SPRINT16.csv` — tao moi, tat ca Done
+- `docs/TASKBOARD_SPRINT15.csv` — cap nhat tat ca "Not Started" → "Done"
+- `docs/SPRINT13_ACCEPTANCE_CHECKLIST.md` — danh dau HHI va toggle la [x] (da lam o Sprint 14)
+- `docs/ROADMAP_STATUS.md` — cap nhat Sprint 15/16 DONE, metrics 83/83, Sprint 17 PLANNING
+- `docs/FEATURE_EXPANSION_BACKLOG.md` — them D-06/D-07/D-08, gach ngang P1-4 va P1-8
+
+---
+
+## Sprint 17 — Planning lock truoc khi trien khai (2026-04-04)
+
+Trang thai: PLANNED
+
+Y tuong duoc dua vao Sprint 17:
+- AI Advisory Session doi thanh khung da tab, moi tab la mot AI component record.
+- Moi component co timestamp tao record, include/exclude, va nut xoa (soft delete).
+- Phan duoi la Executive Summary tong hop theo trong so va co regenerate.
+
+Tai lieu planning da tao:
+- `docs/SPRINT17_DETAILED_PLAN.md`
+- `docs/SPRINT17_ACCEPTANCE_CHECKLIST.md`
+- `docs/TASKBOARD_SPRINT17.csv`
+
+Tai lieu mapping da cap nhat:
+- `docs/FEATURE_EXPANSION_BACKLOG.md` (them P1-9 va mapping Sprint 17)
+- `docs/ROADMAP_STATUS.md` (them section Sprint 17 planning)
+
+---
+
+## Sprint 17 — AI Advisory Multi-Tab & Executive Summary (2026-04-04)
+
+Trang thai: COMPLETED
+
+Muc tieu: Chuyen AI Advisory session sang mo hinh component-first de user co the kiem soat tung thanh phan truoc khi tong hop, dong thoi nang cap chat luong phan "Thong tin tong hop" theo preference.
+
+### 1) Backend implementation
+
+- Them migration va model cho:
+	- `AIAdvisoryComponentRecord`
+	- `AIAdvisoryExecutiveSummary`
+- Hoan tat APIs nghiep vu:
+	- session detail
+	- generate components
+	- toggle include/exclude
+	- soft delete / restore component
+	- regenerate executive summary co versioning
+- Them endpoint refresh theo component active:
+	- `POST /api/stock-management/ai-advisory-components/<id>/refresh/`
+- Nang cap regenerate summary nhan `synthesis_preference`:
+	- `short_term_action`
+	- `risk_management`
+	- `balanced`
+- Prompt tong hop AI duoc nang cap theo huong chi tiet hon (muc tieu ~20 dong), co fallback deterministic neu AI khong tra noi dung hop le.
+
+### 2) Frontend implementation
+
+- `StockDetail.jsx`:
+	- Advisory panel da tab voi metadata day du: status, confidence, timeframe, timestamp.
+	- Nut refresh chi tac dong tab active, dat canh nut xoa tab.
+	- Section "Thong tin tong hop" doi ten tu "Tom tat dieu hanh".
+	- Them combobox preference ben canh nut "Tong hop lai".
+	- Hien "Che do hien tai" ngay trong summary panel.
+	- Chuan hoa nhan advisory sang tieng Viet co dau.
+- `client.js`:
+	- Them wrapper API refresh theo component (`refreshStockAIAdvisoryComponent`).
+
+### 3) UX / copy / consistency
+
+- Chuan hoa dieu huong hanh vi refresh:
+	- Khong con refresh theo session o vi tri cu.
+	- Refresh theo tab active de tranh anh huong component khac.
+- Chuan hoa title va labels theo thong nhat nghiep vu:
+	- "Thong tin tong hop"
+	- "Che do hien tai"
+	- Cac nhan advisory da co dau, de doc va de doi soat.
+
+### 4) Validation da thuc hien
+
+- Backend tests:
+	- test refresh theo component active.
+	- test summary regenerate su dung AI synthesis va truyen dung preference.
+- Frontend:
+	- `npm run build` pass sau cac dot thay doi UI/UX.
+- Khong ghi nhan regression blocker cho flow `StockDetail` (chart/order-flow/advisory panel).
+
+### 5) Release hygiene cho GitHub
+
+- Loai bo token nhay cam khoi `backend/requirements.txt` (doi ve URL git khong kem token).
+- Cap nhat `.gitignore` bo sung file runtime:
+	- `backend/celerybeat-schedule*`
+	- `*.code-workspace`
+
+Tai lieu dong bo:
+- `docs/SPRINT17_DETAILED_PLAN.md`
+- `docs/SPRINT17_ACCEPTANCE_CHECKLIST.md`
+- `docs/ROADMAP_STATUS.md`
+- `docs/TASKBOARD_SPRINT17.csv`
 
 
