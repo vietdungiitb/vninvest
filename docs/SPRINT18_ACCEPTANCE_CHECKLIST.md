@@ -2,7 +2,7 @@
 
 **Sprint**: 18  
 **Ngay lap**: 2026-04-04  
-**Trang thai**: PLANNED
+**Trang thai**: CODE COMPLETE — 19/19 tests PASS — cho canary staging + sign-off
 
 ---
 

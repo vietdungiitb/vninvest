@@ -79,6 +79,15 @@
 | B5-4 | Token lifecycle hardening | Auto-refresh token, status badge, last_error, revoke action | BE | 1d | B5-3 | Admin co the triage va revoke token an toan | Todo |
 | B5-5 | QA + rollout + rollback | Test matrix SMTP/OAuth2, canary rollout, rollback ve SMTP | QA/DevOps/BE | 1.5d | B5-4 | Checklist Sprint 18 duoc sign-off | Todo |
 
+### Epic B6 — Mobile App MVP Android + iOS (Sprint 19)
+| ID | Story | Task chi tiết | Owner | Estimate | Phụ thuộc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B6-1 | Mobile workspace bootstrap | Tao `mobile-app/` voi Expo + TypeScript, env config, navigation skeleton | Mobile | 1d | B1-1 | App chay tren Android/iOS simulator | Todo |
+| B6-2 | Auth + secure token | Register/login/refresh/logout + secure storage + session restore | Mobile/BE | 1.5d | B6-1 | Login + restore + logout pass end-to-end | Todo |
+| B6-3 | Dashboard core | Summary/holdings/allocation + loading/empty/error + pull-to-refresh | Mobile | 2d | B6-2 | Dashboard hien dung data backend, scroll muot | Todo |
+| B6-4 | Transactions + validation | CRUD giao dich theo subaccount + validation ma CK truoc submit | Mobile/BE | 2d | B6-3 | Transactions flow pass, ma sai bi chan | Todo |
+| B6-5 | Watchlist + whale + internal release | Watchlist/tracked + whale hub/detail + realtime fallback + internal build | Mobile/QA/DevOps | 2.5d | B6-4 | Checklist Sprint 19 duoc sign-off | Todo |
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)

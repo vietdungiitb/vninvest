@@ -184,6 +184,11 @@ Con mo:
 - Hoan tat canary rollout tren staging voi OAuth app credentials that.
 - Theo doi metric loi token refresh trong 24-48h sau rollout.
 
+Cap nhat canary prep (2026-04-04 toi):
+- Da co Google OAuth Client ID cho staging.
+- Da cap nhat checklist canary: precondition OAuth client = done, Step A tach rieng `google_client_id` (done) va `google_client_secret` (pending).
+- Buoc tiep theo can lam ngay: dien `google_client_secret` -> Connect Google -> xac nhan refresh token -> gui smoke test mail.
+
 ## Sprint 12 - UX clarity update (2026-04-01)
 
 Trang thai: IN PROGRESS
@@ -938,5 +943,99 @@ Tai lieu dong bo:
 - `docs/SPRINT17_ACCEPTANCE_CHECKLIST.md`
 - `docs/ROADMAP_STATUS.md`
 - `docs/TASKBOARD_SPRINT17.csv`
+
+
+---
+
+## Sprint 18 — Google Mail OAuth2 Admin (2026-04-04) — CODE COMPLETE
+
+Trang thai: CODE COMPLETE — 19/19 tests PASS, `manage.py check` 0 issues
+
+### Tong ket toan bo cong viec da thuc hien (5 phases)
+
+**Phase 1 — Data Model & Migration**
+- Mo rong `SystemEmailAccount` them inner class `AuthTypeChoices` (`smtp_password` | `google_oauth2`).
+- Them 10 truong moi: `auth_type`, `oauth_provider`, `google_client_id`, `google_client_secret_ciphertext`, `google_refresh_token_ciphertext`, `google_token_scope`, `google_account_email`, `oauth_connected_at`, `token_last_refreshed_at`, `token_last_error`.
+- Methods: `set_google_client_secret()`, `get_google_client_secret()`, `set_google_refresh_token()`, `clear_google_refresh_token()`, `get_google_refresh_token()`, `has_google_refresh_token` (property).
+- Migration `0014_systememailaccount_google_oauth2` tao moi va da apply local.
+- Migration `0015_rename_*` (pending index drift) da apply them.
+- `manage.py makemigrations --check` PASS (No changes detected).
+
+**Phase 2 — Google OAuth2 Services**
+- Tao moi `portfolio/google_oauth_service.py`:
+  - `build_google_oauth_authorize_url()` — tra ve URL xac thuc Google voi param `offline/consent`.
+  - `exchange_google_oauth_code()` — doi code lay access + refresh token.
+  - `refresh_google_access_token()` — fresh access token tu refresh token.
+  - `fetch_google_user_email()` — lay email tu OpenID userinfo endpoint.
+- Tao moi `portfolio/gmail_service.py`:
+  - `_build_raw_message()` — tao RFC822 MIME message, base64url encode.
+  - `send_gmail_api_message()` — POST toi Gmail API `/users/me/messages/send`.
+- Toan bo HTTP qua `httpx`, timeout co the cau hinh, `raise_for_status()` truoc khi decode.
+
+**Phase 3 — Mail Service & Django Admin**
+- Cap nhat `mail_service.py`:
+  - Branch theo `auth_type == GOOGLE_OAUTH2`: refresh token -> Gmail API send.
+  - Them `_humanize_gmail_error()`: map HTTP 401/403/429/5xx sang message tieng Viet co nghia van hanh.
+  - Luu `token_last_error` va `token_last_refreshed_at` sau moi lan gui.
+- Mo rong `admin.py`:
+  - `MAIL_GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS = 600`.
+  - `SystemEmailAccountAdminForm` them `google_client_secret` + `google_refresh_token` PasswordInput (masked).
+  - Custom routes: `<pk>/google/connect/`, `google/callback/`, `<pk>/google/revoke/`.
+  - `google_connect_view`: tao signed state -> luu session -> redirect Google.
+  - `google_callback_view`: validate state match + TTL `signing.loads(max_age=600)` + payload binding `account_id/user_id` -> exchange code -> luu token.
+  - `google_revoke_view`: xoa token + metadata.
+  - Display methods: `google_client_secret_status()`, `google_refresh_token_status()`, `oauth_actions()`.
+
+**Phase 4 — Security Hardening (callback)**
+- State token co TTL 600 giay (`signing.loads(max_age=600)`).
+- Verify cryptographic signature (`SignatureExpired` / `BadSignature` duoc xu ly).
+- Payload binding: `account_id` + `user_id` phai khop voi session va `request.user.pk`.
+- Guard: neu Google khong tra `refresh_token` VA account chua co token stored → raise `ValueError` voi huong dan ro rang.
+
+**Phase 5 — Error Mapping + Testing + Docs**
+- `_humanize_gmail_error()`: 401/403/429/5xx/fallback sang message tieng Viet.
+- Tests phung phu 5 class, 19 tests tong, tat ca PASS:
+  - `SystemEmailAccountModelTests` (6): model methods, SMTP branch, OAuth2 branch, 401 mapping, 429 mapping.
+  - `SystemEmailAccountAdminTests` (7): changelist, action, connect/callback/revoke + security hardening.
+  - `GoogleOAuthServiceTests` (4): refresh success, missing creds, no access_token response, HTTP 401 raise.
+  - `EmailVerificationRegressionTests` (2): OAuth2 as default -> `send_verification_email()` pass, error propagation.
+- Tai lieu da tao/cap nhat:
+  - `docs/SPRINT18_DETAILED_PLAN.md`
+  - `docs/SPRINT18_ACCEPTANCE_CHECKLIST.md` — tat ca section A/B/C/D/E ✅
+  - `docs/SPRINT18_GOOGLE_OAUTH_RUNBOOK.md` — 10 sections day du
+  - `docs/SPRINT18_STAGING_CANARY_CHECKLIST.md` — step A-D + exit criteria + rollback
+
+### Validation cuoi cung
+
+```
+python manage.py test portfolio.tests.test_admin_mail_accounts -v 2
+Found 19 test(s).
+Ran 19 tests in 2.713s
+OK
+
+python manage.py check
+System check identified no issues (0 silenced).
+```
+
+### Con lai truoc sign-off chinh thuc
+
+- [ ] Canary rollout tren staging voi Google OAuth credentials thuc te (theo `SPRINT18_STAGING_CANARY_CHECKLIST.md`).
+- [ ] Monitoring 24-48h sau deployment staging (0 P0/P1 incident).
+- [ ] Sign-off BE Lead / QA / DevOps / PM.
+
+### Session handoff (2026-04-04 cuoi buoi)
+
+- OAuth2 canary dang tam dung vi moi truong dev chua co host staging/public domain on dinh.
+- Da them env `GOOGLE_OAUTH_REDIRECT_URI` + backend fallback de giam loi `redirect_uri_mismatch` khi di qua proxy.
+- Neu test local OAuth, can dong nhat tuyet doi callback URI (`localhost` hoac `127.0.0.1`, khong tron lan).
+- UI StockDetail da chot theo yeu cau user:
+	- Panel `Cảnh báo dòng tiền lớn` dat tren `Tỷ trọng dòng tiền phiên`.
+	- Chieu cao panel set co dinh: `h-[8cm]`.
+	- `Recent signals` co scrollbar + hien thi full records.
+
+Buoc tiep theo khuyen nghi cho session moi:
+1. Co host staging/tunnel -> set `GOOGLE_OAUTH_REDIRECT_URI` dung callback canonical.
+2. Re-connect Google account trong Django Admin va chay smoke test mail.
+3. Cap nhat lai checklist canary va acceptance sign-off sau khi pass.
 
 

@@ -1090,10 +1090,10 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
           <p className="text-sm font-semibold text-slate-200">Recent signals</p>
-          <div className="mt-3 space-y-2">
+          <div className="panel-scrollbar mt-3 max-h-[240px] space-y-2 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
             {signals.length === 0 ? (
               <p className="text-sm text-slate-500">Chưa có signal nào được lưu.</p>
-            ) : signals.slice(0, 4).map((item) => (
+            ) : signals.map((item) => (
               <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
@@ -2143,6 +2143,24 @@ export default function StockDetail() {
             </div>
           </section>
 
+        </div>
+        {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên */}
+        <div className="flex flex-col gap-3 md:gap-4 xl:gap-5 xl:min-h-0 xl:h-full">
+          <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+          <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
+          <WhaleFeedPanel
+            symbol={normalizedSymbol}
+            realtimeAlerts={symbolAlerts}
+            feedData={whaleFeedData}
+            loading={whaleFeedLoading}
+            onRefresh={refreshWhaleFeed}
+            feedHeightClass="h-[8cm]"
+          />
+          {/* Tỷ trọng dòng tiền phiên */}
+          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
+        </div>
+        {/* Hàng căn đáy: Order Flow Radar (2 cột) || Phân bổ lệnh lớn (1 cột) */}
+        <div className="xl:col-span-2">
           <OrderFlowPanel
             symbol={normalizedSymbol}
             loading={orderFlowLoading}
@@ -2152,23 +2170,10 @@ export default function StockDetail() {
             onWindowChange={setOrderFlowWindow}
           />
         </div>
-        {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên + Cảnh báo giá */}
-        <div className="flex flex-col gap-3 md:gap-4 xl:gap-5">
-          <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-          <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-          {/* Tỷ trọng dòng tiền phiên */}
-          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
-          <WhaleFeedPanel
-            symbol={normalizedSymbol}
-            realtimeAlerts={symbolAlerts}
-            feedData={whaleFeedData}
-            loading={whaleFeedLoading}
-            onRefresh={refreshWhaleFeed}
-            feedHeightClass="h-[210px] sm:h-[250px] xl:h-[280px]"
-          />
-          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
-          {/* Cảnh báo giá */}
-          {symbolAlerts.length > 0 && (
+        <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
+        {/* Cảnh báo giá - toàn chiều rộng */}
+        {symbolAlerts.length > 0 && (
+          <div className="xl:col-span-3">
             <section className="card-section p-4">
               <p className="text-label pb-2.5 border-b border-slate-800">Cảnh báo giá ({symbolAlerts.length})</p>
               <div className="mt-3 space-y-2.5">
@@ -2190,8 +2195,8 @@ export default function StockDetail() {
                 ))}
               </div>
             </section>
-          )}
-        </div>
+          </div>
+        )}
       </div>
       {/* Panel tài chính */}
       <FinancialMetricsPanel

@@ -1,8 +1,8 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
 > **Cập nhật lần cuối**: 2026-04-04  
-> **Phiên bản codebase**: Sprint 17 COMPLETE  
-> **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–16
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 PLANNED  
+> **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
 
@@ -13,29 +13,43 @@
 
 ---
 
-## 0.1 Sprint 18 — IN PROGRESS (Django Admin Google Mail OAuth2)
+## 0.0 Sprint 19 — PLANNED (Mobile App MVP Android + iOS)
+
+**Focus**: Khoi dong mobile app MVP cho VNInvest voi React Native (Expo), ship internal build Android/iOS theo lo trinh 4 tuan.
+
+**Muc tieu chinh**:
+- Auth day du (register/login/refresh/logout) + secure token storage.
+- Dashboard mobile (summary/holdings/allocation) + pull-to-refresh.
+- Transactions CRUD + validation ma CK.
+- Watchlist/tracked symbols + Whale alerts hub/detail + realtime fallback.
+
+**Tai lieu chuan cho sprint nay**:
+- `docs/SPRINT19_DETAILED_PLAN.md`
+- `docs/SPRINT19_ACCEPTANCE_CHECKLIST.md`
+
+**Trang thai hien tai**: PLANNED — cho khoi tao workspace mobile va freeze API contract tuan 1.
+
+---
+
+## 0.1 Sprint 18 — CODE COMPLETE (Django Admin Google Mail OAuth2)
 
 **Focus**: Quan tri tai khoan gui mail Google bang OAuth2 token trong Django Admin (thay vi phu thuoc SMTP password)
 
-**Muc tieu chinh**:
-- Them auth mode `google_oauth2` cho `SystemEmailAccount` ben canh flow SMTP legacy.
-- Hoan tat admin flow `Connect Google -> Callback -> Test mail -> Revoke`.
-- Tich hop Gmail API send transport vao `send_system_email`.
-- Bao dam secret/token duoc luu an toan va co audit/observability.
+**Trang thai hien tai**: CODE COMPLETE — 19/19 tests PASS, `manage.py check` 0 issues. Con cho sign-off + canary staging.
 
-**Trang thai hien tai**: In progress, da hoan tat foundation backend.
+**Da hoan tat:**
+- Mo rong model `SystemEmailAccount` voi `auth_type=google_oauth2` va 10 truong OAuth token fields.
+- Migration `0014_systememailaccount_google_oauth2` da apply, `makemigrations --check` sach.
+- Services moi: `google_oauth_service.py` (authorize/exchange/refresh/userinfo), `gmail_service.py` (MIME + Gmail API).
+- `mail_service.py` branch theo `auth_type`, `_humanize_gmail_error()` map HTTP 401/403/429/5xx.
+- Django Admin: `SystemEmailAccountAdmin` voi routes `connect / callback / revoke`, security hardening (state TTL 600s, signing, account+user binding).
+- Test suite: **19/19 PASS** (model methods / admin flow / callback security / token refresh isolated / email verification regression).
+- Docs: runbook 10 sections + staging canary checklist (step A-D, exit criteria, rollback).
 
-**Da hoan tat (foundation):**
-- Mo rong model `SystemEmailAccount` voi `auth_type=google_oauth2` va OAuth token fields.
-- Da co migration `portfolio.0014_systememailaccount_google_oauth2`.
-- Da co service refresh token + Gmail API send transport.
-- Da noi branch send mail theo `auth_type` trong mail service.
-- Da bo sung actions trong Admin: Connect Google, Callback, Revoke Token.
-- Da co test tu dong cho OAuth callback va Gmail branch.
-
-**Con lai (next):**
-- Hardening env config theo moi truong dev/staging/prod.
-- Mo rong regression test matrix va canary rollout monitoring.
+**Con lai truoc sign-off:**
+- Canary rollout tren staging voi Google OAuth credentials thuat (theo `SPRINT18_STAGING_CANARY_CHECKLIST.md`).
+- Monitoring 24-48h sau deployment staging.
+- Sign-off BE Lead / QA / DevOps / PM.
 
 **Tai lieu chuan cho sprint nay**:
 - `docs/SPRINT18_DETAILED_PLAN.md`
@@ -43,7 +57,7 @@
 - `docs/SPRINT18_GOOGLE_OAUTH_RUNBOOK.md`
 - `docs/SPRINT18_STAGING_CANARY_CHECKLIST.md`
 
-**Du kien timeline**: 7 ngay cong (Phase 0-5)
+**Du kien timeline**: 7 ngay cong (Phase 0-5) — DONE
 
 ---
 

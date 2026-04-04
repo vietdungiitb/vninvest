@@ -209,7 +209,7 @@ export function WhaleFeedPanel({
   const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
   const sourceMeta = getFeedSourceMeta(activeData?.source);
   return (
-    <section className="card-section p-4 flex flex-col h-full">
+    <section className="card-section p-4 flex flex-col xl:h-full xl:min-h-0">
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
           <p className="text-label">Cảnh báo dòng tiền lớn</p>
@@ -233,7 +233,7 @@ export function WhaleFeedPanel({
         </button>
       </div>
       {loading ? (
-        <div className={`panel-scrollbar mt-3 ${feedHeightClass} overflow-y-auto pr-1`} style={feedViewportStyle}>
+        <div className={`panel-scrollbar mt-3 min-h-0 ${feedHeightClass} overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <div className="space-y-2">
             {[...Array(6)].map((_, i) => (
               <div key={i} className="h-14 animate-pulse rounded-xl bg-slate-900" />
@@ -241,13 +241,13 @@ export function WhaleFeedPanel({
           </div>
         </div>
       ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
-        <div className={`panel-scrollbar mt-3 flex ${feedHeightClass} items-center justify-center overflow-y-auto pr-1`} style={feedViewportStyle}>
+        <div className={`panel-scrollbar mt-3 flex min-h-0 ${feedHeightClass} items-center justify-center overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <p className="text-center text-[12px] text-slate-500">
             Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
           </p>
         </div>
       ) : (
-        <div className={`panel-scrollbar mt-3 ${feedHeightClass} overflow-y-auto pr-1`} style={feedViewportStyle}>
+        <div className={`panel-scrollbar mt-3 min-h-0 ${feedHeightClass} overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <div className="flex flex-col gap-2">
           {/* WS alerts on top */}
             {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
@@ -269,7 +269,7 @@ export function WhaleFeedPanel({
                 animated={i === 0}
               />
             ))}
-            {orders.slice(0, 20).map((o, i) => (
+            {orders.map((o, i) => (
               <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
             ))}
           </div>

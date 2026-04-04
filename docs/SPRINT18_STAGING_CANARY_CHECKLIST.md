@@ -3,13 +3,18 @@
 **Ngay cap nhat**: 2026-04-04  
 **Muc tieu**: Rollout canary cho Google OAuth2 mail account tren staging voi rui ro thap va rollback nhanh.
 
+**Ghi chu handoff**:
+- Trang thai hien tai: TAM DUNG canary vi chua co host staging/public domain on dinh.
+- Neu tiep tuc tren local dev: can cau hinh callback URI khop tuyet doi (localhost hoac 127.0.0.1).
+- Neu tiep tuc nhu staging: set env `GOOGLE_OAUTH_REDIRECT_URI` ve callback canonical roi restart backend.
+
 ---
 
 ## 1) Preconditions
 
 - [ ] Da apply migration moi tren staging (`0014`, `0015`).
 - [ ] Co superuser staging de vao Django Admin.
-- [ ] Da tao OAuth client cho staging redirect URI.
+- [x] Da tao OAuth client cho staging redirect URI.
 - [ ] Da enable Gmail API tren Google Cloud project.
 - [ ] Da co SMTP fallback account con hoat dong.
 
@@ -28,7 +33,8 @@
 
 ## Step A — Prepare OAuth account
 - [ ] Tao `SystemEmailAccount` moi, `auth_type=google_oauth2`.
-- [ ] Dien `google_client_id`, `google_client_secret`.
+- [x] Dien `google_client_id`.
+- [ ] Dien `google_client_secret`.
 - [ ] Save account.
 - [ ] Bam `Connect Google` va consent thanh cong.
 - [ ] Xac nhan `Google Refresh Token: Da luu`.

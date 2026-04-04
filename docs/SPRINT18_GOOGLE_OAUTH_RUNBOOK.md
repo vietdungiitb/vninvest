@@ -95,6 +95,9 @@
 - Cach xu ly:
   1. Copy dung URL callback backend.
   2. Cap nhat lai trong OAuth client.
+   3. Neu staging/prod di qua proxy/load balancer, set env `GOOGLE_OAUTH_REDIRECT_URI` thanh URL callback canonical, vi du:
+       - `https://<staging-domain>/admin/portfolio/systememailaccount/google/callback/`
+   4. Restart backend sau khi set env.
 
 ## 6.2 callback loi `invalid_client`
 - Nguyen nhan: Client ID/Secret sai.

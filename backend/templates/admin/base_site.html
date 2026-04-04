@@ -1,0 +1,37 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /* Global changelist layout fix for this project: keep list filter on the right. */
+  .change-list #changelist .changelist-form-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .change-list #changelist .changelist-form-container > #changelist-filter {
+    flex: 0 0 260px;
+    width: 260px;
+    margin: 0;
+    order: 2;
+  }
+
+  .change-list #changelist .changelist-form-container > div {
+    flex: 1 1 auto;
+    min-width: 0;
+    order: 1;
+  }
+
+  @media (max-width: 1200px) {
+    .change-list #changelist .changelist-form-container {
+      display: block;
+    }
+
+    .change-list #changelist .changelist-form-container > #changelist-filter {
+      width: auto;
+      margin-top: 16px;
+    }
+  }
+</style>
+{% endblock %}

@@ -3,6 +3,7 @@ import threading
 from urllib.parse import urlencode
 from datetime import datetime
 
+from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.auth.models import User
@@ -69,11 +70,19 @@ admin.site.index_title = 'Sơ đồ chức năng hệ thống'
 
 
 MAIL_GOOGLE_OAUTH_STATE_MAX_AGE_SECONDS = 600
+GOOGLE_OAUTH_REDIRECT_URI_SETTING = 'GOOGLE_OAUTH_REDIRECT_URI'
 
 
 _original_each_context = admin.site.each_context
 _original_get_app_list = admin.site.get_app_list
 _original_admin_get_urls = admin.site.get_urls
+
+
+def _resolve_google_oauth_redirect_uri(request) -> str:
+    configured_redirect_uri = str(getattr(settings, GOOGLE_OAUTH_REDIRECT_URI_SETTING, '') or '').strip()
+    if configured_redirect_uri:
+        return configured_redirect_uri
+    return request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
 
 
 def _push_market_group_sync_messages(request, result):
@@ -1214,7 +1223,7 @@ class SystemEmailAccountAdmin(admin.ModelAdmin):
         request.session['mail_google_oauth_state'] = state_payload
         request.session['mail_google_oauth_account_id'] = account.pk
 
-        redirect_uri = request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
+        redirect_uri = _resolve_google_oauth_redirect_uri(request)
         scope = (account.google_token_scope or '').strip() or 'https://www.googleapis.com/auth/gmail.send openid email'
         authorize_url = build_google_oauth_authorize_url(
             client_id=account.google_client_id,
@@ -1266,7 +1275,7 @@ class SystemEmailAccountAdmin(admin.ModelAdmin):
         change_url = reverse('admin:portfolio_systememailaccount_change', args=[account.pk])
 
         try:
-            redirect_uri = request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
+            redirect_uri = _resolve_google_oauth_redirect_uri(request)
             token_payload = exchange_google_oauth_code(
                 client_id=account.google_client_id,
                 client_secret=account.get_google_client_secret(),

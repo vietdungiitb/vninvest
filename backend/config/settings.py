@@ -131,6 +131,9 @@ SIMPLE_JWT = {
 # CORS / CSRF (frontend origins)
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001").split(",") if origin.strip()]
 CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001").split(",") if origin.strip()]
+
+# Optional hard override for Google OAuth callback URL to avoid redirect_uri_mismatch behind proxies.
+GOOGLE_OAUTH_REDIRECT_URI = os.getenv('GOOGLE_OAUTH_REDIRECT_URI', '').strip()
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
 EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS = int(os.getenv("EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS", "86400"))
 
