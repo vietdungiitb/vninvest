@@ -7,6 +7,7 @@ Tai lieu nay mo ta cach du an VNInvest van hanh sau khi chuyen sang ban `vnstock
 ## Pham vi thay doi
 
 - Runtime backend su dung `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@bde1be5b69bafa19b7d9438412473753c16d3e80` (vnstock 3.5.0).
+- Du an khong su dung API key rieng cho vnstock trong runtime nay; co che cache-first + prefetch la duong van hanh chinh.
 - Khong con duy tri monkey-patch bypass rate-limit trong Django settings.
 - Throughput duoc dam bao bang kien truc cache-first + background prefetch, khong phu thuoc vao HTTP request handler.
 - Bo sung dependency `asyncio-throttle>=1.0.2` do ban vnstock nang cap yeu cau.
