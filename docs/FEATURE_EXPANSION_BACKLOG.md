@@ -1,7 +1,7 @@
 # Feature Expansion Backlog (Canonical, aligned with current codebase)
 
 > **Status**: ACTIVE BACKLOG  
-> **Last aligned**: 2026-04-03  
+> **Last aligned**: 2026-04-04  
 > **Note**: Tài liệu này đã được chuẩn hóa theo trạng thái source hiện tại. Các mục đã triển khai được giữ lại dưới dạng historical record, không coi là pending backlog.
 
 ---
@@ -45,7 +45,27 @@
 - Stock detail workspace nâng cấp.
 - Admin ops stats/dashboard foundation.
 
-> Nguồn tham chiếu trạng thái: `docs/ROADMAP_STATUS.md`, `docs/SPRINT_EXECUTION_LOG.md`, `docs/SPRINT13_ACCEPTANCE_CHECKLIST.md`.
+### D-06 Sprint 14 — Mission Control & AI Advisory (đã hiện diện)
+- `WhaleConfigVersion` + maker-checker approve flow.
+- HHI concentration score trong allocation API.
+- Alpha/Beta so benchmark VN-Index.
+- ScreenerRule CRUD + evaluator (POST `/screener/rules/{id}/run/`).
+- Sector chart toggle trong `AllocationPieChart`.
+- `stock_ai_advisory_session_api` với sync fallback khi không có Celery.
+
+### D-07 Sprint 15 — Order Flow & Dark Money Detection (đã hiện diện)
+- `backend/portfolio/order_flow.py`: `compute_cvd_series`, `compute_tick_rate`, `detect_absorption`, `detect_iceberg_clustering`, `detect_dark_flow`.
+- `OrderFlowSignal` model + Celery task 30s + `dark_flow_alert` WS event.
+- Frontend `OrderFlowPanel` trong StockDetail với CVD chart, tick-rate meter, absorption badge.
+- `useRealtimeFeed` export `darkFlowAlerts`, `latestDarkFlowAlert`.
+
+### D-08 Sprint 16 — Whale Volume Weighting & Order Flow Time Window (đã hiện diện)
+- Aggregate feed trả field `volume` trong tất cả 4 builders (graceful fallback = 0).
+- `WhaleAlertsHub` + `WhaleAdvisory`: tích lũy `totalVolume`, hiển thị "Whale Avg Price = totalValue/totalVolume".
+- `getFrequencyLabel` dùng `totalValue` ngưỡng VNĐ (5B/2B/500M) thay vì count.
+- Order flow `?window=5m|15m|30m|1h` param trong backend + window selector UI trong StockDetail.
+
+> Nguồn tham chiếu trạng thái: `docs/ROADMAP_STATUS.md`, `docs/SPRINT_EXECUTION_LOG.md`, `docs/SPRINT13_ACCEPTANCE_CHECKLIST.md`, `docs/SPRINT16_ACCEPTANCE_CHECKLIST.md`.
 
 ---
 
@@ -91,18 +111,23 @@
 - DoD:
   - Có dashboard trạng thái + hành động vận hành cốt lõi + error UX chuẩn.
 
-### P1-4 Whale Volume Weighting & Avg Price [NEW]
-- Nguồn: Đề xuất phân tích dòng tiền nâng cao (2026-04-03)
-- Mục tiêu:
-  - Màu badge tần suất dựa trên `totalValue` (giá trị tổng) thay vì chỉ đếm số lần.
-  - Hiển thị "Whale Avg Price" = `totalValue / totalVolume` (cần thêm field `volume` vào aggregate feed endpoint).
-  - `TrackedSymbolCard` + `WhaleAdvisory` SymbolCell cập nhật tương ứng.
-- Owner: FE + BE (nhỏ)
+### P1-9 AI Advisory Component Records + Multi-Tab Summary [NEW]
+- Nguon: de xuat nang cap AI Advisory Session (2026-04-04)
+- Muc tieu:
+  - Chuyen AI Advisory sang mo hinh da-thanh-phan: moi goc nhin AI la mot component record rieng.
+  - UI da tab tren StockDetail: moi tab hien timestamp tao, co include/exclude va nut xoa.
+  - Executive Summary o ben duoi tong hop theo trong so tu cac component dang active.
+- Owner: BE + FE
 - DoD:
-  - BE: endpoint aggregate trả thêm `total_volume` per symbol.
-  - FE: `getFrequencyLabel` dùng `totalValue` ngưỡng tỷ (5T/20T/100T+).
-  - Avg Price hiển thị trong card nếu `volume > 0`.
-- Rủi ro: Nguồn data `volume` có thể không khả dụng với vnstock fallback — cần fallback graceful.
+  - Co model component record + executive summary versioning.
+  - Co API generate components, toggle include, soft delete, regenerate summary.
+  - FE panel da tab hoat dong, summary hien so component duoc su dung.
+  - Co cooldown/rate-limit cho regenerate.
+- Tai lieu sprint: `docs/SPRINT17_DETAILED_PLAN.md`, `docs/SPRINT17_ACCEPTANCE_CHECKLIST.md`, `docs/TASKBOARD_SPRINT17.csv`
+
+### ~~P1-4 Whale Volume Weighting & Avg Price~~ → **✅ DELIVERED Sprint 16**
+- ~~Nguồn: Đề xuất phân tích dòng tiền nâng cao (2026-04-03)~~
+- Xem: `docs/SPRINT16_DETAILED_PLAN.md`, `docs/SPRINT16_ACCEPTANCE_CHECKLIST.md`
 
 ### P1-5 Severity Tag hệ thống (Urgent/Warning/Info) [NEW]
 - Nguồn: Đề xuất UX/UI nâng cao (2026-04-03)
@@ -125,6 +150,10 @@
   - BE: `getAggregateWhaleFeed` nhận param `?since=<iso_timestamp>` hoặc `?window=5m|15m|1h|session`.
   - FE: `WhaleAlertsHub` + `WhaleAdvisory` có dropdown timeframe, tự động refetch khi thay đổi.
   - Không ảnh hưởng cursor pagination hiện tại.
+
+### ~~P1-8 Order Flow & Dark Money Detection — Sprint 15~~ → **✅ DELIVERED Sprint 15**
+- ~~Nguồn: Phân tích Order Flow / Market Microstructure (2026-04-04)~~
+- Xem: `docs/SPRINT15_DETAILED_PLAN.md`, `docs/SPRINT15_ACCEPTANCE_CHECKLIST.md`
 
 ### P1-7 Reversal Alert Detection [NEW]
 - Nguồn: Đề xuất AI Advisory nâng cao (2026-04-03)
@@ -211,9 +240,13 @@
 ## 8) Mapping backlog vào sprint (re-baseline)
 
 - Sprint gần nhất đã chốt: tham chiếu `docs/ROADMAP_STATUS.md`.
-- Sprint kế tiếp:
-  - Ưu tiên P0 hardening trước.
-  - Sau đó mới mở rộng P1 theo năng lực đội và rủi ro phụ thuộc.
+- **Sprint 17 (planning hiện tại)**:
+  - P1-9 AI Advisory Component Records + Multi-Tab Summary.
+  - P1-5 Severity Tag (ghep cung domain AI advisory de tranh phan manh).
+- Sprint sau Sprint 17:
+  - P1-6 Timeframe Filter cho Aggregate Feed.
+  - P1-7 Reversal Alert Detection.
+  - P2-4 Whale History Chart (phu thuoc IntradayTick retention du 30+ ngay).
 
 ---
 

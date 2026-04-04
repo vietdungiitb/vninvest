@@ -93,7 +93,32 @@ Ghi chu contract:
 - Frontend khong tu suy luan `severity` tu `matched_value`; UI render truc tiep tu payload WS.
 - Client can tuong thich nguoc voi payload cu co the doc field o root hoac trong `data`, nhung payload chuan hien tai dat cac field scoring o root level.
 
-### 3.3 heartbeat
+### 3.3 dark_flow_alert
+
+```json
+{
+  "contract_version": "1.0",
+  "event_type": "dark_flow_alert",
+  "event_id": "dark_flow:VNM:2026-04-04T13:00:00Z:iceberg",
+  "symbol": "VNM",
+  "ts": "2026-04-04T13:00:00Z",
+  "signal_type": "iceberg",
+  "strength": 72.5,
+  "confidence": "high",
+  "tick_rate": 18.3,
+  "small_order_ratio": 0.82,
+  "cvd_at_signal": -1200000000,
+  "description": "Phat hien 23 lenh nho lap tai 78,200 VND trong 5 phut"
+}
+```
+
+Ghi chu contract:
+- Event nay duoc publish vao cung symbol group `whale:{symbol}` de frontend hien tai co the nhan ma khong can doi luong subscribe.
+- `signal_type` nam trong tap: `absorption | iceberg | twap_bot | mixed`.
+- `strength` chuan hoa 0-100, `confidence` la `low | medium | high`.
+- `small_order_ratio` va `tick_rate` phuc vu UI order-flow panel va AI grounding context.
+
+### 3.4 heartbeat
 
 ```json
 {

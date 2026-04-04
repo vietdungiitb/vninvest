@@ -1,0 +1,16 @@
+id,title,priority,phase,owner,estimate_points,depends_on,definition_of_done,status
+S17-01,Define component and summary schemas,P0,Phase 1,BE-1,2,,Model fields and enums finalized with PM/BA,Planned
+S17-02,Create AIAdvisoryComponentRecord model,P0,Phase 1,BE-1,3,S17-01,Model + migration + admin registration ready,Planned
+S17-03,Create AIAdvisoryExecutiveSummary model,P0,Phase 1,BE-1,3,S17-01,Model + migration + serializer ready,Planned
+S17-04,Implement component generation service,P1,Phase 2,BE-1,3,S17-02,Generate endpoint returns normalized component records,Planned
+S17-05,Implement include or exclude toggle endpoint,P1,Phase 2,BE-1,2,S17-02,Toggle endpoint updates include_in_summary correctly,Planned
+S17-06,Implement soft delete endpoint for component,P1,Phase 2,BE-1,2,S17-02,Delete endpoint sets is_deleted true and keeps audit,Planned
+S17-07,Implement executive summary synthesize service,P0,Phase 2,BE-1,5,S17-03|S17-04,Weighted summary output with versioning works,Planned
+S17-08,Implement regenerate summary endpoint,P0,Phase 2,BE-1,3,S17-07,Regenerate creates new summary_version and stores used components,Planned
+S17-09,Add cooldown and rate limit on regenerate,P1,Phase 2,BE-1,1,S17-08,429 and cooldown behavior verified,Planned
+S17-10,Build multi-tab advisory UI in StockDetail,P0,Phase 3,FE-1,5,S17-04|S17-08,Tabs show component cards with metadata and actions,Planned
+S17-11,Add include-exclude and delete actions in UI,P1,Phase 3,FE-1,3,S17-10,UI actions call API and update state without reload,Planned
+S17-12,Add executive summary block and regenerate UX,P0,Phase 3,FE-1,3,S17-10,Summary section updates and shows component count used,Planned
+S17-13,Backend unit tests for advisory component flow,P0,Phase 4,BE-1,3,S17-09,Tests for generate toggle delete regenerate pass,Planned
+S17-14,Frontend build and smoke regression,P1,Phase 4,QA,2,S17-12,npm build passes and stock detail no regression,Planned
+S17-15,Sprint 17 docs and signoff,P2,Phase 4,PM,1,S17-13|S17-14,Checklist and execution log updated with final status,Planned

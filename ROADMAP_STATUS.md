@@ -22,6 +22,8 @@
 - ✅ Chính sách tiết kiệm token: chỉ auto-generate khi chưa có advisory cho symbol
 - ✅ Nếu đã có advisory, chỉ refresh khi user bấm nút Refresh thủ công
 - ✅ API refresh thủ công `POST /api/portfolio/whale-advisory/<symbol>/refresh/`
+- ✅ Pipeline chuẩn bị dữ liệu cho AI advisory (profile + daily/intraday + alerts + advisory history)
+- ✅ Prompt grounding theo data context để tăng độ chính xác và giảm hallucination
 
 **Mục tiêu cuối Sprint 15:**
 - Hoàn tất migration và rollout an toàn

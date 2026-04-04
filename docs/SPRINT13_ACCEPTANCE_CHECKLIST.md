@@ -10,14 +10,14 @@ Dung checklist nay khi review va chot Sprint 13.
 - [x] `compute_max_drawdown` chinh xac voi fixture data co biet truoc.
 - [x] `compute_sharpe` va `compute_sortino` su dung risk_free=0.05 (5%/nam) va annualize dung.
 - [x] `compute_twr` xu ly dung co cash flow vao/ra trong ky.
-- [ ] Hien thong bao "Can >= 30 ngay du lieu" khi AccountSnapshot qua it. (deferred: component dung `total_trading_days < 5` guard)
+- [ ] Hiển thông báo "Cần >= 30 ngày dữ liệu" khi AccountSnapshot quá ít. *(deferred — component dùng `total_trading_days < 5` guard tạm thời; UI message đầy đủ để sau)*
 
 ## B. Portfolio Analytics — Allocation
 
 - [x] `GET /allocation/?by=sector` join duoc voi StockProfile, tra ket qua hop le.
 - [x] Ma chua co StockProfile hien "Chua phan loai" thay vi crash.
-- [ ] HHI concentration score duoc tinh va tra trong response. (deferred to next sprint)
-- [ ] Frontend co toggle between "by symbol" va "by sector" tren pie chart. (deferred)
+- [x] HHI concentration score được tính và trả trong response. *(Done trong Sprint 14 — S14-01: `GET /allocation/?by=sector` trả `hhi_score`)*
+- [x] Frontend có toggle between "by symbol" và "by sector" trên pie chart. *(Done trong Sprint 14 — S14-07: `AllocationPieChart` có toggle Theo mã / Theo ngành + HHI badge)*
 
 ## C. Stock Detail Workspace
 

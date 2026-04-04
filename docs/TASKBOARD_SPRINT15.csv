@@ -1,0 +1,20 @@
+id,title,priority,phase,owner,estimate_points,depends_on,definition_of_done,status
+S15-01,CVD Series compute function,P0,Phase 1,BE-1,3,,compute_cvd_series() in order_flow.py; unit test 3 fixtures PASS,Done
+S15-02,Tick Rate compute function,P0,Phase 1,BE-1,2,S15-01,compute_tick_rate() with Redis cache 10s; unit test PASS,Done
+S15-03,Size Distribution compute function,P0,Phase 1,BE-1,2,S15-01,compute_size_distribution() with histogram 5 buckets; unit test PASS,Done
+S15-04,Absorption Detection,P0,Phase 1,BE-1,3,S15-01|S15-02,detect_absorption() with price_locked logic; unit test fixtures PASS,Done
+S15-05,Iceberg Clustering Detection,P0,Phase 1,BE-1,3,S15-02|S15-03,detect_iceberg_clustering() min_repeat=5; unit tests PASS,Done
+S15-06,Dark Flow Detector aggregated,P0,Phase 1,BE-1,3,S15-04|S15-05,detect_dark_flow() returns 5 signal_types; 15+ tests PASS; shell runnable,Done
+S15-07,OrderFlowSignal model + migration,P0,Phase 2,BE-1,2,S15-06,Model created; migration apply OK; admin registered; manage.py check OK,Done
+S15-08,Celery task detect_and_store_order_flow,P0,Phase 2,BE-1,3,S15-07,Task runs without crash; saves DB record; cooldown 5min per symbol,Done
+S15-09,Beat config + env flag,P0,Phase 2,BE-1,1,S15-08,Beat entry 30s; ORDER_FLOW_DETECTION_ENABLED flag works,Done
+S15-10,dark_flow_alert WebSocket event,P1,Phase 3,BE-1,3,S15-08,consumers.py handler; contract payload complete; WS test PASS; contract doc updated,Done
+S15-11,useRealtimeFeed darkFlowAlerts,P1,Phase 3,FE-1,2,S15-10,darkFlowAlerts export; dedup by event_id; no regression on whale_alert; build PASS,Done
+S15-12,AI context order flow extension,P1,Phase 3,BE-1,2,S15-07,build_symbol_ai_context returns order_flow key; render_context_for_prompt includes it; tests PASS,Done
+S15-13,REST API GET /order-flow/<symbol>/,P1,Phase 4,BE-1,3,S15-06|S15-07,Returns 200 schema; cache 15s; 401 anon; unit test PASS,Done
+S15-14,CVDChart React component,P1,Phase 4,FE-1,3,S15-13,CVDChart.jsx renders bar chart; blue/red coloring; handles empty data,Done
+S15-15,TickRateMeter React component,P1,Phase 4,FE-1,2,S15-13,Displays tick_rate_per_min; small_order_ratio bar; color badge,Done
+S15-16,Absorption signal badges,P1,Phase 4,FE-1,2,S15-13,Correct icon per signal_type; hides when none; shows strength + confidence,Done
+S15-17,Integrate OrderFlowPanel in StockDetail,P1,Phase 4,FE-1,2,S15-14|S15-15|S15-16,OrderFlowPanel visible on /stocks/:symbol; no crash; build PASS,Done
+S15-P,Sprint 15 debug panel polish,P2,Polish,FE-1,1,S15-11,RealtimeDebugPanel dark flow counter; DashboardRealtimePanel dark flow badge,Done
+S15-QA,Sprint 15 QA & Sign-Off,P2,QA,QA,2,S15-17,38/38 backend tests PASS; 7/7 gateway+AI tests PASS; npm run build OK; WS contract doc updated; execution log updated,Done
