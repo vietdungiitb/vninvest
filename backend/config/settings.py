@@ -280,20 +280,3 @@ else:
             },
         }
     }
-
-# ── vnai rate-limit bypass ─────────────────────────────────────────────────
-# Rate limit của vnai là client-side (in-process counter), không phải server.
-# Patch này ghi đè _get_tier_limits() để trả về quota "vô hạn" tại runtime.
-# Cần thiết sau mỗi lần reinstall vì vnai không nằm trong fork của chúng ta.
-def _patch_vnai_rate_limit():
-    try:
-        import vnai.beam.quota as _q
-        _q.Guardian._get_tier_limits = lambda self: {
-            "min": 999999,
-            "hour": 999999999,
-            "day": 9999999999,
-        }
-    except Exception:
-        pass
-
-_patch_vnai_rate_limit()
