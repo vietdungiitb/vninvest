@@ -1268,20 +1268,9 @@ export default function WatchlistPage() {
                             <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
                             <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
-                            <td className="px-4 py-3 text-gray-300 text-xs tabular-nums whitespace-nowrap">
-                              {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
-                            </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                              {item.whale_alert_threshold_million == null
-                                ? t('watchlist.thresholdSourceUser')
-                                : t('watchlist.thresholdSourceSymbol')}
-                            </td>
-                            <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                              {item.last_date || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-xs">
                               {editingTrackedId === item.id ? (
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center gap-2">
                                   <input
                                     type="number"
                                     min="1"
@@ -1289,7 +1278,7 @@ export default function WatchlistPage() {
                                     value={editingTrackedThresholdValue}
                                     onChange={(e) => setEditingTrackedThresholdValue(e.target.value)}
                                     placeholder={t('watchlist.useGlobalThreshold')}
-                                    className="w-28 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-brand-600"
+                                    className="w-24 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-brand-600"
                                   />
                                   <button
                                     onClick={() => handleSaveTrackedThreshold(item)}
@@ -1307,21 +1296,36 @@ export default function WatchlistPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex items-center justify-end gap-3">
+                                <div className="flex items-center gap-2 whitespace-nowrap">
+                                  <span className="text-gray-300 tabular-nums">
+                                    {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
+                                  </span>
                                   <button
                                     onClick={() => handleStartTrackedThresholdEdit(item)}
-                                    className="text-xs text-blue-300 hover:text-blue-200 font-semibold"
+                                    className="text-[11px] text-blue-300 hover:text-blue-200 font-semibold"
                                   >
                                     {t('watchlist.editThreshold')}
                                   </button>
-                                  <button
-                                    onClick={() => handleDeleteTracked(item.id, item.symbol)}
-                                    className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                                  >
-                                    {t('watchlist.delete')}
-                                  </button>
                                 </div>
                               )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                              {item.whale_alert_threshold_million == null
+                                ? t('watchlist.thresholdSourceUser')
+                                : t('watchlist.thresholdSourceSymbol')}
+                            </td>
+                            <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                              {item.last_date || '—'}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <div className="flex items-center justify-end gap-3">
+                                <button
+                                  onClick={() => handleDeleteTracked(item.id, item.symbol)}
+                                  className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                                >
+                                  {t('watchlist.delete')}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
