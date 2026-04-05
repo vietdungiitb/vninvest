@@ -1237,7 +1237,8 @@ export default function WatchlistPage() {
                       {filteredTrackedSymbolsWithRealtime.length === 0 ? (
                         <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
                       ) : (
-                        <table className="w-full text-sm">
+                        <div className="overflow-x-auto">
+                        <table className="w-full min-w-[1080px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
@@ -1331,6 +1332,7 @@ export default function WatchlistPage() {
                         ))}
                       </tbody>
                         </table>
+                        </div>
                       )}
                     </div>
                   )}
