@@ -386,6 +386,7 @@ class TrackedSymbol(models.Model):
         verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
     )
     added_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = 'Mã theo dõi tổng hợp'

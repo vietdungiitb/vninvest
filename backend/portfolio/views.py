@@ -2182,6 +2182,7 @@ class TrackedSymbolListCreateView(APIView):
             'change_pct': info.get('change_pct'),
             'last_date': info.get('last_date'),
             'added_at': ts.added_at,
+            'updated_at': ts.updated_at,
         }
 
     def get(self, request):
@@ -2209,6 +2210,7 @@ class TrackedSymbolListCreateView(APIView):
                 'change_pct': info.get('change_pct'),
                 'last_date': info.get('last_date'),
                 'added_at': ts.added_at,
+                'updated_at': ts.updated_at,
             })
         serializer = TrackedSymbolSerializer(rows, many=True)
         return Response(serializer.data)
@@ -2267,6 +2269,7 @@ class TrackedSymbolListCreateView(APIView):
             'change_pct': info.get('change_pct'),
             'last_date': info.get('last_date'),
             'added_at': ts.added_at,
+            'updated_at': ts.updated_at,
         }
         return Response(TrackedSymbolSerializer(row).data, status=status.HTTP_201_CREATED)
 
@@ -2292,6 +2295,7 @@ class TrackedSymbolDeleteView(APIView):
             'change_pct': info.get('change_pct'),
             'last_date': info.get('last_date'),
             'added_at': ts.added_at,
+            'updated_at': ts.updated_at,
         }
 
     def patch(self, request, ts_id):
@@ -2324,6 +2328,8 @@ class TrackedSymbolDeleteView(APIView):
                 update_fields.append('source_group')
 
         if update_fields:
+            if 'updated_at' not in update_fields:
+                update_fields.append('updated_at')
             ts.save(update_fields=update_fields)
 
         return Response(TrackedSymbolSerializer(self._build_row(ts)).data)
@@ -2378,7 +2384,11 @@ class TrackedSymbolBulkThresholdView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        updated_count = queryset.update(whale_alert_threshold_million=threshold_million)
+        now_ts = timezone.now()
+        updated_count = queryset.update(
+            whale_alert_threshold_million=threshold_million,
+            updated_at=now_ts,
+        )
 
         updated_rows = list(
             TrackedSymbol.objects
@@ -2404,6 +2414,7 @@ class TrackedSymbolBulkThresholdView(APIView):
                 'change_pct': info.get('change_pct'),
                 'last_date': info.get('last_date'),
                 'added_at': row.added_at,
+                'updated_at': row.updated_at,
             })
 
         return Response(

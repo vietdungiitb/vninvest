@@ -287,6 +287,7 @@ class TrackedSymbolSerializer(serializers.Serializer):
     change_pct = serializers.FloatField(allow_null=True)
     last_date = serializers.CharField(allow_null=True)
     added_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
 
 
 class PriceAlertRuleSerializer(serializers.ModelSerializer):

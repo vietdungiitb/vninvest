@@ -1309,7 +1309,7 @@ export default function WatchlistPage() {
                               )}
                             </td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                              {item.last_date || '—'}
+                              {item.updated_at ? formatDateTime(item.updated_at) : '—'}
                             </td>
                             <td className="px-4 py-3 text-right">
                               <div className="flex items-center justify-end gap-3">
