@@ -30,6 +30,10 @@ Run-day playbook de dieu phoi theo gio:
 Evidence templates de dien ket qua runtime:
 - docs/SPRINT22_EXECUTION_EVIDENCE_TEMPLATE.md
 - docs/SPRINT22_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md
+- docs/SPRINT22_EXECUTION_EVIDENCE_PRODUCTION_PREFILL_20260405.md
+
+Automation script:
+- scripts/ops/sprint22_collect_evidence.ps1
 
 ## 3) Current recommendation
 

@@ -114,6 +114,8 @@ Cap nhat phan con lai Sprint 22 (2026-04-05 khuya):
 	- `docs/SPRINT22_RUN_DAY_PLAYBOOK_20260405.md` (dieu phoi theo gio + command blocks + rollback protocol)
 	- `docs/SPRINT22_EXECUTION_EVIDENCE_TEMPLATE.md` (mau evidence runtime tong)
 	- `docs/SPRINT22_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md` (ban prefill staging)
+	- `docs/SPRINT22_EXECUTION_EVIDENCE_PRODUCTION_PREFILL_20260405.md` (ban prefill production)
+	- `scripts/ops/sprint22_collect_evidence.ps1` (script thu thap evidence preflight/regression/build)
 - Da cap nhat backlog execution-ready voi trang thai Sprint 22 hien tai + link artifact:
 	- `docs/SPRINT21_22_FAT_VIEWS_EXECUTION_READY.md`
 - Da cap nhat `docs/SPRINT22_GO_NO_GO_REVIEW.md` de phan tach ro:
