@@ -128,8 +128,10 @@ export default function WatchlistPage() {
   const [triggeredPriceAlerts, setTriggeredPriceAlerts] = useState([]);
   const [addingFromGroup, setAddingFromGroup] = useState({});
   const [bulkGroupAction, setBulkGroupAction] = useState(null);
+  const [trackedBulkAction, setTrackedBulkAction] = useState(null);
   const [groupTrackedFilter, setGroupTrackedFilter] = useState('all');
   const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
+  const [trackedSortBy, setTrackedSortBy] = useState('symbol_asc');
   const triggeringAlertIdsRef = useRef(new Set());
   const handleSyncStockProfile = async () => {
     setSyncingStockProfile(true);
@@ -149,6 +151,7 @@ export default function WatchlistPage() {
   const [srcGroupId, setSrcGroupId] = useState('');
   const [addSymbol, setAddSymbol] = useState('');
   const [addThresholdMillion, setAddThresholdMillion] = useState('');
+  const [bulkThresholdMillion, setBulkThresholdMillion] = useState('');
   const [addingSymbol, setAddingSymbol] = useState(false);
   const [updatingTrackedId, setUpdatingTrackedId] = useState(null);
   const [editingTrackedId, setEditingTrackedId] = useState(null);
@@ -268,6 +271,25 @@ export default function WatchlistPage() {
     }
     return true;
   });
+  const sortedTrackedSymbolsWithRealtime = useMemo(() => {
+    const rows = [...filteredTrackedSymbolsWithRealtime];
+    const scoreThreshold = (item) => (item.whale_alert_threshold_million == null ? -1 : Number(item.whale_alert_threshold_million));
+
+    if (trackedSortBy === 'threshold_desc') {
+      rows.sort((a, b) => scoreThreshold(b) - scoreThreshold(a));
+      return rows;
+    }
+    if (trackedSortBy === 'threshold_asc') {
+      rows.sort((a, b) => scoreThreshold(a) - scoreThreshold(b));
+      return rows;
+    }
+    if (trackedSortBy === 'symbol_desc') {
+      rows.sort((a, b) => String(b.symbol || '').localeCompare(String(a.symbol || '')));
+      return rows;
+    }
+    rows.sort((a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')));
+    return rows;
+  }, [filteredTrackedSymbolsWithRealtime, trackedSortBy]);
   const trackedSymbolMap = new Map(trackedSymbolsWithRealtime.map((item) => [item.symbol, item]));
   const trackedSymbolSet = new Set(trackedSymbolsWithRealtime.map((item) => item.symbol));
   const activeGroupItems = activeGroup?.items || [];
@@ -460,6 +482,61 @@ export default function WatchlistPage() {
       setSymbolError(err.response?.data?.detail || t('watchlist.thresholdUpdateFailed', { symbol: item.symbol }));
     } finally {
       setUpdatingTrackedId(null);
+    }
+  };
+
+  const handleBulkSetTrackedThreshold = async () => {
+    const normalizedThreshold = String(bulkThresholdMillion || '').trim();
+    const parsedThreshold = Number(normalizedThreshold);
+    if (!Number.isFinite(parsedThreshold) || parsedThreshold < 1) {
+      setSymbolError(t('watchlist.thresholdValidation'));
+      return;
+    }
+
+    const targets = sortedTrackedSymbolsWithRealtime.filter((item) => item.whale_alert_threshold_million == null);
+    if (targets.length === 0) {
+      setSyncMsg(t('watchlist.bulkNoTargets'));
+      setTimeout(() => setSyncMsg(''), 3500);
+      return;
+    }
+
+    setTrackedBulkAction('set');
+    setSymbolError('');
+    try {
+      await Promise.all(
+        targets.map((item) => updateTrackedSymbol(item.id, { whale_alert_threshold_million: parsedThreshold })),
+      );
+      await fetchTracked();
+      setSyncMsg(t('watchlist.bulkSetThresholdSuccess', { count: formatNumber(targets.length) }));
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (err) {
+      setSymbolError(err.response?.data?.detail || t('watchlist.bulkSetThresholdFailed'));
+    } finally {
+      setTrackedBulkAction(null);
+    }
+  };
+
+  const handleBulkClearTrackedThreshold = async () => {
+    const targets = sortedTrackedSymbolsWithRealtime.filter((item) => item.whale_alert_threshold_million != null);
+    if (targets.length === 0) {
+      setSyncMsg(t('watchlist.bulkNoTargets'));
+      setTimeout(() => setSyncMsg(''), 3500);
+      return;
+    }
+
+    setTrackedBulkAction('clear');
+    setSymbolError('');
+    try {
+      await Promise.all(
+        targets.map((item) => updateTrackedSymbol(item.id, { whale_alert_threshold_million: null })),
+      );
+      await fetchTracked();
+      setSyncMsg(t('watchlist.bulkClearThresholdSuccess', { count: formatNumber(targets.length) }));
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (err) {
+      setSymbolError(err.response?.data?.detail || t('watchlist.bulkClearThresholdFailed'));
+    } finally {
+      setTrackedBulkAction(null);
     }
   };
 
@@ -820,6 +897,12 @@ export default function WatchlistPage() {
                   <span className="w-4 h-4 rounded-full bg-brand-500 flex-shrink-0" />
                   <h2 className="text-base font-bold text-gray-100">{t('watchlist.personalTrackedList')}</h2>
                   <span className="text-xs text-gray-500">{t('watchlist.trackedRealtimeDesc')}</span>
+                  <span
+                    className="text-[11px] text-amber-300/90 border border-amber-700/40 bg-amber-900/20 rounded-full px-2 py-0.5"
+                    title={t('watchlist.thresholdPrecedenceTooltip')}
+                  >
+                    {t('watchlist.thresholdPrecedenceLabel')}
+                  </span>
                 </div>
 
                 <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
@@ -1033,25 +1116,64 @@ export default function WatchlistPage() {
                     <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.emptyTracked')}</div>
                   ) : (
                     <div>
-                      <div className="px-4 pt-4 pb-3 border-b border-gray-800/70">
-                        <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
-                          {[
-                            { key: 'all', label: t('watchlist.thresholdFilterAll', { count: formatNumber(trackedSymbolsWithRealtime.length) }) },
-                            { key: 'symbol', label: t('watchlist.thresholdFilterSymbol', { count: formatNumber(trackedWithOverrideCount) }) },
-                            { key: 'user', label: t('watchlist.thresholdFilterUser', { count: formatNumber(trackedWithUserDefaultCount) }) },
-                          ].map((option) => (
-                            <button
-                              key={option.key}
-                              onClick={() => setTrackedThresholdFilter(option.key)}
-                              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                                trackedThresholdFilter === option.key
-                                  ? 'bg-blue-700 text-white'
-                                  : 'text-gray-400 hover:text-gray-100'
-                              }`}
-                            >
-                              {option.label}
-                            </button>
-                          ))}
+                      <div className="px-4 pt-4 pb-3 border-b border-gray-800/70 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
+                            {[
+                              { key: 'all', label: t('watchlist.thresholdFilterAll', { count: formatNumber(trackedSymbolsWithRealtime.length) }) },
+                              { key: 'symbol', label: t('watchlist.thresholdFilterSymbol', { count: formatNumber(trackedWithOverrideCount) }) },
+                              { key: 'user', label: t('watchlist.thresholdFilterUser', { count: formatNumber(trackedWithUserDefaultCount) }) },
+                            ].map((option) => (
+                              <button
+                                key={option.key}
+                                onClick={() => setTrackedThresholdFilter(option.key)}
+                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                                  trackedThresholdFilter === option.key
+                                    ? 'bg-blue-700 text-white'
+                                    : 'text-gray-400 hover:text-gray-100'
+                                }`}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                          </div>
+
+                          <select
+                            value={trackedSortBy}
+                            onChange={(e) => setTrackedSortBy(e.target.value)}
+                            className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                          >
+                            <option value="symbol_asc">{t('watchlist.sortSymbolAsc')}</option>
+                            <option value="symbol_desc">{t('watchlist.sortSymbolDesc')}</option>
+                            <option value="threshold_desc">{t('watchlist.sortThresholdDesc')}</option>
+                            <option value="threshold_asc">{t('watchlist.sortThresholdAsc')}</option>
+                          </select>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={bulkThresholdMillion}
+                            onChange={(e) => setBulkThresholdMillion(e.target.value)}
+                            placeholder={t('watchlist.bulkThresholdPlaceholder')}
+                            className="w-44 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                          />
+                          <button
+                            onClick={handleBulkSetTrackedThreshold}
+                            disabled={trackedBulkAction != null}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-700/80 hover:bg-emerald-700 text-white disabled:opacity-50"
+                          >
+                            {trackedBulkAction === 'set' ? t('watchlist.saving') : t('watchlist.bulkSetThreshold')}
+                          </button>
+                          <button
+                            onClick={handleBulkClearTrackedThreshold}
+                            disabled={trackedBulkAction != null}
+                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-50"
+                          >
+                            {trackedBulkAction === 'clear' ? t('watchlist.saving') : t('watchlist.bulkClearThreshold')}
+                          </button>
                         </div>
                       </div>
 
@@ -1073,7 +1195,7 @@ export default function WatchlistPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800/60">
-                        {filteredTrackedSymbolsWithRealtime.map((item) => (
+                        {sortedTrackedSymbolsWithRealtime.map((item) => (
                           <tr key={item.id} className="hover:bg-gray-800/50 transition-colors">
                             <td className="px-4 py-3">
                               <button
