@@ -45,6 +45,7 @@ Ket qua smoke test nhanh:
 - API protected sau login (`/api/auth/me/`, `/api/portfolio/portfolios/`, `/api/portfolio/userconfig/`) -> HTTP 200.
 - Loop 20 lan endpoint `/api/realtime/price-board/MBB/`: `ok=19`, `rate429=0`, `otherErr=1` (khong ghi nhan 429).
 - Da tao checklist QA runtime web de lap lai smoke test nhanh: `docs/WEB_RUNTIME_SMOKE_CHECKLIST.md`.
+- Da tao checklist QA runtime mobile Sprint 19: `docs/MOBILE_RUNTIME_SMOKE_CHECKLIST.md`.
 
 ## Sprint 19 - UX/Architecture alignment update (2026-04-05)
 
