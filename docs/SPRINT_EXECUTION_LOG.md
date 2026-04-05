@@ -1,5 +1,26 @@
 # Sprint Execution Log
 
+## Sprint 24 planning lock-in (2026-04-05)
+
+Trang thai: READY FOR CODING EXECUTION
+
+Da hoan tat buoc khoi tao sprint moi truoc khi code:
+- Da tao coding plan sprint moi:
+	- `docs/SPRINT24_DASHBOARD_REALTIME_EXECUTION_PLAN.md`
+- Da tao acceptance gate checklist:
+	- `docs/SPRINT24_ACCEPTANCE_CHECKLIST.md`
+- Da tao taskboard CSV de tracking hang ngay:
+	- `docs/SPRINT24_TASKBOARD.csv`
+- Da tao script evidence runtime cho dashboard sprint:
+	- `scripts/ops/sprint24_collect_dashboard_evidence.ps1`
+- Da dong bo board va roadmap:
+	- `docs/IMPLEMENTATION_BOARDS.md` (Epic B9)
+	- `docs/ROADMAP_STATUS.md` (them section Sprint 24)
+
+Next action:
+1. Bat dau S24-01 (single source quote state) theo plan.
+2. Cap nhat evidence vao sprint log sau moi story.
+
 ## Sprint 23 planning lock-in (2026-04-05)
 
 Trang thai: READY FOR CODING EXECUTION
@@ -16,6 +37,147 @@ Da hoan tat cac buoc can thiet de vao sprint moi:
 Next action:
 1. Bat dau S23-01 va cap nhat evidence trong daily tracker.
 2. Dong bo trang thai B8-2/B8-3 theo ket qua code va runtime gates.
+
+Cap nhat coding tiep theo (2026-04-05 khuya):
+- Da hoan tat S23-01 (external facade hardening):
+	- cap nhat `backend/portfolio/adapters/vnstock_adapter.py` voi facade moi (financial/history/listing) + timeout theo channel.
+	- cap nhat `backend/portfolio/market_data_service.py` de dung facade thay import provider truc tiep.
+- Da hoan tat S23-02 + S23-03 trong legacy path:
+	- loai bo `from vnstock import Vnstock` trong `backend/portfolio/views.py` cho nhom market hot-path + stock workspace flow.
+	- thay bang adapter facade + mapping response loi tuong thich contract cu.
+
+Regression da verify:
+- `manage.py test portfolio.tests.test_adapters` -> PASS (13 tests).
+- Focused API smoke tests (5 tests): intraday, price-board, rvol, stock overview, stock chart -> PASS.
+
+Cap nhat decomposition tiep theo (2026-04-05 dem muon hon):
+- Da tach helper stock workspace tu `backend/portfolio/views.py` sang file moi:
+	- `backend/portfolio/stock_workspace_helpers.py`
+- Da wire import nguoc trong `views.py` de giu nguyen contract endpoint.
+- LOC `views.py` giam tu 4024 xuong 3797 (giam 227 dong, ~5.6%).
+- Regression xac nhan:
+	- adapter tests + stock workspace focused tests -> PASS.
+
+Cap nhat decomposition tiep theo nua (2026-04-05 very late):
+- Da hoan tat S23-04 voi extraction wave tiep theo:
+	- `backend/portfolio/whale_feed_helpers.py`
+	- `backend/portfolio/ai_advisory_helpers.py`
+	- `backend/portfolio/screener_helpers.py`
+	- `backend/portfolio/view_helpers.py`
+- Da loai bo helper block lon + dead code khoi `backend/portfolio/views.py`, giu contract endpoint khong doi.
+- LOC `views.py` giam tu 4024 xuong 2813 (giam 1211 dong, ~30.1%), vuot muc tieu >=30%.
+- Regression xac nhan:
+	- `manage.py test portfolio.tests.test_adapters portfolio.tests.test_screener_api` -> PASS (28 tests).
+	- `manage.py check` -> no issues.
+- Ghi chu test suite tong:
+	- `manage.py test portfolio.tests` co 1 fail pre-existing o admin UI assertion string (`test_admin_stockprofile_workspace_route`), khong nam trong scope refactor helper views.
+
+Cap nhat S23-05 - validation unification (2026-04-05 late night):
+- Da chuan hoa request validation cho refactored market/trading views theo serializer pattern:
+	- `backend/portfolio/serializers.py` them:
+		- `MarketIntradayQuerySerializer` (page_size 10..200)
+		- `MarketStockChartQuerySerializer` (days 30..365)
+		- `TradingSubAccountCreateRequestSerializer`
+- Da wire validation vao:
+	- `backend/portfolio/market_views.py`
+		- validate query cho `IntradayMatchedView` va `StockWorkspaceChartView`
+		- unify error map cho DRF validation (`400 detail`)
+	- `backend/portfolio/trading_views.py`
+		- validate payload create sub-account truoc khi vao model serializer
+		- enforce ownership cho `portfolio` neu user da co portfolio
+		- giu nguyen contract loi cu khi user chua co portfolio (`User must have at least one Portfolio`)
+- Da cap nhat test contract:
+	- fix expectation typed params (int) cho market view service calls
+	- them negative tests cho invalid query params va foreign portfolio create
+- Regression xac nhan:
+	- `manage.py test portfolio.tests.test_api_routes` -> PASS (96 tests).
+
+Cap nhat S23-06 - threshold/domain constants centralization (2026-04-05 very late):
+- Da tao module constants trung tam:
+	- `backend/portfolio/domain_constants.py`
+- Da migrate hardcoded threshold policy ve module trung tam trong cac code path:
+	- `backend/portfolio/order_flow.py`
+	- `backend/portfolio/realtime/compute.py`
+	- `backend/portfolio/market_data_service.py`
+	- `backend/portfolio/whale_feed_helpers.py`
+- Da chuan hoa 2 helper policy dung chung:
+	- `resolve_user_whale_threshold_vnd(...)`
+	- `classify_whale_size_class(...)`
+- Muc tieu dat duoc: bo drift logic threshold giua order-flow / realtime compute / market services.
+- Regression xac nhan:
+	- `manage.py test portfolio.tests.test_order_flow portfolio.tests.test_realtime_compute portfolio.tests.test_api_routes` -> PASS (136 tests).
+
+Cap nhat S23-07 - observability for rollout (2026-04-06):
+- Da them instrumentation layer cho market hot-path:
+	- `backend/portfolio/middleware.py` (`MarketObservabilityMiddleware`) de thu latency + status code theo endpoint.
+	- `backend/portfolio/observability.py` de luu snapshot windowed p50/p95 + 5xx ratio + fallback + external-timeout.
+- Da them health endpoint moi:
+	- `GET /api/health/market-observability/`
+	- route wire tai `backend/config/health.py` + `backend/config/urls.py`.
+- Da them fallback/timeout event hooks trong `backend/portfolio/market_data_service.py`:
+	- intraday, price-board, whale-feed, whale-feed-aggregate.
+- Da them test moi:
+	- `backend/portfolio/tests/test_observability.py`
+- Regression xac nhan:
+	- `manage.py test portfolio.tests.test_observability portfolio.tests.test_order_flow portfolio.tests.test_realtime_compute portfolio.tests.test_api_routes` -> PASS (138 tests).
+
+Cap nhat S23-08 - canary + rollback drill (2026-04-06):
+- Da materialize bo artifact run-time rollout cho Sprint 23:
+	- `docs/SPRINT23_RUN_DAY_PLAYBOOK_20260406.md`
+	- `docs/SPRINT23_EXECUTION_EVIDENCE_TEMPLATE.md`
+	- `docs/SPRINT23_CANARY_LOG_20260406.md`
+	- `docs/SPRINT23_ROLLBACK_REHEARSAL_REPORT_20260406.md`
+	- `docs/SPRINT23_GO_NO_GO_SIGNOFF_20260406.md`
+- Da tao script thu thap evidence canary/rollback:
+	- `scripts/ops/sprint23_collect_rollout_evidence.ps1`
+- Da update acceptance checklist de noi evidence C2..C5:
+	- `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md`
+- Ket qua: S23-08 dat trang thai Done o coding backlog, san sang cho run-day canary that tren staging/prod.
+
+Cap nhat bo sung S23-08 (2026-04-06, tiep):
+- Da bo sung canary control that cho market route toggle:
+	- `MARKET_VIEWS_CANARY_PERCENT` (0..100) trong `backend/config/settings.py`.
+	- Wire deterministic split theo user/ip trong:
+		- `backend/portfolio/urls_realtime.py`
+		- `backend/portfolio/urls_stock.py`
+- Da them regression test cho canary=0 -> legacy path:
+	- `backend/portfolio/tests/test_api_routes.py`
+- Focused regression xac nhan:
+	- `manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_realtime_ticker_endpoint_uses_refactored_market_view_when_flag_enabled portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_realtime_ticker_endpoint_uses_legacy_view_when_canary_percent_zero portfolio.tests.test_observability` -> PASS (4 tests).
+
+Cap nhat S23-08 run-day drill (2026-04-05 toi):
+- Da chay local runtime canary theo phase:
+	- 10% (`MARKET_VIEWS_CANARY_PERCENT=10`)
+	- 50% (`MARKET_VIEWS_CANARY_PERCENT=50`)
+	- 100% (`MARKET_VIEWS_CANARY_PERCENT=100`)
+- Moi phase da generate 20 request auth vao ticker endpoint va capture observability snapshot:
+	- `docs/ops-evidence/sprint23/canary-10-market-observability.json`
+	- `docs/ops-evidence/sprint23/canary-50-market-observability.json`
+	- `docs/ops-evidence/sprint23/canary-100-market-observability.json`
+- Ket qua local drill:
+	- `http_5xx_ratio_pct = 0.0`
+	- `fallback_hits = 0`
+	- `external_timeouts = 0`
+	- ticker p95 lan luot: `120.53ms`, `106.59ms`, `120.08ms`
+- Da chay rollback rehearsal bang switch `MARKET_VIEWS_CANARY_PERCENT=0`:
+	- timing evidence: `docs/ops-evidence/sprint23/rollback-timing.json`
+	- rollback duration: `44.73s` (PASS muc tieu <= 5 phut)
+- Da dien va chot artifact:
+	- `docs/SPRINT23_CANARY_LOG_20260406.md`
+	- `docs/SPRINT23_ROLLBACK_REHEARSAL_REPORT_20260406.md`
+	- `docs/SPRINT23_GO_NO_GO_SIGNOFF_20260406.md`
+	- `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md` (C1..C5 -> Done trong local drill scope)
+
+Cap nhat chot Sprint 23 (2026-04-05 dem):
+- Da cap nhat acceptance checklist:
+	- `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md` -> A/B/C/D gates dat Done, trang thai `READY FOR SIGN-OFF (CONDITIONAL GO)`.
+- Da cap nhat plan status:
+	- `docs/SPRINT23_BACKEND_AUDIT_CODING_PLAN.md` -> `COMPLETED (CONDITIONAL GO FOR STAGING/PROD SIGN-OFF)`.
+- Da tao bien ban dong sprint:
+	- `docs/SPRINT23_FINAL_CLOSURE_NOTE_20260405.md`.
+- Ket luan:
+	- Sprint 23 closed cho coding delivery.
+	- Release gate o muc Conditional GO, cho bo sung live-traffic KPI staging/prod + owner signatures.
 
 ## Audit continuation - execution board materialized (2026-04-05)
 

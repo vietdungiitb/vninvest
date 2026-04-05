@@ -1,0 +1,6 @@
+ID,Story,Owner,Estimate,Dependency,Status,Evidence
+S24-01,Single source quote state,FE-Lead-1,2d,None,Todo,
+S24-02,Live overlay holdings and cards,FE-2,1d,S24-01,Todo,
+S24-03,Realtime UX polish,FE-2,1d,S24-01|S24-02,Todo,
+S24-04,Runtime KPI instrumentation,Ops-FE-1,1d,S24-03,Todo,
+S24-05,Mini canary and sign-off,PM-1,2d,S24-04,Todo,

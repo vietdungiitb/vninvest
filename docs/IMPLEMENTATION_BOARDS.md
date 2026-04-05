@@ -110,6 +110,18 @@ Tham chieu sprint moi:
 - `docs/SPRINT23_TASKBOARD.csv`
 - `docs/BACKEND_AUDIT_DAILY_TRACKER_20260405.md`
 
+### Epic B9 — Sprint 24 Dashboard Realtime Consistency
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B9-1 | Sprint 24 planning lock | Chot backlog S24-01..S24-05 + acceptance gate | PM/FE | 0.5d | B8-3 | Plan/checklist/taskboard du bo | Done |
+| B9-2 | Dashboard consistency execution | Thuc thi S24-01..S24-03 (single source + live overlay + UX polish) | FE/QA | 4d | B9-1 | Gates A/B pass trong S24 checklist | Todo |
+| B9-3 | Runtime validation + mini canary | Thuc thi S24-04..S24-05 + go/no-go | Ops/PM/QA | 3d | B9-2 | Gates C/D/E pass, co closure note | Todo |
+
+Tham chieu sprint moi:
+- `docs/SPRINT24_DASHBOARD_REALTIME_EXECUTION_PLAN.md`
+- `docs/SPRINT24_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT24_TASKBOARD.csv`
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)

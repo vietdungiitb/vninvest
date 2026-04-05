@@ -1,7 +1,7 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
 > **Cập nhật lần cuối**: 2026-04-05  
-> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 READY TO EXECUTE (planning locked)  
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 CLOSED (CONDITIONAL GO) / Sprint 24 READY TO EXECUTE  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
@@ -46,11 +46,11 @@
 
 ---
 
-## 0.2 Sprint 23 - READY TO EXECUTE (Backend Audit Coding Sprint)
+## 0.2 Sprint 23 - CLOSED (CONDITIONAL GO)
 
 Focus: chot no ky thuat sau audit backend v2, dong bo architecture boundary va rollout theo metric.
 
-Trang thai hien tai: READY TO EXECUTE.
+Trang thai hien tai: CLOSED FOR CODING DELIVERY (CONDITIONAL GO cho staging/prod sign-off).
 
 Da hoan tat buoc chuan bi:
 - Co execution board + owner matrix + daily tracker + endpoint checklist.
@@ -68,6 +68,24 @@ Tai lieu chuan cho sprint nay:
 - `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md`
 - `docs/SPRINT23_TASKBOARD.csv`
 - `docs/BACKEND_AUDIT_EXECUTION_BOARD_20260405.md`
+
+## 0.3 Sprint 24 - READY TO EXECUTE (Dashboard Realtime Consistency Sprint)
+
+Focus: dong bo data consistency tren Dashboard giua snapshot/live, giam UX noise va chot mini canary validation.
+
+Trang thai hien tai: READY TO EXECUTE.
+
+Muc tieu sprint:
+1. Hoist single source quote state cho Dashboard.
+2. Live overlay cho HoldingsTable + StatCards cung timestamp.
+3. UX polish observability/sync behavior.
+4. KPI evidence + mini canary + go/no-go note.
+
+Tai lieu chuan cho sprint nay:
+- `docs/SPRINT24_DASHBOARD_REALTIME_EXECUTION_PLAN.md`
+- `docs/SPRINT24_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT24_TASKBOARD.csv`
+- `scripts/ops/sprint24_collect_dashboard_evidence.ps1`
 
 ---
 
