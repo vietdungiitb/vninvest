@@ -5,7 +5,7 @@ Trang thai hien tai: PARTIAL (code-ready, ops gates pending)
 ## 1) Gate checklist
 
 1. Market Data rollout 100% an toan (S22-02): PENDING OPS
-2. Realtime connection manager khong leak socket, khong reconnect spam (S22-03..S22-06): IN PROGRESS
+2. Realtime connection manager khong leak socket, khong reconnect spam (S22-03..S22-06): CODE DONE, SOAK PENDING
 3. Trading path moi chay staging sau flag, regression toi thieu pass (S22-07..S22-10): READY FOR STAGING
 
 ## 2) Da hoan tat trong codebase
@@ -27,7 +27,7 @@ Trang thai hien tai: PARTIAL (code-ready, ops gates pending)
 ## 3) Con thieu de chot Go/No-Go production
 
 - Canary 50%/100% + observability sign-off (DevOps/QA runtime window).
-- Soak test FE/BE dai hoi (chuyen trang lien tuc, monitor socket leak).
+- Soak test FE/BE dai hoi (chuyen trang lien tuc, monitor socket leak) theo `docs/SPRINT22_REALTIME_SOAK_CHECKLIST.md`.
 - Bien ban rollback rehearsal runtime.
 
 ## 4) De xuat quyet dinh hien tai

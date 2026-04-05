@@ -105,6 +105,31 @@ Tai lieu van hanh de dong Sprint 21:
 2. Nhan canary Market Data len 50% roi 100% neu metric an toan.
 3. Chuan bi Trading boundary de sang sprint tiep theo co the rollout co kiem soat.
 
+### Trang thai thuc thi cap nhat (2026-04-05)
+
+| Sprint 22 task | Trang thai hien tai |
+| :--- | :--- |
+| S22-01 | PENDING OPS |
+| S22-02 | PENDING OPS |
+| S22-03 | DONE (code) |
+| S22-04 | DONE (code) |
+| S22-05 | DONE (code) |
+| S22-06 | READY TO EXECUTE (soak checklist da co) |
+| S22-07 | DONE |
+| S22-08 | DONE (code) |
+| S22-09 | DONE (code) |
+| S22-10 | DONE (focused tests) |
+| S22-11 | PARTIAL (go/no-go template da co) |
+
+Tai lieu van hanh de dong Sprint 22:
+- `docs/SPRINT22_STATUS_TRACKER_20260405.md`
+- `docs/SPRINT22_REALTIME_SOAK_CHECKLIST.md`
+- `docs/SPRINT22_MARKET_DATA_CANARY_LOG.md`
+- `docs/SPRINT22_GO_NO_GO_REVIEW.md`
+- `docs/SPRINT22_RUN_DAY_PLAYBOOK_20260405.md`
+- `docs/SPRINT22_EXECUTION_EVIDENCE_TEMPLATE.md`
+- `docs/SPRINT22_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md`
+
 ### Backlog Sprint 22
 
 | ID | Task | Owner | Estimate | Phu thuoc | Output | Acceptance criteria |

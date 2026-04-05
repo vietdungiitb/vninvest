@@ -107,6 +107,23 @@ Cap nhat bo sung (2026-04-05 dem muon):
 - Da tao ban prefill staging (timeline + owner placeholders) de thao tac nhanh trong ngay rollout:
 	- `docs/SPRINT21_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md`
 
+Cap nhat phan con lai Sprint 22 (2026-04-05 khuya):
+- Da tao bo artifact cho task pending runtime gate:
+	- `docs/SPRINT22_REALTIME_SOAK_CHECKLIST.md` (S22-06)
+	- `docs/SPRINT22_STATUS_TRACKER_20260405.md` (snapshot S22-01..S22-11)
+	- `docs/SPRINT22_RUN_DAY_PLAYBOOK_20260405.md` (dieu phoi theo gio + command blocks + rollback protocol)
+	- `docs/SPRINT22_EXECUTION_EVIDENCE_TEMPLATE.md` (mau evidence runtime tong)
+	- `docs/SPRINT22_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md` (ban prefill staging)
+- Da cap nhat backlog execution-ready voi trang thai Sprint 22 hien tai + link artifact:
+	- `docs/SPRINT21_22_FAT_VIEWS_EXECUTION_READY.md`
+- Da cap nhat `docs/SPRINT22_GO_NO_GO_REVIEW.md` de phan tach ro:
+	- code da xong (S22-03..S22-05)
+	- soak pending (S22-06)
+	- ops canary pending (S22-01/S22-02)
+- Da re-verify ky thuat:
+	- backend focused regression tests (5 tests) PASS
+	- frontend build PASS
+
 ## Sprint 19 - Mobile MVP sign-off prep update (2026-04-05)
 
 Trang thai: CODE COMPLETE FOR INTERNAL TEST
