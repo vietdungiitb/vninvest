@@ -1242,7 +1242,7 @@ export default function WatchlistPage() {
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
+                          <th className="w-[120px] px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
@@ -1263,7 +1263,10 @@ export default function WatchlistPage() {
                                 {item.symbol}
                               </button>
                             </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">
+                            <td
+                              className="w-[120px] max-w-[120px] px-4 py-3 text-gray-400 text-xs truncate"
+                              title={item.source_group_name || t('watchlist.manualAdded')}
+                            >
                               {item.source_group_name || t('watchlist.manualAdded')}
                             </td>
                             <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
@@ -1297,17 +1300,13 @@ export default function WatchlistPage() {
                                   </button>
                                 </div>
                               ) : (
-                                <div className="flex items-center gap-2 whitespace-nowrap">
-                                  <span className="text-gray-300 tabular-nums">
-                                    {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
-                                  </span>
-                                  <button
-                                    onClick={() => handleStartTrackedThresholdEdit(item)}
-                                    className="text-[11px] text-blue-300 hover:text-blue-200 font-semibold"
-                                  >
-                                    {t('watchlist.editThreshold')}
-                                  </button>
-                                </div>
+                                <button
+                                  onClick={() => handleStartTrackedThresholdEdit(item)}
+                                  className="text-gray-300 tabular-nums whitespace-nowrap hover:text-blue-200"
+                                  title={t('watchlist.editThreshold')}
+                                >
+                                  {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
+                                </button>
                               )}
                             </td>
                             <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
