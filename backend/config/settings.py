@@ -120,7 +120,14 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         'realtime': os.getenv('DRF_REALTIME_RATE', '60/minute'),
+        'realtime_ticker': os.getenv('DRF_REALTIME_TICKER_RATE', '120/minute'),
+        'realtime_intraday': os.getenv('DRF_REALTIME_INTRADAY_RATE', '90/minute'),
         'realtime_price_board': os.getenv('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
+        'realtime_breadth': os.getenv('DRF_REALTIME_BREADTH_RATE', '90/minute'),
+        'realtime_whale_feed': os.getenv('DRF_REALTIME_WHALE_FEED_RATE', '90/minute'),
+        'realtime_whale_aggregate': os.getenv('DRF_REALTIME_WHALE_AGG_RATE', '120/minute'),
+        'realtime_rvol': os.getenv('DRF_REALTIME_RVOL_RATE', '60/minute'),
+        'realtime_chart': os.getenv('DRF_REALTIME_CHART_RATE', '90/minute'),
         'auth': '10/minute',
     },
 }

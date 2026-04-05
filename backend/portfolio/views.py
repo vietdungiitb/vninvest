@@ -936,7 +936,7 @@ class RealtimeTickerView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_ticker'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
@@ -1004,7 +1004,7 @@ class IntradayMatchedView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_intraday'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
@@ -1252,7 +1252,7 @@ class SectorBreadthView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_breadth'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
@@ -1377,7 +1377,7 @@ class WhaleFeedView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_whale_feed'
 
     def get(self, request, symbol):
         import pandas as pd
@@ -1585,7 +1585,7 @@ class RVOLView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_rvol'
 
     def get(self, request, symbol):
         import pandas as pd
@@ -1673,7 +1673,7 @@ class WhaleFeedAggregateView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
         threshold_vnd = _get_user_whale_threshold_vnd(request.user)
@@ -3185,7 +3185,7 @@ class StockWorkspaceOverviewView(APIView):
 class StockWorkspaceChartView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_chart'
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
