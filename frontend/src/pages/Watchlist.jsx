@@ -147,6 +147,7 @@ export default function WatchlistPage() {
   // Form thêm Mã Theo dõi
   const [srcGroupId, setSrcGroupId] = useState('');
   const [addSymbol, setAddSymbol] = useState('');
+  const [addThresholdMillion, setAddThresholdMillion] = useState('');
   const [addingSymbol, setAddingSymbol] = useState(false);
   const [updatingTrackedId, setUpdatingTrackedId] = useState(null);
   const [symbolError, setSymbolError] = useState('');
@@ -373,8 +374,21 @@ export default function WatchlistPage() {
     setAddingSymbol(true);
     setSymbolError('');
     try {
-      await addTrackedSymbol(addSymbol, srcGroupId ? Number(srcGroupId) : null);
+      const normalizedThreshold = String(addThresholdMillion || '').trim();
+      let thresholdValue = null;
+      if (normalizedThreshold !== '') {
+        const parsedThreshold = Number(normalizedThreshold);
+        if (!Number.isFinite(parsedThreshold) || parsedThreshold < 1) {
+          setSymbolError(t('watchlist.thresholdValidation'));
+          setAddingSymbol(false);
+          return;
+        }
+        thresholdValue = parsedThreshold;
+      }
+
+      await addTrackedSymbol(addSymbol, srcGroupId ? Number(srcGroupId) : null, thresholdValue);
       setAddSymbol('');
+      setAddThresholdMillion('');
       await fetchTracked();
     } catch (err) {
       setSymbolError(err.response?.data?.detail || t('watchlist.addSymbolFailed', { symbol: addSymbol }));
@@ -651,9 +665,28 @@ export default function WatchlistPage() {
               Score {latestWhaleAlert.display_score ?? '—'} / Event {latestWhaleAlert.event_score ?? '—'}
             </span>
           )}
-          <span className="text-xs text-gray-500">
-            {t('watchlist.personalThreshold', { value: formatNumber(userConfig?.whale_alert_threshold || latestWhaleAlert.threshold || 0) })}
-          </span>
+          {(() => {
+            const userThresholdMillion = Number(userConfig?.whale_alert_threshold);
+            const eventThresholdVnd = Number(latestWhaleAlert.threshold);
+            const eventThresholdMillion = Number.isFinite(eventThresholdVnd) ? (eventThresholdVnd / 1_000_000) : NaN;
+            const thresholdInUseMillion = Number.isFinite(eventThresholdMillion)
+              ? eventThresholdMillion
+              : (Number.isFinite(userThresholdMillion) ? userThresholdMillion : 0);
+            const useSymbolOverride = Number.isFinite(eventThresholdMillion)
+              && Number.isFinite(userThresholdMillion)
+              && Math.abs(eventThresholdMillion - userThresholdMillion) > 0.0001;
+
+            return (
+              <span className="text-xs text-gray-500">
+                {t('watchlist.thresholdInUse', {
+                  value: formatNumber(thresholdInUseMillion),
+                  source: useSymbolOverride
+                    ? t('watchlist.thresholdSourceSymbol')
+                    : t('watchlist.thresholdSourceUser'),
+                })}
+              </span>
+            );
+          })()}
         </div>
       )}
 
@@ -771,7 +804,7 @@ export default function WatchlistPage() {
                 </div>
 
                 <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_120px] gap-3">
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_180px_120px] gap-3">
                     <div>
                       <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
                         {t('watchlist.stockSymbol')}
@@ -797,6 +830,20 @@ export default function WatchlistPage() {
                           <option key={group.id} value={group.id}>{group.name}</option>
                         ))}
                       </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                        {t('watchlist.whaleThresholdOverride')}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={addThresholdMillion}
+                        onChange={(e) => setAddThresholdMillion(e.target.value)}
+                        placeholder={t('watchlist.useGlobalThreshold')}
+                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
+                      />
                     </div>
                     <div className="flex items-end">
                       <button
