@@ -1,5 +1,28 @@
 # Sprint Execution Log
 
+## Sprint 19 - Mobile MVP sign-off prep update (2026-04-05)
+
+Trang thai: CODE COMPLETE FOR INTERNAL TEST
+
+Da thuc hien them:
+- Tach `Whale` thanh tab rieng khoi `Watchlist` de dung scope Sprint 19 va de UX ro trach nhiem hon.
+- Them `Profile` tab rieng gom thong tin tai khoan, doi ngon ngu, logout.
+- Hardening Whale realtime theo foreground/background:
+	- dong websocket/polling khi app vao background
+	- reconnect + reload du lieu khi quay lai foreground
+- Bo sung `mobile-app/eas.json` va build scripts cho Android internal preview + iOS simulator build.
+- Tao tai lieu release notes va rollback notes cho Sprint 19 internal test.
+- Cap nhat acceptance checklist Sprint 19 theo trang thai da xac minh.
+
+Validation:
+- `npx tsc --noEmit` PASS sau khi them Whale tab, Profile tab va AppState handling.
+- Git push `main` da xong cho commit tach Whale tab (`7483924e`).
+
+Con mo khong the xac minh tu dong trong workspace nay:
+- iOS simulator runtime
+- Android/iOS cloud build artifact thuc te
+- smoke test 30 phut lien tuc tren thiet bi
+
 ## Sprint 19 - Mobile i18n + density optimization update (2026-04-05)
 
 Trang thai: IMPLEMENTED

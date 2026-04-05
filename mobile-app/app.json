@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "mobile-app",
-    "slug": "mobile-app",
+    "name": "VNInvest Mobile",
+    "slug": "vninvest-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,6 +23,11 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.mobileapp"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "pending-setup"
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"

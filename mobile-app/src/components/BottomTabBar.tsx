@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
 
-export type TabKey = 'dashboard' | 'transactions' | 'watchlist' | 'whale';
+export type TabKey = 'dashboard' | 'transactions' | 'watchlist' | 'whale' | 'profile';
 
 type Tab = {
   key: TabKey;
@@ -15,6 +15,7 @@ const TAB_DEFS: Tab[] = [
   { key: 'transactions', labelKey: 'tabs.transactions', icon: '⇄' },
   { key: 'watchlist', labelKey: 'tabs.watchlist', icon: '★' },
   { key: 'whale', labelKey: 'tabs.whale', icon: '≈' },
+  { key: 'profile', labelKey: 'tabs.profile', icon: '◎' },
 ];
 
 type BottomTabBarProps = {

@@ -1,7 +1,7 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
-> **Cập nhật lần cuối**: 2026-04-04  
-> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 PLANNED  
+> **Cập nhật lần cuối**: 2026-04-05  
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
@@ -13,7 +13,7 @@
 
 ---
 
-## 0.0 Sprint 19 — PLANNED (Mobile App MVP Android + iOS)
+## 0.0 Sprint 19 — CODE COMPLETE FOR INTERNAL TEST (Mobile App MVP Android + iOS)
 
 **Focus**: Khoi dong mobile app MVP cho VNInvest voi React Native (Expo), ship internal build Android/iOS theo lo trinh 4 tuan.
 
@@ -27,7 +27,22 @@
 - `docs/SPRINT19_DETAILED_PLAN.md`
 - `docs/SPRINT19_ACCEPTANCE_CHECKLIST.md`
 
-**Trang thai hien tai**: PLANNED — cho khoi tao workspace mobile va freeze API contract tuan 1.
+**Trang thai hien tai**: CODE COMPLETE FOR INTERNAL TEST.
+
+**Da hoan tat trong codebase:**
+- Workspace mobile Expo + TypeScript da co va da type-check sach.
+- Auth flow: login/register/refresh/session restore/logout + secure token storage.
+- Dashboard mobile: summary/holdings/allocation + pull-to-refresh + i18n.
+- Transactions: CRUD, symbol validation, autocomplete.
+- Watchlist: tracked symbols add/remove.
+- Whale: tab rieng, sort/filter, advisory refresh, websocket + polling fallback, foreground/background hardening.
+- Profile tab: thong tin tai khoan, doi ngon ngu, logout.
+- Tai lieu release noi bo: checklist, smoke test, release notes, rollback notes.
+
+**Con mo truoc sign-off sprint:**
+- Chay smoke test 30 phut tren Android/iOS.
+- Tao artifact Android internal build va iOS build neu account readiness cho phep.
+- Nhan sign-off Mobile / Backend / QA / PM.
 
 ---
 

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  AppState,
+  type AppStateStatus,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -79,6 +81,7 @@ export function WhaleScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [sortMode, setSortMode] = useState<'ts' | 'matched_value'>('ts');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [appState, setAppState] = useState<AppStateStatus>(AppState.currentState);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +90,7 @@ export function WhaleScreen() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isAppActive = appState === 'active';
 
   const trackedSymbolCodes = useMemo(
     () => trackedSymbols.map((item) => item.symbol).filter(Boolean),
@@ -140,6 +144,22 @@ export function WhaleScreen() {
   }, [bootstrap]);
 
   useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      setAppState(nextState);
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAppActive || isLoading) {
+      return;
+    }
+    loadData(sortMode).catch(() => undefined);
+  }, [isAppActive, isLoading, loadData, sortMode]);
+
+  useEffect(() => {
     const symbol = selectedSymbol.trim().toUpperCase();
     if (!symbol) {
       return;
@@ -179,6 +199,11 @@ export function WhaleScreen() {
   useEffect(() => {
     clearPolling();
     closeSocket();
+
+    if (!isAppActive) {
+      setConnectionStatus('disconnected');
+      return;
+    }
 
     if (!trackedSymbolCodes.length) {
       setConnectionStatus('disconnected');
@@ -268,7 +293,7 @@ export function WhaleScreen() {
       clearPolling();
       closeSocket();
     };
-  }, [clearPolling, closeSocket, sortMode, startPolling, trackedSymbolCodes]);
+  }, [clearPolling, closeSocket, isAppActive, sortMode, startPolling, trackedSymbolCodes]);
 
   const filteredAlerts = useMemo(() => {
     const symbol = selectedSymbol.trim().toUpperCase();
@@ -287,7 +312,9 @@ export function WhaleScreen() {
   }, [advisories, selectedSymbol]);
 
   const connectionText =
-    connectionStatus === 'connected'
+    !isAppActive
+      ? t('whale.status_background')
+      : connectionStatus === 'connected'
       ? t('whale.status_connected')
       : connectionStatus === 'polling'
         ? t('whale.status_polling')

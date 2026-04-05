@@ -17,6 +17,9 @@ Commands:
 - npm start
 - npm run android
 - npm run ios
+- npm run typecheck
+- npm run build:android:preview
+- npm run build:ios:simulator
 
 ## Environment
 
@@ -29,6 +32,12 @@ Copy .env.example to .env and adjust endpoints:
 Local backend notes:
 - iOS simulator can use `http://127.0.0.1:8000`.
 - Android emulator should use `http://10.0.2.2:8000`.
+
+## Internal release
+
+- EAS config is committed in `eas.json` for Sprint 19 internal builds.
+- Before first cloud build, replace `expo.extra.eas.projectId` in `app.json` with the real EAS project id.
+- Android package id is still `com.anonymous.mobileapp` in the current native project; rename it before public store release.
 
 ## Structure
 

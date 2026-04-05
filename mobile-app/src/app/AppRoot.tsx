@@ -4,6 +4,7 @@ import { ActivityIndicator, SafeAreaView, StyleSheet, View } from 'react-native'
 import { BottomTabBar, type TabKey } from '../components/BottomTabBar';
 import { AuthScreen } from '../screens/AuthScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
 import { WhaleScreen } from '../screens/WhaleScreen';
 import { WatchlistScreen } from '../screens/WatchlistScreen';
@@ -68,6 +69,9 @@ export function AppRoot() {
         )}
         {activeTab === 'whale' && (
           <WhaleScreen />
+        )}
+        {activeTab === 'profile' && (
+          <ProfileScreen />
         )}
       </View>
       <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} />
