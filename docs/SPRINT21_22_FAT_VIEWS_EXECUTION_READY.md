@@ -7,6 +7,8 @@
 - `docs/REFACTOR_FAT_VIEWS_DESIGN.md`
 - `docs/REFACTOR_EXECUTION_PLAN.md`
 
+**Dieu kien kich hoat:** Backlog nay chi duoc dua vao sprint planning thuc thi sau khi Sprint 20 i18n da hoan tat va co sign-off.
+
 ---
 
 ## 1. Nguyen tac lap backlog
@@ -16,6 +18,7 @@
 3. Market Data di truoc, Trading di sau va chi vao khi gate da dat.
 4. Moi phase deu co feature flag, regression test, benchmark va rollback trigger.
 5. Scope Trading production canary la **co dieu kien**; neu gate Sprint 22 khong dat thi carry sang sprint tiep theo.
+6. Khong duoc khoi dong task code trong backlog nay neu Sprint 20 chua dong.
 
 ---
 
@@ -37,6 +40,8 @@
 1. Chot baseline metric va feature flag.
 2. Refactor xong Market Data theo boundary `Views -> Services -> Adapters`.
 3. Mo duoc canary 10% cho Market Data tren staging/nhom noi bo.
+
+**Precondition:** Sprint 20 da hoan tat backend `UserConfig.language`, frontend web i18n, sync cross-platform va smoke/sign-off co ban.
 
 ### Backlog Sprint 21
 

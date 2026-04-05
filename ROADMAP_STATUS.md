@@ -218,6 +218,29 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 
 ### Browser Testing
 - Ready to test at http://localhost:3000
+
+---
+
+## Priority Update (2026-04-05)
+
+### Quyet dinh uu tien thuc thi
+
+1. **Uu tien so 1:** Dong Sprint 20 i18n truoc.
+- Hoan tat backend `UserConfig.language`.
+- Hoan tat frontend React i18n cho scope Sprint 20.
+- Hoan tat sync cross-platform va smoke/sign-off.
+
+2. **Uu tien so 2:** Sau khi Sprint 20 dong, mo Phase 0 cua lo trinh Fat Views refactor.
+- Feature flags.
+- Shared exceptions.
+- Baseline dashboard, alerting, measurement contract.
+
+3. **Uu tien so 3:** Sau Phase 0 moi bat dau Sprint 21 Market Data refactor.
+
+### Ghi chu dieu phoi
+
+- Cac tai lieu Sprint 21-22 da san sang cho planning, nhung chua duoc phep khoi dong code execution truoc khi Sprint 20 dong.
+- Muc tieu la tranh tranh chap giua i18n web/backend cua Sprint 20 va refactor runtime/API layer cua Sprint 21.
 - Candlestick chart visible (via StockDetail route)
 - Realtime panels functional (Watchlist, Dashboard)
 

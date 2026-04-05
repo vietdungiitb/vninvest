@@ -8,6 +8,14 @@ Tài liệu này chuyển hóa audit và design thành lộ trình triển khai 
 - Không đổi storage của `DailyPrice` trong phase refactor đầu tiên.
 - Không đụng Trading trước khi Market Data đã qua đủ vòng kiểm chứng.
 
+## 1A. Điều Kiện Kích Hoạt Kế Hoạch
+- Kế hoạch này chỉ được kích hoạt sau khi Sprint 20 i18n được hoàn tất và sign-off.
+- Khi Sprint 20 còn mở, chỉ cho phép tinh chỉnh planning/docs; không bắt đầu code execution cho Phase 0 trở đi.
+- Thứ tự ưu tiên chuyển giao giữa hai sprint:
+    1. Đóng Sprint 20.
+    2. Mở Phase 0 (baseline, flags, exceptions, observability).
+    3. Chỉ sau Phase 0 mới mở Phase 1 Market Data.
+
 ## 2. Phase 0: Baseline và Chuẩn Bị
 ### Mục tiêu
 Chốt measurement contract, feature flag, cấu trúc module và baseline metric trước khi viết code refactor.

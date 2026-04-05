@@ -16,6 +16,14 @@
 
 **Sprint 20 chỉ còn**: Backend (`UserConfig.language`) + Frontend React (8 pages) + sync cross-platform.
 
+**Quyết định ưu tiên thực thi (2026-04-05):**
+- Sprint 20 phải được hoàn tất trước khi mở code execution cho lộ trình Fat Views refactor.
+- Trong thời gian Sprint 20 còn mở, chỉ cho phép cập nhật planning/docs cho Sprint 21-22; chưa triển khai code refactor Market Data, Realtime Connection Manager hay Trading boundary mới.
+- Thứ tự ưu tiên sau khi đóng Sprint 20:
+  1. Hoàn tất sign-off Sprint 20 (backend `language`, frontend web i18n, sync cross-platform, smoke test).
+  2. Mở Phase 0 của lộ trình refactor: feature flags, exceptions, baseline metrics, alerting.
+  3. Sau khi Phase 0 sẵn sàng mới bắt đầu Sprint 21 Phase 1 cho Market Data.
+
 ---
 
 ## Mục tiêu
