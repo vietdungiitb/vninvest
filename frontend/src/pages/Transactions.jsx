@@ -14,16 +14,18 @@ import {
   getStockProfile,
 } from '../api/client';
 import { formatVND } from '../components/StatCard';
+import { useI18n } from '../context/LangContext';
 
 const ALL_TAB = '__all__';
 
 // Biểu phí chuẩn thị trường Việt Nam
 // Phí môi giới: tuỳ CTCK; Phí VSD: 0.03% (cố định); Thuế TNCN (BÁN): 0.1%
+const FEE_PRESET_KEYS = ['vps', 'hsc', 'other', 'manual'];
 const FEE_PRESETS = [
-  { label: 'VPS / SSI / MBS (0.15%)', brokerage: 0.0015 },
-  { label: 'HSC / VCSC (0.20%)', brokerage: 0.002 },
-  { label: 'CTCK khác (0.25%)', brokerage: 0.0025 },
-  { label: 'Nhập tay', brokerage: null },
+  { key: 'vps', brokerage: 0.0015 },
+  { key: 'hsc', brokerage: 0.002 },
+  { key: 'other', brokerage: 0.0025 },
+  { key: 'manual', brokerage: null },
 ];
 const VSD_RATE = 0.0003;      // 0.03% — phí VSD cố định
 const TAX_SELL_RATE = 0.001;  // 0.1%  — thuế TNCN chỉ khi BÁN
@@ -51,7 +53,6 @@ const EMPTY_FORM = {
   notes: '',
 };
 
-const TYPE_LABELS = { BUY: 'Mua', SELL: 'Bán', DIVIDEND: 'Cổ tức' };
 const TYPE_BG = {
   BUY: 'bg-emerald-950/40 text-emerald-300',
   SELL: 'bg-red-950/40 text-red-300',
@@ -67,6 +68,7 @@ const SA_COLORS = [
 
 export default function Transactions() {
   const { activePortfolioId } = usePortfolio();
+  const { t, locale, formatNumber } = useI18n();
   const [subAccounts, setSubAccounts] = useState([]);
   const [activeTab, setActiveTab] = useState(ALL_TAB); // sub_account id hoặc ALL_TAB
   const [txBySubAccount, setTxBySubAccount] = useState({}); // { subAccountId: [...txs] }
@@ -79,6 +81,19 @@ export default function Transactions() {
   const [feePresetIdx, setFeePresetIdx] = useState(0); // index vào FEE_PRESETS
   const [feeAutoManual, setFeeAutoManual] = useState(false); // true = user đã tự nhập phí
 
+  const feePresetLabels = useMemo(() => {
+    return FEE_PRESET_KEYS.reduce((acc, key) => {
+      acc[key] = t(`transactions.feePresets.${key}`);
+      return acc;
+    }, {});
+  }, [t]);
+
+  const typeLabels = useMemo(() => ({
+    BUY: t('transactions.buy'),
+    SELL: t('transactions.sell'),
+    DIVIDEND: t('transactions.dividend'),
+  }), [t]);
+
   // ---------- Load sub-accounts ----------
   const fetchSubAccounts = useCallback(async () => {
     if (!activePortfolioId) { setSubAccounts([]); return; }
@@ -88,9 +103,10 @@ export default function Transactions() {
       setSubAccounts(filtered);
     } catch (err) {
       console.error('Load subaccounts failed:', err);
+      setError(t('transactions.loadSubAccountsFailed'));
       setSubAccounts([]);
     }
-  }, [activePortfolioId]);
+  }, [activePortfolioId, t]);
 
   // ---------- Load giao dịch ----------
   const fetchTx = useCallback(async () => {
@@ -229,9 +245,9 @@ export default function Transactions() {
       await getStockProfile(normalizedSymbol);
     } catch (err) {
       if (err.response?.status === 404) {
-        setError('Mã chứng khoán chưa có trong danh mục hệ thống, không thể lưu giao dịch.');
+        setError(t('transactions.stockNotFound'));
       } else {
-        setError('Không thể kiểm tra mã chứng khoán lúc này. Vui lòng thử lại.');
+        setError(t('transactions.stockVerifyFailed'));
       }
       setSubmitting(false);
       return;
@@ -256,19 +272,19 @@ export default function Transactions() {
       fetchTx();
     } catch (err) {
       const data = err.response?.data;
-      setError(data ? JSON.stringify(data) : 'Có lỗi xảy ra, vui lòng thử lại.');
+      setError(data ? JSON.stringify(data) : t('transactions.saveFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xác nhận xoá giao dịch này?')) return;
+    if (!window.confirm(t('transactions.deleteConfirm'))) return;
     try {
       await deleteTransaction(id);
       fetchTx();
     } catch {
-      alert('Xoá thất bại.');
+      alert(t('transactions.deleteFailed'));
     }
   };
 
@@ -276,7 +292,7 @@ export default function Transactions() {
   if (!activePortfolioId) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        Chưa có danh mục nào.
+        {t('transactions.noPortfolio')}
       </div>
     );
   }
@@ -284,7 +300,7 @@ export default function Transactions() {
   if (subAccounts.length === 0) {
     return (
       <div className="flex items-center justify-center h-64 text-gray-500">
-        Danh mục này chưa có tiểu khoản. Hãy tạo hoặc seed dữ liệu demo trước.
+        {t('transactions.noSubAccount')}
       </div>
     );
   }
@@ -300,17 +316,17 @@ export default function Transactions() {
       {/* ---- Header ---- */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-100">Lịch sử giao dịch</h1>
+          <h1 className="text-xl font-bold text-gray-100">{t('transactions.title')}</h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            {displayTx.length} giao dịch
-            {activeSaName ? ` · ${activeSaName}` : ' · Tất cả tiểu khoản'}
+            {t('transactions.count', { count: formatNumber(displayTx.length) })}
+            {activeSaName ? ` · ${activeSaName}` : ` · ${t('transactions.allSubAccounts')}`}
           </p>
         </div>
         <button
           onClick={showForm ? cancelForm : openCreate}
           className="bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
         >
-          {showForm ? (editId ? 'Huỷ chỉnh sửa' : 'Huỷ') : '+ Thêm giao dịch'}
+          {showForm ? (editId ? t('transactions.cancelEdit') : t('transactions.cancel')) : t('transactions.add')}
         </button>
       </div>
 
@@ -324,7 +340,7 @@ export default function Transactions() {
               : 'border-gray-700 text-gray-400 hover:text-gray-200'
           }`}
         >
-          Tất cả
+          {t('transactions.all')}
           <span className="ml-1.5 opacity-60">{displayTx.length}</span>
         </button>
         {subAccounts.map((sa, i) => {
@@ -364,9 +380,9 @@ export default function Transactions() {
                 </div>
                 <div className="text-2xl font-bold text-gray-100">{txs.length}</div>
                 <div className="text-xs text-gray-500 mt-0.5">
-                  <span className="text-emerald-400">{buyCount} Mua</span>
+                  <span className="text-emerald-400">{buyCount} {t('transactions.buy')}</span>
                   {' · '}
-                  <span className="text-red-400">{sellCount} Bán</span>
+                  <span className="text-red-400">{sellCount} {t('transactions.sell')}</span>
                 </div>
               </button>
             );
@@ -381,12 +397,12 @@ export default function Transactions() {
           className="bg-gray-900 border border-gray-800 rounded-xl p-5 grid grid-cols-2 md:grid-cols-3 gap-4"
         >
           <h2 className="col-span-2 md:col-span-3 text-sm font-semibold text-gray-200 mb-0">
-            {editId ? '✏️ Chỉnh sửa giao dịch' : '+ Thêm giao dịch mới'}
+            {editId ? `✏️ ${t('transactions.editTransaction')}` : t('transactions.addTransaction')}
           </h2>
 
           {/* Tiểu khoản */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Tiểu khoản</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.subAccount')}</label>
             <select
               name="sub_account_id"
               value={form.sub_account_id}
@@ -403,23 +419,23 @@ export default function Transactions() {
 
           {/* Loại lệnh */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Loại lệnh</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.orderType')}</label>
             <select
               name="transaction_type"
               value={form.transaction_type}
               onChange={handleChange}
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
             >
-              <option value="BUY">Mua</option>
-              <option value="SELL">Bán</option>
-              <option value="DIVIDEND">Cổ tức tiền mặt</option>
+              <option value="BUY">{t('transactions.buy')}</option>
+              <option value="SELL">{t('transactions.sell')}</option>
+              <option value="DIVIDEND">{t('transactions.cashDividend')}</option>
             </select>
           </div>
 
           {/* Mã CK, Ngày */}
           {[
-            { name: 'symbol', label: 'Mã CK', type: 'text', placeholder: 'VNM' },
-            { name: 'date', label: 'Ngày', type: 'date' },
+            { name: 'symbol', label: t('transactions.symbol'), type: 'text', placeholder: 'VNM' },
+            { name: 'date', label: t('transactions.date'), type: 'date' },
           ].map(({ name, label, type, placeholder }) => (
             <div key={name}>
               <label className="block text-xs text-gray-400 mb-1.5">{label}</label>
@@ -437,7 +453,7 @@ export default function Transactions() {
 
           {/* Giá */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Giá (VNĐ)</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.price')}</label>
             <input
               type="number"
               name="price"
@@ -452,7 +468,7 @@ export default function Transactions() {
 
           {/* Khối lượng */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Khối lượng</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.quantity')}</label>
             <input
               type="number"
               name="quantity"
@@ -465,7 +481,7 @@ export default function Transactions() {
             />
             {form.price && form.quantity && (
               <p className="text-[10px] text-gray-500 mt-1">
-                GT giao dịch: <span className="text-gray-300 font-semibold">{(parseFloat(form.price) * parseFloat(form.quantity)).toLocaleString('vi-VN')} đ</span>
+                {t('transactions.transactionValue')}: <span className="text-gray-300 font-semibold">{formatNumber(parseFloat(form.price) * parseFloat(form.quantity))} đ</span>
               </p>
             )}
           </div>
@@ -473,7 +489,7 @@ export default function Transactions() {
           {/* Phí môi giới — preset + auto-calc */}
           <div className="col-span-2 md:col-span-3 bg-gray-800/40 rounded-xl border border-gray-700/60 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <span className="text-xs font-semibold text-gray-300">Phí giao dịch</span>
+              <span className="text-xs font-semibold text-gray-300">{t('transactions.fees')}</span>
               <div className="flex flex-wrap gap-1.5">
                 {FEE_PRESETS.map((p, i) => (
                   <button
@@ -486,7 +502,7 @@ export default function Transactions() {
                         : 'border-gray-700 text-gray-500 hover:text-gray-300'
                     }`}
                   >
-                    {p.label}
+                    {feePresetLabels[p.key]}
                   </button>
                 ))}
               </div>
@@ -496,19 +512,19 @@ export default function Transactions() {
             {feeBreakdown && (
               <div className="grid grid-cols-3 gap-2 mb-3 text-[11px]">
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
-                  <div className="text-gray-500">Phí môi giới</div>
-                  <div className="text-gray-200 font-semibold mt-0.5">{Math.round(feeBreakdown.brokerageFee).toLocaleString('vi-VN')} đ</div>
+                  <div className="text-gray-500">{t('transactions.brokerageFee')}</div>
+                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.brokerageFee))} đ</div>
                 </div>
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
-                  <div className="text-gray-500">Phí VSD (0.03%)</div>
-                  <div className="text-gray-200 font-semibold mt-0.5">{Math.round(feeBreakdown.vsdFee).toLocaleString('vi-VN')} đ</div>
+                  <div className="text-gray-500">{t('transactions.vsdFee')}</div>
+                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.vsdFee))} đ</div>
                 </div>
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
                   <div className="text-gray-500">
-                    Thuế TNCN {form.transaction_type === 'SELL' ? '(0.1%)' : '(chỉ BÁN)'}
+                    {form.transaction_type === 'SELL' ? t('transactions.personalIncomeTaxSell') : t('transactions.personalIncomeTaxSellOnly')}
                   </div>
                   <div className={`font-semibold mt-0.5 ${form.transaction_type === 'SELL' ? 'text-red-300' : 'text-gray-600'}`}>
-                    {Math.round(feeBreakdown.taxFee).toLocaleString('vi-VN')} đ
+                    {formatNumber(Math.round(feeBreakdown.taxFee))} đ
                   </div>
                 </div>
               </div>
@@ -517,20 +533,20 @@ export default function Transactions() {
             <div className="flex items-end gap-3">
               <div className="flex-1">
                 <label className="block text-xs text-gray-400 mb-1.5">
-                  Tổng phí (VNĐ)
+                  {t('transactions.totalFee')}
                   {feeBreakdown && !feeAutoManual && (
-                    <span className="ml-2 text-brand-400 text-[10px]">✓ Tự động</span>
+                    <span className="ml-2 text-brand-400 text-[10px]">✓ {t('transactions.autoFee')}</span>
                   )}
                   {feeAutoManual && (
                     <span className="ml-2 text-amber-400 text-[10px]">
-                      ✎ Nhập tay
+                      ✎ {t('transactions.manualFee')}
                       <button
                         type="button"
                         onClick={() => handleFeePresetChange(feePresetIdx)}
                         className="ml-1.5 underline hover:text-amber-300"
                         disabled={!FEE_PRESETS[feePresetIdx]?.brokerage}
                       >
-                        reset
+                        {t('transactions.reset')}
                       </button>
                     </span>
                   )}
@@ -549,7 +565,7 @@ export default function Transactions() {
 
           {/* Ghi chú */}
           <div className="col-span-2 md:col-span-3">
-            <label className="block text-xs text-gray-400 mb-1.5">Ghi chú</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.notes')}</label>
             <input
               type="text"
               name="notes"
@@ -571,14 +587,14 @@ export default function Transactions() {
               onClick={cancelForm}
               className="text-sm text-gray-400 hover:text-gray-200 transition-colors"
             >
-              Huỷ
+              {t('transactions.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting}
               className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-lg text-sm transition-colors"
             >
-              {submitting ? 'Đang lưu...' : editId ? 'Cập nhật' : 'Lưu giao dịch'}
+              {submitting ? t('transactions.saving') : editId ? t('transactions.updateTransaction') : t('transactions.saveTransaction')}
             </button>
           </div>
         </form>
@@ -587,25 +603,25 @@ export default function Transactions() {
       {/* ---- Bảng giao dịch ---- */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Đang tải...</div>
+          <div className="p-8 text-center text-gray-500">{t('transactions.loading')}</div>
         ) : displayTx.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">Chưa có giao dịch nào.</div>
+          <div className="p-8 text-center text-gray-500">{t('transactions.empty')}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Ngày</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Mã CK</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Loại</th>
+                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.date')}</th>
+                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.symbol')}</th>
+                  <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.type')}</th>
                   {activeTab === ALL_TAB && (
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tiểu khoản</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.subAccount')}</th>
                   )}
-                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Giá</th>
-                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">KL</th>
-                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Phí</th>
-                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tổng giá trị</th>
-                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tác vụ</th>
+                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.price')}</th>
+                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.quantity')}</th>
+                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.fee')}</th>
+                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.totalValue')}</th>
+                  <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('transactions.table.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-800/60">
@@ -625,7 +641,7 @@ export default function Transactions() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${TYPE_BG[tx.transaction_type]}`}>
-                        {TYPE_LABELS[tx.transaction_type]}
+                        {typeLabels[tx.transaction_type]}
                       </span>
                     </td>
                     {activeTab === ALL_TAB && (
@@ -635,22 +651,22 @@ export default function Transactions() {
                         </span>
                       </td>
                     )}
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.price)}</td>
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right">{parseFloat(tx.quantity).toLocaleString('vi-VN')}</td>
-                    <td className="px-4 py-3 text-gray-400 tabular-nums text-right">{formatVND(tx.fee)}</td>
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.total_value)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.price, locale)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right">{formatNumber(tx.quantity)}</td>
+                    <td className="px-4 py-3 text-gray-400 tabular-nums text-right">{formatVND(tx.fee, locale)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.total_value, locale)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         onClick={() => openEdit(tx)}
                         className="text-xs text-brand-400 hover:text-brand-300 font-semibold transition-colors mr-3"
                       >
-                        Sửa
+                        {t('transactions.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(tx.id)}
                         className="text-xs text-red-400 hover:text-red-300 font-semibold transition-colors"
                       >
-                        Xóa
+                        {t('transactions.delete')}
                       </button>
                     </td>
                   </tr>

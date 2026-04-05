@@ -3,39 +3,20 @@ import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getTrackedSymbols, getRealtimeHealth } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
+import { useI18n } from '../context/LangContext';
 
-const REALTIME_LABELS = {
-  idle: 'Chưa kết nối',
-  connecting: 'Đang kết nối',
-  live: 'Realtime đang chạy',
-  polling: 'Fallback polling',
-};
-
-function formatNumber(value) {
+function formatNumberSafe(value, formatNumberFn) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
-  return Number(value).toLocaleString('vi-VN');
+  return formatNumberFn(Number(value));
 }
 
-function formatPrice(value) {
+function formatPrice(value, formatNumberFn, suffix = '') {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
-  return `${Number(value).toLocaleString('vi-VN')} đ`;
-}
-
-function formatTime(value) {
-  if (!value) {
-    return '—';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return date.toLocaleTimeString('vi-VN');
+  return `${formatNumberFn(Number(value))}${suffix}`;
 }
 
 function toNumber(value) {
@@ -43,12 +24,12 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function fmtBil(value) {
+function fmtBil(value, formatNumberFn) {
   const v = Number(value) || 0;
   if (v >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)}N`;
   if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}T`;
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)}Tr`;
-  return formatNumber(v);
+  return formatNumberSafe(v, formatNumberFn);
 }
 
 function sizeClassEmoji(cls) {
@@ -64,9 +45,17 @@ function severityTone(severity) {
 }
 
 export default function DashboardRealtimePanel({ holdings }) {
+  const { t, formatNumber, formatTime } = useI18n();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [snapshotAlerts, setSnapshotAlerts] = useState([]);
+
+  const realtimeLabels = useMemo(() => ({
+    idle: t('dashboardRealtime.statusIdle'),
+    connecting: t('dashboardRealtime.statusConnecting'),
+    live: t('dashboardRealtime.statusLive'),
+    polling: t('dashboardRealtime.statusPolling'),
+  }), [t]);
 
   const holdingSymbols = useMemo(
     () => [...new Set((holdings || []).map((item) => item.symbol).filter(Boolean))],
@@ -252,61 +241,59 @@ export default function DashboardRealtimePanel({ holdings }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Radar Realtime
+            {t('dashboardRealtime.title')}
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Theo dõi giá và whale alerts cho danh mục đang nắm giữ cùng shortlist theo dõi cá nhân.
+            {t('dashboardRealtime.subtitle')}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className={`px-2.5 py-1 rounded-full border ${statusClasses}`}>
-            {REALTIME_LABELS[realtimeStatus]}
+            {realtimeLabels[realtimeStatus]}
           </span>
           <span className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-950 text-gray-400">
-            Sự kiện gần nhất: {formatTime(lastEventAt)}
+            {t('dashboardRealtime.lastEvent', { time: formatTime(lastEventAt) })}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs mt-2 w-full">
-          <span className="text-gray-600 mr-0.5">Observability:</span>
+          <span className="text-gray-600 mr-0.5">{t('dashboardRealtime.observability')}</span>
           <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
-            📈 {metrics?.eventCounts?.ticker_update ?? 0} tickers
+            📈 {t('dashboardRealtime.eventTickers', { count: formatNumber(metrics?.eventCounts?.ticker_update ?? 0) })}
           </span>
           <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
-            🐋 {metrics?.eventCounts?.whale_alert ?? 0} whale
+            🐋 {t('dashboardRealtime.eventWhale', { count: formatNumber(metrics?.eventCounts?.whale_alert ?? 0) })}
           </span>
           {(metrics?.eventCounts?.dark_flow_alert ?? 0) > 0 && (
             <span className="px-2 py-0.5 rounded border border-violet-800 bg-violet-950/20 text-violet-400">
-              🌊 {metrics.eventCounts.dark_flow_alert} dark flow
+              🌊 {t('dashboardRealtime.eventDarkFlow', { count: formatNumber(metrics.eventCounts.dark_flow_alert) })}
             </span>
           )}
           <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
-            💓 {metrics?.eventCounts?.heartbeat ?? 0} hb
+            💓 {t('dashboardRealtime.eventHeartbeat', { count: formatNumber(metrics?.eventCounts?.heartbeat ?? 0) })}
           </span>
           {(metrics?.eventCounts?.reconnect_attempts ?? 0) > 0 && (
             <span className="px-2 py-0.5 rounded border border-amber-800 bg-amber-950/20 text-amber-400">
-              ↺ {metrics.eventCounts.reconnect_attempts} reconnect
+              ↺ {t('dashboardRealtime.eventReconnect', { count: formatNumber(metrics.eventCounts.reconnect_attempts) })}
             </span>
           )}
           {metrics?.lastLatencyMs !== null && metrics?.lastLatencyMs !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${
-              metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'
-            }`}>
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'
+              }`}>
               ⚡ {metrics.lastLatencyMs}ms
             </span>
           )}
           {realtimeHealth && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${
-              realtimeHealth.channel_layer_type === 'inmemory'
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${realtimeHealth.channel_layer_type === 'inmemory'
                 ? 'border-yellow-800 text-yellow-500'
                 : realtimeHealth.redis_ok === false
                   ? 'border-red-800 text-red-400'
                   : 'border-emerald-900 text-emerald-500'
-            }`}>
+              }`}>
               {realtimeHealth.channel_layer_type === 'inmemory'
-                ? '🧠 inmemory'
+                ? t('dashboardRealtime.channelInmemory')
                 : realtimeHealth.redis_ok === false
-                  ? '🔴 redis down'
-                  : '🟢 redis'}
+                  ? t('dashboardRealtime.channelRedisDown')
+                  : t('dashboardRealtime.channelRedisUp')}
             </span>
           )}
         </div>
@@ -314,61 +301,61 @@ export default function DashboardRealtimePanel({ holdings }) {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-blue-300">Giá trị gần realtime</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue)}</p>
-          <p className="text-xs text-gray-500 mt-1">Tính từ holdings đang nắm giữ + ticker realtime mới nhất</p>
+          <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
+          <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</p>
+          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">P/L chưa chốt gần realtime</p>
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
           <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {formatPrice(realtimePortfolioStats.totalUnrealizedPL)}
+            {formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
           </p>
           <p className={`text-xs mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-500'}`}>
             {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%
           </p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">Mã đang giám sát</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{monitoredSymbols.length}</p>
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+          <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(monitoredSymbols.length)}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">Lệch so với snapshot</p>
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
           <p className={`text-2xl font-bold mt-1 ${liveVsSnapshotDelta > 0 ? 'text-emerald-300' : liveVsSnapshotDelta < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {formatPrice(liveVsSnapshotDelta)}
+            {formatPrice(liveVsSnapshotDelta, formatNumber, ' đ')}
           </p>
-          <p className="text-xs text-gray-500 mt-1">So với market value từ lần đồng bộ giá gần nhất</p>
+          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">Stale</p>
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
           <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.stalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
-            {realtimePortfolioStats.stalePositions}
+            {formatNumber(realtimePortfolioStats.stalePositions)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">Số vị thế holdings đang dùng quote stale</p>
+          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">Tăng / Giảm / Giữ</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{marketStats.up} / {marketStats.down} / {marketStats.flat}</p>
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
+          <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(marketStats.up)} / {formatNumber(marketStats.down)} / {formatNumber(marketStats.flat)}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
-            <h3 className="text-sm font-semibold text-gray-200">Trạng thái thị trường theo mã</h3>
+            <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
           </div>
           {quoteList.length === 0 ? (
             <div className="px-4 py-8 text-sm text-gray-500 text-center">
-              Chưa có mã để theo dõi realtime trên dashboard.
+              {t('dashboardRealtime.noSymbols')}
             </div>
           ) : (
             <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-800">
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Mã</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Giá</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">% thay đổi</th>
-                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Độ tươi</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableSymbol')}</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePrice')}</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePctChange')}</th>
+                    <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableFreshness')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/60">
@@ -385,7 +372,7 @@ export default function DashboardRealtimePanel({ holdings }) {
                             {item.symbol}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-gray-200">{formatPrice(item.current_price)}</td>
+                        <td className="px-4 py-3 text-gray-200">{formatPrice(item.current_price, formatNumber, ' đ')}</td>
                         <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
                           {item.change_pct === null || item.change_pct === undefined
                             ? '—'
@@ -393,9 +380,9 @@ export default function DashboardRealtimePanel({ holdings }) {
                         </td>
                         <td className="px-4 py-3 text-xs">
                           {item.stale ? (
-                            <span className="text-amber-300">Stale</span>
+                            <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
                           ) : (
-                            <span className="text-gray-500">{item.freshness_seconds ?? 0}s</span>
+                            <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>
                           )}
                         </td>
                       </tr>
@@ -409,17 +396,17 @@ export default function DashboardRealtimePanel({ holdings }) {
 
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-200">Whale alerts gần nhất</h3>
+            <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.recentWhaleAlerts')}</h3>
             <Link
               to="/whale-alerts"
               className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
             >
-              Xem tất cả →
+              {t('dashboardRealtime.viewAll')}
             </Link>
           </div>
           {mergedAlerts.length === 0 ? (
             <div className="px-4 py-8 text-sm text-gray-500 text-center">
-              Chưa có whale alert mới. Panel sẽ tự cập nhật khi có event hoặc nạp snapshot từ aggregate feed.
+              {t('dashboardRealtime.noAlerts')}
             </div>
           ) : (
             <div className="max-h-[420px] overflow-y-auto px-3 py-3 flex flex-col gap-2">
@@ -435,13 +422,12 @@ export default function DashboardRealtimePanel({ holdings }) {
                     to={`/whale-alerts/${alert.symbol}`}
                     className="block"
                   >
-                    <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${
-                      isBuy
+                    <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${isBuy
                         ? 'border-emerald-700/60 bg-emerald-950/30'
                         : side === 'sell'
-                        ? 'border-rose-700/60 bg-rose-950/30'
-                        : 'border-slate-700/60 bg-slate-900/30'
-                    } ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                          ? 'border-rose-700/60 bg-rose-950/30'
+                          : 'border-slate-700/60 bg-slate-900/30'
+                      } ${index === 0 ? 'animate-pulse-once' : ''}`}>
                       {isBig && (
                         <span className="absolute right-2 top-1.5 text-[18px] opacity-50">
                           {sizeClassEmoji(sizeClass)}
@@ -450,14 +436,13 @@ export default function DashboardRealtimePanel({ holdings }) {
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-bold text-white text-[13px]">{alert.symbol}</span>
                         <div className="flex items-center gap-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                            isBuy
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${isBuy
                               ? 'bg-emerald-900/60 text-emerald-300'
                               : side === 'sell'
-                              ? 'bg-rose-900/60 text-rose-300'
-                              : 'bg-slate-800 text-slate-400'
-                          }`}>
-                            {isBuy ? '▲ MUA LỚN' : side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+                                ? 'bg-rose-900/60 text-rose-300'
+                                : 'bg-slate-800 text-slate-400'
+                            }`}>
+                            {isBuy ? t('dashboardRealtime.bigBuy') : side === 'sell' ? t('dashboardRealtime.bigSell') : t('dashboardRealtime.neutral')}
                           </span>
                           {severity && (
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityTone(severity)}`}>
@@ -467,18 +452,18 @@ export default function DashboardRealtimePanel({ holdings }) {
                         </div>
                       </div>
                       <div className="mt-1 flex items-baseline justify-between gap-2">
-                        <span className="text-sm font-bold text-white">{fmtBil(alert.matched_value)}</span>
+                        <span className="text-sm font-bold text-white">{fmtBil(alert.matched_value, formatNumber)}</span>
                         <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
-                        Ngưỡng: {fmtBil(alert.threshold)}
+                        {t('dashboardRealtime.threshold')}: {fmtBil(alert.threshold, formatNumber)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
-                        Nguồn: {alert.source || 'realtime'}
+                        {t('dashboardRealtime.source')}: {alert.source || 'realtime'}
                       </div>
                       {(alert.display_score != null || alert.event_score != null) && (
                         <div className="mt-0.5 text-[11px] text-slate-500">
-                          Score: {alert.display_score ?? '—'} / Event: {alert.event_score ?? '—'}
+                          {t('dashboardRealtime.score')}: {alert.display_score ?? '—'} / {t('dashboardRealtime.event')}: {alert.event_score ?? '—'}
                         </div>
                       )}
                     </div>

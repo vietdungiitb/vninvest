@@ -13,6 +13,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { getChartData } from '../api/client';
+import { useI18n } from '../context/LangContext';
 
 const PERIODS = [
   { label: '1T', days: 30 },
@@ -28,27 +29,28 @@ function formatAxisVND(value) {
   return value;
 }
 
-function formatTooltipVND(value) {
-  return new Intl.NumberFormat('vi-VN', {
+function formatTooltipVND(value, localeTag) {
+  return new Intl.NumberFormat(localeTag, {
     style: 'currency',
     currency: 'VND',
     minimumFractionDigits: 0,
   }).format(value);
 }
 
-function CustomTooltip({ active, payload, label }) {
+function CustomTooltip({ active, payload, label, localeTag }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-xl">
       <p className="text-xs text-gray-400 mb-1">{label}</p>
       <p className="text-sm font-bold text-brand-400">
-        {formatTooltipVND(payload[0].value)}
+        {formatTooltipVND(payload[0].value, localeTag)}
       </p>
     </div>
   );
 }
 
 export default function PortfolioLineChart({ portfolioId }) {
+  const { t, localeTag } = useI18n();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activePeriod, setActivePeriod] = useState(90);
@@ -64,7 +66,7 @@ export default function PortfolioLineChart({ portfolioId }) {
       }));
       setData(formatted);
     } catch (err) {
-      console.error('Lỗi tải dữ liệu biểu đồ:', err);
+      console.error('Load chart data failed:', err);
     } finally {
       setLoading(false);
     }
@@ -83,11 +85,11 @@ export default function PortfolioLineChart({ portfolioId }) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Tăng trưởng tài sản
+            {t('portfolioLineChart.title')}
           </h2>
           {data.length > 1 && !loading && (
             <p className={`text-xs mt-0.5 font-medium ${isUp ? 'text-brand-500' : 'text-red-400'}`}>
-              {isUp ? '+' : ''}{changePct.toFixed(2)}% trong kỳ
+              {t('portfolioLineChart.changeInPeriod', { value: `${isUp ? '+' : ''}${changePct.toFixed(2)}` })}
             </p>
           )}
         </div>
@@ -113,7 +115,7 @@ export default function PortfolioLineChart({ portfolioId }) {
         <div className="h-48 bg-gray-800 rounded-lg animate-pulse" />
       ) : data.length < 2 ? (
         <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
-          Chưa đủ dữ liệu. Hãy đồng bộ giá và thêm giao dịch.
+          {t('portfolioLineChart.notEnoughData')}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
@@ -143,7 +145,7 @@ export default function PortfolioLineChart({ portfolioId }) {
               tickFormatter={formatAxisVND}
               width={55}
             />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip localeTag={localeTag} />} />
             <Area
               type="monotone"
               dataKey="value"

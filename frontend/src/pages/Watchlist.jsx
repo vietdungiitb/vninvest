@@ -13,20 +13,9 @@ import {
   getPriceAlerts, createPriceAlert, updatePriceAlert, deletePriceAlert, markPriceAlertTriggered,
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
+import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import RealtimeDebugPanel from '../components/RealtimeDebugPanel';
-
-const TYPE_LABELS = { SECTOR: 'Ngành', MARKET_CAP: 'Vốn hóa', CUSTOM: 'Tùy chỉnh' };
-const REALTIME_LABELS = {
-  idle: 'Chưa kết nối',
-  connecting: 'Đang kết nối realtime',
-  live: 'Realtime đang chạy',
-  polling: 'Fallback polling',
-};
-const PRICE_ALERT_CONDITION_LABELS = {
-  ABOVE: 'Vượt lên trên',
-  BELOW: 'Rơi xuống dưới',
-};
 
 function severityTone(severity) {
   if (severity === 'extreme') return 'bg-rose-500 text-white border-rose-400/40';
@@ -65,9 +54,9 @@ function ChangeCell({ value }) {
   );
 }
 
-function PctCell({ pct }) {
+function PctCell({ pct, emptyLabel }) {
   if (pct === null || pct === undefined) {
-    return <span className="text-gray-600 text-xs">Chưa sync</span>;
+    return <span className="text-gray-600 text-xs">{emptyLabel}</span>;
   }
   const isUp = pct > 0;
   const isDown = pct < 0;
@@ -78,22 +67,9 @@ function PctCell({ pct }) {
   );
 }
 
-function formatPrice(val) {
+function formatPrice(val, formatNumberFn) {
   if (val === null || val === undefined) return <span className="text-gray-600">—</span>;
-  return <span className="text-gray-200 tabular-nums">{Number(val).toLocaleString('vi-VN')}</span>;
-}
-
-function formatDateTime(value) {
-  if (!value) {
-    return '—';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return String(value);
-  }
-
-  return `${date.toLocaleDateString('vi-VN')} ${date.toLocaleTimeString('vi-VN')}`;
+  return <span className="text-gray-200 tabular-nums">{formatNumberFn(val)}</span>;
 }
 
 function isPriceAlertMatched(rule, currentPrice) {
@@ -111,6 +87,22 @@ function isPriceAlertMatched(rule, currentPrice) {
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { userConfig } = usePortfolio();
+  const { t, formatNumber, formatTime, formatDateTime } = useI18n();
+  const realtimeLabels = useMemo(() => ({
+    idle: t('watchlist.statusIdle'),
+    connecting: t('watchlist.statusConnecting'),
+    live: t('watchlist.statusLive'),
+    polling: t('watchlist.statusPolling'),
+  }), [t]);
+  const priceAlertConditionLabels = useMemo(() => ({
+    ABOVE: t('watchlist.above'),
+    BELOW: t('watchlist.below'),
+  }), [t]);
+  const typeLabels = useMemo(() => ({
+    SECTOR: t('watchlist.groupTypeSector'),
+    MARKET_CAP: t('watchlist.groupTypeMarketCap'),
+    CUSTOM: t('watchlist.groupTypeCustom'),
+  }), [t]);
   const [groups, setGroups] = useState([]);
   const [view, setView] = useState('tracked'); // 'tracked' | number (groupId)
   const [loading, setLoading] = useState(false);
@@ -143,9 +135,9 @@ export default function WatchlistPage() {
     setSyncMsg('');
     try {
       await syncStockProfile();
-      setSyncMsg('Đã đồng bộ mã chứng khoán từ thị trường!');
+      setSyncMsg(t('watchlist.stockProfileSyncSuccess'));
     } catch {
-      setSyncMsg('Đồng bộ mã chứng khoán thất bại.');
+      setSyncMsg(t('watchlist.stockProfileSyncFailed'));
     } finally {
       setSyncingStockProfile(false);
       setTimeout(() => setSyncMsg(''), 5000);
@@ -302,7 +294,11 @@ export default function WatchlistPage() {
       },
       ...prev.filter((item) => item.id !== rule.id),
     ].slice(0, 5));
-    setPriceAlertMsg(`Cảnh báo giá: ${rule.symbol} đã ${rule.condition === 'ABOVE' ? 'vượt lên trên' : 'rơi xuống dưới'} ${Number(rule.target_price).toLocaleString('vi-VN')} VNĐ.`);
+    setPriceAlertMsg(t('watchlist.priceAlertTriggered', {
+      symbol: rule.symbol,
+      direction: rule.condition === 'ABOVE' ? t('watchlist.above') : t('watchlist.below'),
+      target: formatNumber(rule.target_price),
+    }));
 
     try {
       const res = await markPriceAlertTriggered(rule.id);
@@ -313,7 +309,7 @@ export default function WatchlistPage() {
       triggeringAlertIdsRef.current.delete(rule.id);
       setTimeout(() => setPriceAlertMsg(''), 5000);
     }
-  }, []);
+  }, [formatNumber, t]);
 
   useEffect(() => {
     const now = Date.now();
@@ -344,10 +340,10 @@ export default function WatchlistPage() {
     setSyncMsg('');
     try {
       const res = await seedSecurities();
-      setSyncMsg(res.data.message || 'Đã nạp nhóm mặc định.');
+      setSyncMsg(res.data.message || t('watchlist.seedSuccess'));
       await fetchGroups();
     } catch {
-      setSyncMsg('Tạo nhóm mặc định thất bại.');
+      setSyncMsg(t('watchlist.seedFailed'));
     } finally {
       setSeeding(false);
       setTimeout(() => setSyncMsg(''), 5000);
@@ -359,11 +355,11 @@ export default function WatchlistPage() {
     setSyncMsg('');
     try {
       const res = await syncSecuritiesPrices(5);
-      setSyncMsg(`Đã sync ${res.data.total_symbols || res.data.total_created} mã.`);
+      setSyncMsg(t('watchlist.syncCount', { count: formatNumber(res.data.total_symbols || res.data.total_created || 0) }));
       await fetchGroups();
       await fetchTracked();
     } catch {
-      setSyncMsg('Đồng bộ thất bại.');
+      setSyncMsg(t('watchlist.syncFailed'));
     } finally {
       setSyncing(false);
       setTimeout(() => setSyncMsg(''), 5000);
@@ -380,21 +376,21 @@ export default function WatchlistPage() {
       setAddSymbol('');
       await fetchTracked();
     } catch (err) {
-      setSymbolError(err.response?.data?.detail || `Không thể thêm ${addSymbol}.`);
+      setSymbolError(err.response?.data?.detail || t('watchlist.addSymbolFailed', { symbol: addSymbol }));
     } finally {
       setAddingSymbol(false);
     }
   };
 
   const handleDeleteTracked = async (id, symbol) => {
-    if (!window.confirm(`Xóa ${symbol} khỏi danh sách theo dõi cá nhân?`)) return;
+    if (!window.confirm(t('watchlist.deleteTrackedConfirm', { symbol }))) return;
     try {
       await deleteTrackedSymbol(id);
       setTrackedSymbols((prev) => prev.filter((t) => t.id !== id));
-      setSyncMsg(`Đã bỏ ${symbol} khỏi danh sách theo dõi cá nhân.`);
+      setSyncMsg(t('watchlist.removedTrackedSuccess', { symbol }));
       setTimeout(() => setSyncMsg(''), 4000);
     } catch {
-      alert('Xóa thất bại.');
+      alert(t('watchlist.deleteFailed'));
     }
   };
 
@@ -408,9 +404,9 @@ export default function WatchlistPage() {
     try {
       await addTrackedSymbol(symbol, groupId);
       await fetchTracked();
-      setSyncMsg(`Đã đưa ${symbol} vào danh sách theo dõi cá nhân.`);
+      setSyncMsg(t('watchlist.addedTrackedSuccess', { symbol }));
     } catch (err) {
-      setSymbolError(err.response?.data?.detail || `Không thể thêm ${symbol} vào danh sách theo dõi cá nhân.`);
+      setSymbolError(err.response?.data?.detail || t('watchlist.addFromGroupFailed', { symbol }));
     } finally {
       setAddingFromGroup((prev) => {
         const next = { ...prev };
@@ -431,7 +427,7 @@ export default function WatchlistPage() {
       .filter((symbol) => !trackedSymbolSet.has(symbol));
 
     if (symbolsToAdd.length === 0) {
-      setSyncMsg('Toàn bộ mã trong nhóm này đã có trong danh sách theo dõi cá nhân.');
+      setSyncMsg(t('watchlist.allSymbolsTracked'));
       setTimeout(() => setSyncMsg(''), 4000);
       return;
     }
@@ -441,9 +437,9 @@ export default function WatchlistPage() {
     try {
       await Promise.all(symbolsToAdd.map((symbol) => addTrackedSymbol(symbol, activeGroup.id)));
       await fetchTracked();
-      setSyncMsg(`Đã thêm ${symbolsToAdd.length} mã từ nhóm ${activeGroup.name} vào danh sách theo dõi cá nhân.`);
+      setSyncMsg(t('watchlist.addedManyFromGroup', { count: formatNumber(symbolsToAdd.length), group: activeGroup.name }));
     } catch (err) {
-      setSymbolError(err.response?.data?.detail || 'Không thể thêm toàn bộ mã của nhóm vào danh sách theo dõi cá nhân.');
+      setSymbolError(err.response?.data?.detail || t('watchlist.addAllFromGroupFailed'));
     } finally {
       setBulkGroupAction(null);
       setTimeout(() => setSyncMsg(''), 5000);
@@ -455,7 +451,10 @@ export default function WatchlistPage() {
       return;
     }
 
-    if (!window.confirm(`Bỏ ${activeGroupTrackedItems.length} mã của nhóm ${activeGroup.name} khỏi danh sách theo dõi cá nhân?`)) {
+    if (!window.confirm(t('watchlist.removeGroupTrackedConfirm', {
+      count: formatNumber(activeGroupTrackedItems.length),
+      group: activeGroup.name,
+    }))) {
       return;
     }
 
@@ -464,9 +463,12 @@ export default function WatchlistPage() {
     try {
       await Promise.all(activeGroupTrackedItems.map((trackedItem) => deleteTrackedSymbol(trackedItem.id)));
       await fetchTracked();
-      setSyncMsg(`Đã bỏ ${activeGroupTrackedItems.length} mã của nhóm ${activeGroup.name} khỏi danh sách theo dõi cá nhân.`);
+      setSyncMsg(t('watchlist.removedManyFromGroup', {
+        count: formatNumber(activeGroupTrackedItems.length),
+        group: activeGroup.name,
+      }));
     } catch {
-      setSymbolError('Không thể bỏ toàn bộ mã đã theo dõi của nhóm khỏi danh sách theo dõi cá nhân.');
+      setSymbolError(t('watchlist.removeAllFromGroupFailed'));
     } finally {
       setBulkGroupAction(null);
       setTimeout(() => setSyncMsg(''), 5000);
@@ -488,10 +490,10 @@ export default function WatchlistPage() {
       };
       await createPriceAlert(payload);
       setPriceAlertForm({ symbol: '', condition: 'ABOVE', targetPrice: '', cooldownSeconds: '300' });
-      setPriceAlertMsg('Đã tạo cảnh báo giá mới.');
+      setPriceAlertMsg(t('watchlist.createdPriceAlert'));
       await fetchPriceAlerts();
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || 'Không thể tạo cảnh báo giá.');
+      setPriceAlertError(err.response?.data?.detail || t('watchlist.createPriceAlertFailed'));
     } finally {
       setPriceAlertSaving(false);
       setTimeout(() => setPriceAlertMsg(''), 4000);
@@ -502,25 +504,27 @@ export default function WatchlistPage() {
     try {
       const res = await updatePriceAlert(rule.id, { is_active: !rule.is_active });
       setPriceAlerts((prev) => prev.map((item) => (item.id === rule.id ? res.data : item)));
-      setPriceAlertMsg(`Đã ${rule.is_active ? 'tạm dừng' : 'kích hoạt'} cảnh báo ${rule.symbol}.`);
+      setPriceAlertMsg(rule.is_active
+        ? t('watchlist.pausedAlert', { symbol: rule.symbol })
+        : t('watchlist.activatedAlert', { symbol: rule.symbol }));
       setTimeout(() => setPriceAlertMsg(''), 4000);
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || 'Không thể cập nhật trạng thái cảnh báo.');
+      setPriceAlertError(err.response?.data?.detail || t('watchlist.updateAlertFailed'));
     }
   };
 
   const handleDeletePriceAlert = async (rule) => {
-    if (!window.confirm(`Xóa cảnh báo giá cho ${rule.symbol}?`)) {
+    if (!window.confirm(t('watchlist.deletePriceAlertConfirm', { symbol: rule.symbol }))) {
       return;
     }
 
     try {
       await deletePriceAlert(rule.id);
       setPriceAlerts((prev) => prev.filter((item) => item.id !== rule.id));
-      setPriceAlertMsg(`Đã xóa cảnh báo giá cho ${rule.symbol}.`);
+      setPriceAlertMsg(t('watchlist.deletedPriceAlert', { symbol: rule.symbol }));
       setTimeout(() => setPriceAlertMsg(''), 4000);
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || 'Không thể xóa cảnh báo giá.');
+      setPriceAlertError(err.response?.data?.detail || t('watchlist.deletePriceAlertFailed'));
     }
   };
 
@@ -528,7 +532,7 @@ export default function WatchlistPage() {
     <div className="p-6 space-y-5 max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold text-gray-100">Radar thị trường</h1>
+        <h1 className="text-xl font-bold text-gray-100">{t('watchlist.title')}</h1>
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`text-xs px-2.5 py-1 rounded-full border ${
             realtimeStatus === 'live'
@@ -537,11 +541,11 @@ export default function WatchlistPage() {
                 ? 'border-amber-700 bg-amber-900/30 text-amber-300'
                 : 'border-gray-700 bg-gray-900 text-gray-400'
           }`}>
-            {REALTIME_LABELS[realtimeStatus]}
+            {realtimeLabels[realtimeStatus]}
           </span>
           {lastRealtimeAt && (
             <span className="text-xs text-gray-500">
-              Sự kiện gần nhất: {new Date(lastRealtimeAt).toLocaleTimeString('vi-VN')}
+              {t('watchlist.lastEvent', { time: formatTime(lastRealtimeAt) })}
             </span>
           )}
           <button
@@ -549,7 +553,7 @@ export default function WatchlistPage() {
             disabled={syncingStockProfile}
             className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
           >
-            {syncingStockProfile ? 'Đang đồng bộ...' : 'Tự động lấy mã chứng khoán'}
+            {syncingStockProfile ? t('watchlist.syncing') : t('watchlist.syncStockProfile')}
           </button>
           {syncMsg && <span className="text-xs text-brand-500">{syncMsg}</span>}
 
@@ -558,7 +562,7 @@ export default function WatchlistPage() {
               onClick={handleSeed} disabled={seeding}
               className="bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
-              {seeding ? 'Đang tạo...' : 'Nạp nhóm mặc định'}
+              {seeding ? t('watchlist.seeding') : t('watchlist.seedDefaults')}
             </button>
           )}
 
@@ -569,33 +573,33 @@ export default function WatchlistPage() {
             {syncing ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-gray-500 border-t-brand-500 rounded-full animate-spin inline-block" />
-                Đang sync...
+                {t('watchlist.syncingShort')}
               </>
-            ) : 'Đồng bộ giá'}
+            ) : t('watchlist.syncPrices')}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">Lớp 1: Nhóm thị trường</p>
-          <h2 className="text-base font-semibold text-gray-100">Dùng để quét rộng toàn thị trường</h2>
+          <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">{t('watchlist.layer1')}</p>
+          <h2 className="text-base font-semibold text-gray-100">{t('watchlist.layer1Title')}</h2>
           <p className="text-sm text-gray-400 mt-2">
-            Mỗi nhóm tập hợp nhiều mã theo ngành, vốn hóa hoặc chủ đề để bạn nhìn breadth, so sánh tương quan và chọn ra cơ hội đáng chú ý.
+            {t('watchlist.layer1Desc')}
           </p>
         </div>
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-          <p className="text-xs uppercase tracking-wider text-brand-300 mb-2">Lớp 2: Danh sách theo dõi cá nhân</p>
-          <h2 className="text-base font-semibold text-gray-100">Các mã đang bám sát realtime</h2>
+          <p className="text-xs uppercase tracking-wider text-brand-300 mb-2">{t('watchlist.layer2')}</p>
+          <h2 className="text-base font-semibold text-gray-100">{t('watchlist.layer2Title')}</h2>
           <p className="text-sm text-gray-400 mt-2">
-            Đây là tập hợp các mã bạn thật sự muốn theo dõi realtime mỗi ngày. Luồng hợp lý là quét từ nhóm thị trường rồi chọn mã đưa vào danh sách cá nhân.
+            {t('watchlist.layer2Desc')}
           </p>
         </div>
       </div>
 
       {latestWhaleAlert && (
         <div className="bg-amber-950/40 border border-amber-800 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-amber-300 font-semibold">Whale alert</span>
+          <span className="text-amber-300 font-semibold">{t('watchlist.whaleAlert')}</span>
           <span className="text-gray-200 font-bold">{latestWhaleAlert.symbol}</span>
           <span className="text-gray-400">{latestWhaleAlert.side || 'N/A'}</span>
           {typeof latestWhaleAlert.severity === 'string' && (
@@ -604,7 +608,7 @@ export default function WatchlistPage() {
             </span>
           )}
           <span className="text-gray-300 tabular-nums">
-            {Number(latestWhaleAlert.matched_value || 0).toLocaleString('vi-VN')} VNĐ
+            {formatNumber(latestWhaleAlert.matched_value || 0)} VNĐ
           </span>
           {(latestWhaleAlert.display_score != null || latestWhaleAlert.event_score != null) && (
             <span className="text-xs text-gray-400">
@@ -612,23 +616,23 @@ export default function WatchlistPage() {
             </span>
           )}
           <span className="text-xs text-gray-500">
-            Ngưỡng cá nhân: {Number(userConfig?.whale_alert_threshold || latestWhaleAlert.threshold || 0).toLocaleString('vi-VN')} triệu
+            {t('watchlist.personalThreshold', { value: formatNumber(userConfig?.whale_alert_threshold || latestWhaleAlert.threshold || 0) })}
           </span>
         </div>
       )}
 
       {latestTriggeredPriceAlert && (
         <div className="bg-blue-950/40 border border-blue-800 rounded-xl px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-blue-300 font-semibold">Price alert</span>
+          <span className="text-blue-300 font-semibold">{t('watchlist.priceAlert')}</span>
           <span className="text-gray-100 font-bold">{latestTriggeredPriceAlert.symbol}</span>
           <span className="text-gray-400">
-            {latestTriggeredPriceAlert.condition === 'ABOVE' ? 'Vượt lên trên' : 'Rơi xuống dưới'}
+            {latestTriggeredPriceAlert.condition === 'ABOVE' ? t('watchlist.above') : t('watchlist.below')}
           </span>
           <span className="text-gray-300 tabular-nums">
-            Mục tiêu: {Number(latestTriggeredPriceAlert.target_price || 0).toLocaleString('vi-VN')} VNĐ
+            {t('watchlist.target', { value: formatNumber(latestTriggeredPriceAlert.target_price || 0) })}
           </span>
           <span className="text-xs text-gray-500">
-            Giá hiện tại: {Number(latestTriggeredPriceAlert.current_price || 0).toLocaleString('vi-VN')} VNĐ
+            {t('watchlist.currentPrice', { value: formatNumber(latestTriggeredPriceAlert.current_price || 0) })}
           </span>
         </div>
       )}
@@ -641,15 +645,15 @@ export default function WatchlistPage() {
         </div>
       ) : groupsWithRealtime.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <p className="text-gray-300 font-semibold">Chưa có nhóm thị trường nào</p>
+          <p className="text-gray-300 font-semibold">{t('watchlist.noGroupsTitle')}</p>
           <p className="text-gray-500 text-sm mt-1">
-            Nhấn "Nạp nhóm mặc định" để tạo các nhóm ngành và nhóm vốn hóa từ thị trường
+            {t('watchlist.noGroupsDesc')}
           </p>
           <button
             onClick={handleSeed} disabled={seeding}
             className="mt-4 bg-brand-600 hover:bg-brand-700 text-white font-semibold px-5 py-2 rounded-lg text-sm transition-colors disabled:opacity-50"
           >
-            {seeding ? 'Đang tạo...' : 'Nạp nhóm mặc định'}
+            {seeding ? t('watchlist.seeding') : t('watchlist.seedDefaults')}
           </button>
         </div>
       ) : (
@@ -671,11 +675,11 @@ export default function WatchlistPage() {
                 <span className={`text-sm font-semibold truncate ${
                   view === 'tracked' ? 'text-brand-300' : 'text-gray-300'
                 }`}>
-                  Danh sách theo dõi cá nhân
+                  {t('watchlist.personalTrackedList')}
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
-                <span className="text-gray-600">{trackedSymbols.length} mã</span>
+                <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(trackedSymbols.length) })}</span>
                 {trackedStats.up > 0 && <span className="text-green-500">▲{trackedStats.up}</span>}
                 {trackedStats.down > 0 && <span className="text-red-500">▼{trackedStats.down}</span>}
               </div>
@@ -683,7 +687,7 @@ export default function WatchlistPage() {
 
             {/* Divider + Nhóm thị trường label */}
             <div className="pt-3 pb-1 px-1">
-              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Nhóm thị trường</p>
+              <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">{t('watchlist.marketGroups')}</p>
             </div>
 
             {/* Group list */}
@@ -711,7 +715,7 @@ export default function WatchlistPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
-                    <span className="text-gray-600">{g.items.length} mã</span>
+                    <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(g.items.length) })}</span>
                     {upCount > 0 && <span className="text-green-500">▲{upCount}</span>}
                     {downCount > 0 && <span className="text-red-500">▼{downCount}</span>}
                   </div>
@@ -726,33 +730,33 @@ export default function WatchlistPage() {
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <span className="w-4 h-4 rounded-full bg-brand-500 flex-shrink-0" />
-                  <h2 className="text-base font-bold text-gray-100">Danh sách theo dõi cá nhân</h2>
-                  <span className="text-xs text-gray-500">Các mã bạn muốn bám sát realtime</span>
+                  <h2 className="text-base font-bold text-gray-100">{t('watchlist.personalTrackedList')}</h2>
+                  <span className="text-xs text-gray-500">{t('watchlist.trackedRealtimeDesc')}</span>
                 </div>
 
                 <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_120px] gap-3">
                     <div>
                       <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
-                        Mã chứng khoán
+                        {t('watchlist.stockSymbol')}
                       </label>
                       <input
                         value={addSymbol}
                         onChange={(e) => setAddSymbol(e.target.value.toUpperCase())}
-                        placeholder="Ví dụ: FPT"
+                        placeholder={t('watchlist.symbolExample')}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
                       />
                     </div>
                     <div>
                       <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
-                        Nhóm nguồn
+                        {t('watchlist.sourceGroup')}
                       </label>
                       <select
                         value={srcGroupId}
                         onChange={(e) => setSrcGroupId(e.target.value)}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
                       >
-                        <option value="">Không gắn nhóm thị trường</option>
+                        <option value="">{t('watchlist.noSourceGroup')}</option>
                         {groupsWithRealtime.map((group) => (
                           <option key={group.id} value={group.id}>{group.name}</option>
                         ))}
@@ -764,7 +768,7 @@ export default function WatchlistPage() {
                         disabled={addingSymbol}
                         className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
                       >
-                        {addingSymbol ? 'Đang thêm...' : 'Thêm mã'}
+                        {addingSymbol ? t('watchlist.addingSymbol') : t('watchlist.addSymbol')}
                       </button>
                     </div>
                   </div>
@@ -774,9 +778,9 @@ export default function WatchlistPage() {
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-100 uppercase tracking-wider">Cảnh báo giá cá nhân</h3>
+                      <h3 className="text-sm font-semibold text-gray-100 uppercase tracking-wider">{t('watchlist.personalPriceAlerts')}</h3>
                       <p className="text-xs text-gray-500 mt-1">
-                        Đặt ngưỡng giá cho các mã cần bám sát. Feed realtime sẽ tự phát hiện khi giá chạm ngưỡng.
+                        {t('watchlist.personalPriceAlertsDesc')}
                       </p>
                     </div>
                     {priceAlertMsg && <span className="text-xs text-blue-300">{priceAlertMsg}</span>}
@@ -784,27 +788,27 @@ export default function WatchlistPage() {
 
                   <form onSubmit={handleCreatePriceAlert} className="grid grid-cols-1 lg:grid-cols-[1fr_180px_1fr_180px_140px] gap-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">Mã chứng khoán</label>
+                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.stockSymbol')}</label>
                       <input
                         value={priceAlertForm.symbol}
                         onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-                        placeholder="Ví dụ: FPT"
+                        placeholder={t('watchlist.symbolExample')}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">Điều kiện</label>
+                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.condition')}</label>
                       <select
                         value={priceAlertForm.condition}
                         onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, condition: e.target.value }))}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
                       >
-                        <option value="ABOVE">Vượt lên trên</option>
-                        <option value="BELOW">Rơi xuống dưới</option>
+                        <option value="ABOVE">{t('watchlist.above')}</option>
+                        <option value="BELOW">{t('watchlist.below')}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">Giá mục tiêu</label>
+                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.targetPrice')}</label>
                       <input
                         type="number"
                         min="0"
@@ -816,7 +820,7 @@ export default function WatchlistPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">Cooldown (giây)</label>
+                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.cooldownSeconds')}</label>
                       <input
                         type="number"
                         min="0"
@@ -832,7 +836,7 @@ export default function WatchlistPage() {
                         disabled={priceAlertSaving}
                         className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
                       >
-                        {priceAlertSaving ? 'Đang tạo...' : 'Thêm alert'}
+                        {priceAlertSaving ? t('watchlist.seeding') : t('watchlist.addAlert')}
                       </button>
                     </div>
                   </form>
@@ -841,13 +845,13 @@ export default function WatchlistPage() {
 
                   {triggeredPriceAlerts.length > 0 && (
                     <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 px-4 py-3">
-                      <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">Trigger gần đây</p>
+                      <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">{t('watchlist.recentTriggers')}</p>
                       <div className="space-y-2 text-sm">
                         {triggeredPriceAlerts.map((alert) => (
                           <div key={`${alert.id}-${alert.triggered_at}`} className="flex flex-wrap items-center gap-3 text-gray-300">
                             <span className="font-semibold text-gray-100">{alert.symbol}</span>
-                            <span>{alert.condition === 'ABOVE' ? 'vượt lên trên' : 'rơi xuống dưới'}</span>
-                            <span className="tabular-nums">{Number(alert.target_price).toLocaleString('vi-VN')} VNĐ</span>
+                            <span>{alert.condition === 'ABOVE' ? t('watchlist.above') : t('watchlist.below')}</span>
+                            <span className="tabular-nums">{formatNumber(alert.target_price)} VNĐ</span>
                             <span className="text-xs text-gray-500">{formatDateTime(alert.triggered_at)}</span>
                           </div>
                         ))}
@@ -857,31 +861,31 @@ export default function WatchlistPage() {
 
                   <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
                     {priceAlertsLoading ? (
-                      <div className="py-8 text-center text-gray-500 text-sm">Đang tải cảnh báo giá...</div>
+                      <div className="py-8 text-center text-gray-500 text-sm">{t('watchlist.loadingPriceAlerts')}</div>
                     ) : priceAlertsWithRealtime.length === 0 ? (
-                      <div className="py-8 text-center text-gray-500 text-sm">Chưa có cảnh báo giá nào.</div>
+                      <div className="py-8 text-center text-gray-500 text-sm">{t('watchlist.emptyPriceAlerts')}</div>
                     ) : (
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-800">
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Mã</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Điều kiện</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Mục tiêu</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Giá hiện tại</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Trạng thái</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Cooldown</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Trigger gần nhất</th>
-                            <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tác vụ</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCondition')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableTarget')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableStatus')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCooldown')}</th>
+                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableLastTrigger')}</th>
+                            <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-800/60">
                           {priceAlertsWithRealtime.map((rule) => (
                             <tr key={rule.id} className="hover:bg-gray-900/40 transition-colors">
                               <td className="px-4 py-3 font-bold text-blue-300">{rule.symbol}</td>
-                              <td className="px-4 py-3 text-gray-300">{PRICE_ALERT_CONDITION_LABELS[rule.condition]}</td>
-                              <td className="px-4 py-3 text-gray-300 tabular-nums">{Number(rule.target_price).toLocaleString('vi-VN')} VNĐ</td>
+                              <td className="px-4 py-3 text-gray-300">{priceAlertConditionLabels[rule.condition]}</td>
+                              <td className="px-4 py-3 text-gray-300 tabular-nums">{formatNumber(rule.target_price)} VNĐ</td>
                               <td className="px-4 py-3 text-gray-300 tabular-nums">
-                                {rule.current_price ? `${Number(rule.current_price).toLocaleString('vi-VN')} VNĐ` : '—'}
+                                {rule.current_price ? `${formatNumber(rule.current_price)} VNĐ` : '—'}
                               </td>
                               <td className="px-4 py-3">
                                 <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -891,7 +895,7 @@ export default function WatchlistPage() {
                                       ? 'bg-blue-900/40 text-blue-300'
                                       : 'bg-emerald-900/30 text-emerald-300'
                                 }`}>
-                                  {!rule.is_active ? 'Tạm dừng' : isPriceAlertMatched(rule, rule.current_price) && !rule.stale ? 'Đang chạm ngưỡng' : 'Đang theo dõi'}
+                                  {!rule.is_active ? t('watchlist.paused') : isPriceAlertMatched(rule, rule.current_price) && !rule.stale ? t('watchlist.hitThreshold') : t('watchlist.tracking')}
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-gray-400">{rule.cooldown_seconds}s</td>
@@ -902,13 +906,13 @@ export default function WatchlistPage() {
                                     onClick={() => handleTogglePriceAlert(rule)}
                                     className="text-xs text-gray-300 hover:text-gray-100 font-semibold"
                                   >
-                                    {rule.is_active ? 'Tạm dừng' : 'Kích hoạt'}
+                                    {rule.is_active ? t('watchlist.pause') : t('watchlist.activate')}
                                   </button>
                                   <button
                                     onClick={() => handleDeletePriceAlert(rule)}
                                     className="text-xs text-red-400 hover:text-red-300 font-semibold"
                                   >
-                                    Xóa
+                                    {t('watchlist.delete')}
                                   </button>
                                 </div>
                               </td>
@@ -922,20 +926,20 @@ export default function WatchlistPage() {
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   {trackedLoading ? (
-                    <div className="py-10 text-center text-gray-500 text-sm">Đang tải danh sách theo dõi cá nhân...</div>
+                    <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.loadingTracked')}</div>
                   ) : trackedSymbolsWithRealtime.length === 0 ? (
-                    <div className="py-10 text-center text-gray-500 text-sm">Chưa có mã nào trong danh sách theo dõi cá nhân.</div>
+                    <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.emptyTracked')}</div>
                   ) : (
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Mã</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Nhóm thị trường nguồn</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Giá</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Thay đổi</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">% thay đổi</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Cập nhật</th>
-                          <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Tác vụ</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableUpdatedAt')}</th>
+                          <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800/60">
@@ -950,11 +954,11 @@ export default function WatchlistPage() {
                               </button>
                             </td>
                             <td className="px-4 py-3 text-gray-400 text-xs">
-                              {item.source_group_name || 'Tự thêm thủ công'}
+                              {item.source_group_name || t('watchlist.manualAdded')}
                             </td>
-                            <td className="px-4 py-3">{formatPrice(item.current_price)}</td>
+                            <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
-                            <td className="px-4 py-3"><PctCell pct={item.change_pct} /></td>
+                            <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                               {item.last_date || '—'}
                             </td>
@@ -963,7 +967,7 @@ export default function WatchlistPage() {
                                 onClick={() => handleDeleteTracked(item.id, item.symbol)}
                                 className="text-xs text-red-400 hover:text-red-300 font-semibold"
                               >
-                                Xóa
+                                {t('watchlist.delete')}
                               </button>
                             </td>
                           </tr>
@@ -988,17 +992,17 @@ export default function WatchlistPage() {
                     )}
                   </div>
                   <span className="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">
-                    Nhóm thị trường · {TYPE_LABELS[activeGroup.group_type]}
+                    {t('watchlist.groupTag', { type: typeLabels[activeGroup.group_type] || activeGroup.group_type })}
                   </span>
                 </div>
 
                 {groupStats && activeGroup.items.length > 0 && (
                   <div className="flex flex-wrap items-center gap-4 mb-3 text-xs">
-                    <span className="text-gray-500">{activeGroup.items.length} mã</span>
-                    <span className="text-green-400">▲ Tăng: {groupStats.up}</span>
-                    <span className="text-red-400">▼ Giảm: {groupStats.down}</span>
-                    <span className="text-gray-500">— Không đổi: {groupStats.flat}</span>
-                    <span className="text-brand-300">Chưa theo dõi: {activeGroupUntrackedCount}</span>
+                    <span className="text-gray-500">{t('watchlist.stocksCount', { count: formatNumber(activeGroup.items.length) })}</span>
+                    <span className="text-green-400">▲ {t('watchlist.upCount', { count: formatNumber(groupStats.up) })}</span>
+                    <span className="text-red-400">▼ {t('watchlist.downCount', { count: formatNumber(groupStats.down) })}</span>
+                    <span className="text-gray-500">— {t('watchlist.flatCount', { count: formatNumber(groupStats.flat) })}</span>
+                    <span className="text-brand-300">{t('watchlist.untrackedCount', { count: formatNumber(activeGroupUntrackedCount) })}</span>
                   </div>
                 )}
 
@@ -1006,9 +1010,9 @@ export default function WatchlistPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                     <div className="flex items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1">
                       {[
-                        { key: 'all', label: `Tất cả (${activeGroupItems.length})` },
-                        { key: 'untracked', label: `Chưa theo dõi (${activeGroupUntrackedCount})` },
-                        { key: 'tracked', label: `Đã theo dõi (${activeGroupTrackedCount})` },
+                        { key: 'all', label: t('watchlist.filterAll', { count: formatNumber(activeGroupItems.length) }) },
+                        { key: 'untracked', label: t('watchlist.filterUntracked', { count: formatNumber(activeGroupUntrackedCount) }) },
+                        { key: 'tracked', label: t('watchlist.filterTracked', { count: formatNumber(activeGroupTrackedCount) }) },
                       ].map((option) => (
                         <button
                           key={option.key}
@@ -1029,14 +1033,14 @@ export default function WatchlistPage() {
                         disabled={!!bulkGroupAction || activeGroupTrackedCount === 0}
                         className="text-sm font-semibold px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 disabled:opacity-50 text-gray-100 transition-colors"
                       >
-                        {bulkGroupAction === 'remove' ? 'Đang bỏ cả nhóm...' : 'Bỏ toàn bộ mã đã theo dõi'}
+                        {bulkGroupAction === 'remove' ? t('watchlist.removingGroup') : t('watchlist.removeTrackedInGroup')}
                       </button>
                       <button
                         onClick={handleAddAllTrackedFromGroup}
                         disabled={!!bulkGroupAction || activeGroupUntrackedCount === 0}
                         className="text-sm font-semibold px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white transition-colors"
                       >
-                        {bulkGroupAction === 'add' ? 'Đang thêm cả nhóm...' : 'Đưa tất cả vào DS theo dõi'}
+                        {bulkGroupAction === 'add' ? t('watchlist.addingGroup') : t('watchlist.addAllToTracked')}
                       </button>
                     </div>
                   </div>
@@ -1045,29 +1049,29 @@ export default function WatchlistPage() {
                 <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   {filteredActiveGroupItems.length === 0 ? (
                     <div className="py-10 text-center text-gray-500 text-sm">
-                      Không có mã nào khớp với bộ lọc hiện tại.
+                      {t('watchlist.noMatchFilter')}
                     </div>
                   ) : (
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            Mã Chứng khoán
+                            {t('watchlist.stockSymbol')}
                           </th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            Giá đóng cửa
+                            {t('watchlist.closePrice')}
                           </th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            Thay đổi
+                            {t('watchlist.tableChange')}
                           </th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            % thay đổi
+                            {t('watchlist.tablePctChange')}
                           </th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            Ngày
+                            {t('watchlist.date')}
                           </th>
                           <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            Tác vụ
+                            {t('watchlist.tableActions')}
                           </th>
                         </tr>
                       </thead>
@@ -1089,9 +1093,9 @@ export default function WatchlistPage() {
                                 {item.symbol}
                               </span>
                             </td>
-                            <td className="px-4 py-3">{formatPrice(item.current_price)}</td>
+                            <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
-                            <td className="px-4 py-3"><PctCell pct={item.change_pct} /></td>
+                            <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                               {item.last_date || '—'}
                             </td>
@@ -1099,7 +1103,7 @@ export default function WatchlistPage() {
                               {trackedSymbolSet.has(item.symbol) ? (
                                 <div className="flex items-center justify-end gap-2">
                                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300">
-                                    Đã theo dõi
+                                    {t('watchlist.tracked')}
                                   </span>
                                   <button
                                     onClick={(e) => {
@@ -1111,7 +1115,7 @@ export default function WatchlistPage() {
                                     }}
                                     className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
                                   >
-                                    Bỏ khỏi DS theo dõi
+                                    {t('watchlist.removeFromTracked')}
                                   </button>
                                 </div>
                               ) : (
@@ -1123,7 +1127,7 @@ export default function WatchlistPage() {
                                   disabled={!!addingFromGroup[item.symbol]}
                                   className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
                                 >
-                                  {addingFromGroup[item.symbol] ? 'Đang thêm...' : 'Đưa vào DS theo dõi'}
+                                  {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTracked')}
                                 </button>
                               )}
                             </td>

@@ -2,46 +2,47 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
+import { useI18n } from '../context/LangContext';
 
-function formatMoney(value) {
+function formatMoney(value, formatNumberFn) {
   if (value == null || Number.isNaN(Number(value))) return '—';
-  return Number(value).toLocaleString('vi-VN');
+  return formatNumberFn(Number(value));
 }
 
-function formatCompactMoney(value) {
+function formatCompactMoney(value, localeTag) {
   if (value == null || Number.isNaN(Number(value))) return '—';
-  return new Intl.NumberFormat('vi-VN', {
+  return new Intl.NumberFormat(localeTag, {
     notation: 'compact',
     maximumFractionDigits: 1,
   }).format(Number(value));
 }
 
-function formatTime(value) {
+function formatTime(value, formatDateTimeFn) {
   if (!value) return '—';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN');
+  return Number.isNaN(parsed.getTime()) ? String(value) : formatDateTimeFn(parsed);
 }
 
-function getSideTone(side) {
+function getSideTone(side, t) {
   const normalizedSide = String(side || '').toLowerCase();
   if (normalizedSide === 'buy') {
     return {
       container: 'border-emerald-800/60 bg-emerald-950/20',
       badge: 'bg-emerald-950/70 text-emerald-300',
-      label: 'Mua lớn',
+      label: t('whaleHub.bigBuy'),
     };
   }
   if (normalizedSide === 'sell') {
     return {
       container: 'border-rose-800/60 bg-rose-950/20',
       badge: 'bg-rose-950/70 text-rose-300',
-      label: 'Bán lớn',
+      label: t('whaleHub.bigSell'),
     };
   }
   return {
     container: 'border-slate-800 bg-slate-950/70',
     badge: 'bg-slate-900 text-slate-300',
-    label: 'Trung lập',
+    label: t('whaleHub.neutral'),
   };
 }
 
@@ -65,33 +66,33 @@ function getSeverityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
-function getAggregateSourceMeta(source) {
+function getAggregateSourceMeta(source, t) {
   const normalizedSource = String(source || '').toLowerCase();
   if (normalizedSource === 'redis_stream') {
     return {
-      label: 'Redis stream',
+      label: t('whaleHub.sourceRedisStream'),
       tone: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200',
-      description: 'Ưu tiên realtime stream mới nhất từ worker ingestion.',
+      description: t('whaleHub.sourceRedisDesc'),
     };
   }
   if (normalizedSource === 'intraday_tick_db') {
     return {
-      label: 'IntradayTick DB',
+      label: t('whaleHub.sourceIntradayDb'),
       tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200',
-      description: 'Fallback sang read model trong DB khi stream chưa có dữ liệu phù hợp.',
+      description: t('whaleHub.sourceIntradayDesc'),
     };
   }
   if (normalizedSource === 'vnstock') {
     return {
       label: 'vnstock',
       tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
-      description: 'Fallback cuối cùng ra nguồn bên ngoài khi stream và DB đều trống.',
+      description: t('whaleHub.sourceVnstockDesc'),
     };
   }
   return {
-    label: 'Không xác định',
+    label: t('whaleHub.sourceUnknown'),
     tone: 'border-slate-800 bg-slate-950/70 text-slate-300',
-    description: 'Chưa xác định được nguồn aggregate hiện tại.',
+    description: t('whaleHub.sourceUnknownDesc'),
   };
 }
 
@@ -125,21 +126,21 @@ function buildSymbolStatsFromFeed(feedItems) {
   return map;
 }
 
-function getFrequencyLabel(totalValue) {
+function getFrequencyLabel(totalValue, t) {
   // Dựa trên tổng giá trị (VNĐ) thay vì đếm số lần
-  if (totalValue >= 5_000_000_000) return { label: 'Bùng nổ', color: 'text-rose-400', bg: 'bg-rose-900/40 border-rose-800/50' };
-  if (totalValue >= 2_000_000_000) return { label: 'Cao', color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
-  if (totalValue >= 500_000_000) return { label: 'Trung bình', color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
-  return { label: 'Thấp', color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
+  if (totalValue >= 5_000_000_000) return { label: t('whaleHub.freqExplosive'), color: 'text-rose-400', bg: 'bg-rose-900/40 border-rose-800/50' };
+  if (totalValue >= 2_000_000_000) return { label: t('whaleHub.freqHigh'), color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
+  if (totalValue >= 500_000_000) return { label: t('whaleHub.freqMedium'), color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
+  return { label: t('whaleHub.freqLow'), color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
 }
 
-function TrackedSymbolCard({ symbol, stats }) {
+function TrackedSymbolCard({ symbol, stats, t, localeTag }) {
   const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
   const avgValue = st.count > 0 ? st.totalValue / st.count : 0;
   const whaleAvgPrice = st.totalVolume > 0 ? st.totalValue / st.totalVolume : 0;
   const totalOrders = st.buyCount + st.sellCount;
   const buyRatio = totalOrders > 0 ? (st.buyCount / totalOrders) * 100 : 0;
-  const freq = getFrequencyLabel(st.totalValue);
+  const freq = getFrequencyLabel(st.totalValue, t);
 
   return (
     <Link
@@ -158,11 +159,11 @@ function TrackedSymbolCard({ symbol, stats }) {
       <div className="mt-2 flex flex-wrap gap-3 text-xs">
         <span className="flex items-center gap-1 text-emerald-400">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          Mua: {st.buyCount}
+          {t('whaleHub.buy')}: {st.buyCount}
         </span>
         <span className="flex items-center gap-1 text-rose-400">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
-          Bán: {st.sellCount}
+          {t('whaleHub.sell')}: {st.sellCount}
         </span>
       </div>
 
@@ -178,19 +179,19 @@ function TrackedSymbolCard({ symbol, stats }) {
 
       {/* Avg & Tổng */}
       <p className="mt-2 text-xs text-slate-400">
-        Avg lệnh: <span className="font-medium text-slate-200">{formatCompactMoney(avgValue)} VND</span>
+        {t('whaleHub.avgOrder')}: <span className="font-medium text-slate-200">{formatCompactMoney(avgValue, localeTag)} VND</span>
       </p>
       {whaleAvgPrice > 0 && (
         <p className="mt-0.5 text-xs text-cyan-400">
-          Avg giá: <span className="font-medium">{whaleAvgPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND/CP</span>
+          {t('whaleHub.avgPrice')}: <span className="font-medium">{Number(whaleAvgPrice).toLocaleString(localeTag, { maximumFractionDigits: 0 })} VND/CP</span>
         </p>
       )}
-      <p className="mt-0.5 text-xs text-slate-500">Tổng {st.count} lệnh · {formatCompactMoney(st.totalValue)} VND</p>
+      <p className="mt-0.5 text-xs text-slate-500">{t('whaleHub.totalOrders', { count: st.count })} · {formatCompactMoney(st.totalValue, localeTag)} VND</p>
     </Link>
   );
 }
 
-function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
+function AdvisoryPreviewCard({ item, canReadAdvisoryDetail, t, localeTag, formatDateTimeFn }) {
   const side = String(item.side || '').toUpperCase();
   const isBuy = side === 'BUY';
 
@@ -207,10 +208,10 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
           </span>
         </div>
         <p className="mt-2 text-xs text-slate-400">
-          <span className="font-medium text-slate-200">{formatCompactMoney(item.matched_value)} VND</span>
+          <span className="font-medium text-slate-200">{formatCompactMoney(item.matched_value, localeTag)} VND</span>
         </p>
-        <p className="mt-0.5 text-xs text-slate-500">Ngưỡng: {formatCompactMoney(item.threshold)} VND</p>
-        <p className="mt-0.5 text-xs text-slate-500">{formatTime(item.created_at)}</p>
+        <p className="mt-0.5 text-xs text-slate-500">{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
+        <p className="mt-0.5 text-xs text-slate-500">{formatTime(item.created_at, formatDateTimeFn)}</p>
       </div>
 
       {/* Cột phải: AI Advisory */}
@@ -221,7 +222,7 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
           </span>
         </div>
         <p className="text-xs leading-6 text-slate-300 line-clamp-3">
-          {item.ai_summary || 'Chưa có tóm tắt AI.'}
+          {item.ai_summary || t('whaleHub.noAiSummary')}
         </p>
         {canReadAdvisoryDetail && item.ai_detail ? (
           <p className="mt-2 text-xs leading-6 text-slate-400 line-clamp-2 border-t border-slate-800 pt-2">
@@ -232,7 +233,7 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
             to="/upgrade"
             className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300"
           >
-            🔒 Phân tích sâu (Premium+)
+            🔒 {t('whaleHub.deepAnalysis')}
           </Link>
         ) : null}
         <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
@@ -240,13 +241,13 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
             to={`/whale-alerts/${item.symbol}`}
             className="btn-secondary inline-flex items-center justify-center text-[11px]"
           >
-            Mở dashboard mã
+            {t('whaleHub.openSymbolDashboard')}
           </Link>
           <Link
             to={`/stocks/${item.symbol}`}
             className="btn-secondary inline-flex items-center justify-center text-[11px]"
           >
-            Mở stock workspace
+            {t('whaleHub.openStockWorkspace')}
           </Link>
         </div>
       </div>
@@ -254,8 +255,8 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail }) {
   );
 }
 
-function AggregateFeedCard({ item }) {
-  const tone = getSideTone(item.side);
+function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
+  const tone = getSideTone(item.side, t);
   const severityTone = getSeverityTone(item.severity);
 
   return (
@@ -271,7 +272,7 @@ function AggregateFeedCard({ item }) {
               {tone.label}
             </span>
           </div>
-          <p className="mt-1 text-xs text-slate-500">{formatTime(item.ts)}</p>
+          <p className="mt-1 text-xs text-slate-500">{formatTime(item.ts, formatDateTimeFn)}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
@@ -284,13 +285,13 @@ function AggregateFeedCard({ item }) {
       </div>
       <div className="mt-4 flex items-end justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Giá trị khớp</p>
-          <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value)} VND</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('whaleHub.matchedValue')}</p>
+          <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value, localeTag)} VND</p>
         </div>
         <div className="text-right text-xs text-slate-400">
-          <p>Display score: {item.display_score ?? '—'}</p>
-          <p>Ngưỡng: {formatCompactMoney(item.threshold)} VND</p>
-          <p className="mt-1">Nguồn: {item.source || 'realtime'}</p>
+          <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
+          <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
+          <p className="mt-1">{t('whaleHub.source')}: {item.source || 'realtime'}</p>
         </div>
       </div>
     </Link>
@@ -299,6 +300,7 @@ function AggregateFeedCard({ item }) {
 
 export default function WhaleAlertsHub() {
   const { ability, userPlan } = usePortfolio();
+  const { t, localeTag, formatDateTime } = useI18n();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [watchlistGroups, setWatchlistGroups] = useState([]);
   const [advisories, setAdvisories] = useState([]);
@@ -368,11 +370,11 @@ export default function WhaleAlertsHub() {
       setWatchlistGroups(watchlistGroupsResult.data || []);
       setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Không tải được Whale Alerts hub.');
+      setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [canReadAdvisory, feedSort, loadAggregateFeed, selectedFeedScope]);
+  }, [canReadAdvisory, feedSort, loadAggregateFeed, selectedFeedScope, t]);
 
   useEffect(() => {
     fetchData();
@@ -389,11 +391,11 @@ export default function WhaleAlertsHub() {
     try {
       await loadAggregateFeed({ cursor: aggregateCursor, append: true, sort: feedSort, scope: selectedFeedScope });
     } catch (err) {
-      setError(err.response?.data?.detail || 'Không tải thêm được aggregate whale feed.');
+      setError(err.response?.data?.detail || t('whaleHub.loadMoreFailed'));
     } finally {
       setAggregateLoadingMore(false);
     }
-  }, [aggregateCursor, aggregateHasMore, feedSort, loadAggregateFeed, selectedFeedScope]);
+  }, [aggregateCursor, aggregateHasMore, feedSort, loadAggregateFeed, selectedFeedScope, t]);
 
   const handleSortChange = useCallback((nextSort) => {
     if (nextSort === feedSort) return;
@@ -404,29 +406,28 @@ export default function WhaleAlertsHub() {
     if (aggregateFilters?.scope === 'watchlist' && activeWatchlistGroup) {
       return `watchlist: ${activeWatchlistGroup.name}`;
     }
-    return 'tracked symbols';
-  }, [activeWatchlistGroup, aggregateFilters?.scope]);
+    return t('whaleHub.trackedSymbols');
+  }, [activeWatchlistGroup, aggregateFilters?.scope, t]);
 
-  const aggregateSourceMeta = useMemo(() => getAggregateSourceMeta(aggregateSource), [aggregateSource]);
+  const aggregateSourceMeta = useMemo(() => getAggregateSourceMeta(aggregateSource, t), [aggregateSource, t]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
       <section className="card-section px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-label">Whale radar hub</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-100">Whale Alerts Workspace</h1>
+            <p className="text-label">{t('whaleHub.radarHub')}</p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-100">{t('whaleHub.workspaceTitle')}</h1>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-400">
-              Điểm vào chung cho toàn bộ luồng whale signal. Từ đây có thể mở dashboard chuyên sâu theo mã,
-              quay lại radar thị trường, hoặc xem AI Advisory nếu gói hiện tại cho phép.
+              {t('whaleHub.workspaceDescription')}
             </p>
           </div>
           <div className="flex items-center gap-3">
             <div className="rounded-full border border-cyan-900/60 bg-cyan-950/30 px-3 py-1.5 text-xs text-cyan-200">
-              Gói hiện tại: {userPlan || 'free'}
+              {t('whaleHub.currentPlan', { plan: userPlan || 'free' })}
             </div>
             <button type="button" onClick={fetchData} className="btn-primary">
-              Làm mới
+              {t('whaleHub.refresh')}
             </button>
           </div>
         </div>
@@ -435,23 +436,22 @@ export default function WhaleAlertsHub() {
       <section className="card-section px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-label">Aggregate feed</p>
-            <h2 className="mt-2 text-lg font-semibold text-slate-100">Live whale board</h2>
+            <p className="text-label">{t('whaleHub.aggregateFeed')}</p>
+            <h2 className="mt-2 text-lg font-semibold text-slate-100">{t('whaleHub.liveBoard')}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Bảng tổng hợp tín hiệu whale theo danh sách mã đang theo dõi. Nguồn dữ liệu chạy theo thứ tự
-              Redis stream, sau đó fallback về IntradayTick trong DB, và cuối cùng mới dùng vnstock nếu hai tầng nội bộ chưa có dữ liệu.
+              {t('whaleHub.liveBoardDescription')}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
             <div className="flex items-center gap-2 rounded-2xl border border-cyan-700/60 bg-slate-900 px-3 py-2 shadow-[0_0_0_1px_rgba(8,145,178,0.15)]">
-              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">Scope</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{t('whaleHub.scope')}</span>
               <select
                 value={selectedFeedScope}
                 onChange={(event) => setSelectedFeedScope(event.target.value)}
                 className="min-w-[190px] rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-sm font-medium text-slate-100 outline-none transition-colors focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30"
                 style={{ colorScheme: 'dark' }}
               >
-                <option value="tracked">Tracked symbols</option>
+                <option value="tracked">{t('whaleHub.trackedSymbols')}</option>
                 {watchlistGroups.map((group) => (
                   <option key={group.id} value={`watchlist:${group.id}`}>
                     {group.name}
@@ -467,7 +467,7 @@ export default function WhaleAlertsHub() {
                   feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
                 }`}
               >
-                Mới nhất
+                {t('whaleHub.latest')}
               </button>
               <button
                 type="button"
@@ -476,7 +476,7 @@ export default function WhaleAlertsHub() {
                   feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
                 }`}
               >
-                Giá trị lớn nhất
+                {t('whaleHub.largestValue')}
               </button>
             </div>
           </div>
@@ -484,22 +484,22 @@ export default function WhaleAlertsHub() {
 
         <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            Scope: {loading ? 'đang tải' : scopeLabel}
+            {t('whaleHub.scope')}: {loading ? t('common.loading') : scopeLabel}
           </div>
           <div className={`rounded-full border px-3 py-1.5 ${aggregateSourceMeta.tone}`}>
-            Nguồn feed: {loading ? 'đang tải' : aggregateSourceMeta.label}
+            {t('whaleHub.feedSource')}: {loading ? t('common.loading') : aggregateSourceMeta.label}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            Advisory summary: {aggregateEntitlements?.can_read_whale_advisory ? 'Pro+' : 'chưa mở'}
+            {t('whaleHub.advisorySummary')}: {aggregateEntitlements?.can_read_whale_advisory ? 'Pro+' : t('whaleHub.locked')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            Advisory detail: {aggregateEntitlements?.can_read_whale_advisory_detail ? 'Premium+' : 'chưa mở'}
+            {t('whaleHub.advisoryDetail')}: {aggregateEntitlements?.can_read_whale_advisory_detail ? 'Premium+' : t('whaleHub.locked')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            Weights: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || 'weights-v1' : 'đang tải'}
+            {t('whaleHub.weights')}: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || 'weights-v1' : t('common.loading')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            Server time: {aggregateServerTime ? formatTime(aggregateServerTime) : 'đang tải'}
+            {t('whaleHub.serverTime')}: {aggregateServerTime ? formatTime(aggregateServerTime, formatDateTime) : t('common.loading')}
           </div>
         </div>
 
@@ -517,23 +517,28 @@ export default function WhaleAlertsHub() {
           </div>
         ) : aggregateFeed.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
-            Chưa có whale event vượt ngưỡng trong danh sách mã đang theo dõi. Khi backend detect thêm lệnh lớn,
-            aggregate board này sẽ là điểm vào nhanh nhất trước khi mở dashboard theo mã.
+            {t('whaleHub.noEvents')}
           </div>
         ) : (
           <>
             <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {aggregateFeed.map((item) => (
-                <AggregateFeedCard key={item.event_id} item={item} />
+                <AggregateFeedCard
+                  key={item.event_id}
+                  item={item}
+                  t={t}
+                  localeTag={localeTag}
+                  formatDateTimeFn={formatDateTime}
+                />
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-slate-500">
-                Đang hiển thị {aggregateFeed.length} tín hiệu gần nhất cho scope hiện tại từ {aggregateSourceMeta.label.toLowerCase()}.
+                {t('whaleHub.showingSignals', { count: aggregateFeed.length, source: aggregateSourceMeta.label.toLowerCase() })}
               </div>
               {aggregateHasMore && (
                 <button type="button" onClick={handleLoadMore} disabled={aggregateLoadingMore} className="btn-secondary">
-                  {aggregateLoadingMore ? 'Đang tải thêm...' : 'Tải thêm'}
+                  {aggregateLoadingMore ? t('whaleHub.loadingMore') : t('whaleHub.loadMore')}
                 </button>
               )}
             </div>
@@ -549,10 +554,10 @@ export default function WhaleAlertsHub() {
 
       <section className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
         <article className="card-section px-5 py-4">
-          <p className="text-label">Đi tắt theo mã</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-100">Các mã đang theo dõi</h2>
+          <p className="text-label">{t('whaleHub.shortcutBySymbol')}</p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-100">{t('whaleHub.trackedSymbolsTitle')}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            Mỗi nút mở WhaleAlertsDashboard cho đúng mã, nơi hiển thị feed lệnh lớn, money flow, RVOL và depth chart.
+            {t('whaleHub.trackedSymbolsDesc')}
           </p>
 
           {loading ? (
@@ -563,14 +568,14 @@ export default function WhaleAlertsHub() {
             </div>
           ) : symbolShortcuts.length === 0 ? (
             <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
-              Chưa có mã tracked riêng. Có thể thêm mã trong Radar thị trường rồi quay lại đây để mở nhanh Whale Alerts dashboard.
+              {t('whaleHub.noTrackedShortcuts')}
             </div>
           ) : (
             <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {symbolShortcuts
                 .filter((symbol) => (symbolStatsMap[symbol]?.count ?? 0) > 0)
                 .map((symbol) => (
-                  <TrackedSymbolCard key={symbol} symbol={symbol} stats={symbolStatsMap[symbol]} />
+                  <TrackedSymbolCard key={symbol} symbol={symbol} stats={symbolStatsMap[symbol]} t={t} localeTag={localeTag} />
                 ))}
             </div>
           )}
@@ -578,17 +583,17 @@ export default function WhaleAlertsHub() {
         </article>
 
         <article className="card-section px-5 py-4">
-          <p className="text-label">Phạm vi tính năng</p>
-          <h2 className="mt-2 text-lg font-semibold text-slate-100">Whale Alerts đang gồm gì</h2>
+          <p className="text-label">{t('whaleHub.featureScope')}</p>
+          <h2 className="mt-2 text-lg font-semibold text-slate-100">{t('whaleHub.featureTitle')}</h2>
           <div className="mt-4 space-y-3 text-sm leading-6 text-slate-300">
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-              Dashboard theo mã: feed lệnh lớn, donut money flow, bubble chart, RVOL 15 phút và depth chart.
+              {t('whaleHub.feature1')}
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-              Realtime: WebSocket báo whale alert mới, REST làm nguồn snapshot đầy đủ cho biểu đồ.
+              {t('whaleHub.feature2')}
             </div>
             <div className="rounded-2xl border border-slate-800 bg-slate-950/70 px-4 py-3">
-              AI Advisory: luồng riêng cho Pro/Premium, dùng để đọc tóm tắt và phân tích sâu sau khi hệ thống tạo advisory.
+              {t('whaleHub.feature3')}
             </div>
           </div>
         </article>

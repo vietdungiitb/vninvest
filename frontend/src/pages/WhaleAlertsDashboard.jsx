@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import { getDepthChart, getRVOL, getStockOrderFlow, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import { useI18n } from '../context/LangContext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ function fmtBil(v) {
   if (n >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}N`;
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
-  return n.toLocaleString('vi-VN');
+  return n.toLocaleString(undefined);
 }
 
 function fmtVol(v) {
@@ -37,12 +38,12 @@ function fmtVol(v) {
   const n = Number(v);
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString('vi-VN');
+  return n.toLocaleString(undefined);
 }
 
 function fmtPrice(v) {
   if (v == null) return '—';
-  return Number(v).toLocaleString('vi-VN');
+  return Number(v).toLocaleString(undefined);
 }
 
 function formatPercentDelta(value) {
@@ -75,31 +76,31 @@ function severityTone(severity) {
 function formatFeedTime(value) {
   if (!value) return '—';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString('vi-VN');
+  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString(undefined);
 }
 
-function getFeedSourceMeta(source) {
+function getFeedSourceMeta(source, t) {
   const normalizedSource = String(source || '').toLowerCase();
   if (normalizedSource === 'redis_stream') {
     return {
-      label: 'Redis stream',
+      label: t('whaleAlertsDashboard.sourceRedisStream'),
       tone: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200',
     };
   }
   if (normalizedSource === 'intraday_tick_db') {
     return {
-      label: 'IntradayTick DB',
+      label: t('whaleAlertsDashboard.sourceIntradayDb'),
       tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200',
     };
   }
   if (normalizedSource === 'vnstock') {
     return {
-      label: 'vnstock',
+      label: t('whaleAlertsDashboard.sourceVnstock'),
       tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
     };
   }
   return {
-    label: 'Không xác định',
+    label: t('whaleAlertsDashboard.sourceUnknown'),
     tone: 'border-slate-700 bg-slate-950/70 text-slate-300',
   };
 }
@@ -107,6 +108,7 @@ function getFeedSourceMeta(source) {
 // ─── AlertFeedCard ─────────────────────────────────────────────────────────
 
 function AlertFeedCard({ order, animated }) {
+  const { t } = useI18n();
   if (!order) return null;
   const isBuy = order.side === 'buy';
   const isBig = order.size_class === 'shark';
@@ -135,7 +137,7 @@ function AlertFeedCard({ order, animated }) {
               isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
             }`}
           >
-            {isBuy ? '▲ MUA LỚN' : order.side === 'sell' ? '▼ BÁN LỚN' : 'TRUNG LẬP'}
+            {isBuy ? t('whaleAlertsDashboard.bigBuy') : order.side === 'sell' ? t('whaleAlertsDashboard.bigSell') : t('whaleAlertsDashboard.neutral')}
           </span>
           {severity && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityClass}`}>
@@ -152,7 +154,7 @@ function AlertFeedCard({ order, animated }) {
       </div>
       {(order.display_score != null || order.event_score != null) && (
         <div className="mt-1 text-[11px] text-slate-400">
-          Score {order.display_score ?? '—'} / Event {order.event_score ?? '—'}
+          {t('whaleAlertsDashboard.score')} {order.display_score ?? '—'} / {t('whaleAlertsDashboard.event')} {order.event_score ?? '—'}
         </div>
       )}
     </div>
@@ -169,6 +171,7 @@ export function WhaleFeedPanel({
   onRefresh = null,
   feedHeightClass = 'h-[420px] sm:h-[500px] xl:h-[560px]',
 }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [internalLoading, setInternalLoading] = useState(true);
   const prevCountRef = useRef(0);
@@ -207,21 +210,21 @@ export function WhaleFeedPanel({
   const loading = isControlled ? Boolean(controlledLoading) : internalLoading;
   const orders = activeData?.whale_orders || [];
   const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
-  const sourceMeta = getFeedSourceMeta(activeData?.source);
+  const sourceMeta = getFeedSourceMeta(activeData?.source, t);
   return (
     <section className="card-section p-4 flex flex-col xl:h-full xl:min-h-0">
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
         <div>
-          <p className="text-label">Cảnh báo dòng tiền lớn</p>
+          <p className="text-label">{t('whaleAlertsDashboard.feedLabel')}</p>
           <h3 className="mt-0.5 text-sm font-semibold text-white">
-            Realtime · ngưỡng {activeData ? fmtBil(activeData.threshold) : '—'}
+            {t('whaleAlertsDashboard.realtimeThreshold', { value: activeData ? fmtBil(activeData.threshold) : '—' })}
           </h3>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
             <span className={`rounded-full border px-2.5 py-1 font-semibold ${sourceMeta.tone}`}>
-              Nguồn: {sourceMeta.label}
+              {t('whaleAlertsDashboard.source')}: {sourceMeta.label}
             </span>
             <span className="rounded-full border border-slate-700 bg-slate-950/70 px-2.5 py-1">
-              Cập nhật: {formatFeedTime(activeData?.fetched_at)}
+              {t('whaleAlertsDashboard.updated')}: {formatFeedTime(activeData?.fetched_at)}
             </span>
           </div>
         </div>
@@ -243,7 +246,7 @@ export function WhaleFeedPanel({
       ) : orders.length === 0 && (realtimeAlerts?.length || 0) === 0 ? (
         <div className={`panel-scrollbar mt-3 flex min-h-0 ${feedHeightClass} items-center justify-center overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <p className="text-center text-[12px] text-slate-500">
-            Không có lệnh lớn trong phiên (ngoài giờ hoặc chưa có giao dịch vượt ngưỡng).
+            {t('whaleAlertsDashboard.noLargeOrders')}
           </p>
         </div>
       ) : (
@@ -254,7 +257,7 @@ export function WhaleFeedPanel({
               <AlertFeedCard
                 key={a.event_id || `ws-${a.ts}-${i}`}
                 order={{
-                  time: a.ts ? new Date(a.ts).toLocaleTimeString('vi-VN') : '—',
+                  time: a.ts ? new Date(a.ts).toLocaleTimeString(undefined) : '—',
                   ts: a.ts || null,
                   matched_value: a.matched_value,
                   side: (a.side || '').toLowerCase(),
@@ -284,6 +287,7 @@ export function WhaleFeedPanel({
 const DONUT_COLORS = ['#0891b2', '#7c3aed', '#475569'];
 
 export function MoneyFlowDonut({ summary, loading, compact = false }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <section className={`card-section p-4 ${compact ? 'h-full min-h-0' : ''}`}>
@@ -294,9 +298,9 @@ export function MoneyFlowDonut({ summary, loading, compact = false }) {
 
   const totalValue = (summary?.shark_value || 0) + (summary?.whale_value || 0) + (summary?.small_value || 0);
   const donutData = [
-    { name: `🦈 Cá mập (>5T)`, value: summary?.shark_pct || 0, realValue: summary?.shark_value || 0 },
-    { name: `🐋 Cá voi (1-5T)`, value: summary?.whale_pct || 0, realValue: summary?.whale_value || 0 },
-    { name: `🐟 Nhỏ lẻ`, value: summary?.small_pct || 0, realValue: summary?.small_value || 0 },
+    { name: t('whaleAlertsDashboard.sharkSegment'), value: summary?.shark_pct || 0, realValue: summary?.shark_value || 0 },
+    { name: t('whaleAlertsDashboard.whaleSegment'), value: summary?.whale_pct || 0, realValue: summary?.whale_value || 0 },
+    { name: t('whaleAlertsDashboard.retailSegment'), value: summary?.small_pct || 0, realValue: summary?.small_value || 0 },
   ].filter((d) => d.value > 0);
 
   const flowNet = summary?.flow_net || 0;
@@ -305,15 +309,15 @@ export function MoneyFlowDonut({ summary, loading, compact = false }) {
   return (
     <section className={`card-section p-4 ${compact ? 'flex h-full min-h-0 flex-col' : ''}`}>
       <div className="border-b border-slate-800 pb-3">
-        <p className="text-label">Tỷ trọng dòng tiền phiên</p>
-        <h3 className="mt-0.5 text-sm font-semibold text-white">Phân khúc giao dịch</h3>
+        <p className="text-label">{t('whaleAlertsDashboard.sessionFlow')}</p>
+        <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.flowBreakdown')}</h3>
       </div>
       <div className={`mt-3 flex items-center gap-4 ${compact ? 'flex-1' : ''}`}>
         <div className={`relative shrink-0 ${compact ? 'h-48 w-48' : 'h-36 w-36'}`}>
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={donutData.length > 0 ? donutData : [{ value: 1, name: 'Không có dữ liệu' }]}
+                data={donutData.length > 0 ? donutData : [{ value: 1, name: t('whaleAlertsDashboard.noData') }]}
                 cx="50%"
                 cy="50%"
                 innerRadius="58%"
@@ -335,7 +339,7 @@ export function MoneyFlowDonut({ summary, loading, compact = false }) {
           </ResponsiveContainer>
           {/* Center label */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-[10px] text-slate-400">Flow ròng</span>
+            <span className="text-[10px] text-slate-400">{t('whaleAlertsDashboard.flowNet')}</span>
             <span className="text-[13px] font-bold" style={{ color: netColor }}>
               {flowNet >= 0 ? '+' : ''}{fmtBil(flowNet)}
             </span>
@@ -351,11 +355,11 @@ export function MoneyFlowDonut({ summary, loading, compact = false }) {
           ))}
           <div className="mt-1 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-1.5 text-[11px]">
             <div className="flex justify-between">
-              <span className="text-slate-500">Mua</span>
+              <span className="text-slate-500">{t('whaleAlertsDashboard.buy')}</span>
               <span className="text-emerald-300 font-semibold">{fmtBil(summary?.buy_value)}</span>
             </div>
             <div className="flex justify-between mt-0.5">
-              <span className="text-slate-500">Bán</span>
+              <span className="text-slate-500">{t('whaleAlertsDashboard.sell')}</span>
               <span className="text-rose-300 font-semibold">{fmtBil(summary?.sell_value)}</span>
             </div>
           </div>
@@ -377,12 +381,13 @@ const CustomBubble = (props) => {
 };
 
 export function BubbleOrderChart({ orders, loading }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <section className="card-section p-4">
         <div className="border-b border-slate-800 pb-3">
-          <p className="text-label">Phân bổ lệnh lớn</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+          <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.priceVolumeBubble')}</h3>
         </div>
         <div className="mt-4 h-56 animate-pulse rounded-xl bg-slate-900" />
       </section>
@@ -400,11 +405,11 @@ export function BubbleOrderChart({ orders, loading }) {
     return (
       <section className="card-section p-4">
         <div className="border-b border-slate-800 pb-3">
-          <p className="text-label">Phân bổ lệnh lớn</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+          <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.priceVolumeBubble')}</h3>
         </div>
         <div className="mt-4 flex h-56 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
-          Chưa có lệnh lớn đủ ngưỡng trong phiên.
+          {t('whaleAlertsDashboard.noThresholdOrders')}
         </div>
       </section>
     );
@@ -414,13 +419,13 @@ export function BubbleOrderChart({ orders, loading }) {
     <section className="card-section p-4">
       <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
         <div>
-          <p className="text-label">Phân bổ lệnh lớn</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-white">Giá × Khối lượng (Bubble)</h3>
+          <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.priceVolumeBubble')}</h3>
         </div>
         <div className="flex gap-3 text-[10px] text-slate-400">
-          <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Mua</span>
-          <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />Bán</span>
-          <span className="text-slate-600">Bong bóng ∝ Giá trị</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />{t('whaleAlertsDashboard.buy')}</span>
+          <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />{t('whaleAlertsDashboard.sell')}</span>
+          <span className="text-slate-600">{t('whaleAlertsDashboard.bubbleLegend')}</span>
         </div>
       </div>
       <div className="mt-3 h-56">
@@ -447,8 +452,8 @@ export function BubbleOrderChart({ orders, loading }) {
                   <div className="space-y-1 p-2 text-[11px]">
                     <p className="font-semibold text-white">{fmtBil(d.matched_value)}</p>
                     <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · KL {fmtVol(d.volume)}</p>
-                    <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? '▲ Mua' : d.side === 'sell' ? '▼ Bán' : '—'} {sizeClassEmoji(d.size_class)}</p>
-                    <p className="text-slate-400">Severity: {d.severity ?? '—'} · Score: {d.display_score ?? '—'}</p>
+                    <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? `▲ ${t('whaleAlertsDashboard.buy')}` : d.side === 'sell' ? `▼ ${t('whaleAlertsDashboard.sell')}` : '—'} {sizeClassEmoji(d.size_class)}</p>
+                    <p className="text-slate-400">{t('whaleAlertsDashboard.severity')}: {d.severity ?? '—'} · {t('whaleAlertsDashboard.score')}: {d.display_score ?? '—'}</p>
                   </div>
                 );
               }}
@@ -473,6 +478,7 @@ const CustomBarShape = (props) => {
 };
 
 function RVOLChartPanel({ symbol, loading: parentLoading }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -492,12 +498,12 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
     <section className="card-section p-4">
       <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
         <div>
-          <p className="text-label">Khối lượng tương đối (RVOL)</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-white">Volume 15 phút + SMA20</h3>
+          <p className="text-label">{t('whaleAlertsDashboard.rvolLabel')}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.rvolTitle')}</h3>
         </div>
         {maxSpike >= 2 && (
           <span className="rounded-full border border-violet-600/60 bg-violet-950/40 px-2.5 py-1 text-[10px] font-semibold text-violet-300">
-            ⚠️ Đột biến {maxSpike.toFixed(1)}×
+            {t('whaleAlertsDashboard.spikeAlert', { value: maxSpike.toFixed(1) })}
           </span>
         )}
       </div>
@@ -505,7 +511,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
         <div className="mt-4 h-44 animate-pulse rounded-xl bg-slate-900" />
       ) : !data?.buckets?.length ? (
         <div className="mt-4 flex h-44 items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl">
-          Không có dữ liệu RVOL.
+          {t('whaleAlertsDashboard.noRvolData')}
         </div>
       ) : (
         <div className="mt-3 h-44">
@@ -530,7 +536,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
                 formatter={(val, name) => [
                   name === 'volume' ? fmtVol(val) : fmtVol(val),
-                  name === 'volume' ? 'KL' : 'SMA20',
+                  name === 'volume' ? t('whaleAlertsDashboard.volumeShort') : 'SMA20',
                 ]}
               />
               <Bar dataKey="volume" shape={<CustomBarShape />} />
@@ -546,9 +552,9 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
         </div>
       )}
       <div className="mt-2 flex gap-3 text-[10px] text-slate-500">
-        <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-violet-500 mr-1 align-middle" />Đột biến ≥2×</span>
-        <span><span className="inline-block w-2.5 h-0.5 bg-amber-400 mr-1 align-middle" />SMA20</span>
-        <span><span className="inline-block w-2.5 h-0.5 bg-slate-600 mr-1 align-middle" />Bình thường</span>
+        <span><span className="inline-block w-2.5 h-2.5 rounded-sm bg-violet-500 mr-1 align-middle" />{t('whaleAlertsDashboard.spikeLegend')}</span>
+        <span><span className="inline-block w-2.5 h-0.5 bg-amber-400 mr-1 align-middle" />{t('whaleAlertsDashboard.sma20')}</span>
+        <span><span className="inline-block w-2.5 h-0.5 bg-slate-600 mr-1 align-middle" />{t('whaleAlertsDashboard.normalLegend')}</span>
       </div>
     </section>
   );
@@ -557,6 +563,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
 // ─── DepthChartPanel ────────────────────────────────────────────────────────
 
 function DepthChartPanel({ symbol, compact = false }) {
+  const { t } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -585,14 +592,14 @@ function DepthChartPanel({ symbol, compact = false }) {
     <section className={`card-section p-4 ${compact ? 'flex h-full min-h-0 flex-col' : ''}`}>
       <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
         <div>
-          <p className="text-label">Độ sâu thị trường</p>
-          <h3 className="mt-0.5 text-sm font-semibold text-white">Depth Chart — Tường Mua / Bán</h3>
+          <p className="text-label">{t('whaleAlertsDashboard.depthLabel')}</p>
+          <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.depthTitle')}</h3>
         </div>
         <button
           onClick={fetch}
           className="rounded-full border border-slate-700 px-3 py-1 text-[10px] text-slate-400 hover:text-slate-200"
         >
-          ↻ Làm mới
+          {t('whaleAlertsDashboard.refresh')}
         </button>
       </div>
 
@@ -600,7 +607,7 @@ function DepthChartPanel({ symbol, compact = false }) {
         <div className={`mt-4 animate-pulse rounded-xl bg-slate-900 ${compact ? 'h-full min-h-0 flex-1' : 'h-52'}`} />
       ) : !chartData.length ? (
         <div className={`mt-4 flex items-center justify-center text-[12px] text-slate-500 border border-dashed border-slate-800 rounded-xl ${compact ? 'h-full min-h-0 flex-1' : 'h-52'}`}>
-          Chưa có dữ liệu sổ lệnh.
+          {t('whaleAlertsDashboard.noDepthData')}
         </div>
       ) : (
         <>
@@ -624,8 +631,8 @@ function DepthChartPanel({ symbol, compact = false }) {
                 />
                 <Tooltip
                   contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
-                  formatter={(val, name) => [fmtVol(val), name === 'cumBid' ? 'Chờ mua (tích lũy)' : 'Chờ bán (tích lũy)']}
-                  labelFormatter={(label) => `Giá: ${fmtPrice(label)}`}
+                  formatter={(val, name) => [fmtVol(val), name === 'cumBid' ? t('whaleAlertsDashboard.cumBid') : t('whaleAlertsDashboard.cumAsk')]}
+                  labelFormatter={(label) => `${t('whaleAlertsDashboard.price')}: ${fmtPrice(label)}`}
                 />
                 {data?.reference_price && (
                   <ReferenceLine
@@ -689,6 +696,7 @@ function DepthChartPanel({ symbol, compact = false }) {
 }
 
 function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, window: selectedWindow, onWindowChange }) {
+  const { t } = useI18n();
   const cvdSeries = orderFlowData?.cvd_series || [];
   const darkFlow = orderFlowData?.dark_flow || {};
   const latestSignal = orderFlowData?.latest_signal || null;
@@ -698,7 +706,7 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
 
   const chartData = cvdSeries.map((item) => ({
     ...item,
-    label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '—',
+    label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—',
     cumulative_cvd: Number(item.cumulative_cvd || 0),
   }));
 
@@ -716,8 +724,8 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
     <section className="card-section p-4">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
         <div>
-          <p className="text-label">Order Flow Radar</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-100">Dark money detection cho {symbol}</h2>
+          <p className="text-label">{t('whaleAlertsDashboard.orderFlowRadar')}</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAlertsDashboard.darkMoneyTitle', { symbol })}</h2>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex rounded-lg border border-slate-700 overflow-hidden text-[10px]">
@@ -749,7 +757,7 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">Strength</p>
+          <p className="text-label">{t('whaleAlertsDashboard.strength')}</p>
           <p className="mt-2 text-2xl font-semibold text-slate-100">{liveStrength.toFixed(1)}</p>
           <div className="mt-3 h-2 rounded-full bg-slate-800">
             <div
@@ -759,27 +767,27 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
           </div>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">Tick rate / min</p>
+          <p className="text-label">{t('whaleAlertsDashboard.tickRatePerMin')}</p>
           <p className="mt-2 text-2xl font-semibold text-slate-100">{Number(tickRate?.tick_rate_per_min || 0).toFixed(1)}</p>
-          <p className="mt-2 text-xs text-slate-400">Lệnh nhỏ: {(smallOrderRatio * 100).toFixed(1)}%</p>
+          <p className="mt-2 text-xs text-slate-400">{t('whaleAlertsDashboard.smallOrders')}: {(smallOrderRatio * 100).toFixed(1)}%</p>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">Realtime event</p>
-          <p className="mt-2 text-sm font-medium text-slate-100">{liveSignal?.description || darkFlow?.components?.absorption?.description || 'Chưa có event realtime mới.'}</p>
-          <p className="mt-2 text-[11px] text-slate-500">{liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString('vi-VN') : '—'}</p>
+          <p className="text-label">{t('whaleAlertsDashboard.realtimeEvent')}</p>
+          <p className="mt-2 text-sm font-medium text-slate-100">{liveSignal?.description || darkFlow?.components?.absorption?.description || t('whaleAlertsDashboard.noRealtimeEvent')}</p>
+          <p className="mt-2 text-[11px] text-slate-500">{liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString(undefined) : '—'}</p>
         </div>
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-200">CVD 30 phút</p>
-            <span className="text-[11px] text-slate-500">{chartData.length} buckets</span>
+            <p className="text-sm font-semibold text-slate-200">{t('whaleAlertsDashboard.cvd30m')}</p>
+            <span className="text-[11px] text-slate-500">{t('whaleAlertsDashboard.bucketsCount', { count: chartData.length })}</span>
           </div>
           <div className="h-56">
             {chartData.length === 0 ? (
               <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 text-sm text-slate-500">
-                Chưa có dữ liệu intraday để dựng CVD.
+                {t('whaleAlertsDashboard.noIntradayCvd')}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -806,18 +814,18 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-sm font-semibold text-slate-200">Recent signals</p>
+          <p className="text-sm font-semibold text-slate-200">{t('whaleAlertsDashboard.recentSignals')}</p>
           <div className="mt-3 space-y-2">
             {signals.length === 0 ? (
-              <p className="text-sm text-slate-500">Chưa có signal nào được lưu.</p>
+              <p className="text-sm text-slate-500">{t('whaleAlertsDashboard.noSignalsSaved')}</p>
             ) : signals.slice(0, 4).map((item) => (
               <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
-                  <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString('vi-VN') : '—'}</p>
+                  <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString(undefined) : '—'}</p>
                 </div>
-                <p className="mt-1 text-sm text-slate-200">Strength {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
-                <p className="mt-1 text-[11px] text-slate-400">Tick rate {Number(item.tick_rate || 0).toFixed(1)} • Small {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
+                <p className="mt-1 text-sm text-slate-200">{t('whaleAlertsDashboard.strength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
+                <p className="mt-1 text-[11px] text-slate-400">{t('whaleAlertsDashboard.tickRate')} {Number(item.tick_rate || 0).toFixed(1)} • {t('whaleAlertsDashboard.small')} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
               </div>
             ))}
           </div>
@@ -830,6 +838,7 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function WhaleAlertsDashboard() {
+  const { t } = useI18n();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
 
@@ -932,20 +941,20 @@ export default function WhaleAlertsDashboard() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <Link to="/watchlist" className="text-label hover:text-slate-300 transition-colors">
-              Radar
+              {t('layout.nav.watchlist')}
             </Link>
             <span className="text-slate-700">/</span>
             <Link to={`/stocks/${normalizedSymbol}`} className="text-label hover:text-slate-300 transition-colors">
               {normalizedSymbol}
             </Link>
             <span className="text-slate-700">/</span>
-            <span className="text-slate-200 text-sm font-semibold">🦈 Whale Alerts</span>
+            <span className="text-slate-200 text-sm font-semibold">🦈 {t('layout.nav.whaleAlerts')}</span>
 
             <div className="w-full mt-1 text-xs text-slate-400">
-              <span className="text-slate-500">Mã chứng khoán:</span> <span className="font-semibold text-slate-200">{normalizedSymbol}</span>
+              <span className="text-slate-500">{t('whaleAlertsDashboard.stockSymbol')}:</span> <span className="font-semibold text-slate-200">{normalizedSymbol}</span>
               <span className="mx-2 text-slate-700">|</span>
-              <span className="text-slate-500">Tên công ty:</span>{' '}
-              <span className="font-semibold text-slate-200">{companyName || 'Đang cập nhật...'}</span>
+              <span className="text-slate-500">{t('whaleAlertsDashboard.companyName')}:</span>{' '}
+              <span className="font-semibold text-slate-200">{companyName || t('whaleAlertsDashboard.updating')}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -960,14 +969,14 @@ export default function WhaleAlertsDashboard() {
               </div>
             )}
             <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
-              {realtimeStatus === 'live' ? '🟢 Realtime' : realtimeStatus === 'polling' ? '🟡 Polling' : '⚪ Kết nối...'}
-              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString('vi-VN')}` : ''}
+              {realtimeStatus === 'live' ? t('whaleAlertsDashboard.statusLive') : realtimeStatus === 'polling' ? t('whaleAlertsDashboard.statusPolling') : t('whaleAlertsDashboard.statusConnecting')}
+              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString(undefined)}` : ''}
             </div>
             <Link
               to={`/stocks/${normalizedSymbol}`}
               className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
             >
-              ← Stock Workspace
+              ← {t('whaleAlertsDashboard.stockWorkspace')}
             </Link>
           </div>
         </div>

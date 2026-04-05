@@ -10,6 +10,7 @@ import {
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import Can from '../components/Can';
+import { useI18n } from '../context/LangContext';
 
 const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
@@ -20,7 +21,7 @@ const FALLBACK_MODELS = {
 };
 
 function fmtCurrency(value) {
-  return Number(value || 0).toLocaleString('vi-VN');
+  return Number(value || 0).toLocaleString(undefined);
 }
 
 function fmtCompact(value) {
@@ -28,13 +29,13 @@ function fmtCompact(value) {
   if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString('vi-VN');
+  return n.toLocaleString(undefined);
 }
 
 function fmtTime(value) {
   if (!value) return '—';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString('vi-VN');
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(undefined);
 }
 
 // ─── Thống kê mỗi mã ────────────────────────────────────────────
@@ -58,6 +59,7 @@ function buildSymbolStats(items) {
 
 // ─── Ô cột trái: thông tin mã ──────────────────────────────────
 function SymbolCell({ stats, isActive, onClick }) {
+  const { t } = useI18n();
   const avgValue = stats.count > 0 ? stats.totalValue / stats.count : 0;
   const whaleAvgPrice = stats.totalVolume > 0 ? stats.totalValue / stats.totalVolume : 0;
   const totalOrders = stats.buyCount + stats.sellCount;
@@ -82,11 +84,11 @@ function SymbolCell({ stats, isActive, onClick }) {
       <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
         <span className="flex items-center gap-1 text-emerald-400">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          Mua: {stats.buyCount}
+          {t('whaleHub.buy')}: {stats.buyCount}
         </span>
         <span className="flex items-center gap-1 text-rose-400">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
-          Bán: {stats.sellCount}
+          {t('whaleHub.sell')}: {stats.sellCount}
         </span>
       </div>
 
@@ -102,15 +104,15 @@ function SymbolCell({ stats, isActive, onClick }) {
 
       {/* Giá trị trung bình */}
       <p className="mt-2 text-xs text-slate-400">
-        Avg lệnh: <span className="font-medium text-slate-200">{fmtCompact(avgValue)} VND</span>
+        {t('whaleHub.avgOrder')}: <span className="font-medium text-slate-200">{fmtCompact(avgValue)} VND</span>
       </p>
       {whaleAvgPrice > 0 && (
         <p className="mt-0.5 text-xs text-cyan-400">
-          Avg giá: <span className="font-medium">{whaleAvgPrice.toLocaleString('vi-VN', { maximumFractionDigits: 0 })} VND/CP</span>
+          {t('whaleHub.avgPrice')}: <span className="font-medium">{whaleAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })} VND/CP</span>
         </p>
       )}
       <p className="mt-0.5 text-xs text-slate-500">
-        Tổng {stats.count} lệnh · {fmtCompact(stats.totalValue)} VND
+        {t('whaleHub.totalOrders', { count: stats.count })} · {fmtCompact(stats.totalValue)} VND
       </p>
     </button>
   );
@@ -118,6 +120,7 @@ function SymbolCell({ stats, isActive, onClick }) {
 
 // ─── Ô cột phải: AI Advisory tương ứng ────────────────────────
 function AdvisoryCell({ item, onRefresh, refreshing }) {
+  const { t } = useI18n();
   const side = (item.side || '').toUpperCase();
   const isBuy = side === 'BUY';
 
@@ -144,7 +147,7 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
       {/* AI Summary */}
       <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
         <p className="text-xs leading-6 whitespace-pre-line text-slate-300">
-          {item.ai_summary || 'Chưa có tóm tắt AI.'}
+          {item.ai_summary || t('whaleHub.noAiSummary')}
         </p>
       </div>
 
@@ -157,7 +160,7 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
             to="/upgrade"
             className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300"
           >
-            🔒 Phân tích sâu (Premium+)
+            🔒 {t('whaleHub.deepAnalysis')}
           </Link>
         }
       >
@@ -178,19 +181,19 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
           disabled={Boolean(refreshing)}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
-          {refreshing ? 'Đang refresh...' : 'Refresh AI'}
+          {refreshing ? t('whaleAdvisory.refreshing') : t('whaleAdvisory.refreshAi')}
         </button>
         <Link
           to={`/whale-alerts/${item.symbol}`}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
-          Mở dashboard mã
+          {t('whaleHub.openSymbolDashboard')}
         </Link>
         <Link
           to={`/stocks/${item.symbol}`}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
-          Mở stock workspace
+          {t('whaleHub.openStockWorkspace')}
         </Link>
       </div>
     </div>
@@ -199,6 +202,7 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
 
 // ─── Hàng của bảng ────────────────────────────────────────────
 function TableRow({ stats, allItems, isFirst, isLast }) {
+  const { t } = useI18n();
   const symbolItems = allItems.filter(i => i.symbol === stats.symbol);
   // Lấy advisory mới nhất của mã này
   const latest = symbolItems[0] || null;
@@ -218,7 +222,7 @@ function TableRow({ stats, allItems, isFirst, isLast }) {
           <AdvisoryCell item={latest} />
         ) : (
           <div className="flex h-full items-center p-4 text-xs text-slate-600">
-            Chưa có advisory.
+            {t('whaleAdvisory.noAdvisory')}
           </div>
         )}
       </div>
@@ -229,6 +233,7 @@ function TableRow({ stats, allItems, isFirst, isLast }) {
 // ─── Main Page ──────────────────────────────────────────────────
 export default function WhaleAdvisory() {
   const { userPlan } = usePortfolio();
+  const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -251,11 +256,11 @@ export default function WhaleAdvisory() {
       const response = await getWhaleAdvisories();
       setItems(response.data || []);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Không tải được danh sách AI advisory.');
+      setError(err.response?.data?.detail || t('whaleAdvisory.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchData();
@@ -312,13 +317,13 @@ export default function WhaleAdvisory() {
       const resp = await updateUserConfig(payload);
       setAiKeyConfigured(Boolean(resp?.data?.ai_api_key_configured) || Boolean(apiKey.trim()));
       setApiKey('');
-      setAiMessage('Đã lưu cấu hình AI thành công.');
+      setAiMessage(t('whaleAdvisory.saveSuccess'));
     } catch (err) {
-      setAiMessage(err?.response?.data?.detail || 'Không lưu được cấu hình AI.');
+      setAiMessage(err?.response?.data?.detail || t('whaleAdvisory.saveFailed'));
     } finally {
       setSavingAi(false);
     }
-  }, [aiModel, aiProvider, apiKey]);
+  }, [aiModel, aiProvider, apiKey, t]);
 
   const handleTestAiConnection = useCallback(async () => {
     setTestingAi(true);
@@ -332,14 +337,14 @@ export default function WhaleAdvisory() {
         payload.ai_api_key = apiKey.trim();
       }
       const resp = await testAIConnection(payload);
-      const message = resp?.data?.message || 'Kết nối thành công.';
+      const message = resp?.data?.message || t('whaleAdvisory.testSuccess');
       setAiMessage(message);
     } catch (err) {
-      setAiMessage(err?.response?.data?.message || 'Kiểm tra kết nối thất bại.');
+      setAiMessage(err?.response?.data?.message || t('whaleAdvisory.testFailed'));
     } finally {
       setTestingAi(false);
     }
-  }, [aiModel, aiProvider, apiKey]);
+  }, [aiModel, aiProvider, apiKey, t]);
 
   const handleRefreshAdvisory = useCallback(async (symbol) => {
     if (!symbol) return;
@@ -347,15 +352,15 @@ export default function WhaleAdvisory() {
     setRefreshMessage('');
     try {
       const resp = await refreshWhaleAdvisory(symbol);
-      setRefreshMessage(resp?.data?.message || `Đã gửi yêu cầu refresh cho ${symbol}.`);
+      setRefreshMessage(resp?.data?.message || t('whaleAdvisory.refreshQueued', { symbol }));
       await fetchData();
     } catch (err) {
-      const message = err?.response?.data?.message || 'Refresh advisory thất bại.';
+      const message = err?.response?.data?.message || t('whaleAdvisory.refreshFailed');
       setRefreshMessage(message);
     } finally {
       setRefreshingSymbol('');
     }
-  }, [fetchData]);
+  }, [fetchData, t]);
 
   const symbolStats = useMemo(() => buildSymbolStats(items), [items]);
 
@@ -365,16 +370,15 @@ export default function WhaleAdvisory() {
       <section className="card-section px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-label">Whale intelligence</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-100">AI Advisory Feed</h1>
+            <p className="text-label">{t('whaleAdvisory.intelligence')}</p>
+            <h1 className="mt-2 text-2xl font-semibold text-slate-100">{t('whaleAdvisory.title')}</h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Mỗi hàng là một mã chứng khoán. Cột trái: thống kê lệnh mua/bán lớn.
-              Cột phải: AI Advisory mới nhất. Gói hiện tại:{' '}
+              {t('whaleAdvisory.description')}{' '}
               <span className="font-semibold text-cyan-300">{userPlan || 'free'}</span>.
             </p>
           </div>
           <button type="button" onClick={fetchData} className="btn-primary">
-            Làm mới
+            {t('whaleAdvisory.refresh')}
           </button>
         </div>
       </section>
@@ -382,17 +386,17 @@ export default function WhaleAdvisory() {
       <section className="card-section px-5 py-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-label">AI provider config</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-100">Tuỳ chọn model cho Whale Advisory</h2>
+            <p className="text-label">{t('whaleAdvisory.providerConfig')}</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAdvisory.providerTitle')}</h2>
             <p className="mt-1 text-xs text-slate-400">
-              API key: {aiKeyConfigured ? 'Đã cấu hình' : 'Chưa cấu hình'}.
+              {t('whaleAdvisory.apiKeyStatus', { status: aiKeyConfigured ? t('whaleAdvisory.configured') : t('whaleAdvisory.notConfigured') })}.
             </p>
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <label className="text-xs text-slate-400">
-            Provider
+            {t('whaleAdvisory.provider')}
             <select
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
               value={aiProvider}
@@ -405,7 +409,7 @@ export default function WhaleAdvisory() {
           </label>
 
           <label className="text-xs text-slate-400">
-            Model
+            {t('whaleAdvisory.model')}
             <select
               className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
               value={aiModel}
@@ -418,21 +422,21 @@ export default function WhaleAdvisory() {
           </label>
 
           <label className="text-xs text-slate-400">
-            API key (optional)
+            {t('whaleAdvisory.apiKeyOptional')}
             <div className="mt-1 flex gap-2">
               <input
                 type={showApiKey ? 'text' : 'password'}
                 className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Nhập để override key hệ thống"
+                placeholder={t('whaleAdvisory.apiKeyPlaceholder')}
               />
               <button
                 type="button"
                 className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200"
                 onClick={() => setShowApiKey((prev) => !prev)}
               >
-                {showApiKey ? 'Ẩn' : 'Hiện'}
+                {showApiKey ? t('whaleAdvisory.hide') : t('whaleAdvisory.show')}
               </button>
             </div>
           </label>
@@ -445,7 +449,7 @@ export default function WhaleAdvisory() {
             onClick={handleSaveAiConfig}
             disabled={savingAi}
           >
-            {savingAi ? 'Đang lưu...' : 'Lưu cấu hình'}
+            {savingAi ? t('whaleAdvisory.saving') : t('whaleAdvisory.saveConfig')}
           </button>
           <button
             type="button"
@@ -453,7 +457,7 @@ export default function WhaleAdvisory() {
             onClick={handleTestAiConnection}
             disabled={testingAi}
           >
-            {testingAi ? 'Đang test...' : 'Test connection'}
+            {testingAi ? t('whaleAdvisory.testing') : t('whaleAdvisory.testConnection')}
           </button>
         </div>
 
@@ -480,12 +484,12 @@ export default function WhaleAdvisory() {
         <div className="grid grid-cols-[220px_1fr] divide-x divide-slate-800 border-b border-slate-700 bg-slate-900/70">
           <div className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              Mã / Thống kê
+              {t('whaleAdvisory.tableSymbolStats')}
             </p>
           </div>
           <div className="px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              AI Advisory gần nhất
+              {t('whaleAdvisory.tableLatest')}
             </p>
           </div>
         </div>
@@ -514,9 +518,9 @@ export default function WhaleAdvisory() {
           </div>
         ) : symbolStats.length === 0 ? (
           <div className="px-5 py-12 text-center">
-            <p className="text-sm text-slate-400">Chưa có advisory nào được tạo.</p>
+            <p className="text-sm text-slate-400">{t('whaleAdvisory.emptyTitle')}</p>
             <p className="mt-2 text-xs text-slate-600">
-              Advisory xuất hiện sau khi backend ghi nhận whale signal và task AI hoàn tất.
+              {t('whaleAdvisory.emptyDescription')}
             </p>
           </div>
         ) : (
@@ -541,7 +545,7 @@ export default function WhaleAdvisory() {
                       />
                     ) : (
                       <div className="flex items-center p-4 text-xs text-slate-600">
-                        Chưa có advisory.
+                        {t('whaleAdvisory.noAdvisory')}
                       </div>
                     )}
                   </div>

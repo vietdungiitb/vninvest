@@ -11,31 +11,32 @@ import {
   deleteScreenerRule,
   runScreenerRule,
 } from '../api/client';
+import { useI18n } from '../context/LangContext';
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const FIELD_OPTIONS = [
-  { value: 'close',               label: 'Giá đóng cửa' },
-  { value: 'volume',              label: 'Khối lượng' },
-  { value: 'rsi_14',              label: 'RSI(14)' },
-  { value: 'sma20',               label: 'SMA 20' },
-  { value: 'sma50',               label: 'SMA 50' },
-  { value: 'price_vs_sma20_pct',  label: '% so SMA20' },
-  { value: 'price_vs_sma50_pct',  label: '% so SMA50' },
-  { value: 'sma20_vs_sma50_pct',  label: 'SMA20 vs SMA50 (Golden/Death Cross)' },
-  { value: 'macd_hist',           label: 'MACD Histogram' },
-  { value: 'volume_rvol',         label: 'Volume tương đối (RVOL)' },
-  { value: 'momentum_20d_pct',    label: 'Momentum 20 ngày (%)' },
-  { value: 'range_position_pct',  label: 'Vị trí trong biên độ 52 tuần (%)' },
-  { value: 'avg_volume_20',       label: 'TB khối lượng 20 ngày' },
+  { value: 'close', key: 'close' },
+  { value: 'volume', key: 'volume' },
+  { value: 'rsi_14', key: 'rsi14' },
+  { value: 'sma20', key: 'sma20' },
+  { value: 'sma50', key: 'sma50' },
+  { value: 'price_vs_sma20_pct', key: 'priceVsSma20Pct' },
+  { value: 'price_vs_sma50_pct', key: 'priceVsSma50Pct' },
+  { value: 'sma20_vs_sma50_pct', key: 'sma20VsSma50Pct' },
+  { value: 'macd_hist', key: 'macdHist' },
+  { value: 'volume_rvol', key: 'volumeRvol' },
+  { value: 'momentum_20d_pct', key: 'momentum20dPct' },
+  { value: 'range_position_pct', key: 'rangePositionPct' },
+  { value: 'avg_volume_20', key: 'avgVolume20' },
 ];
 
 const OP_OPTIONS = [
-  { value: 'lt',  label: '<' },
-  { value: 'lte', label: '≤' },
-  { value: 'gt',  label: '>' },
-  { value: 'gte', label: '≥' },
-  { value: 'eq',  label: '=' },
+  { value: 'lt', key: 'lt' },
+  { value: 'lte', key: 'lte' },
+  { value: 'gt', key: 'gt' },
+  { value: 'gte', key: 'gte' },
+  { value: 'eq', key: 'eq' },
 ];
 
 const EMPTY_COND = { field: 'rsi_14', op: 'lt', value: '' };
@@ -44,12 +45,12 @@ const EMPTY_COND = { field: 'rsi_14', op: 'lt', value: '' };
 
 function fmtNum(v) {
   if (v === null || v === undefined) return '—';
-  return typeof v === 'number' ? v.toLocaleString('vi-VN', { maximumFractionDigits: 2 }) : v;
+  return typeof v === 'number' ? v.toLocaleString(undefined, { maximumFractionDigits: 2 }) : v;
 }
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function ConditionRow({ cond, onChange, onDelete }) {
+function ConditionRow({ cond, onChange, onDelete, t }) {
   const update = (key, val) => onChange({ ...cond, [key]: val });
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -59,7 +60,7 @@ function ConditionRow({ cond, onChange, onDelete }) {
         className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
       >
         {FIELD_OPTIONS.map((f) => (
-          <option key={f.value} value={f.value}>{f.label}</option>
+          <option key={f.value} value={f.value}>{t(`screener.fields.${f.key}`)}</option>
         ))}
       </select>
       <select
@@ -68,20 +69,20 @@ function ConditionRow({ cond, onChange, onDelete }) {
         className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
       >
         {OP_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>{o.label}</option>
+          <option key={o.value} value={o.value}>{t(`screener.ops.${o.key}`)}</option>
         ))}
       </select>
       <input
         type="number"
         value={cond.value}
         onChange={(e) => update('value', e.target.value)}
-        placeholder="Giá trị"
+        placeholder={t('screener.valuePlaceholder')}
         className="w-28 bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
       />
       <button
         onClick={onDelete}
         className="text-red-500 hover:text-red-400 text-xs px-1"
-        title="Xóa điều kiện"
+        title={t('screener.deleteCondition')}
       >
         ✕
       </button>
@@ -90,6 +91,7 @@ function ConditionRow({ cond, onChange, onDelete }) {
 }
 
 function RuleEditor({ initial, onSave, onCancel }) {
+  const { t } = useI18n();
   const [name, setName] = useState(initial?.name ?? '');
   const [conds, setConds] = useState(
     initial?.rules_json?.length ? initial.rules_json.map((c) => ({ ...c })) : [{ ...EMPTY_COND }]
@@ -101,10 +103,10 @@ function RuleEditor({ initial, onSave, onCancel }) {
   const addCond = () => setConds((prev) => [...prev, { ...EMPTY_COND }]);
 
   const handleSave = () => {
-    if (!name.trim()) { setErr('Tên rule không được để trống.'); return; }
+    if (!name.trim()) { setErr(t('screener.errors.nameRequired')); return; }
     for (const c of conds) {
-      if (c.value === '' || c.value === null) { setErr('Giá trị điều kiện không được để trống.'); return; }
-      if (isNaN(Number(c.value))) { setErr('Giá trị điều kiện phải là số.'); return; }
+      if (c.value === '' || c.value === null) { setErr(t('screener.errors.valueRequired')); return; }
+      if (isNaN(Number(c.value))) { setErr(t('screener.errors.valueNumber')); return; }
     }
     setErr('');
     onSave({ name: name.trim(), rules_json: conds.map((c) => ({ ...c, value: Number(c.value) })) });
@@ -113,29 +115,30 @@ function RuleEditor({ initial, onSave, onCancel }) {
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 space-y-4">
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">Tên rule</label>
+        <label className="text-xs text-gray-400 mb-1 block">{t('screener.ruleName')}</label>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="VD: RSI oversold + xu hướng tăng"
+          placeholder={t('screener.ruleNamePlaceholder')}
           className="w-full bg-gray-800 border border-gray-700 text-gray-100 text-sm rounded px-3 py-2 focus:outline-none focus:border-brand-500"
         />
       </div>
       <div className="space-y-2">
-        <label className="text-xs text-gray-400 block">Điều kiện lọc (AND logic)</label>
+        <label className="text-xs text-gray-400 block">{t('screener.conditionsLabel')}</label>
         {conds.map((c, i) => (
           <ConditionRow
             key={i}
             cond={c}
             onChange={(val) => updateCond(i, val)}
             onDelete={() => deleteCond(i)}
+            t={t}
           />
         ))}
         <button
           onClick={addCond}
           className="text-xs text-brand-400 hover:text-brand-300 mt-1"
         >
-          + Thêm điều kiện
+          {t('screener.addCondition')}
         </button>
       </div>
       {err && <p className="text-red-400 text-xs">{err}</p>}
@@ -144,13 +147,13 @@ function RuleEditor({ initial, onSave, onCancel }) {
           onClick={handleSave}
           className="px-4 py-1.5 bg-brand-600 hover:bg-brand-500 text-white text-sm rounded-lg transition-colors"
         >
-          Lưu rule
+          {t('screener.saveRule')}
         </button>
         <button
           onClick={onCancel}
           className="px-4 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm rounded-lg transition-colors"
         >
-          Hủy
+          {t('common.cancel')}
         </button>
       </div>
     </div>
@@ -158,6 +161,7 @@ function RuleEditor({ initial, onSave, onCancel }) {
 }
 
 function ResultsTable({ results }) {
+  const { t, formatNumber } = useI18n();
   if (!results) return null;
   const { matched, matched_count, total_scanned, rule_name } = results;
 
@@ -166,27 +170,27 @@ function ResultsTable({ results }) {
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-300">{rule_name}</h3>
         <div className="text-xs text-gray-500">
-          <span className="text-green-400 font-bold">{matched_count}</span> khớp /{' '}
-          {total_scanned} mã được quét
+          <span className="text-green-400 font-bold">{formatNumber(matched_count)}</span> {t('screener.matched')} /{' '}
+          {formatNumber(total_scanned)} {t('screener.scannedSymbols')}
         </div>
       </div>
       {matched.length === 0 ? (
-        <p className="text-gray-500 text-sm text-center py-6">Không có mã nào khớp điều kiện.</p>
+        <p className="text-gray-500 text-sm text-center py-6">{t('screener.noMatchedSymbols')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
               <tr className="text-gray-500 border-b border-gray-800">
-                <th className="pb-2 pr-4 font-medium">Mã</th>
-                <th className="pb-2 pr-4 text-right font-medium">Giá</th>
-                <th className="pb-2 pr-4 text-right font-medium">RSI(14)</th>
-                <th className="pb-2 pr-4 text-right font-medium">SMA20</th>
-                <th className="pb-2 pr-4 text-right font-medium">SMA50</th>
-                <th className="pb-2 pr-4 text-right font-medium">%SMA20</th>
-                <th className="pb-2 pr-4 text-right font-medium">MACD Hist</th>
-                <th className="pb-2 pr-4 text-right font-medium">RVOL</th>
-                <th className="pb-2 pr-4 text-right font-medium">Mom.20d%</th>
-                <th className="pb-2 text-right font-medium">Ngày</th>
+                <th className="pb-2 pr-4 font-medium">{t('screener.columns.symbol')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.price')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.rsi14')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.sma20')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.sma50')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.pctSma20')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.macdHist')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.rvol')}</th>
+                <th className="pb-2 pr-4 text-right font-medium">{t('screener.columns.momentum20d')}</th>
+                <th className="pb-2 text-right font-medium">{t('screener.columns.date')}</th>
               </tr>
             </thead>
             <tbody>
@@ -227,6 +231,7 @@ function ResultsTable({ results }) {
 // ─── main page ────────────────────────────────────────────────────────────────
 
 export default function Screener() {
+  const { t, formatNumber } = useI18n();
   const [rules, setRules] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(null);     // null | 'new' | rule object
@@ -240,11 +245,11 @@ export default function Screener() {
       const res = await getScreenerRules();
       setRules(res.data);
     } catch {
-      setError('Không tải được danh sách rule.');
+      setError(t('screener.errors.loadRulesFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { loadRules(); }, [loadRules]);
 
@@ -258,18 +263,18 @@ export default function Screener() {
       setEditing(null);
       await loadRules();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Lưu rule thất bại.');
+      setError(err.response?.data?.detail || t('screener.errors.saveRuleFailed'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Xóa rule này?')) return;
+    if (!window.confirm(t('screener.deleteRuleConfirm'))) return;
     try {
       await deleteScreenerRule(id);
       setRules((prev) => prev.filter((r) => r.id !== id));
       if (results?.rule_id === id) setResults(null);
     } catch {
-      setError('Xóa rule thất bại.');
+      setError(t('screener.errors.deleteRuleFailed'));
     }
   };
 
@@ -281,7 +286,7 @@ export default function Screener() {
       const res = await runScreenerRule(rule.id);
       setResults(res.data);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Chạy screener thất bại.');
+      setError(err.response?.data?.detail || t('screener.errors.runRuleFailed'));
     } finally {
       setRunning(null);
     }
@@ -292,9 +297,9 @@ export default function Screener() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-100">Screener cổ phiếu</h1>
+          <h1 className="text-xl font-bold text-gray-100">{t('screener.title')}</h1>
           <p className="text-xs text-gray-500 mt-0.5">
-            Tạo bộ lọc theo chỉ số kỹ thuật, quét toàn bộ dữ liệu giá.
+            {t('screener.subtitle')}
           </p>
         </div>
         {editing == null && (
@@ -302,7 +307,7 @@ export default function Screener() {
             onClick={() => setEditing('new')}
             className="px-4 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm rounded-lg transition-colors"
           >
-            + Tạo rule mới
+            {t('screener.createRule')}
           </button>
         )}
       </div>
@@ -332,7 +337,7 @@ export default function Screener() {
         </div>
       ) : rules.length === 0 ? (
         <div className="bg-gray-900 border border-gray-800 rounded-xl p-10 text-center text-gray-500 text-sm">
-          Chưa có rule nào. Nhấn "+ Tạo rule mới" để bắt đầu.
+          {t('screener.noRules')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -342,11 +347,13 @@ export default function Screener() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-100">{rule.name}</p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {Array.isArray(rule.rules_json) ? rule.rules_json.length : '?'} điều kiện
+                    {Array.isArray(rule.rules_json) ? formatNumber(rule.rules_json.length) : '?'} {t('screener.conditionsCount')}
                     {' · '}
                     {Array.isArray(rule.rules_json) ? rule.rules_json.map((c) => {
-                      const f = FIELD_OPTIONS.find((o) => o.value === c.field)?.label ?? c.field;
-                      const op = OP_OPTIONS.find((o) => o.value === c.op)?.label ?? c.op;
+                      const fKey = FIELD_OPTIONS.find((o) => o.value === c.field)?.key;
+                      const opKey = OP_OPTIONS.find((o) => o.value === c.op)?.key;
+                      const f = fKey ? t(`screener.fields.${fKey}`) : c.field;
+                      const op = opKey ? t(`screener.ops.${opKey}`) : c.op;
                       return `${f} ${op} ${c.value}`;
                     }).join(' AND ') : JSON.stringify(rule.rules_json)}
                   </p>
@@ -361,21 +368,21 @@ export default function Screener() {
                     {running === rule.id ? (
                       <>
                         <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        Đang quét...
+                        {t('screener.running')}
                       </>
-                    ) : 'Chạy Screener'}
+                    ) : t('screener.run')}
                   </button>
                   <button
                     onClick={() => setEditing(rule)}
                     className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded-lg transition-colors"
                   >
-                    Sửa
+                    {t('common.edit')}
                   </button>
                   <button
                     onClick={() => handleDelete(rule.id)}
                     className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-400 text-xs rounded-lg transition-colors"
                   >
-                    Xóa
+                    {t('common.delete')}
                   </button>
                 </div>
               </div>

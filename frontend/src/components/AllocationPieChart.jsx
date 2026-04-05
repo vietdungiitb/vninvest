@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from 'recharts';
 import { getAllocation, getAllocationBySector } from '../api/client';
+import { useI18n } from '../context/LangContext';
 
 // Bảng màu tối phù hợp dark theme
 const COLORS = [
@@ -19,13 +20,13 @@ const COLORS = [
   '#f97316', '#a855f7',
 ];
 
-function formatVND(value) {
+function formatVND(value, formatNumberFn, localeTag) {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
-  return new Intl.NumberFormat('vi-VN').format(value);
+  return new Intl.NumberFormat(localeTag).format(value);
 }
 
-function CustomTooltip({ active, payload, mode }) {
+function CustomTooltip({ active, payload, mode, formatNumberFn, localeTag }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -33,7 +34,7 @@ function CustomTooltip({ active, payload, mode }) {
       <p className="text-sm font-bold text-gray-100 mb-1">
         {mode === 'sector' ? d.sector : d.symbol}
       </p>
-      <p className="text-xs text-gray-400">{formatVND(d.value)} ₫</p>
+      <p className="text-xs text-gray-400">{formatVND(d.value, formatNumberFn, localeTag)} ₫</p>
       <p className="text-xs font-medium text-brand-400">{d.percentage.toFixed(2)}%</p>
     </div>
   );
@@ -62,6 +63,7 @@ function CustomLegend({ data, mode }) {
 }
 
 export default function AllocationPieChart({ portfolioId }) {
+  const { t, localeTag, formatNumber } = useI18n();
   const [data, setData] = useState([]);
   const [hhi, setHhi] = useState(null);
   const [mode, setMode] = useState('symbol'); // 'symbol' | 'sector'
@@ -81,7 +83,7 @@ export default function AllocationPieChart({ portfolioId }) {
         setHhi(null);
       }
     } catch (err) {
-      console.error('Lỗi tải phân bổ:', err);
+      console.error('Load allocation failed:', err);
     } finally {
       setLoading(false);
     }
@@ -96,7 +98,7 @@ export default function AllocationPieChart({ portfolioId }) {
       {/* Header + toggle */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-          Phân bổ danh mục
+          {t('allocation.title')}
         </h2>
         <div className="flex rounded-md overflow-hidden border border-gray-700 text-xs">
           {['symbol', 'sector'].map((m) => (
@@ -109,7 +111,7 @@ export default function AllocationPieChart({ portfolioId }) {
                   : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
-              {m === 'symbol' ? 'Theo mã' : 'Theo ngành'}
+              {m === 'symbol' ? t('allocation.bySymbol') : t('allocation.bySector')}
             </button>
           ))}
         </div>
@@ -119,7 +121,7 @@ export default function AllocationPieChart({ portfolioId }) {
         <div className="h-48 bg-gray-800 rounded-lg animate-pulse" />
       ) : data.length === 0 ? (
         <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
-          Chưa có dữ liệu phân bổ.
+          {t('allocation.empty')}
         </div>
       ) : (
         <div className="flex flex-col items-center">
@@ -143,13 +145,13 @@ export default function AllocationPieChart({ portfolioId }) {
                   />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip mode={mode} />} />
+              <Tooltip content={<CustomTooltip mode={mode} formatNumberFn={formatNumber} localeTag={localeTag} />} />
             </PieChart>
           </ResponsiveContainer>
           {/* HHI badge — chỉ hiện khi theo ngành */}
           {mode === 'sector' && hhi !== null && (
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-gray-500">HHI tập trung:</span>
+              <span className="text-xs text-gray-500">{t('allocation.hhi')}</span>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 hhi < 1500 ? 'bg-green-900 text-green-300'
                 : hhi < 2500 ? 'bg-yellow-900 text-yellow-300'
@@ -158,7 +160,7 @@ export default function AllocationPieChart({ portfolioId }) {
                 {hhi.toFixed(0)}
               </span>
               <span className="text-xs text-gray-600">
-                {hhi < 1500 ? '(đa dạng)' : hhi < 2500 ? '(trung bình)' : '(tập trung cao)'}
+                {hhi < 1500 ? t('allocation.hhiDiversified') : hhi < 2500 ? t('allocation.hhiMedium') : t('allocation.hhiConcentrated')}
               </span>
             </div>
           )}
