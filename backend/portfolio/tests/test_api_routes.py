@@ -1902,6 +1902,42 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('HPG', result_symbols)
         self.assertNotIn('FPT', result_symbols)
 
+    def test_tracked_symbol_bulk_threshold_endpoint_updates_multiple_rows(self):
+        self.authenticate()
+        ts1 = TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        ts2 = TrackedSymbol.objects.create(user=self.user, symbol='HPG', whale_alert_threshold_million=600)
+
+        response = self.client.post(
+            '/api/stock-management/tracked-symbols/bulk-threshold/',
+            {
+                'tracked_symbol_ids': [ts1.id, ts2.id],
+                'whale_alert_threshold_million': 750,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['updated_count'], 2)
+        self.assertEqual(response.data['whale_alert_threshold_million'], 750.0)
+        ts1.refresh_from_db()
+        ts2.refresh_from_db()
+        self.assertEqual(float(ts1.whale_alert_threshold_million), 750.0)
+        self.assertEqual(float(ts2.whale_alert_threshold_million), 750.0)
+
+    def test_tracked_symbol_bulk_threshold_endpoint_validates_ids(self):
+        self.authenticate()
+
+        response = self.client.post(
+            '/api/stock-management/tracked-symbols/bulk-threshold/',
+            {
+                'tracked_symbol_ids': [],
+                'whale_alert_threshold_million': 500,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
     @patch('vnstock.Vnstock')
     def test_stock_workspace_overview_and_chart_endpoints(self, mock_vnstock):
         self.authenticate()

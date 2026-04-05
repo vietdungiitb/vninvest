@@ -2338,6 +2338,58 @@ class TrackedSymbolDeleteView(APIView):
 
 
 @method_decorator(csrf_exempt, name='dispatch')
+class TrackedSymbolBulkThresholdView(APIView):
+    """
+    POST /api/stock-management/tracked-symbols/bulk-threshold/
+    Body: {
+      "tracked_symbol_ids": [1,2,3],
+      "whale_alert_threshold_million": 750 | null
+    }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        tracked_symbol_ids = request.data.get('tracked_symbol_ids')
+        if not isinstance(tracked_symbol_ids, list) or not tracked_symbol_ids:
+            return Response(
+                {'detail': 'tracked_symbol_ids phải là mảng id không rỗng.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        normalized_ids = []
+        for raw_id in tracked_symbol_ids:
+            try:
+                normalized_ids.append(int(raw_id))
+            except (TypeError, ValueError):
+                return Response({'detail': 'tracked_symbol_ids chứa giá trị không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            threshold_million = _parse_tracked_symbol_threshold_million(request.data.get('whale_alert_threshold_million'))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+        queryset = TrackedSymbol.objects.filter(user=request.user, id__in=normalized_ids)
+        found_ids = set(queryset.values_list('id', flat=True))
+        requested_ids = set(normalized_ids)
+        missing_ids = sorted(requested_ids - found_ids)
+        if missing_ids:
+            return Response(
+                {'detail': 'Một số tracked symbol không tồn tại hoặc không thuộc user.', 'missing_ids': missing_ids},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        updated_count = queryset.update(whale_alert_threshold_million=threshold_million)
+        return Response(
+            {
+                'updated_count': updated_count,
+                'whale_alert_threshold_million': float(threshold_million) if threshold_million is not None else None,
+                'applied_ids': sorted(found_ids),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
+@method_decorator(csrf_exempt, name='dispatch')
 class PriceAlertRuleListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 

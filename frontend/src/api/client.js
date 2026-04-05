@@ -243,6 +243,11 @@ export const addTrackedSymbol = (symbol, sourceGroupId = null, whaleAlertThresho
     whale_alert_threshold_million: whaleAlertThresholdMillion,
   });
 export const updateTrackedSymbol = (id, data) => apiClient.patch(`/stock-management/tracked-symbols/${id}/`, data);
+export const bulkUpdateTrackedSymbolThreshold = (trackedSymbolIds, whaleAlertThresholdMillion) =>
+  apiClient.post('/stock-management/tracked-symbols/bulk-threshold/', {
+    tracked_symbol_ids: trackedSymbolIds,
+    whale_alert_threshold_million: whaleAlertThresholdMillion,
+  });
 export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`);
 
 export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/');

@@ -8,7 +8,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import {
   getSecuritiesGroups, seedSecurities, syncSecuritiesPrices,
-  getTrackedSymbols, addTrackedSymbol, updateTrackedSymbol, deleteTrackedSymbol,
+  getTrackedSymbols, addTrackedSymbol, updateTrackedSymbol, bulkUpdateTrackedSymbolThreshold, deleteTrackedSymbol,
   syncStockProfile,
   getPriceAlerts, createPriceAlert, updatePriceAlert, deletePriceAlert, markPriceAlertTriggered,
 } from '../api/client';
@@ -503,8 +503,9 @@ export default function WatchlistPage() {
     setTrackedBulkAction('set');
     setSymbolError('');
     try {
-      await Promise.all(
-        targets.map((item) => updateTrackedSymbol(item.id, { whale_alert_threshold_million: parsedThreshold })),
+      await bulkUpdateTrackedSymbolThreshold(
+        targets.map((item) => item.id),
+        parsedThreshold,
       );
       await fetchTracked();
       setSyncMsg(t('watchlist.bulkSetThresholdSuccess', { count: formatNumber(targets.length) }));
@@ -527,8 +528,9 @@ export default function WatchlistPage() {
     setTrackedBulkAction('clear');
     setSymbolError('');
     try {
-      await Promise.all(
-        targets.map((item) => updateTrackedSymbol(item.id, { whale_alert_threshold_million: null })),
+      await bulkUpdateTrackedSymbolThreshold(
+        targets.map((item) => item.id),
+        null,
       );
       await fetchTracked();
       setSyncMsg(t('watchlist.bulkClearThresholdSuccess', { count: formatNumber(targets.length) }));
