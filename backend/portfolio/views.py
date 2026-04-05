@@ -1159,7 +1159,7 @@ class PriceBoardView(APIView):
     """
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'realtime'
+    throttle_scope = 'realtime_price_board'
 
     def get(self, request, symbol):
         import pandas as pd

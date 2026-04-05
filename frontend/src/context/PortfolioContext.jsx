@@ -20,9 +20,11 @@ const PortfolioContext = createContext(null);
 export function PortfolioProvider({ children }) {
   const [portfolios, setPortfolios] = useState([]);
   const [activePortfolioId, setActivePortfolioId] = useState(null);
-  const [accessToken, setAccessToken] = useState(localStorage.getItem('access_token'));
-  const [refreshTokenValue, setRefreshTokenValue] = useState(localStorage.getItem('refresh_token'));
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('access_token'));
+  const initialAccessToken = localStorage.getItem('access_token');
+  const initialRefreshToken = localStorage.getItem('refresh_token');
+  const [accessToken, setAccessToken] = useState(initialAccessToken);
+  const [refreshTokenValue, setRefreshTokenValue] = useState(initialRefreshToken);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!initialAccessToken && !!initialRefreshToken);
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
@@ -39,9 +41,13 @@ export function PortfolioProvider({ children }) {
         email: res.data.email || '',
       });
     } catch (err) {
+      if (err?.response?.status === 401) {
+        logout();
+        return;
+      }
       console.error('Fetch /auth/me failed:', err);
     }
-  }, []);
+  }, [logout]);
 
   const saveTokens = (access, refresh) => {
     const nextRefresh = refresh || localStorage.getItem('refresh_token');
@@ -139,20 +145,28 @@ export function PortfolioProvider({ children }) {
         setActivePortfolioId(res.data[0].id);
       }
     } catch (err) {
+      if (err?.response?.status === 401) {
+        logout();
+        return;
+      }
       console.error('Fetch portfolios failed:', err);
     } finally {
       setLoading(false);
     }
-  }, [activePortfolioId]);
+  }, [activePortfolioId, logout]);
 
   const fetchUserConfig = useCallback(async () => {
     try {
       const res = await getUserConfig();
       setUserConfig(res.data);
     } catch (err) {
+      if (err?.response?.status === 401) {
+        logout();
+        return;
+      }
       console.error('Fetch user config failed:', err);
     }
-  }, []);
+  }, [logout]);
 
   // Load initial data
   useEffect(() => {

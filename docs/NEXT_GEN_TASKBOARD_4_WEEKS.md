@@ -4,6 +4,10 @@ Trang thai tong quan: READY FOR EXECUTION
 
 Muc tieu: Chuyen ke hoach 4 tuan thanh bang cong viec co the giao ngay cho Backend, Frontend Web, Data, QA, DevOps ma khong thay doi code trong tai lieu nay.
 
+Mapping sprint roadmap:
+1. Sprint 21: Tuan 1 + Tuan 2
+2. Sprint 22: Tuan 3 + Tuan 4A + Tuan 4B
+
 ---
 
 ## 0. Quy uoc su dung taskboard
@@ -38,7 +42,7 @@ Muc tieu: Chuyen ke hoach 4 tuan thanh bang cong viec co the giao ngay cho Backe
 
 ## 2. Taskboard theo tuan
 
-## Tuan 1: Baseline + Infra + Feature Flags
+## Tuan 1 (Sprint 21): Baseline + Infra + Feature Flags
 
 Muc tieu tuan:
 - Co baseline metrics that.
@@ -100,7 +104,7 @@ No-Go khi:
 
 ---
 
-## Tuan 2: Refactor Repository (Khong doi nghiep vu)
+## Tuan 2 (Sprint 21): Refactor Repository (Khong doi nghiep vu)
 
 Muc tieu tuan:
 - Tach Data Access khoi module tinh toan.
@@ -161,7 +165,7 @@ No-Go khi:
 
 ---
 
-## Tuan 3: ADV Pipeline + Shadow Mode
+## Tuan 3 (Sprint 22): ADV Pipeline + Shadow Mode
 
 Muc tieu tuan:
 - Co du lieu ADV 10 ngay on dinh.
@@ -222,7 +226,7 @@ No-Go khi:
 
 ---
 
-## Tuan 4A: Canary Dynamic Thresholds
+## Tuan 4A (Sprint 22): Canary Dynamic Thresholds
 
 Muc tieu pha:
 - Bat dynamic cho 10% user noi bo.
@@ -275,7 +279,7 @@ No-Go khi:
 
 ---
 
-## Tuan 4B: WebSocket Provider Phase 1 (Watchlist)
+## Tuan 4B (Sprint 22): WebSocket Provider Phase 1 (Watchlist)
 
 Muc tieu pha:
 - Giam so ket noi WS tren web.

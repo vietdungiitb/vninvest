@@ -767,16 +767,34 @@ function PriceDepthPanel({ symbol, liveVolume }) {
   const [error, setError] = useState('');
   const prevVolumeRef = useRef(null);
   const debounceRef = useRef(null);
+  const inFlightRef = useRef(false);
+  const backoffUntilRef = useRef(0);
 
   const fetchData = useCallback(async (isRefresh = false) => {
+    const now = Date.now();
+    if (inFlightRef.current) {
+      return;
+    }
+    if (now < backoffUntilRef.current) {
+      return;
+    }
+
+    inFlightRef.current = true;
     if (isRefresh) setRefreshing(true);
     try {
       const resp = await getPriceBoard(symbol);
       setData(resp.data);
       setError('');
     } catch (err) {
-      setError(err.response?.data?.detail || 'Không lấy được sổ lệnh.');
+      if (err?.response?.status === 429) {
+        // Apply local cool-down to avoid hammering endpoint when server throttles.
+        backoffUntilRef.current = Date.now() + 15000;
+        setError('Tạm thời vượt giới hạn truy vấn sổ lệnh. Tự động thử lại sau vài giây.');
+      } else {
+        setError(err.response?.data?.detail || 'Không lấy được sổ lệnh.');
+      }
     } finally {
+      inFlightRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }

@@ -4,6 +4,23 @@
 > Triết lý: thay đổi nhỏ, có cờ bật/tắt, có guard dữ liệu, có rollback drill, có tiêu chí go/no-go rõ ràng.
 > Taskboard triển khai chi tiết: docs/NEXT_GEN_TASKBOARD_4_WEEKS.md
 
+## 0) Mapping vào Roadmap Sprint hiện tại
+
+Để tránh phá vỡ roadmap đang chạy (Sprint 19 và Sprint 20), kế hoạch 4 tuần này được tách thành 2 sprint mới:
+
+1. Sprint 21 (Phase 1A)
+- Tuần 1: Baseline + Infra + Feature Flags
+- Tuần 2: Refactor Repository (không đổi nghiệp vụ)
+
+2. Sprint 22 (Phase 1B)
+- Tuần 3: ADV Pipeline + Shadow Mode
+- Tuần 4A: Canary Dynamic Thresholds
+- Tuần 4B: Global WS Provider Phase 1 (Watchlist Web)
+
+Ghi chú phạm vi:
+1. Sprint 20 giữ trọng tâm i18n theo kế hoạch đã có.
+2. Sprint 21-22 là nhánh Next-Gen độc lập, không chen vào Sprint 19.
+
 ---
 
 ## 1) Scope Quyết Định

@@ -119,7 +119,8 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'realtime': '60/minute',
+        'realtime': os.getenv('DRF_REALTIME_RATE', '60/minute'),
+        'realtime_price_board': os.getenv('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
         'auth': '10/minute',
     },
 }

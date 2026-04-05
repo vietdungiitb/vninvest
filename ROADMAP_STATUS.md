@@ -234,6 +234,8 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 | **Sprint 13 (Next)** | Backlog | 2026-04-14 | Backtest engine / Intraday |
 | **Sprint 19** | In Progress | 2026-04-12 | Mobile App MVP (Android + iOS) |
 | **Sprint 20** | Planned | 2026-04-26 | i18n: Cấu hình ngôn ngữ VI/EN |
+| **Sprint 21** | Planned | 2026-05-10 | Next-Gen Phase 1A: Baseline + Repository Refactor |
+| **Sprint 22** | Planned | 2026-05-24 | Next-Gen Phase 1B: ADV Dynamic Thresholds + WS Provider |
 
 ---
 
@@ -262,6 +264,43 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 
 ---
 
+## ⚙️ Sprint 21 — Next-Gen Phase 1A (PLANNED)
+
+**Mục tiêu**: Chuẩn bị hạ tầng an toàn rollout và xử lý technical debt theo hướng không đổi nghiệp vụ.
+
+**Phạm vi**:
+- Tuần 1: Baseline metrics + Feature Flags + Kill-switch
+- Tuần 2: Refactor Repository tách Data Access khỏi Order Flow
+
+**Acceptance Criteria chính**:
+- [ ] Có baseline report đầy đủ (CPU worker, WS/user, reconnect, latency p95)
+- [ ] Feature flags bật/tắt được trên staging
+- [ ] Refactor repository không đổi output nghiệp vụ
+- [ ] Regression pass và runtime p95 không xấu hơn baseline quá 10%
+
+**Chi tiết kỹ thuật**: Xem `docs/NEXT_GEN_IMPLEMENTATION_PLAN.md` và `docs/NEXT_GEN_TASKBOARD_4_WEEKS.md`
+
+---
+
+## ⚙️ Sprint 22 — Next-Gen Phase 1B (PLANNED)
+
+**Mục tiêu**: Nâng chất lượng cảnh báo theo ADV và giảm áp lực kết nối realtime trên web.
+
+**Phạm vi**:
+- Tuần 3: ADV pipeline + Shadow Mode dynamic thresholds
+- Tuần 4A: Canary 10% dynamic thresholds
+- Tuần 4B: Global WS Provider phase 1 cho Watchlist (web)
+
+**Acceptance Criteria chính**:
+- [ ] ADV freshness < 24h và fallback static hoạt động khi stale
+- [ ] Canary 10% ổn định, không spam alert, rollback drill đạt SLA < 3 phút
+- [ ] WS connections giảm >= 40% trong context mục tiêu
+- [ ] Reconnect rate < 3% trên web
+
+**Chi tiết kỹ thuật**: Xem `docs/NEXT_GEN_IMPLEMENTATION_PLAN.md` và `docs/NEXT_GEN_TASKBOARD_4_WEEKS.md`
+
+---
+
 ## 📝 Notes
 
 - **Bước 1-30**: Admin UI + Stock workspace implementation roadmap (completed Bước 1-30 today)
@@ -270,6 +309,7 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 - **Sprint 13+**: Backtest engine, intraday workspace, notification center
 - **Sprint 19**: Mobile App MVP — đang triển khai (Auth ✅, Dashboard ✅, Transactions ✅, Watchlist ✅)
 - **Sprint 20**: i18n VI/EN — kế hoạch chi tiết tại `docs/SPRINT20_I18N_DETAILED_PLAN.md`
+- **Sprint 21-22**: Next-Gen 4 tuần được tách thành 2 sprint mới để không phá vỡ roadmap hiện tại
 
 ---
 
