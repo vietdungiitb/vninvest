@@ -129,6 +129,7 @@ export default function WatchlistPage() {
   const [addingFromGroup, setAddingFromGroup] = useState({});
   const [bulkGroupAction, setBulkGroupAction] = useState(null);
   const [groupTrackedFilter, setGroupTrackedFilter] = useState('all');
+  const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
   const triggeringAlertIdsRef = useRef(new Set());
   const handleSyncStockProfile = async () => {
     setSyncingStockProfile(true);
@@ -150,6 +151,8 @@ export default function WatchlistPage() {
   const [addThresholdMillion, setAddThresholdMillion] = useState('');
   const [addingSymbol, setAddingSymbol] = useState(false);
   const [updatingTrackedId, setUpdatingTrackedId] = useState(null);
+  const [editingTrackedId, setEditingTrackedId] = useState(null);
+  const [editingTrackedThresholdValue, setEditingTrackedThresholdValue] = useState('');
   const [symbolError, setSymbolError] = useState('');
 
   const fetchGroups = useCallback(async () => {
@@ -254,6 +257,17 @@ export default function WatchlistPage() {
     up: trackedSymbolsWithRealtime.filter((t) => t.change_pct > 0).length,
     down: trackedSymbolsWithRealtime.filter((t) => t.change_pct < 0).length,
   };
+  const trackedWithOverrideCount = trackedSymbolsWithRealtime.filter((item) => item.whale_alert_threshold_million != null).length;
+  const trackedWithUserDefaultCount = trackedSymbolsWithRealtime.length - trackedWithOverrideCount;
+  const filteredTrackedSymbolsWithRealtime = trackedSymbolsWithRealtime.filter((item) => {
+    if (trackedThresholdFilter === 'symbol') {
+      return item.whale_alert_threshold_million != null;
+    }
+    if (trackedThresholdFilter === 'user') {
+      return item.whale_alert_threshold_million == null;
+    }
+    return true;
+  });
   const trackedSymbolMap = new Map(trackedSymbolsWithRealtime.map((item) => [item.symbol, item]));
   const trackedSymbolSet = new Set(trackedSymbolsWithRealtime.map((item) => item.symbol));
   const activeGroupItems = activeGroup?.items || [];
@@ -409,22 +423,25 @@ export default function WatchlistPage() {
     }
   };
 
-  const handleConfigureTrackedThreshold = async (item) => {
-    const currentValue = item.whale_alert_threshold_million;
-    const inputValue = window.prompt(
-      'Ngưỡng whale riêng (triệu VNĐ). Để trống để xóa override.',
-      currentValue == null ? '' : String(currentValue),
+  const handleStartTrackedThresholdEdit = (item) => {
+    setEditingTrackedId(item.id);
+    setEditingTrackedThresholdValue(
+      item.whale_alert_threshold_million == null ? '' : String(item.whale_alert_threshold_million),
     );
-    if (inputValue === null) {
-      return;
-    }
+  };
 
-    const trimmed = String(inputValue).trim();
+  const handleCancelTrackedThresholdEdit = () => {
+    setEditingTrackedId(null);
+    setEditingTrackedThresholdValue('');
+  };
+
+  const handleSaveTrackedThreshold = async (item) => {
+    const trimmed = String(editingTrackedThresholdValue || '').trim();
     let nextValue = null;
     if (trimmed !== '') {
       const parsed = Number(trimmed);
       if (!Number.isFinite(parsed) || parsed < 1) {
-        alert('Ngưỡng không hợp lệ. Vui lòng nhập số >= 1.');
+        setSymbolError(t('watchlist.thresholdValidation'));
         return;
       }
       nextValue = parsed;
@@ -435,10 +452,12 @@ export default function WatchlistPage() {
     try {
       const res = await updateTrackedSymbol(item.id, { whale_alert_threshold_million: nextValue });
       setTrackedSymbols((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...res.data } : row)));
-      setSyncMsg(`Đã cập nhật ngưỡng whale cho ${item.symbol}.`);
+      setSyncMsg(t('watchlist.thresholdUpdated', { symbol: item.symbol }));
       setTimeout(() => setSyncMsg(''), 4000);
+      setEditingTrackedId(null);
+      setEditingTrackedThresholdValue('');
     } catch (err) {
-      setSymbolError(err.response?.data?.detail || `Không thể cập nhật ngưỡng cho ${item.symbol}.`);
+      setSymbolError(err.response?.data?.detail || t('watchlist.thresholdUpdateFailed', { symbol: item.symbol }));
     } finally {
       setUpdatingTrackedId(null);
     }
@@ -1013,7 +1032,33 @@ export default function WatchlistPage() {
                   ) : trackedSymbolsWithRealtime.length === 0 ? (
                     <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.emptyTracked')}</div>
                   ) : (
-                    <table className="w-full text-sm">
+                    <div>
+                      <div className="px-4 pt-4 pb-3 border-b border-gray-800/70">
+                        <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
+                          {[
+                            { key: 'all', label: t('watchlist.thresholdFilterAll', { count: formatNumber(trackedSymbolsWithRealtime.length) }) },
+                            { key: 'symbol', label: t('watchlist.thresholdFilterSymbol', { count: formatNumber(trackedWithOverrideCount) }) },
+                            { key: 'user', label: t('watchlist.thresholdFilterUser', { count: formatNumber(trackedWithUserDefaultCount) }) },
+                          ].map((option) => (
+                            <button
+                              key={option.key}
+                              onClick={() => setTrackedThresholdFilter(option.key)}
+                              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                                trackedThresholdFilter === option.key
+                                  ? 'bg-blue-700 text-white'
+                                  : 'text-gray-400 hover:text-gray-100'
+                              }`}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {filteredTrackedSymbolsWithRealtime.length === 0 ? (
+                        <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
+                      ) : (
+                        <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
@@ -1021,13 +1066,14 @@ export default function WatchlistPage() {
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Whale (M)</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.whaleThresholdColumn')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.thresholdSourceColumn')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableUpdatedAt')}</th>
                           <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800/60">
-                        {trackedSymbolsWithRealtime.map((item) => (
+                        {filteredTrackedSymbolsWithRealtime.map((item) => (
                           <tr key={item.id} className="hover:bg-gray-800/50 transition-colors">
                             <td className="px-4 py-3">
                               <button
@@ -1044,32 +1090,66 @@ export default function WatchlistPage() {
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
                             <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
                             <td className="px-4 py-3 text-gray-300 text-xs tabular-nums whitespace-nowrap">
-                              {item.whale_alert_threshold_million == null ? 'Theo user' : `${formatNumber(item.whale_alert_threshold_million)}M`}
+                              {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
+                            </td>
+                            <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                              {item.whale_alert_threshold_million == null
+                                ? t('watchlist.thresholdSourceUser')
+                                : t('watchlist.thresholdSourceSymbol')}
                             </td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                               {item.last_date || '—'}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <div className="flex items-center justify-end gap-3">
-                                <button
-                                  onClick={() => handleConfigureTrackedThreshold(item)}
-                                  disabled={updatingTrackedId === item.id}
-                                  className="text-xs text-blue-300 hover:text-blue-200 font-semibold disabled:opacity-50"
-                                >
-                                  {updatingTrackedId === item.id ? 'Đang lưu...' : 'Sửa ngưỡng'}
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteTracked(item.id, item.symbol)}
-                                  className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                                >
-                                  {t('watchlist.delete')}
-                                </button>
-                              </div>
+                              {editingTrackedId === item.id ? (
+                                <div className="flex items-center justify-end gap-2">
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    value={editingTrackedThresholdValue}
+                                    onChange={(e) => setEditingTrackedThresholdValue(e.target.value)}
+                                    placeholder={t('watchlist.useGlobalThreshold')}
+                                    className="w-28 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-brand-600"
+                                  />
+                                  <button
+                                    onClick={() => handleSaveTrackedThreshold(item)}
+                                    disabled={updatingTrackedId === item.id}
+                                    className="text-xs text-emerald-300 hover:text-emerald-200 font-semibold disabled:opacity-50"
+                                  >
+                                    {updatingTrackedId === item.id ? t('watchlist.saving') : t('watchlist.save')}
+                                  </button>
+                                  <button
+                                    onClick={handleCancelTrackedThresholdEdit}
+                                    disabled={updatingTrackedId === item.id}
+                                    className="text-xs text-gray-300 hover:text-gray-100 font-semibold disabled:opacity-50"
+                                  >
+                                    {t('watchlist.cancel')}
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-end gap-3">
+                                  <button
+                                    onClick={() => handleStartTrackedThresholdEdit(item)}
+                                    className="text-xs text-blue-300 hover:text-blue-200 font-semibold"
+                                  >
+                                    {t('watchlist.editThreshold')}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteTracked(item.id, item.symbol)}
+                                    className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                                  >
+                                    {t('watchlist.delete')}
+                                  </button>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                        </table>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
