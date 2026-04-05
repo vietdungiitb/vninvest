@@ -79,6 +79,47 @@ def sync_market_groups_api(request):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_runtime_kpi_api(request):
+    """
+    GET /api/admin-ops/runtime-kpi/
+    Admin-only: runtime KPI snapshot cho trust-track S24-06..S24-10.
+    Trả về observability market, prefetch health, celery alive status.
+    """
+    from time import time as _time
+    from portfolio.observability import get_market_observability_snapshot
+    from config.health import build_prefetch_health_snapshot
+
+    celery_alive = False
+    celery_active_queues: list = []
+    try:
+        from config.celery import app as celery_app
+        inspect = celery_app.control.inspect(timeout=1.5)
+        ping_result = inspect.ping()
+        celery_alive = bool(ping_result)
+        active_qs = inspect.active_queues() or {}
+        celery_active_queues = list(active_qs.keys())
+    except Exception:
+        pass
+
+    obs_snapshot = get_market_observability_snapshot()
+    prefetch_snapshot = build_prefetch_health_snapshot()
+
+    return Response(
+        {
+            'sampled_at': _time(),
+            'market_observability': obs_snapshot,
+            'prefetch_health': prefetch_snapshot,
+            'celery': {
+                'alive': celery_alive,
+                'active_workers': celery_active_queues,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def warm_ticker_prefetch_api(request):
@@ -252,22 +293,6 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def _vnstock_call(fn, timeout=8):
-    """Chạy fn(vnstock) trong thread riêng với timeout.
-    Bắt cả SystemExit (vnstock gọi sys.exit() khi rate limit).
-    Trả về (result, None) hoặc (None, error_msg).
-    """
-    try:
-        with _cf.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(fn)
-            try:
-                return future.result(timeout=timeout), None
-            except _cf.TimeoutError:
-                return None, f'vnstock timeout after {timeout}s'
-    except (Exception, SystemExit) as exc:
-        return None, str(exc)
-
-
 from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
 from django.conf import settings
 from django.utils import timezone
@@ -299,568 +324,78 @@ from .services import (
 )
 from .permissions import IsProPlan, _get_plan, resolve_user_entitlements
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
+from .adapters.vnstock_adapter import (
+    fetch_financial_ratio_dataframe,
+    fetch_history_dataframe,
+    fetch_intraday_dataframe,
+    fetch_listing_symbols_dataframe,
+    fetch_price_board_dataframe,
+)
+from .exceptions import ExternalSystemException
+from .stock_workspace_helpers import (
+    _build_stock_workspace_overview,
+    _compute_ema,
+    _compute_macd_hist,
+    _compute_rsi,
+    _compute_stock_workspace_technical,
+    _get_exchange_price_band,
+    _safe_round,
+    _technical_bias_meta,
+    _to_float,
+)
+from .whale_feed_helpers import (
+    _allow_vnstock_aggregate_fallback,
+    _build_aggregate_event_payload,
+    _build_aggregate_event_payload_from_record,
+    _build_stream_aggregate_records,
+    _build_tick_timestamp,
+    _build_vnstock_aggregate_records,
+    _build_whale_order_payload,
+    _cache_get,
+    _cache_set,
+    _classify_signal_size,
+    _dataframe_has_threshold_hits,
+    _decode_whale_feed_cursor,
+    _encode_whale_feed_cursor,
+    _get_user_whale_threshold_vnd,
+    _get_user_symbol_threshold_overrides_vnd,
+    _is_rate_limited_error,
+    _is_vnstock_rate_limited,
+    _mark_vnstock_rate_limited,
+    _normalize_aggregate_event_records,
+    _normalize_signal_side,
+    _parse_cursor_datetime,
+    _parse_cursor_matched_value,
+    _resolve_whale_feed_symbols,
+    _vnstock_rate_limit_cache_key,
+)
+from .ai_advisory_helpers import (
+    _sprint17_build_component_templates,
+    _sprint17_compute_summary_from_components,
+    _sprint17_extract_json_block,
+    _sprint17_generate_component_templates_with_ai,
+    _sprint17_generate_executive_synthesis_with_ai,
+    _sprint17_normalize_ai_component_payload,
+    _sprint17_serialize_stock_advisory_session,
+    _sprint17_suggested_action_from_status,
+)
+from .view_helpers import (
+    _build_group_response,
+    _build_price_alert_rule_row,
+    _price_alert_is_triggered,
+)
+from .screener_helpers import (
+    _SCREENER_ALLOWED_FIELDS,
+    _SCREENER_ALLOWED_OPS,
+    _apply_screener_condition,
+    _screener_build_technical,
+    _validate_screener_rules,
+)
 
 from .analytics import (
     compute_holdings, compute_nav_series, compute_allocation, build_summary,
     build_risk_metrics, compute_allocation_by_sector,
 )
-
-# logger already defined above with _vnstock_call helper
-
-
-# ---------------------------------------------------------------------------
-# Cache helpers — silent fallback nếu Redis không sẵn sàng
-# ---------------------------------------------------------------------------
-def _cache_get(key):
-    try:
-        return cache.get(key)
-    except Exception:
-        return None
-
-
-def _cache_set(key, value, timeout):
-    try:
-        cache.set(key, value, timeout=timeout)
-    except Exception:
-        pass
-
-
-def _is_rate_limited_error(exc: Exception) -> bool:
-    message = str(exc or '').lower()
-    return (
-        '429' in message
-        or 'too many requests' in message
-        or 'rate limit' in message
-        or 'giới hạn api' in message
-    )
-
-
-def _vnstock_rate_limit_cache_key(channel: str = 'intraday') -> str:
-    normalized_channel = str(channel or 'default').strip().lower() or 'default'
-    return f'vnstock:rate-limit:{normalized_channel}'
-
-
-def _is_vnstock_rate_limited(channel: str = 'intraday') -> bool:
-    return bool(_cache_get(_vnstock_rate_limit_cache_key(channel)))
-
-
-def _mark_vnstock_rate_limited(channel: str = 'intraday', exc: Exception | None = None) -> None:
-    cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
-    _cache_set(
-        _vnstock_rate_limit_cache_key(channel),
-        {
-            'triggered_at': timezone.now().isoformat(),
-            'reason': str(exc or '')[:200],
-        },
-        timeout=cooldown_seconds,
-    )
-
-
-def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
-    max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', '6')), 0)
-    if max_symbols == 0:
-        return False
-    return len(symbols) <= max_symbols
-
-
-def _get_user_whale_threshold_vnd(user) -> float:
-    config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
-    threshold_m = float((config or {}).get('whale_alert_threshold') or 500)
-    return threshold_m * 1_000_000
-
-
-def _normalize_signal_side(side_value: str) -> str:
-    side_raw = str(side_value or '').strip().lower()
-    if side_raw in ('buy', 'bu', 'b'):
-        return 'buy'
-    if side_raw in ('sell', 'sd', 's'):
-        return 'sell'
-    return 'neutral'
-
-
-def _classify_signal_size(matched_value: float) -> str:
-    if matched_value >= 5_000_000_000:
-        return 'shark'
-    if matched_value >= 1_000_000_000:
-        return 'whale'
-    return 'small'
-
-
-def _encode_whale_feed_cursor(payload: dict) -> str:
-    raw = json.dumps(payload, separators=(',', ':')).encode('utf-8')
-    return base64.urlsafe_b64encode(raw).decode('ascii')
-
-
-def _decode_whale_feed_cursor(raw_cursor: str | None) -> dict | None:
-    if not raw_cursor:
-        return None
-    try:
-        padded = raw_cursor + '=' * (-len(raw_cursor) % 4)
-        decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
-        payload = json.loads(decoded)
-        return payload if isinstance(payload, dict) else None
-    except (ValueError, TypeError, json.JSONDecodeError):
-        return None
-
-
-def _resolve_whale_feed_symbols(request) -> tuple[list[str], str, list[int], str]:
-    scope_raw = str(request.query_params.get('scope', '') or '').strip().lower()
-    explicit_symbols = request.query_params.get('symbols', '')
-    watchlist_group_ids_raw = request.query_params.get('watchlist_group_ids', '')
-
-    def _parse_watchlist_group_ids(raw_value: str) -> list[int]:
-        parsed_ids = []
-        for chunk in str(raw_value or '').split(','):
-            chunk = str(chunk).strip()
-            if not chunk:
-                continue
-            try:
-                parsed_ids.append(int(chunk))
-            except (TypeError, ValueError):
-                continue
-        return sorted(set(parsed_ids))
-
-    if scope_raw in ('custom', 'symbols'):
-        symbols = sorted({
-            str(symbol).strip().upper()
-            for symbol in explicit_symbols.split(',')
-            if str(symbol).strip()
-        })
-        return symbols, 'custom', [], 'query_scope'
-
-    if scope_raw == 'watchlist':
-        group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-        groups = WatchlistGroup.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items')
-        symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
-        return symbols, 'watchlist', group_ids, 'query_scope'
-
-    if scope_raw == 'tracked':
-        tracked_symbols = list(
-            TrackedSymbol.objects.filter(user=request.user)
-            .order_by('-added_at')
-            .values_list('symbol', flat=True)
-        )
-        symbols = sorted({str(symbol).strip().upper() for symbol in tracked_symbols if str(symbol).strip()})
-        return symbols, 'tracked', [], 'query_scope'
-
-    if explicit_symbols:
-        symbols = sorted({
-            str(symbol).strip().upper()
-            for symbol in explicit_symbols.split(',')
-            if str(symbol).strip()
-        })
-        return symbols, 'custom', [], 'symbols_param'
-
-    if watchlist_group_ids_raw:
-        group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-        groups = WatchlistGroup.objects.filter(user=request.user, id__in=group_ids).prefetch_related('items')
-        symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
-        return symbols, 'watchlist', group_ids, 'watchlist_param'
-
-    tracked_symbols = list(
-        TrackedSymbol.objects.filter(user=request.user)
-        .order_by('-added_at')
-        .values_list('symbol', flat=True)
-    )
-    symbols = sorted({str(symbol).strip().upper() for symbol in tracked_symbols if str(symbol).strip()})
-    return symbols, 'tracked', [], 'default_tracked'
-
-
-def _build_tick_timestamp(row) -> str:
-    try:
-        dt = timezone.make_aware(
-            datetime.combine(row.trade_date, row.trade_time),
-            timezone.get_current_timezone(),
-        )
-        return dt.isoformat()
-    except Exception:
-        return row.created_at.isoformat() if getattr(row, 'created_at', None) else timezone.now().isoformat()
-
-
-def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
-    matched_value = float(getattr(row, 'matched_value', 0) or 0)
-    occurred_at = _build_tick_timestamp(row)
-    score_result = calculate_event_score(
-        trade={
-            'matched_value': matched_value,
-            'threshold': threshold_vnd,
-            'side': getattr(row, 'side', ''),
-        },
-        context={
-            'threshold_vnd': threshold_vnd,
-            'side': getattr(row, 'side', ''),
-        },
-        config=score_config,
-    )
-    display_result = calculate_display_score(
-        event_score=score_result['event_score'],
-        occurred_at=occurred_at,
-        now=now,
-        config=score_config,
-    )
-    return {
-        'id': row.id,
-        'event_id': f'tick:{row.id}',
-        'contract_version': '1.0',
-        'config_version': 'threshold-v1',
-        'weights_version': score_result['weights_version'],
-        'symbol': row.symbol.upper(),
-        'side': _normalize_signal_side(getattr(row, 'side', '')),
-        'matched_value': round(matched_value, 2),
-        'volume': int(getattr(row, 'volume', 0) or 0),
-        'threshold': threshold_vnd,
-        'size_class': _classify_signal_size(matched_value),
-        'ts': occurred_at,
-        'source': 'intraday_tick_db',
-        'event_score': score_result['event_score'],
-        'display_score': display_result['display_score'],
-        'severity': display_result['severity'],
-        'score_breakdown': score_result['score_breakdown'],
-        'normalized_features': score_result['normalized_features'],
-        'raw_features': score_result['raw_features'],
-        'score_decay': {
-            'age_seconds': display_result['age_seconds'],
-            'decay_factor': display_result['decay_factor'],
-        },
-    }
-
-
-def _build_aggregate_event_payload_from_record(record: dict, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
-    matched_value = float(record.get('matched_value') or 0.0)
-    occurred_at = str(record.get('ts') or timezone.now().isoformat())
-    side = _normalize_signal_side(record.get('side'))
-    symbol = str(record.get('symbol') or '').strip().upper()
-    source = str(record.get('source') or 'intraday_tick_db').strip() or 'intraday_tick_db'
-
-    score_result = calculate_event_score(
-        trade={
-            'matched_value': matched_value,
-            'threshold': threshold_vnd,
-            'side': side,
-        },
-        context={
-            'threshold_vnd': threshold_vnd,
-            'side': side,
-        },
-        config=score_config,
-    )
-    display_result = calculate_display_score(
-        event_score=score_result['event_score'],
-        occurred_at=occurred_at,
-        now=now,
-        config=score_config,
-    )
-
-    return {
-        'id': record.get('id'),
-        'event_id': record.get('event_id') or f"{source}:{symbol}:{record.get('id') or occurred_at}",
-        'contract_version': '1.0',
-        'config_version': 'threshold-v1',
-        'weights_version': score_result['weights_version'],
-        'symbol': symbol,
-        'side': side,
-        'matched_value': round(matched_value, 2),
-        'volume': int(record.get('volume') or 0),
-        'threshold': threshold_vnd,
-        'size_class': record.get('size_class') or _classify_signal_size(matched_value),
-        'ts': occurred_at,
-        'source': source,
-        'event_score': score_result['event_score'],
-        'display_score': display_result['display_score'],
-        'severity': display_result['severity'],
-        'score_breakdown': score_result['score_breakdown'],
-        'normalized_features': score_result['normalized_features'],
-        'raw_features': score_result['raw_features'],
-        'score_decay': {
-            'age_seconds': display_result['age_seconds'],
-            'decay_factor': display_result['decay_factor'],
-        },
-    }
-
-
-def _normalize_aggregate_event_records(records: list[dict], *, sort: str, cursor_payload: dict | None = None) -> tuple[list[dict], bool]:
-    normalized = []
-    for index, record in enumerate(records, start=1):
-        symbol = str(record.get('symbol') or '').strip().upper()
-        if not symbol:
-            continue
-        ts_value = str(record.get('ts') or '').strip()
-        try:
-            parsed_dt = datetime.fromisoformat(ts_value.replace('Z', '+00:00'))
-        except Exception:
-            continue
-        matched_value = float(record.get('matched_value') or 0.0)
-        row_id = int(record.get('id') or index)
-        normalized.append({
-            **record,
-            'symbol': symbol,
-            'matched_value': matched_value,
-            'ts': parsed_dt.isoformat(),
-            'id': row_id,
-            '_sort_dt': parsed_dt,
-            '_sort_id': row_id,
-        })
-
-    if sort == 'matched_value':
-        if cursor_payload is not None:
-            parsed_cursor = _parse_cursor_matched_value(cursor_payload)
-            if parsed_cursor is None:
-                return [], False
-            cursor_value, cursor_id = parsed_cursor
-            normalized = [
-                record for record in normalized
-                if record['matched_value'] < cursor_value or (record['matched_value'] == cursor_value and record['_sort_id'] < cursor_id)
-            ]
-        normalized.sort(key=lambda record: (-record['matched_value'], -record['_sort_id']))
-    else:
-        if cursor_payload is not None:
-            parsed_cursor = _parse_cursor_datetime(cursor_payload)
-            if parsed_cursor is None:
-                return [], False
-            cursor_date, cursor_time, cursor_id = parsed_cursor
-            normalized = [
-                record for record in normalized
-                if (
-                    record['_sort_dt'].date() < cursor_date
-                    or (record['_sort_dt'].date() == cursor_date and record['_sort_dt'].time() < cursor_time)
-                    or (
-                        record['_sort_dt'].date() == cursor_date
-                        and record['_sort_dt'].time() == cursor_time
-                        and record['_sort_id'] < cursor_id
-                    )
-                )
-            ]
-        normalized.sort(key=lambda record: (record['_sort_dt'], record['_sort_id']), reverse=True)
-
-    return normalized, True
-
-
-def _build_stream_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
-    try:
-        from portfolio.realtime.stream_reader import StreamReader
-        reader = StreamReader()
-    except Exception as exc:
-        logger.debug('Aggregate whale stream reader unavailable: %s', exc)
-        return []
-
-    records = []
-    synthetic_id = 1
-    for symbol in symbols:
-        try:
-            stream_ticks = reader.get_intraday_ticks(symbol, count=150)
-        except Exception as exc:
-            logger.debug('Aggregate whale stream read failed for %s: %s', symbol, exc)
-            continue
-
-        for tick in stream_ticks:
-            try:
-                price = float(tick.get('price') or 0)
-                volume = float(tick.get('volume') or 0)
-            except (TypeError, ValueError):
-                continue
-            matched_value = price * volume
-            if matched_value < threshold_vnd:
-                continue
-            ts_raw = tick.get('ts') or tick.get('time') or tick.get('tradingDate') or timezone.now().isoformat()
-            try:
-                ts_value = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00')).isoformat()
-            except Exception:
-                ts_value = timezone.now().isoformat()
-            side = tick.get('side') or tick.get('match_type') or tick.get('matchType') or 'UNKNOWN'
-            records.append({
-                'id': synthetic_id,
-                'event_id': f'stream:{symbol}:{synthetic_id}',
-                'symbol': symbol,
-                'side': side,
-                'matched_value': matched_value,
-                'volume': int(volume),
-                'ts': ts_value,
-                'size_class': _classify_signal_size(matched_value),
-                'source': 'redis_stream',
-            })
-            synthetic_id += 1
-    return records
-
-
-def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -> list[dict]:
-    records = []
-    synthetic_id = 1
-    if not _allow_vnstock_aggregate_fallback(symbols):
-        logger.info('Skip vnstock aggregate fallback for %s symbols to reduce rate-limit pressure.', len(symbols))
-        return []
-    if _is_vnstock_rate_limited('intraday'):
-        return []
-    try:
-        from vnstock import Vnstock
-    except Exception as exc:
-        logger.debug('Aggregate whale vnstock import failed: %s', exc)
-        return []
-
-    for symbol in symbols:
-        try:
-            stock = Vnstock().stock(symbol=symbol, source='VCI')
-            df = stock.quote.intraday(symbol=symbol, page_size=150)
-        except (Exception, SystemExit) as exc:
-            if _is_rate_limited_error(exc):
-                _mark_vnstock_rate_limited('intraday', exc)
-                logger.info('Aggregate whale vnstock rate-limited for %s; activate cooldown.', symbol)
-                break
-            logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
-            continue
-
-        if df is None or df.empty:
-            continue
-
-        for _, row in df.iterrows():
-            try:
-                price = float(row.get('price') or row.get('close') or 0)
-                volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
-            except (TypeError, ValueError):
-                continue
-            matched_value = price * volume
-            if matched_value < threshold_vnd:
-                continue
-            raw_time = row.get('time') or row.get('tradingDate') or ''
-            try:
-                ts_value = datetime.fromisoformat(str(raw_time).replace('Z', '+00:00')).isoformat()
-            except Exception:
-                try:
-                    ts_value = timezone.make_aware(
-                        datetime.combine(date.today(), datetime.strptime(str(raw_time)[:8], '%H:%M:%S').time()),
-                        timezone.get_current_timezone(),
-                    ).isoformat()
-                except Exception:
-                    ts_value = timezone.now().isoformat()
-            side = row.get('side') or row.get('match_type') or row.get('matchType') or 'UNKNOWN'
-            records.append({
-                'id': synthetic_id,
-                'event_id': f'vnstock:{symbol}:{synthetic_id}',
-                'symbol': symbol,
-                'side': side,
-                'matched_value': matched_value,
-                'volume': int(volume),
-                'ts': ts_value,
-                'size_class': _classify_signal_size(matched_value),
-                'source': 'vnstock',
-            })
-            synthetic_id += 1
-    return records
-
-
-def _parse_cursor_datetime(cursor_payload: dict) -> tuple[date, time, int] | None:
-    if not isinstance(cursor_payload, dict):
-        return None
-    expected_keys = {'sort', 'trade_date', 'trade_time', 'id'}
-    if set(cursor_payload.keys()) != expected_keys:
-        return None
-    try:
-        trade_date = date.fromisoformat(str(cursor_payload['trade_date']))
-        trade_time = time.fromisoformat(str(cursor_payload['trade_time']))
-        row_id = int(cursor_payload['id'])
-    except (KeyError, TypeError, ValueError):
-        return None
-    return trade_date, trade_time, row_id
-
-
-def _parse_cursor_matched_value(cursor_payload: dict) -> tuple[float, int] | None:
-    if not isinstance(cursor_payload, dict):
-        return None
-    expected_keys = {'sort', 'matched_value', 'id'}
-    if set(cursor_payload.keys()) != expected_keys:
-        return None
-    try:
-        matched_value = float(cursor_payload['matched_value'])
-        row_id = int(cursor_payload['id'])
-    except (KeyError, TypeError, ValueError):
-        return None
-    return matched_value, row_id
-
-
-def _build_whale_order_payload(
-    *,
-    raw_time,
-    raw_price: float,
-    raw_vol: float,
-    matched_value: float,
-    side: str,
-    size_class: str,
-    threshold_vnd: float,
-    score_config: dict | None = None,
-    now=None,
-) -> dict:
-    try:
-        occurred_at = timezone.make_aware(
-            datetime.fromisoformat(str(raw_time).replace('Z', '+00:00')),
-            timezone.get_current_timezone(),
-        ).isoformat()
-    except Exception:
-        try:
-            occurred_at = timezone.make_aware(
-                datetime.combine(date.today(), datetime.strptime(str(raw_time)[:8], '%H:%M:%S').time()),
-                timezone.get_current_timezone(),
-            ).isoformat()
-        except Exception:
-            occurred_at = timezone.now().isoformat()
-
-    score_result = calculate_event_score(
-        trade={
-            'matched_value': matched_value,
-            'threshold': threshold_vnd,
-            'side': side,
-        },
-        context={
-            'threshold_vnd': threshold_vnd,
-            'side': side,
-        },
-        config=score_config,
-    )
-    display_result = calculate_display_score(
-        event_score=score_result['event_score'],
-        occurred_at=occurred_at,
-        now=now,
-        config=score_config,
-    )
-
-    try:
-        time_str = datetime.fromisoformat(occurred_at.replace('Z', '+00:00')).strftime('%H:%M:%S')
-    except Exception:
-        time_str = str(raw_time)[:8]
-
-    return {
-        'time': time_str,
-        'ts': occurred_at,
-        'price': raw_price,
-        'volume': int(raw_vol),
-        'matched_value': matched_value,
-        'side': side,
-        'size_class': size_class,
-        'event_score': score_result['event_score'],
-        'display_score': display_result['display_score'],
-        'severity': display_result['severity'],
-        'score_breakdown': score_result['score_breakdown'],
-        'normalized_features': score_result['normalized_features'],
-        'raw_features': score_result['raw_features'],
-        'score_decay': {
-            'age_seconds': display_result['age_seconds'],
-            'decay_factor': display_result['decay_factor'],
-        },
-        'weights_version': score_result['weights_version'],
-    }
-
-
-def _dataframe_has_threshold_hits(df, threshold_vnd: float) -> bool:
-    if df is None or getattr(df, 'empty', True):
-        return False
-
-    for _, row in df.iterrows():
-        try:
-            raw_price = float(row.get('price') or row.get('close') or 0)
-            raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
-        except (ValueError, TypeError):
-            continue
-        if raw_price * raw_vol >= threshold_vnd:
-            return True
-    return False
 
 
 
@@ -1078,13 +613,11 @@ class IntradayMatchedView(APIView):
             logger.debug("Stream fallback failed for %s: %s", normalized_symbol, _exc)
 
         try:
-            from vnstock import Vnstock  # import trễ
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.quote.intraday(symbol=normalized_symbol, page_size=page_size)
-        except ImportError:
-            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except (Exception, SystemExit) as exc:
-            if _is_rate_limited_error(exc):
+            df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=page_size)
+        except ExternalSystemException as exc:
+            if exc.code == 'vnstock_missing':
+                return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            if exc.code == 'vnstock_rate_limited':
                 _mark_vnstock_rate_limited('intraday', exc)
                 return Response({
                     'symbol': normalized_symbol,
@@ -1095,7 +628,7 @@ class IntradayMatchedView(APIView):
                     'fetched_at': timezone.now().isoformat(),
                 })
             logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'trades': [], 'total': 0, 'fetched_at': timezone.now().isoformat()})
@@ -1176,17 +709,15 @@ class PriceBoardView(APIView):
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
 
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.trading.price_board(symbols_list=[normalized_symbol])
-        except ImportError:
-            return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except (Exception, SystemExit) as exc:
-            if _is_rate_limited_error(exc):
+            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+        except ExternalSystemException as exc:
+            if exc.code == 'vnstock_missing':
+                return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            if exc.code == 'vnstock_rate_limited':
                 _mark_vnstock_rate_limited('price_board', exc)
                 return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
             logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}})
@@ -1311,25 +842,17 @@ class SectorBreadthView(APIView):
             else:
                 missing_syms.append(sym)
 
-        # --- Chỉ gọi vnstock cho symbols chưa có trong cache, với timeout 8s ---
+        # --- Chỉ gọi vnstock cho symbols chưa có trong cache ---
         if missing_syms:
-            import concurrent.futures
-
-            def _fetch_missing(anchor, syms):
-                from vnstock import Vnstock
-                st = Vnstock().stock(symbol=anchor, source='VCI')
-                return st.trading.price_board(symbols_list=syms)
-
             df = None
             try:
-                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(_fetch_missing, normalized_symbol, missing_syms)
-                    df = future.result(timeout=8)
-            except concurrent.futures.TimeoutError:
-                logger.warning('SectorBreadthView timeout fetching %d missing syms for %s',
-                               len(missing_syms), normalized_symbol)
-            except (Exception, SystemExit) as exc:
-                logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
+                df = fetch_price_board_dataframe(missing_syms, anchor_symbol=normalized_symbol)
+            except ExternalSystemException as exc:
+                if exc.code == 'vnstock_timeout':
+                    logger.warning('SectorBreadthView timeout fetching %d missing syms for %s',
+                                   len(missing_syms), normalized_symbol)
+                else:
+                    logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
 
             if df is not None and not df.empty:
                 for _, row in df.iterrows():
@@ -1385,7 +908,7 @@ class WhaleFeedView(APIView):
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        threshold_vnd = _get_user_whale_threshold_vnd(request.user)
+        threshold_vnd = _get_user_whale_threshold_vnd(request.user, normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
@@ -1454,31 +977,23 @@ class WhaleFeedView(APIView):
                     df = None
                     data_source = 'vnstock_backoff'
                 else:
-                    import concurrent.futures
-
-                    def _fetch_intraday(sym):
-                        from vnstock import Vnstock
-                        st = Vnstock().stock(symbol=sym, source='VCI')
-                        return st.quote.intraday(symbol=sym, page_size=500)
-
                     try:
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                            future = executor.submit(_fetch_intraday, normalized_symbol)
-                            df = future.result(timeout=8)
+                        df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=500)
                         data_source = 'vnstock'
-                    except concurrent.futures.TimeoutError:
-                        logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
-                        df = None
-                        data_source = 'timeout'
-                    except (Exception, SystemExit) as exc:
-                        if _is_rate_limited_error(exc):
+                    except ExternalSystemException as exc:
+                        if exc.code == 'vnstock_timeout':
+                            logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                            df = None
+                            data_source = 'timeout'
+                        elif exc.code == 'vnstock_rate_limited':
                             _mark_vnstock_rate_limited('intraday', exc)
                             logger.info('WhaleFeedView vnstock rate-limited %s — activate cooldown', normalized_symbol)
                             data_source = 'vnstock_backoff'
+                            df = None
                         else:
                             logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
                             data_source = 'unavailable'
-                        df = None
+                            df = None
         except Exception as exc:
             logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
             df = None
@@ -1602,15 +1117,13 @@ class RVOLView(APIView):
             return Response({'symbol': normalized_symbol, 'buckets': [], 'source': 'vnstock_backoff', 'rate_limited': True, 'fetched_at': timezone.now().isoformat()})
 
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.quote.intraday(symbol=normalized_symbol, page_size=500)
-        except (Exception, SystemExit) as exc:
-            if _is_rate_limited_error(exc):
+            df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=500)
+        except ExternalSystemException as exc:
+            if exc.code == 'vnstock_rate_limited':
                 _mark_vnstock_rate_limited('intraday', exc)
                 return Response({'symbol': normalized_symbol, 'buckets': [], 'source': 'vnstock_backoff', 'rate_limited': True, 'fetched_at': timezone.now().isoformat()})
             logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': f'Không lấy được dữ liệu: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'buckets': [], 'fetched_at': timezone.now().isoformat()})
@@ -1679,6 +1192,12 @@ class WhaleFeedAggregateView(APIView):
         threshold_vnd = _get_user_whale_threshold_vnd(request.user)
         entitlements = resolve_user_entitlements(request.user)
         symbols, scope, watchlist_group_ids, scope_source = _resolve_whale_feed_symbols(request)
+        symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
+
+        def _resolve_threshold_for_symbol(resolved_symbol: str) -> float:
+            return symbol_threshold_overrides.get(str(resolved_symbol or '').strip().upper(), threshold_vnd)
+
+        min_threshold_vnd = min([_resolve_threshold_for_symbol(symbol) for symbol in symbols], default=threshold_vnd)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
@@ -1737,7 +1256,12 @@ class WhaleFeedAggregateView(APIView):
                 'weights_version': score_config['version'],
             })
 
-        stream_records = _build_stream_aggregate_records(symbols, threshold_vnd)
+        stream_records = _build_stream_aggregate_records(symbols, min_threshold_vnd)
+        if stream_records:
+            stream_records = [
+                row for row in stream_records
+                if float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+            ]
         if stream_records:
             normalized_records, ok = _normalize_aggregate_event_records(stream_records, sort=sort, cursor_payload=cursor_payload)
             if not ok:
@@ -1764,7 +1288,15 @@ class WhaleFeedAggregateView(APIView):
                     })
 
             return Response({
-                'results': [_build_aggregate_event_payload_from_record(row, threshold_vnd, score_config=score_config, now=request_now) for row in page_rows],
+                'results': [
+                    _build_aggregate_event_payload_from_record(
+                        row,
+                        _resolve_threshold_for_symbol(row.get('symbol')),
+                        score_config=score_config,
+                        now=request_now,
+                    )
+                    for row in page_rows
+                ],
                 'next_cursor': next_cursor,
                 'has_more': has_more,
                 'server_time': timezone.now().isoformat(),
@@ -1801,7 +1333,7 @@ class WhaleFeedAggregateView(APIView):
             .annotate(
                 matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField())
             )
-            .filter(matched_value__gte=threshold_vnd)
+            .filter(matched_value__gte=min_threshold_vnd)
         )
 
         if sort == 'matched_value':
@@ -1828,12 +1360,20 @@ class WhaleFeedAggregateView(APIView):
                 )
             queryset = queryset.order_by('-trade_date', '-trade_time', '-id')
 
-        rows = list(queryset[: limit + 1])
+        rows = [
+            row for row in queryset
+            if float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+        ]
         has_more = len(rows) > limit
         page_rows = rows[:limit]
 
         if not page_rows:
-            vnstock_records = _build_vnstock_aggregate_records(symbols, threshold_vnd)
+            vnstock_records = _build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            if vnstock_records:
+                vnstock_records = [
+                    row for row in vnstock_records
+                    if float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+                ]
             normalized_records, ok = _normalize_aggregate_event_records(vnstock_records, sort=sort, cursor_payload=cursor_payload)
             if not ok:
                 return Response({'detail': 'cursor không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1859,7 +1399,15 @@ class WhaleFeedAggregateView(APIView):
                     })
 
             return Response({
-                'results': [_build_aggregate_event_payload_from_record(row, threshold_vnd, score_config=score_config, now=request_now) for row in page_rows],
+                'results': [
+                    _build_aggregate_event_payload_from_record(
+                        row,
+                        _resolve_threshold_for_symbol(row.get('symbol')),
+                        score_config=score_config,
+                        now=request_now,
+                    )
+                    for row in page_rows
+                ],
                 'next_cursor': next_cursor,
                 'has_more': has_more,
                 'server_time': timezone.now().isoformat(),
@@ -1907,7 +1455,15 @@ class WhaleFeedAggregateView(APIView):
                     'id': last_row.id,
                 })
 
-        results = [_build_aggregate_event_payload(row, threshold_vnd, score_config=score_config, now=request_now) for row in page_rows]
+        results = [
+            _build_aggregate_event_payload(
+                row,
+                _resolve_threshold_for_symbol(getattr(row, 'symbol', '')),
+                score_config=score_config,
+                now=request_now,
+            )
+            for row in page_rows
+        ]
         return Response({
             'results': results,
             'next_cursor': next_cursor,
@@ -1954,12 +1510,10 @@ class DepthChartView(APIView):
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.trading.price_board(symbols_list=[normalized_symbol])
-        except (Exception, SystemExit) as exc:
+            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+        except ExternalSystemException as exc:
             logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu: {exc}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': f'Không lấy được dữ liệu: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'bids': [], 'asks': [], 'walls': [], 'reference_price': None})
@@ -2051,12 +1605,16 @@ class FinancialMetricsView(APIView):
             return Response(cached)
 
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.finance.ratio(period='year', lang='vi', dropna=True)
-        except (Exception, SystemExit) as exc:
+            df = fetch_financial_ratio_dataframe(
+                normalized_symbol,
+                period='year',
+                lang='vi',
+                dropna=True,
+                source='VCI',
+            )
+        except ExternalSystemException as exc:
             logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': str(exc.message)}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'years': []})
@@ -2440,26 +1998,6 @@ class PortfolioAnalyticsView(APIView):
 # Securities Views
 # ---------------------------------------------------------------------------
 
-def _build_group_response(group: SecuritiesGroup, price_map: dict) -> dict:
-    """Xây dựng dict response cho một SecuritiesGroup kèm dữ liệu giá."""
-    items_data = []
-    for item in group.items.all():
-        pc = price_map.get(item.symbol, {
-            'current_price': None, 'prev_price': None,
-            'change_value': None, 'change_pct': None, 'last_date': None,
-        })
-        items_data.append({'id': item.id, 'symbol': item.symbol, **pc})
-    return {
-        'id': group.id,
-        'name': group.name,
-        'group_type': group.group_type,
-        'description': group.description,
-        'color': group.color,
-        'order': group.order,
-        'items': items_data,
-    }
-
-
 @method_decorator(csrf_exempt, name='dispatch')
 class SecuritiesGroupListCreateView(APIView):
     """
@@ -2608,6 +2146,18 @@ class SecuritiesSyncView(APIView):
 # Mã Theo dõi Views
 # ---------------------------------------------------------------------------
 
+
+def _parse_tracked_symbol_threshold_million(raw_value):
+    if raw_value in (None, ''):
+        return None
+    try:
+        resolved = float(raw_value)
+    except (TypeError, ValueError):
+        raise ValueError('Ngưỡng whale riêng phải là số >= 1 (triệu VNĐ).')
+    if resolved < 1:
+        raise ValueError('Ngưỡng whale riêng phải là số >= 1 (triệu VNĐ).')
+    return Decimal(str(resolved))
+
 class TrackedSymbolListCreateView(APIView):
     """
     GET  /api/portfolio/tracked-symbols/  — Danh sách Mã Theo dõi cá nhân kèm giá.
@@ -2625,6 +2175,7 @@ class TrackedSymbolListCreateView(APIView):
             'symbol': ts.symbol,
             'source_group_id': grp.id if grp else None,
             'source_group_name': grp.name if grp else None,
+            'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
             'current_price': info.get('current_price'),
             'prev_price': info.get('prev_price'),
             'change_value': info.get('change_value'),
@@ -2651,6 +2202,7 @@ class TrackedSymbolListCreateView(APIView):
                 'symbol': ts.symbol,
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
+                'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
                 'current_price': info.get('current_price'),
                 'prev_price': info.get('prev_price'),
                 'change_value': info.get('change_value'),
@@ -2666,6 +2218,11 @@ class TrackedSymbolListCreateView(APIView):
         if not symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            threshold_million = _parse_tracked_symbol_threshold_million(request.data.get('whale_alert_threshold_million'))
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
         source_group_id = request.data.get('source_group_id')
         source_group = None
         if source_group_id:
@@ -2677,15 +2234,24 @@ class TrackedSymbolListCreateView(APIView):
         ts, created = TrackedSymbol.objects.get_or_create(
             user=request.user,
             symbol=symbol,
-            defaults={'source_group': source_group},
+            defaults={
+                'source_group': source_group,
+                'whale_alert_threshold_million': threshold_million,
+            },
         )
         if not created:
             return Response({'detail': f'{symbol} đã có trong danh sách theo dõi.'}, status=status.HTTP_409_CONFLICT)
 
         # Cập nhật source_group nếu mới cung cấp
+        update_fields = []
         if created and source_group and ts.source_group != source_group:
             ts.source_group = source_group
-            ts.save(update_fields=['source_group'])
+            update_fields.append('source_group')
+        if threshold_million is not None and ts.whale_alert_threshold_million != threshold_million:
+            ts.whale_alert_threshold_million = threshold_million
+            update_fields.append('whale_alert_threshold_million')
+        if update_fields:
+            ts.save(update_fields=update_fields)
 
         grp = ts.source_group
         info = get_price_changes([symbol]).get(symbol, {})
@@ -2694,6 +2260,7 @@ class TrackedSymbolListCreateView(APIView):
             'symbol': ts.symbol,
             'source_group_id': grp.id if grp else None,
             'source_group_name': grp.name if grp else None,
+            'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
             'current_price': info.get('current_price'),
             'prev_price': info.get('prev_price'),
             'change_value': info.get('change_value'),
@@ -2710,6 +2277,57 @@ class TrackedSymbolDeleteView(APIView):
     """
     permission_classes = [IsAuthenticated]
 
+    def _build_row(self, ts):
+        grp = ts.source_group
+        info = get_price_changes([ts.symbol]).get(ts.symbol, {})
+        return {
+            'id': ts.id,
+            'symbol': ts.symbol,
+            'source_group_id': grp.id if grp else None,
+            'source_group_name': grp.name if grp else None,
+            'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
+            'current_price': info.get('current_price'),
+            'prev_price': info.get('prev_price'),
+            'change_value': info.get('change_value'),
+            'change_pct': info.get('change_pct'),
+            'last_date': info.get('last_date'),
+            'added_at': ts.added_at,
+        }
+
+    def patch(self, request, ts_id):
+        try:
+            ts = TrackedSymbol.objects.select_related('source_group').get(id=ts_id, user=request.user)
+        except TrackedSymbol.DoesNotExist:
+            return Response({'detail': 'Không tìm thấy mã.'}, status=status.HTTP_404_NOT_FOUND)
+
+        update_fields = []
+
+        if 'whale_alert_threshold_million' in request.data:
+            try:
+                threshold_million = _parse_tracked_symbol_threshold_million(request.data.get('whale_alert_threshold_million'))
+            except ValueError as exc:
+                return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+            if ts.whale_alert_threshold_million != threshold_million:
+                ts.whale_alert_threshold_million = threshold_million
+                update_fields.append('whale_alert_threshold_million')
+
+        if 'source_group_id' in request.data:
+            source_group_id = request.data.get('source_group_id')
+            source_group = None
+            if source_group_id not in (None, ''):
+                try:
+                    source_group = SecuritiesGroup.objects.get(id=source_group_id)
+                except SecuritiesGroup.DoesNotExist:
+                    return Response({'detail': 'Nhóm thị trường nguồn không tồn tại.'}, status=status.HTTP_400_BAD_REQUEST)
+            if ts.source_group_id != (source_group.id if source_group else None):
+                ts.source_group = source_group
+                update_fields.append('source_group')
+
+        if update_fields:
+            ts.save(update_fields=update_fields)
+
+        return Response(TrackedSymbolSerializer(self._build_row(ts)).data)
+
     def delete(self, request, ts_id):
         try:
             ts = TrackedSymbol.objects.get(id=ts_id, user=request.user)
@@ -2717,32 +2335,6 @@ class TrackedSymbolDeleteView(APIView):
             return Response({'detail': 'Không tìm thấy mã.'}, status=status.HTTP_404_NOT_FOUND)
         ts.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-def _price_alert_is_triggered(rule: PriceAlertRule, current_price: float | None) -> bool:
-    if current_price is None or not rule.is_active:
-        return False
-    target_price = float(rule.target_price)
-    if rule.condition == PriceAlertRule.Condition.ABOVE:
-        return float(current_price) >= target_price
-    return float(current_price) <= target_price
-
-
-def _build_price_alert_rule_row(rule: PriceAlertRule, price_map: dict) -> dict:
-    current_price = price_map.get(rule.symbol, {}).get('current_price')
-    return {
-        'id': rule.id,
-        'symbol': rule.symbol,
-        'condition': rule.condition,
-        'target_price': rule.target_price,
-        'cooldown_seconds': rule.cooldown_seconds,
-        'is_active': rule.is_active,
-        'last_triggered_at': rule.last_triggered_at,
-        'created_at': rule.created_at,
-        'updated_at': rule.updated_at,
-        'current_price': current_price,
-        'is_triggered': _price_alert_is_triggered(rule, current_price),
-    }
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -2818,266 +2410,6 @@ class PriceAlertRuleTriggerView(APIView):
         return Response(PriceAlertRuleSerializer(row).data)
 
 
-def _to_float(value):
-    return float(value) if value is not None else None
-
-
-def _get_exchange_price_band(exchange):
-    normalized_exchange = (exchange or '').strip().upper()
-    if normalized_exchange == 'HNX':
-        return Decimal('0.10')
-    if normalized_exchange in {'UPCOM', 'UPCOM'}:
-        return Decimal('0.15')
-    return Decimal('0.07')
-
-
-def _build_stock_workspace_overview(symbol, user):
-    normalized_symbol = (symbol or '').strip().upper()
-    profile = generics.get_object_or_404(StockProfile, symbol=normalized_symbol)
-    latest_daily_price = (
-        DailyPrice.objects
-        .filter(symbol=normalized_symbol)
-        .order_by('-date')
-        .values('open_price', 'high_price', 'low_price', 'close_price', 'volume')
-        .first()
-    )
-    price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
-    year_stats = (
-        DailyPrice.objects
-        .filter(symbol=normalized_symbol, date__gte=date.today() - timedelta(days=365))
-        .aggregate(week52_high=Max('high_price'), week52_low=Min('low_price'))
-    )
-
-    average_price = None
-    if latest_daily_price:
-        numeric_prices = [
-            value
-            for value in [
-                latest_daily_price.get('open_price'),
-                latest_daily_price.get('high_price'),
-                latest_daily_price.get('low_price'),
-                latest_daily_price.get('close_price'),
-            ]
-            if value is not None
-        ]
-        if numeric_prices:
-            average_price = _to_float(sum(numeric_prices, Decimal('0')) / Decimal(len(numeric_prices)))
-
-    reference_price = price_info.get('prev_price')
-    if reference_price is None and latest_daily_price:
-        reference_price = _to_float(latest_daily_price.get('close_price'))
-
-    ceiling_price = None
-    floor_price = None
-    if reference_price is not None:
-        reference_decimal = Decimal(str(reference_price))
-        band = _get_exchange_price_band(profile.exchange)
-        ceiling_price = _to_float(reference_decimal * (Decimal('1') + band))
-        floor_price = _to_float(reference_decimal * (Decimal('1') - band))
-
-    tracked_item = None
-    market_groups = []
-    watchlist_groups = []
-    market_group_refs = []
-    watchlist_memberships = []
-    if user and user.is_authenticated:
-        tracked_item = (
-            TrackedSymbol.objects
-            .select_related('source_group')
-            .filter(user=user, symbol=normalized_symbol)
-            .first()
-        )
-        market_group_refs = list(
-            SecuritiesGroup.objects
-            .filter(items__symbol=normalized_symbol)
-            .order_by('name')
-            .values('id', 'name')
-            .distinct()
-        )
-        market_groups = [group['name'] for group in market_group_refs]
-        watchlist_memberships = list(
-            WatchlistItem.objects
-            .filter(group__user=user, symbol=normalized_symbol)
-            .select_related('group')
-            .order_by('group__name')
-            .values('id', 'group_id', 'group__name')
-        )
-        watchlist_groups = [item['group__name'] for item in watchlist_memberships]
-
-    return {
-        'tracked_symbol_id': tracked_item.id if tracked_item else None,
-        'symbol': profile.symbol,
-        'company_name': profile.company_name,
-        'industry': profile.industry,
-        'exchange': profile.exchange,
-        'listed_date': profile.listed_date,
-        'is_active': profile.is_active,
-        'updated_at': profile.updated_at,
-        'current_price': price_info.get('current_price'),
-        'prev_price': price_info.get('prev_price'),
-        'change_value': price_info.get('change_value'),
-        'change_pct': price_info.get('change_pct'),
-        'last_date': price_info.get('last_date'),
-        'open_price': _to_float(latest_daily_price.get('open_price')) if latest_daily_price else None,
-        'high_price': _to_float(latest_daily_price.get('high_price')) if latest_daily_price else None,
-        'low_price': _to_float(latest_daily_price.get('low_price')) if latest_daily_price else None,
-        'close_price': _to_float(latest_daily_price.get('close_price')) if latest_daily_price else None,
-        'volume': latest_daily_price.get('volume') if latest_daily_price else None,
-        'average_price': average_price,
-        'reference_price': reference_price,
-        'ceiling_price': ceiling_price,
-        'floor_price': floor_price,
-        'week52_high': _to_float(year_stats.get('week52_high')),
-        'week52_low': _to_float(year_stats.get('week52_low')),
-        'is_tracked': tracked_item is not None,
-        'source_group_name': tracked_item.source_group.name if tracked_item and tracked_item.source_group else None,
-        'market_groups': market_groups,
-        'watchlist_groups': watchlist_groups,
-        'market_group_refs': market_group_refs,
-        'watchlist_memberships': [
-            {
-                'item_id': item['id'],
-                'group_id': item['group_id'],
-                'group_name': item['group__name'],
-            }
-            for item in watchlist_memberships
-        ],
-    }
-
-
-def _safe_round(value, digits=2):
-    if value is None:
-        return None
-    return round(float(value), digits)
-
-
-def _compute_rsi(values, window=14):
-    if len(values) <= window:
-        return None
-
-    deltas = [values[index] - values[index - 1] for index in range(1, len(values))]
-    gains = [max(delta, 0) for delta in deltas]
-    losses = [abs(min(delta, 0)) for delta in deltas]
-    recent_gains = gains[-window:]
-    recent_losses = losses[-window:]
-
-    average_gain = sum(recent_gains) / window
-    average_loss = sum(recent_losses) / window
-    if average_loss == 0:
-        return 100.0 if average_gain > 0 else 50.0
-
-    rs = average_gain / average_loss
-    return 100 - (100 / (1 + rs))
-
-
-def _compute_ema(values, period):
-    """Tính EMA với smoothing factor k = 2 / (period + 1)."""
-    if len(values) < period:
-        return None
-    k = 2.0 / (period + 1)
-    ema = sum(values[:period]) / period  # seed = SMA của period đầu
-    for v in values[period:]:
-        ema = v * k + ema * (1 - k)
-    return ema
-
-
-def _compute_macd_hist(values):
-    """
-    MACD histogram = (EMA12 - EMA26) - EMA9(EMA12 - EMA26).
-    Cần ít nhất 35 giá trị để tính đủ (26 + 9 extra).
-    """
-    if len(values) < 35:
-        return None
-    k12 = 2.0 / 13
-    k26 = 2.0 / 27
-    k9  = 2.0 / 10
-    ema12 = sum(values[:12]) / 12
-    ema26 = sum(values[:26]) / 26
-    macd_series = []
-    for i, v in enumerate(values[1:], start=1):
-        ema12 = v * k12 + ema12 * (1 - k12)
-        ema26 = v * k26 + ema26 * (1 - k26)
-        if i >= 25:
-            macd_series.append(ema12 - ema26)
-    if len(macd_series) < 9:
-        return None
-    signal = sum(macd_series[:9]) / 9
-    for m in macd_series[9:]:
-        signal = m * k9 + signal * (1 - k9)
-    return macd_series[-1] - signal
-
-
-def _technical_bias_meta(bias):
-    normalized_bias = (bias or 'NEUTRAL').strip().upper()
-    if normalized_bias == 'BULLISH':
-        return {
-            'bias': 'BULLISH',
-            'bias_label': 'Tăng',
-            'bias_description': 'Giá đang nằm trên SMA20 và SMA50, động lượng duy trì tích cực.',
-        }
-    if normalized_bias == 'WEAK':
-        return {
-            'bias': 'WEAK',
-            'bias_label': 'Yếu',
-            'bias_description': 'Giá đang nằm dưới các đường trung bình và động lượng suy yếu.',
-        }
-    return {
-        'bias': 'NEUTRAL',
-        'bias_label': 'Trung tính',
-        'bias_description': 'Cấu trúc giá chưa nghiêng rõ theo một hướng mạnh.',
-    }
-
-
-def _compute_stock_workspace_technical(rows, overview):
-    close_values = [float(row['close_price']) for row in rows if row.get('close_price') is not None]
-    volume_values = [float(row['volume']) for row in rows if row.get('volume') is not None]
-    latest_close = close_values[-1] if close_values else None
-
-    sma20 = sum(close_values[-20:]) / 20 if len(close_values) >= 20 else None
-    sma50 = sum(close_values[-50:]) / 50 if len(close_values) >= 50 else None
-    rsi14 = _compute_rsi(close_values, 14)
-    avg_volume_20 = sum(volume_values[-20:]) / 20 if len(volume_values) >= 20 else None
-    momentum_20d_pct = None
-    if len(close_values) >= 21 and close_values[-21] > 0:
-        momentum_20d_pct = ((close_values[-1] - close_values[-21]) / close_values[-21]) * 100
-
-    range_position_pct = None
-    week52_low = overview.get('week52_low')
-    week52_high = overview.get('week52_high')
-    if latest_close is not None and week52_low is not None and week52_high is not None and week52_high > week52_low:
-        range_position_pct = ((latest_close - week52_low) / (week52_high - week52_low)) * 100
-
-    price_vs_sma20_pct = None
-    if latest_close is not None and sma20:
-        price_vs_sma20_pct = ((latest_close - sma20) / sma20) * 100
-
-    price_vs_sma50_pct = None
-    if latest_close is not None and sma50:
-        price_vs_sma50_pct = ((latest_close - sma50) / sma50) * 100
-
-    bias = 'NEUTRAL'
-    if latest_close is not None and sma20 and sma50 and rsi14 is not None:
-        if latest_close > sma20 > sma50 and rsi14 >= 55:
-            bias = 'BULLISH'
-        elif latest_close < sma20 < sma50 and rsi14 <= 45:
-            bias = 'WEAK'
-
-    bias_meta = _technical_bias_meta(bias)
-
-    return {
-        **bias_meta,
-        'sma20': _safe_round(sma20),
-        'sma50': _safe_round(sma50),
-        'rsi14': _safe_round(rsi14),
-        'avg_volume_20': _safe_round(avg_volume_20),
-        'price_vs_sma20_pct': _safe_round(price_vs_sma20_pct),
-        'price_vs_sma50_pct': _safe_round(price_vs_sma50_pct),
-        'momentum_20d_pct': _safe_round(momentum_20d_pct),
-        'range_position_pct': _safe_round(range_position_pct),
-        'latest_close': _safe_round(latest_close),
-    }
-
-
 @method_decorator(csrf_exempt, name='dispatch')
 class StockWorkspaceOverviewView(APIView):
     permission_classes = [IsAuthenticated]
@@ -3092,9 +2424,7 @@ class StockWorkspaceOverviewView(APIView):
 
         payload = _build_stock_workspace_overview(symbol, request.user)
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.trading.price_board(symbols_list=[normalized_symbol])
+            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
             if df is not None and not df.empty:
                 ls = df['listing'].iloc[0]
                 mt = df['match'].iloc[0]
@@ -3156,17 +2486,21 @@ class StockWorkspaceOverviewView(APIView):
                 if len(prices) >= 2:
                     payload['average_price'] = round(sum(prices) / len(prices), 2)
 
-        except (Exception, SystemExit) as exc:
+        except ExternalSystemException as exc:
             logger.warning('StockWorkspaceOverviewView vnstock overlay lỗi %s: %s', normalized_symbol, exc)
 
         # 52W high/low thực từ vnstock history (1D, 365 ngày)
         try:
-            from vnstock import Vnstock
             from datetime import date as _date, timedelta as _timedelta
-            stock52 = Vnstock().stock(symbol=normalized_symbol, source='VCI')
             _end = _date.today().strftime('%Y-%m-%d')
             _start = (_date.today() - _timedelta(days=365)).strftime('%Y-%m-%d')
-            hist_df = stock52.quote.history(symbol=normalized_symbol, start=_start, end=_end, interval='1D')
+            hist_df = fetch_history_dataframe(
+                normalized_symbol,
+                start=_start,
+                end=_end,
+                interval='1D',
+                source='VCI',
+            )
             if hist_df is not None and not hist_df.empty and 'high' in hist_df.columns:
                 # vnstock history trả về đơn vị nghìn đồng (VND/1000)
                 _scale = 1000.0
@@ -3176,22 +2510,20 @@ class StockWorkspaceOverviewView(APIView):
                     payload['week52_high'] = w52_high
                 if w52_low > 0:
                     payload['week52_low'] = w52_low
-        except Exception as exc4:
+        except ExternalSystemException as exc4:
             logger.debug('StockWorkspaceOverviewView 52W overlay lỗi %s: %s', normalized_symbol, exc4)
 
         # Nếu company_name / exchange vẫn trống, thử lấy từ listing.all_symbols
         if not payload.get('company_name'):
             try:
-                from vnstock import Vnstock
-                stock3 = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-                ls_df = stock3.listing.all_symbols()
+                ls_df = fetch_listing_symbols_dataframe(symbol=normalized_symbol, source='VCI')
                 if ls_df is not None and not ls_df.empty:
                     row = ls_df[ls_df['symbol'] == normalized_symbol]
                     if not row.empty:
                         name = str(row.iloc[0].get('organ_name') or '').strip()
                         if name:
                             payload['company_name'] = name
-            except Exception as exc3:
+            except ExternalSystemException as exc3:
                 logger.debug('StockWorkspaceOverviewView listing overlay lỗi %s: %s', normalized_symbol, exc3)
 
         serialized = StockWorkspaceOverviewSerializer(payload).data
@@ -3232,12 +2564,12 @@ class StockWorkspaceChartView(APIView):
         tech_rows = None
 
         def _fetch_vnstock():
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol=normalized_symbol, source='KBS')
-            return stock.quote.history(
+            return fetch_history_dataframe(
+                normalized_symbol,
                 start=str(start_date),
                 end=str(end_date),
                 interval='1D',
+                source='KBS',
             )
 
         try:
@@ -3266,7 +2598,7 @@ class StockWorkspaceChartView(APIView):
                     except (TypeError, ValueError, KeyError):
                         continue
                 tech_rows = [{'close_price': s['close'], 'volume': s['volume']} for s in series]
-        except (Exception, SystemExit) as exc:
+        except (ExternalSystemException, Exception, SystemExit) as exc:
             logger.warning('StockWorkspaceChartView vnstock lỗi %s: %s', normalized_symbol, exc)
 
         # --- 3. Fallback DB ---
@@ -3526,451 +2858,6 @@ def stock_order_flow_api(request, symbol: str):
         },
         status=status.HTTP_200_OK,
     )
-
-
-def _sprint17_suggested_action_from_status(status_value: str) -> str:
-    mapping = {
-        'oversold': AIAdvisoryComponentRecord.SuggestedAction.BUY,
-        'breakout': AIAdvisoryComponentRecord.SuggestedAction.BUY,
-        'overbought': AIAdvisoryComponentRecord.SuggestedAction.SELL,
-        'accumulation': AIAdvisoryComponentRecord.SuggestedAction.WATCH,
-        'neutral': AIAdvisoryComponentRecord.SuggestedAction.WATCH,
-    }
-    return mapping.get(status_value, AIAdvisoryComponentRecord.SuggestedAction.WATCH)
-
-
-def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
-    side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
-    signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
-    signal_strength = float((dark_flow or {}).get('strength') or 0)
-
-    if side == 'BUY':
-        pa_status = AIAdvisoryComponentRecord.StatusChoice.ACCUMULATION
-    elif side == 'SELL':
-        pa_status = AIAdvisoryComponentRecord.StatusChoice.OVERBOUGHT
-    else:
-        pa_status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
-
-    if signal_type in ('iceberg', 'twap_bot') and signal_strength >= 50:
-        vo_status = AIAdvisoryComponentRecord.StatusChoice.BREAKOUT
-    elif signal_type == 'absorption':
-        vo_status = AIAdvisoryComponentRecord.StatusChoice.ACCUMULATION
-    else:
-        vo_status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
-
-    indicator_status = (
-        AIAdvisoryComponentRecord.StatusChoice.OVERBOUGHT
-        if side == 'SELL'
-        else AIAdvisoryComponentRecord.StatusChoice.OVERSOLD
-        if side == 'BUY'
-        else AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
-    )
-
-    return [
-        {
-            'symbol': symbol,
-            'component_type': AIAdvisoryComponentRecord.ComponentType.PRICE_ACTION,
-            'indicator_name': 'Price Action',
-            'status': pa_status,
-            'confidence_score': 6,
-            'suggested_action': _sprint17_suggested_action_from_status(pa_status),
-            'rationale_text': f'Gia dang phan ung theo dong lenh {side}; can theo doi phan ung vung ho tro/khang cu gan nhat.',
-            'timeframe': timeframe,
-        },
-        {
-            'symbol': symbol,
-            'component_type': AIAdvisoryComponentRecord.ComponentType.INDICATOR,
-            'indicator_name': 'RSI + Bollinger Bands',
-            'status': indicator_status,
-            'confidence_score': 5,
-            'suggested_action': _sprint17_suggested_action_from_status(indicator_status),
-            'rationale_text': 'Indicator component duoc sinh tu context advisory hien tai va can duoc xac nhan boi du lieu thuc te.',
-            'timeframe': timeframe,
-        },
-        {
-            'symbol': symbol,
-            'component_type': AIAdvisoryComponentRecord.ComponentType.VOLUME_ORDERFLOW,
-            'indicator_name': 'Volume / Order Flow',
-            'status': vo_status,
-            'confidence_score': int(max(3, min(10, round(signal_strength / 10)))) if signal_strength > 0 else 4,
-            'suggested_action': _sprint17_suggested_action_from_status(vo_status),
-            'rationale_text': f"Order flow signal={signal_type}, strength={signal_strength:.1f}. Dung de kiem chung xac suat dong tien lon.",
-            'timeframe': timeframe,
-        },
-    ]
-
-
-def _sprint17_extract_json_block(raw_text: str) -> str:
-    text = str(raw_text or '').strip()
-    if not text:
-        return ''
-    fenced_match = re.search(r'```(?:json)?\s*(\{[\s\S]*\}|\[[\s\S]*\])\s*```', text, flags=re.IGNORECASE)
-    if fenced_match:
-        return fenced_match.group(1).strip()
-    object_match = re.search(r'(\{[\s\S]*\})', text)
-    if object_match:
-        return object_match.group(1).strip()
-    array_match = re.search(r'(\[[\s\S]*\])', text)
-    if array_match:
-        return array_match.group(1).strip()
-    return ''
-
-
-def _sprint17_normalize_ai_component_payload(raw_item: dict, symbol: str, timeframe: str) -> dict | None:
-    if not isinstance(raw_item, dict):
-        return None
-
-    valid_component_types = {choice for choice, _ in AIAdvisoryComponentRecord.ComponentType.choices}
-    valid_statuses = {choice for choice, _ in AIAdvisoryComponentRecord.StatusChoice.choices}
-    valid_actions = {choice for choice, _ in AIAdvisoryComponentRecord.SuggestedAction.choices}
-    valid_timeframes = {choice for choice, _ in AIAdvisoryComponentRecord.TimeframeChoice.choices}
-
-    component_type = str(raw_item.get('component_type') or '').strip().lower()
-    status = str(raw_item.get('status') or '').strip().lower()
-    suggested_action = str(raw_item.get('suggested_action') or '').strip().lower()
-    indicator_name = str(raw_item.get('indicator_name') or 'General').strip()[:100] or 'General'
-    rationale_text = str(raw_item.get('rationale_text') or '').strip()
-
-    if component_type not in valid_component_types:
-        return None
-    if status not in valid_statuses:
-        status = AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
-    if suggested_action not in valid_actions:
-        suggested_action = _sprint17_suggested_action_from_status(status)
-
-    try:
-        confidence_score = int(raw_item.get('confidence_score', 5) or 5)
-    except (TypeError, ValueError):
-        confidence_score = 5
-    confidence_score = int(max(1, min(10, confidence_score)))
-
-    include_in_summary = bool(raw_item.get('include_in_summary', True))
-    resolved_timeframe = timeframe if timeframe in valid_timeframes else AIAdvisoryComponentRecord.TimeframeChoice.M30
-
-    return {
-        'symbol': symbol,
-        'component_type': component_type,
-        'indicator_name': indicator_name,
-        'status': status,
-        'confidence_score': confidence_score,
-        'suggested_action': suggested_action,
-        'rationale_text': rationale_text,
-        'timeframe': resolved_timeframe,
-        'include_in_summary': include_in_summary,
-    }
-
-
-def _sprint17_generate_component_templates_with_ai(user, symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
-    from portfolio.ai_options import get_default_model
-    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
-    from portfolio.openclaw_client import _call as _openclaw_call
-
-    cfg, _ = UserConfig.objects.get_or_create(user=user)
-    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
-    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
-
-    side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
-    signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
-    signal_strength = float((dark_flow or {}).get('strength') or 0)
-    tick_rate = float(((dark_flow or {}).get('components') or {}).get('tick_rate', {}).get('score') or 0)
-
-    prompt = (
-        'Ban la AI analyst cho TTCK Viet Nam. '\
-        'Hay tra ve JSON DUY NHAT theo dung schema sau, khong giai thich them:\n'
-        '{"components":[{'
-        '"component_type":"price_action|indicator|volume_orderflow|sentiment",'
-        '"indicator_name":"string<=100",'
-        '"status":"overbought|oversold|accumulation|breakout|neutral",'
-        '"confidence_score":1-10,'
-        '"suggested_action":"watch|buy|sell|hold_off",'
-        '"rationale_text":"string",'
-        '"include_in_summary":true'
-        '}]}\n'
-        'Yeu cau: sinh dung 3 components theo thu tu: price_action, indicator, volume_orderflow. '
-        'Khong duoc lap component_type, khong them field khac.\n'
-        f'Input context: symbol={symbol}, timeframe={timeframe}, advisory_side={side}, '
-        f'order_flow_signal={signal_type}, order_flow_strength={signal_strength:.1f}, tick_rate_score={tick_rate:.1f}.\n'
-        'Output phai la JSON hop le.'
-    )
-
-    if provider != 'openclaw' and not api_key:
-        return []
-
-    try:
-        if provider == 'openclaw':
-            if not api_key:
-                return []
-            ai_response = _openclaw_call(prompt, max_tokens=420)
-        elif provider == 'claude':
-            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=420)
-        elif provider == 'openai':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=420,
-            )
-        elif provider == 'gemini':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=420,
-            )
-        elif provider == 'copilot':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=420,
-                extra_headers={
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
-                },
-            )
-        else:
-            return []
-
-        raw_text = str((ai_response or {}).get('text') or '').strip()
-        if not raw_text:
-            return []
-        json_block = _sprint17_extract_json_block(raw_text)
-        if not json_block:
-            return []
-
-        parsed = json.loads(json_block)
-        if isinstance(parsed, dict):
-            raw_components = parsed.get('components') or []
-        elif isinstance(parsed, list):
-            raw_components = parsed
-        else:
-            raw_components = []
-
-        templates: list[dict] = []
-        seen_types: set[str] = set()
-        for raw_item in raw_components:
-            normalized = _sprint17_normalize_ai_component_payload(raw_item, symbol=symbol, timeframe=timeframe)
-            if not normalized:
-                continue
-            ctype = normalized['component_type']
-            if ctype in seen_types:
-                continue
-            seen_types.add(ctype)
-            templates.append(normalized)
-            if len(templates) >= 4:
-                break
-        return templates
-    except Exception as exc:
-        logger.warning('Sprint17 AI component generation fallback to template symbol=%s err=%s', symbol, exc)
-        return []
-
-
-def _sprint17_compute_summary_from_components(components: list[AIAdvisoryComponentRecord]) -> dict:
-    if not components:
-        return {
-            'strategy_action': AIAdvisoryExecutiveSummary.StrategyAction.STAND_ASIDE,
-            'synthesis_text': 'Khong co component active de tong hop.',
-            'target_price_zone': '',
-            'stop_loss_zone': '',
-            'risk_level': AIAdvisoryExecutiveSummary.RiskLevel.MEDIUM,
-            'overall_confidence': 1,
-            'used_component_ids': [],
-        }
-
-    weight_map = {
-        AIAdvisoryComponentRecord.ComponentType.PRICE_ACTION: 35,
-        AIAdvisoryComponentRecord.ComponentType.INDICATOR: 25,
-        AIAdvisoryComponentRecord.ComponentType.VOLUME_ORDERFLOW: 30,
-        AIAdvisoryComponentRecord.ComponentType.SENTIMENT: 10,
-    }
-    score = 0.0
-    confidence_weighted = 0.0
-    total_weight = 0.0
-    for item in components:
-        w = float(weight_map.get(item.component_type, 10))
-        total_weight += w
-        confidence_weighted += float(item.confidence_score or 0) * w
-        if item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.BUY:
-            score += 1.0 * w
-        elif item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.SELL:
-            score -= 1.0 * w
-        elif item.suggested_action == AIAdvisoryComponentRecord.SuggestedAction.HOLD_OFF:
-            score -= 0.3 * w
-
-    normalized = score / total_weight if total_weight else 0.0
-    avg_conf = (confidence_weighted / total_weight) if total_weight else 5.0
-
-    if normalized >= 0.25:
-        action = AIAdvisoryExecutiveSummary.StrategyAction.BUY
-    elif normalized <= -0.25:
-        action = AIAdvisoryExecutiveSummary.StrategyAction.SELL
-    elif abs(normalized) <= 0.08:
-        action = AIAdvisoryExecutiveSummary.StrategyAction.HOLD
-    else:
-        action = AIAdvisoryExecutiveSummary.StrategyAction.STAND_ASIDE
-
-    if avg_conf >= 7.5:
-        risk = AIAdvisoryExecutiveSummary.RiskLevel.LOW
-    elif avg_conf >= 5.5:
-        risk = AIAdvisoryExecutiveSummary.RiskLevel.MEDIUM
-    else:
-        risk = AIAdvisoryExecutiveSummary.RiskLevel.HIGH
-
-    summary_text = (
-        f"Tong hop {len(components)} component: score={normalized:.2f}, confidence TB={avg_conf:.1f}. "
-        "Khuyen nghi duoc tao theo weighting Trend/Momentum/Volume/Sentiment."
-    )
-
-    return {
-        'strategy_action': action,
-        'synthesis_text': summary_text,
-        'target_price_zone': 'Xac dinh theo khang cu gan nhat (manual confirm).',
-        'stop_loss_zone': 'Xac dinh theo ho tro gan nhat (manual confirm).',
-        'risk_level': risk,
-        'overall_confidence': int(max(1, min(10, round(avg_conf)))),
-        'used_component_ids': [item.id for item in components],
-    }
-
-
-def _sprint17_generate_executive_synthesis_with_ai(
-    user,
-    symbol: str,
-    components: list[AIAdvisoryComponentRecord],
-    summary_payload: dict,
-    synthesis_preference: str = 'balanced',
-) -> str | None:
-    from portfolio.ai_options import get_default_model
-    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
-    from portfolio.openclaw_client import _call as _openclaw_call
-
-    cfg, _ = UserConfig.objects.get_or_create(user=user)
-    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
-    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
-
-    if not api_key:
-        return None
-
-    preference = str(synthesis_preference or 'balanced').strip().lower()
-    preference_map = {
-        'short_term_action': 'Thien ve hanh dong giao dich ngan han (uu tien diem vao/ra, trigger va xac nhan).',
-        'risk_management': 'Thien ve quan tri rui ro (uu tien drawdown control, dieu kien vo hieu, va kich ban phong thu).',
-        'balanced': 'Can bang 50/50 giua hanh dong giao dich va quan tri rui ro.',
-    }
-    preference_instruction = preference_map.get(preference, preference_map['balanced'])
-
-    component_lines = []
-    for item in components[:6]:
-        rationale = str(item.rationale_text or '').strip().replace('\n', ' ')
-        rationale = rationale[:220]
-        component_lines.append(
-            f"- {item.indicator_name} | type={item.component_type} | status={item.status} | "
-            f"confidence={item.confidence_score}/10 | action={item.suggested_action} | rationale={rationale}"
-        )
-    component_block = '\n'.join(component_lines) if component_lines else '- khong co component'
-
-    prompt = (
-        "Ban la chuyen gia tu van chung khoan Viet Nam. "
-        "Hay viet phan 'Thong tin tong hop' CHI TIET theo dung cac dau vao ben duoi.\n"
-        "Yeu cau bat buoc:\n"
-        "1) Viet khoang 20 dong (tu 18 den 22 dong).\n"
-        "2) Moi dong bat dau bang '- '.\n"
-        "3) Noi dung phai cu the, khong viet chung chung, khong nhac den viec ban la AI.\n"
-        "4) Bao gom: tong quan xu huong, xung dot tin hieu, kich ban tang/giam, "
-        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu.\n"
-        "5) Khong dua ra cam ket loi nhuan.\n\n"
-        f"Input: symbol={symbol}, strategy_action={summary_payload.get('strategy_action')}, "
-        f"risk_level={summary_payload.get('risk_level')}, "
-        f"overall_confidence={summary_payload.get('overall_confidence')}/10.\n"
-        f"So thich tong hop: {preference_instruction}\n"
-        "Danh sach components:\n"
-        f"{component_block}\n\n"
-        "Chi tra ve noi dung 18-22 dong bat dau bang '- '."
-    )
-
-    try:
-        if provider == 'openclaw':
-            ai_response = _openclaw_call(prompt, max_tokens=780)
-        elif provider == 'claude':
-            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=780)
-        elif provider == 'openai':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=780,
-            )
-        elif provider == 'gemini':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=780,
-            )
-        elif provider == 'copilot':
-            ai_response = _openai_compatible_completion(
-                base_url=os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
-                api_key=api_key,
-                model=model,
-                prompt=prompt,
-                max_tokens=780,
-                extra_headers={
-                    'Accept': 'application/vnd.github+json',
-                    'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
-                },
-            )
-        else:
-            return None
-
-        raw_text = str((ai_response or {}).get('text') or '').strip()
-        if not raw_text:
-            return None
-
-        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
-        if not lines:
-            return None
-
-        normalized_lines = []
-        for line in lines[:22]:
-            normalized_lines.append(line if line.startswith('- ') else f'- {line.lstrip("- ").strip()}')
-
-        return '\n'.join(normalized_lines)
-    except Exception as exc:
-        logger.warning('Sprint17 executive synthesis AI fallback symbol=%s err=%s', symbol, exc)
-        return None
-
-
-def _sprint17_serialize_stock_advisory_session(user, symbol: str, advisory_obj):
-    components_qs = AIAdvisoryComponentRecord.objects.filter(
-        user=user,
-        symbol=symbol,
-        is_deleted=False,
-    ).order_by('-created_at')
-    deleted_components_qs = AIAdvisoryComponentRecord.objects.filter(
-        user=user,
-        symbol=symbol,
-        is_deleted=True,
-    ).order_by('-updated_at', '-created_at')
-    latest_summary = AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=symbol).order_by('-summary_version', '-created_at').first()
-    summary_history = list(
-        AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=symbol)
-        .order_by('-summary_version', '-created_at')[:8]
-    )
-    return {
-        'advisory': WhaleAdvisorySerializer(advisory_obj).data if advisory_obj else None,
-        'components': AIAdvisoryComponentRecordSerializer(components_qs, many=True).data,
-        'deleted_components': AIAdvisoryComponentRecordSerializer(deleted_components_qs, many=True).data,
-        'executive_summary': AIAdvisoryExecutiveSummarySerializer(latest_summary).data if latest_summary else None,
-        'executive_summaries': AIAdvisoryExecutiveSummarySerializer(summary_history, many=True).data,
-        'components_count': components_qs.count(),
-        'active_components_count': components_qs.filter(include_in_summary=True).count(),
-    }
 
 
 @api_view(['POST'])
@@ -4387,53 +3274,6 @@ def stock_ai_advisory_session_api(request, symbol: str):
 from .models import ScreenerRule
 from .serializers import ScreenerRuleSerializer
 
-# Tập field hợp lệ cho screener conditions
-_SCREENER_ALLOWED_FIELDS = {
-    'close', 'volume', 'rsi_14', 'sma20', 'sma50',
-    'momentum_20d_pct', 'price_vs_sma20_pct', 'price_vs_sma50_pct',
-    'range_position_pct', 'avg_volume_20',
-}
-_SCREENER_ALLOWED_OPS = {'lt', 'lte', 'gt', 'gte', 'eq'}
-
-
-def _validate_screener_rules(rules_json):
-    """
-    Kiểm tra cú pháp rules_json.
-    rules_json phải là list[dict] với mỗi dict có: field (str), op (str), value (number).
-    Trả về (ok: bool, error_msg: str)
-    """
-    if not isinstance(rules_json, list) or len(rules_json) == 0:
-        return False, 'rules_json phải là list không rỗng.'
-    for i, cond in enumerate(rules_json):
-        if not isinstance(cond, dict):
-            return False, f'Condition #{i} phải là object.'
-        field = cond.get('field')
-        op = cond.get('op')
-        value = cond.get('value')
-        if field not in _SCREENER_ALLOWED_FIELDS:
-            return False, f'Field "{field}" không hợp lệ. Cho phép: {sorted(_SCREENER_ALLOWED_FIELDS)}.'
-        if op not in _SCREENER_ALLOWED_OPS:
-            return False, f'Op "{op}" không hợp lệ. Cho phép: {sorted(_SCREENER_ALLOWED_OPS)}.'
-        if not isinstance(value, (int, float)):
-            return False, f'Value của condition #{i} phải là số.'
-    return True, ''
-
-
-def _apply_screener_condition(field_val, op, target_val):
-    if field_val is None:
-        return False
-    try:
-        fv = float(field_val)
-        tv = float(target_val)
-    except (TypeError, ValueError):
-        return False
-    if op == 'lt':  return fv < tv
-    if op == 'lte': return fv <= tv
-    if op == 'gt':  return fv > tv
-    if op == 'gte': return fv >= tv
-    if op == 'eq':  return abs(fv - tv) < 1e-9
-    return False
-
 
 class ScreenerRuleListCreateView(APIView):
     """
@@ -4561,68 +3401,11 @@ class ScreenerRuleRunView(APIView):
                     history_map[sym] = []
                 history_map[sym].append(row)
 
-        def _build_technical(sym, latest_row):
-            hist = history_map.get(sym, [])
-            closes = [float(r['close_price']) for r in hist if r['close_price'] is not None]
-            volumes = [float(r['volume']) for r in hist if r['volume'] is not None]
-            highs = [float(r['high_price']) for r in hist if r['high_price'] is not None]
-            lows = [float(r['low_price']) for r in hist if r['low_price'] is not None]
-
-            close = float(latest_row['close_price']) if latest_row['close_price'] else None
-
-            sma20 = (sum(closes[-20:]) / 20) if len(closes) >= 20 else None
-            sma50 = (sum(closes[-50:]) / 50) if len(closes) >= 50 else None
-            rsi_14 = _safe_round(_compute_rsi(closes, 14))
-            momentum_20d = _safe_round(
-                ((closes[-1] / closes[-21] - 1) * 100) if len(closes) >= 21 else None
-            )
-            price_vs_sma20 = _safe_round(
-                ((close / sma20 - 1) * 100) if close and sma20 else None
-            )
-            price_vs_sma50 = _safe_round(
-                ((close / sma50 - 1) * 100) if close and sma50 else None
-            )
-            hi52 = max(highs[-52:]) if len(highs) >= 10 else None
-            lo52 = min(lows[-52:]) if len(lows) >= 10 else None
-            range_pos = _safe_round(
-                ((close - lo52) / (hi52 - lo52) * 100) if close and hi52 and lo52 and (hi52 - lo52) > 0 else None
-            )
-            avg_vol20 = _safe_round(
-                (sum(volumes[-20:]) / 20) if len(volumes) >= 20 else None
-            )
-            # MACD histogram (>0 = đà tăng, <0 = đà giảm)
-            macd_hist = _safe_round(_compute_macd_hist(closes), 4)
-            # Volume relative (current vol / avg_vol_20)
-            cur_vol = float(latest_row['volume']) if latest_row.get('volume') else None
-            volume_rvol = _safe_round(
-                (cur_vol / (sum(volumes[-20:]) / 20)) if cur_vol and len(volumes) >= 20 else None
-            )
-            # SMA20 vs SMA50 (>0 = golden cross, <0 = death cross)
-            sma20_vs_sma50_pct = _safe_round(
-                ((sma20 / sma50 - 1) * 100) if sma20 and sma50 else None
-            )
-
-            return {
-                'close': close,
-                'volume': float(latest_row['volume']) if latest_row.get('volume') else None,
-                'rsi_14': rsi_14,
-                'sma20': _safe_round(sma20),
-                'sma50': _safe_round(sma50),
-                'momentum_20d_pct': momentum_20d,
-                'price_vs_sma20_pct': price_vs_sma20,
-                'price_vs_sma50_pct': price_vs_sma50,
-                'range_position_pct': range_pos,
-                'avg_volume_20': avg_vol20,
-                'macd_hist': macd_hist,
-                'volume_rvol': volume_rvol,
-                'sma20_vs_sma50_pct': sma20_vs_sma50_pct,
-            }
-
         matched = []
         total_scanned = len(rows)
         for row in rows:
             sym = row['symbol']
-            tech = _build_technical(sym, row)
+            tech = _screener_build_technical(sym, row, history_map)
             # Áp dụng tất cả conditions (AND logic)
             if all(_apply_screener_condition(tech.get(c['field']), c['op'], c['value']) for c in conditions):
                 matched.append({

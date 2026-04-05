@@ -1412,6 +1412,32 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_realtime_ticker.assert_called_once_with('VNM')
 
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
+    @patch('portfolio.market_views.market_data_service.get_realtime_ticker')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views.get_price_changes')
+    def test_realtime_ticker_endpoint_uses_legacy_view_when_canary_percent_zero(
+        self,
+        mock_get_price_changes,
+        _mock_cache_get,
+        mock_get_realtime_ticker,
+    ):
+        self.authenticate()
+        mock_get_price_changes.return_value = {
+            'VNM': {
+                'current_price': 100000,
+                'prev_price': 99000,
+                'last_date': datetime.now().isoformat(),
+            }
+        }
+
+        response = self.client.get('/api/realtime/ticker/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_realtime_ticker.assert_not_called()
+        mock_get_price_changes.assert_called_once_with(['VNM'])
+
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_intraday_matched')
     def test_realtime_intraday_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_intraday_matched):
@@ -1427,7 +1453,17 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'VNM')
-        mock_get_intraday_matched.assert_called_once_with('VNM', page_size='25')
+        mock_get_intraday_matched.assert_called_once_with('VNM', page_size=25)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_intraday_matched')
+    def test_realtime_intraday_endpoint_rejects_invalid_page_size(self, mock_get_intraday_matched):
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/intraday/VNM/?page_size=abc')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_get_intraday_matched.assert_not_called()
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_price_board')
@@ -1751,7 +1787,17 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'VNM')
-        mock_get_stock_workspace_chart.assert_called_once_with(self.user, 'VNM', '120')
+        mock_get_stock_workspace_chart.assert_called_once_with(self.user, 'VNM', 120)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_stock_workspace_chart')
+    def test_stock_workspace_chart_endpoint_rejects_invalid_days(self, mock_get_stock_workspace_chart):
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/VNM/chart/?days=9999')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_get_stock_workspace_chart.assert_not_called()
 
     def test_price_alert_rule_crud_and_trigger_endpoint(self):
         self.authenticate()
@@ -1784,6 +1830,77 @@ class ApiRouteSmokeTests(APITestCase):
 
         delete_response = self.client.delete(f'/api/stock-management/price-alerts/{rule_id}/')
         self.assertEqual(delete_response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_tracked_symbol_supports_per_symbol_threshold_create_and_patch(self):
+        self.authenticate()
+
+        create_response = self.client.post(
+            '/api/stock-management/tracked-symbols/',
+            {
+                'symbol': 'FPT',
+                'whale_alert_threshold_million': 850,
+            },
+            format='json',
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(create_response.data['symbol'], 'FPT')
+        self.assertEqual(create_response.data['whale_alert_threshold_million'], 850.0)
+
+        tracked_id = create_response.data['id']
+        patch_response = self.client.patch(
+            f'/api/stock-management/tracked-symbols/{tracked_id}/',
+            {
+                'whale_alert_threshold_million': 920,
+            },
+            format='json',
+        )
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(patch_response.data['whale_alert_threshold_million'], 920.0)
+
+        clear_response = self.client.patch(
+            f'/api/stock-management/tracked-symbols/{tracked_id}/',
+            {
+                'whale_alert_threshold_million': None,
+            },
+            format='json',
+        )
+        self.assertEqual(clear_response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(clear_response.data['whale_alert_threshold_million'])
+
+    def test_whale_feed_aggregate_applies_per_symbol_threshold_override(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT', whale_alert_threshold_million=900)
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='fpt-threshold-1',
+        )
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:16:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='hpg-threshold-1',
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?scope=tracked&sort=matched_value&limit=20')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_symbols = [row['symbol'] for row in response.data['results']]
+        self.assertIn('HPG', result_symbols)
+        self.assertNotIn('FPT', result_symbols)
 
     @patch('vnstock.Vnstock')
     def test_stock_workspace_overview_and_chart_endpoints(self, mock_vnstock):
@@ -1934,6 +2051,32 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['portfolio'], selected_portfolio.id)
         self.assertEqual(response.data['type'], '6')
         self.assertNotEqual(response.data['portfolio'], first_portfolio.id)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_create_rejects_foreign_portfolio(self):
+        self.authenticate()
+        self.user.portfolios.create(name='Owner Portfolio', description='owner')
+
+        other_user = User.objects.create_user(
+            username='subaccount-foreign-portfolio-user',
+            email='subaccount-foreign-portfolio@example.com',
+            password='Test@123456',
+        )
+        foreign_portfolio = other_user.portfolios.create(name='Foreign Portfolio', description='foreign')
+
+        response = self.client.post(
+            '/api/portfolio/subaccounts/',
+            {
+                'name': 'Invalid Portfolio Account',
+                'type': '1',
+                'margin_ratio': '1.000',
+                'portfolio': foreign_portfolio.id,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('khong thuoc nguoi dung hien tai', str(response.data).lower())
 
     @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
     def test_refactored_subaccount_create_without_portfolio_falls_back_to_first_portfolio(self):

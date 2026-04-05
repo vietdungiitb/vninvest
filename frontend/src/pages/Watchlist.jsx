@@ -8,7 +8,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import {
   getSecuritiesGroups, seedSecurities, syncSecuritiesPrices,
-  getTrackedSymbols, addTrackedSymbol, deleteTrackedSymbol,
+  getTrackedSymbols, addTrackedSymbol, updateTrackedSymbol, deleteTrackedSymbol,
   syncStockProfile,
   getPriceAlerts, createPriceAlert, updatePriceAlert, deletePriceAlert, markPriceAlertTriggered,
 } from '../api/client';
@@ -148,6 +148,7 @@ export default function WatchlistPage() {
   const [srcGroupId, setSrcGroupId] = useState('');
   const [addSymbol, setAddSymbol] = useState('');
   const [addingSymbol, setAddingSymbol] = useState(false);
+  const [updatingTrackedId, setUpdatingTrackedId] = useState(null);
   const [symbolError, setSymbolError] = useState('');
 
   const fetchGroups = useCallback(async () => {
@@ -391,6 +392,41 @@ export default function WatchlistPage() {
       setTimeout(() => setSyncMsg(''), 4000);
     } catch {
       alert(t('watchlist.deleteFailed'));
+    }
+  };
+
+  const handleConfigureTrackedThreshold = async (item) => {
+    const currentValue = item.whale_alert_threshold_million;
+    const inputValue = window.prompt(
+      'Ngưỡng whale riêng (triệu VNĐ). Để trống để xóa override.',
+      currentValue == null ? '' : String(currentValue),
+    );
+    if (inputValue === null) {
+      return;
+    }
+
+    const trimmed = String(inputValue).trim();
+    let nextValue = null;
+    if (trimmed !== '') {
+      const parsed = Number(trimmed);
+      if (!Number.isFinite(parsed) || parsed < 1) {
+        alert('Ngưỡng không hợp lệ. Vui lòng nhập số >= 1.');
+        return;
+      }
+      nextValue = parsed;
+    }
+
+    setUpdatingTrackedId(item.id);
+    setSymbolError('');
+    try {
+      const res = await updateTrackedSymbol(item.id, { whale_alert_threshold_million: nextValue });
+      setTrackedSymbols((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...res.data } : row)));
+      setSyncMsg(`Đã cập nhật ngưỡng whale cho ${item.symbol}.`);
+      setTimeout(() => setSyncMsg(''), 4000);
+    } catch (err) {
+      setSymbolError(err.response?.data?.detail || `Không thể cập nhật ngưỡng cho ${item.symbol}.`);
+    } finally {
+      setUpdatingTrackedId(null);
     }
   };
 
@@ -938,6 +974,7 @@ export default function WatchlistPage() {
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">Whale (M)</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableUpdatedAt')}</th>
                           <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                         </tr>
@@ -959,16 +996,28 @@ export default function WatchlistPage() {
                             <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
                             <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
+                            <td className="px-4 py-3 text-gray-300 text-xs tabular-nums whitespace-nowrap">
+                              {item.whale_alert_threshold_million == null ? 'Theo user' : `${formatNumber(item.whale_alert_threshold_million)}M`}
+                            </td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                               {item.last_date || '—'}
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <button
-                                onClick={() => handleDeleteTracked(item.id, item.symbol)}
-                                className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                              >
-                                {t('watchlist.delete')}
-                              </button>
+                              <div className="flex items-center justify-end gap-3">
+                                <button
+                                  onClick={() => handleConfigureTrackedThreshold(item)}
+                                  disabled={updatingTrackedId === item.id}
+                                  className="text-xs text-blue-300 hover:text-blue-200 font-semibold disabled:opacity-50"
+                                >
+                                  {updatingTrackedId === item.id ? 'Đang lưu...' : 'Sửa ngưỡng'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTracked(item.id, item.symbol)}
+                                  className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                                >
+                                  {t('watchlist.delete')}
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}

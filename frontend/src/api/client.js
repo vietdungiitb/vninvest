@@ -192,7 +192,15 @@ export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts',
   const queryString = params.toString();
   return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`);
 };
-export const getWhaleAdvisories = () => apiClient.get('/portfolio/whale-advisory/');
+export const getWhaleAdvisories = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return;
+    query.set(key, String(value));
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient.get(`/portfolio/whale-advisory/${suffix}`);
+};
 export const refreshWhaleAdvisory = (symbol) =>
   apiClient.post(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/refresh/`);
 export const getAIOptions = () => apiClient.get('/ai-options/');
@@ -228,8 +236,13 @@ export const getRealtimeWebSocketUrl = (token) => {
 
 // --- Mã Theo dõi (personal tracked symbols) ---
 export const getTrackedSymbols = () => apiClient.get('/stock-management/tracked-symbols/');
-export const addTrackedSymbol = (symbol, sourceGroupId = null) =>
-  apiClient.post('/stock-management/tracked-symbols/', { symbol, source_group_id: sourceGroupId });
+export const addTrackedSymbol = (symbol, sourceGroupId = null, whaleAlertThresholdMillion = null) =>
+  apiClient.post('/stock-management/tracked-symbols/', {
+    symbol,
+    source_group_id: sourceGroupId,
+    whale_alert_threshold_million: whaleAlertThresholdMillion,
+  });
+export const updateTrackedSymbol = (id, data) => apiClient.patch(`/stock-management/tracked-symbols/${id}/`, data);
 export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`);
 
 export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/');
@@ -244,6 +257,7 @@ export const markPriceAlertTriggered = (id) => apiClient.post(`/stock-management
 
 // --- Admin Ops (is_staff only) ---
 export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
+export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
 export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>

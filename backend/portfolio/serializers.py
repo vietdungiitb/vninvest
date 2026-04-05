@@ -280,6 +280,7 @@ class TrackedSymbolSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     source_group_id = serializers.IntegerField(allow_null=True)
     source_group_name = serializers.CharField(allow_null=True)
+    whale_alert_threshold_million = serializers.FloatField(allow_null=True)
     current_price = serializers.FloatField(allow_null=True)
     prev_price = serializers.FloatField(allow_null=True)
     change_value = serializers.FloatField(allow_null=True)
@@ -414,4 +415,16 @@ class ScreenerRuleSerializer(serializers.ModelSerializer):
         model = ScreenerRule
         fields = ['id', 'name', 'rules_json', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class MarketIntradayQuerySerializer(serializers.Serializer):
+    page_size = serializers.IntegerField(required=False, default=50, min_value=10, max_value=200)
+
+
+class MarketStockChartQuerySerializer(serializers.Serializer):
+    days = serializers.IntegerField(required=False, default=180, min_value=30, max_value=365)
+
+
+class TradingSubAccountCreateRequestSerializer(serializers.Serializer):
+    portfolio = serializers.IntegerField(required=False, min_value=1)
 

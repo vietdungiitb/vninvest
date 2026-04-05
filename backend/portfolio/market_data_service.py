@@ -16,9 +16,18 @@ from .adapters.cache_adapter import (
     set_cache,
 )
 from .adapters.vnstock_adapter import (
+    fetch_financial_ratio_dataframe,
+    fetch_history_dataframe,
     fetch_intraday_dataframe,
+    fetch_listing_symbols_dataframe,
     fetch_price_board_dataframe,
     read_stream_intraday_ticks,
+)
+from .domain_constants import (
+    WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT,
+    WHALE_CONFIG_VERSION,
+    classify_whale_size_class,
+    resolve_user_whale_threshold_vnd,
 )
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .models import (
@@ -32,6 +41,7 @@ from .models import (
     WatchlistGroup,
     WatchlistItem,
 )
+from .observability import record_market_external_timeout, record_market_fallback
 from .permissions import resolve_user_entitlements
 from .services import get_price_changes
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
@@ -116,6 +126,7 @@ class MarketDataService:
             return cached
 
         if is_vnstock_rate_limited('intraday'):
+            record_market_fallback('intraday-matched', 'vnstock_backoff')
             return self._build_intraday_backoff_response(normalized_symbol)
 
         stream_ticks = read_stream_intraday_ticks(normalized_symbol, count=resolved_page_size)
@@ -136,7 +147,10 @@ class MarketDataService:
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_rate_limited':
                 mark_vnstock_rate_limited('intraday', exc)
+                record_market_fallback('intraday-matched', 'vnstock_backoff')
                 return self._build_intraday_backoff_response(normalized_symbol)
+            if exc.code == 'vnstock_timeout':
+                record_market_external_timeout('intraday-matched')
             if exc.code == 'vnstock_missing':
                 raise exc
             raise ExternalSystemException(
@@ -171,6 +185,7 @@ class MarketDataService:
             return cached
 
         if is_vnstock_rate_limited('price_board'):
+            record_market_fallback('price-board', 'vnstock_backoff')
             return {
                 'symbol': normalized_symbol,
                 'depth': [],
@@ -184,6 +199,7 @@ class MarketDataService:
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_rate_limited':
                 mark_vnstock_rate_limited('price_board', exc)
+                record_market_fallback('price-board', 'vnstock_backoff')
                 return {
                     'symbol': normalized_symbol,
                     'depth': [],
@@ -191,6 +207,8 @@ class MarketDataService:
                     'source': 'vnstock_backoff',
                     'rate_limited': True,
                 }
+            if exc.code == 'vnstock_timeout':
+                record_market_external_timeout('price-board')
             if exc.code == 'vnstock_missing':
                 raise exc
             raise ExternalSystemException(
@@ -444,7 +462,7 @@ class MarketDataService:
         import pandas as pd
 
         normalized_symbol = self.normalize_symbol(symbol)
-        threshold_vnd = self._get_user_whale_threshold_vnd(user)
+        threshold_vnd = self._get_user_whale_threshold_vnd(user, symbol=normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
@@ -530,6 +548,7 @@ class MarketDataService:
             data_source = 'error'
 
         if df is None or df.empty:
+            self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
             return self._build_empty_whale_feed_response(
                 normalized_symbol,
                 threshold_vnd,
@@ -602,6 +621,7 @@ class MarketDataService:
             },
             'fetched_at': timezone.now().isoformat(),
         }
+        self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
         set_cache(cache_key, result, timeout=20)
         return result
 
@@ -612,6 +632,12 @@ class MarketDataService:
         request_now = timezone.now()
 
         symbols, scope, watchlist_group_ids, scope_source = self._resolve_whale_feed_symbols(user, query_params)
+        symbol_threshold_overrides = self._get_user_symbol_threshold_overrides_vnd(user, symbols)
+
+        def _resolve_threshold_for_symbol(resolved_symbol: str) -> float:
+            return symbol_threshold_overrides.get(str(resolved_symbol or '').strip().upper(), threshold_vnd)
+
+        min_threshold_vnd = min([_resolve_threshold_for_symbol(symbol) for symbol in symbols], default=threshold_vnd)
         limit = self._parse_limit(query_params.get('limit', 20))
         sort = self._parse_sort(query_params.get('sort', 'ts'))
         cursor_payload = self._decode_whale_feed_cursor(query_params.get('cursor'))
@@ -639,7 +665,12 @@ class MarketDataService:
                 source='intraday_tick_db',
             )
 
-        stream_records = self._build_stream_aggregate_records(symbols, threshold_vnd)
+        stream_records = self._build_stream_aggregate_records(symbols, min_threshold_vnd)
+        if stream_records:
+            stream_records = [
+                record for record in stream_records
+                if float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+            ]
         if stream_records:
             normalized_records, ok = self._normalize_aggregate_event_records(
                 stream_records,
@@ -648,10 +679,12 @@ class MarketDataService:
             )
             if not ok:
                 raise MarketDataValidationException('cursor không hợp lệ.')
+            self._record_source_observability('whale-feed-aggregate', 'redis_stream', primary_source='redis_stream')
             return self._build_aggregate_record_response(
                 normalized_records=normalized_records,
                 source='redis_stream',
                 threshold_vnd=threshold_vnd,
+                threshold_resolver=_resolve_threshold_for_symbol,
                 entitlements=entitlements,
                 weights_version=score_config['version'],
                 scope=scope,
@@ -668,7 +701,7 @@ class MarketDataService:
             IntradayTick.objects
             .filter(trade_date=timezone.localdate(), symbol__in=symbols)
             .annotate(matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField()))
-            .filter(matched_value__gte=threshold_vnd)
+            .filter(matched_value__gte=min_threshold_vnd)
         )
 
         if sort == 'matched_value':
@@ -695,12 +728,20 @@ class MarketDataService:
                 )
             queryset = queryset.order_by('-trade_date', '-trade_time', '-id')
 
-        rows = list(queryset[: limit + 1])
+        rows = [
+            row for row in queryset
+            if float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+        ]
         has_more = len(rows) > limit
         page_rows = rows[:limit]
 
         if not page_rows:
-            vnstock_records = self._build_vnstock_aggregate_records(symbols, threshold_vnd)
+            vnstock_records = self._build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            if vnstock_records:
+                vnstock_records = [
+                    record for record in vnstock_records
+                    if float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+                ]
             normalized_records, ok = self._normalize_aggregate_event_records(
                 vnstock_records,
                 sort=sort,
@@ -708,10 +749,16 @@ class MarketDataService:
             )
             if not ok:
                 raise MarketDataValidationException('cursor không hợp lệ.')
+            self._record_source_observability(
+                'whale-feed-aggregate',
+                'vnstock' if normalized_records else 'intraday_tick_db',
+                primary_source='redis_stream',
+            )
             return self._build_aggregate_record_response(
                 normalized_records=normalized_records,
                 source='vnstock' if normalized_records else 'intraday_tick_db',
                 threshold_vnd=threshold_vnd,
+                threshold_resolver=_resolve_threshold_for_symbol,
                 entitlements=entitlements,
                 weights_version=score_config['version'],
                 scope=scope,
@@ -729,9 +776,15 @@ class MarketDataService:
             next_cursor = self._build_next_cursor_from_db_row(page_rows[-1], sort)
 
         results = [
-            self._build_aggregate_event_payload(row, threshold_vnd, score_config=score_config, now=request_now)
+            self._build_aggregate_event_payload(
+                row,
+                _resolve_threshold_for_symbol(getattr(row, 'symbol', '')),
+                score_config=score_config,
+                now=request_now,
+            )
             for row in page_rows
         ]
+        self._record_source_observability('whale-feed-aggregate', 'intraday_tick_db', primary_source='redis_stream')
         return self._build_aggregate_response(
             results=results,
             next_cursor=next_cursor,
@@ -836,14 +889,21 @@ class MarketDataService:
             return cached
 
         try:
-            from vnstock import Vnstock
-
-            stock = Vnstock().stock(symbol=normalized_symbol, source='VCI')
-            df = stock.finance.ratio(period='year', lang='vi', dropna=True)
-        except ImportError as exc:
-            raise ExternalSystemException('vnstock chưa được cài đặt.', code='vnstock_missing') from exc
-        except (Exception, SystemExit) as exc:
-            raise ExternalSystemException(str(exc), code='vnstock_error') from exc
+            df = fetch_financial_ratio_dataframe(
+                normalized_symbol,
+                period='year',
+                lang='vi',
+                dropna=True,
+                source='VCI',
+            )
+        except ExternalSystemException as exc:
+            if exc.code == 'vnstock_missing':
+                raise exc
+            raise ExternalSystemException(
+                f'Không lấy được dữ liệu tài chính: {exc.message}',
+                code=exc.code,
+                payload=exc.payload,
+            ) from exc
 
         if df is None or df.empty:
             return {'symbol': normalized_symbol, 'years': []}
@@ -942,15 +1002,14 @@ class MarketDataService:
             logger.warning('StockWorkspaceOverview refactor price-board overlay lỗi %s: %s', normalized_symbol, exc)
 
         try:
-            from vnstock import Vnstock
-
             end_date = timezone.localdate().strftime('%Y-%m-%d')
             start_date = (timezone.localdate() - timedelta(days=365)).strftime('%Y-%m-%d')
-            history_df = Vnstock().stock(symbol=normalized_symbol, source='VCI').quote.history(
-                symbol=normalized_symbol,
+            history_df = fetch_history_dataframe(
+                normalized_symbol,
                 start=start_date,
                 end=end_date,
                 interval='1D',
+                source='VCI',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
                 scale = 1000.0
@@ -960,21 +1019,19 @@ class MarketDataService:
                     payload['week52_high'] = week52_high
                 if week52_low > 0:
                     payload['week52_low'] = week52_low
-        except Exception as exc:
+        except ExternalSystemException as exc:
             logger.debug('StockWorkspaceOverview refactor 52W overlay lỗi %s: %s', normalized_symbol, exc)
 
         if not payload.get('company_name'):
             try:
-                from vnstock import Vnstock
-
-                listing_df = Vnstock().stock(symbol=normalized_symbol, source='VCI').listing.all_symbols()
+                listing_df = fetch_listing_symbols_dataframe(symbol=normalized_symbol, source='VCI')
                 if listing_df is not None and not listing_df.empty:
                     row = listing_df[listing_df['symbol'] == normalized_symbol]
                     if not row.empty:
                         company_name = str(row.iloc[0].get('organ_name') or '').strip()
                         if company_name:
                             payload['company_name'] = company_name
-            except Exception as exc:
+            except ExternalSystemException as exc:
                 logger.debug('StockWorkspaceOverview refactor listing overlay lỗi %s: %s', normalized_symbol, exc)
 
         serialized = StockWorkspaceOverviewSerializer(payload).data
@@ -1011,12 +1068,12 @@ class MarketDataService:
         technical_rows = None
 
         try:
-            from vnstock import Vnstock
-
-            df = Vnstock().stock(symbol=normalized_symbol, source='KBS').quote.history(
+            df = fetch_history_dataframe(
+                normalized_symbol,
                 start=str(start_date),
                 end=str(end_date),
                 interval='1D',
+                source='KBS',
             )
             if df is not None and not df.empty:
                 series = []
@@ -1037,7 +1094,7 @@ class MarketDataService:
                     except (TypeError, ValueError, KeyError):
                         continue
                 technical_rows = [{'close_price': point['close'], 'volume': point['volume']} for point in series]
-        except Exception as exc:
+        except ExternalSystemException as exc:
             logger.warning('StockWorkspaceChart refactor vnstock lỗi %s: %s', normalized_symbol, exc)
 
         if not series:
@@ -1155,17 +1212,49 @@ class MarketDataService:
             return 'sell'
         return 'neutral'
 
-    def _get_user_whale_threshold_vnd(self, user) -> float:
-        config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
-        threshold_million = float((config or {}).get('whale_alert_threshold') or 500)
-        return threshold_million * 1_000_000
+    def _get_user_whale_threshold_vnd(self, user, symbol: str | None = None) -> float:
+        base_config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
+        base_threshold_vnd = resolve_user_whale_threshold_vnd((base_config or {}).get('whale_alert_threshold'))
+        if not symbol:
+            return base_threshold_vnd
+
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            return base_threshold_vnd
+
+        override = (
+            TrackedSymbol.objects
+            .filter(user=user, symbol=normalized_symbol)
+            .values('whale_alert_threshold_million')
+            .first()
+        )
+        if override and override.get('whale_alert_threshold_million') is not None:
+            return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million'))
+        return base_threshold_vnd
+
+    def _get_user_symbol_threshold_overrides_vnd(self, user, symbols: list[str] | None = None) -> dict[str, float]:
+        queryset = TrackedSymbol.objects.filter(user=user, whale_alert_threshold_million__isnull=False)
+        if symbols:
+            normalized_symbols = [str(symbol).strip().upper() for symbol in symbols if str(symbol).strip()]
+            queryset = queryset.filter(symbol__in=normalized_symbols)
+
+        overrides = {}
+        for row in queryset.values('symbol', 'whale_alert_threshold_million'):
+            symbol = str(row.get('symbol') or '').strip().upper()
+            if not symbol:
+                continue
+            overrides[symbol] = resolve_user_whale_threshold_vnd(row.get('whale_alert_threshold_million'))
+        return overrides
 
     def _classify_signal_size(self, matched_value: float) -> str:
-        if matched_value >= 5_000_000_000:
-            return 'shark'
-        if matched_value >= 1_000_000_000:
-            return 'whale'
-        return 'small'
+        return classify_whale_size_class(matched_value)
+
+    def _record_source_observability(self, endpoint: str, source: str, primary_source: str) -> None:
+        resolved_source = str(source or 'unknown')
+        if resolved_source == 'timeout':
+            record_market_external_timeout(endpoint)
+        if resolved_source != str(primary_source):
+            record_market_fallback(endpoint, resolved_source)
 
     def _build_whale_order_payload(
         self,
@@ -1289,7 +1378,7 @@ class MarketDataService:
         return sort
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
-        max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', '6')), 0)
+        max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
         if max_symbols == 0:
             return False
         return len(symbols) <= max_symbols
@@ -1377,7 +1466,7 @@ class MarketDataService:
             'id': row.id,
             'event_id': f'tick:{row.id}',
             'contract_version': '1.0',
-            'config_version': 'threshold-v1',
+            'config_version': WHALE_CONFIG_VERSION,
             'weights_version': score_result['weights_version'],
             'symbol': row.symbol.upper(),
             'side': self._normalize_side(getattr(row, 'side', '')),
@@ -1432,7 +1521,7 @@ class MarketDataService:
             'id': record.get('id'),
             'event_id': record.get('event_id') or f'{source}:{symbol}:{record.get("id") or occurred_at}',
             'contract_version': '1.0',
-            'config_version': 'threshold-v1',
+            'config_version': WHALE_CONFIG_VERSION,
             'weights_version': score_result['weights_version'],
             'symbol': symbol,
             'side': side,
@@ -1559,8 +1648,12 @@ class MarketDataService:
             except ExternalSystemException as exc:
                 if exc.code == 'vnstock_rate_limited' or is_rate_limited_error(exc):
                     mark_vnstock_rate_limited('intraday', exc)
+                    record_market_fallback('whale-feed-aggregate', 'vnstock_backoff')
                     logger.info('Aggregate whale vnstock rate-limited for %s; activate cooldown.', symbol)
                     break
+                if exc.code == 'vnstock_timeout':
+                    record_market_external_timeout('whale-feed-aggregate')
+                    record_market_fallback('whale-feed-aggregate', 'timeout')
                 logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
                 continue
 
@@ -1664,6 +1757,7 @@ class MarketDataService:
         normalized_records: list[dict],
         source: str,
         threshold_vnd: float,
+        threshold_resolver,
         entitlements: dict,
         weights_version: str,
         scope: str,
@@ -1679,7 +1773,12 @@ class MarketDataService:
         page_rows = normalized_records[:limit]
         next_cursor = self._build_next_cursor_from_record(page_rows[-1], sort) if has_more and page_rows else None
         results = [
-            self._build_aggregate_event_payload_from_record(row, threshold_vnd, score_config=score_config, now=now)
+            self._build_aggregate_event_payload_from_record(
+                row,
+                threshold_resolver(row.get('symbol')),
+                score_config=score_config,
+                now=now,
+            )
             for row in page_rows
         ]
         return self._build_aggregate_response(

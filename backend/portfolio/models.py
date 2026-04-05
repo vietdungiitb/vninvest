@@ -377,6 +377,14 @@ class TrackedSymbol(models.Model):
         SecuritiesGroup, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='tracked_from', verbose_name='Nhóm thị trường nguồn',
     )
+    whale_alert_threshold_million = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal('1'))],
+        verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
+    )
     added_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
