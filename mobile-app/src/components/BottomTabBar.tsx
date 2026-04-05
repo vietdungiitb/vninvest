@@ -1,18 +1,19 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
 
 export type TabKey = 'dashboard' | 'transactions' | 'watchlist';
 
 type Tab = {
   key: TabKey;
-  label: string;
+  labelKey: string;
   icon: string;
 };
 
-const TABS: Tab[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: '◈' },
-  { key: 'transactions', label: 'Giao dich', icon: '⇄' },
-  { key: 'watchlist', label: 'Watchlist', icon: '★' },
+const TAB_DEFS: Tab[] = [
+  { key: 'dashboard', labelKey: 'tabs.dashboard', icon: '◈' },
+  { key: 'transactions', labelKey: 'tabs.transactions', icon: '⇄' },
+  { key: 'watchlist', labelKey: 'tabs.watchlist', icon: '★' },
 ];
 
 type BottomTabBarProps = {
@@ -21,9 +22,10 @@ type BottomTabBarProps = {
 };
 
 export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
+  const t = useLocaleStore((s) => s.t);
   return (
     <View style={styles.container}>
-      {TABS.map((tab) => {
+      {TAB_DEFS.map((tab) => {
         const active = tab.key === activeTab;
         return (
           <Pressable
@@ -34,7 +36,7 @@ export function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
             accessibilityState={{ selected: active }}
           >
             <Text style={[styles.icon, active && styles.iconActive]}>{tab.icon}</Text>
-            <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
+            <Text style={[styles.label, active && styles.labelActive]}>{t(tab.labelKey)}</Text>
           </Pressable>
         );
       })}

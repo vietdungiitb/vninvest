@@ -232,6 +232,33 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 | **Sprint 12 Mid (Bước 17-19)** | Planned | 2026-04-07 | P/L + Alerts + Sync |
 | **Sprint 12 End (Bước 17-19 finish)** | Planned | 2026-04-10 | QA + sign-off |
 | **Sprint 13 (Next)** | Backlog | 2026-04-14 | Backtest engine / Intraday |
+| **Sprint 19** | In Progress | 2026-04-12 | Mobile App MVP (Android + iOS) |
+| **Sprint 20** | Planned | 2026-04-26 | i18n: Cấu hình ngôn ngữ VI/EN |
+
+---
+
+## 🌐 Sprint 20 — i18n: Cấu hình ngôn ngữ (PLANNED)
+
+**Mục tiêu**: Cho phép người dùng chuyển đổi toàn bộ giao diện giữa **Tiếng Việt** và **English** trên Frontend (React) và Mobile App (React Native).
+
+**Phạm vi**:
+- Backend: Thêm `UserConfig.language` field + migration + serializer
+- Frontend: Custom i18n context (`LangContext`) + translation dictionaries + toggle button trong sidebar
+- Mobile: Zustand `localeStore` + AsyncStorage persist + toggle UI trong DashboardScreen
+- Migrate strings toàn bộ: Layout, Auth, Dashboard, Transactions, Watchlist, WhaleAlerts
+
+**Kiến trúc**: Lightweight custom dictionary (không dùng react-i18next giai đoạn này), sync preference qua `/api/ai-config/` PUT.
+
+**Thời gian**: 2 tuần — 10 ngày làm việc
+
+**Chi tiết kỹ thuật**: Xem `docs/SPRINT20_I18N_DETAILED_PLAN.md`
+
+**Acceptance Criteria chính**:
+- [ ] Toggle ngôn ngữ hoạt động instant (không reload page/app)
+- [ ] Preference persist cross-device qua `UserConfig.language`
+- [ ] 100% strings trong 4 màn hình mobile đã migrate
+- [ ] 100% strings trong 8 pages frontend đã migrate
+- [ ] Intl.NumberFormat format tiền theo locale đúng
 
 ---
 
@@ -241,8 +268,10 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 - **Sprint 11**: Vertical slice realtime pipeline hoàn thành locally, đang chờ Redis validation
 - **Sprint 12**: Consolidation sprint để gom code + thêm observability
 - **Sprint 13+**: Backtest engine, intraday workspace, notification center
+- **Sprint 19**: Mobile App MVP — đang triển khai (Auth ✅, Dashboard ✅, Transactions ✅, Watchlist ✅)
+- **Sprint 20**: i18n VI/EN — kế hoạch chi tiết tại `docs/SPRINT20_I18N_DETAILED_PLAN.md`
 
 ---
 
-*Last Updated: 2026-04-03*  
+*Last Updated: 2026-04-05*  
 *Compiled by: GitHub Copilot*

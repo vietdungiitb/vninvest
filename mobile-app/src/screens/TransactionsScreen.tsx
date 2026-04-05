@@ -19,6 +19,7 @@ import {
   validateStockSymbol,
 } from '../services/transactionApi';
 import { colors } from '../theme/colors';
+import { useLocaleStore } from '../store/localeStore';
 import type { StockSuggestion, SubAccountItem, TransactionItem, TransactionPayload, TransactionType } from '../types/transaction';
 
 type TransactionsScreenProps = {
@@ -70,6 +71,7 @@ const emptyForm = (): FormState => ({
 });
 
 export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsScreenProps) {
+  const t = useLocaleStore((s) => s.t);
   const [subAccounts, setSubAccounts] = useState<SubAccountItem[]>([]);
   const [activeSubAccountId, setActiveSubAccountId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
@@ -110,7 +112,7 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
       setActiveSubAccountId(defaultId);
       await loadTransactions(defaultId);
     } catch {
-      setError('Khong the tai du lieu giao dich. Vui long thu lai.');
+      setError(useLocaleStore.getState().t('transactions.error_load'));
     } finally {
       setLoading(false);
     }
@@ -127,7 +129,7 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
     try {
       await loadTransactions(subAccountId);
     } catch {
-      setError('Khong the tai giao dich cua tieu khoan nay.');
+      setError(t('transactions.error_load_subaccount'));
     } finally {
       setLoading(false);
     }
@@ -192,13 +194,13 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
 
     const symbol = form.symbol.trim().toUpperCase();
     if (!symbol) {
-      setError('Vui long nhap ma co phieu.');
+      setError(t('transactions.error_empty_symbol'));
       return;
     }
 
     const isValidSymbol = await validateStockSymbol(symbol);
     if (!isValidSymbol) {
-      setError('Ma co phieu khong hop le trong he thong.');
+      setError(t('transactions.error_invalid_symbol'));
       return;
     }
 
@@ -213,7 +215,7 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
     };
 
     if (!payload.date || payload.price <= 0 || payload.quantity <= 0) {
-      setError('Ngay, gia va khoi luong phai hop le (> 0).');
+      setError(t('transactions.error_invalid_fields'));
       return;
     }
 
@@ -228,7 +230,7 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
       onTransactionSaved?.();
       resetForm();
     } catch {
-      setError('Khong the luu giao dich. Vui long thu lai.');
+      setError(t('transactions.error_save'));
     } finally {
       setSaving(false);
     }
@@ -248,7 +250,7 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
         resetForm();
       }
     } catch {
-      setError('Khong the xoa giao dich.');
+      setError(t('transactions.error_delete'));
     } finally {
       setSaving(false);
     }
@@ -259,16 +261,16 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerRow}>
           <Pressable style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backText}>Quay lai</Text>
+            <Text style={styles.backText}>{t('transactions.back')}</Text>
           </Pressable>
-          <Text style={styles.title}>Transactions</Text>
+          <Text style={styles.title}>{t('transactions.title')}</Text>
           <Pressable style={styles.refreshButton} onPress={bootstrap}>
-            <Text style={styles.refreshText}>Refresh</Text>
+            <Text style={styles.refreshText}>{t('transactions.refresh')}</Text>
           </Pressable>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Chon tieu khoan</Text>
+          <Text style={styles.sectionTitle}>{t('transactions.pick_subaccount')}</Text>
           <View style={styles.chipWrap}>
             {subAccounts.map((item) => {
               const active = item.id === activeSubAccountId;
@@ -283,16 +285,16 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
               );
             })}
           </View>
-          {activeSubAccount ? <Text style={styles.meta}>Dang xem: {activeSubAccount.name}</Text> : null}
+          {activeSubAccount ? <Text style={styles.meta}>{t('transactions.viewing', { name: activeSubAccount.name })}</Text> : null}
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>{editingId ? 'Sua giao dich' : 'Tao giao dich moi'}</Text>
+          <Text style={styles.sectionTitle}>{editingId ? t('transactions.form_edit') : t('transactions.form_new')}</Text>
 
           <View>
             <TextInput
               style={styles.input}
-              placeholder="Symbol (VD: HPG)"
+              placeholder={t('transactions.symbol_placeholder')}
               placeholderTextColor={colors.muted}
               value={form.symbol}
               autoCapitalize="characters"
@@ -331,45 +333,49 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
             })}
           </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Date (YYYY-MM-DD)"
-            placeholderTextColor={colors.muted}
-            value={form.date}
-            autoCapitalize="none"
-            onChangeText={(value) => setForm((prev) => ({ ...prev, date: value }))}
-          />
+          <View style={styles.inlineRow}>
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder={t('transactions.date_placeholder')}
+              placeholderTextColor={colors.muted}
+              value={form.date}
+              autoCapitalize="none"
+              onChangeText={(value) => setForm((prev) => ({ ...prev, date: value }))}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Price"
-            placeholderTextColor={colors.muted}
-            keyboardType="decimal-pad"
-            value={form.price}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, price: value }))}
-          />
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder={t('transactions.price_placeholder')}
+              placeholderTextColor={colors.muted}
+              keyboardType="decimal-pad"
+              value={form.price}
+              onChangeText={(value) => setForm((prev) => ({ ...prev, price: value }))}
+            />
+          </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Quantity"
-            placeholderTextColor={colors.muted}
-            keyboardType="decimal-pad"
-            value={form.quantity}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, quantity: value }))}
-          />
+          <View style={styles.inlineRow}>
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder={t('transactions.quantity_placeholder')}
+              placeholderTextColor={colors.muted}
+              keyboardType="decimal-pad"
+              value={form.quantity}
+              onChangeText={(value) => setForm((prev) => ({ ...prev, quantity: value }))}
+            />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Fee"
-            placeholderTextColor={colors.muted}
-            keyboardType="decimal-pad"
-            value={form.fee}
-            onChangeText={(value) => setForm((prev) => ({ ...prev, fee: value }))}
-          />
+            <TextInput
+              style={[styles.input, styles.inputHalf]}
+              placeholder={t('transactions.fee_placeholder')}
+              placeholderTextColor={colors.muted}
+              keyboardType="decimal-pad"
+              value={form.fee}
+              onChangeText={(value) => setForm((prev) => ({ ...prev, fee: value }))}
+            />
+          </View>
 
           <TextInput
             style={[styles.input, styles.notesInput]}
-            placeholder="Notes"
+            placeholder={t('transactions.notes_placeholder')}
             placeholderTextColor={colors.muted}
             multiline
             value={form.notes}
@@ -378,19 +384,19 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
 
           <View style={styles.rowButtons}>
             <Pressable style={styles.primaryButton} onPress={onSubmit} disabled={saving || !activeSubAccountId}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{editingId ? 'Cap nhat' : 'Luu moi'}</Text>}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>{editingId ? t('transactions.update') : t('transactions.save_new')}</Text>}
             </Pressable>
             <Pressable style={styles.ghostButton} onPress={resetForm} disabled={saving}>
-              <Text style={styles.ghostText}>Reset</Text>
+              <Text style={styles.ghostText}>{t('transactions.reset')}</Text>
             </Pressable>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Danh sach giao dich</Text>
+          <Text style={styles.sectionTitle}>{t('transactions.list_title')}</Text>
           {loading ? <ActivityIndicator color={colors.primary} /> : null}
 
-          {!loading && !transactions.length ? <Text style={styles.meta}>Chua co giao dich.</Text> : null}
+          {!loading && !transactions.length ? <Text style={styles.meta}>{t('transactions.empty_list')}</Text> : null}
 
           {transactions.map((item) => (
             <View key={item.id} style={styles.txItem}>
@@ -398,15 +404,15 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
                 <Text style={styles.txSymbol}>{item.symbol}</Text>
                 <Text style={styles.txType}>{item.transaction_type}</Text>
               </View>
-              <Text style={styles.txMeta}>Ngay: {item.date}</Text>
-              <Text style={styles.txMeta}>Gia: {formatNumber(item.price)} | SL: {formatNumber(item.quantity)} | Phi: {formatNumber(item.fee)}</Text>
-              <Text style={styles.txMeta}>Tong: {formatNumber(item.total_value || 0)}</Text>
+              <Text style={styles.txMeta}>{t('transactions.date_label')}: {item.date}</Text>
+              <Text style={styles.txMeta}>{t('transactions.price_label')}: {formatNumber(item.price)} | {t('transactions.qty_label')}: {formatNumber(item.quantity)} | {t('transactions.fee_label')}: {formatNumber(item.fee)}</Text>
+              <Text style={styles.txMeta}>{t('transactions.total_label')}: {formatNumber(item.total_value || 0)}</Text>
               <View style={styles.rowButtons}>
                 <Pressable style={styles.smallButton} onPress={() => onEdit(item)} disabled={saving}>
-                  <Text style={styles.smallText}>Sua</Text>
+                  <Text style={styles.smallText}>{t('transactions.edit_action')}</Text>
                 </Pressable>
                 <Pressable style={[styles.smallButton, styles.deleteButton]} onPress={() => onDelete(item.id)} disabled={saving}>
-                  <Text style={styles.smallText}>Xoa</Text>
+                  <Text style={styles.smallText}>{t('transactions.delete_action')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -425,8 +431,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
   },
   headerRow: {
     flexDirection: 'row',
@@ -438,8 +445,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   backText: {
     color: colors.text,
@@ -449,8 +456,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   refreshText: {
     color: colors.muted,
@@ -458,16 +465,16 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
   },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 14,
-    gap: 10,
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
   },
   sectionTitle: {
     color: colors.text,
@@ -477,14 +484,14 @@ const styles = StyleSheet.create({
   chipWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
   },
   chip: {
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
   chipActive: {
     borderColor: colors.primary,
@@ -501,14 +508,21 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 9,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
     color: colors.text,
     backgroundColor: '#0f172a',
   },
+  inlineRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  inputHalf: {
+    flex: 1,
+  },
   notesInput: {
-    minHeight: 76,
+    minHeight: 56,
     textAlignVertical: 'top',
   },
   rowButtons: {
@@ -519,7 +533,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.primary,
     borderRadius: 10,
-    paddingVertical: 11,
+    paddingVertical: 9,
     alignItems: 'center',
   },
   primaryText: {
@@ -540,8 +554,8 @@ const styles = StyleSheet.create({
   txItem: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 10,
-    gap: 4,
+    paddingTop: 8,
+    gap: 3,
   },
   txTopRow: {
     flexDirection: 'row',
@@ -557,7 +571,7 @@ const styles = StyleSheet.create({
   },
   txMeta: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
   },
   smallButton: {
     borderWidth: 1,

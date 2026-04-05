@@ -1,5 +1,39 @@
 # Sprint Execution Log
 
+## Sprint 19 - Mobile i18n + density optimization update (2026-04-05)
+
+Trang thai: IMPLEMENTED
+
+Da thuc hien:
+- Hoan tat i18n cho mobile app (VI/EN) voi translator typed + locale store persist AsyncStorage.
+- Migrate toan bo string tren cac man hinh chinh:
+	- Auth
+	- Dashboard
+	- Transactions
+	- Watchlist
+	- BottomTabBar
+- Them language toggle va menu goc phai tren Dashboard gom:
+	- Profile
+	- Settings
+	- Language
+	- Logout
+- Chuyen nut menu sang dang icon de gon va de nhan biet hon tren mobile.
+- Tinh chinh UI compact de tang mat do hien thi thong tin:
+	- Dashboard: tang so item hien thi, giam khoang trang, gom thong tin theo dong.
+	- Transactions: gom input theo hang ngang, giam chieu cao form/list.
+	- Watchlist: rut gon card/feed, gioi han so dong advisory de tranh keo dai.
+- Bo sung package icon cho mobile: `@expo/vector-icons`.
+
+Van hanh va test:
+- Kiem tra TypeScript: `npx tsc --noEmit` PASS.
+- Expo dev server da khoi dong thanh cong, emulator Pixel_7_Pro da ket noi.
+- Backend local xac nhan song tren port 8000 (admin endpoint 200).
+
+Gia tri dat duoc:
+- Nguoi dung co the doi ngon ngu ngay tren app ma khong can reload.
+- UI hien thi duoc nhieu du lieu hon trong cung mot viewport, giam thao tac cuon.
+- Muc do san sang test truc quan tang len nho stack local on dinh (backend + expo + emulator).
+
 ## Sprint 19 - UX/Architecture alignment update (2026-04-05)
 
 Trang thai: PLANNING REFINED

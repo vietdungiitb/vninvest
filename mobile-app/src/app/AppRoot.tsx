@@ -5,19 +5,23 @@ import { BottomTabBar, type TabKey } from '../components/BottomTabBar';
 import { AuthScreen } from '../screens/AuthScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
+import { WatchlistScreen } from '../screens/WatchlistScreen';
 import { useAuthStore } from '../store/authStore';
+import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
 
 export function AppRoot() {
   const user = useAuthStore((state) => state.user);
   const isLoading = useAuthStore((state) => state.isLoading);
   const bootstrap = useAuthStore((state) => state.bootstrap);
+  const localeBootstrap = useLocaleStore((state) => state.bootstrap);
   const [activeTab, setActiveTab] = useState<TabKey>('dashboard');
   const [dashboardRefreshKey, setDashboardRefreshKey] = useState(0);
 
   useEffect(() => {
     bootstrap();
-  }, [bootstrap]);
+    localeBootstrap();
+  }, [bootstrap, localeBootstrap]);
 
   useEffect(() => {
     if (!user) {
@@ -59,10 +63,7 @@ export function AppRoot() {
           />
         )}
         {activeTab === 'watchlist' && (
-          // Placeholder — Watchlist screen sẽ implement ở Sprint tiếp theo
-          <SafeAreaView style={styles.placeholder}>
-            <ActivityIndicator color={colors.primary} />
-          </SafeAreaView>
+          <WatchlistScreen />
         )}
       </View>
       <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} />
@@ -80,12 +81,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   loadingScreen: {
-    flex: 1,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholder: {
     flex: 1,
     backgroundColor: colors.background,
     alignItems: 'center',

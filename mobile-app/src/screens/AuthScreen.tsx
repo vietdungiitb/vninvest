@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useAuthStore } from '../store/authStore';
+import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
 
 type Mode = 'login' | 'register';
@@ -27,10 +28,11 @@ export function AuthScreen() {
   const login = useAuthStore((state) => state.login);
   const register = useAuthStore((state) => state.register);
   const clearMessages = useAuthStore((state) => state.clearMessages);
+  const t = useLocaleStore((s) => s.t);
 
   const submitLabel = useMemo(() => {
-    return mode === 'login' ? 'Dang nhap' : 'Dang ky';
-  }, [mode]);
+    return mode === 'login' ? t('auth.login') : t('auth.register');
+  }, [mode, t]);
 
   const fillTestAccount = () => {
     setUsername('mobiletest');
@@ -49,13 +51,13 @@ export function AuthScreen() {
     const normalizedUsername = username.trim().toLowerCase();
 
     if (!normalizedUsername || !password.trim()) {
-      setLocalError('Vui long nhap username va password.');
+      setLocalError(t('auth.error_empty_fields'));
       return;
     }
 
     if (mode === 'login') {
       if (normalizedUsername.includes('@')) {
-        setLocalError('Dang nhap bang username, khong dung email.');
+        setLocalError(t('auth.error_use_username'));
         return;
       }
       await login(normalizedUsername, password);
@@ -77,7 +79,7 @@ export function AuthScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.card}>
         <Text style={styles.title}>VNInvest Mobile</Text>
-        <Text style={styles.subtitle}>Auth foundation - Sprint 19</Text>
+        <Text style={styles.subtitle}>{t('auth.app_tagline')}</Text>
 
         <View style={styles.switchRow}>
           <Pressable
@@ -87,7 +89,7 @@ export function AuthScreen() {
               setMode('login');
             }}
           >
-            <Text style={styles.switchText}>Dang nhap</Text>
+            <Text style={styles.switchText}>{t('auth.login')}</Text>
           </Pressable>
           <Pressable
             style={[styles.switchButton, mode === 'register' && styles.switchActive]}
@@ -96,31 +98,31 @@ export function AuthScreen() {
               setMode('register');
             }}
           >
-            <Text style={styles.switchText}>Dang ky</Text>
+            <Text style={styles.switchText}>{t('auth.register')}</Text>
           </Pressable>
         </View>
 
         <TextInput
           style={styles.input}
-          placeholder="Username (khong phai email)"
+          placeholder={t('auth.username_placeholder')}
           placeholderTextColor={colors.muted}
           value={username}
           autoCapitalize="none"
           onChangeText={setUsername}
         />
 
-        {mode === 'login' ? <Text style={styles.hint}>Dang nhap bang username, khong dung email.</Text> : null}
+        {mode === 'login' ? <Text style={styles.hint}>{t('auth.login_hint')}</Text> : null}
 
         {mode === 'login' ? (
           <Pressable style={styles.prefillButton} onPress={fillTestAccount}>
-            <Text style={styles.prefillText}>Dien nhanh tai khoan test (mobiletest)</Text>
+            <Text style={styles.prefillText}>{t('auth.prefill_test')}</Text>
           </Pressable>
         ) : null}
 
         {mode === 'register' && (
           <TextInput
             style={styles.input}
-            placeholder="Email"
+            placeholder={t('auth.email_placeholder')}
             placeholderTextColor={colors.muted}
             value={email}
             autoCapitalize="none"
@@ -131,7 +133,7 @@ export function AuthScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={t('auth.password_placeholder')}
           placeholderTextColor={colors.muted}
           secureTextEntry
           value={password}
@@ -141,7 +143,7 @@ export function AuthScreen() {
         {mode === 'register' && (
           <TextInput
             style={styles.input}
-            placeholder="Confirm password"
+            placeholder={t('auth.confirm_password_placeholder')}
             placeholderTextColor={colors.muted}
             secureTextEntry
             value={passwordConfirm}

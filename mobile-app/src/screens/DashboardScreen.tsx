@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
+  Alert,
   Pressable,
   RefreshControl,
   SafeAreaView,
@@ -10,7 +12,9 @@ import {
 } from 'react-native';
 import { getAllocation, getHoldings, getPortfolios, getSummary } from '../services/portfolioApi';
 import { useAuthStore } from '../store/authStore';
+import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
+import { LOCALE_LABELS } from '../i18n';
 import type { AllocationItem, HoldingItem, PortfolioSummary } from '../types/portfolio';
 
 const toNumber = (value: number | string | undefined | null): number => {
@@ -31,6 +35,13 @@ const formatPct = (value: number | string | undefined | null): string => {
   return `${toNumber(value).toFixed(2)}%`;
 };
 
+const plColor = (value: number | string | undefined | null): string => {
+  const num = toNumber(value);
+  if (num > 0) return '#22c55e';
+  if (num < 0) return '#f87171';
+  return '#94a3b8';
+};
+
 type DashboardScreenProps = {
   onOpenTransactions: () => void;
   refreshKey?: number;
@@ -39,6 +50,9 @@ type DashboardScreenProps = {
 export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScreenProps) {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const t = useLocaleStore((s) => s.t);
+  const locale = useLocaleStore((s) => s.locale);
+  const setLocale = useLocaleStore((s) => s.setLocale);
 
   const [summary, setSummary] = useState<PortfolioSummary | null>(null);
   const [holdings, setHoldings] = useState<HoldingItem[]>([]);
@@ -46,6 +60,7 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
   const [activePortfolioId, setActivePortfolioId] = useState<number | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setErrorMessage('');
@@ -74,7 +89,7 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
       setHoldings(holdingsData);
       setAllocation(allocationData);
     } catch {
-      setErrorMessage('Khong the tai dashboard. Vui long keo de thu lai.');
+      setErrorMessage(t('dashboard.error_load'));
     } finally {
       setIsRefreshing(false);
     }
@@ -96,8 +111,34 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
     }
   }, [refreshKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const topHoldings = useMemo(() => holdings.slice(0, 6), [holdings]);
-  const topAllocation = useMemo(() => allocation.slice(0, 6), [allocation]);
+  const topHoldings = useMemo(() => holdings.slice(0, 8), [holdings]);
+  const topAllocation = useMemo(() => allocation.slice(0, 8), [allocation]);
+
+  const onOpenProfile = useCallback(() => {
+    setIsMenuOpen(false);
+    Alert.alert(
+      t('dashboard.menu_profile'),
+      t('dashboard.profile_info', {
+        username: user?.username ?? '-',
+        email: user?.email ?? '-',
+      })
+    );
+  }, [t, user?.email, user?.username]);
+
+  const onOpenSettings = useCallback(() => {
+    setIsMenuOpen(false);
+    Alert.alert(t('dashboard.menu_settings'), t('dashboard.settings_coming_soon'));
+  }, [t]);
+
+  const onToggleLanguage = useCallback(async () => {
+    setIsMenuOpen(false);
+    await setLocale(locale === 'vi' ? 'en' : 'vi');
+  }, [locale, setLocale]);
+
+  const onLogout = useCallback(() => {
+    setIsMenuOpen(false);
+    logout();
+  }, [logout]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -106,47 +147,81 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={loadDashboard} tintColor={colors.primary} />}
       >
         <View style={styles.card}>
-          <Text style={styles.title}>Xin chao, {user?.username}</Text>
+          <View style={styles.headerTopRow}>
+            <Text style={styles.title}>{t('dashboard.greeting', { name: user?.username ?? '' })}</Text>
+            <Pressable
+              style={[styles.menuTrigger, isMenuOpen && styles.menuTriggerActive]}
+              onPress={() => setIsMenuOpen((prev) => !prev)}
+              accessibilityRole="button"
+              accessibilityLabel={t('dashboard.menu_open')}
+            >
+              <Ionicons
+                name={isMenuOpen ? 'close' : 'ellipsis-horizontal'}
+                size={18}
+                color={isMenuOpen ? '#f8fafc' : '#cbd5e1'}
+              />
+            </Pressable>
+          </View>
+
+          {isMenuOpen ? (
+            <View style={styles.menuPanel}>
+              <Pressable style={styles.menuItem} onPress={onOpenProfile}>
+                <Text style={styles.menuItemText}>{t('dashboard.menu_profile')}</Text>
+              </Pressable>
+              <Pressable style={styles.menuItem} onPress={onOpenSettings}>
+                <Text style={styles.menuItemText}>{t('dashboard.menu_settings')}</Text>
+              </Pressable>
+              <Pressable style={styles.menuItem} onPress={onToggleLanguage}>
+                <Text style={styles.menuItemText}>{t('dashboard.menu_language')}: {LOCALE_LABELS[locale]}</Text>
+              </Pressable>
+              <Pressable style={[styles.menuItem, styles.menuItemDanger]} onPress={onLogout}>
+                <Text style={styles.menuItemDangerText}>{t('dashboard.menu_logout')}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
           <Text style={styles.subtitle}>{summary?.portfolio_name || 'Portfolio Dashboard'}</Text>
-          <Text style={styles.meta}>Email: {user?.email || '-'}</Text>
-          <Text style={styles.meta}>Plan: {user?.plan || '-'}</Text>
-          {summary?.last_updated ? <Text style={styles.meta}>Last update: {summary.last_updated}</Text> : null}
+          <Text style={styles.meta}>{t('dashboard.email_label')}: {user?.email || '-'}</Text>
+          <Text style={styles.meta}>{t('dashboard.plan_label')}: {user?.plan || '-'}</Text>
+          {summary?.last_updated ? <Text style={styles.meta}>{t('dashboard.last_update')}: {summary.last_updated}</Text> : null}
         </View>
 
         <View style={styles.gridRow}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Tong gia tri</Text>
+            <Text style={styles.metricLabel}>{t('dashboard.total_value')}</Text>
             <Text style={styles.metricValue}>{formatVnd(summary?.total_market_value)} VND</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Unrealized P/L</Text>
-            <Text style={styles.metricValue}>{formatVnd(summary?.total_unrealized_pl)} VND</Text>
-            <Text style={styles.metricSub}>{formatPct(summary?.total_unrealized_pl_pct)}</Text>
+            <Text style={styles.metricLabel}>{t('dashboard.unrealized_pl')}</Text>
+            <Text style={[styles.metricValue, { color: plColor(summary?.total_unrealized_pl) }]}>{formatVnd(summary?.total_unrealized_pl)} VND</Text>
+            <Text style={[styles.metricSub, { color: plColor(summary?.total_unrealized_pl_pct) }]}>{formatPct(summary?.total_unrealized_pl_pct)}</Text>
           </View>
         </View>
 
         <View style={styles.gridRow}>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Realized P/L</Text>
-            <Text style={styles.metricValue}>{formatVnd(summary?.total_realized_pl)} VND</Text>
+            <Text style={styles.metricLabel}>{t('dashboard.realized_pl')}</Text>
+            <Text style={[styles.metricValue, { color: plColor(summary?.total_realized_pl) }]}>{formatVnd(summary?.total_realized_pl)} VND</Text>
           </View>
           <View style={styles.metricCard}>
-            <Text style={styles.metricLabel}>Dividends</Text>
+            <Text style={styles.metricLabel}>{t('dashboard.dividends')}</Text>
             <Text style={styles.metricValue}>{formatVnd(summary?.total_dividends)} VND</Text>
           </View>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Top Holdings</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.top_holdings')}</Text>
           {!topHoldings.length ? (
-            <Text style={styles.emptyText}>Chua co holdings.</Text>
+            <Text style={styles.emptyText}>{t('dashboard.empty_holdings')}</Text>
           ) : (
             topHoldings.map((item) => (
               <View key={item.symbol} style={styles.rowItem}>
                 <Text style={styles.rowSymbol}>{item.symbol}</Text>
                 <View style={styles.rowRight}>
-                  <Text style={styles.rowMeta}>SL: {toNumber(item.quantity).toLocaleString('vi-VN')}</Text>
-                  <Text style={styles.rowMeta}>MV: {formatVnd(item.market_value)} VND</Text>
+                  <Text style={styles.rowMeta}>{t('dashboard.qty_label')}: {toNumber(item.quantity).toLocaleString('vi-VN')} | {t('dashboard.mv_label')}: {formatVnd(item.market_value)} VND</Text>
+                  <Text style={[styles.rowMeta, { color: plColor(item.unrealized_pl_pct) }]}>
+                    {toNumber(item.unrealized_pl_pct) > 0 ? '+' : ''}{formatPct(item.unrealized_pl_pct)}
+                  </Text>
                 </View>
               </View>
             ))
@@ -154,16 +229,15 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Top Allocation</Text>
+          <Text style={styles.sectionTitle}>{t('dashboard.top_allocation')}</Text>
           {!topAllocation.length ? (
-            <Text style={styles.emptyText}>Chua co du lieu allocation.</Text>
+            <Text style={styles.emptyText}>{t('dashboard.empty_allocation')}</Text>
           ) : (
             topAllocation.map((item) => (
               <View key={item.symbol} style={styles.rowItem}>
                 <Text style={styles.rowSymbol}>{item.symbol}</Text>
                 <View style={styles.rowRight}>
-                  <Text style={styles.rowMeta}>{formatPct(item.percentage)}</Text>
-                  <Text style={styles.rowMeta}>{formatVnd(item.value)} VND</Text>
+                  <Text style={styles.rowMeta}>{formatPct(item.percentage)} | {formatVnd(item.value)} VND</Text>
                 </View>
               </View>
             ))
@@ -172,8 +246,8 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
 
         {errorMessage ? <Text style={styles.error}>{errorMessage}</Text> : null}
 
-        <Pressable style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>Dang xuat</Text>
+        <Pressable style={styles.secondaryButton} onPress={onOpenTransactions}>
+          <Text style={styles.secondaryText}>{t('dashboard.open_transactions')}</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
@@ -186,51 +260,99 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   scrollContent: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
   },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 20,
-    gap: 8,
+    borderRadius: 12,
+    padding: 12,
+    gap: 6,
   },
   title: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '800',
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  menuTrigger: {
+    width: 36,
+    height: 36,
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#111827',
+  },
+  menuTriggerActive: {
+    backgroundColor: '#1e293b',
+    borderColor: '#475569',
+  },
+  menuPanel: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: '#0b1220',
+    overflow: 'hidden',
+  },
+  menuItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  menuItemText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  menuItemDanger: {
+    borderBottomWidth: 0,
+    backgroundColor: '#3f1d1d',
+  },
+  menuItemDangerText: {
+    color: '#fca5a5',
+    fontSize: 13,
+    fontWeight: '700',
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 12,
+    marginBottom: 2,
   },
   meta: {
     color: colors.text,
-    fontSize: 13,
+    fontSize: 12,
   },
   gridRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
   },
   metricCard: {
     flex: 1,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.card,
-    borderRadius: 14,
-    padding: 12,
-    gap: 4,
+    borderRadius: 12,
+    padding: 10,
+    gap: 2,
   },
   metricLabel: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
   },
   metricValue: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   metricSub: {
@@ -240,9 +362,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   rowItem: {
     flexDirection: 'row',
@@ -250,25 +372,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    paddingTop: 10,
-    paddingBottom: 4,
+    paddingTop: 8,
+    paddingBottom: 2,
   },
   rowSymbol: {
     color: colors.text,
     fontWeight: '700',
-    fontSize: 13,
+    fontSize: 12,
   },
   rowRight: {
     alignItems: 'flex-end',
-    gap: 2,
+    gap: 1,
   },
   rowMeta: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: 11,
   },
   emptyText: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: 12,
   },
   error: {
     color: '#f87171',
@@ -284,16 +406,6 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     color: colors.text,
-    fontWeight: '700',
-  },
-  logoutButton: {
-    borderRadius: 10,
-    backgroundColor: '#ef4444',
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#fff',
     fontWeight: '700',
   },
 });
