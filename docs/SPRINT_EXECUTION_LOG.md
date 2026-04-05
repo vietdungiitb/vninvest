@@ -48,6 +48,14 @@ Ket qua smoke test nhanh:
 - Da tao checklist QA runtime web de lap lai smoke test nhanh: `docs/WEB_RUNTIME_SMOKE_CHECKLIST.md`.
 - Da tao checklist QA runtime mobile Sprint 19: `docs/MOBILE_RUNTIME_SMOKE_CHECKLIST.md`.
 
+Cap nhat cuoi ngay (2026-04-05):
+- Da harden backend realtime throttle theo tung endpoint de giam 429 day chuyen.
+- Da refactor auth bootstrap web theo luong tuan tu de giam noise 401 khi token khong hop le.
+- Da bo sung cool-down/backoff nhe phia frontend cho panel Price Board tren web.
+- Da bo sung flash effect cho Watchlist mobile khi `change_pct` thay doi (up/down cue) de tang kha nang nhan biet bien dong.
+- Da dong bo tai lieu roadmap va taskboard Next-Gen theo mapping Sprint 21-22 de khong pha vo roadmap hien tai.
+- Da tao bo checklist smoke test nhanh cho ca web va mobile de dung trong daily QA.
+
 ## Sprint 19 - UX/Architecture alignment update (2026-04-05)
 
 Trang thai: PLANNING REFINED
