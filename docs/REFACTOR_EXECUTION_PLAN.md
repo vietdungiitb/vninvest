@@ -80,5 +80,6 @@ Sau khi ba phase trên ổn định, mới mở bước đánh giá storage:
 Tài liệu này là execution plan hợp lệ khi và chỉ khi còn đồng bộ với:
 - `SYSTEM_ARCHITECTURE_AUDIT.md`
 - `REFACTOR_FAT_VIEWS_DESIGN.md`
+- `SPRINT21_22_FAT_VIEWS_EXECUTION_READY.md`
 
-Nếu một trong ba tài liệu thay đổi về module structure, phase order, flag strategy hoặc rollback rule thì execution plan phải được cập nhật đồng thời trước khi sprint planning bắt đầu.
+Nếu một trong bốn tài liệu thay đổi về module structure, phase order, flag strategy hoặc rollback rule thì execution plan phải được cập nhật đồng thời trước khi sprint planning bắt đầu.
