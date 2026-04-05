@@ -14,7 +14,7 @@ import { getAllocation, getHoldings, getPortfolios, getSummary } from '../servic
 import { useAuthStore } from '../store/authStore';
 import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
-import { LOCALE_LABELS } from '../i18n';
+import { formatNumber, LOCALE_LABELS } from '../i18n';
 import type { AllocationItem, HoldingItem, PortfolioSummary } from '../types/portfolio';
 
 const toNumber = (value: number | string | undefined | null): number => {
@@ -25,10 +25,10 @@ const toNumber = (value: number | string | undefined | null): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const formatVnd = (value: number | string | undefined | null): string => {
-  return new Intl.NumberFormat('vi-VN', {
+const formatVnd = (value: number | string | undefined | null, locale: 'vi' | 'en'): string => {
+  return formatNumber(value, locale, {
     maximumFractionDigits: 0,
-  }).format(toNumber(value));
+  });
 };
 
 const formatPct = (value: number | string | undefined | null): string => {
@@ -189,11 +189,11 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
         <View style={styles.gridRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.total_value')}</Text>
-            <Text style={styles.metricValue}>{formatVnd(summary?.total_market_value)} VND</Text>
+            <Text style={styles.metricValue}>{formatVnd(summary?.total_market_value, locale)} VND</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.unrealized_pl')}</Text>
-            <Text style={[styles.metricValue, { color: plColor(summary?.total_unrealized_pl) }]}>{formatVnd(summary?.total_unrealized_pl)} VND</Text>
+            <Text style={[styles.metricValue, { color: plColor(summary?.total_unrealized_pl) }]}>{formatVnd(summary?.total_unrealized_pl, locale)} VND</Text>
             <Text style={[styles.metricSub, { color: plColor(summary?.total_unrealized_pl_pct) }]}>{formatPct(summary?.total_unrealized_pl_pct)}</Text>
           </View>
         </View>
@@ -201,11 +201,11 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
         <View style={styles.gridRow}>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.realized_pl')}</Text>
-            <Text style={[styles.metricValue, { color: plColor(summary?.total_realized_pl) }]}>{formatVnd(summary?.total_realized_pl)} VND</Text>
+            <Text style={[styles.metricValue, { color: plColor(summary?.total_realized_pl) }]}>{formatVnd(summary?.total_realized_pl, locale)} VND</Text>
           </View>
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>{t('dashboard.dividends')}</Text>
-            <Text style={styles.metricValue}>{formatVnd(summary?.total_dividends)} VND</Text>
+            <Text style={styles.metricValue}>{formatVnd(summary?.total_dividends, locale)} VND</Text>
           </View>
         </View>
 
@@ -218,7 +218,7 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
               <View key={item.symbol} style={styles.rowItem}>
                 <Text style={styles.rowSymbol}>{item.symbol}</Text>
                 <View style={styles.rowRight}>
-                  <Text style={styles.rowMeta}>{t('dashboard.qty_label')}: {toNumber(item.quantity).toLocaleString('vi-VN')} | {t('dashboard.mv_label')}: {formatVnd(item.market_value)} VND</Text>
+                  <Text style={styles.rowMeta}>{t('dashboard.qty_label')}: {formatNumber(item.quantity, locale, { maximumFractionDigits: 0 })} | {t('dashboard.mv_label')}: {formatVnd(item.market_value, locale)} VND</Text>
                   <Text style={[styles.rowMeta, { color: plColor(item.unrealized_pl_pct) }]}>
                     {toNumber(item.unrealized_pl_pct) > 0 ? '+' : ''}{formatPct(item.unrealized_pl_pct)}
                   </Text>
@@ -237,7 +237,7 @@ export function DashboardScreen({ onOpenTransactions, refreshKey }: DashboardScr
               <View key={item.symbol} style={styles.rowItem}>
                 <Text style={styles.rowSymbol}>{item.symbol}</Text>
                 <View style={styles.rowRight}>
-                  <Text style={styles.rowMeta}>{formatPct(item.percentage)} | {formatVnd(item.value)} VND</Text>
+                  <Text style={styles.rowMeta}>{formatPct(item.percentage)} | {formatVnd(item.value, locale)} VND</Text>
                 </View>
               </View>
             ))

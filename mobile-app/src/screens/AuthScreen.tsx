@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { DEMO_PASSWORD, DEMO_USERNAME } from '../services/config';
 import { useAuthStore } from '../store/authStore';
 import { useLocaleStore } from '../store/localeStore';
 import { colors } from '../theme/colors';
@@ -29,14 +30,18 @@ export function AuthScreen() {
   const register = useAuthStore((state) => state.register);
   const clearMessages = useAuthStore((state) => state.clearMessages);
   const t = useLocaleStore((s) => s.t);
+  const hasDemoCredentials = useMemo(() => Boolean(DEMO_USERNAME && DEMO_PASSWORD), []);
 
   const submitLabel = useMemo(() => {
     return mode === 'login' ? t('auth.login') : t('auth.register');
   }, [mode, t]);
 
   const fillTestAccount = () => {
-    setUsername('mobiletest');
-    setPassword('Mobile@12345');
+    if (!hasDemoCredentials) {
+      return;
+    }
+    setUsername(DEMO_USERNAME);
+    setPassword(DEMO_PASSWORD);
     setLocalError('');
     clearMessages();
   };
@@ -113,7 +118,7 @@ export function AuthScreen() {
 
         {mode === 'login' ? <Text style={styles.hint}>{t('auth.login_hint')}</Text> : null}
 
-        {mode === 'login' ? (
+        {mode === 'login' && hasDemoCredentials ? (
           <Pressable style={styles.prefillButton} onPress={fillTestAccount}>
             <Text style={styles.prefillText}>{t('auth.prefill_test')}</Text>
           </Pressable>

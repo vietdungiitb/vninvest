@@ -18,6 +18,7 @@ import {
   updateTransaction,
   validateStockSymbol,
 } from '../services/transactionApi';
+import { formatNumber as formatLocaleNumber } from '../i18n';
 import { colors } from '../theme/colors';
 import { useLocaleStore } from '../store/localeStore';
 import type { StockSuggestion, SubAccountItem, TransactionItem, TransactionPayload, TransactionType } from '../types/transaction';
@@ -39,12 +40,8 @@ type FormState = {
 
 const TX_TYPES: TransactionType[] = ['BUY', 'SELL', 'DIVIDEND'];
 
-const formatNumber = (value: number | string | undefined): string => {
-  const num = Number(value ?? 0);
-  if (!Number.isFinite(num)) {
-    return '0';
-  }
-  return new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(num);
+const formatNumber = (value: number | string | undefined, locale: 'vi' | 'en'): string => {
+  return formatLocaleNumber(value, locale, { maximumFractionDigits: 2 });
 };
 
 const toDecimal = (raw: string): number => {
@@ -72,6 +69,7 @@ const emptyForm = (): FormState => ({
 
 export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsScreenProps) {
   const t = useLocaleStore((s) => s.t);
+  const locale = useLocaleStore((s) => s.locale);
   const [subAccounts, setSubAccounts] = useState<SubAccountItem[]>([]);
   const [activeSubAccountId, setActiveSubAccountId] = useState<number | null>(null);
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
@@ -405,8 +403,8 @@ export function TransactionsScreen({ onBack, onTransactionSaved }: TransactionsS
                 <Text style={styles.txType}>{item.transaction_type}</Text>
               </View>
               <Text style={styles.txMeta}>{t('transactions.date_label')}: {item.date}</Text>
-              <Text style={styles.txMeta}>{t('transactions.price_label')}: {formatNumber(item.price)} | {t('transactions.qty_label')}: {formatNumber(item.quantity)} | {t('transactions.fee_label')}: {formatNumber(item.fee)}</Text>
-              <Text style={styles.txMeta}>{t('transactions.total_label')}: {formatNumber(item.total_value || 0)}</Text>
+              <Text style={styles.txMeta}>{t('transactions.price_label')}: {formatNumber(item.price, locale)} | {t('transactions.qty_label')}: {formatNumber(item.quantity, locale)} | {t('transactions.fee_label')}: {formatNumber(item.fee, locale)}</Text>
+              <Text style={styles.txMeta}>{t('transactions.total_label')}: {formatNumber(item.total_value || 0, locale)}</Text>
               <View style={styles.rowButtons}>
                 <Pressable style={styles.smallButton} onPress={() => onEdit(item)} disabled={saving}>
                   <Text style={styles.smallText}>{t('transactions.edit_action')}</Text>

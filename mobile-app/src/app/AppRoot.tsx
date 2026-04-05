@@ -5,6 +5,7 @@ import { BottomTabBar, type TabKey } from '../components/BottomTabBar';
 import { AuthScreen } from '../screens/AuthScreen';
 import { DashboardScreen } from '../screens/DashboardScreen';
 import { TransactionsScreen } from '../screens/TransactionsScreen';
+import { WhaleScreen } from '../screens/WhaleScreen';
 import { WatchlistScreen } from '../screens/WatchlistScreen';
 import { useAuthStore } from '../store/authStore';
 import { useLocaleStore } from '../store/localeStore';
@@ -64,6 +65,9 @@ export function AppRoot() {
         )}
         {activeTab === 'watchlist' && (
           <WatchlistScreen />
+        )}
+        {activeTab === 'whale' && (
+          <WhaleScreen />
         )}
       </View>
       <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} />

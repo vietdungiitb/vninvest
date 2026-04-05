@@ -12,7 +12,41 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   en: '🇬🇧 English',
 };
 
+export const LOCALE_TAGS: Record<Locale, string> = {
+  vi: 'vi-VN',
+  en: 'en-US',
+};
+
 const LOCALES: Record<Locale, Translations> = { vi, en };
+
+export function getLocaleTag(locale: Locale): string {
+  return LOCALE_TAGS[locale] ?? LOCALE_TAGS.vi;
+}
+
+export function formatNumber(
+  value: number | string | undefined | null,
+  locale: Locale,
+  options?: Intl.NumberFormatOptions,
+): string {
+  const parsed = Number(value ?? 0);
+  const safeValue = Number.isFinite(parsed) ? parsed : 0;
+  return new Intl.NumberFormat(getLocaleTag(locale), options).format(safeValue);
+}
+
+export function formatTime(
+  value: string | number | Date | undefined | null,
+  locale: Locale,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  if (!value) {
+    return '--:--:--';
+  }
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+  return date.toLocaleTimeString(getLocaleTag(locale), options);
+}
 
 /**
  * Returns a typed translator function for the given locale.

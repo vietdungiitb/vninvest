@@ -23,6 +23,8 @@ Commands:
 Copy .env.example to .env and adjust endpoints:
 - EXPO_PUBLIC_API_BASE_URL
 - EXPO_PUBLIC_WS_BASE_URL
+- EXPO_PUBLIC_DEMO_USERNAME (optional)
+- EXPO_PUBLIC_DEMO_PASSWORD (optional)
 
 Local backend notes:
 - iOS simulator can use `http://127.0.0.1:8000`.

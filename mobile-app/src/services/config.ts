@@ -17,3 +17,6 @@ export const WS_BASE_URL = normalizeBaseUrl(
   process.env.EXPO_PUBLIC_WS_BASE_URL,
   'ws://127.0.0.1:8000'
 );
+
+export const DEMO_USERNAME = (process.env.EXPO_PUBLIC_DEMO_USERNAME || '').trim();
+export const DEMO_PASSWORD = (process.env.EXPO_PUBLIC_DEMO_PASSWORD || '').trim();
