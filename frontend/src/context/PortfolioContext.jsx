@@ -31,23 +31,19 @@ export function PortfolioProvider({ children }) {
   const [userIdentity, setUserIdentity] = useState({ username: '', email: '' });
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
-  const _fetchMe = useCallback(async () => {
-    try {
-      const res = await apiClient.get('/auth/me/');
-      setUserPlan(res.data.plan || 'free');
-      setAbility(createAbilityFromRules(res.data.abilities || []));
-      setUserIdentity({
-        username: res.data.username || '',
-        email: res.data.email || '',
-      });
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        logout();
-        return;
-      }
-      console.error('Fetch /auth/me failed:', err);
-    }
-  }, [logout]);
+  const logout = useCallback(() => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setAccessToken(null);
+    setRefreshTokenValue(null);
+    setIsAuthenticated(false);
+    setPortfolios([]);
+    setActivePortfolioId(null);
+    setUserConfig(null);
+    setUserPlan('free');
+    setUserIdentity({ username: '', email: '' });
+    setAbility(createAbilityFromRules([]));
+  }, []);
 
   const saveTokens = (access, refresh) => {
     const nextRefresh = refresh || localStorage.getItem('refresh_token');
@@ -66,6 +62,8 @@ export function PortfolioProvider({ children }) {
       getUserConfig(),
     ]);
 
+    let authFailed = false;
+
     if (meResult.status === 'fulfilled') {
       setUserPlan(meResult.value.data.plan || 'free');
       setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
@@ -74,15 +72,30 @@ export function PortfolioProvider({ children }) {
         email: meResult.value.data.email || '',
       });
     } else {
-      console.error('Sync /auth/me failed:', meResult.reason);
+      if (meResult.reason?.response?.status === 401) {
+        authFailed = true;
+      } else {
+        console.error('Sync /auth/me failed:', meResult.reason);
+      }
     }
 
     if (userConfigResult.status === 'fulfilled') {
       setUserConfig(userConfigResult.value.data);
     } else {
-      console.error('Sync user config failed:', userConfigResult.reason);
+      if (userConfigResult.reason?.response?.status === 401) {
+        authFailed = true;
+      } else {
+        console.error('Sync user config failed:', userConfigResult.reason);
+      }
     }
-  }, []);
+
+    if (authFailed) {
+      logout();
+      return false;
+    }
+
+    return true;
+  }, [logout]);
 
   const login = useCallback(async (username, password) => {
     const response = await loginRequest(username.trim(), password);
@@ -104,20 +117,6 @@ export function PortfolioProvider({ children }) {
   const resendVerification = useCallback(async (identifier) => {
     const response = await resendVerificationRequest(identifier.trim());
     return response.data;
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setAccessToken(null);
-    setRefreshTokenValue(null);
-    setIsAuthenticated(false);
-    setPortfolios([]);
-    setActivePortfolioId(null);
-    setUserConfig(null);
-    setUserPlan('free');
-    setUserIdentity({ username: '', email: '' });
-    setAbility(createAbilityFromRules([]));
   }, []);
 
   const refreshAccessToken = useCallback(async () => {
@@ -155,27 +154,29 @@ export function PortfolioProvider({ children }) {
     }
   }, [activePortfolioId, logout]);
 
-  const fetchUserConfig = useCallback(async () => {
-    try {
-      const res = await getUserConfig();
-      setUserConfig(res.data);
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        logout();
-        return;
-      }
-      console.error('Fetch user config failed:', err);
-    }
-  }, [logout]);
-
   // Load initial data
   useEffect(() => {
-    if (isAuthenticated && accessToken) {
-      fetchPortfolios();
-      fetchUserConfig();
-      _fetchMe();
-    }
-  }, [isAuthenticated, accessToken, fetchPortfolios, fetchUserConfig, _fetchMe]);
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      if (!isAuthenticated || !accessToken) {
+        return;
+      }
+
+      const ok = await syncAuthState();
+      if (!ok || cancelled) {
+        return;
+      }
+
+      await fetchPortfolios();
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, accessToken, syncAuthState, fetchPortfolios]);
 
   return (
     <AbilityContext.Provider value={ability}>
