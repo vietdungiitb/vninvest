@@ -2379,11 +2379,39 @@ class TrackedSymbolBulkThresholdView(APIView):
             )
 
         updated_count = queryset.update(whale_alert_threshold_million=threshold_million)
+
+        updated_rows = list(
+            TrackedSymbol.objects
+            .filter(user=request.user, id__in=found_ids)
+            .select_related('source_group')
+            .order_by('-added_at')
+        )
+        symbols = [row.symbol for row in updated_rows]
+        changes = get_price_changes(symbols) if symbols else {}
+        payload_rows = []
+        for row in updated_rows:
+            grp = row.source_group
+            info = changes.get(row.symbol, {})
+            payload_rows.append({
+                'id': row.id,
+                'symbol': row.symbol,
+                'source_group_id': grp.id if grp else None,
+                'source_group_name': grp.name if grp else None,
+                'whale_alert_threshold_million': float(row.whale_alert_threshold_million) if row.whale_alert_threshold_million is not None else None,
+                'current_price': info.get('current_price'),
+                'prev_price': info.get('prev_price'),
+                'change_value': info.get('change_value'),
+                'change_pct': info.get('change_pct'),
+                'last_date': info.get('last_date'),
+                'added_at': row.added_at,
+            })
+
         return Response(
             {
                 'updated_count': updated_count,
                 'whale_alert_threshold_million': float(threshold_million) if threshold_million is not None else None,
                 'applied_ids': sorted(found_ids),
+                'rows': TrackedSymbolSerializer(payload_rows, many=True).data,
             },
             status=status.HTTP_200_OK,
         )

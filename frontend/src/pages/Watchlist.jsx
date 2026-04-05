@@ -503,11 +503,17 @@ export default function WatchlistPage() {
     setTrackedBulkAction('set');
     setSymbolError('');
     try {
-      await bulkUpdateTrackedSymbolThreshold(
+      const res = await bulkUpdateTrackedSymbolThreshold(
         targets.map((item) => item.id),
         parsedThreshold,
       );
-      await fetchTracked();
+      const updatedRows = res?.data?.rows || [];
+      if (updatedRows.length > 0) {
+        const updatedMap = new Map(updatedRows.map((row) => [row.id, row]));
+        setTrackedSymbols((prev) => prev.map((row) => (updatedMap.has(row.id) ? { ...row, ...updatedMap.get(row.id) } : row)));
+      } else {
+        await fetchTracked();
+      }
       setSyncMsg(t('watchlist.bulkSetThresholdSuccess', { count: formatNumber(targets.length) }));
       setTimeout(() => setSyncMsg(''), 4000);
     } catch (err) {
@@ -528,11 +534,17 @@ export default function WatchlistPage() {
     setTrackedBulkAction('clear');
     setSymbolError('');
     try {
-      await bulkUpdateTrackedSymbolThreshold(
+      const res = await bulkUpdateTrackedSymbolThreshold(
         targets.map((item) => item.id),
         null,
       );
-      await fetchTracked();
+      const updatedRows = res?.data?.rows || [];
+      if (updatedRows.length > 0) {
+        const updatedMap = new Map(updatedRows.map((row) => [row.id, row]));
+        setTrackedSymbols((prev) => prev.map((row) => (updatedMap.has(row.id) ? { ...row, ...updatedMap.get(row.id) } : row)));
+      } else {
+        await fetchTracked();
+      }
       setSyncMsg(t('watchlist.bulkClearThresholdSuccess', { count: formatNumber(targets.length) }));
       setTimeout(() => setSyncMsg(''), 4000);
     } catch (err) {
