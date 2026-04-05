@@ -84,6 +84,30 @@ function isPriceAlertMatched(rule, currentPrice) {
     : normalizedCurrentPrice <= targetPrice;
 }
 
+function extractApiErrorMessage(error, fallbackMessage) {
+  const payload = error?.response?.data;
+
+  if (!payload) {
+    return fallbackMessage;
+  }
+  if (typeof payload === 'string') {
+    return payload;
+  }
+  if (typeof payload.detail === 'string' && payload.detail.trim()) {
+    return payload.detail;
+  }
+
+  const firstField = Object.values(payload).find((value) => value != null);
+  if (typeof firstField === 'string') {
+    return firstField;
+  }
+  if (Array.isArray(firstField) && firstField.length > 0) {
+    return String(firstField[0]);
+  }
+
+  return fallbackMessage;
+}
+
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { userConfig } = usePortfolio();
@@ -637,15 +661,34 @@ export default function WatchlistPage() {
 
   const handleCreatePriceAlert = async (e) => {
     e.preventDefault();
-    setPriceAlertSaving(true);
     setPriceAlertError('');
     setPriceAlertMsg('');
+
+    const normalizedSymbol = String(priceAlertForm.symbol || '').toUpperCase().trim();
+    if (!normalizedSymbol) {
+      setPriceAlertError(t('watchlist.symbolRequired', { defaultValue: 'Vui lòng nhập mã chứng khoán.' }));
+      return;
+    }
+
+    const targetPrice = Number(priceAlertForm.targetPrice);
+    if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
+      setPriceAlertError(t('watchlist.targetPriceValidation', { defaultValue: 'Giá mục tiêu phải là số > 0.' }));
+      return;
+    }
+
+    const cooldownSeconds = Number(priceAlertForm.cooldownSeconds || 0);
+    if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0) {
+      setPriceAlertError(t('watchlist.cooldownValidation', { defaultValue: 'Cooldown phải là số >= 0.' }));
+      return;
+    }
+
+    setPriceAlertSaving(true);
     try {
       const payload = {
-        symbol: priceAlertForm.symbol.toUpperCase().trim(),
+        symbol: normalizedSymbol,
         condition: priceAlertForm.condition,
-        target_price: priceAlertForm.targetPrice,
-        cooldown_seconds: Number(priceAlertForm.cooldownSeconds || 0),
+        target_price: targetPrice,
+        cooldown_seconds: Math.trunc(cooldownSeconds),
         is_active: true,
       };
       await createPriceAlert(payload);
@@ -653,7 +696,7 @@ export default function WatchlistPage() {
       setPriceAlertMsg(t('watchlist.createdPriceAlert'));
       await fetchPriceAlerts();
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || t('watchlist.createPriceAlertFailed'));
+      setPriceAlertError(extractApiErrorMessage(err, t('watchlist.createPriceAlertFailed')));
     } finally {
       setPriceAlertSaving(false);
       setTimeout(() => setPriceAlertMsg(''), 4000);
@@ -669,7 +712,7 @@ export default function WatchlistPage() {
         : t('watchlist.activatedAlert', { symbol: rule.symbol }));
       setTimeout(() => setPriceAlertMsg(''), 4000);
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || t('watchlist.updateAlertFailed'));
+      setPriceAlertError(extractApiErrorMessage(err, t('watchlist.updateAlertFailed')));
     }
   };
 
@@ -684,7 +727,7 @@ export default function WatchlistPage() {
       setPriceAlertMsg(t('watchlist.deletedPriceAlert', { symbol: rule.symbol }));
       setTimeout(() => setPriceAlertMsg(''), 4000);
     } catch (err) {
-      setPriceAlertError(err.response?.data?.detail || t('watchlist.deletePriceAlertFailed'));
+      setPriceAlertError(extractApiErrorMessage(err, t('watchlist.deletePriceAlertFailed')));
     }
   };
 
