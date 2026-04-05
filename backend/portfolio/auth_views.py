@@ -59,6 +59,16 @@ class UserMeView(RetrieveAPIView):
 
 class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
+        # Accept either username or email for login, normalize before JWT auth.
+        username_or_email = str(attrs.get('username', '')).strip()
+        if username_or_email:
+            if '@' in username_or_email:
+                user = User.objects.filter(email__iexact=username_or_email).only('username').first()
+                if user:
+                    attrs['username'] = user.username
+            else:
+                attrs['username'] = username_or_email.lower()
+
         data = super().validate(attrs)
         user_config, _ = UserConfig.objects.get_or_create(user=self.user)
         if not user_config.email_verified:

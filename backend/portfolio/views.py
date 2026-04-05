@@ -2,15 +2,20 @@
 # --- Stock Management Modular Views ---
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework import generics
+from rest_framework import generics, filters as rest_framework_filters
 from .models import StockProfile
 from .serializers import StockProfileSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer
 
 # StockProfile List API
 class StockProfileListView(generics.ListAPIView):
-    queryset = StockProfile.objects.all()
     serializer_class = StockProfileSerializer
     permission_classes = [AllowAny]
+    filter_backends = [rest_framework_filters.SearchFilter]
+    search_fields = ['symbol', 'company_name']
+
+    def get_queryset(self):
+        qs = StockProfile.objects.filter(is_active=True)
+        return qs
 
 # StockProfile Detail đã có
 

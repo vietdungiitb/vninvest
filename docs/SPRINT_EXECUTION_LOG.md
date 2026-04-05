@@ -1,5 +1,30 @@
 # Sprint Execution Log
 
+## Sprint 19 - UX/Architecture alignment update (2026-04-05)
+
+Trang thai: PLANNING REFINED
+
+Da chot bo toi uu theo review:
+- Navigation model Auth Stack / Main Tabs duoc giu nguyen.
+- Bat buoc token refresh flow tren 401 de tranh da user ve login khong can thiet.
+- Dashboard uu tien mau ngu canh lai/lo + skeleton loading.
+- Watchlist bo sung flash effect khi gia doi mau + fallback polling 5-10s.
+- Chot huong data layer: Zustand + bo sung React Query cho caching/fetch UX.
+- Transactions form se co auto-complete symbol va validate tai cho.
+
+Phan dua vao hardening backlog (khong block MVP):
+- Haptic feedback.
+- Sparkline mini chart tren watchlist.
+- Sinh trac hoc cho re-auth.
+
+Tiep theo:
+- Trien khai Transactions vertical slice tren mobile (list/create/update/delete + symbol suggest).
+
+Cap nhat them:
+- Da tao tai lieu tong hop huong dan implementation va troubleshooting cho Sprint 19:
+	- `docs/SPRINT19_MOBILE_IMPLEMENTATION_GUIDE.md`
+	- Su dung lam tai lieu chinh cho cac phien lap trinh tiep theo.
+
 ## Sprint 7 - Completed
 
 Trang thai: DONE

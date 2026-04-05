@@ -206,3 +206,42 @@ Day 10: Phase 5 + sign-off noi bo
 2. 2 artifact noi bo: Android build + (neu co) iOS TestFlight build.
 3. Tai lieu setup/release env cho mobile app.
 4. Acceptance checklist Sprint 19 cap nhat day du va co sign-off.
+
+---
+
+## 10) UX + Architecture toi uu (chot sau review)
+
+### 10.1 Navigation va session retention
+1. Auth Stack / Main Tabs giu nguyen nhu thiet ke goc.
+2. Bat buoc co token refresh flow khi gap 401 (khong kick user ve login neu refresh thanh cong).
+3. Chuan bi san hook cho deep-link Whale Detail (de mo rong push-notification phase sau).
+
+### 10.2 Dashboard UX
+1. KPI card hien mau theo ngu canh:
+   - Lai: xanh
+   - Lo: do
+2. Uu tien skeleton loading thay vi spinner don le o dashboard blocks.
+3. Pull-to-refresh giu la co che cap nhat chinh cho MVP.
+
+### 10.3 Watchlist + Realtime UX
+1. Them flash effect 200-300ms khi gia thay doi:
+   - Tang: xanh
+   - Giam: do
+2. Fallback polling window: 5-10 giay khi websocket fail.
+3. Hien connection status ro rang: Connected / Polling / Disconnected.
+
+### 10.4 Data layer va state strategy
+1. Auth token luu secure storage (Keychain/Keystore), khong plain storage.
+2. State manager MVP: Zustand (giu nguyen).
+3. Data fetching/caching: bo sung React Query cho dashboard + transactions + watchlist trong Sprint 19.
+4. Realtime tiep tuc theo websocket hien tai, fallback polling da co.
+
+### 10.5 Transactions UX (uu tien cao)
+1. Form giao dich them auto-complete/goi y ma co phieu khi user nhap symbol.
+2. Validation truoc submit va hien loi tai cho.
+3. Sau create/update/delete thanh cong, cap nhat list va dashboard summary co kiem soat.
+
+### 10.6 Hardening backlog (khong block MVP)
+1. Haptic feedback cho su kien thanh cong/canh bao quan trong.
+2. Sparkline mini chart trong watchlist rows.
+3. Sinh trac hoc (FaceID/Van tay) cho re-auth khi mo app.
