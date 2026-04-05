@@ -18,6 +18,7 @@ Da thuc hien:
 	- Language
 	- Logout
 - Chuyen nut menu sang dang icon de gon va de nhan biet hon tren mobile.
+- Them flash effect ngan cho row symbol trong Watchlist khi `change_pct` thay doi (up/down cue).
 - Tinh chinh UI compact de tang mat do hien thi thong tin:
 	- Dashboard: tang so item hien thi, giam khoang trang, gom thong tin theo dong.
 	- Transactions: gom input theo hang ngang, giam chieu cao form/list.

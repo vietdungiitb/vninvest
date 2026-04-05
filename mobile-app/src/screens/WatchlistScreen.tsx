@@ -96,9 +96,12 @@ export function WatchlistScreen() {
   const [selectedSymbol, setSelectedSymbol] = useState('');
   const [sortMode, setSortMode] = useState<'ts' | 'matched_value'>('ts');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [flashBySymbol, setFlashBySymbol] = useState<Record<string, 'up' | 'down'>>({});
 
   const wsRef = useRef<WebSocket | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevChangePctRef = useRef<Record<string, number>>({});
+  const flashTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
   const trackedSymbolCodes = useMemo(
     () => trackedSymbols.map((item) => item.symbol).filter(Boolean),
@@ -166,6 +169,52 @@ export function WatchlistScreen() {
       setSelectedSymbol('');
     }
   }, [selectedSymbol, trackedSymbols]);
+
+  useEffect(() => {
+    const nextPrev = { ...prevChangePctRef.current };
+
+    trackedSymbols.forEach((item) => {
+      const symbol = String(item.symbol || '').toUpperCase();
+      if (!symbol) {
+        return;
+      }
+
+      const nextValue = toNumber(item.change_pct);
+      const prevValue = prevChangePctRef.current[symbol];
+
+      if (prevValue !== undefined && prevValue !== nextValue) {
+        const direction: 'up' | 'down' = nextValue > prevValue ? 'up' : 'down';
+        setFlashBySymbol((prev) => ({ ...prev, [symbol]: direction }));
+
+        if (flashTimeoutsRef.current[symbol]) {
+          clearTimeout(flashTimeoutsRef.current[symbol]);
+        }
+
+        flashTimeoutsRef.current[symbol] = setTimeout(() => {
+          setFlashBySymbol((prev) => {
+            if (!prev[symbol]) {
+              return prev;
+            }
+            const clone = { ...prev };
+            delete clone[symbol];
+            return clone;
+          });
+          delete flashTimeoutsRef.current[symbol];
+        }, 1100);
+      }
+
+      nextPrev[symbol] = nextValue;
+    });
+
+    prevChangePctRef.current = nextPrev;
+  }, [trackedSymbols]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(flashTimeoutsRef.current).forEach((id) => clearTimeout(id));
+      flashTimeoutsRef.current = {};
+    };
+  }, []);
 
   const closeSocket = useCallback(() => {
     if (wsRef.current) {
@@ -412,8 +461,16 @@ export function WatchlistScreen() {
             {trackedSymbols.map((item) => {
               const selected = selectedSymbol.toUpperCase() === item.symbol;
               const positive = toNumber(item.change_pct) >= 0;
+              const flashDirection = flashBySymbol[String(item.symbol || '').toUpperCase()];
               return (
-                <View key={item.id} style={styles.symbolRow}>
+                <View
+                  key={item.id}
+                  style={[
+                    styles.symbolRow,
+                    flashDirection === 'up' && styles.symbolRowFlashUp,
+                    flashDirection === 'down' && styles.symbolRowFlashDown,
+                  ]}
+                >
                   <Pressable
                     style={[styles.chip, selected && styles.chipActive]}
                     onPress={() => setSelectedSymbol(selected ? '' : item.symbol)}
@@ -630,6 +687,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  symbolRowFlashUp: {
+    backgroundColor: '#052e16',
+  },
+  symbolRowFlashDown: {
+    backgroundColor: '#3f1d1d',
   },
   positiveText: {
     color: '#22c55e',

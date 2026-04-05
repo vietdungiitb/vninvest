@@ -22,6 +22,7 @@
 - [x] Dashboard: Holdings rows hien them unrealized_pl_pct co mau.
 - [x] Dashboard: Them nut "Xem Giao Dich" de di thang toi Transactions tab.
 - [x] WatchlistScreen: Them `RefreshControl` pull-to-refresh (keo xuong tai lai data).
+- [x] WatchlistScreen: Them flash effect ngan khi `change_pct` cua symbol thay doi.
 - [x] AuthScreen: Xoa subtitle debug "Auth foundation - Sprint 19", thay bang tagline chinh thuc.
 
 ## Update 2026-04-05 — Pass 3 (i18n Mobile)
