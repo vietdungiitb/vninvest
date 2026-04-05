@@ -2140,13 +2140,31 @@ class SubAccountListCreateView(generics.ListCreateAPIView):
     def get_queryset(self):
         return SubAccount.objects.filter(portfolio__user=self.request.user).select_related('portfolio')
 
+    def create(self, request, *args, **kwargs):
+        payload = request.data.copy()
+        if not payload.get('portfolio'):
+            fallback_portfolio = Portfolio.objects.filter(user=request.user).first()
+            if fallback_portfolio:
+                payload['portfolio'] = fallback_portfolio.id
+
+        serializer = self.get_serializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
     def perform_create(self, serializer):
-        # Auto-assign to user's first portfolio if not specified
         user = self.request.user
         if not user.portfolios.exists():
             from rest_framework import serializers
             raise serializers.ValidationError('User must have at least one Portfolio')
-        portfolio = user.portfolios.first()
+
+        requested_portfolio_id = self.request.data.get('portfolio')
+        if requested_portfolio_id:
+            portfolio = generics.get_object_or_404(Portfolio, pk=requested_portfolio_id, user=user)
+        else:
+            portfolio = user.portfolios.first()
+
         serializer.save(portfolio=portfolio)
 
 

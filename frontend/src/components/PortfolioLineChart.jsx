@@ -15,12 +15,14 @@ import {
 import { getChartData } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
-const PERIODS = [
-  { label: '1T', days: 30 },
-  { label: '3T', days: 90 },
-  { label: '6T', days: 180 },
-  { label: '1N', days: 365 },
-];
+function getPeriods(t) {
+  return [
+    { label: t('portfolioLineChart.periods.p1m'), days: 30 },
+    { label: t('portfolioLineChart.periods.p3m'), days: 90 },
+    { label: t('portfolioLineChart.periods.p6m'), days: 180 },
+    { label: t('portfolioLineChart.periods.p1y'), days: 365 },
+  ];
+}
 
 function formatAxisVND(value) {
   if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
@@ -54,6 +56,7 @@ export default function PortfolioLineChart({ portfolioId }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activePeriod, setActivePeriod] = useState(90);
+  const periods = getPeriods(t);
 
   const fetchChart = useCallback(async () => {
     if (!portfolioId) return;
@@ -95,7 +98,7 @@ export default function PortfolioLineChart({ portfolioId }) {
         </div>
         {/* Bộ chọn kỳ */}
         <div className="flex items-center gap-1 bg-gray-800 p-1 rounded-lg">
-          {PERIODS.map(({ label, days }) => (
+          {periods.map(({ label, days }) => (
             <button
               key={days}
               onClick={() => setActivePeriod(days)}

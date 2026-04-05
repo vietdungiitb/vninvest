@@ -3,7 +3,15 @@
  * Global state: danh sách portfolios, portfolio đang chọn, JWT tokens, userconfig, CASL ability.
  */
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getPortfolios } from '../api/client';
+import {
+  getPortfolios,
+  createPortfolio as createPortfolioRequest,
+  updatePortfolio as updatePortfolioRequest,
+  deletePortfolio as deletePortfolioRequest,
+  createSubAccount as createSubAccountRequest,
+  updateSubAccount as updateSubAccountRequest,
+  deleteSubAccount as deleteSubAccountRequest,
+} from '../api/client';
 import {
   login as loginRequest,
   register as registerRequest,
@@ -141,24 +149,63 @@ export function PortfolioProvider({ children }) {
     return response;
   }, []);
 
-  const fetchPortfolios = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await getPortfolios();
-      setPortfolios(res.data);
-      if (res.data.length > 0 && !activePortfolioId) {
-        setActivePortfolioId(res.data[0].id);
+    const fetchPortfolios = useCallback(async () => {
+      setLoading(true);
+      try {
+        const res = await getPortfolios();
+        setPortfolios(res.data);
+        if (res.data.length > 0 && !activePortfolioId) {
+          setActivePortfolioId(res.data[0].id);
+        }
+      } catch (err) {
+        if (err?.response?.status === 401) {
+          logout();
+          return;
+        }
+        console.error('Fetch portfolios failed:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      if (err?.response?.status === 401) {
-        logout();
-        return;
+    }, [activePortfolioId, logout]);
+
+  // ---------- Portfolio mutations ----------
+  const createPortfolio = useCallback(async (data) => {
+    const response = await createPortfolioRequest(data);
+    await fetchPortfolios();
+    return response.data;
+  }, [fetchPortfolios]);
+
+  const updatePortfolio = useCallback(async (id, data) => {
+    const response = await updatePortfolioRequest(id, data);
+    setPortfolios((prev) => prev.map((p) => (p.id === id ? response.data : p)));
+    return response.data;
+  }, []);
+
+  const deletePortfolio = useCallback(async (id) => {
+    await deletePortfolioRequest(id);
+    setPortfolios((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      if (activePortfolioId === id) {
+        setActivePortfolioId(next.length > 0 ? next[0].id : null);
       }
-      console.error('Fetch portfolios failed:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activePortfolioId, logout]);
+      return next;
+    });
+  }, [activePortfolioId]);
+
+  // ---------- SubAccount mutations ----------
+  const createSubAccount = useCallback(async (data) => {
+    const response = await createSubAccountRequest(data);
+    return response.data;
+  }, []);
+
+  const updateSubAccount = useCallback(async (id, data) => {
+    const response = await updateSubAccountRequest(id, data);
+    return response.data;
+  }, []);
+
+  const deleteSubAccount = useCallback(async (id) => {
+    await deleteSubAccountRequest(id);
+  }, []);
 
   // Load initial data
   useEffect(() => {
@@ -203,6 +250,12 @@ export function PortfolioProvider({ children }) {
         userPlan,
         userIdentity,
         ability,
+        createPortfolio,
+        updatePortfolio,
+        deletePortfolio,
+        createSubAccount,
+        updateSubAccount,
+        deleteSubAccount,
       }}>
         {children}
       </PortfolioContext.Provider>

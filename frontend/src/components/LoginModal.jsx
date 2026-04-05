@@ -216,7 +216,7 @@ export default function LoginModal({ onSuccess }) {
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-gray-900 rounded-xl border border-gray-800 p-8">
-        <h1 className="text-2xl font-bold text-brand-500 mb-1">VNInvest</h1>
+        <h1 className="text-2xl font-bold text-brand-500 mb-1">{t('auth.brandName')}</h1>
         <p className="text-gray-400 text-sm mb-6">
           {isRegisterMode ? t('auth.registerCta') : t('auth.loginCta')}
         </p>
@@ -259,7 +259,7 @@ export default function LoginModal({ onSuccess }) {
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2
                          text-sm text-gray-100 placeholder-gray-600
                          focus:outline-none focus:ring-1 focus:ring-brand-500"
-              placeholder="testuser"
+              placeholder={t('auth.usernamePlaceholder')}
             />
             {fieldErrors.username && <p className="mt-1 text-xs text-red-400">{fieldErrors.username}</p>}
           </div>
@@ -276,7 +276,7 @@ export default function LoginModal({ onSuccess }) {
                 className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2
                            text-sm text-gray-100 placeholder-gray-600
                            focus:outline-none focus:ring-1 focus:ring-brand-500"
-                placeholder="ban@example.com"
+                placeholder={t('auth.emailPlaceholder')}
               />
               {fieldErrors.email && <p className="mt-1 text-xs text-red-400">{fieldErrors.email}</p>}
             </div>

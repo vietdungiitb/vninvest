@@ -1914,6 +1914,318 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('at least one Portfolio', str(response.data))
 
     @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_create_uses_requested_owned_portfolio(self):
+        self.authenticate()
+        first_portfolio = self.user.portfolios.create(name='First Portfolio', description='first')
+        selected_portfolio = self.user.portfolios.create(name='Selected Portfolio', description='selected')
+
+        response = self.client.post(
+            '/api/portfolio/subaccounts/',
+            {
+                'name': 'Margin Account',
+                'type': '6',
+                'margin_ratio': '0.500',
+                'portfolio': selected_portfolio.id,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['portfolio'], selected_portfolio.id)
+        self.assertEqual(response.data['type'], '6')
+        self.assertNotEqual(response.data['portfolio'], first_portfolio.id)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_create_without_portfolio_falls_back_to_first_portfolio(self):
+        self.authenticate()
+        self.user.portfolios.create(name='Fallback First', description='first')
+        self.user.portfolios.create(name='Fallback Second', description='second')
+        expected_fallback_portfolio = self.user.portfolios.first()
+
+        response = self.client.post(
+            '/api/portfolio/subaccounts/',
+            {
+                'name': 'Fallback Account',
+                'type': '1',
+                'margin_ratio': '1.000',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['portfolio'], expected_fallback_portfolio.id)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_update_rejects_foreign_subaccount(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Portfolio', description='own')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Own Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='subaccount-update-foreign-user',
+            email='subaccount-update-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Other Portfolio', description='other')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        own_response = self.client.patch(
+            f'/api/portfolio/subaccounts/{own_sub_account.id}/',
+            {'name': 'Own Account Updated', 'margin_ratio': '0.800'},
+            format='json',
+        )
+        foreign_response = self.client.patch(
+            f'/api/portfolio/subaccounts/{foreign_sub_account.id}/',
+            {'name': 'Should Fail'},
+            format='json',
+        )
+
+        self.assertEqual(own_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(own_response.data['name'], 'Own Account Updated')
+        self.assertEqual(foreign_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_delete_rejects_foreign_subaccount(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Delete Portfolio', description='own')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Own Delete Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='subaccount-delete-foreign-user',
+            email='subaccount-delete-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Other Delete Portfolio', description='other')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign Delete Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        own_response = self.client.delete(f'/api/portfolio/subaccounts/{own_sub_account.id}/')
+        foreign_response = self.client.delete(f'/api/portfolio/subaccounts/{foreign_sub_account.id}/')
+
+        self.assertEqual(own_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(foreign_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(SubAccount.objects.filter(id=own_sub_account.id).exists())
+        self.assertTrue(SubAccount.objects.filter(id=foreign_sub_account.id).exists())
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_detail_allows_owner(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Detail Portfolio', description='own')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Own Detail Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        response = self.client.get(f'/api/portfolio/subaccounts/{own_sub_account.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], own_sub_account.id)
+        self.assertEqual(response.data['name'], 'Own Detail Account')
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_detail_rejects_foreign_subaccount(self):
+        self.authenticate()
+        other_user = User.objects.create_user(
+            username='subaccount-detail-foreign-user',
+            email='subaccount-detail-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Other Detail Portfolio', description='other')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign Detail Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        response = self.client.get(f'/api/portfolio/subaccounts/{foreign_sub_account.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_delete_cascades_subaccounts_and_transactions(self):
+        self.authenticate()
+        portfolio = self.user.portfolios.create(name='Cascade Portfolio', description='cascade')
+        sub_account = SubAccount.objects.create(
+            portfolio=portfolio,
+            name='Cascade Account',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+        StockProfile.objects.update_or_create(
+            symbol='VCB',
+            defaults={
+                'company_name': 'Ngân hàng TMCP Ngoại thương Việt Nam',
+                'industry': 'Banking',
+                'exchange': 'HOSE',
+                'is_active': True,
+            },
+        )
+        transaction = sub_account.transactions.create(
+            symbol='VCB',
+            transaction_type='BUY',
+            date=date.today(),
+            price=Decimal('100000'),
+            quantity=Decimal('10'),
+            fee=Decimal('1000'),
+        )
+
+        response = self.client.delete(f'/api/portfolio/portfolios/{portfolio.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(self.user.portfolios.filter(id=portfolio.id).exists())
+        self.assertFalse(SubAccount.objects.filter(id=sub_account.id).exists())
+        self.assertFalse(type(transaction).objects.filter(id=transaction.id).exists())
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_delete_rejects_foreign_portfolio(self):
+        self.authenticate()
+        other_user = User.objects.create_user(
+            username='portfolio-delete-foreign-user',
+            email='portfolio-delete-foreign@example.com',
+            password='Test@123456',
+        )
+        foreign_portfolio = other_user.portfolios.create(name='Foreign Portfolio', description='foreign')
+
+        response = self.client.delete(f'/api/portfolio/portfolios/{foreign_portfolio.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertTrue(type(foreign_portfolio).objects.filter(id=foreign_portfolio.id).exists())
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_update_allows_owner(self):
+        self.authenticate()
+        portfolio = self.user.portfolios.create(name='Owner Portfolio', description='initial')
+
+        response = self.client.patch(
+            f'/api/portfolio/portfolios/{portfolio.id}/',
+            {'name': 'Owner Portfolio Updated', 'description': 'updated'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Owner Portfolio Updated')
+        self.assertEqual(response.data['description'], 'updated')
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_update_rejects_foreign_portfolio(self):
+        self.authenticate()
+        other_user = User.objects.create_user(
+            username='portfolio-update-foreign-user',
+            email='portfolio-update-foreign@example.com',
+            password='Test@123456',
+        )
+        foreign_portfolio = other_user.portfolios.create(name='Foreign Update Portfolio', description='foreign')
+
+        response = self.client.patch(
+            f'/api/portfolio/portfolios/{foreign_portfolio.id}/',
+            {'name': 'Should Not Update'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        foreign_portfolio.refresh_from_db()
+        self.assertEqual(foreign_portfolio.name, 'Foreign Update Portfolio')
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_detail_allows_owner(self):
+        self.authenticate()
+        portfolio = self.user.portfolios.create(name='Owner Detail Portfolio', description='detail')
+
+        response = self.client.get(f'/api/portfolio/portfolios/{portfolio.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], portfolio.id)
+        self.assertEqual(response.data['name'], 'Owner Detail Portfolio')
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_detail_rejects_foreign_portfolio(self):
+        self.authenticate()
+        other_user = User.objects.create_user(
+            username='portfolio-detail-foreign-user',
+            email='portfolio-detail-foreign@example.com',
+            password='Test@123456',
+        )
+        foreign_portfolio = other_user.portfolios.create(name='Foreign Detail Portfolio', description='foreign')
+
+        response = self.client.get(f'/api/portfolio/portfolios/{foreign_portfolio.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_portfolio_list_returns_only_owner_portfolios(self):
+        self.authenticate()
+        own_portfolio_1 = self.user.portfolios.create(name='Owner List 1', description='owner')
+        own_portfolio_2 = self.user.portfolios.create(name='Owner List 2', description='owner')
+
+        other_user = User.objects.create_user(
+            username='portfolio-list-foreign-user',
+            email='portfolio-list-foreign@example.com',
+            password='Test@123456',
+        )
+        foreign_portfolio = other_user.portfolios.create(name='Foreign List', description='foreign')
+
+        response = self.client.get('/api/portfolio/portfolios/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {item['id'] for item in response.data}
+        self.assertIn(own_portfolio_1.id, returned_ids)
+        self.assertIn(own_portfolio_2.id, returned_ids)
+        self.assertNotIn(foreign_portfolio.id, returned_ids)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_list_returns_only_owner_subaccounts(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Owner SubAccount List', description='owner')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Owner SA List',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='subaccount-list-foreign-user',
+            email='subaccount-list-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Foreign SubAccount List', description='foreign')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign SA List',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        response = self.client.get('/api/portfolio/subaccounts/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        returned_ids = {item['id'] for item in response.data}
+        self.assertIn(own_sub_account.id, returned_ids)
+        self.assertNotIn(foreign_sub_account.id, returned_ids)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
     def test_refactored_transaction_create_rejects_foreign_sub_account(self):
         self.authenticate()
         own_portfolio = self.user.portfolios.create(name='Own Portfolio', description='test')
@@ -1974,3 +2286,128 @@ class ApiRouteSmokeTests(APITestCase):
         )
 
         self.assertEqual(forbidden_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_transaction_update_rejects_foreign_transaction(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Tx Update', description='owner')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Own Tx Update SA',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='transaction-update-foreign-user',
+            email='transaction-update-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Foreign Tx Update', description='foreign')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign Tx Update SA',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        StockProfile.objects.update_or_create(
+            symbol='HPG',
+            defaults={
+                'company_name': 'CTCP Tập đoàn Hòa Phát',
+                'industry': 'Steel',
+                'exchange': 'HOSE',
+                'is_active': True,
+            },
+        )
+
+        own_tx = own_sub_account.transactions.create(
+            symbol='HPG',
+            transaction_type='BUY',
+            date=date.today(),
+            price=Decimal('26000'),
+            quantity=Decimal('100'),
+            fee=Decimal('1000'),
+        )
+        foreign_tx = foreign_sub_account.transactions.create(
+            symbol='HPG',
+            transaction_type='BUY',
+            date=date.today(),
+            price=Decimal('25000'),
+            quantity=Decimal('100'),
+            fee=Decimal('1000'),
+        )
+
+        own_response = self.client.patch(
+            f'/api/portfolio/transactions/{own_tx.id}/',
+            {'notes': 'owner-update'},
+            format='json',
+        )
+        foreign_response = self.client.patch(
+            f'/api/portfolio/transactions/{foreign_tx.id}/',
+            {'notes': 'should-fail'},
+            format='json',
+        )
+
+        self.assertEqual(own_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(own_response.data['notes'], 'owner-update')
+        self.assertEqual(foreign_response.status_code, status.HTTP_404_NOT_FOUND)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_transaction_delete_rejects_foreign_transaction(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Tx Delete', description='owner')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='Own Tx Delete SA',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='transaction-delete-foreign-user',
+            email='transaction-delete-foreign@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Foreign Tx Delete', description='foreign')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='Foreign Tx Delete SA',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        StockProfile.objects.update_or_create(
+            symbol='MBB',
+            defaults={
+                'company_name': 'Ngân hàng TMCP Quân đội',
+                'industry': 'Banking',
+                'exchange': 'HOSE',
+                'is_active': True,
+            },
+        )
+
+        own_tx = own_sub_account.transactions.create(
+            symbol='MBB',
+            transaction_type='BUY',
+            date=date.today(),
+            price=Decimal('23000'),
+            quantity=Decimal('100'),
+            fee=Decimal('1000'),
+        )
+        foreign_tx = foreign_sub_account.transactions.create(
+            symbol='MBB',
+            transaction_type='BUY',
+            date=date.today(),
+            price=Decimal('22000'),
+            quantity=Decimal('100'),
+            fee=Decimal('1000'),
+        )
+
+        own_response = self.client.delete(f'/api/portfolio/transactions/{own_tx.id}/')
+        foreign_response = self.client.delete(f'/api/portfolio/transactions/{foreign_tx.id}/')
+
+        self.assertEqual(own_response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(foreign_response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(type(own_tx).objects.filter(id=own_tx.id).exists())
+        self.assertTrue(type(foreign_tx).objects.filter(id=foreign_tx.id).exists())

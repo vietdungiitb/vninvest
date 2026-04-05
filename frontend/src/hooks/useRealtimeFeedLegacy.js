@@ -68,12 +68,43 @@ function computeReconnectDelayMs(attempt) {
   return base + jitter;
 }
 
+function getHttpStatus(errorLike) {
+  return errorLike?.response?.status ?? errorLike?.status ?? null;
+}
+
+function computeNextBackoffMs(currentBackoffMs) {
+  if (!currentBackoffMs || currentBackoffMs <= 0) {
+    return 5000;
+  }
+  return Math.min(currentBackoffMs * 2, 120000);
+}
+
+function pickPollBatch(symbols, cursor, batchSize) {
+  if (!symbols?.length) {
+    return { batch: [], nextCursor: 0 };
+  }
+
+  const size = Math.max(1, Math.min(batchSize, symbols.length));
+  const start = Math.max(0, Math.min(cursor, symbols.length - 1));
+  const batch = [];
+
+  for (let i = 0; i < size; i += 1) {
+    batch.push(symbols[(start + i) % symbols.length]);
+  }
+
+  return {
+    batch,
+    nextCursor: (start + size) % symbols.length,
+  };
+}
+
 export default function useRealtimeFeedLegacy({
   symbols,
   pollInterval = 15000,
   maxAlerts = 5,
   enabled = true,
 }) {
+  const POLL_BATCH_SIZE = 8;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
   const [lastEventAt, setLastEventAt] = useState(null);
@@ -118,8 +149,16 @@ export default function useRealtimeFeedLegacy({
   const reconnectAttemptRef = useRef(0);
   const consecutiveFailuresRef = useRef(0);
   const circuitOpenUntilRef = useRef(null);
+  const pollCursorRef = useRef(0);
+  const pollBackoffMsRef = useRef(0);
+  const pollBackoffUntilRef = useRef(null);
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
+  useEffect(() => {
+    pollCursorRef.current = 0;
+    pollBackoffMsRef.current = 0;
+    pollBackoffUntilRef.current = null;
+  }, [normalizedSymbols]);
   useEffect(() => { realtimeStatusRef.current = realtimeStatus; }, [realtimeStatus]);
   useEffect(() => { pollIntervalRef.current = pollInterval; }, [pollInterval]);
 
@@ -184,10 +223,25 @@ export default function useRealtimeFeedLegacy({
       const syms = symbolsRef.current;
       if (!token || !syms.length || realtimeStatusRef.current === 'live') return;
 
+      if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
+        return;
+      }
+
+      const { batch: pollBatch, nextCursor } = pickPollBatch(
+        syms,
+        pollCursorRef.current,
+        POLL_BATCH_SIZE,
+      );
+
+      if (!pollBatch.length) {
+        return;
+      }
+
       try {
-        const results = await Promise.allSettled(syms.map((s) => getRealtimeTicker(s)));
+        const results = await Promise.allSettled(pollBatch.map((s) => getRealtimeTicker(s)));
         if (destroyed) return;
         let ok = 0;
+        let had429 = false;
         results.forEach((r, i) => {
           if (r.status === 'fulfilled') {
             ok += 1;
@@ -206,16 +260,43 @@ export default function useRealtimeFeedLegacy({
               last_date: data.last_date,
             });
           } else {
+            const status = getHttpStatus(r.reason);
+            if (status === 429) {
+              had429 = true;
+            }
             setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-            console.warn(`Polling failed for ${syms[i]}:`, r.reason?.message);
+            if (status !== 429) {
+              console.warn(`Polling failed for ${pollBatch[i]}:`, r.reason?.message);
+            }
           }
         });
+
+        if (had429) {
+          const nextBackoffMs = computeNextBackoffMs(pollBackoffMsRef.current);
+          pollBackoffMsRef.current = nextBackoffMs;
+          pollBackoffUntilRef.current = Date.now() + nextBackoffMs;
+          console.warn(`Polling rate limited (429). Backing off for ${nextBackoffMs}ms.`);
+          return;
+        }
+
+        pollBackoffMsRef.current = 0;
+        pollBackoffUntilRef.current = null;
+        pollCursorRef.current = nextCursor;
+
         if (ok > 0) {
           setLastEventAt(nowIso());
           setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
         }
       } catch (err) {
         if (!destroyed) {
+          const status = getHttpStatus(err);
+          if (status === 429) {
+            const nextBackoffMs = computeNextBackoffMs(pollBackoffMsRef.current);
+            pollBackoffMsRef.current = nextBackoffMs;
+            pollBackoffUntilRef.current = Date.now() + nextBackoffMs;
+            console.warn(`Polling rate limited (429). Backing off for ${nextBackoffMs}ms.`);
+            return;
+          }
           setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
           console.error('Polling error:', err);
         }

@@ -1,0 +1,9 @@
+ID,Story,Owner,Estimate,Dependency,Status,Evidence
+S23-01,External facade hardening,BE-Lead-1,2d,None,In Progress,
+S23-02,Remove direct provider imports phase1,BE-1,2d,S23-01,Todo,
+S23-03,Workspace flow boundary cleanup,BE-2,1d,S23-01,Todo,
+S23-04,Views decomposition wave,BE-Lead-1,2d,S23-02|S23-03,Todo,
+S23-05,Validation unification,BE-2,1d,S23-04,Todo,
+S23-06,Threshold centralization,BE-Lead-1,1d,S23-05,Todo,
+S23-07,Observability rollout metrics,Ops-Lead-1,2d,S23-06,Todo,
+S23-08,Canary and rollback drill,PM-1,1d,S23-07,Todo,

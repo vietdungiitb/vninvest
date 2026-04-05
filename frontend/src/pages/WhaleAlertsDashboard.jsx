@@ -432,11 +432,11 @@ export function BubbleOrderChart({ orders, loading }) {
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="idx" type="number" name="STT" tick={false} axisLine={false} tickLine={false} />
+            <XAxis dataKey="idx" type="number" name={t('whaleAlertsDashboard.axisIndex')} tick={false} axisLine={false} tickLine={false} />
             <YAxis
               dataKey="y"
               type="number"
-              name="Giá"
+              name={t('whaleAlertsDashboard.axisPrice')}
               tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
               tick={{ fontSize: 10, fill: '#64748b' }}
               axisLine={false}
@@ -451,7 +451,7 @@ export function BubbleOrderChart({ orders, loading }) {
                 return (
                   <div className="space-y-1 p-2 text-[11px]">
                     <p className="font-semibold text-white">{fmtBil(d.matched_value)}</p>
-                    <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · KL {fmtVol(d.volume)}</p>
+                    <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · {t('whaleAlertsDashboard.volumeShort')} {fmtVol(d.volume)}</p>
                     <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? `▲ ${t('whaleAlertsDashboard.buy')}` : d.side === 'sell' ? `▼ ${t('whaleAlertsDashboard.sell')}` : '—'} {sizeClassEmoji(d.size_class)}</p>
                     <p className="text-slate-400">{t('whaleAlertsDashboard.severity')}: {d.severity ?? '—'} · {t('whaleAlertsDashboard.score')}: {d.display_score ?? '—'}</p>
                   </div>
@@ -536,7 +536,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
                 contentStyle={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8, fontSize: 11 }}
                 formatter={(val, name) => [
                   name === 'volume' ? fmtVol(val) : fmtVol(val),
-                  name === 'volume' ? t('whaleAlertsDashboard.volumeShort') : 'SMA20',
+                  name === 'volume' ? t('whaleAlertsDashboard.volumeShort') : t('whaleAlertsDashboard.sma20'),
                 ]}
               />
               <Bar dataKey="volume" shape={<CustomBarShape />} />
@@ -545,7 +545,7 @@ function RVOLChartPanel({ symbol, loading: parentLoading }) {
                 y={(data.buckets.find((b) => b.sma20 > 0)?.sma20 || 0) * 2}
                 stroke="#a855f7"
                 strokeDasharray="4 2"
-                label={{ value: '2× AVG', fill: '#a855f7', fontSize: 10, position: 'insideTopRight' }}
+                label={{ value: t('whaleAlertsDashboard.avg2x'), fill: '#a855f7', fontSize: 10, position: 'insideTopRight' }}
               />
             </ComposedChart>
           </ResponsiveContainer>
@@ -639,7 +639,7 @@ function DepthChartPanel({ symbol, compact = false }) {
                     x={data.reference_price}
                     stroke="#f59e0b"
                     strokeDasharray="4 2"
-                    label={{ value: 'Ref', fill: '#f59e0b', fontSize: 10, position: 'top' }}
+                    label={{ value: t('whaleAlertsDashboard.referenceShort'), fill: '#f59e0b', fontSize: 10, position: 'top' }}
                   />
                 )}
                 {(data?.walls || []).map((w, i) => (
@@ -746,10 +746,10 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
           </div>
           <div className="flex items-center gap-2 text-[11px] text-slate-400">
             <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
-              {String(darkFlow?.confidence || liveSignal?.confidence || 'low')}
+              {String(darkFlow?.confidence || liveSignal?.confidence || t('whaleAlertsDashboard.confidenceLow'))}
             </span>
             <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-cyan-300">
-              {String(darkFlow?.signal_type || liveSignal?.signal_type || 'none')}
+              {String(darkFlow?.signal_type || liveSignal?.signal_type || t('whaleAlertsDashboard.signalNone'))}
             </span>
           </div>
         </div>
@@ -802,7 +802,7 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
                   <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={fmtCompact} axisLine={false} tickLine={false} />
                   <Tooltip
-                    formatter={(value) => [fmtCompact(value), 'CVD']}
+                    formatter={(value) => [fmtCompact(value), t('whaleAlertsDashboard.cvdLabel')]}
                     labelStyle={{ color: '#cbd5e1' }}
                     contentStyle={{ background: '#020617', border: '1px solid #1e293b', borderRadius: 12 }}
                   />
@@ -824,7 +824,7 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
                   <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString(undefined) : '—'}</p>
                 </div>
-                <p className="mt-1 text-sm text-slate-200">{t('whaleAlertsDashboard.strength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
+                <p className="mt-1 text-sm text-slate-200">{t('whaleAlertsDashboard.strength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || t('whaleAlertsDashboard.confidenceLow')}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{t('whaleAlertsDashboard.tickRate')} {Number(item.tick_rate || 0).toFixed(1)} • {t('whaleAlertsDashboard.small')} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
               </div>
             ))}

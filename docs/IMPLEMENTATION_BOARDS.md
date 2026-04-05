@@ -1,7 +1,7 @@
 # Implementation Boards (Canonical + Soft-Archive Aligned)
 
 > **Status**: ACTIVE  
-> **Last aligned**: 2026-04-03  
+> **Last aligned**: 2026-04-05  
 > **Purpose**: Chuẩn hóa board theo trạng thái code hiện tại, đồng thời giữ dấu vết lịch sử ở mức cần thiết.
 
 ---
@@ -87,6 +87,28 @@
 | B6-3 | Dashboard core | Summary/holdings/allocation + loading/empty/error + pull-to-refresh | Mobile | 2d | B6-2 | Dashboard hien dung data backend, scroll muot | Todo |
 | B6-4 | Transactions + validation | CRUD giao dich theo subaccount + validation ma CK truoc submit | Mobile/BE | 2d | B6-3 | Transactions flow pass, ma sai bi chan | Todo |
 | B6-5 | Watchlist + whale + internal release | Watchlist/tracked + whale hub/detail + realtime fallback + internal build | Mobile/QA/DevOps | 2.5d | B6-4 | Checklist Sprint 19 duoc sign-off | Todo |
+
+### Epic B7 — Backend Audit Hardening Wave (2026-04-05)
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B7-1 | Audit to execution board | Chot workboard owner-ready tu audit v2 | PM/BE | 0.5d | B1-1 | Board active, co owner + gate + KPI sheet | Done |
+| B7-2 | External IO consolidation | Chuyen call provider ve 1 facade va xoa call truc tiep trong HTTP path | BE | 3d | B7-1 | Khong con import provider truc tiep o flow da scope | Todo |
+| B7-3 | Rollout by metrics | Chot canary gate + rollback trigger theo p95/5xx/fallback ratio | DevOps/QA | 2d | B7-2 | Co runbook + evidence theo ngay | Todo |
+
+Tham chieu board chi tiet: `docs/BACKEND_AUDIT_EXECUTION_BOARD_20260405.md`.
+
+### Epic B8 — Sprint 23 Backend Audit Coding Execution
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B8-1 | Sprint 23 coding plan | Chot backlog S23-01..S23-08 + acceptance gate | PM/BE | 0.5d | B7-1 | Plan/checklist/taskboard du bo | Done |
+| B8-2 | Code hardening execution | Thuc thi S23-01..S23-06 theo coding plan | BE/QA | 7d | B8-1 | Gates A/B pass trong S23 checklist | In Progress |
+| B8-3 | Runtime rollout execution | Thuc thi S23-07..S23-08 + sign-off | DevOps/PM/QA | 3d | B8-2 | Gates C/D/E pass, co bien ban GO/NO-GO | Todo |
+
+Tham chieu sprint moi:
+- `docs/SPRINT23_BACKEND_AUDIT_CODING_PLAN.md`
+- `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT23_TASKBOARD.csv`
+- `docs/BACKEND_AUDIT_DAILY_TRACKER_20260405.md`
 
 ---
 

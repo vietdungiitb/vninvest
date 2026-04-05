@@ -133,6 +133,7 @@ function advisorySynthesisPreferenceLabel(preference, t) {
 }
 
 function KLineChartComponent({ data }) {
+  const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true });
@@ -140,23 +141,23 @@ function KLineChartComponent({ data }) {
   const [fullScreen, setFullScreen] = useState(false);
 
   const AVAILABLE_INDICATORS = [
-    { id: 'MA', name: 'Moving Average', default: true },
-    { id: 'EMA', name: 'EMA' },
-    { id: 'BOLL', name: 'Bollinger Bands' },
-    { id: 'MACD', name: 'MACD' },
-    { id: 'RSI', name: 'RSI' },
-    { id: 'KDJ', name: 'KDJ' },
-    { id: 'STOCH', name: 'Stochastic' },
-    { id: 'SAR', name: 'Parabolic SAR' },
-    { id: 'ATR', name: 'Average True Range' },
-    { id: 'OBV', name: 'On-Balance Volume' },
+    { id: 'MA', name: t('stockDetail.indicatorMovingAverage'), default: true },
+    { id: 'EMA', name: t('stockDetail.indicatorEma') },
+    { id: 'BOLL', name: t('stockDetail.indicatorBollingerBands') },
+    { id: 'MACD', name: t('stockDetail.indicatorMacd') },
+    { id: 'RSI', name: t('stockDetail.indicatorRsi') },
+    { id: 'KDJ', name: t('stockDetail.indicatorKdj') },
+    { id: 'STOCH', name: t('stockDetail.indicatorStochastic') },
+    { id: 'SAR', name: t('stockDetail.indicatorParabolicSar') },
+    { id: 'ATR', name: t('stockDetail.indicatorAtr') },
+    { id: 'OBV', name: t('stockDetail.indicatorObv') },
   ];
 
   const DRAWING_TOOLS = [
-    { id: 'line', name: '📏 Line' },
-    { id: 'rect', name: '📦 Rectangle' },
-    { id: 'polygon', name: '🔺 Polygon' },
-    { id: 'text', name: '📝 Text' },
+    { id: 'line', name: `📏 ${t('stockDetail.drawingToolLine')}` },
+    { id: 'rect', name: `📦 ${t('stockDetail.drawingToolRectangle')}` },
+    { id: 'polygon', name: `🔺 ${t('stockDetail.drawingToolPolygon')}` },
+    { id: 'text', name: `📝 ${t('stockDetail.drawingToolText')}` },
   ];
 
   const handleToggleIndicator = (indicatorId) => {
@@ -302,9 +303,16 @@ function KLineChartComponent({ data }) {
           tooltip: {
             showRule: 'follow_cross',
             showType: 'rect',
-            labels: ['T', 'M', 'C', 'Đ', 'T', 'KL'],
+            labels: [
+              t('stockDetail.klineTooltipTime'),
+              t('stockDetail.klineTooltipOpen'),
+              t('stockDetail.klineTooltipClose'),
+              t('stockDetail.klineTooltipLow'),
+              t('stockDetail.klineTooltipHigh'),
+              t('stockDetail.klineTooltipVolume'),
+            ],
             values: null,
-            defaultValue: 'n/a',
+            defaultValue: t('common.notAvailable'),
             rect: {
               position: 'fixed',
               paddingLeft: 10,
@@ -439,9 +447,9 @@ function KLineChartComponent({ data }) {
           <button
             onClick={handleClearDrawings}
             className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
-            title="Clear all drawings"
+            title={t('stockDetail.clearAllDrawings')}
           >
-            🗑️ Clear
+            🗑️ {t('stockDetail.clear')}
           </button>
         </div>
 
@@ -450,16 +458,16 @@ function KLineChartComponent({ data }) {
           <button
             onClick={handleScreenshot}
             className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition"
-            title="Take screenshot"
+            title={t('stockDetail.takeScreenshot')}
           >
-            📸 Screenshot
+            📸 {t('stockDetail.screenshot')}
           </button>
           <button
             onClick={handleToggleFullscreen}
             className="px-2 py-1 text-xs bg-slate-700 text-gray-400 rounded hover:bg-slate-600 transition"
-            title="Fullscreen"
+            title={t('stockDetail.fullscreen')}
           >
-            ⛶ Fullscreen
+            ⛶ {t('stockDetail.fullscreen')}
           </button>
         </div>
       </div>
@@ -479,7 +487,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const debounceRef = useRef(null);
   const prevVolumeRef = useRef(null);
@@ -631,7 +639,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
                 </span>
                 <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
                 <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
-                  {row.match_type || (row.side === 'buy' ? 'BU' : row.side === 'sell' ? 'SD' : '—')}
+                  {row.match_type || (row.side === 'buy' ? t('stockDetail.matchTypeBu') : row.side === 'sell' ? t('stockDetail.matchTypeSd') : '—')}
                 </span>
                 <span className={`text-right text-[10px] ${row.side === 'buy' ? 'text-emerald-500' : row.side === 'sell' ? 'text-rose-500' : 'text-slate-500'}`}>
                   {row.side === 'buy' ? t('whaleHub.buy') : row.side === 'sell' ? t('whaleHub.sell') : t('stockDetail.volumeShort')}
@@ -963,30 +971,30 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
         {/* Định giá */}
         <div className="card-compact">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-sky-400">{t('stockDetail.valuation')}</p>
-          <MetricRow label="EPS (VND)" value={row.eps} />
-          <MetricRow label="P/E" value={row.pe} />
-          <MetricRow label="P/B" value={row.pb} />
-          <MetricRow label="P/S" value={row.ps} />
-          <MetricRow label="BVPS (VND)" value={row.bvps} />
-          <MetricRow label="Vốn hóa (Tỷ đ)" value={row.market_cap_bn} />
+          <MetricRow label={t('stockDetail.metricEps')} value={row.eps} />
+          <MetricRow label={t('stockDetail.metricPe')} value={row.pe} />
+          <MetricRow label={t('stockDetail.metricPb')} value={row.pb} />
+          <MetricRow label={t('stockDetail.metricPs')} value={row.ps} />
+          <MetricRow label={t('stockDetail.metricBvps')} value={row.bvps} />
+          <MetricRow label={t('stockDetail.metricMarketCapBn')} value={row.market_cap_bn} />
         </div>
 
         {/* Khả năng sinh lời */}
         <div className="card-compact">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-emerald-400">{t('stockDetail.profitability')}</p>
-          <MetricRow label="ROE" value={row.roe} unit="%" highlight />
-          <MetricRow label="ROA" value={row.roa} unit="%" highlight />
-          <MetricRow label="Biên LN ròng" value={row.net_margin} unit="%" highlight />
-          <MetricRow label="Tỷ suất cổ tức" value={row.dividend_yield} unit="%" />
+          <MetricRow label={t('stockDetail.metricRoe')} value={row.roe} unit="%" highlight />
+          <MetricRow label={t('stockDetail.metricRoa')} value={row.roa} unit="%" highlight />
+          <MetricRow label={t('stockDetail.metricNetMargin')} value={row.net_margin} unit="%" highlight />
+          <MetricRow label={t('stockDetail.metricDividendYield')} value={row.dividend_yield} unit="%" />
         </div>
 
         {/* Sức mạnh tài chính */}
         <div className="card-compact">
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-400">{t('stockDetail.financialStrength')}</p>
-          <MetricRow label="Đòn bẩy TC" value={row.leverage} />
-          <MetricRow label="Nợ/VCSH" value={row.debt_equity} />
-          <MetricRow label="TT hiện hành" value={row.current_ratio} />
-          <MetricRow label="TT nhanh" value={row.quick_ratio} />
+          <MetricRow label={t('stockDetail.metricLeverage')} value={row.leverage} />
+          <MetricRow label={t('stockDetail.metricDebtEquity')} value={row.debt_equity} />
+          <MetricRow label={t('stockDetail.metricCurrentRatio')} value={row.current_ratio} />
+          <MetricRow label={t('stockDetail.metricQuickRatio')} value={row.quick_ratio} />
         </div>
       </div>
     </section>

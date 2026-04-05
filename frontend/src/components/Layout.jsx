@@ -30,6 +30,7 @@ export default function Layout() {
   const navItems = [
     { to: '/dashboard', label: t('layout.nav.dashboard') },
     { to: '/transactions', label: t('layout.nav.transactions') },
+    { to: '/portfolios', label: t('layout.nav.portfolioManagement') },
   ];
   const stockMgmtItems = [
     { to: '/watchlist', label: t('layout.nav.watchlist') },

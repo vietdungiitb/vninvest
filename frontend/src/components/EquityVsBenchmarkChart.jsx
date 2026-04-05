@@ -10,13 +10,16 @@ import {
   YAxis,
 } from 'recharts';
 import { getEquityCurve } from '../api/client';
+import { useI18n } from '../context/LangContext';
 
-const PERIODS = [
-  { label: '1T', days: 30 },
-  { label: '3T', days: 90 },
-  { label: '6T', days: 180 },
-  { label: '1N', days: 365 },
-];
+function getPeriods(t) {
+  return [
+    { label: t('portfolioLineChart.periods.p1m'), days: 30 },
+    { label: t('portfolioLineChart.periods.p3m'), days: 90 },
+    { label: t('portfolioLineChart.periods.p6m'), days: 180 },
+    { label: t('portfolioLineChart.periods.p1y'), days: 365 },
+  ];
+}
 
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -41,10 +44,12 @@ function PctAxisTick({ x, y, payload }) {
 }
 
 export default function EquityVsBenchmarkChart({ portfolioId }) {
+  const { t } = useI18n();
   const [data, setData] = useState([]);
   const [hasBenchmark, setHasBenchmark] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activePeriod, setActivePeriod] = useState(180);
+  const periods = getPeriods(t);
 
   const fetchCurve = useCallback(async () => {
     if (!portfolioId) return;
@@ -67,15 +72,14 @@ export default function EquityVsBenchmarkChart({ portfolioId }) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            Equity Curve
+            {t('equityVsBenchmark.title')}
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            % tăng trưởng từ đầu kỳ
-            {hasBenchmark ? ' so với VN-Index' : ''}
+            {hasBenchmark ? t('equityVsBenchmark.subtitleWithBenchmark') : t('equityVsBenchmark.subtitle')}
           </p>
         </div>
         <div className="flex gap-1">
-          {PERIODS.map((p) => (
+          {periods.map((p) => (
             <button
               key={p.days}
               onClick={() => setActivePeriod(p.days)}
@@ -95,7 +99,7 @@ export default function EquityVsBenchmarkChart({ portfolioId }) {
         <div className="h-52 animate-pulse rounded-xl bg-gray-800" />
       ) : data.length === 0 ? (
         <div className="h-52 flex items-center justify-center text-gray-500 text-sm">
-          Không có dữ liệu NAV cho kỳ này.
+          {t('equityVsBenchmark.noData')}
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={220}>
@@ -135,7 +139,7 @@ export default function EquityVsBenchmarkChart({ portfolioId }) {
             <Area
               type="monotone"
               dataKey="portfolio_pct"
-              name="Danh mục"
+              name={t('equityVsBenchmark.seriesPortfolio')}
               stroke="#06b6d4"
               strokeWidth={2}
               fill="url(#gradPort)"
@@ -146,7 +150,7 @@ export default function EquityVsBenchmarkChart({ portfolioId }) {
               <Area
                 type="monotone"
                 dataKey="benchmark_pct"
-                name="VN-Index"
+                name={t('equityVsBenchmark.seriesBenchmark')}
                 stroke="#f59e0b"
                 strokeWidth={1.5}
                 strokeDasharray="4 2"

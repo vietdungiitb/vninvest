@@ -1,7 +1,7 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
 > **Cập nhật lần cuối**: 2026-04-05  
-> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST  
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 READY TO EXECUTE (planning locked)  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
@@ -43,6 +43,31 @@
 - Chay smoke test 30 phut tren Android/iOS.
 - Tao artifact Android internal build va iOS build neu account readiness cho phep.
 - Nhan sign-off Mobile / Backend / QA / PM.
+
+---
+
+## 0.2 Sprint 23 - READY TO EXECUTE (Backend Audit Coding Sprint)
+
+Focus: chot no ky thuat sau audit backend v2, dong bo architecture boundary va rollout theo metric.
+
+Trang thai hien tai: READY TO EXECUTE.
+
+Da hoan tat buoc chuan bi:
+- Co execution board + owner matrix + daily tracker + endpoint checklist.
+- Co run-day playbook de van hanh gate.
+- Co coding plan sprint moi + acceptance checklist + taskboard CSV.
+
+Muc tieu sprint:
+1. Giam coupling external provider tren HTTP path.
+2. Giam do phuc tap legacy views theo strangler pattern.
+3. Chuan hoa validation + threshold policy.
+4. Co baseline/canary/rollback gate du evidence.
+
+Tai lieu chuan cho sprint nay:
+- `docs/SPRINT23_BACKEND_AUDIT_CODING_PLAN.md`
+- `docs/SPRINT23_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT23_TASKBOARD.csv`
+- `docs/BACKEND_AUDIT_EXECUTION_BOARD_20260405.md`
 
 ---
 

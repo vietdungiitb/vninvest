@@ -18,6 +18,9 @@ class SubAccountSerializer(serializers.ModelSerializer):
         model = SubAccount
         fields = ['id', 'name', 'type', 'type_display', 'portfolio', 'portfolio_name', 'margin_ratio', 'created_at']
         read_only_fields = ['id', 'created_at']
+        extra_kwargs = {
+            'portfolio': {'required': False},
+        }
 
 class TransactionSerializer(serializers.ModelSerializer):
     transaction_type_display = serializers.CharField(

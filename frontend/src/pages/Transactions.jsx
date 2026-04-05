@@ -135,6 +135,27 @@ export default function Transactions() {
   useEffect(() => { fetchSubAccounts(); }, [fetchSubAccounts]);
   useEffect(() => { fetchTx(); }, [fetchTx]);
 
+  // Refresh when user comes back to the page after creating/updating accounts elsewhere.
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchSubAccounts();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchSubAccounts();
+      }
+    };
+
+    window.addEventListener('focus', handleRefresh);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleRefresh);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchSubAccounts]);
+
   // ---------- Flat list để hiển thị ----------
   const displayTx = useMemo(() => {
     const list =
@@ -291,16 +312,36 @@ export default function Transactions() {
   // ---------- Early returns ----------
   if (!activePortfolioId) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        {t('transactions.noPortfolio')}
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-center px-4">
+        <div className="text-4xl">📁</div>
+        <div>
+          <p className="text-gray-300 font-semibold mb-1">{t('transactions.emptyNoPortfolioTitle')}</p>
+          <p className="text-sm text-gray-500">{t('transactions.emptyNoPortfolioDescription')}</p>
+        </div>
+        <Link
+          to="/portfolios"
+          className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-500 transition-colors"
+        >
+          {t('transactions.emptyNoPortfolioCta')}
+        </Link>
       </div>
     );
   }
 
   if (subAccounts.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-500">
-        {t('transactions.noSubAccount')}
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-center px-4">
+        <div className="text-4xl">🏦</div>
+        <div>
+          <p className="text-gray-300 font-semibold mb-1">{t('transactions.emptyNoSubAccountTitle')}</p>
+          <p className="text-sm text-gray-500">{t('transactions.emptyNoSubAccountDescription')}</p>
+        </div>
+        <Link
+          to="/portfolios"
+          className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-semibold text-white hover:bg-brand-500 transition-colors"
+        >
+          {t('transactions.emptyNoSubAccountCta')}
+        </Link>
       </div>
     );
   }

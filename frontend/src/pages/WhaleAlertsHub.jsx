@@ -46,10 +46,10 @@ function getSideTone(side, t) {
   };
 }
 
-function getSizeClassLabel(sizeClass) {
-  if (sizeClass === 'shark') return 'Shark';
-  if (sizeClass === 'whale') return 'Whale';
-  return 'Large';
+function getSizeClassLabel(sizeClass, t) {
+  if (sizeClass === 'shark') return t('whaleHub.sizeClassShark');
+  if (sizeClass === 'whale') return t('whaleHub.sizeClassWhale');
+  return t('whaleHub.sizeClassLarge');
 }
 
 function getSeverityTone(severity) {
@@ -84,7 +84,7 @@ function getAggregateSourceMeta(source, t) {
   }
   if (normalizedSource === 'vnstock') {
     return {
-      label: 'vnstock',
+      label: t('whaleHub.sourceVnstock'),
       tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
       description: t('whaleHub.sourceVnstockDesc'),
     };
@@ -204,7 +204,7 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail, t, localeTag, format
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
             isBuy ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
           }`}>
-            {side || 'UNKNOWN'}
+            {side || t('whaleHub.unknownSide')}
           </span>
         </div>
         <p className="mt-2 text-xs text-slate-400">
@@ -218,7 +218,7 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail, t, localeTag, format
       <div className="p-4">
         <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-2 mb-3">
           <span className="text-[11px] uppercase tracking-widest text-slate-500">
-            {item.ai_provider || 'openclaw'}
+            {item.ai_provider || t('whaleHub.defaultAiProvider')}
           </span>
         </div>
         <p className="text-xs leading-6 text-slate-300 line-clamp-3">
@@ -276,10 +276,10 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-            {getSizeClassLabel(item.size_class)}
+            {getSizeClassLabel(item.size_class, t)}
           </div>
           <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${severityTone}`}>
-            {item.severity || 'low'}
+            {item.severity || t('whaleHub.severityLow')}
           </div>
         </div>
       </div>
@@ -291,7 +291,7 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
         <div className="text-right text-xs text-slate-400">
           <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
           <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
-          <p className="mt-1">{t('whaleHub.source')}: {item.source || 'realtime'}</p>
+          <p className="mt-1">{t('whaleHub.source')}: {item.source || t('whaleHub.sourceRealtime')}</p>
         </div>
       </div>
     </Link>
@@ -490,13 +490,13 @@ export default function WhaleAlertsHub() {
             {t('whaleHub.feedSource')}: {loading ? t('common.loading') : aggregateSourceMeta.label}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            {t('whaleHub.advisorySummary')}: {aggregateEntitlements?.can_read_whale_advisory ? 'Pro+' : t('whaleHub.locked')}
+            {t('whaleHub.advisorySummary')}: {aggregateEntitlements?.can_read_whale_advisory ? t('whaleHub.planProPlus') : t('whaleHub.locked')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            {t('whaleHub.advisoryDetail')}: {aggregateEntitlements?.can_read_whale_advisory_detail ? 'Premium+' : t('whaleHub.locked')}
+            {t('whaleHub.advisoryDetail')}: {aggregateEntitlements?.can_read_whale_advisory_detail ? t('whaleHub.planPremiumPlus') : t('whaleHub.locked')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
-            {t('whaleHub.weights')}: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || 'weights-v1' : t('common.loading')}
+            {t('whaleHub.weights')}: {aggregateFilters?.scope ? aggregateFeed[0]?.weights_version || t('whaleHub.defaultWeightsVersion') : t('common.loading')}
           </div>
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
             {t('whaleHub.serverTime')}: {aggregateServerTime ? formatTime(aggregateServerTime, formatDateTime) : t('common.loading')}

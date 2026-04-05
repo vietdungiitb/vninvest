@@ -87,9 +87,13 @@ export const getPortfolio = (id) => apiClient.get(`/portfolio/portfolios/${id}/`
 export const updatePortfolio = (id, data) => apiClient.put(`/portfolio/portfolios/${id}/`, data);
 export const deletePortfolio = (id) => apiClient.delete(`/portfolio/portfolios/${id}/`);
 
-// --- Transaction APIs ---
-
+// --- SubAccount APIs ---
 export const getSubAccounts = () => apiClient.get('/portfolio/subaccounts/');
+export const createSubAccount = (data) => apiClient.post('/portfolio/subaccounts/', data);
+export const updateSubAccount = (id, data) => apiClient.patch(`/portfolio/subaccounts/${id}/`, data);
+export const deleteSubAccount = (id) => apiClient.delete(`/portfolio/subaccounts/${id}/`);
+
+// --- Transaction APIs ---
 export const getTransactions = (subAccountId) =>
   apiClient.get(`/portfolio/subaccounts/${subAccountId}/transactions/`);
 export const createTransaction = (subAccountId, data) =>

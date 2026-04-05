@@ -1,7 +1,8 @@
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 from .models import SubAccount
 from .serializers import PortfolioSerializer, SubAccountSerializer, TransactionSerializer
@@ -34,6 +35,19 @@ class SubAccountListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return TradingService.sub_account_queryset_for_user(self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        payload = request.data.copy()
+        if not payload.get('portfolio'):
+            fallback_portfolio = TradingService.portfolio_queryset_for_user(request.user).first()
+            if fallback_portfolio:
+                payload['portfolio'] = fallback_portfolio.id
+
+        serializer = self.get_serializer(data=payload)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         TradingService.create_sub_account(serializer, self.request.user)

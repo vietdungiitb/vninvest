@@ -3,6 +3,7 @@
  * Trang chính: StatCards + HoldingsTable + (Charts ở Bước 5).
  */
 import React, { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { getSummary, getHoldings, syncPrices } from '../api/client';
 import StatCard from '../components/StatCard';
@@ -71,8 +72,18 @@ export default function Dashboard() {
 
   if (!activePortfolioId) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        {t('dashboard.noPortfolio')}
+      <div className="flex flex-col items-center justify-center h-full gap-4 px-4 text-center">
+        <div className="text-5xl">📁</div>
+        <div>
+          <h2 className="text-xl font-bold text-gray-100 mb-2">{t('dashboard.emptyTitle')}</h2>
+          <p className="text-sm text-gray-400 max-w-md">{t('dashboard.noPortfolio')}</p>
+        </div>
+        <Link
+          to="/portfolios"
+          className="rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 transition-colors"
+        >
+          {t('dashboard.createPortfolioCta')}
+        </Link>
       </div>
     );
   }

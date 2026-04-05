@@ -5,17 +5,17 @@ import { useI18n } from '../context/LangContext';
 
 const PLAN_DEFS = [
   {
-    name: 'Basic',
+    key: 'basic',
     accent: 'border-slate-700 bg-slate-900/70',
     featureKeys: ['basicFeature1', 'basicFeature2', 'basicFeature3'],
   },
   {
-    name: 'Pro',
+    key: 'pro',
     accent: 'border-cyan-800/70 bg-cyan-950/20',
     featureKeys: ['proFeature1', 'proFeature2', 'proFeature3'],
   },
   {
-    name: 'Premium',
+    key: 'premium',
     accent: 'border-amber-700/70 bg-amber-950/20',
     featureKeys: ['premiumFeature1', 'premiumFeature2', 'premiumFeature3'],
   },
@@ -27,6 +27,7 @@ export default function Upgrade() {
 
   const plans = PLAN_DEFS.map((plan) => ({
     ...plan,
+    name: t(`plans.${plan.key}`),
     features: plan.featureKeys.map((key) => t(`upgrade.${key}`)),
   }));
 
@@ -50,10 +51,10 @@ export default function Upgrade() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {plans.map((plan) => (
-          <section key={plan.name} className={`card-section px-5 py-5 ${plan.accent}`}>
+          <section key={plan.key} className={`card-section px-5 py-5 ${plan.accent}`}>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold text-slate-100">{plan.name}</h2>
-              {userPlan === plan.name.toLowerCase() && (
+              {userPlan === plan.key && (
                 <span className="rounded-full border border-emerald-700/70 bg-emerald-950/30 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
                   {t('upgrade.currentPlan')}
                 </span>
