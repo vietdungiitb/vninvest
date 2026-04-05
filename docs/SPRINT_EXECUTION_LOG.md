@@ -34,6 +34,17 @@ Gia tri dat duoc:
 - UI hien thi duoc nhieu du lieu hon trong cung mot viewport, giam thao tac cuon.
 - Muc do san sang test truc quan tang len nho stack local on dinh (backend + expo + emulator).
 
+Cap nhat hardening runtime web (2026-04-05 toi):
+- Da giam noise 401 tren frontend web bang cach serialize auth bootstrap flow trong `PortfolioContext`.
+- Da tach throttle scope theo endpoint realtime (ticker/intraday/price-board/breadth/whale/rvol/chart) thay vi dung chung 1 bucket.
+- Da them cool-down/backoff nhe phia client cho Price Board de tranh hammer endpoint khi server can gioi han.
+
+Ket qua smoke test nhanh:
+- Frontend web `http://127.0.0.1:3000/` -> HTTP 200.
+- Backend admin `http://127.0.0.1:8000/admin/login/` -> HTTP 200.
+- API protected sau login (`/api/auth/me/`, `/api/portfolio/portfolios/`, `/api/portfolio/userconfig/`) -> HTTP 200.
+- Loop 20 lan endpoint `/api/realtime/price-board/MBB/`: `ok=19`, `rate429=0`, `otherErr=1` (khong ghi nhan 429).
+
 ## Sprint 19 - UX/Architecture alignment update (2026-04-05)
 
 Trang thai: PLANNING REFINED
