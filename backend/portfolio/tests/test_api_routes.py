@@ -2,8 +2,10 @@ from unittest.mock import MagicMock, patch
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.test.utils import override_settings
 import pandas as pd
-from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+from portfolio.exceptions import ExternalSystemException
+from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
 from portfolio.email_verification import generate_email_verification_token
 from datetime import date, datetime, timedelta
 from rest_framework import status
@@ -1392,6 +1394,365 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('freshness_seconds', response.data)
         self.assertIn('stale', response.data)
 
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_realtime_ticker')
+    def test_realtime_ticker_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_realtime_ticker):
+        self.authenticate()
+        mock_get_realtime_ticker.return_value = {
+            'symbol': 'VNM',
+            'current_price': 100000,
+            'freshness_seconds': 0,
+            'stale': False,
+            'source': 'db',
+        }
+
+        response = self.client.get('/api/realtime/ticker/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_realtime_ticker.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_intraday_matched')
+    def test_realtime_intraday_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_intraday_matched):
+        self.authenticate()
+        mock_get_intraday_matched.return_value = {
+            'symbol': 'VNM',
+            'trades': [],
+            'total': 0,
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/intraday/VNM/?page_size=25')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_intraday_matched.assert_called_once_with('VNM', page_size='25')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_price_board')
+    def test_price_board_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_price_board):
+        self.authenticate()
+        mock_get_price_board.return_value = {
+            'symbol': 'VNM',
+            'depth': [],
+            'match': {},
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/price-board/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_price_board.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_sector_breadth')
+    def test_sector_breadth_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_sector_breadth):
+        self.authenticate()
+        mock_get_sector_breadth.return_value = {
+            'symbol': 'VNM',
+            'groups': [],
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/breadth/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_sector_breadth.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_rvol')
+    def test_rvol_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_rvol):
+        self.authenticate()
+        mock_get_rvol.return_value = {
+            'symbol': 'VNM',
+            'buckets': [],
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/rvol/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_rvol.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_whale_feed')
+    def test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_whale_feed):
+        self.authenticate()
+        mock_get_whale_feed.return_value = {
+            'symbol': 'VNM',
+            'threshold': 500000000,
+            'source': 'redis_stream',
+            'weights_version': 'weights-v1',
+            'whale_orders': [],
+            'summary': {
+                'buy_value': 0,
+                'sell_value': 0,
+                'flow_net': 0,
+                'shark_value': 0,
+                'whale_value': 0,
+                'small_value': 0,
+                'shark_pct': 0,
+                'whale_pct': 0,
+                'small_pct': 0,
+            },
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/whale-feed/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_whale_feed.assert_called_once_with(self.user, 'VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_refactored_whale_feed_response_contains_scoring_contract(self, mock_fetch_intraday_dataframe, _mock_stream_ticks, _mock_get_cache):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+        mock_fetch_intraday_dataframe.return_value = pd.DataFrame([
+            {'time': '2026-04-03T09:30:00+07:00', 'price': 100000, 'volume': 12000, 'match_type': 'buy'},
+            {'time': '2026-04-03T09:31:00+07:00', 'price': 99500, 'volume': 4000, 'match_type': 'sell'},
+        ])
+
+        response = self.client.get('/api/realtime/whale-feed/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['weights_version'], 'weights-v1')
+        self.assertEqual(len(response.data['whale_orders']), 1)
+        order = response.data['whale_orders'][0]
+        self.assertIn('event_score', order)
+        self.assertIn('display_score', order)
+        self.assertIn('severity', order)
+        self.assertIn('score_breakdown', order)
+        self.assertEqual(order['weights_version'], response.data['weights_version'])
+        self.assertLessEqual(order['display_score'], order['event_score'])
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe', side_effect=ExternalSystemException('vnstock unavailable', code='vnstock_error'))
+    def test_refactored_whale_feed_falls_back_to_intraday_tick_db_when_vnstock_unavailable(self, _mock_fetch_intraday_dataframe, _mock_stream_ticks, _mock_get_cache):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'premium', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:31:15', '%H:%M:%S').time(),
+            price=Decimal('61800'),
+            volume=16000,
+            side='BUY',
+            stream_id='mwg-refactor-db-1',
+        )
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('11:22:33', '%H:%M:%S').time(),
+            price=Decimal('60500'),
+            volume=21000,
+            side='SELL',
+            stream_id='mwg-refactor-db-2',
+        )
+
+        response = self.client.get('/api/realtime/whale-feed/MWG/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertGreaterEqual(len(response.data['whale_orders']), 2)
+        self.assertEqual(response.data['whale_orders'][0]['side'], 'sell')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_whale_feed_aggregate')
+    def test_whale_feed_aggregate_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_whale_feed_aggregate):
+        self.authenticate()
+        mock_get_whale_feed_aggregate.return_value = {
+            'results': [],
+            'next_cursor': None,
+            'has_more': False,
+            'server_time': '2026-04-05T10:00:00+07:00',
+            'source': 'intraday_tick_db',
+            'weights_version': 'weights-v1',
+            'filters': {
+                'scope': 'tracked',
+                'scope_source': 'default_tracked',
+                'symbols': [],
+                'watchlist_group_ids': [],
+                'sort': 'ts',
+                'limit': 20,
+                'threshold': 500000000,
+            },
+            'meta': {
+                'contract_version': '1.1',
+                'pagination': {
+                    'sort': 'ts',
+                    'limit': 20,
+                    'has_more': False,
+                    'next_cursor': None,
+                },
+                'scope': {
+                    'value': 'tracked',
+                    'source': 'default_tracked',
+                },
+            },
+            'entitlements': {'plan': 'free'},
+        }
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        mock_get_whale_feed_aggregate.assert_called_once()
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_refactored_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='fpt-refactor-agg-1',
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['filters']['scope'], 'tracked')
+        self.assertEqual(response.data['filters']['symbols'], ['FPT'])
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['symbol'], 'FPT')
+        self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
+        self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks')
+    def test_refactored_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db(self, mock_read_stream_intraday_ticks):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='db-refactor-agg-fpt-1',
+        )
+        mock_read_stream_intraday_ticks.return_value = [
+            {'price': 101000, 'volume': 10000, 'side': 'BUY', 'ts': '2026-04-03T09:20:00+07:00'},
+        ]
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['source'], 'redis_stream')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['source'], 'redis_stream')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_refactored_whale_feed_aggregate_rejects_invalid_cursor(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?cursor=@@not_base64@@')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_depth_chart')
+    def test_depth_chart_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_depth_chart):
+        self.authenticate()
+        mock_get_depth_chart.return_value = {
+            'symbol': 'VNM',
+            'reference_price': 100000,
+            'ceiling_price': 107000,
+            'floor_price': 93000,
+            'bids': [],
+            'asks': [],
+            'walls': [],
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/realtime/depth-chart/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_depth_chart.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_financial_metrics')
+    def test_financial_metrics_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_financial_metrics):
+        self.authenticate()
+        mock_get_financial_metrics.return_value = {
+            'symbol': 'VNM',
+            'years': [],
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/stock-management/stocks/VNM/financials/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_financial_metrics.assert_called_once_with('VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_stock_workspace_overview')
+    def test_stock_workspace_overview_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_stock_workspace_overview):
+        self.authenticate()
+        mock_get_stock_workspace_overview.return_value = {
+            'symbol': 'VNM',
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/stock-management/stocks/VNM/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_stock_workspace_overview.assert_called_once_with(self.user, 'VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_stock_workspace_chart')
+    def test_stock_workspace_chart_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_stock_workspace_chart):
+        self.authenticate()
+        mock_get_stock_workspace_chart.return_value = {
+            'symbol': 'VNM',
+            'days': 180,
+            'points': [],
+            'technical': {},
+        }
+
+        response = self.client.get('/api/stock-management/stocks/VNM/chart/?days=120')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        mock_get_stock_workspace_chart.assert_called_once_with(self.user, 'VNM', '120')
+
     def test_price_alert_rule_crud_and_trigger_endpoint(self):
         self.authenticate()
         DailyPrice.objects.create(symbol='FPT', date=date.today(), close_price=120000)
@@ -1514,3 +1875,102 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(delete_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(add_item_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertEqual(delete_item_response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    @patch('portfolio.trading_service.TradingService.portfolio_queryset_for_user')
+    def test_portfolio_endpoint_uses_refactored_trading_view_when_flag_enabled(self, mock_queryset):
+        self.authenticate()
+        portfolio = self.user.portfolios.create(name='Main Portfolio', description='test')
+        mock_queryset.return_value = self.user.portfolios.all()
+
+        response = self.client.get('/api/portfolio/portfolios/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data[0]['id'], portfolio.id)
+        mock_queryset.assert_called_once_with(self.user)
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_subaccount_create_returns_400_when_user_has_no_portfolio(self):
+        self.authenticate()
+        other_user = User.objects.create_user(
+            username='subaccount-other-user',
+            email='subaccount-other@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Other Portfolio', description='test')
+
+        response = self.client.post(
+            '/api/portfolio/subaccounts/',
+            {
+                'name': 'No Portfolio Account',
+                'type': '1',
+                'margin_ratio': '1.000',
+                'portfolio': other_portfolio.id,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('at least one Portfolio', str(response.data))
+
+    @override_settings(ENABLE_NEW_TRADING_VIEWS=True)
+    def test_refactored_transaction_create_rejects_foreign_sub_account(self):
+        self.authenticate()
+        own_portfolio = self.user.portfolios.create(name='Own Portfolio', description='test')
+        own_sub_account = SubAccount.objects.create(
+            portfolio=own_portfolio,
+            name='TK own',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+
+        other_user = User.objects.create_user(
+            username='other-trading-user',
+            email='other-trading@example.com',
+            password='Test@123456',
+        )
+        other_portfolio = other_user.portfolios.create(name='Other Portfolio', description='test')
+        foreign_sub_account = SubAccount.objects.create(
+            portfolio=other_portfolio,
+            name='TK foreign',
+            type='1',
+            margin_ratio=Decimal('1.000'),
+        )
+        StockProfile.objects.update_or_create(
+            symbol='FPT',
+            defaults={
+                'company_name': 'CTCP FPT',
+                'industry': 'Technology',
+                'exchange': 'HOSE',
+                'is_active': True,
+            },
+        )
+
+        allowed_response = self.client.post(
+            f'/api/portfolio/subaccounts/{own_sub_account.id}/transactions/',
+            {
+                'symbol': 'FPT',
+                'transaction_type': 'BUY',
+                'date': str(date.today()),
+                'price': '100000',
+                'quantity': '10',
+                'fee': '1000',
+            },
+            format='json',
+        )
+        self.assertEqual(allowed_response.status_code, status.HTTP_201_CREATED)
+
+        forbidden_response = self.client.post(
+            f'/api/portfolio/subaccounts/{foreign_sub_account.id}/transactions/',
+            {
+                'symbol': 'FPT',
+                'transaction_type': 'BUY',
+                'date': str(date.today()),
+                'price': '100000',
+                'quantity': '10',
+                'fee': '1000',
+            },
+            format='json',
+        )
+
+        self.assertEqual(forbidden_response.status_code, status.HTTP_404_NOT_FOUND)

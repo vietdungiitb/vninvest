@@ -43,6 +43,30 @@
 
 **Precondition:** Sprint 20 da hoan tat backend `UserConfig.language`, frontend web i18n, sync cross-platform va smoke/sign-off co ban.
 
+### Trang thai thuc thi cap nhat (2026-04-05)
+
+| Sprint 21 task | Trang thai hien tai |
+| :--- | :--- |
+| S21-01 | PARTIAL - da co rollback thresholds, con can ky measurement contract |
+| S21-02 | DONE |
+| S21-03 | DONE |
+| S21-04 | PENDING OPS - can dashboard baseline + alert fire test runtime |
+| S21-05 | DONE |
+| S21-06 | DONE |
+| S21-07 | DONE |
+| S21-08 | DONE |
+| S21-09 | DONE |
+| S21-10 | DONE |
+| S21-11 | DONE |
+| S21-12 | PENDING OPS - can benchmark + canary 10% trong cua so 24h |
+
+Tai lieu van hanh de dong Sprint 21:
+- `docs/SPRINT21_OPERATIONS_CHECKLIST.md`
+- `docs/SPRINT21_OPS_RUNBOOK_COMMANDS.md`
+- `docs/SPRINT21_EXIT_GATE_SIGNOFF_TEMPLATE.md`
+- `docs/SPRINT21_REVIEW_20260405.md`
+- `docs/SPRINT21_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md`
+
 ### Backlog Sprint 21
 
 | ID | Task | Owner | Estimate | Phu thuoc | Output | Acceptance criteria |

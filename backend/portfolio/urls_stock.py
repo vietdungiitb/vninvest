@@ -1,14 +1,27 @@
+from django.conf import settings
 from django.urls import path
-from . import views
+
+from . import market_views, views
+
+
+def _toggle_market_view(view_name: str):
+    legacy_view = getattr(views, view_name).as_view()
+    refactored_view = getattr(market_views, view_name).as_view()
+
+    def _view(request, *args, **kwargs):
+        selected_view = refactored_view if getattr(settings, 'ENABLE_NEW_MARKET_VIEWS', False) else legacy_view
+        return selected_view(request, *args, **kwargs)
+
+    return _view
 
 app_name = "portfolio_stock"
 
 urlpatterns = [
     # Quản lý mã chứng khoán
     path("stocks/", views.StockProfileListView.as_view(), name="stock-list"),
-    path("stocks/<str:symbol>/overview/", views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),
-    path("stocks/<str:symbol>/chart/", views.StockWorkspaceChartView.as_view(), name="stock-workspace-chart"),
-    path("stocks/<str:symbol>/financials/", views.FinancialMetricsView.as_view(), name="stock-financials"),
+    path("stocks/<str:symbol>/overview/", _toggle_market_view('StockWorkspaceOverviewView'), name="stock-workspace-overview"),
+    path("stocks/<str:symbol>/chart/", _toggle_market_view('StockWorkspaceChartView'), name="stock-workspace-chart"),
+    path("stocks/<str:symbol>/financials/", _toggle_market_view('FinancialMetricsView'), name="stock-financials"),
     path("stocks/<str:symbol>/order-flow/", views.stock_order_flow_api, name="stock-order-flow"),
     path("stocks/<str:symbol>/ai-advisory-session/", views.stock_ai_advisory_session_api, name="stock-ai-advisory-session"),
     path("stocks/<str:symbol>/ai-advisory-components/generate/", views.stock_ai_advisory_components_generate_api, name="stock-ai-advisory-components-generate"),

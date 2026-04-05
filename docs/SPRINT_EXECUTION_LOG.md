@@ -1,5 +1,112 @@
 # Sprint Execution Log
 
+## Sprint 21-22 - Backend Fat Views refactor progress (2026-04-05)
+
+Trang thai: PHASE 1 MARKET DATA IN PROGRESS
+
+Da thuc hien:
+- Hoan tat Phase 0 groundwork cho backend refactor:
+	- them feature flags `ENABLE_NEW_MARKET_VIEWS`, `ENABLE_NEW_TRADING_VIEWS`, `ENABLE_REALTIME_CONNECTION_MANAGER`
+	- them `portfolio/exceptions.py` de chuan hoa exception boundary cho implementation moi
+- Tao adapter layer moi:
+	- `portfolio/adapters/cache_adapter.py`
+	- `portfolio/adapters/vnstock_adapter.py`
+- Tao service layer moi cho market data: `portfolio/market_data_service.py`
+- Tao views layer moi cho market data: `portfolio/market_views.py`
+- Router realtime da co toggle implementation theo `ENABLE_NEW_MARKET_VIEWS`, rollback bang env flag khong can sua code nong.
+
+Lop endpoint da dua sang implementation moi sau flag:
+- `ticker/<symbol>/`
+- `intraday/<symbol>/`
+- `price-board/<symbol>/`
+- `breadth/<symbol>/`
+- `rvol/<symbol>/`
+- `whale-feed/<symbol>/`
+- `whale-feed/aggregate/`
+- `depth-chart/<symbol>/`
+- `stock-management/stocks/<symbol>/financials/`
+- `stock-management/stocks/<symbol>/overview/`
+- `stock-management/stocks/<symbol>/chart/`
+
+Regression da verify:
+- Toggle route sang implementation moi cho market data pass test focused.
+- `whale-feed` implementation moi giu scoring contract va DB fallback khi vnstock unavailable.
+- `whale-feed/aggregate` implementation moi giu scope resolution, source selection va cursor validation.
+- `stock workspace overview/chart` route toggle pass + khong gay hoi quy test endpoint tong hop da co.
+
+Cap nhat ky thuat tiep theo (2026-04-05 khuya):
+- Da bo import nguoc tu `market_data_service.py` sang `views.py` cho stock workspace helpers.
+- Da noi suy cac helper overview/technical (`_build_stock_workspace_overview_base`, `_compute_stock_workspace_technical`, `_compute_rsi`, `_technical_bias_meta`) vao service layer de giu boundary mot chieu.
+- Re-run test stock workspace (integration + route toggle) PASS sau khi dọn boundary.
+
+Gioi han hien tai / no ky thuat con mo:
+- Mot so helper legacy van con song song trong `portfolio/views.py`, chua duoc xoa de tranh mo rong blast radius.
+- Chua mo rollout canary that su; hien moi validate theo test focused va rollback bang feature flag.
+- Chua bat dau Trading refactor; van uu tien hoan tat Market Data boundary truoc.
+
+Buoc tiep theo:
+- tiep tuc tach cac endpoint market data con lai / helper duplicate ve module shared
+- sau do moi mo hardening benchmark + error schema cho rollout canary
+
+Cap nhat Sprint 22 tiep theo (2026-04-06):
+- Da implement backend Trading boundary skeleton sau feature flag:
+	- them `portfolio/trading_service.py` (tach business boundary + `transaction.atomic()` cho create flow)
+	- them `portfolio/trading_views.py` (thin views cho Portfolio/SubAccount/Transaction)
+	- cap nhat `portfolio/urls.py` voi `_toggle_trading_view` theo `ENABLE_NEW_TRADING_VIEWS`
+- Da bo sung test toi thieu cho Sprint 22 Trading:
+	- verify toggle route Portfolio khi flag Trading bat
+	- verify error path tao SubAccount khi user chua co Portfolio
+	- verify auth boundary tao Transaction tren sub-account cua user khac (404)
+- Da implement frontend Realtime connection manager singleton theo feature flag web:
+	- them `frontend/src/context/RealtimeContext.jsx` (subscription dedup + reference counting + telemetry manager)
+	- tach `useRealtimeFeedLegacy` sang `frontend/src/hooks/useRealtimeFeedLegacy.js`
+	- doi `frontend/src/hooks/useRealtimeFeed.js` thanh manager-aware wrapper
+	- wrap app voi `RealtimeProvider` trong `frontend/src/App.jsx`
+- Da harden reconnect policy phia realtime hook legacy:
+	- exponential backoff + jitter
+	- circuit breaker khi loi lap lai
+	- telemetry bo sung (`circuit_breaker_trips`, reconnect delay, manager metrics)
+
+Tai lieu Sprint 22 vua cap nhat:
+- `docs/SPRINT22_TRADING_ENDPOINT_INVENTORY.md`
+- `docs/SPRINT22_MARKET_DATA_CANARY_LOG.md`
+- `docs/SPRINT22_GO_NO_GO_REVIEW.md`
+
+Cap nhat review Sprint 21 (2026-04-05 dem):
+- Da bo sung inventory endpoint Market Data theo acceptance S21-05:
+	- `docs/SPRINT21_MARKET_DATA_ENDPOINT_INVENTORY.md`
+- Da bo sung adapter unit tests theo acceptance S21-07 (cache happy/miss + vnstock wrapper):
+	- `backend/portfolio/tests/test_adapters.py`
+- Da chay test: `manage.py test portfolio.tests.test_adapters` -> PASS (10 tests).
+- Da tao bao cao doi chieu trang thai S21-01..S21-12:
+	- `docs/SPRINT21_REVIEW_20260405.md`
+
+Ket luan review Sprint 21 hien tai:
+- DONE trong repo code/test: S21-02, S21-03, S21-05, S21-06, S21-07, S21-08, S21-09, S21-10, S21-11
+- Con pending theo gate van hanh: S21-01, S21-04, S21-12 (yeu cau Ops/QA runtime tren staging/production)
+
+Cap nhat tiep theo de dong Sprint 21 (2026-04-05 dem muon):
+- Da tao checklist tac chien runtime cho 3 task pending:
+	- `docs/SPRINT21_OPERATIONS_CHECKLIST.md`
+- Da tao mau bien ban ky gate Sprint 21:
+	- `docs/SPRINT21_EXIT_GATE_SIGNOFF_TEMPLATE.md`
+- Da cap nhat backlog execution-ready voi snapshot trang thai Sprint 21 hien tai va link artifact:
+	- `docs/SPRINT21_22_FAT_VIEWS_EXECUTION_READY.md`
+
+Trang thai sau cap nhat:
+- Repo da san sang cho team Ops/QA chay ngay quy trinh S21-01/S21-04/S21-12 theo checklist va ky gate theo template.
+
+Cap nhat bo sung (2026-04-05 dem muon):
+- Da tao runbook command-by-command cho ca quy trinh Sprint 21 pending gates:
+	- `docs/SPRINT21_OPS_RUNBOOK_COMMANDS.md`
+- Da noi link runbook vao:
+	- `docs/SPRINT21_OPERATIONS_CHECKLIST.md`
+	- `docs/SPRINT21_22_FAT_VIEWS_EXECUTION_READY.md`
+- Da tao mau evidence theo ngay van hanh de team dien truc tiep khi chay gate:
+	- `docs/SPRINT21_EXECUTION_EVIDENCE_TEMPLATE_20260405.md`
+- Da tao ban prefill staging (timeline + owner placeholders) de thao tac nhanh trong ngay rollout:
+	- `docs/SPRINT21_EXECUTION_EVIDENCE_STAGING_PREFILL_20260405.md`
+
 ## Sprint 19 - Mobile MVP sign-off prep update (2026-04-05)
 
 Trang thai: CODE COMPLETE FOR INTERNAL TEST

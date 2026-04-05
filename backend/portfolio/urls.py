@@ -1,22 +1,34 @@
+from django.conf import settings
 from django.urls import path
-from . import views
+from . import trading_views, views
+
+
+def _toggle_trading_view(view_name: str):
+    legacy_view = getattr(views, view_name).as_view()
+    refactored_view = getattr(trading_views, view_name).as_view()
+
+    def _view(request, *args, **kwargs):
+        selected_view = refactored_view if getattr(settings, 'ENABLE_NEW_TRADING_VIEWS', False) else legacy_view
+        return selected_view(request, *args, **kwargs)
+
+    return _view
 
 urlpatterns = [
     # --- Portfolios ---
-    path('portfolios/', views.PortfolioListCreateView.as_view(), name='portfolio-list'),
-    path('portfolios/<int:pk>/', views.PortfolioDetailView.as_view(), name='portfolio-detail'),
+    path('portfolios/', _toggle_trading_view('PortfolioListCreateView'), name='portfolio-list'),
+    path('portfolios/<int:pk>/', _toggle_trading_view('PortfolioDetailView'), name='portfolio-detail'),
 
     # --- User Config ---
     path('userconfig/', views.UserConfigView.as_view(), name='user-config'),
 
 
     # --- SubAccounts ---
-    path('subaccounts/', views.SubAccountListCreateView.as_view(), name='subaccount-list'),
-    path('subaccounts/<int:pk>/', views.SubAccountDetailView.as_view(), name='subaccount-detail'),
+    path('subaccounts/', _toggle_trading_view('SubAccountListCreateView'), name='subaccount-list'),
+    path('subaccounts/<int:pk>/', _toggle_trading_view('SubAccountDetailView'), name='subaccount-detail'),
     
     # --- Transactions ---
-    path('subaccounts/<int:sub_account_id>/transactions/', views.TransactionListCreateView.as_view(), name='transaction-list'),
-    path('transactions/<int:pk>/', views.TransactionDetailView.as_view(), name='transaction-detail'),
+    path('subaccounts/<int:sub_account_id>/transactions/', _toggle_trading_view('TransactionListCreateView'), name='transaction-list'),
+    path('transactions/<int:pk>/', _toggle_trading_view('TransactionDetailView'), name='transaction-detail'),
 
 
     # --- Analytics ---

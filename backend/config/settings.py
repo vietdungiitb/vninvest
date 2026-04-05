@@ -184,6 +184,9 @@ CELERY_TIMEZONE = TIME_ZONE
 WATCHLIST_SYNC_ENABLED = os.getenv("WATCHLIST_SYNC_ENABLED", "False").lower() == "true"
 WATCHLIST_SYNC_MINUTES = int(os.getenv("WATCHLIST_SYNC_MINUTES", "15"))
 WATCHLIST_SYNC_DAYS = int(os.getenv("WATCHLIST_SYNC_DAYS", "5"))
+ENABLE_NEW_MARKET_VIEWS = os.getenv("ENABLE_NEW_MARKET_VIEWS", "False").lower() == "true"
+ENABLE_NEW_TRADING_VIEWS = os.getenv("ENABLE_NEW_TRADING_VIEWS", "False").lower() == "true"
+ENABLE_REALTIME_CONNECTION_MANAGER = os.getenv("ENABLE_REALTIME_CONNECTION_MANAGER", "False").lower() == "true"
 
 CELERY_BEAT_SCHEDULE = {}
 # Pre-fetch ticker cache: chạy luôn luôn để tránh gọi vnstock trong HTTP request handler
