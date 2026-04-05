@@ -94,6 +94,7 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'user',
             'whale_alert_threshold',
             'theme',
+            'language',
             'plan',
             'plan_expires_at',
             'oauth_provider',

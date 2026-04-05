@@ -5,32 +5,10 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
-
-
-const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Tổng quan' },
-  { to: '/transactions', label: 'Giao dịch' },
-];
-
-const STOCK_MGMT_ITEMS = [
-  { to: '/watchlist', label: 'Radar thị trường' },
-  { to: '/whale-alerts', label: 'Whale Alerts' },
-  { to: '/screener', label: 'Screener' },
-];
-
-const TOOL_ITEMS = [
-  { to: '/admin-ops', label: 'Admin Ops' },
-];
-
-const PLAN_LABELS = {
-  free: 'Free',
-  basic: 'Basic',
-  pro: 'Pro',
-  premium: 'Premium',
-  admin: 'Admin',
-};
+import { useI18n } from '../context/LangContext';
 
 export default function Layout() {
+  const { t, locale, setLanguage } = useI18n();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     try {
       return localStorage.getItem('layout.sidebarCollapsed') === '1';
@@ -49,10 +27,21 @@ export default function Layout() {
 
   const { logout, portfolios, activePortfolioId, setActivePortfolioId, ability, userPlan, userIdentity } =
     usePortfolio();
+  const navItems = [
+    { to: '/dashboard', label: t('layout.nav.dashboard') },
+    { to: '/transactions', label: t('layout.nav.transactions') },
+  ];
+  const stockMgmtItems = [
+    { to: '/watchlist', label: t('layout.nav.watchlist') },
+    { to: '/whale-alerts', label: t('layout.nav.whaleAlerts') },
+    { to: '/screener', label: t('layout.nav.screener') },
+  ];
+  const toolItemsSeed = [{ to: '/admin-ops', label: t('layout.nav.adminOps') }];
   const stockManagementItems = ability.can('read', 'WhaleAdvisory')
-    ? [...STOCK_MGMT_ITEMS, { to: '/whale-advisory', label: 'AI Advisory' }]
-    : STOCK_MGMT_ITEMS;
-  const toolItems = ability.can('manage', 'all') ? TOOL_ITEMS : [];
+    ? [...stockMgmtItems, { to: '/whale-advisory', label: t('layout.nav.aiAdvisory') }]
+    : stockMgmtItems;
+  const toolItems = ability.can('manage', 'all') ? toolItemsSeed : [];
+  const currentPlanLabel = t(`plans.${userPlan || 'free'}`);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -70,15 +59,15 @@ export default function Layout() {
                 {isSidebarCollapsed ? 'VI' : 'VNInvest'}
               </span>
               {!isSidebarCollapsed && (
-                <p className="text-gray-500 text-xs mt-0.5">Portfolio Tracker</p>
+                <p className="text-gray-500 text-xs mt-0.5">{t('layout.brandSubtitle')}</p>
               )}
             </div>
             <button
               type="button"
               onClick={() => setIsSidebarCollapsed((prev) => !prev)}
               className="rounded-md border border-gray-700 px-2 py-1 text-[10px] text-gray-400 hover:text-gray-200 hover:border-gray-500 transition-colors"
-              title={isSidebarCollapsed ? 'Phóng to menu' : 'Thu nhỏ menu'}
-              aria-label={isSidebarCollapsed ? 'Phóng to menu chính' : 'Thu nhỏ menu chính'}
+              title={isSidebarCollapsed ? t('layout.expandMenu') : t('layout.collapseMenu')}
+              aria-label={isSidebarCollapsed ? t('layout.expandMainNav') : t('layout.collapseMainNav')}
             >
               {isSidebarCollapsed ? '»' : '«'}
             </button>
@@ -87,15 +76,15 @@ export default function Layout() {
             className={`mt-3 inline-flex items-center gap-2 rounded-full border border-cyan-900/70 bg-cyan-950/30 px-2.5 py-1 text-[11px] font-semibold text-cyan-200 ${
               isSidebarCollapsed ? 'justify-center w-full px-1' : ''
             }`}
-            title={`Gói ${PLAN_LABELS[userPlan] || 'Free'}`}
+            title={t('layout.currentPlan', { plan: currentPlanLabel })}
           >
             <span className="h-1.5 w-1.5 rounded-full bg-cyan-400" />
-            {!isSidebarCollapsed && `Gói ${PLAN_LABELS[userPlan] || 'Free'}`}
+            {!isSidebarCollapsed && t('layout.currentPlan', { plan: currentPlanLabel })}
           </div>
           {!isSidebarCollapsed && (userIdentity?.username || userIdentity?.email) && (
             <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950/60 px-2.5 py-2">
               <p className="truncate text-[11px] font-semibold text-gray-200">
-                {userIdentity?.username || 'Tài khoản'}
+                {userIdentity?.username || t('layout.account')}
               </p>
               {userIdentity?.email && (
                 <p className="mt-0.5 truncate text-[10px] text-gray-500">{userIdentity.email}</p>
@@ -108,7 +97,7 @@ export default function Layout() {
         {portfolios.length > 0 && !isSidebarCollapsed && (
           <div className="px-3 py-3 border-b border-gray-800">
             <label className="text-xs text-emerald-500 uppercase tracking-wider font-semibold block mb-1">
-              Danh mục
+              {t('layout.portfolio')}
             </label>
             <select
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-2 py-1.5
@@ -126,7 +115,7 @@ export default function Layout() {
 
         {/* Nav links */}
         <nav className="flex-1 px-2 py-3 space-y-0.5">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {navItems.map(({ to, label }) => (
             <NavLink
               key={to}
               to={to}
@@ -148,7 +137,7 @@ export default function Layout() {
           {/* Divider for Stock Management */}
           {!isSidebarCollapsed && (
             <div className="mt-6 mb-1 px-2">
-              <span className="text-xs text-emerald-500 uppercase tracking-wider font-semibold">Theo dõi thị trường</span>
+              <span className="text-xs text-emerald-500 uppercase tracking-wider font-semibold">{t('layout.marketTracking')}</span>
             </div>
           )}
           {stockManagementItems.map(({ to, label }) => (
@@ -173,7 +162,7 @@ export default function Layout() {
             <>
               {!isSidebarCollapsed && (
                 <div className="mt-6 mb-1 px-2">
-                  <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Công cụ</span>
+                  <span className="text-xs text-gray-500 uppercase tracking-wider font-semibold">{t('layout.tools')}</span>
                 </div>
               )}
               {toolItems.map(({ to, label }) => (
@@ -200,14 +189,29 @@ export default function Layout() {
 
         {/* Logout */}
         <div className="px-3 py-3 border-t border-gray-800">
+          {!isSidebarCollapsed && (
+            <div className="mb-3">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                {t('common.language')}
+              </label>
+              <select
+                value={locale}
+                onChange={(event) => setLanguage(event.target.value)}
+                className="w-full rounded-md border border-gray-700 bg-gray-800 px-2 py-1.5 text-xs text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                <option value="vi">{t('common.vietnamese')}</option>
+                <option value="en">{t('common.english')}</option>
+              </select>
+            </div>
+          )}
           <button
             onClick={logout}
             className={`w-full text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 ${
               isSidebarCollapsed ? 'text-center' : 'text-left'
             }`}
-            title="Đăng xuất"
+            title={t('layout.logout')}
           >
-            {isSidebarCollapsed ? '⎋' : 'Đăng xuất'}
+            {isSidebarCollapsed ? '⎋' : t('layout.logout')}
           </button>
         </div>
       </aside>

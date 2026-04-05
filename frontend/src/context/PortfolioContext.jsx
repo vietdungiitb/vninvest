@@ -10,7 +10,7 @@ import {
   resendVerification as resendVerificationRequest,
   refreshToken as refreshTokenRequest,
   getUserConfig,
-  updateUserConfig,
+  updateUserConfig as updateUserConfigRequest,
 } from '../api/auth';
 import apiClient from '../api/client';
 import { AbilityContext, createAbilityFromRules } from './AbilityContext';
@@ -134,6 +134,12 @@ export function PortfolioProvider({ children }) {
       return false;
     }
   }, [refreshTokenValue, logout]);
+
+  const updateUserConfig = useCallback(async (data) => {
+    const response = await updateUserConfigRequest(data);
+    setUserConfig(response.data);
+    return response;
+  }, []);
 
   const fetchPortfolios = useCallback(async () => {
     setLoading(true);

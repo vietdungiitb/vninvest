@@ -12,9 +12,11 @@ import AllocationPieChart from '../components/AllocationPieChart';
 import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
+import { useI18n } from '../context/LangContext';
 
 export default function Dashboard() {
   const { activePortfolioId } = usePortfolio();
+  const { t, formatDateTime } = useI18n();
 
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
@@ -54,10 +56,10 @@ export default function Dashboard() {
     try {
       const res = await syncPrices(activePortfolioId, 30);
       const total = res.data.total_symbols || 0;
-      setSyncMsg(`Đã đồng bộ ${total} mã chứng khoán.`);
+      setSyncMsg(t('dashboard.syncSuccess', { total }));
       await fetchData(); // reload sau sync
     } catch {
-      setSyncMsg('Đồng bộ thất bại, kiểm tra server.');
+      setSyncMsg(t('dashboard.syncError'));
     } finally {
       setSyncing(false);
       setTimeout(() => setSyncMsg(''), 4000);
@@ -70,7 +72,7 @@ export default function Dashboard() {
   if (!activePortfolioId) {
     return (
       <div className="flex items-center justify-center h-full text-gray-500">
-        Chưa có danh mục. Hãy tạo mới qua Django Admin.
+        {t('dashboard.noPortfolio')}
       </div>
     );
   }
@@ -81,11 +83,11 @@ export default function Dashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-100">
-            {summary?.portfolio_name ?? 'Đang tải...'}
+            {summary?.portfolio_name ?? t('common.loading')}
           </h1>
           {summary?.last_updated && (
             <p className="text-xs text-gray-500 mt-0.5">
-              Giá cập nhật lần cuối: {summary.last_updated}
+              {t('dashboard.lastUpdated', { value: formatDateTime(summary.last_updated) })}
             </p>
           )}
         </div>
@@ -103,10 +105,10 @@ export default function Dashboard() {
               <>
                 <span className="w-3.5 h-3.5 border-2 border-gray-500 border-t-brand-500
                                  rounded-full animate-spin inline-block" />
-                Đang đồng bộ...
+                {t('dashboard.syncingPrices')}
               </>
             ) : (
-              'Đồng bộ giá'
+              t('dashboard.syncPrices')
             )}
           </button>
         </div>
@@ -115,12 +117,12 @@ export default function Dashboard() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Tổng giá trị thị trường"
+          label={t('dashboard.marketValue')}
           value={summary?.total_market_value}
           loading={loadingSummary}
         />
         <StatCard
-          label="Lãi/Lỗ chưa chốt"
+          label={t('dashboard.unrealizedPL')}
           value={summary?.total_unrealized_pl}
           sub={summary ? `${parseFloat(summary.total_unrealized_pl_pct).toFixed(2)}%` : null}
           isPositive={unrealizedPL > 0}
@@ -128,14 +130,14 @@ export default function Dashboard() {
           loading={loadingSummary}
         />
         <StatCard
-          label="Lãi/Lỗ đã chốt"
+          label={t('dashboard.realizedPL')}
           value={summary?.total_realized_pl}
           isPositive={realizedPL > 0}
           isNegative={realizedPL < 0}
           loading={loadingSummary}
         />
         <StatCard
-          label="Cổ tức đã nhận"
+          label={t('dashboard.dividends')}
           value={summary?.total_dividends}
           loading={loadingSummary}
         />
@@ -156,7 +158,7 @@ export default function Dashboard() {
       {/* Holdings Table */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-          Vị thế đang nắm giữ
+          {t('dashboard.holdings')}
         </h2>
         <HoldingsTable holdings={holdings} loading={loadingHoldings} />
       </div>

@@ -14,6 +14,7 @@ import AdminOps from './pages/AdminOps';
 import Screener from './pages/Screener';
 import VerifyEmail from './pages/VerifyEmail';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
+import { LangProvider } from './context/LangContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function LoginPage() {
@@ -41,31 +42,33 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PortfolioProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/" element={<ProtectedLayout />}>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="upgrade" element={<Upgrade />} />
-            <Route path="stocks/:symbol" element={<StockDetail />} />
-            <Route
-              path="whale-advisory"
-              element={(
-                <ProtectedRoute action="read" subject="WhaleAdvisory">
-                  <WhaleAdvisory />
-                </ProtectedRoute>
-              )}
-            />
-            <Route path="whale-alerts" element={<WhaleAlertsHub />} />
-            <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="watchlist" element={<Watchlist />} />
-            <Route path="admin-ops" element={<AdminOps />} />
-            <Route path="screener" element={<Screener />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <LangProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
+            <Route path="/" element={<ProtectedLayout />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="upgrade" element={<Upgrade />} />
+              <Route path="stocks/:symbol" element={<StockDetail />} />
+              <Route
+                path="whale-advisory"
+                element={(
+                  <ProtectedRoute action="read" subject="WhaleAdvisory">
+                    <WhaleAdvisory />
+                  </ProtectedRoute>
+                )}
+              />
+              <Route path="whale-alerts" element={<WhaleAlertsHub />} />
+              <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="watchlist" element={<Watchlist />} />
+              <Route path="admin-ops" element={<AdminOps />} />
+              <Route path="screener" element={<Screener />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </LangProvider>
       </PortfolioProvider>
     </BrowserRouter>
   );

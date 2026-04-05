@@ -4,6 +4,7 @@
  */
 import React, { useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
+import { useI18n } from '../context/LangContext';
 
 // SVG icons nhỏ gọn cho Google / Facebook
 const GoogleIcon = () => (
@@ -62,31 +63,31 @@ function normalizeFieldErrors(errorData) {
   }, {});
 }
 
-function validateRegisterForm(form) {
+function validateRegisterForm(form, t) {
   const errors = {};
   const trimmedUsername = form.username.trim();
   const trimmedEmail = form.email.trim();
 
   if (!trimmedUsername) {
-    errors.username = 'Vui lòng nhập tên đăng nhập.';
+    errors.username = t('auth.validation.usernameRequired');
   } else if (!USERNAME_PATTERN.test(trimmedUsername)) {
-    errors.username = 'Username chỉ chứa chữ, số, gạch chân, 3-30 ký tự.';
+    errors.username = t('auth.validation.usernamePattern');
   }
 
   if (!trimmedEmail) {
-    errors.email = 'Vui lòng nhập email.';
+    errors.email = t('auth.validation.emailRequired');
   }
 
   if (!form.password) {
-    errors.password = 'Vui lòng nhập mật khẩu.';
+    errors.password = t('auth.validation.passwordRequired');
   } else if (form.password.length < 8) {
-    errors.password = 'Mật khẩu phải có ít nhất 8 ký tự.';
+    errors.password = t('auth.validation.passwordMinLength');
   }
 
   if (!form.passwordConfirm) {
-    errors.password_confirm = 'Vui lòng xác nhận mật khẩu.';
+    errors.password_confirm = t('auth.validation.passwordConfirmRequired');
   } else if (form.password !== form.passwordConfirm) {
-    errors.password_confirm = 'Mật khẩu xác nhận không khớp.';
+    errors.password_confirm = t('auth.validation.passwordConfirmMismatch');
   }
 
   return errors;
@@ -94,6 +95,7 @@ function validateRegisterForm(form) {
 
 export default function LoginModal({ onSuccess }) {
   const { login, register, resendVerification } = usePortfolio();
+  const { t } = useI18n();
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -140,7 +142,7 @@ export default function LoginModal({ onSuccess }) {
     }
 
     if (isRegisterMode) {
-      const validationErrors = validateRegisterForm(form);
+      const validationErrors = validateRegisterForm(form, t);
       if (Object.keys(validationErrors).length > 0) {
         setFieldErrors(validationErrors);
         return;
@@ -157,7 +159,7 @@ export default function LoginModal({ onSuccess }) {
           passwordConfirm: form.passwordConfirm,
         });
         setPendingIdentifier(response.email || form.email.trim() || form.username.trim());
-        setNotice(response.message || 'Dang ky thanh cong. Vui long kiem tra email de xac thuc tai khoan.');
+        setNotice(response.message || t('auth.registerSuccess'));
         setMode('login');
         setForm({
           username: form.username.trim(),
@@ -179,8 +181,8 @@ export default function LoginModal({ onSuccess }) {
         normalizeErrorMessage(
           errorData,
           isRegisterMode
-            ? 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.'
-            : 'Đăng nhập thất bại. Username/password: testuser/Test@123456',
+            ? t('auth.registerError')
+            : t('auth.loginError'),
         ),
       );
     } finally {
@@ -198,10 +200,10 @@ export default function LoginModal({ onSuccess }) {
     setError('');
     try {
       const response = await resendVerification(identifier);
-      setNotice(response.message || 'He thong da xu ly yeu cau gui lai email xac thuc.');
+      setNotice(response.message || t('auth.resendVerificationSuccess'));
     } catch (err) {
       const errorData = err.response?.data;
-      setError(normalizeErrorMessage(errorData, 'Khong gui lai duoc email xac thuc.'));
+      setError(normalizeErrorMessage(errorData, t('auth.resendVerificationError')));
     } finally {
       setResendLoading(false);
     }
@@ -216,7 +218,7 @@ export default function LoginModal({ onSuccess }) {
       <div className="w-full max-w-sm bg-gray-900 rounded-xl border border-gray-800 p-8">
         <h1 className="text-2xl font-bold text-brand-500 mb-1">VNInvest</h1>
         <p className="text-gray-400 text-sm mb-6">
-          {isRegisterMode ? 'Tạo tài khoản và xác thực email trước khi đăng nhập' : 'Đăng nhập để tiếp tục'}
+          {isRegisterMode ? t('auth.registerCta') : t('auth.loginCta')}
         </p>
 
         <div className="grid grid-cols-2 gap-2 p-1 mb-6 bg-gray-950 rounded-lg border border-gray-800">
@@ -228,7 +230,7 @@ export default function LoginModal({ onSuccess }) {
               !isRegisterMode ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            Đăng nhập
+            {t('auth.login')}
           </button>
           <button
             type="button"
@@ -238,13 +240,13 @@ export default function LoginModal({ onSuccess }) {
               isRegisterMode ? 'bg-brand-600 text-white' : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            Đăng ký
+            {t('auth.register')}
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Tên đăng nhập</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('auth.username')}</label>
             <input
               type="text"
               autoComplete="username"
@@ -264,7 +266,7 @@ export default function LoginModal({ onSuccess }) {
 
           {isRegisterMode && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Email</label>
+              <label className="block text-xs text-gray-400 mb-1.5">{t('auth.email')}</label>
               <input
                 type="email"
                 autoComplete="email"
@@ -281,7 +283,7 @@ export default function LoginModal({ onSuccess }) {
           )}
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">Mật khẩu</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('auth.password')}</label>
             <input
               type="password"
               autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
@@ -299,7 +301,7 @@ export default function LoginModal({ onSuccess }) {
 
           {isRegisterMode && (
             <div>
-              <label className="block text-xs text-gray-400 mb-1.5">Xác nhận mật khẩu</label>
+              <label className="block text-xs text-gray-400 mb-1.5">{t('auth.passwordConfirm')}</label>
               <input
                 type="password"
                 autoComplete="new-password"
@@ -328,7 +330,7 @@ export default function LoginModal({ onSuccess }) {
               disabled={resendLoading}
               className="w-full rounded-md border border-gray-700 bg-gray-950 px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:border-brand-500 hover:text-white disabled:opacity-50"
             >
-              {resendLoading ? 'Dang gui lai email xac thuc...' : 'Gui lai email xac thuc'}
+              {resendLoading ? t('auth.resendVerificationLoading') : t('auth.resendVerification')}
             </button>
           )}
 
@@ -339,27 +341,27 @@ export default function LoginModal({ onSuccess }) {
                        text-white font-semibold py-2 rounded-md text-sm transition-colors"
           >
             {loading
-              ? (isRegisterMode ? 'Đang tạo tài khoản...' : 'Đang đăng nhập...')
-              : (isRegisterMode ? 'Tạo tài khoản' : 'Đăng nhập')}
+              ? (isRegisterMode ? t('auth.submitRegisterLoading') : t('auth.submitLoginLoading'))
+              : (isRegisterMode ? t('auth.submitRegister') : t('auth.login'))}
           </button>
         </form>
 
         <p className="mt-4 text-xs text-gray-500 text-center">
-          {isRegisterMode ? 'Đã có tài khoản?' : 'Chưa có tài khoản?'}{' '}
+          {isRegisterMode ? t('auth.haveAccount') : t('auth.noAccount')}{' '}
           <button
             type="button"
             onClick={() => switchMode(isRegisterMode ? 'login' : 'register')}
             disabled={loading}
             className="text-brand-400 hover:text-brand-300 transition-colors"
           >
-            {isRegisterMode ? 'Quay lại đăng nhập' : 'Đăng ký ngay'}
+            {isRegisterMode ? t('auth.backToLogin') : t('auth.registerNow')}
           </button>
         </p>
 
         {/* Divider */}
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px bg-gray-800" />
-          <span className="text-xs text-gray-600">hoặc</span>
+          <span className="text-xs text-gray-600">{t('auth.or')}</span>
           <div className="flex-1 h-px bg-gray-800" />
         </div>
 
@@ -368,29 +370,29 @@ export default function LoginModal({ onSuccess }) {
           <button
             type="button"
             disabled
-            title="Sắp ra mắt"
+            title={t('auth.comingSoon')}
             className="w-full flex items-center gap-3 border border-gray-700 rounded-md
                        px-3 py-2 text-sm text-gray-500 cursor-not-allowed opacity-60
                        hover:border-gray-600 transition-colors"
           >
             <GoogleIcon />
-            <span className="flex-1 text-left">{isRegisterMode ? 'Đăng ký với Google' : 'Đăng nhập với Google'}</span>
+            <span className="flex-1 text-left">{isRegisterMode ? t('auth.registerWithGoogle') : t('auth.loginWithGoogle')}</span>
             <span className="text-[10px] bg-gray-800 text-gray-600 px-1.5 py-0.5 rounded-full">
-              Sắp ra mắt
+              {t('auth.comingSoon')}
             </span>
           </button>
           <button
             type="button"
             disabled
-            title="Sắp ra mắt"
+            title={t('auth.comingSoon')}
             className="w-full flex items-center gap-3 border border-gray-700 rounded-md
                        px-3 py-2 text-sm text-gray-500 cursor-not-allowed opacity-60
                        hover:border-gray-600 transition-colors"
           >
             <FacebookIcon />
-            <span className="flex-1 text-left">{isRegisterMode ? 'Đăng ký với Facebook' : 'Đăng nhập với Facebook'}</span>
+            <span className="flex-1 text-left">{isRegisterMode ? t('auth.registerWithFacebook') : t('auth.loginWithFacebook')}</span>
             <span className="text-[10px] bg-gray-800 text-gray-600 px-1.5 py-0.5 rounded-full">
-              Sắp ra mắt
+              {t('auth.comingSoon')}
             </span>
           </button>
         </div>

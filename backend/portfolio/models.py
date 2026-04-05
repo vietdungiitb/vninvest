@@ -594,6 +594,10 @@ class UserConfig(models.Model):
         PREMIUM = 'premium', 'Cao cấp'
         ADMIN   = 'admin',   'Quản trị viên'
 
+    class LanguageChoices(models.TextChoices):
+        VI = 'vi', 'Tiếng Việt'
+        EN = 'en', 'English'
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -612,6 +616,12 @@ class UserConfig(models.Model):
         choices=[('dark', 'Dark'), ('light', 'Light')],
         default='dark',
         verbose_name='Chủ đề giao diện',
+    )
+    language = models.CharField(
+        max_length=5,
+        choices=LanguageChoices.choices,
+        default=LanguageChoices.VI,
+        verbose_name='Ngôn ngữ giao diện',
     )
     plan = models.CharField(
         max_length=20,
