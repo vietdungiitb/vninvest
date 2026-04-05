@@ -1238,16 +1238,15 @@ export default function WatchlistPage() {
                         <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
                       ) : (
                         <div className="overflow-x-auto">
-                        <table className="w-full min-w-[1080px] text-sm">
+                        <table className="w-full min-w-[1020px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
-                          <th className="w-[120px] px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
+                          <th className="w-[180px] px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.whaleThresholdColumn')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.thresholdSourceColumn')}</th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableUpdatedAt')}</th>
                           <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                         </tr>
@@ -1264,7 +1263,7 @@ export default function WatchlistPage() {
                               </button>
                             </td>
                             <td
-                              className="w-[120px] max-w-[120px] px-4 py-3 text-gray-400 text-xs truncate"
+                              className="w-[180px] max-w-[180px] px-4 py-3 text-gray-400 text-xs truncate"
                               title={item.source_group_name || t('watchlist.manualAdded')}
                             >
                               {item.source_group_name || t('watchlist.manualAdded')}
@@ -1308,11 +1307,6 @@ export default function WatchlistPage() {
                                   {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
                                 </button>
                               )}
-                            </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                              {item.whale_alert_threshold_million == null
-                                ? t('watchlist.thresholdSourceUser')
-                                : t('watchlist.thresholdSourceSymbol')}
                             </td>
                             <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
                               {item.last_date || '—'}
