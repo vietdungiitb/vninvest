@@ -18,6 +18,21 @@ Validation:
 - `npx tsc --noEmit` PASS sau khi them Whale tab, Profile tab va AppState handling.
 - Git push `main` da xong cho commit tach Whale tab (`7483924e`).
 
+Smoke check bo sung (API/runtime, commit `f96daf60`):
+- Backend admin login page: HTTP 200.
+- Mobile auth contracts: `POST /api/auth/token/`, `GET /api/auth/me/`, `GET /api/portfolio/portfolios/` PASS voi user `mobiletest`.
+- Transactions flow PASS qua API:
+	- create transaction
+	- update transaction
+	- delete transaction
+- Watchlist flow PASS qua API:
+	- add tracked symbol tam thoi
+	- get watchlist groups
+	- goi whale aggregate feed
+	- delete tracked symbol va cleanup sach (tracked symbols tro ve rong)
+- Whale advisory refresh tra thong bao gate theo plan Pro, day la hanh vi nghiep vu dung, khong phai loi ky thuat.
+- Expo Metro da khoi dong thanh cong va tu dong chuyen sang port `8003` vi `8002` dang ban.
+
 Con mo khong the xac minh tu dong trong workspace nay:
 - iOS simulator runtime
 - Android/iOS cloud build artifact thuc te

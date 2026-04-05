@@ -20,6 +20,24 @@ Trang thai: READY FOR INTERNAL TEST
 - Android internal build profile: `preview`.
 - iOS simulator build profile: `simulator`.
 
+## 2.1 Smoke verification da chay trong local workspace
+
+- Auth/API smoke PASS voi user `mobiletest`:
+	- login token
+	- `GET /api/auth/me/`
+	- `GET /api/portfolio/portfolios/`
+- Transactions smoke PASS:
+	- create
+	- update
+	- delete
+- Watchlist smoke PASS:
+	- add tracked symbol
+	- get groups
+	- whale aggregate query
+	- remove tracked symbol
+- Whale advisory refresh endpoint tra message gate theo plan Pro, duoc xem la dung nghiep vu.
+- Expo Metro dev server da len thanh cong, port runtime hien tai: `8003`.
+
 ## 3. Huong dan build nhanh
 
 Tu thu muc `mobile-app/`:
