@@ -7,7 +7,7 @@ Decision owner: Product Owner (chu tri)
 Technical owner: Tech Lead (thuc thi)
 Go-to-market owner: Growth Lead (goi va kenh)
 Compliance owner: Legal/Compliance (policy va claim)
-Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_DISCUSSION.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_08_RISK_REGISTER_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md, LANGUAGE_POLICY_V1.md
+Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_DISCUSSION.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_08_RISK_REGISTER_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md, OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md, LANGUAGE_POLICY_V1.md
 
 ## 1. Decision scope
 Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
@@ -38,10 +38,13 @@ Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
 - Pro (paid annual): dung vnstock private da toi uu throughput.
 - Van hanh theo dual-source guardrails (tham chieu OC-10).
 
+## 7. Numeric baseline
+- Pricing/quota/trial/SLO da duoc lock trong OC-11 cho V1 execution.
+
 ## 3. Locked scope for next phase
 1. License decision target: Apache-2.0 (final legal confirmation required).
 2. Pricing structure: 3-tier (Community / Pro Individual / Pro Team), annual-first.
-3. Trial policy target: 14 ngay + grace period 7 ngay + read-only after grace.
+3. Trial policy target: 7 ngay + grace period 7 ngay + disable premium and keep free flow after grace.
 4. Feature boundary lock phai theo OC-05 (V1 matrix).
 5. Docker Community MVP scope lock theo OC-09.
 6. Vnstock dual-source lock theo OC-10.
@@ -58,9 +61,7 @@ Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
 3. T+30 ngay: complete Pha 1 goals in OC-03.
 
 ## 6. Open items for V1.1 (not blocking baseline)
-1. Final numeric pricing (currency and exact annual amount).
-2. Pro SLO numeric thresholds (latency/error budgets).
-3. Final support SLA package wording.
+1. Final support SLA package wording.
 
 ## 7. Next review checkpoint
 - Review date target: 2026-04-14 (weekly governance checkpoint).
