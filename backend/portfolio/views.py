@@ -630,8 +630,31 @@ class IntradayMatchedView(APIView):
                     'rate_limited': True,
                     'fetched_at': timezone.now().isoformat(),
                 })
+            if exc.code == 'vnstock_timeout':
+                return Response({
+                    'symbol': normalized_symbol,
+                    'trades': [],
+                    'total': 0,
+                    'source': 'timeout',
+                    'fetched_at': timezone.now().isoformat(),
+                })
             logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu khớp lệnh: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({
+                'symbol': normalized_symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'vnstock_unavailable',
+                'fetched_at': timezone.now().isoformat(),
+            })
+        except Exception as exc:
+            logger.exception('IntradayMatchedView unexpected error %s: %s', normalized_symbol, exc)
+            return Response({
+                'symbol': normalized_symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'error',
+                'fetched_at': timezone.now().isoformat(),
+            })
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'trades': [], 'total': 0, 'fetched_at': timezone.now().isoformat()})
@@ -719,8 +742,13 @@ class PriceBoardView(APIView):
             if exc.code == 'vnstock_rate_limited':
                 _mark_vnstock_rate_limited('price_board', exc)
                 return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
+            if exc.code == 'vnstock_timeout':
+                return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'timeout', 'fetched_at': timezone.now().isoformat()})
             logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': f'Không lấy được dữ liệu sổ lệnh: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_unavailable', 'fetched_at': timezone.now().isoformat()})
+        except Exception as exc:
+            logger.exception('PriceBoardView unexpected fetch error %s: %s', normalized_symbol, exc)
+            return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'error', 'fetched_at': timezone.now().isoformat()})
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}})
@@ -741,8 +769,12 @@ class PriceBoardView(APIView):
             except (TypeError, ValueError):
                 return None
 
-        ba = df['bid_ask'].iloc[0]
-        mt = df['match'].iloc[0]
+        try:
+            ba = df['bid_ask'].iloc[0]
+            mt = df['match'].iloc[0]
+        except Exception as exc:
+            logger.warning('PriceBoardView malformed payload %s: %s', normalized_symbol, exc)
+            return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'payload_invalid', 'fetched_at': timezone.now().isoformat()})
 
         depth = []
         for i in range(1, 4):
@@ -1627,7 +1659,26 @@ class FinancialMetricsView(APIView):
             )
         except ExternalSystemException as exc:
             logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
-            return Response({'detail': str(exc.message)}, status=status.HTTP_502_BAD_GATEWAY)
+            if exc.code == 'vnstock_missing':
+                return Response({'detail': str(exc.message)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            return Response(
+                {
+                    'symbol': normalized_symbol,
+                    'years': [],
+                    'source': 'vnstock_unavailable',
+                    'fetched_at': timezone.now().isoformat(),
+                }
+            )
+        except Exception as exc:
+            logger.exception('FinancialMetricsView unexpected lỗi %s: %s', normalized_symbol, exc)
+            return Response(
+                {
+                    'symbol': normalized_symbol,
+                    'years': [],
+                    'source': 'error',
+                    'fetched_at': timezone.now().isoformat(),
+                }
+            )
 
         if df is None or df.empty:
             return Response({'symbol': normalized_symbol, 'years': []})
@@ -1642,29 +1693,42 @@ class FinancialMetricsView(APIView):
             except (TypeError, ValueError):
                 return None
 
+        def _parse_year(value):
+            if value is None:
+                return None
+            try:
+                return int(float(value))
+            except (TypeError, ValueError):
+                match = re.search(r'\d{4}', str(value))
+                return int(match.group(0)) if match else None
+
         years = []
-        for _, row in df.head(5).iterrows():
-            year_val = row.get(('Meta', 'Năm')) or row.get('Năm')
-            years.append({
-                'year': int(year_val) if year_val else None,
-                # Định giá
-                'eps':         _f(row, ('Chỉ tiêu định giá', 'EPS (VND)')),
-                'pe':          _f(row, ('Chỉ tiêu định giá', 'P/E')),
-                'pb':          _f(row, ('Chỉ tiêu định giá', 'P/B')),
-                'ps':          _f(row, ('Chỉ tiêu định giá', 'P/S')),
-                'bvps':        _f(row, ('Chỉ tiêu định giá', 'BVPS (VND)')),
-                'market_cap_bn': _f(row, ('Chỉ tiêu định giá', 'Vốn hóa (Tỷ đồng)')),
-                # Sinh lời
-                'roe':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROE (%)')),
-                'roa':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROA (%)')),
-                'net_margin':    _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Biên lợi nhuận ròng (%)')),
-                'dividend_yield': _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Tỷ suất cổ tức (%)')),
-                # Thanh khoản / đòn bẩy
-                'leverage':      _f(row, ('Chỉ tiêu thanh khoản', 'Đòn bẩy tài chính')),
-                'current_ratio': _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán hiện hành')),
-                'quick_ratio':   _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán nhanh')),
-                'debt_equity':   _f(row, ('Chỉ tiêu thanh khoản', 'Nợ/Vốn chủ sở hữu')),
-            })
+        try:
+            for _, row in df.head(5).iterrows():
+                year_val = row.get(('Meta', 'Năm')) or row.get('Năm') or row.get('year')
+                years.append({
+                    'year': _parse_year(year_val),
+                    # Định giá
+                    'eps':         _f(row, ('Chỉ tiêu định giá', 'EPS (VND)')),
+                    'pe':          _f(row, ('Chỉ tiêu định giá', 'P/E')),
+                    'pb':          _f(row, ('Chỉ tiêu định giá', 'P/B')),
+                    'ps':          _f(row, ('Chỉ tiêu định giá', 'P/S')),
+                    'bvps':        _f(row, ('Chỉ tiêu định giá', 'BVPS (VND)')),
+                    'market_cap_bn': _f(row, ('Chỉ tiêu định giá', 'Vốn hóa (Tỷ đồng)')),
+                    # Sinh lời
+                    'roe':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROE (%)')),
+                    'roa':           _f(row, ('Chỉ tiêu khả năng sinh lợi', 'ROA (%)')),
+                    'net_margin':    _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Biên lợi nhuận ròng (%)')),
+                    'dividend_yield': _f(row, ('Chỉ tiêu khả năng sinh lợi', 'Tỷ suất cổ tức (%)')),
+                    # Thanh khoản / đòn bẩy
+                    'leverage':      _f(row, ('Chỉ tiêu thanh khoản', 'Đòn bẩy tài chính')),
+                    'current_ratio': _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán hiện hành')),
+                    'quick_ratio':   _f(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán nhanh')),
+                    'debt_equity':   _f(row, ('Chỉ tiêu thanh khoản', 'Nợ/Vốn chủ sở hữu')),
+                })
+        except Exception as exc:
+            logger.exception('FinancialMetricsView parse lỗi %s: %s', normalized_symbol, exc)
+            return Response({'detail': 'Không parse được dữ liệu tài chính từ nguồn realtime.'}, status=status.HTTP_502_BAD_GATEWAY)
 
         result = {
             'symbol': normalized_symbol,
@@ -2520,13 +2584,54 @@ class StockWorkspaceOverviewView(APIView):
 
     def get(self, request, symbol):
         normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol:
+            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = StockProfile.objects.filter(symbol=normalized_symbol).first()
+        if not profile:
+            return Response({'detail': 'Không tìm thấy mã chứng khoán.'}, status=status.HTTP_404_NOT_FOUND)
 
         cache_key = f'overview:{normalized_symbol}'
         cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        payload = _build_stock_workspace_overview(symbol, request.user)
+        try:
+            payload = _build_stock_workspace_overview(symbol, request.user)
+        except Exception as exc:
+            logger.exception('StockWorkspaceOverviewView base payload lỗi %s: %s', normalized_symbol, exc)
+            payload = {
+                'tracked_symbol_id': None,
+                'symbol': profile.symbol,
+                'company_name': profile.company_name or '',
+                'industry': profile.industry or '',
+                'exchange': profile.exchange or '',
+                'listed_date': profile.listed_date,
+                'is_active': profile.is_active,
+                'updated_at': profile.updated_at,
+                'current_price': None,
+                'prev_price': None,
+                'change_value': None,
+                'change_pct': None,
+                'last_date': None,
+                'open_price': None,
+                'high_price': None,
+                'low_price': None,
+                'close_price': None,
+                'volume': None,
+                'average_price': None,
+                'reference_price': None,
+                'ceiling_price': None,
+                'floor_price': None,
+                'week52_high': None,
+                'week52_low': None,
+                'is_tracked': False,
+                'source_group_name': None,
+                'market_groups': [],
+                'watchlist_groups': [],
+                'market_group_refs': [],
+                'watchlist_memberships': [],
+            }
         try:
             df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
             if df is not None and not df.empty:
@@ -2592,6 +2697,8 @@ class StockWorkspaceOverviewView(APIView):
 
         except ExternalSystemException as exc:
             logger.warning('StockWorkspaceOverviewView vnstock overlay lỗi %s: %s', normalized_symbol, exc)
+        except Exception as exc:
+            logger.debug('StockWorkspaceOverviewView overlay parse lỗi %s: %s', normalized_symbol, exc)
 
         # 52W high/low thực từ vnstock history (1D, 365 ngày)
         try:
@@ -2616,6 +2723,8 @@ class StockWorkspaceOverviewView(APIView):
                     payload['week52_low'] = w52_low
         except ExternalSystemException as exc4:
             logger.debug('StockWorkspaceOverviewView 52W overlay lỗi %s: %s', normalized_symbol, exc4)
+        except Exception as exc4:
+            logger.debug('StockWorkspaceOverviewView 52W parse lỗi %s: %s', normalized_symbol, exc4)
 
         # Nếu company_name / exchange vẫn trống, thử lấy từ listing.all_symbols
         if not payload.get('company_name'):
@@ -2629,6 +2738,8 @@ class StockWorkspaceOverviewView(APIView):
                             payload['company_name'] = name
             except ExternalSystemException as exc3:
                 logger.debug('StockWorkspaceOverviewView listing overlay lỗi %s: %s', normalized_symbol, exc3)
+            except Exception as exc3:
+                logger.debug('StockWorkspaceOverviewView listing parse lỗi %s: %s', normalized_symbol, exc3)
 
         serialized = StockWorkspaceOverviewSerializer(payload).data
         _cache_set(cache_key, serialized, timeout=12)

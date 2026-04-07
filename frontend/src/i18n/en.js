@@ -96,6 +96,7 @@ const en = {
     createPortfolioCta: '+ Create your first portfolio',
     lastUpdated: 'Last price sync: {value}',
     syncPrices: 'Sync prices',
+    syncPricesLive: 'Sync prices live',
     syncingPrices: 'Syncing...',
     syncSuccess: 'Synced {total} symbols.',
     syncError: 'Sync failed. Please check the server.',

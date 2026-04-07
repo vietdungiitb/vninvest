@@ -151,13 +151,33 @@ class MarketDataService:
                 return self._build_intraday_backoff_response(normalized_symbol)
             if exc.code == 'vnstock_timeout':
                 record_market_external_timeout('intraday-matched')
+                return {
+                    'symbol': normalized_symbol,
+                    'trades': [],
+                    'total': 0,
+                    'source': 'timeout',
+                    'fetched_at': timezone.now().isoformat(),
+                }
             if exc.code == 'vnstock_missing':
                 raise exc
-            raise ExternalSystemException(
-                f'Không lấy được dữ liệu khớp lệnh: {exc.message}',
-                code=exc.code,
-                payload=exc.payload,
-            ) from exc
+            record_market_fallback('intraday-matched', 'vnstock_unavailable')
+            return {
+                'symbol': normalized_symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'vnstock_unavailable',
+                'fetched_at': timezone.now().isoformat(),
+            }
+        except Exception as exc:
+            logger.warning('get_intraday_matched unexpected error %s: %s', normalized_symbol, exc)
+            record_market_fallback('intraday-matched', 'error')
+            return {
+                'symbol': normalized_symbol,
+                'trades': [],
+                'total': 0,
+                'source': 'error',
+                'fetched_at': timezone.now().isoformat(),
+            }
 
         if df is None or df.empty:
             return {
@@ -209,19 +229,50 @@ class MarketDataService:
                 }
             if exc.code == 'vnstock_timeout':
                 record_market_external_timeout('price-board')
+                return {
+                    'symbol': normalized_symbol,
+                    'depth': [],
+                    'match': {},
+                    'source': 'timeout',
+                    'fetched_at': timezone.now().isoformat(),
+                }
             if exc.code == 'vnstock_missing':
                 raise exc
-            raise ExternalSystemException(
-                f'Không lấy được dữ liệu sổ lệnh: {exc.message}',
-                code=exc.code,
-                payload=exc.payload,
-            ) from exc
+            record_market_fallback('price-board', 'vnstock_unavailable')
+            return {
+                'symbol': normalized_symbol,
+                'depth': [],
+                'match': {},
+                'source': 'vnstock_unavailable',
+                'fetched_at': timezone.now().isoformat(),
+            }
+        except Exception as exc:
+            logger.warning('get_price_board unexpected error %s: %s', normalized_symbol, exc)
+            record_market_fallback('price-board', 'error')
+            return {
+                'symbol': normalized_symbol,
+                'depth': [],
+                'match': {},
+                'source': 'error',
+                'fetched_at': timezone.now().isoformat(),
+            }
 
         if df is None or df.empty:
             return {'symbol': normalized_symbol, 'depth': [], 'match': {}}
 
-        bid_ask = df['bid_ask'].iloc[0]
-        match = df['match'].iloc[0]
+        try:
+            bid_ask = df['bid_ask'].iloc[0]
+            match = df['match'].iloc[0]
+        except Exception as exc:
+            logger.warning('get_price_board malformed payload %s: %s', normalized_symbol, exc)
+            record_market_fallback('price-board', 'payload_invalid')
+            return {
+                'symbol': normalized_symbol,
+                'depth': [],
+                'match': {},
+                'source': 'payload_invalid',
+                'fetched_at': timezone.now().isoformat(),
+            }
 
         depth = []
         for level in range(1, 4):
@@ -899,21 +950,40 @@ class MarketDataService:
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_missing':
                 raise exc
-            raise ExternalSystemException(
-                f'Không lấy được dữ liệu tài chính: {exc.message}',
-                code=exc.code,
-                payload=exc.payload,
-            ) from exc
+            return {
+                'symbol': normalized_symbol,
+                'years': [],
+                'source': 'vnstock_unavailable',
+                'fetched_at': timezone.now().isoformat(),
+            }
+        except Exception as exc:
+            logger.warning('get_financial_metrics unexpected error %s: %s', normalized_symbol, exc)
+            return {
+                'symbol': normalized_symbol,
+                'years': [],
+                'source': 'error',
+                'fetched_at': timezone.now().isoformat(),
+            }
 
         if df is None or df.empty:
             return {'symbol': normalized_symbol, 'years': []}
 
+        def _parse_year(value):
+            if value is None:
+                return None
+            try:
+                return int(float(value))
+            except (TypeError, ValueError):
+                match = re.search(r'\d{4}', str(value))
+                return int(match.group(0)) if match else None
+
         years = []
-        for _, row in df.head(5).iterrows():
-            year_value = row.get(('Meta', 'Năm')) or row.get('Năm')
-            years.append(
-                {
-                    'year': int(year_value) if year_value else None,
+        try:
+            for _, row in df.head(5).iterrows():
+                year_value = row.get(('Meta', 'Năm')) or row.get('Năm') or row.get('year')
+                years.append(
+                    {
+                        'year': _parse_year(year_value),
                     'eps': self._row_float(row, ('Chỉ tiêu định giá', 'EPS (VND)')),
                     'pe': self._row_float(row, ('Chỉ tiêu định giá', 'P/E')),
                     'pb': self._row_float(row, ('Chỉ tiêu định giá', 'P/B')),
@@ -928,8 +998,16 @@ class MarketDataService:
                     'current_ratio': self._row_float(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán hiện hành')),
                     'quick_ratio': self._row_float(row, ('Chỉ tiêu thanh khoản', 'Hệ số thanh toán nhanh')),
                     'debt_equity': self._row_float(row, ('Chỉ tiêu thanh khoản', 'Nợ/Vốn chủ sở hữu')),
-                }
-            )
+                    }
+                )
+        except Exception as exc:
+            logger.warning('get_financial_metrics parse error %s: %s', normalized_symbol, exc)
+            return {
+                'symbol': normalized_symbol,
+                'years': [],
+                'source': 'payload_invalid',
+                'fetched_at': timezone.now().isoformat(),
+            }
 
         result = {
             'symbol': normalized_symbol,
@@ -948,7 +1026,13 @@ class MarketDataService:
 
         from .serializers import StockWorkspaceOverviewSerializer
 
-        payload = self._build_stock_workspace_overview_base(normalized_symbol, user)
+        try:
+            payload = self._build_stock_workspace_overview_base(normalized_symbol, user)
+        except Exception as exc:
+            raise ExternalSystemException(
+                'Không tạo được dữ liệu tổng quan cổ phiếu.',
+                code='overview_payload_failed',
+            ) from exc
 
         try:
             df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
@@ -1000,6 +1084,8 @@ class MarketDataService:
                     payload['average_price'] = round(sum(prices) / len(prices), 2)
         except ExternalSystemException as exc:
             logger.warning('StockWorkspaceOverview refactor price-board overlay lỗi %s: %s', normalized_symbol, exc)
+        except Exception as exc:
+            logger.debug('StockWorkspaceOverview refactor overlay parse lỗi %s: %s', normalized_symbol, exc)
 
         try:
             end_date = timezone.localdate().strftime('%Y-%m-%d')
@@ -1021,6 +1107,8 @@ class MarketDataService:
                     payload['week52_low'] = week52_low
         except ExternalSystemException as exc:
             logger.debug('StockWorkspaceOverview refactor 52W overlay lỗi %s: %s', normalized_symbol, exc)
+        except Exception as exc:
+            logger.debug('StockWorkspaceOverview refactor 52W parse lỗi %s: %s', normalized_symbol, exc)
 
         if not payload.get('company_name'):
             try:
@@ -1033,6 +1121,8 @@ class MarketDataService:
                             payload['company_name'] = company_name
             except ExternalSystemException as exc:
                 logger.debug('StockWorkspaceOverview refactor listing overlay lỗi %s: %s', normalized_symbol, exc)
+            except Exception as exc:
+                logger.debug('StockWorkspaceOverview refactor listing parse lỗi %s: %s', normalized_symbol, exc)
 
         serialized = StockWorkspaceOverviewSerializer(payload).data
         set_cache(cache_key, serialized, timeout=12)

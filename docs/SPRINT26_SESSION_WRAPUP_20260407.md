@@ -211,3 +211,35 @@ See you for Sprint27! 🎉
 ---
 
 Generated: 2026-04-07 | Dung Pham (AI Agent) | vninvest OpenCore Integration
+
+---
+
+## 🔧 Hotfix Log (Late Session - 2026-04-07)
+
+### Realtime/UI Stability Fixes
+
+- Fixed frontend runtime error `fmtCompact is not defined` in Whale Alerts dashboard.
+- Added missing i18n key `dashboard.syncPricesLive` for both Vietnamese and English locale packs.
+- Added `frontend/public/favicon.ico` to remove 404 favicon noise in browser console.
+
+### API Resilience Hardening
+
+- Hardened overview/financials endpoints to avoid unexpected 500 crashes from upstream/provider payload issues.
+- Added guarded fallback handling in both legacy and refactored market data paths.
+- Standardized realtime degradation behavior:
+  - `price-board` and `intraday` return fallback payloads with `source` marker instead of hard 502 for transient provider failures.
+  - `financials` returns safe payload (`years: []`) when provider is unavailable.
+
+### Additional Regression Coverage
+
+- Added targeted tests for:
+  - overview fallback when base builder crashes,
+  - financial metrics fallback on unexpected provider exception,
+  - realtime `price-board` fallback behavior,
+  - realtime `intraday` fallback behavior.
+
+### Runtime Verification
+
+- Restarted full stack (`start_test_stack.ps1`) after each fix batch.
+- Verified newly added fallback tests pass.
+- Current status: no blocker errors reported for Sprint26 scope; remaining upstream data intermittency is now degraded gracefully.

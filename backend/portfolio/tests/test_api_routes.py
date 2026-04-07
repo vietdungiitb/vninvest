@@ -2722,6 +2722,35 @@ class ApiRouteSmokeTests(APITestCase):
         mock_get_price_board.assert_called_once_with('VNM')
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks')
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_realtime_intraday_refactored_returns_200_fallback_on_provider_exception(self, mock_fetch_intraday, mock_read_stream):
+        self.authenticate()
+        mock_read_stream.return_value = []
+        mock_fetch_intraday.side_effect = RuntimeError('upstream broken')
+
+        response = self.client.get('/api/realtime/intraday/BCM/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['trades'], [])
+        self.assertIn('source', response.data)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.fetch_price_board_dataframe')
+    def test_price_board_refactored_returns_200_fallback_on_provider_exception(self, mock_fetch_price_board):
+        self.authenticate()
+        mock_fetch_price_board.side_effect = RuntimeError('upstream broken')
+
+        response = self.client.get('/api/realtime/price-board/BCM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['depth'], [])
+        self.assertEqual(response.data['match'], {})
+        self.assertIn('source', response.data)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_sector_breadth')
     def test_sector_breadth_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_sector_breadth):
         self.authenticate()
@@ -2752,6 +2781,37 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_rvol.assert_called_once_with('VNM')
+
+    @patch('portfolio.views.fetch_price_board_dataframe')
+    @patch('portfolio.views._cache_get')
+    def test_price_board_legacy_returns_200_fallback_on_provider_exception(self, mock_cache_get, mock_fetch_price_board):
+        self.authenticate()
+        mock_cache_get.return_value = None
+        mock_fetch_price_board.side_effect = RuntimeError('upstream broken')
+
+        response = self.client.get('/api/realtime/price-board/BCM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['depth'], [])
+        self.assertEqual(response.data['match'], {})
+        self.assertIn('source', response.data)
+
+    @patch('portfolio.realtime.stream_reader.StreamReader.get_intraday_ticks')
+    @patch('portfolio.views.fetch_intraday_dataframe')
+    @patch('portfolio.views._cache_get')
+    def test_intraday_legacy_returns_200_fallback_on_provider_exception(self, mock_cache_get, mock_fetch_intraday, mock_get_intraday_ticks):
+        self.authenticate()
+        mock_cache_get.return_value = None
+        mock_get_intraday_ticks.return_value = []
+        mock_fetch_intraday.side_effect = RuntimeError('upstream broken')
+
+        response = self.client.get('/api/realtime/intraday/BCM/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['trades'], [])
+        self.assertIn('source', response.data)
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_whale_feed')
@@ -3010,6 +3070,59 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_stock_workspace_overview.assert_called_once_with(self.user, 'VNM')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_stock_workspace_overview')
+    def test_stock_workspace_overview_refactored_returns_502_on_unexpected_exception(self, mock_get_stock_workspace_overview):
+        self.authenticate()
+        mock_get_stock_workspace_overview.side_effect = RuntimeError('boom')
+
+        response = self.client.get('/api/stock-management/stocks/VNM/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
+        self.assertIn('detail', response.data)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_views.market_data_service.get_financial_metrics')
+    def test_financial_metrics_refactored_returns_502_on_unexpected_exception(self, mock_get_financial_metrics):
+        self.authenticate()
+        mock_get_financial_metrics.return_value = {
+            'symbol': 'VNM',
+            'years': [],
+            'source': 'error',
+            'fetched_at': '2026-04-05T10:00:00+07:00',
+        }
+
+        response = self.client.get('/api/stock-management/stocks/VNM/financials/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        self.assertEqual(response.data['years'], [])
+
+    @patch('portfolio.views.fetch_financial_ratio_dataframe')
+    def test_financial_metrics_returns_502_on_unexpected_provider_exception(self, mock_fetch_financials):
+        self.authenticate()
+        mock_fetch_financials.side_effect = RuntimeError('provider broken')
+
+        response = self.client.get('/api/stock-management/stocks/VNM/financials/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        self.assertEqual(response.data['years'], [])
+        self.assertIn('source', response.data)
+
+    @patch('portfolio.views._build_stock_workspace_overview')
+    def test_stock_workspace_overview_fallback_when_base_builder_crashes(self, mock_build_overview):
+        self.authenticate()
+        StockProfile.objects.create(symbol='VNM', company_name='Vinamilk')
+        mock_build_overview.side_effect = RuntimeError('unexpected error')
+
+        response = self.client.get('/api/stock-management/stocks/VNM/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        self.assertIn('current_price', response.data)
+        self.assertIn('market_groups', response.data)
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_stock_workspace_chart')

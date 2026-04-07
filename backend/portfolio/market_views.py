@@ -22,7 +22,10 @@ class BaseMarketDataView(APIView):
         if isinstance(exc, ExternalSystemException):
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
             return Response({'detail': exc.message, **exc.payload}, status=http_status)
-        raise exc
+        return Response(
+            {'detail': 'Lỗi ngoài dự kiến từ dịch vụ dữ liệu thị trường.'},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
 
     def validate_query(self, serializer_class, query_params):
         serializer = serializer_class(data=query_params)
