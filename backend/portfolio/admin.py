@@ -1082,6 +1082,25 @@ class SystemEmailAccountAdminForm(forms.ModelForm):
         model = SystemEmailAccount
         exclude = ('password_ciphertext', 'google_client_secret_ciphertext', 'google_refresh_token_ciphertext')
 
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # Persist raw secret inputs onto the instance before model validation runs.
+        # Model.clean() checks encrypted fields, not the transient form fields.
+        raw_password = cleaned_data.get('smtp_password')
+        if raw_password:
+            self.instance.set_smtp_password(raw_password)
+
+        raw_google_secret = cleaned_data.get('google_client_secret')
+        if raw_google_secret:
+            self.instance.set_google_client_secret(raw_google_secret)
+
+        raw_refresh_token = cleaned_data.get('google_refresh_token')
+        if raw_refresh_token:
+            self.instance.set_google_refresh_token(raw_refresh_token)
+
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         raw_password = self.cleaned_data.get('smtp_password')
