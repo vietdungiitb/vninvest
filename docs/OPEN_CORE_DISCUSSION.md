@@ -1,5 +1,8 @@
 # OPEN CORE THAO LUAN - Vninvest
 
+Doc ID: OC-01
+Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, LANGUAGE_POLICY_V1.md
+
 Ngay cap nhat: 2026-04-07
 
 ## 1. Muc tieu
