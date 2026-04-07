@@ -124,7 +124,7 @@ Use stack file: `portainer-stack-nginx-proxy.yml`
 
 ### 9.1 Prepare shared Docker network
 
-Your existing proxy stack usually has a shared external network (for example `nginx-proxy`).
+Your existing proxy stack usually has a shared external network (for example `nginx-proxy_default`).
 In Portainer, check the exact network name used by `nginx_proxy`, then use that value for `PROXY_NETWORK`.
 
 ### 9.2 Portainer deploy steps
@@ -141,7 +141,7 @@ In Portainer, check the exact network name used by `nginx_proxy`, then use that 
 
 - `DOMAIN=vninvest.edusuccess.vn`
 - `LETSENCRYPT_EMAIL=vietdung@edusuccess.vn`
-- `PROXY_NETWORK=nginx-proxy`
+- `PROXY_NETWORK=nginx-proxy_default`
 - `POSTGRES_DB=vninvest`
 - `POSTGRES_USER=postgres`
 - `POSTGRES_PASSWORD=<strong_db_password>`

@@ -202,4 +202,4 @@ networks:
   app_net:
   proxy_net:
     external: true
-    name: ${PROXY_NETWORK}
+    name: ${PROXY_NETWORK:-nginx-proxy_default}
