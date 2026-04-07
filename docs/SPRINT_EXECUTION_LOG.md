@@ -21,6 +21,66 @@ Next action:
 1. Bat dau S24-01 (single source quote state) theo plan.
 2. Cap nhat evidence vao sprint log sau moi story.
 
+Cap nhat huong Sprint 24 (2026-04-05 toi):
+- Dieu chinh scope Sprint 24 theo muc tieu trust + user decision-control.
+- Da mo rong backlog them S24-06..S24-10:
+	- Decision card explainability
+	- Data freshness badge
+	- Action checklist truoc quyet dinh
+	- User risk mode control
+	- Recommendation history mini (T+1/T+3/T+5)
+- Da mo rong acceptance gates voi nhom F (Trust and decision-control gates).
+- Timebox cap nhat tu 7 ngay len 10 ngay lam viec de dam bao quality gate day du.
+- Da tao artifact user stories chi tiet (INVEST + Given/When/Then):
+	- `docs/SPRINT24_TRUST_DECISION_STORIES.md`
+- Da tao artifact van hanh de vao sprint ngay:
+	- `docs/SPRINT24_QA_TEST_CHECKLIST_TRUST_DECISION.md`
+	- `docs/SPRINT24_DAILY_STANDUP_TEMPLATE.md`
+- Da tao breakdown coding chi tiet de implement theo story/PR/dependency:
+	- `docs/SPRINT24_CODING_BREAKDOWN_PLAN.md`
+
+Cap nhat coding Sprint 24 - PR1 (2026-04-05 dem):
+- Da bat dau implementation S24-01 + S24-02 tren frontend:
+	- Hoist realtime quote state len `frontend/src/pages/Dashboard.jsx`
+	- Tao shared selector cho live overlay: `frontend/src/utils/dashboardRealtimeSelectors.js`
+	- Wire live overlay vao `frontend/src/components/HoldingsTable.jsx` + StatCards binding cung source
+- Evidence quality:
+	- `cd frontend && npm run build` -> PASS
+
+Cap nhat coding Sprint 24 - Trust track wire-up (2026-04-05 khuya):
+- Da wire cac component S24-06..S24-10 vao `frontend/src/pages/WhaleAdvisory.jsx`:
+	- `RecommendationCardExplainability`
+	- `DataFreshnessBadge`
+	- `ActionChecklist`
+	- `RiskModeSelector` (co localStorage persistence + advisory filtering)
+	- `RecommendationHistoryMini` (active symbol)
+- Da cap nhat API client de ho tro query params cho advisory history:
+	- `getWhaleAdvisories(params)` trong `frontend/src/api/client.js`
+- Evidence quality:
+	- `cd frontend && npx react-scripts build` -> PASS
+
+Cap nhat coding Sprint 24 - Runtime evidence + telemetry persistence (2026-04-05 rat khuya):
+- Da mo rong realtime metrics frontend trong `frontend/src/hooks/useRealtimeFeedLegacy.js`:
+	- `uiRefreshP95Ms`
+	- `staleRatioPct`
+	- `fallbackRatioPct`
+- Da hien thi p95/stale/fallback badges trong `frontend/src/components/DashboardRealtimePanel.jsx`.
+- Da persist trust telemetry vao localStorage trong `frontend/src/hooks/useTrustTelemetry.js` (counter + event log).
+- Da them panel quan sat telemetry tren UI:
+	- `frontend/src/components/advisory/TrustTelemetryPanel.jsx`
+	- wire vao `frontend/src/pages/WhaleAdvisory.jsx`.
+- Evidence quality:
+	- `cd frontend && npx react-scripts build` -> PASS
+
+Cap nhat Sprint 24 - Evidence collection run (2026-04-05 cuoi ngay):
+- Da chay thu thap artifact vao `docs/ops-evidence/sprint24/`:
+	- `frontend-build.txt` (build PASS)
+	- `backend-route-smoke.txt` (Ran 97 tests, OK)
+	- `_artifact-index.txt`
+	- `network-checks.txt` (timeout tren terminal automation)
+- Luu y blocker:
+	- Healthcheck `http://127.0.0.1:8000/api/health/` timeout khi goi tu automation shell, can manual verify trong run window tiep theo.
+
 ## Sprint 23 planning lock-in (2026-04-05)
 
 Trang thai: READY FOR CODING EXECUTION

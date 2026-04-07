@@ -30,6 +30,7 @@ from .models import (
     SecuritiesItem,
     StockProfile,
     StockProfileSyncLog,
+    Transaction,
     TrackedSymbol,
     WatchlistItem,
     WhaleAdvisory,
@@ -1526,7 +1527,8 @@ def sync_portfolio_prices(portfolio_id: int, days: int = 30) -> list[dict]:
         return []
 
     symbols = (
-        portfolio.transactions
+        Transaction.objects
+        .filter(sub_account__portfolio=portfolio)
         .values_list('symbol', flat=True)
         .distinct()
     )

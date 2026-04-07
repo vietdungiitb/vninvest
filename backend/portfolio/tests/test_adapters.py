@@ -64,3 +64,39 @@ class VnstockAdapterTests(SimpleTestCase):
             result = vnstock_adapter.read_stream_intraday_ticks('FPT', count=10)
 
         self.assertEqual(result, [])
+
+    @patch(
+        'portfolio.adapters.vnstock_adapter._import_vnstock',
+        side_effect=ExternalSystemException('vnstock chưa được cài đặt.', code='vnstock_missing'),
+    )
+    def test_build_stock_client_raises_vnstock_missing(self, _mock_import):
+        with self.assertRaises(ExternalSystemException) as ctx:
+            vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+
+        self.assertEqual(ctx.exception.code, 'vnstock_missing')
+
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_financial_ratio_dataframe_uses_timeout_wrapper(self, mock_build_stock, mock_run_timeout):
+        fake_client = type('StockClient', (), {'finance': type('FinanceClient', (), {'ratio': lambda *a, **k: {'ok': True}})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = {'rows': 1}
+
+        result = vnstock_adapter.fetch_financial_ratio_dataframe('FPT')
+
+        self.assertEqual(result, {'rows': 1})
+        mock_build_stock.assert_called_once_with(symbol='FPT', source='VCI')
+        self.assertEqual(mock_run_timeout.call_count, 1)
+
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_history_dataframe_uses_selected_source(self, mock_build_stock, mock_run_timeout):
+        fake_client = type('StockClient', (), {'quote': type('QuoteClient', (), {'history': lambda *a, **k: {'ok': True}})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = {'rows': 5}
+
+        result = vnstock_adapter.fetch_history_dataframe('HPG', start='2026-01-01', end='2026-02-01', interval='1D', source='KBS')
+
+        self.assertEqual(result, {'rows': 5})
+        mock_build_stock.assert_called_once_with(symbol='HPG', source='KBS')
+        self.assertEqual(mock_run_timeout.call_count, 1)

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAggregateWhaleFeed, getTrackedSymbols, getRealtimeHealth } from '../api/client';
-import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import { getAggregateWhaleFeed, getRealtimeHealth } from '../api/client';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
 import { useI18n } from '../context/LangContext';
 
@@ -44,11 +43,21 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
-export default function DashboardRealtimePanel({ holdings }) {
+export default function DashboardRealtimePanel({
+  holdings,
+  quotesBySymbol = {},
+  realtimeStatus = 'idle',
+  lastEventAt = null,
+  alerts = [],
+  metrics = null,
+  monitoredSymbols = [],
+  onSyncRequest = null,
+}) {
   const { t, formatNumber, formatTime } = useI18n();
-  const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [snapshotAlerts, setSnapshotAlerts] = useState([]);
+  const [compact, setCompact] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const realtimeLabels = useMemo(() => ({
     idle: t('dashboardRealtime.statusIdle'),
@@ -57,45 +66,22 @@ export default function DashboardRealtimePanel({ holdings }) {
     polling: t('dashboardRealtime.statusPolling'),
   }), [t]);
 
-  const holdingSymbols = useMemo(
-    () => [...new Set((holdings || []).map((item) => item.symbol).filter(Boolean))],
-    [holdings],
-  );
-
-  const trackedSymbolNames = useMemo(
-    () => trackedSymbols.map((item) => item.symbol).filter(Boolean),
-    [trackedSymbols],
-  );
-
-  const monitoredSymbols = useMemo(
-    () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
-    [holdingSymbols, trackedSymbolNames],
-  );
-
   const monitoredKey = useMemo(
     () => monitoredSymbols.slice().sort().join('|'),
     [monitoredSymbols],
   );
 
+  // Tick every 15s so event-age badges stay current
   useEffect(() => {
-    let cancelled = false;
-
-    const fetchTracked = async () => {
-      try {
-        const res = await getTrackedSymbols();
-        if (!cancelled) {
-          setTrackedSymbols(res.data || []);
-        }
-      } catch (err) {
-        console.error('Load tracked symbols failed:', err);
-      }
-    };
-
-    fetchTracked();
-    return () => {
-      cancelled = true;
-    };
+    const id = window.setInterval(() => setNow(Date.now()), 15000);
+    return () => window.clearInterval(id);
   }, []);
+
+  const eventAgeSeconds = lastEventAt
+    ? Math.max(0, Math.floor((now - new Date(lastEventAt).getTime()) / 1000))
+    : null;
+
+  const isEventStale = eventAgeSeconds !== null && eventAgeSeconds > 120;
 
   useEffect(() => {
     getRealtimeHealth()
@@ -139,14 +125,6 @@ export default function DashboardRealtimePanel({ holdings }) {
     };
   }, [monitoredKey, monitoredSymbols]);
 
-  const {
-    quotesBySymbol,
-    realtimeStatus,
-    lastEventAt,
-    alerts,
-    metrics,
-  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
-
   const mergedAlerts = useMemo(() => {
     const combined = [];
     const seen = new Set();
@@ -185,7 +163,6 @@ export default function DashboardRealtimePanel({ holdings }) {
         ? toNumber(livePrice) * quantity
         : snapshotMarketValue;
       const unrealizedPL = liveMarketValue - costBasis;
-      const unrealizedPLPct = costBasis > 0 ? (unrealizedPL / costBasis) * 100 : 0;
 
       acc.totalMarketValue += liveMarketValue;
       acc.totalUnrealizedPL += unrealizedPL;
@@ -254,6 +231,18 @@ export default function DashboardRealtimePanel({ holdings }) {
           <span className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-950 text-gray-400">
             {t('dashboardRealtime.lastEvent', { time: formatTime(lastEventAt) })}
           </span>
+          {isEventStale && (
+            <span className="px-2.5 py-1 rounded-full border border-amber-700 bg-amber-950/30 text-amber-300 font-semibold animate-pulse">
+              ⚠ {t('dashboardRealtime.eventStaleWarning', { seconds: eventAgeSeconds })}
+            </span>
+          )}
+          <button
+            onClick={() => setCompact((v) => !v)}
+            className="px-2.5 py-1 rounded-full border border-gray-700 bg-gray-800 text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
+            title={compact ? t('dashboardRealtime.expandPanel') : t('dashboardRealtime.collapsePanel')}
+          >
+            {compact ? '▼ ' : '▲ '}{compact ? t('dashboardRealtime.expandPanel') : t('dashboardRealtime.collapsePanel')}
+          </button>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-xs mt-2 w-full">
           <span className="text-gray-600 mr-0.5">{t('dashboardRealtime.observability')}</span>
@@ -277,9 +266,23 @@ export default function DashboardRealtimePanel({ holdings }) {
             </span>
           )}
           {metrics?.lastLatencyMs !== null && metrics?.lastLatencyMs !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'
-              }`}>
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'}`}>
               ⚡ {metrics.lastLatencyMs}ms
+            </span>
+          )}
+          {metrics?.uiRefreshP95Ms !== null && metrics?.uiRefreshP95Ms !== undefined && (
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.uiRefreshP95Ms > 1500 ? 'border-red-800 text-red-400' : metrics.uiRefreshP95Ms > 800 ? 'border-amber-800 text-amber-400' : 'border-emerald-900 text-emerald-500'}`}>
+              p95 {Number(metrics.uiRefreshP95Ms).toFixed(0)}ms
+            </span>
+          )}
+          {metrics?.staleRatioPct !== null && metrics?.staleRatioPct !== undefined && (
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.staleRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.staleRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
+              stale {Number(metrics.staleRatioPct).toFixed(2)}%
+            </span>
+          )}
+          {metrics?.fallbackRatioPct !== null && metrics?.fallbackRatioPct !== undefined && (
+            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.fallbackRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.fallbackRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
+              fallback {Number(metrics.fallbackRatioPct).toFixed(2)}%
             </span>
           )}
           {realtimeHealth && (
@@ -299,44 +302,83 @@ export default function DashboardRealtimePanel({ holdings }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</p>
-          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
+      {compact && (
+        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 py-1">
+          <span>
+            <span className="text-blue-300 font-semibold">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</span>
+            <span className="ml-1 text-gray-600">{t('dashboardRealtime.liveValue')}</span>
+          </span>
+          <span className={realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300 font-semibold' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300 font-semibold' : 'text-gray-300 font-semibold'}>
+            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
+            {' '}({realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%)
+          </span>
+          <span>{formatNumber(monitoredSymbols.length)} {t('dashboardRealtime.monitoredSymbols')}</span>
+          {realtimePortfolioStats.stalePositions > 0 && (
+            <span className="text-amber-300">{formatNumber(realtimePortfolioStats.stalePositions)} stale</span>
+          )}
+          {mergedAlerts.length > 0 && (
+            <span className="text-violet-300">🐋 {mergedAlerts.length} alerts</span>
+          )}
         </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
-          <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
+      )}
+
+      {!compact && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
+            <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</p>
+            <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
+            <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-100'}`}>
+              {formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
+            </p>
+            <p className={`text-xs mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-500'}`}>
+              {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%
+            </p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+            <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(monitoredSymbols.length)}</p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+            <p className={`text-2xl font-bold mt-1 ${liveVsSnapshotDelta > 0 ? 'text-emerald-300' : liveVsSnapshotDelta < 0 ? 'text-red-300' : 'text-gray-100'}`}>
+              {formatPrice(liveVsSnapshotDelta, formatNumber, ' đ')}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
+            <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.stalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
+              {formatNumber(realtimePortfolioStats.stalePositions)}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
+          </div>
+          <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+            <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
+            <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(marketStats.up)} / {formatNumber(marketStats.down)} / {formatNumber(marketStats.flat)}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Context-aware sync CTA: hiện khi có stale positions */}
+      {realtimePortfolioStats.stalePositions > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-800/60 bg-amber-950/20 px-4 py-2.5">
+          <p className="text-xs text-amber-300">
+            ⚠ {t('dashboardRealtime.stalePositionsCTA', { count: realtimePortfolioStats.stalePositions })}
           </p>
-          <p className={`text-xs mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-500'}`}>
-            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%
-          </p>
+          {onSyncRequest && (
+            <button
+              onClick={onSyncRequest}
+              className="shrink-0 text-xs font-semibold px-3 py-1 rounded border border-amber-700 bg-amber-900/40 text-amber-200 hover:bg-amber-800/60 transition-colors"
+            >
+              {t('dashboardRealtime.syncNow')}
+            </button>
+          )}
         </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(monitoredSymbols.length)}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-          <p className={`text-2xl font-bold mt-1 ${liveVsSnapshotDelta > 0 ? 'text-emerald-300' : liveVsSnapshotDelta < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {formatPrice(liveVsSnapshotDelta, formatNumber, ' đ')}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
-          <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.stalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
-            {formatNumber(realtimePortfolioStats.stalePositions)}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
-          <p className="text-2xl font-bold text-gray-100 mt-1">{formatNumber(marketStats.up)} / {formatNumber(marketStats.down)} / {formatNumber(marketStats.flat)}</p>
-        </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
         <div className="rounded-xl border border-gray-800 overflow-hidden">

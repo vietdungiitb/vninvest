@@ -123,6 +123,7 @@ export default function useRealtimeFeedLegacy({
     circuit_breaker_trips: 0,
   });
   const [lastLatencyMs, setLastLatencyMs] = useState(null);
+  const [latencySamplesMs, setLatencySamplesMs] = useState([]);
   const [connectionState, setConnectionState] = useState({
     transport: 'idle',
     subscribedSymbols: [],
@@ -161,6 +162,25 @@ export default function useRealtimeFeedLegacy({
   }, [normalizedSymbols]);
   useEffect(() => { realtimeStatusRef.current = realtimeStatus; }, [realtimeStatus]);
   useEffect(() => { pollIntervalRef.current = pollInterval; }, [pollInterval]);
+
+  const staleRatioPct = useMemo(() => {
+    const quotes = Object.values(quotesBySymbol || {});
+    if (!quotes.length) return null;
+    const staleCount = quotes.filter((item) => item?.stale).length;
+    return Number(((staleCount / quotes.length) * 100).toFixed(2));
+  }, [quotesBySymbol]);
+
+  const pollingTotal = eventCounts.polling_successes + eventCounts.polling_failures;
+  const fallbackRatioPct = pollingTotal > 0
+    ? Number(((eventCounts.polling_failures / pollingTotal) * 100).toFixed(2))
+    : null;
+
+  const uiRefreshP95Ms = useMemo(() => {
+    if (!latencySamplesMs.length) return null;
+    const sorted = [...latencySamplesMs].sort((a, b) => a - b);
+    const idx = Math.max(0, Math.floor((sorted.length - 1) * 0.95));
+    return Number(sorted[idx].toFixed(2));
+  }, [latencySamplesMs]);
 
   useEffect(() => {
     if (!enabled) {
@@ -440,7 +460,9 @@ export default function useRealtimeFeedLegacy({
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, ticker_update: prev.ticker_update + 1 }));
             if (payload.ts) {
-              setLastLatencyMs(Date.now() - new Date(payload.ts).getTime());
+              const latency = Date.now() - new Date(payload.ts).getTime();
+              setLastLatencyMs(latency);
+              setLatencySamplesMs((prev) => [...prev.slice(-199), latency]);
             }
           } else if (payload.event_type === 'whale_alert') {
             applyAlert(payload);
@@ -460,7 +482,9 @@ export default function useRealtimeFeedLegacy({
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, heartbeat: prev.heartbeat + 1 }));
             if (payload.ts) {
-              setLastLatencyMs(Date.now() - new Date(payload.ts).getTime());
+              const latency = Date.now() - new Date(payload.ts).getTime();
+              setLastLatencyMs(latency);
+              setLatencySamplesMs((prev) => [...prev.slice(-199), latency]);
             }
           }
         } catch (err) {
@@ -543,6 +567,14 @@ export default function useRealtimeFeedLegacy({
     darkFlowAlerts,
     latestWhaleAlert: alerts[0] || null,
     latestDarkFlowAlert: darkFlowAlerts[0] || null,
-    metrics: { eventCounts, lastLatencyMs, connectionState },
+    metrics: {
+      eventCounts,
+      lastLatencyMs,
+      uiRefreshP95Ms,
+      staleRatioPct,
+      fallbackRatioPct,
+      latencySampleSize: latencySamplesMs.length,
+      connectionState,
+    },
   };
 }

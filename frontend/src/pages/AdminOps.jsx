@@ -12,6 +12,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAdminOpsStats, syncMarketGroups, syncStockProfile, syncWatchlistPrices, warmTickerPrefetch } from '../api/client';
 import { useI18n } from '../context/LangContext';
+import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -529,6 +530,11 @@ export default function AdminOps() {
             ) : null}
           </div>
         </div>
+      </section>
+
+      {/* S24-04: Runtime KPI Panel */}
+      <section>
+        <RuntimeKPIPanel />
       </section>
     </div>
   );

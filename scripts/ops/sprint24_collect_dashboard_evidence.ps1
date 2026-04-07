@@ -20,7 +20,15 @@ npm run build | Tee-Object "$OutDir/frontend-build.txt"
 
 Write-Step "Backend route smoke evidence"
 Set-Location $BackendDir
-& $PythonExe manage.py test portfolio.tests.test_api_routes --verbosity=1 2>&1 | Select-String -Pattern "^(OK|Ran |FAILED|FAIL|ERROR)" | Tee-Object "$OutDir/backend-route-smoke.txt"
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$backendOutput = & $PythonExe manage.py test portfolio.tests.test_api_routes --verbosity=1 2>&1
+$ErrorActionPreference = $previousErrorActionPreference
+$backendOutput | Tee-Object "$OutDir/backend-route-smoke-full.txt" | Out-Null
+$backendOutput | Select-String -Pattern "^(OK|Ran |FAILED|FAIL|ERROR)" | Tee-Object "$OutDir/backend-route-smoke.txt" | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  throw "Backend route smoke test failed with exit code $LASTEXITCODE"
+}
 
 Write-Step "Network checks"
 if ($SkipNetworkChecks) {

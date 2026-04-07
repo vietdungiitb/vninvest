@@ -11,6 +11,12 @@ import {
 import { usePortfolio } from '../context/PortfolioContext';
 import Can from '../components/Can';
 import { useI18n } from '../context/LangContext';
+import RecommendationCardExplainability from '../components/advisory/RecommendationCardExplainability';
+import DataFreshnessBadge from '../components/advisory/DataFreshnessBadge';
+import ActionChecklist from '../components/advisory/ActionChecklist';
+import RiskModeSelector from '../components/advisory/RiskModeSelector';
+import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
+import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
 
 const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
@@ -36,6 +42,33 @@ function fmtTime(value) {
   if (!value) return '—';
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(undefined);
+}
+
+function inferConfidence(advisory) {
+  if (!advisory) return null;
+  if (advisory.confidence !== null && advisory.confidence !== undefined) {
+    const parsed = Number(advisory.confidence);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const summary = String(advisory.ai_summary || '');
+  const matched = summary.match(/(\d{1,3})%/);
+  if (!matched) return null;
+  const parsed = Number(matched[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getFreshnessSeconds(ts) {
+  if (!ts) return null;
+  const ms = new Date(ts).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.max(0, Math.floor((Date.now() - ms) / 1000));
+}
+
+function getRealtimeStatusByFreshness(secondsAgo) {
+  if (secondsAgo === null || secondsAgo === undefined) return 'idle';
+  if (secondsAgo <= 30) return 'live';
+  if (secondsAgo <= 120) return 'polling';
+  return 'idle';
 }
 
 // ─── Thống kê mỗi mã ────────────────────────────────────────────
@@ -123,6 +156,8 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
   const { t } = useI18n();
   const side = (item.side || '').toUpperCase();
   const isBuy = side === 'BUY';
+  const freshnessSeconds = getFreshnessSeconds(item.created_at);
+  const realtimeStatus = getRealtimeStatusByFreshness(freshnessSeconds);
 
   return (
     <div className="p-4">
@@ -141,7 +176,20 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-slate-500">
           <span>{fmtTime(item.created_at)}</span>
           <span className="uppercase tracking-widest">{item.ai_provider || 'openclaw'}</span>
+          <DataFreshnessBadge
+            lastEventAt={item.created_at}
+            realtimeStatus={realtimeStatus}
+            compact
+          />
         </div>
+      </div>
+
+      <div className="mt-3">
+        <RecommendationCardExplainability
+          advisory={item}
+          freshnessSeconds={freshnessSeconds}
+          realtimeStatus={realtimeStatus}
+        />
       </div>
 
       {/* AI Summary */}
@@ -196,6 +244,19 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
           {t('whaleHub.openStockWorkspace')}
         </Link>
       </div>
+
+      <div className="mt-3">
+        <ActionChecklist
+          symbol={item.symbol}
+          isBlocked={freshnessSeconds !== null && freshnessSeconds > 120}
+          blockedReason={
+            freshnessSeconds !== null && freshnessSeconds > 120
+              ? t('actionChecklist.blockedDefault', { defaultValue: 'Dữ liệu không đủ tin cậy để tiến hành. Hãy làm mới và xem lại khuyến nghị.' })
+              : ''
+          }
+          onProceed={() => onRefresh?.(item.symbol)}
+        />
+      </div>
     </div>
   );
 }
@@ -248,6 +309,15 @@ export default function WhaleAdvisory() {
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
   const [refreshingSymbol, setRefreshingSymbol] = useState('');
   const [refreshMessage, setRefreshMessage] = useState('');
+  const [riskMode, setRiskMode] = useState(() => {
+    const stored = localStorage.getItem('vninvest:risk-mode');
+    if (stored === 'conservative' || stored === 'balanced' || stored === 'aggressive') {
+      return stored;
+    }
+    return 'balanced';
+  });
+  const [riskModeNotice, setRiskModeNotice] = useState('');
+  const [activeSymbol, setActiveSymbol] = useState('');
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -362,7 +432,34 @@ export default function WhaleAdvisory() {
     }
   }, [fetchData, t]);
 
-  const symbolStats = useMemo(() => buildSymbolStats(items), [items]);
+  const filteredItems = useMemo(() => {
+    if (riskMode === 'aggressive') return items;
+    return items.filter((item) => {
+      const confidence = inferConfidence(item);
+      if (confidence === null) return riskMode !== 'conservative';
+      if (riskMode === 'conservative') return confidence >= 70;
+      return confidence >= 40;
+    });
+  }, [items, riskMode]);
+
+  const symbolStats = useMemo(() => buildSymbolStats(filteredItems), [filteredItems]);
+
+  useEffect(() => {
+    localStorage.setItem('vninvest:risk-mode', riskMode);
+    setRiskModeNotice(t('riskMode.updatedNotice', { defaultValue: 'View updated by risk mode' }));
+    const id = window.setTimeout(() => setRiskModeNotice(''), 2500);
+    return () => window.clearTimeout(id);
+  }, [riskMode, t]);
+
+  useEffect(() => {
+    if (!symbolStats.length) {
+      setActiveSymbol('');
+      return;
+    }
+    if (!activeSymbol || !symbolStats.some((row) => row.symbol === activeSymbol)) {
+      setActiveSymbol(symbolStats[0].symbol);
+    }
+  }, [activeSymbol, symbolStats]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
@@ -478,6 +575,17 @@ export default function WhaleAdvisory() {
         </section>
       )}
 
+      <section className="card-section px-5 py-4 space-y-3">
+        <RiskModeSelector
+          symbol={activeSymbol || symbolStats[0]?.symbol || ''}
+          value={riskMode}
+          onChange={setRiskMode}
+        />
+        {riskModeNotice && (
+          <p className="text-xs text-cyan-300">{riskModeNotice}</p>
+        )}
+      </section>
+
       {/* Bảng */}
       <section className="card-section overflow-hidden">
         {/* Table Header */}
@@ -526,13 +634,18 @@ export default function WhaleAdvisory() {
         ) : (
           <div>
             {symbolStats.map((stats, idx) => {
-              const latest = items.find(i => i.symbol === stats.symbol) || null;
+              const latest = filteredItems.find(i => i.symbol === stats.symbol) || null;
+              const isActive = activeSymbol === stats.symbol;
 
               return (
                 <div key={stats.symbol} className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${idx > 0 ? 'border-t border-slate-800' : ''}`}>
                   {/* Cột trái */}
                   <div>
-                    <SymbolCell stats={stats} isActive={false} onClick={() => {}} />
+                    <SymbolCell
+                      stats={stats}
+                      isActive={isActive}
+                      onClick={() => setActiveSymbol(stats.symbol)}
+                    />
                   </div>
 
                   {/* Cột phải: Advisory mới nhất */}
@@ -554,6 +667,16 @@ export default function WhaleAdvisory() {
             })}
           </div>
         )}
+      </section>
+
+      {activeSymbol && (
+        <section className="card-section px-5 py-4">
+          <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
+        </section>
+      )}
+
+      <section className="card-section px-5 py-4">
+        <TrustTelemetryPanel />
       </section>
     </div>
   );

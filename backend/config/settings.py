@@ -42,6 +42,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'portfolio.middleware.MarketObservabilityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -185,8 +186,11 @@ WATCHLIST_SYNC_ENABLED = os.getenv("WATCHLIST_SYNC_ENABLED", "False").lower() ==
 WATCHLIST_SYNC_MINUTES = int(os.getenv("WATCHLIST_SYNC_MINUTES", "15"))
 WATCHLIST_SYNC_DAYS = int(os.getenv("WATCHLIST_SYNC_DAYS", "5"))
 ENABLE_NEW_MARKET_VIEWS = os.getenv("ENABLE_NEW_MARKET_VIEWS", "False").lower() == "true"
+MARKET_VIEWS_CANARY_PERCENT = int(os.getenv("MARKET_VIEWS_CANARY_PERCENT", "100"))
 ENABLE_NEW_TRADING_VIEWS = os.getenv("ENABLE_NEW_TRADING_VIEWS", "False").lower() == "true"
 ENABLE_REALTIME_CONNECTION_MANAGER = os.getenv("ENABLE_REALTIME_CONNECTION_MANAGER", "False").lower() == "true"
+MARKET_OBSERVABILITY_ENABLED = os.getenv("MARKET_OBSERVABILITY_ENABLED", "True").lower() == "true"
+MARKET_OBSERVABILITY_LATENCY_WINDOW = int(os.getenv("MARKET_OBSERVABILITY_LATENCY_WINDOW", "300"))
 
 CELERY_BEAT_SCHEDULE = {}
 # Pre-fetch ticker cache: chạy luôn luôn để tránh gọi vnstock trong HTTP request handler

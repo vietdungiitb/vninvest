@@ -2,10 +2,10 @@
  * pages/Dashboard.jsx
  * Trang chính: StatCards + HoldingsTable + (Charts ở Bước 5).
  */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
-import { getSummary, getHoldings, syncPrices } from '../api/client';
+import { getSummary, getHoldings, syncPrices, getTrackedSymbols } from '../api/client';
 import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
 import PortfolioLineChart from '../components/PortfolioLineChart';
@@ -14,6 +14,11 @@ import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
 import { useI18n } from '../context/LangContext';
+import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import {
+  buildLiveHoldingsOverlay,
+  buildLiveSummaryFromHoldings,
+} from '../utils/dashboardRealtimeSelectors';
 
 export default function Dashboard() {
   const { activePortfolioId } = usePortfolio();
@@ -21,10 +26,45 @@ export default function Dashboard() {
 
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
+  const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+
+  const holdingSymbols = useMemo(
+    () => holdings.map((item) => item.symbol).filter(Boolean),
+    [holdings],
+  );
+  const trackedSymbolNames = useMemo(
+    () => trackedSymbols.map((item) => item.symbol).filter(Boolean),
+    [trackedSymbols],
+  );
+  const monitoredSymbols = useMemo(
+    () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
+    [holdingSymbols, trackedSymbolNames],
+  );
+
+  const {
+    quotesBySymbol,
+    realtimeStatus,
+    lastEventAt,
+    alerts,
+    metrics,
+  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
+
+  const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
+  const liveSummary = buildLiveSummaryFromHoldings(liveHoldings);
+
+  const marketValue = liveHoldings.length > 0
+    ? liveSummary.totalMarketValue
+    : summary?.total_market_value;
+  const unrealizedPLValue = liveHoldings.length > 0
+    ? liveSummary.totalUnrealizedPL
+    : summary?.total_unrealized_pl;
+  const unrealizedPLPctValue = liveHoldings.length > 0
+    ? liveSummary.totalUnrealizedPLPct
+    : parseFloat(summary?.total_unrealized_pl_pct ?? 0);
 
   const fetchData = useCallback(async () => {
     if (!activePortfolioId) return;
@@ -50,6 +90,14 @@ export default function Dashboard() {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    let cancelled = false;
+    getTrackedSymbols()
+      .then((res) => { if (!cancelled) setTrackedSymbols(res.data || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   const handleSync = async () => {
     if (!activePortfolioId || syncing) return;
     setSyncing(true);
@@ -67,7 +115,15 @@ export default function Dashboard() {
     }
   };
 
-  const unrealizedPL = parseFloat(summary?.total_unrealized_pl ?? 0);
+  const syncButtonLabel = syncing
+    ? t('dashboard.syncingPrices')
+    : realtimeStatus === 'live'
+      ? t('dashboard.syncPricesLive', { defaultValue: t('dashboard.syncPrices') })
+      : realtimeStatus === 'idle'
+        ? t('dashboard.syncPricesIdle', { defaultValue: t('dashboard.syncPrices') })
+        : t('dashboard.syncPrices');
+
+  const unrealizedPL = parseFloat(unrealizedPLValue ?? 0);
   const realizedPL = parseFloat(summary?.total_realized_pl ?? 0);
 
   if (!activePortfolioId) {
@@ -109,8 +165,14 @@ export default function Dashboard() {
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
-                       border border-gray-700 text-sm text-gray-300 px-4 py-2 rounded-lg transition-colors"
+            className={`flex items-center gap-1.5 disabled:opacity-50
+                       border text-sm px-4 py-2 rounded-lg transition-colors
+                       ${realtimeStatus === 'live'
+                         ? 'bg-emerald-950/40 hover:bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                         : realtimeStatus === 'idle'
+                           ? 'bg-gray-800 hover:bg-gray-700 border-amber-700 text-amber-300'
+                           : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300'
+                       }`}
           >
             {syncing ? (
               <>
@@ -119,7 +181,11 @@ export default function Dashboard() {
                 {t('dashboard.syncingPrices')}
               </>
             ) : (
-              t('dashboard.syncPrices')
+              <>
+                {realtimeStatus === 'live' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
+                {realtimeStatus === 'idle' && <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />}
+                {syncButtonLabel}
+              </>
             )}
           </button>
         </div>
@@ -129,13 +195,13 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t('dashboard.marketValue')}
-          value={summary?.total_market_value}
+          value={marketValue}
           loading={loadingSummary}
         />
         <StatCard
           label={t('dashboard.unrealizedPL')}
-          value={summary?.total_unrealized_pl}
-          sub={summary ? `${parseFloat(summary.total_unrealized_pl_pct).toFixed(2)}%` : null}
+          value={unrealizedPLValue}
+          sub={summary ? `${parseFloat(unrealizedPLPctValue || 0).toFixed(2)}%` : null}
           isPositive={unrealizedPL > 0}
           isNegative={unrealizedPL < 0}
           loading={loadingSummary}
@@ -154,7 +220,16 @@ export default function Dashboard() {
         />
       </div>
 
-      <DashboardRealtimePanel holdings={holdings} />
+      <DashboardRealtimePanel
+        holdings={holdings}
+        quotesBySymbol={quotesBySymbol}
+        realtimeStatus={realtimeStatus}
+        lastEventAt={lastEventAt}
+        alerts={alerts}
+        metrics={metrics}
+        monitoredSymbols={monitoredSymbols}
+        onSyncRequest={handleSync}
+      />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -171,7 +246,7 @@ export default function Dashboard() {
         <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
           {t('dashboard.holdings')}
         </h2>
-        <HoldingsTable holdings={holdings} loading={loadingHoldings} />
+        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />
       </div>
 
       {/* Risk & Performance Analytics */}

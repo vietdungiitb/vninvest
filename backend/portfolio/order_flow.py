@@ -15,12 +15,22 @@ from typing import Sequence
 from django.core.cache import cache
 from django.db.models import QuerySet
 
+from .domain_constants import (
+    ORDER_FLOW_BUCKET_LT_200M_MAX_VND,
+    ORDER_FLOW_BUCKET_LT_2B_MAX_VND,
+    ORDER_FLOW_BUCKET_LT_500M_MAX_VND,
+    ORDER_FLOW_BUCKET_LT_50M_MAX_VND,
+    ORDER_FLOW_LARGE_ORDER_THRESHOLD_VND,
+    ORDER_FLOW_PRICE_LOCK_THRESHOLD_PCT,
+    ORDER_FLOW_SMALL_ORDER_THRESHOLD_VND,
+)
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-SMALL_ORDER_THRESHOLD = 50_000_000      # 50 triệu VNĐ
-LARGE_ORDER_THRESHOLD = 500_000_000     # 500 triệu VNĐ
-PRICE_LOCK_THRESHOLD_PCT = 0.003        # 0.3%
+SMALL_ORDER_THRESHOLD = ORDER_FLOW_SMALL_ORDER_THRESHOLD_VND
+LARGE_ORDER_THRESHOLD = ORDER_FLOW_LARGE_ORDER_THRESHOLD_VND
+PRICE_LOCK_THRESHOLD_PCT = ORDER_FLOW_PRICE_LOCK_THRESHOLD_PCT
 DEFAULT_WINDOW_MINUTES = 60
 DEFAULT_BUCKET_SECONDS = 60
 TICK_RATE_CACHE_TTL = 10                # giây
@@ -235,13 +245,13 @@ def compute_size_distribution(
         "<50m": 0, "50-200m": 0, "200-500m": 0, "500m-2b": 0, ">2b": 0,
     }
     for v in values:
-        if v < 50_000_000:
+        if v < ORDER_FLOW_BUCKET_LT_50M_MAX_VND:
             histogram["<50m"] += 1
-        elif v < 200_000_000:
+        elif v < ORDER_FLOW_BUCKET_LT_200M_MAX_VND:
             histogram["50-200m"] += 1
-        elif v < 500_000_000:
+        elif v < ORDER_FLOW_BUCKET_LT_500M_MAX_VND:
             histogram["200-500m"] += 1
-        elif v < 2_000_000_000:
+        elif v < ORDER_FLOW_BUCKET_LT_2B_MAX_VND:
             histogram["500m-2b"] += 1
         else:
             histogram[">2b"] += 1

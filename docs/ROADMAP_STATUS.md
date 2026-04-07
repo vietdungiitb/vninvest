@@ -85,6 +85,10 @@ Tai lieu chuan cho sprint nay:
 - `docs/SPRINT24_DASHBOARD_REALTIME_EXECUTION_PLAN.md`
 - `docs/SPRINT24_ACCEPTANCE_CHECKLIST.md`
 - `docs/SPRINT24_TASKBOARD.csv`
+- `docs/SPRINT24_TRUST_DECISION_STORIES.md`
+- `docs/SPRINT24_QA_TEST_CHECKLIST_TRUST_DECISION.md`
+- `docs/SPRINT24_DAILY_STANDUP_TEMPLATE.md`
+- `docs/SPRINT24_CODING_BREAKDOWN_PLAN.md`
 - `scripts/ops/sprint24_collect_dashboard_evidence.ps1`
 
 ---

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
-from .health import healthcheck, prefetch_health, realtime_health, streams_health
+from .health import healthcheck, market_observability_health, prefetch_health, realtime_health, streams_health
 import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
@@ -29,7 +29,9 @@ urlpatterns = [
     path('api/health/realtime/', realtime_health, name='realtime-health'),
     path('api/health/streams/', streams_health, name='streams-health'),
     path('api/health/prefetch/', prefetch_health, name='prefetch-health'),
+    path('api/health/market-observability/', market_observability_health, name='market-observability-health'),
     path('api/admin-ops/stats/', AdminOpsStatsView.as_view(), name='admin-ops-stats'),
+    path('api/admin-ops/runtime-kpi/', portfolio_views.admin_runtime_kpi_api, name='admin-ops-runtime-kpi'),
     path('api/admin-ops/prefetch/warm/', portfolio_views.warm_ticker_prefetch_api, name='admin-ops-prefetch-warm'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),

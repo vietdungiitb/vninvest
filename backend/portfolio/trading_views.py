@@ -3,9 +3,15 @@ from django.utils.decorators import method_decorator
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from .models import SubAccount
-from .serializers import PortfolioSerializer, SubAccountSerializer, TransactionSerializer
+from .serializers import (
+    PortfolioSerializer,
+    SubAccountSerializer,
+    TradingSubAccountCreateRequestSerializer,
+    TransactionSerializer,
+)
 from .trading_service import TradingService
 
 
@@ -38,8 +44,21 @@ class SubAccountListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         payload = request.data.copy()
-        if not payload.get('portfolio'):
-            fallback_portfolio = TradingService.portfolio_queryset_for_user(request.user).first()
+        request_serializer = TradingSubAccountCreateRequestSerializer(data=payload)
+        request_serializer.is_valid(raise_exception=True)
+
+        requested_portfolio_id = request_serializer.validated_data.get('portfolio')
+        owned_portfolios = TradingService.portfolio_queryset_for_user(request.user)
+        has_owned_portfolio = owned_portfolios.exists()
+
+        if not has_owned_portfolio:
+            raise DRFValidationError('User must have at least one Portfolio')
+        elif requested_portfolio_id is not None:
+            if not owned_portfolios.filter(id=requested_portfolio_id).exists():
+                raise DRFValidationError({'portfolio': ['Portfolio khong thuoc nguoi dung hien tai.']})
+            payload['portfolio'] = requested_portfolio_id
+        elif not payload.get('portfolio'):
+            fallback_portfolio = owned_portfolios.first()
             if fallback_portfolio:
                 payload['portfolio'] = fallback_portfolio.id
 

@@ -6,6 +6,10 @@ from typing import Iterable
 
 import pandas as pd
 
+from portfolio.domain_constants import (
+    WHALE_CONFIG_VERSION,
+    classify_whale_size_class,
+)
 from portfolio.whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 
 
@@ -32,11 +36,7 @@ def _normalize_signal_side(side_value: str) -> str:
 
 
 def _classify_signal_size(matched_value: float) -> str:
-    if matched_value >= 5_000_000_000:
-        return "shark"
-    if matched_value >= 1_000_000_000:
-        return "whale"
-    return "small"
+    return classify_whale_size_class(matched_value)
 
 
 def _build_whale_event_id(signal: WhaleSignal, normalized_side: str) -> str:
@@ -121,7 +121,7 @@ def build_whale_payload(
     signal: WhaleSignal,
     seq: int,
     contract_version: str = "1.0",
-    config_version: str = "threshold-v1",
+    config_version: str = WHALE_CONFIG_VERSION,
     source: str = "intraday-engine",
     score_config: dict | None = None,
 ) -> dict:

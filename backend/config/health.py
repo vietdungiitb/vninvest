@@ -3,6 +3,8 @@ from django.core.cache import cache
 from django.http import JsonResponse
 from django.utils import timezone
 
+from portfolio.observability import get_market_observability_snapshot
+
 
 def build_prefetch_health_snapshot():
     result = {
@@ -136,4 +138,13 @@ def prefetch_health(request):
     """
     snapshot = build_prefetch_health_snapshot()
     return JsonResponse(snapshot, status=200 if snapshot.get('healthy') else 503)
+
+
+def market_observability_health(request):
+    """
+    GET /api/health/market-observability/
+    Trả về snapshot p95/5xx/fallback/external-timeout cho market hot-path.
+    """
+    snapshot = get_market_observability_snapshot()
+    return JsonResponse(snapshot)
 

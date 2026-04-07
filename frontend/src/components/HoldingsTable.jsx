@@ -82,13 +82,21 @@ export default function HoldingsTable({ holdings, loading }) {
               </td>
               <td className="py-3 pr-4 text-gray-300">{formatVND(h.avg_cost, locale)}</td>
               <td className="py-3 pr-4 text-gray-300">
-                {h.current_price ? formatVND(h.current_price, locale) : <span className="text-gray-600">{t('holdings.notSynced')}</span>}
+                {(h.live_current_price ?? h.current_price)
+                  ? formatVND(h.live_current_price ?? h.current_price, locale)
+                  : <span className="text-gray-600">{t('holdings.notSynced')}</span>}
               </td>
               <td className="py-3 pr-4 text-gray-300">
-                {h.market_value ? formatVND(h.market_value, locale) : '—'}
+                {(h.live_market_value ?? h.market_value)
+                  ? formatVND(h.live_market_value ?? h.market_value, locale)
+                  : '—'}
               </td>
               <td className="py-3 pr-4">
-                <PLCell value={h.unrealized_pl} pct={h.unrealized_pl_pct} locale={locale} />
+                <PLCell
+                  value={h.live_unrealized_pl ?? h.unrealized_pl}
+                  pct={h.live_unrealized_pl_pct ?? h.unrealized_pl_pct}
+                  locale={locale}
+                />
               </td>
               <td className="py-3 pr-4">
                 <PLCell value={h.realized_pl} pct={null} locale={locale} />
