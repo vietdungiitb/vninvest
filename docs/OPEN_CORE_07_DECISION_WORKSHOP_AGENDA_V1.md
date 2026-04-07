@@ -2,7 +2,7 @@
 
 Ngay tao: 2026-04-07
 Trang thai: Ready for meeting
-Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, LANGUAGE_POLICY_V1.md
+Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md, OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md, LANGUAGE_POLICY_V1.md
 
 ## 1. Muc tieu buoi hop
 Chot Open Core V1 theo du lieu, giam tranh luan cam tinh, ra quyet dinh co owner va deadline.
@@ -31,6 +31,7 @@ Chot Open Core V1 theo du lieu, giam tranh luan cam tinh, ra quyet dinh co owner
 2. Danh sach 5 tinh nang paid V1 da lock
 3. Trial policy va expiry behavior da lock
 4. Danh sach legal docs va owner
+5. OC-11 duoc dien day du cac muc pricing/quota/trial/SLO (khong con TBD cho V1)
 
 ## 6. Template bien ban
 - Decision:

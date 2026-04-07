@@ -268,6 +268,55 @@ if _REALTIME_ENABLED_FLAG:
         "schedule": timedelta(seconds=_REALTIME_POLL_INTERVAL),
     }
 
+# ============================================================================
+# OpenCore Celery Beat Tasks
+# ============================================================================
+_OPENCORE_ENABLED = os.getenv("OPENCORE_ENABLED", "True").lower() == "true"
+if _OPENCORE_ENABLED:
+    # Sync all DPI licenses daily (check expiry, grace period, status)
+    CELERY_BEAT_SCHEDULE["opencore-sync-licenses"] = {
+        "task": "portfolio.opencore_celery_tasks.sync_all_dpi_licenses",
+        "schedule": timedelta(hours=24),  # Daily
+    }
+    
+    # Reset monthly quotas on the 1st of each month
+    _OPENCORE_QUOTA_RESET_HOUR = int(os.getenv("OPENCORE_QUOTA_RESET_HOUR", "0"))
+    from celery.schedules import crontab
+    CELERY_BEAT_SCHEDULE["opencore-reset-monthly-quotas"] = {
+        "task": "portfolio.opencore_celery_tasks.reset_monthly_quotas",
+        "schedule": crontab(day_of_month=1, hour=_OPENCORE_QUOTA_RESET_HOUR, minute=0),
+    }
+    
+    # Generate monthly invoices on the 1st of each month
+    CELERY_BEAT_SCHEDULE["opencore-generate-invoices"] = {
+        "task": "portfolio.opencore_celery_tasks.generate_monthly_invoices",
+        "schedule": crontab(day_of_month=1, hour=_OPENCORE_QUOTA_RESET_HOUR, minute=5),
+    }
+    
+    # Create daily analytics snapshots at midnight UTC
+    CELERY_BEAT_SCHEDULE["opencore-analytics-snapshot"] = {
+        "task": "portfolio.opencore_celery_tasks.create_analytics_snapshots",
+        "schedule": crontab(hour=0, minute=0),  # Midnight UTC
+    }
+    
+    # Check for over-quota users every hour
+    CELERY_BEAT_SCHEDULE["opencore-check-overquota"] = {
+        "task": "portfolio.opencore_celery_tasks.check_overquota_users",
+        "schedule": timedelta(hours=1),
+    }
+    
+    # Cleanup old audit logs weekly
+    CELERY_BEAT_SCHEDULE["opencore-cleanup-logs"] = {
+        "task": "portfolio.opencore_celery_tasks.cleanup_old_audit_logs",
+        "schedule": timedelta(days=7),
+    }
+    
+    # Process trial/grace plan lifecycle transitions daily (7am UTC)
+    CELERY_BEAT_SCHEDULE["opencore-process-plan-lifecycle"] = {
+        "task": "portfolio.tasks.process_plan_lifecycle_transitions",
+        "schedule": crontab(hour=7, minute=0),  # Daily at 7am UTC
+    }
+
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 REALTIME_DEFAULT_WHALE_THRESHOLD = int(os.getenv("REALTIME_DEFAULT_WHALE_THRESHOLD", "500000000"))
@@ -281,6 +330,35 @@ STREAM_CONSUMER_BATCH = int(os.getenv("STREAM_CONSUMER_BATCH", "100"))
 STREAM_SNAPSHOT_TTL = int(os.getenv("STREAM_SNAPSHOT_TTL", "60"))
 STREAM_BLOCK_MS = int(os.getenv("STREAM_BLOCK_MS", "2000"))
 STREAM_STALE_AFTER_SECONDS = int(os.getenv("STREAM_STALE_AFTER_SECONDS", "30"))
+
+# Open Core quota enforcement (Slice B)
+OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED = os.getenv("OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED", "False").lower() == "true"
+OPEN_CORE_QUOTA_CAPS_BY_TIER = {
+    "community": {
+        "api_calls_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY", "300")),
+        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY", "0")),
+        "whale_symbols_max": int(os.getenv("OPEN_CORE_COMMUNITY_WHALE_SYMBOLS_MAX", "10")),
+        "exports_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_EXPORTS_PER_DAY", "0")),
+    },
+    "pro_individual": {
+        "api_calls_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY", "3000")),
+        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY", "30")),
+        "whale_symbols_max": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_WHALE_SYMBOLS_MAX", "25")),
+        "exports_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_EXPORTS_PER_DAY", "20")),
+    },
+    "pro_team": {
+        "api_calls_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY", "10000")),
+        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY", "120")),
+        "whale_symbols_max": int(os.getenv("OPEN_CORE_PRO_TEAM_WHALE_SYMBOLS_MAX", "100")),
+        "exports_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_EXPORTS_PER_DAY", "100")),
+    },
+    "admin": {
+        "api_calls_per_day": -1,
+        "ai_regenerate_per_day": -1,
+        "whale_symbols_max": -1,
+        "exports_per_day": -1,
+    },
+}
 
 # ---------- OpenClaw AI Advisory ----------
 OPENCLAW_API_KEY  = os.getenv("OPENCLAW_API_KEY", "")

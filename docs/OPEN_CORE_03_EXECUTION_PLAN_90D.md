@@ -68,3 +68,34 @@ Deliverables:
 ## 7. Next review checkpoint
 - Weekly: cap nhat tien do theo pha (checkpoint dau tien: 2026-04-14)
 - Monthly: review KPI + quyet dinh dieu chinh
+
+## 8. Execution checkpoint log
+
+### Day 1 log (2026-04-07)
+1. Baseline docs lock
+- Status: DONE
+- Evidence: OC-02 Approved baseline + OC-11 numeric baseline locked.
+
+2. Scope lock (policy phase)
+- Status: DONE
+- Evidence: Free/Pro boundary (OC-05), Docker Community scope (OC-09), vnstock dual-source (OC-10).
+
+3. Legal wording finalization
+- Status: IN PROGRESS
+- Blocker: final legal sign-off wording chua dong bo vao execution lane.
+
+4. Entitlement/quota technical spec handoff
+- Status: IN PROGRESS (Slice A + Slice B implemented)
+- Owner: Tech lead
+- Evidence: OC-12 draft + backend entitlement contract + quota service and 429 contract for initial endpoints.
+
+5. KPI baseline instrumentation
+- Status: TODO
+- Note: can lock metric definitions truoc, collect data from soft-launch lane sau.
+
+### Next 24h actions
+1. Product + Compliance lock legal wording package (Terms/Privacy/Disclaimer).
+2. Tech lead convert OC-11 quota values thanh implementation checklist.
+ - Progress: Draft done in OC-12, Slice A/B da code va pass test muc tieu.
+3. Growth owner draft onboarding flow Free -> Trial theo trial/grace da lock.
+4. PM update status lane in this section at end-of-day.

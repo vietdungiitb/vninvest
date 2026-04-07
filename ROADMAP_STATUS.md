@@ -31,6 +31,61 @@
 - Theo dõi token/provider trong log vận hành
 - Đảm bảo AI call giảm nhờ cơ chế skip_existing + manual refresh cooldown
 
+---
+
+### 🔧 Sprint 26 - IN PROGRESS (OpenCore License & Billing)
+**Focus**: Tích hợp OpenCore multi-tier licensing system vào codebase  
+**Status**: Day 1 started (2026-04-07) - integration execution underway
+
+**Scope:**
+- ✅ **DONE (Session 2)**: OpenCore implementation (7 files, 2,600 lines)
+  - `opencore_dpi.py` - License management (15 models, 35 indexes)
+  - `opencore_analytics.py` - Usage tracking & quota enforcement
+  - `opencore_premium.py` - Feature gating (12 premium indicators)
+  - `opencore_revenue.py` - Billing & invoicing
+  - `opencore_celery_tasks.py` - 6 background automation tasks
+  - `opencore_api.py` - REST API (13+ endpoints)
+  - `opencore_admin.py` - Django admin interface
+  
+- ✅ **DONE**: Database integration
+  - Migration 0020: 15 new models
+  - Signal handlers: Auto-license on user signup
+  - Celery Beat schedule: Configured (6 tasks)
+  - Default data: 3 tiers seeded (Community/Pro/Enterprise)
+  
+- ✅ **DONE**: Testing
+  - Unit tests: 5/5 passed ✓
+  - API integration tests: Verified ✓
+  - Django check: 0 issues ✓
+  
+- ✅ **DONE (Day 1)**: Baseline integration audit
+  - Xác nhận OpenCore router `/api/opencore/*` đã mount trong `portfolio/urls.py`
+  - Xác nhận stock workspace endpoints trọng yếu tại `urls_stock.py` đã sẵn sàng để hook gating
+  - Xác nhận command seed plan `initialize_dpi_plans` đang dùng feature keys theo indicator
+  - Chốt Sprint26 execution log + tracker cho vận hành hằng ngày
+
+- ⏳ **IN SPRINT 26 (Day 2 onward)**: Feature gating integration
+  - Hook `@require_feature()` vào indicator/flow endpoints ưu tiên
+  - Test free/pro/enterprise tier access gating theo từng endpoint
+  - API call tracking & quota enforcement cho endpoint có tải cao
+  - Admin UI testing + demo data
+  
+**Deliverables:**
+- Feature gating working cho tất cả indicators
+- Integration tests (10+ scenarios)
+- Runbook + demo data seeding  
+- Postman collection + frontend checklist
+- Docs: SPRINT26_OPENCORE_DETAILED_PLAN.md
+
+**Timeline**: 5-7 ngày làm việc
+- Phase 1 (Day 1 done + Days 2-3): Baseline audit + Feature gating integration
+- Phase 2 (Days 4-5): Testing & QA
+- Phase 3 (Days 6-7): Demo & documentation
+
+**Dependencies**: 
+- From: None (independent work)
+- To: Sprint 27 (Payment gateway), Sprint 28 (Subscription UI)
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  

@@ -2,7 +2,9 @@ from unittest.mock import MagicMock, patch
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test.utils import override_settings
+from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
 from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
@@ -34,6 +36,83 @@ class ApiRouteSmokeTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+
+    def _attach_dpi_license(self, plan_name, feature_flags=None, status='active', grace_days=7):
+        from portfolio.opencore_dpi import DPIPlan, DPILicense
+
+        base_features = {
+            'sma': True,
+            'rsi': True,
+            'volume_profile': True,
+            'whale_momentum': False,
+            'dark_pool_flow': False,
+            'correlation_matrix': False,
+            'volatility_surface': False,
+            'sentiment_score': False,
+            'predictive_ml': False,
+            'cross_market_alpha': False,
+            'fund_flow_analysis': False,
+            'hedging_strategy': False,
+        }
+        if feature_flags:
+            base_features.update(feature_flags)
+
+        defaults_by_plan = {
+            'free': {'display_name': 'Community', 'annual_price_usd': 0, 'monthly_price_usd': 0},
+            'pro': {'display_name': 'Professional', 'annual_price_usd': 99, 'monthly_price_usd': 9.99},
+            'enterprise': {'display_name': 'Enterprise', 'annual_price_usd': 999, 'monthly_price_usd': 99.99},
+        }
+        plan_defaults = defaults_by_plan.get(plan_name, defaults_by_plan['free'])
+
+        plan, _ = DPIPlan.objects.update_or_create(
+            name=plan_name,
+            defaults={
+                'description': f'{plan_name} test plan',
+                'display_name': plan_defaults['display_name'],
+                'annual_price_usd': plan_defaults['annual_price_usd'],
+                'monthly_price_usd': plan_defaults['monthly_price_usd'],
+                'max_watchlist_items': 50,
+                'max_portfolio_accounts': 5,
+                'max_alerts': 100,
+                'max_api_calls_per_month': 100000,
+                'features': base_features,
+                'is_active': True,
+            },
+        )
+
+        defaults = {
+            'plan': plan,
+            'status': status,
+            'billing_cycle': 'annual',
+            'start_date': timezone.now(),
+            'expiry_date': timezone.now() + timedelta(days=30),
+            'grace_until': None,
+        }
+        if status == 'expired':
+            defaults['expiry_date'] = timezone.now() - timedelta(days=1)
+        if status == 'grace':
+            defaults['grace_until'] = timezone.now() + timedelta(days=max(int(grace_days), 1))
+
+        DPILicense.objects.update_or_create(
+            user=self.user,
+            defaults=defaults,
+        )
+
+    def _detach_dpi_license(self):
+        from portfolio.opencore_dpi import DPILicense
+
+        DPILicense.objects.filter(user=self.user).delete()
+
+    def _create_stock_workspace_advisory(self, symbol='BCM'):
+        return WhaleAdvisory.objects.create(
+            symbol=symbol,
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
 
     def test_jwt_token_obtain_endpoint(self):
         response = self.client.post(
@@ -258,8 +337,35 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn({'action': 'read', 'subject': 'WhaleAdvisory'}, response.data['abilities'])
         self.assertIn({'action': 'read', 'subject': 'WhaleAdvisoryDetail'}, response.data['abilities'])
         self.assertEqual(response.data['entitlements']['plan'], 'premium')
+        self.assertEqual(response.data['entitlements']['tier'], 'pro_team')
+        self.assertEqual(response.data['entitlements']['quota_caps']['api_calls_per_day'], 10000)
+        self.assertEqual(response.data['entitlements']['quota_caps']['ai_regenerate_per_day'], 120)
+        self.assertEqual(response.data['entitlements']['quota_caps']['whale_symbols_max'], 100)
+        self.assertEqual(response.data['entitlements']['quota_caps']['exports_per_day'], 100)
+        self.assertEqual(response.data['entitlements']['trial_state'], 'none')
+        self.assertIsNone(response.data['entitlements']['trial_ends_at'])
+        self.assertIsNone(response.data['entitlements']['grace_ends_at'])
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory_detail'])
+
+    def test_auth_me_endpoint_returns_community_tier_for_free_plan(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'whale_alert_threshold': 500, 'email_verified': True},
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/auth/me/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['entitlements']['plan'], 'free')
+        self.assertEqual(response.data['entitlements']['tier'], 'community')
+        self.assertEqual(response.data['entitlements']['quota_caps']['api_calls_per_day'], 300)
+        self.assertEqual(response.data['entitlements']['quota_caps']['ai_regenerate_per_day'], 0)
+        self.assertEqual(response.data['entitlements']['quota_caps']['whale_symbols_max'], 10)
+        self.assertEqual(response.data['entitlements']['quota_caps']['exports_per_day'], 0)
+        self.assertFalse(response.data['entitlements']['can_read_whale_advisory'])
+        self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
 
     def test_whale_advisory_endpoint_requires_pro(self):
         self.authenticate()
@@ -366,6 +472,46 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'FPT')
         self.assertIn('retry_after_seconds', response.data)
 
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 3000,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_returns_429_when_ai_regenerate_quota_exceeded(self, mock_apply_async, _mock_cache_get):
+        cache.clear()
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+        )
+
+        mock_task = MagicMock()
+        mock_task.id = 'task-123'
+        mock_apply_async.return_value = mock_task
+
+        first = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+        second = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(first.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'ai_regenerate_per_day')
+        self.assertEqual(second.data['limit'], 1)
+        self.assertEqual(second.data['remaining'], 0)
+
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_stock_ai_advisory_session_get_queues_generation_when_missing(self, mock_apply_async, _mock_cache_get):
@@ -418,6 +564,472 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('executive_summary', response.data)
         self.assertIn('executive_summaries', response.data)
 
+    def test_stock_order_flow_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'dark_pool_flow': False})
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'dark_pool_flow')
+
+    @patch('portfolio.order_flow.detect_dark_flow')
+    @patch('portfolio.order_flow.compute_cvd_series')
+    def test_stock_order_flow_returns_200_when_feature_enabled_for_pro_dpi_license(self, mock_cvd_series, mock_detect_dark_flow):
+        self._attach_dpi_license('pro', {'dark_pool_flow': True})
+        self.authenticate()
+        mock_cvd_series.return_value = []
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+
+        response = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'community': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 10,
+                'exports_per_day': 0,
+            },
+        },
+    )
+    @patch('portfolio.order_flow.detect_dark_flow')
+    @patch('portfolio.order_flow.compute_cvd_series')
+    def test_stock_order_flow_returns_429_when_api_quota_exceeded(self, mock_cvd_series, mock_detect_dark_flow):
+        cache.clear()
+        self.authenticate()
+        mock_cvd_series.return_value = []
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+
+        first = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+        second = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+        self.assertEqual(second.data['limit'], 1)
+        self.assertEqual(second.data['remaining'], 0)
+
+    def test_stock_ai_advisory_session_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'whale_momentum': False})
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'whale_momentum')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'community': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 10,
+                'exports_per_day': 0,
+            },
+        },
+    )
+    def test_stock_ai_advisory_session_get_returns_429_when_api_quota_exceeded(self):
+        cache.clear()
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+
+        first = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+        second = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+        self.assertEqual(second.data['limit'], 1)
+        self.assertEqual(second.data['remaining'], 0)
+
+    def test_stock_ai_advisory_components_generate_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '15m'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    def test_stock_workspace_p0_role_matrix_blocks_free_dpi_license(self):
+        self._attach_dpi_license(
+            'free',
+            {
+                'dark_pool_flow': False,
+                'whale_momentum': False,
+                'sentiment_score': False,
+            },
+        )
+        self.authenticate()
+
+        matrix_cases = [
+            ('order_flow', self.client.get('/api/stock-management/stocks/FPT/order-flow/'), 'dark_pool_flow'),
+            ('advisory_session', self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/'), 'whale_momentum'),
+            (
+                'advisory_components_generate',
+                self.client.post(
+                    '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+                    {'timeframe': '15m'},
+                    format='json',
+                ),
+                'sentiment_score',
+            ),
+        ]
+
+        for case_name, response, expected_feature_key in matrix_cases:
+            with self.subTest(case=case_name):
+                self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+                self.assertEqual(response.data['code'], 'feature_locked')
+                self.assertEqual(response.data['feature_key'], expected_feature_key)
+
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.order_flow.detect_dark_flow')
+    @patch('portfolio.order_flow.compute_cvd_series')
+    def test_stock_workspace_p0_role_matrix_allows_access_for_pro_premium_admin_trial_grace(
+        self,
+        mock_cvd_series,
+        mock_detect_dark_flow,
+        mock_build_templates,
+        _mock_generate_with_ai,
+    ):
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+        mock_cvd_series.return_value = []
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI',
+                'status': 'neutral',
+                'confidence_score': 6,
+                'suggested_action': 'watch',
+                'rationale_text': 'matrix-test',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            },
+        ]
+
+        matrix_cases = [
+            (
+                'pro_active',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='active',
+                ),
+            ),
+            (
+                'pro_trial',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='trial',
+                ),
+            ),
+            (
+                'pro_grace',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='grace',
+                ),
+            ),
+            (
+                'premium_legacy_without_dpi',
+                lambda: [
+                    self._detach_dpi_license(),
+                    UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'premium', 'email_verified': True}),
+                ],
+            ),
+            (
+                'admin_legacy_without_dpi',
+                lambda: [
+                    self._detach_dpi_license(),
+                    UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'admin', 'email_verified': True}),
+                ],
+            ),
+        ]
+
+        for case_name, setup_case in matrix_cases:
+            with self.subTest(case=case_name):
+                setup_case()
+
+                order_flow_resp = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+                session_resp = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+                components_resp = self.client.post(
+                    '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+                    {'timeframe': '30m'},
+                    format='json',
+                )
+
+                self.assertEqual(order_flow_resp.status_code, status.HTTP_200_OK)
+                self.assertEqual(session_resp.status_code, status.HTTP_200_OK)
+                self.assertEqual(components_resp.status_code, status.HTTP_201_CREATED)
+
+    def test_stock_workspace_p0_role_matrix_blocks_expired_license(self):
+        self._attach_dpi_license(
+            'pro',
+            {
+                'dark_pool_flow': True,
+                'whale_momentum': True,
+                'sentiment_score': True,
+            },
+            status='expired',
+        )
+        self.authenticate()
+
+        matrix_cases = [
+            ('order_flow', self.client.get('/api/stock-management/stocks/FPT/order-flow/'), 'dark_pool_flow'),
+            ('advisory_session', self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/'), 'whale_momentum'),
+            (
+                'advisory_components_generate',
+                self.client.post(
+                    '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+                    {'timeframe': '15m'},
+                    format='json',
+                ),
+                'sentiment_score',
+            ),
+        ]
+
+        for case_name, response, expected_feature_key in matrix_cases:
+            with self.subTest(case=case_name):
+                self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+                self.assertEqual(response.data['code'], 'feature_locked')
+                self.assertEqual(response.data['feature_key'], expected_feature_key)
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai')
+    def test_stock_workspace_p1_regression_matrix_matches_current_gating_policy(self, mock_generate_with_ai, _mock_cache_get):
+        self.authenticate()
+        mock_generate_with_ai.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI Updated',
+                'status': 'neutral',
+                'confidence_score': 7,
+                'suggested_action': 'watch',
+                'rationale_text': 'p1-matrix',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            }
+        ]
+
+        matrix_cases = [
+            (
+                'free_active',
+                lambda: self._attach_dpi_license(
+                    'free',
+                    {'dark_pool_flow': False, 'whale_momentum': False, 'sentiment_score': False},
+                    status='active',
+                ),
+                True,
+            ),
+            (
+                'pro_active',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='active',
+                ),
+                False,
+            ),
+            (
+                'pro_trial',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='trial',
+                ),
+                False,
+            ),
+            (
+                'pro_grace',
+                lambda: self._attach_dpi_license(
+                    'pro',
+                    {'dark_pool_flow': True, 'whale_momentum': True, 'sentiment_score': True},
+                    status='grace',
+                ),
+                False,
+            ),
+            (
+                'premium_legacy_without_dpi',
+                lambda: [
+                    self._detach_dpi_license(),
+                    UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'premium', 'email_verified': True}),
+                ],
+                False,
+            ),
+            (
+                'admin_legacy_without_dpi',
+                lambda: [
+                    self._detach_dpi_license(),
+                    UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'admin', 'email_verified': True}),
+                ],
+                False,
+            ),
+        ]
+
+        for case_name, setup_case, expect_locked in matrix_cases:
+            with self.subTest(case=case_name):
+                setup_case()
+                self._create_stock_workspace_advisory(symbol='BCM')
+                component = AIAdvisoryComponentRecord.objects.create(
+                    user=self.user,
+                    symbol='BCM',
+                    component_type='indicator',
+                    indicator_name='RSI',
+                    status='neutral',
+                    confidence_score=6,
+                    suggested_action='watch',
+                    rationale_text='p1-regression',
+                    timeframe='30m',
+                    include_in_summary=True,
+                )
+
+                refresh_resp = self.client.post(
+                    f'/api/stock-management/ai-advisory-components/{component.id}/refresh/',
+                    {},
+                    format='json',
+                )
+                summary_resp = self.client.post(
+                    '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                    {'component_ids': [component.id]},
+                    format='json',
+                )
+
+                if expect_locked:
+                    self.assertEqual(refresh_resp.status_code, status.HTTP_403_FORBIDDEN)
+                    self.assertEqual(summary_resp.status_code, status.HTTP_403_FORBIDDEN)
+                    self.assertEqual(refresh_resp.data.get('code'), 'feature_locked')
+                    self.assertEqual(summary_resp.data.get('code'), 'feature_locked')
+                else:
+                    self.assertEqual(refresh_resp.status_code, status.HTTP_200_OK)
+                    self.assertEqual(summary_resp.status_code, status.HTTP_201_CREATED)
+
+    @patch('portfolio.order_flow.detect_dark_flow')
+    @patch('portfolio.order_flow.compute_cvd_series')
+    def test_stock_order_flow_usage_tracking_calls_track_api_call(self, mock_cvd_series, mock_detect_dark_flow):
+        self._attach_dpi_license('pro', {'dark_pool_flow': True})
+        self.authenticate()
+        mock_cvd_series.return_value = []
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'dark_pool_flow')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
+
+    def test_stock_ai_advisory_session_usage_tracking_calls_track_api_call(self):
+        self._attach_dpi_license('pro', {'whale_momentum': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'whale_momentum')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
+
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.order_flow.detect_dark_flow')
+    def test_stock_ai_advisory_components_generate_usage_tracking_calls_track_api_call(
+        self,
+        mock_detect_dark_flow,
+        mock_build_templates,
+        _mock_generate_with_ai,
+    ):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI',
+                'status': 'neutral',
+                'confidence_score': 6,
+                'suggested_action': 'watch',
+                'rationale_text': 'tracking-test',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            },
+        ]
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+                {'timeframe': '30m'},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_201_CREATED)
+
     def test_stock_ai_advisory_components_generate_creates_component_records(self):
         self.authenticate()
         WhaleAdvisory.objects.create(
@@ -441,6 +1053,64 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertGreaterEqual(response.data['created_count'], 3)
         self.assertIn('generated_by_ai', response.data)
         self.assertEqual(AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(), response.data['created_count'])
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'community': {
+                'api_calls_per_day': 300,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 10,
+                'exports_per_day': 0,
+            },
+        },
+    )
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.views._sprint17_build_component_templates')
+    def test_stock_ai_advisory_components_generate_returns_429_when_ai_regenerate_quota_exceeded(self, mock_build_templates, _mock_generate_with_ai):
+        cache.clear()
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+        )
+
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI',
+                'status': 'neutral',
+                'confidence_score': 6,
+                'suggested_action': 'watch',
+                'rationale_text': 'quota-test',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            },
+        ]
+
+        first = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '30m'},
+            format='json',
+        )
+        second = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '30m'},
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'ai_regenerate_per_day')
+        self.assertEqual(second.data['limit'], 1)
+        self.assertEqual(second.data['remaining'], 0)
 
     def test_stock_ai_advisory_component_toggle_include_flips_flag(self):
         self.authenticate()
@@ -467,6 +1137,105 @@ class ApiRouteSmokeTests(APITestCase):
         component.refresh_from_db()
         self.assertFalse(component.include_in_summary)
         self.assertFalse(response.data['component']['include_in_summary'])
+
+    def test_stock_ai_advisory_component_toggle_include_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/toggle-include/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 30,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    def test_stock_ai_advisory_component_toggle_include_returns_429_when_api_quota_exceeded(self):
+        cache.clear()
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        first = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/toggle-include/',
+            {},
+            format='json',
+        )
+        second = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/toggle-include/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+
+    def test_stock_ai_advisory_component_toggle_include_usage_tracking_calls_track_api_call(self):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.post(
+                f'/api/stock-management/ai-advisory-components/{component.id}/toggle-include/',
+                {},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
 
     @patch('portfolio.views._sprint17_generate_component_templates_with_ai')
     def test_stock_ai_advisory_component_refresh_updates_only_target_component(self, mock_generate_with_ai):
@@ -543,6 +1312,148 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(response.data['ok'])
 
+    def test_stock_ai_advisory_component_refresh_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/refresh/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 3000,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.order_flow.detect_dark_flow')
+    def test_stock_ai_advisory_component_refresh_returns_429_when_ai_regenerate_quota_exceeded(
+        self,
+        mock_detect_dark_flow,
+        mock_build_templates,
+        _mock_generate_with_ai,
+    ):
+        cache.clear()
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='quota-test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        mock_detect_dark_flow.return_value = {
+            'signal_type': None,
+            'strength': 0,
+            'confidence': 'low',
+            'components': {},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI Refresh',
+                'status': 'neutral',
+                'confidence_score': 7,
+                'suggested_action': 'watch',
+                'rationale_text': 'quota-refresh',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            }
+        ]
+
+        first = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/refresh/',
+            {},
+            format='json',
+        )
+        second = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/refresh/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'ai_regenerate_per_day')
+
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai')
+    def test_stock_ai_advisory_component_refresh_usage_tracking_calls_track_api_call(self, mock_generate_with_ai):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='tracking-test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        mock_generate_with_ai.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI New',
+                'status': 'breakout',
+                'confidence_score': 8,
+                'suggested_action': 'buy',
+                'rationale_text': 'tracking-refreshed',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            }
+        ]
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.post(
+                f'/api/stock-management/ai-advisory-components/{component.id}/refresh/',
+                {},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
+
     def test_stock_ai_advisory_component_delete_soft_deletes_record(self):
         self.authenticate()
         component = AIAdvisoryComponentRecord.objects.create(
@@ -564,6 +1475,101 @@ class ApiRouteSmokeTests(APITestCase):
         component.refresh_from_db()
         self.assertTrue(component.is_deleted)
         self.assertFalse(component.include_in_summary)
+
+    def test_stock_ai_advisory_component_delete_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        response = self.client.delete(f'/api/stock-management/ai-advisory-components/{component.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 30,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    def test_stock_ai_advisory_component_delete_returns_429_when_api_quota_exceeded(self):
+        cache.clear()
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        first_component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='first',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+        second_component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='second',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        first = self.client.delete(f'/api/stock-management/ai-advisory-components/{first_component.id}/')
+        second = self.client.delete(f'/api/stock-management/ai-advisory-components/{second_component.id}/')
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+
+    def test_stock_ai_advisory_component_delete_usage_tracking_calls_track_api_call(self):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.delete(f'/api/stock-management/ai-advisory-components/{component.id}/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
 
     def test_stock_ai_advisory_component_restore_reactivates_record(self):
         self.authenticate()
@@ -593,6 +1599,121 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(component.is_deleted)
         self.assertTrue(component.include_in_summary)
         self.assertEqual(response.data['component']['id'], component.id)
+
+    def test_stock_ai_advisory_component_restore_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+
+        response = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{component.id}/restore/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 30,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    def test_stock_ai_advisory_component_restore_returns_429_when_api_quota_exceeded(self):
+        cache.clear()
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        first_component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='first',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+        second_component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='second',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+
+        first = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{first_component.id}/restore/',
+            {},
+            format='json',
+        )
+        second = self.client.post(
+            f'/api/stock-management/ai-advisory-components/{second_component.id}/restore/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+
+    def test_stock_ai_advisory_component_restore_usage_tracking_calls_track_api_call(self):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='test',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.post(
+                f'/api/stock-management/ai-advisory-components/{component.id}/restore/',
+                {},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
 
     @patch('portfolio.views._cache_get', return_value=None)
     def test_stock_ai_advisory_summary_regenerate_creates_version(self, _mock_cache_get):
@@ -705,6 +1826,95 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
         self.assertFalse(response.data['ok'])
         self.assertIn('retry_after_seconds', response.data)
+
+    def test_stock_ai_advisory_summary_regenerate_returns_403_when_feature_locked_for_free_dpi_license(self):
+        self._attach_dpi_license('free', {'sentiment_score': False})
+        self.authenticate()
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data['code'], 'feature_locked')
+        self.assertEqual(response.data['feature_key'], 'sentiment_score')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'pro_individual': {
+                'api_calls_per_day': 3000,
+                'ai_regenerate_per_day': 1,
+                'whale_symbols_max': 25,
+                'exports_per_day': 20,
+            },
+        },
+    )
+    @patch('portfolio.views._cache_get', return_value=None)
+    def test_stock_ai_advisory_summary_regenerate_returns_429_when_ai_regenerate_quota_exceeded(self, _mock_cache_get):
+        cache.clear()
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=6,
+            suggested_action='watch',
+            rationale_text='quota-summary',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        first = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {'component_ids': [component.id]},
+            format='json',
+        )
+        second = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+            {'component_ids': [component.id]},
+            format='json',
+        )
+
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'ai_regenerate_per_day')
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    def test_stock_ai_advisory_summary_regenerate_usage_tracking_calls_track_api_call(self, _mock_cache_get):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=6,
+            suggested_action='watch',
+            rationale_text='tracking-summary',
+            timeframe='30m',
+            include_in_summary=True,
+        )
+
+        with patch('portfolio.views.track_api_call') as mock_track_api_call:
+            response = self.client.post(
+                '/api/stock-management/stocks/BCM/ai-advisory-summary/regenerate/',
+                {'component_ids': [component.id]},
+                format='json',
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(mock_track_api_call.called)
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
+        self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_201_CREATED)
 
     @patch('portfolio.views._cache_get', return_value=None)
     def test_stock_ai_advisory_session_returns_summary_history_desc_by_version(self, _mock_cache_get):
@@ -1045,6 +2255,35 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['source'], 'redis_stream')
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['source'], 'redis_stream')
+
+    @override_settings(
+        OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
+        OPEN_CORE_QUOTA_CAPS_BY_TIER={
+            'community': {
+                'api_calls_per_day': 1,
+                'ai_regenerate_per_day': 0,
+                'whale_symbols_max': 10,
+                'exports_per_day': 0,
+            },
+        },
+    )
+    def test_whale_feed_aggregate_returns_429_when_api_quota_exceeded(self):
+        cache.clear()
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+
+        first = self.client.get('/api/realtime/whale-feed/aggregate/')
+        second = self.client.get('/api/realtime/whale-feed/aggregate/')
+
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(second.data['code'], 'quota_exceeded')
+        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
+        self.assertEqual(second.data['limit'], 1)
+        self.assertEqual(second.data['remaining'], 0)
 
     @patch('portfolio.realtime.stream_reader.StreamReader')
     @patch('vnstock.Vnstock')

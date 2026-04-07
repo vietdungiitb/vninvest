@@ -835,3 +835,60 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
         'errors': errors,
     }
 
+
+# ---------------------------------------------------------------------------
+# Slice C: Trial / Grace Transitions (Daily Scheduler)
+# ---------------------------------------------------------------------------
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+def process_plan_lifecycle_transitions(self) -> dict:
+    """
+    Chạy mỗi ngày qua Celery Beat để transition trial -> grace -> expired.
+    - Nếu trial kết thúc và chưa có grace, tạo grace period.
+    - Nếu grace kết thúc, downgrade về free.
+    """
+    from portfolio.models import UserPlanLifecycle
+    
+    now = timezone.now()
+    transitions = {'trial_to_grace': 0, 'grace_expired': 0, 'errors': 0}
+    
+    try:
+        expired_trials = UserPlanLifecycle.objects.filter(
+            trial_ends_at__lte=now,
+            grace_ends_at__isnull=True,
+        )
+        
+        for lifecycle in expired_trials:
+            try:
+                grace_deadline = lifecycle.trial_ends_at + timezone.timedelta(days=7)
+                lifecycle.grace_ends_at = grace_deadline
+                lifecycle.save(update_fields=['grace_ends_at', 'updated_at'])
+                transitions['trial_to_grace'] += 1
+                logger.info('Transition trial->grace: user=%s, grace_ends=%s', lifecycle.user.id, grace_deadline)
+            except Exception as exc:
+                logger.error('Error transitioning trial for user=%s: %s', lifecycle.user.id, exc)
+                transitions['errors'] += 1
+        
+        expired_graces = UserPlanLifecycle.objects.filter(
+            grace_ends_at__lte=now,
+        )
+        
+        for lifecycle in expired_graces:
+            try:
+                user_cfg = UserConfig.objects.get(user=lifecycle.user)
+                if user_cfg.plan != 'free':
+                    user_cfg.plan = 'free'
+                    user_cfg.save(update_fields=['plan', 'updated_at'])
+                    logger.info(
+                        'Downgrade after grace: user=%s, from_plan=%s, to=free',
+                        lifecycle.user.id, user_cfg.plan,
+                    )
+                transitions['grace_expired'] += 1
+            except Exception as exc:
+                logger.error('Error expiring grace for user=%s: %s', lifecycle.user.id, exc)
+                transitions['errors'] += 1
+    except Exception as exc:
+        logger.error('process_plan_lifecycle_transitions general error: %s', exc)
+        transitions['errors'] += 1
+    
+    return {'status': 'ok', **transitions}
+

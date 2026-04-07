@@ -95,3 +95,18 @@ Ngay cap nhat: 2026-04-07
 - Lap ma tran tinh nang chi tiet theo tung module hien co cua Vninvest.
 - Chuyen ma tran thanh de xuat pricing annual cu the.
 - Chot bo KPI thanh cong cho 3 thang dau ra mat Open Core.
+
+## 13. Sprint26 execution checkpoint (2026-04-07)
+- Trang thai: Da kick off Sprint26, dang chay Day 1.
+- Da xac nhan OpenCore foundation da co trong codebase:
+  - Router `/api/opencore/*` da duoc mount va expose cac nhom endpoint license/usage/indicators/billing.
+  - Plan seeding (`initialize_dpi_plans`) dang dung feature keys theo indicator (sma, rsi, whale_momentum, dark_pool_flow...).
+  - Cac endpoint business can uu tien hook gating nam o stock workspace + whale/order-flow.
+- Huong trien khai Day 2-Day 3:
+  1. Hook `@require_feature()` vao endpoint indicator/flow uu tien.
+  2. Bo sung test matrix free/pro/enterprise cho tung endpoint.
+  3. Bat dau track quota/usage cho endpoint tai cao.
+- Tieu chi xong Sprint26 (DoD toi thieu):
+  - Feature gating hoat dong on dinh tren endpoint uu tien.
+  - Co test pass cho free/pro/enterprise.
+  - Co runbook local + checklist handoff frontend.

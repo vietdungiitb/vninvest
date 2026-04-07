@@ -323,6 +323,9 @@ from .services import (
     get_price_changes, get_price_series, sync_market_groups, sync_market_groups_for_user, sync_stock_profiles, sync_watchlist_prices,
 )
 from .permissions import IsProPlan, _get_plan, resolve_user_entitlements
+from .quota_service import build_quota_exceeded_payload, consume_quota
+from .opencore_dpi import check_feature_access
+from .opencore_analytics import track_api_call
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 from .adapters.vnstock_adapter import (
     fetch_financial_ratio_dataframe,
@@ -1191,6 +1194,16 @@ class WhaleFeedAggregateView(APIView):
     def get(self, request):
         threshold_vnd = _get_user_whale_threshold_vnd(request.user)
         entitlements = resolve_user_entitlements(request.user)
+        api_quota = consume_quota(
+            request.user,
+            quota_key='api_calls_per_day',
+            entitlements=entitlements,
+        )
+        if not api_quota.get('allowed', True):
+            return Response(
+                build_quota_exceeded_payload(api_quota, 'Ban da dung het quota API trong ngay.'),
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
         symbols, scope, watchlist_group_ids, scope_source = _resolve_whale_feed_symbols(request)
         symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
 
@@ -2880,6 +2893,18 @@ def refresh_whale_advisory_api(request, symbol: str):
             status=status.HTTP_404_NOT_FOUND,
         )
 
+    entitlements = resolve_user_entitlements(request.user)
+    regenerate_quota = consume_quota(
+        request.user,
+        quota_key='ai_regenerate_per_day',
+        entitlements=entitlements,
+    )
+    if not regenerate_quota.get('allowed', True):
+        return Response(
+            build_quota_exceeded_payload(regenerate_quota, 'Ban da dung het quota refresh AI trong ngay.'),
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
     task = generate_whale_advisory_task.apply_async(
         kwargs={
             'symbol': normalized_symbol,
@@ -2903,6 +2928,134 @@ def refresh_whale_advisory_api(request, symbol: str):
     )
 
 
+_OPENCORE_STOCK_FEATURE_KEYS = {
+    'stock_order_flow_api': 'dark_pool_flow',
+    'stock_ai_advisory_session_api': 'whale_momentum',
+    'stock_ai_advisory_components_generate_api': 'sentiment_score',
+    'stock_ai_advisory_component_refresh_api': 'sentiment_score',
+    'stock_ai_advisory_summary_regenerate_api': 'sentiment_score',
+    'stock_ai_advisory_component_toggle_include_api': 'sentiment_score',
+    'stock_ai_advisory_component_delete_api': 'sentiment_score',
+    'stock_ai_advisory_component_restore_api': 'sentiment_score',
+}
+
+_OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
+    'stock_order_flow_api': {
+        'GET': 'api_calls_per_day',
+        'POST': 'api_calls_per_day',
+    },
+    'stock_ai_advisory_session_api': {
+        'GET': 'api_calls_per_day',
+        'POST': 'ai_regenerate_per_day',
+    },
+    'stock_ai_advisory_components_generate_api': {
+        'POST': 'ai_regenerate_per_day',
+    },
+    'stock_ai_advisory_component_refresh_api': {
+        'POST': 'ai_regenerate_per_day',
+    },
+    'stock_ai_advisory_summary_regenerate_api': {
+        'POST': 'ai_regenerate_per_day',
+    },
+    'stock_ai_advisory_component_toggle_include_api': {
+        'POST': 'api_calls_per_day',
+    },
+    'stock_ai_advisory_component_delete_api': {
+        'DELETE': 'api_calls_per_day',
+    },
+    'stock_ai_advisory_component_restore_api': {
+        'POST': 'api_calls_per_day',
+    },
+}
+
+
+def _enforce_opencore_feature_for_stock_endpoint(request, endpoint_name: str):
+    """
+    Sprint26 Day 2 feature gate for stock workspace endpoints.
+
+    Transitional behavior:
+    - Legacy users chưa có DPI license tạm thời được cho phép đi qua
+      để tránh hard-break trước khi backfill license toàn hệ thống.
+    """
+    feature_key = _OPENCORE_STOCK_FEATURE_KEYS.get(endpoint_name)
+    if not feature_key:
+        return None
+
+    try:
+        request.user.dpi_license
+    except Exception:
+        return None
+
+    can_access, reason = check_feature_access(request.user, feature_key)
+    if can_access:
+        return None
+
+    _track_opencore_stock_endpoint_usage(
+        request,
+        endpoint_name,
+        status.HTTP_403_FORBIDDEN,
+    )
+
+    return Response(
+        {
+            'ok': False,
+            'code': 'feature_locked',
+            'feature_key': feature_key,
+            'message': 'Tinh nang nay yeu cau goi cao hon hoac license hop le.',
+            'reason': reason,
+        },
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
+def _enforce_opencore_quota_for_stock_endpoint(request, endpoint_name: str):
+    quota_key = (_OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS.get(endpoint_name) or {}).get(request.method.upper())
+    if not quota_key:
+        return None
+
+    entitlements = resolve_user_entitlements(request.user)
+    quota_result = consume_quota(
+        request.user,
+        quota_key=quota_key,
+        entitlements=entitlements,
+    )
+    if quota_result.get('allowed', True):
+        return None
+
+    _track_opencore_stock_endpoint_usage(
+        request,
+        endpoint_name,
+        status.HTTP_429_TOO_MANY_REQUESTS,
+    )
+
+    quota_messages = {
+        'api_calls_per_day': 'Ban da dung het quota API trong ngay.',
+        'ai_regenerate_per_day': 'Ban da dung het quota refresh AI trong ngay.',
+    }
+    return Response(
+        build_quota_exceeded_payload(
+            quota_result,
+            quota_messages.get(quota_key, 'Ban da dung het quota trong ngay.'),
+        ),
+        status=status.HTTP_429_TOO_MANY_REQUESTS,
+    )
+
+
+def _track_opencore_stock_endpoint_usage(request, endpoint_name: str, response_status_code: int):
+    feature_key = _OPENCORE_STOCK_FEATURE_KEYS.get(endpoint_name, '')
+    try:
+        track_api_call(
+            user=request.user,
+            endpoint=request.path,
+            method=request.method,
+            status_code=int(response_status_code),
+            feature=feature_key,
+            api_weight=1,
+        )
+    except Exception as exc:
+        logger.debug('OpenCore stock endpoint usage tracking failed for %s: %s', endpoint_name, exc)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_order_flow_api(request, symbol: str):
@@ -2914,9 +3067,17 @@ def stock_order_flow_api(request, symbol: str):
     """
     from portfolio.order_flow import compute_cvd_series, detect_dark_flow
 
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_order_flow_api')
+    if denied_response is not None:
+        return denied_response
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_order_flow_api')
+    if quota_response is not None:
+        return quota_response
 
     _window_map = {'5m': 5, '15m': 15, '30m': 30, '1h': 60}
     window_param = str(request.query_params.get('window', '30m')).strip().lower()
@@ -2934,6 +3095,7 @@ def stock_order_flow_api(request, symbol: str):
     )
     latest_signal = recent_signals[0] if recent_signals else None
 
+    _track_opencore_stock_endpoint_usage(request, 'stock_order_flow_api', status.HTTP_200_OK)
     return Response(
         {
             'ok': True,
@@ -2956,6 +3118,10 @@ def stock_order_flow_api(request, symbol: str):
 def stock_ai_advisory_components_generate_api(request, symbol: str):
     from portfolio.order_flow import detect_dark_flow
 
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_components_generate_api')
+    if denied_response is not None:
+        return denied_response
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -2963,6 +3129,10 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
     latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
     if latest is None:
         return Response({'ok': False, 'message': 'Chua co advisory goc de tao components.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_components_generate_api')
+    if quota_response is not None:
+        return quota_response
 
     timeframe = str(request.data.get('timeframe', '30m')).strip().lower()
     valid_timeframes = {choice for choice, _ in AIAdvisoryComponentRecord.TimeframeChoice.choices}
@@ -2985,6 +3155,7 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         for payload in templates
     ]
 
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_components_generate_api', status.HTTP_201_CREATED)
     return Response(
         {
             'ok': True,
@@ -3000,12 +3171,21 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_component_toggle_include_api(request, component_id: int):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_component_toggle_include_api')
+    if denied_response is not None:
+        return denied_response
+
     component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
     if component is None:
         return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
 
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_toggle_include_api')
+    if quota_response is not None:
+        return quota_response
+
     component.include_in_summary = not component.include_in_summary
     component.save(update_fields=['include_in_summary', 'updated_at'])
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_toggle_include_api', status.HTTP_200_OK)
     return Response({'ok': True, 'component': AIAdvisoryComponentRecordSerializer(component).data}, status=status.HTTP_200_OK)
 
 
@@ -3014,6 +3194,10 @@ def stock_ai_advisory_component_toggle_include_api(request, component_id: int):
 def stock_ai_advisory_component_refresh_api(request, component_id: int):
     from portfolio.order_flow import detect_dark_flow
 
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_component_refresh_api')
+    if denied_response is not None:
+        return denied_response
+
     component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
     if component is None:
         return Response({'ok': False, 'message': 'Component không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
@@ -3021,6 +3205,10 @@ def stock_ai_advisory_component_refresh_api(request, component_id: int):
     latest = WhaleAdvisory.objects.filter(symbol=component.symbol).order_by('-created_at').first()
     if latest is None:
         return Response({'ok': False, 'message': 'Chưa có advisory gốc để làm mới tab.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_refresh_api')
+    if quota_response is not None:
+        return quota_response
 
     timeframe = component.timeframe or AIAdvisoryComponentRecord.TimeframeChoice.M30
     dark_flow = detect_dark_flow(component.symbol)
@@ -3049,6 +3237,7 @@ def stock_ai_advisory_component_refresh_api(request, component_id: int):
     component.timeframe = refreshed_payload.get('timeframe') or component.timeframe
     component.save(update_fields=['indicator_name', 'status', 'confidence_score', 'suggested_action', 'rationale_text', 'timeframe', 'updated_at'])
 
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_refresh_api', status.HTTP_200_OK)
     return Response(
         {
             'ok': True,
@@ -3063,46 +3252,72 @@ def stock_ai_advisory_component_refresh_api(request, component_id: int):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_component_delete_api(request, component_id: int):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_component_delete_api')
+    if denied_response is not None:
+        return denied_response
+
     component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=False).first()
     if component is None:
         return Response({'ok': False, 'message': 'Component khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
 
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_delete_api')
+    if quota_response is not None:
+        return quota_response
+
     component.is_deleted = True
     component.include_in_summary = False
     component.save(update_fields=['is_deleted', 'include_in_summary', 'updated_at'])
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_delete_api', status.HTTP_200_OK)
     return Response({'ok': True, 'message': 'Da xoa component (soft delete).'}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_component_restore_api(request, component_id: int):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_component_restore_api')
+    if denied_response is not None:
+        return denied_response
+
     component = AIAdvisoryComponentRecord.objects.filter(id=component_id, user=request.user, is_deleted=True).first()
     if component is None:
         return Response({'ok': False, 'message': 'Component khong ton tai hoac chua bi xoa.'}, status=status.HTTP_404_NOT_FOUND)
 
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_restore_api')
+    if quota_response is not None:
+        return quota_response
+
     component.is_deleted = False
     component.include_in_summary = True
     component.save(update_fields=['is_deleted', 'include_in_summary', 'updated_at'])
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_restore_api', status.HTTP_200_OK)
     return Response({'ok': True, 'component': AIAdvisoryComponentRecordSerializer(component).data}, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_summary_regenerate_api')
+    if denied_response is not None:
+        return denied_response
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    def _tracked_response(payload: dict, response_status: int):
+        _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_summary_regenerate_api', response_status)
+        return Response(payload, status=response_status)
+
     cooldown = max(int(getattr(settings, 'AI_ADVISORY_SUMMARY_REGEN_COOLDOWN_SECONDS', 30)), 5)
     lock_key = f'ai_advisory_summary_regen:{request.user.id}:{normalized_symbol}'
     if _cache_get(lock_key):
-        return Response(
+        return _tracked_response(
             {
                 'ok': False,
                 'message': 'Ban vua regenerate gan day, vui long thu lai sau.',
                 'retry_after_seconds': cooldown,
             },
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     component_ids = request.data.get('component_ids')
@@ -3121,7 +3336,11 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
 
     components = list(qs.order_by('-created_at'))
     if not components:
-        return Response({'ok': False, 'message': 'Khong co component active de tong hop.'}, status=status.HTTP_400_BAD_REQUEST)
+        return _tracked_response({'ok': False, 'message': 'Khong co component active de tong hop.'}, status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_summary_regenerate_api')
+    if quota_response is not None:
+        return quota_response
 
     latest = AIAdvisoryExecutiveSummary.objects.filter(user=request.user, symbol=normalized_symbol).order_by('-summary_version').first()
     summary_payload = _sprint17_compute_summary_from_components(components)
@@ -3142,7 +3361,7 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     )
     _cache_set(lock_key, timezone.now().isoformat(), timeout=cooldown)
 
-    return Response({'ok': True, 'executive_summary': AIAdvisoryExecutiveSummarySerializer(summary).data}, status=status.HTTP_201_CREATED)
+    return _tracked_response({'ok': True, 'executive_summary': AIAdvisoryExecutiveSummarySerializer(summary).data}, status.HTTP_201_CREATED)
 
 
 @api_view(['GET', 'POST'])
@@ -3155,9 +3374,17 @@ def stock_ai_advisory_session_api(request, symbol: str):
     """
     from portfolio.tasks import generate_whale_advisory_task
 
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_session_api')
+    if denied_response is not None:
+        return denied_response
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_session_api')
+    if quota_response is not None:
+        return quota_response
 
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
@@ -3210,24 +3437,28 @@ def stock_ai_advisory_session_api(request, symbol: str):
             advisory_data['ai_detail'] = ''
         return payload
 
+    def _tracked_response(payload: dict, response_status: int):
+        _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_session_api', response_status)
+        return Response(payload, status=response_status)
+
     latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
 
     if request.method == 'GET':
         if latest is not None:
-            return Response(
+            return _tracked_response(
                 {
                     'ok': True,
                     'queued': False,
                     'symbol': normalized_symbol,
                     **_build_session_payload(latest),
                 },
-                status=status.HTTP_200_OK,
+                status.HTTP_200_OK,
             )
 
         auto_cooldown = max(int(getattr(settings, 'STOCK_AI_ADVISORY_AUTOGEN_COOLDOWN_SECONDS', 45)), 10)
         auto_lock_key = f'stock_ai_advisory_autogen_lock:{request.user.id}:{normalized_symbol}'
         if _cache_get(auto_lock_key):
-            return Response(
+            return _tracked_response(
                 {
                     'ok': True,
                     'queued': False,
@@ -3235,7 +3466,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
                     'advisory': None,
                     'message': 'Đang chờ advisory AI được tạo, vui lòng tải lại sau ít giây.',
                 },
-                status=status.HTTP_202_ACCEPTED,
+                status.HTTP_202_ACCEPTED,
             )
 
         payload_kwargs = {
@@ -3247,7 +3478,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
         }
         submit_result = _queue_or_run(payload_kwargs)
         if submit_result.get('queue_error'):
-            return Response(
+            return _tracked_response(
                 {
                     'ok': False,
                     'queued': False,
@@ -3261,13 +3492,13 @@ def stock_ai_advisory_session_api(request, symbol: str):
                     'active_components_count': 0,
                     'message': 'Khong the tao advisory luc nay (queue service tam thoi khong san sang). Vui long thu lai sau.',
                 },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                status.HTTP_503_SERVICE_UNAVAILABLE,
             )
         _cache_set(auto_lock_key, timezone.now().isoformat(), timeout=auto_cooldown)
 
         latest_after_submit = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
         if submit_result.get('sync') and latest_after_submit is not None:
-            return Response(
+            return _tracked_response(
                 {
                     'ok': True,
                     'queued': False,
@@ -3275,10 +3506,10 @@ def stock_ai_advisory_session_api(request, symbol: str):
                     **_build_session_payload(latest_after_submit),
                     'message': 'Đã tạo AI Advisory trực tiếp trong phiên hiện tại.',
                 },
-                status=status.HTTP_200_OK,
+                status.HTTP_200_OK,
             )
 
-        return Response(
+        return _tracked_response(
             {
                 'ok': True,
                 'queued': bool(submit_result.get('queued')),
@@ -3291,13 +3522,13 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 'active_components_count': 0,
                 'message': 'Đã gửi yêu cầu tạo AI Advisory cho mã này.' if submit_result.get('queued') else 'Đang xử lý AI Advisory trực tiếp.',
             },
-            status=status.HTTP_202_ACCEPTED,
+            status.HTTP_202_ACCEPTED,
         )
 
     refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
     refresh_lock_key = f'stock_ai_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
     if _cache_get(refresh_lock_key):
-        return Response(
+        return _tracked_response(
             {
                 'ok': False,
                 'queued': False,
@@ -3305,7 +3536,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 'message': 'Bạn vừa refresh gần đây, vui lòng thử lại sau.',
                 'retry_after_seconds': refresh_cooldown,
             },
-            status=status.HTTP_429_TOO_MANY_REQUESTS,
+            status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
     matched_value_vnd = float(latest.matched_value) if latest else threshold_vnd
@@ -3320,7 +3551,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
     }
     submit_result = _queue_or_run(payload_kwargs)
     if submit_result.get('queue_error'):
-        return Response(
+        return _tracked_response(
             {
                 'ok': False,
                 'queued': False,
@@ -3328,13 +3559,13 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 **_build_session_payload(latest),
                 'message': 'Khong the refresh advisory luc nay (queue service tam thoi khong san sang). Vui long thu lai sau.',
             },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
 
     latest_after_refresh = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
     if submit_result.get('sync') and latest_after_refresh is not None:
-        return Response(
+        return _tracked_response(
             {
                 'ok': True,
                 'queued': False,
@@ -3343,10 +3574,10 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 **_build_session_payload(latest_after_refresh),
                 'message': 'Đã refresh AI Advisory trực tiếp trong phiên hiện tại.',
             },
-            status=status.HTTP_200_OK,
+            status.HTTP_200_OK,
         )
 
-    return Response(
+    return _tracked_response(
         {
             'ok': True,
             'queued': bool(submit_result.get('queued')),
@@ -3355,7 +3586,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
             **_build_session_payload(latest),
             'message': 'Đã gửi yêu cầu refresh AI Advisory cho mã này.' if submit_result.get('queued') else 'Đang refresh AI Advisory trực tiếp.',
         },
-        status=status.HTTP_202_ACCEPTED,
+        status.HTTP_202_ACCEPTED,
     )
 
 

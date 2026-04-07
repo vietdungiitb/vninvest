@@ -23,6 +23,8 @@ Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra
 9. OC-08 (risk register): OPEN_CORE_08_RISK_REGISTER_V1.md
 10. OC-09 (docker experience strategy): OPEN_CORE_09_DOCKER_EXPERIENCE_STRATEGY_V1.md
 11. OC-10 (vnstock source strategy): OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md
+12. OC-11 (numeric lock sheet): OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
+13. OC-12 (entitlement + quota implementation checklist): OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md
 
 ## 3. Luong cap nhat tai lieu
 1. Cap nhat OC-01 khi co insight moi.
@@ -33,6 +35,8 @@ Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra
 6. Dong bo thong diep vao OC-04 de giu nhat quan product/legal/marketing.
 7. Theo doi rui ro qua OC-08 trong qua trinh rollout.
 8. Xac nhan source strategy qua OC-10 cho Community vs Pro.
+9. Khoa tham so so hoc qua OC-11 (pricing/quota/trial/SLO).
+10. Chuyen OC-11 thanh backlog code qua OC-12 (entitlement/quota/trial).
 
 ## 4. Rule quan tri phien ban
 - Voi thay doi lon: tao ban moi, vi du OPEN_CORE_02_DECISION_RECORD_V2.md.

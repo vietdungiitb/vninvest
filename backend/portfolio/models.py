@@ -7,6 +7,29 @@ from decimal import Decimal
 
 from .ai_options import PROVIDER_CHOICES, get_default_model
 from .encryption_utils import decrypt_text, encrypt_text
+
+# ============================================================================
+# OpenCore models - Import for Django to recognize them
+# ============================================================================
+try:
+    from .opencore_dpi import (
+        DPIPlan, DPILicense, DPIUsageMetrics, DPIEntitlement,
+        DPIAuditLog, get_or_create_default_license, check_feature_access
+    )
+    from .opencore_analytics import (
+        DPIAPICallLog, DPIFeatureUsage, DPIQuotaTracker,
+        DPIAnalyticsSnapshot, track_api_call, get_monthly_usage_summary
+    )
+    from .opencore_premium import (
+        PremiumFeatureGate, get_plan_features, PREMIUM_INDICATORS, ADVANCED_FEATURES_BY_PLAN
+    )
+    from .opencore_revenue import (
+        DPIInvoice, DPIRevenuePlan, DPISubscription, DPIPayment,
+        calculate_monthly_bill, generate_monthly_invoice
+    )
+except ImportError:
+    pass  # These will be imported when needed
+
 # ---------------------------------------------------------------------------
 # ScreenerRule: Bộ lọc động do user tự định nghĩa
 # ---------------------------------------------------------------------------
@@ -1216,3 +1239,57 @@ class AIAdvisoryExecutiveSummary(models.Model):
 
     def __str__(self):
         return f'{self.symbol} v{self.summary_version} | {self.strategy_action}'
+
+
+# ---------------------------------------------------------------------------
+# UserPlanLifecycle: Trial và Grace period (Slice C)
+# ---------------------------------------------------------------------------
+class UserPlanLifecycle(models.Model):
+    """
+    Theo dõi vòng đời trial/grace của user:
+    - trial_starts_at: ngày bắt đầu trial (mặc định None).
+    - trial_ends_at: ngày kết thúc trial (trial_starts_at + 7 ngày).
+    - grace_ends_at: ngày kết thúc grace (trial_ends_at + 7 ngày).
+    - source: "manual_create" khi admin tạo, "api" khi user request.
+    """
+    class SourceChoices(models.TextChoices):
+        MANUAL_CREATE = "manual_create", "Admin tạo"
+        API = "api", "User request qua API"
+        SYSTEM = "system", "Tự động hệ thống"
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="plan_lifecycle",
+        verbose_name="Người dùng",
+    )
+    trial_starts_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày bắt đầu trial",
+    )
+    trial_ends_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày kết thúc trial",
+    )
+    grace_ends_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Ngày kết thúc grace period",
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=SourceChoices.choices,
+        default=SourceChoices.SYSTEM,
+        verbose_name="Nguồn tạo",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm tạo")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Thời điểm cập nhật")
+
+    class Meta:
+        verbose_name = "Vòng đời Trial/Grace"
+        verbose_name_plural = "Vòng đời Trial/Grace"
+
+    def __str__(self):
+        return f"{self.user.username} | trial={self.trial_starts_at} -> grace={self.grace_ends_at}"

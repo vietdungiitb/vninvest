@@ -3,10 +3,99 @@ portfolio/permissions.py
 Phân quyền theo plan: free < basic < pro < premium < admin.
 Dùng has_plan() utility và các DRF Permission class cho views.
 """
+from django.conf import settings
 from django.utils import timezone
 from rest_framework.permissions import BasePermission
 
 PLAN_ORDER = ['free', 'basic', 'pro', 'premium', 'admin']
+
+PLAN_TIER_MAP = {
+    'free': 'community',
+    'basic': 'community',
+    'pro': 'pro_individual',
+    'premium': 'pro_team',
+    'admin': 'admin',
+}
+
+DEFAULT_QUOTA_CAPS_BY_TIER = {
+    'community': {
+        'api_calls_per_day': 300,
+        'ai_regenerate_per_day': 0,
+        'whale_symbols_max': 10,
+        'exports_per_day': 0,
+    },
+    'pro_individual': {
+        'api_calls_per_day': 3000,
+        'ai_regenerate_per_day': 30,
+        'whale_symbols_max': 25,
+        'exports_per_day': 20,
+    },
+    'pro_team': {
+        'api_calls_per_day': 10000,
+        'ai_regenerate_per_day': 120,
+        'whale_symbols_max': 100,
+        'exports_per_day': 100,
+    },
+    'admin': {
+        # -1 means unlimited for internal/admin usage.
+        'api_calls_per_day': -1,
+        'ai_regenerate_per_day': -1,
+        'whale_symbols_max': -1,
+        'exports_per_day': -1,
+    },
+}
+
+
+def _resolve_tier(plan: str) -> str:
+    return PLAN_TIER_MAP.get(plan, 'community')
+
+
+def _resolve_quota_caps(tier: str) -> dict:
+    custom_caps = getattr(settings, 'OPEN_CORE_QUOTA_CAPS_BY_TIER', None)
+    caps_map = custom_caps if isinstance(custom_caps, dict) else DEFAULT_QUOTA_CAPS_BY_TIER
+    caps = caps_map.get(tier, DEFAULT_QUOTA_CAPS_BY_TIER['community'])
+    return {
+        'api_calls_per_day': int(caps.get('api_calls_per_day', 300)),
+        'ai_regenerate_per_day': int(caps.get('ai_regenerate_per_day', 0)),
+        'whale_symbols_max': int(caps.get('whale_symbols_max', 10)),
+        'exports_per_day': int(caps.get('exports_per_day', 0)),
+    }
+
+
+def _resolve_trial_state(user, plan: str) -> dict:
+    """Resolve trial/grace state from UserPlanLifecycle model (Slice C)."""
+    from django.utils import timezone
+    now = timezone.now()
+    
+    try:
+        lifecycle = getattr(user, 'plan_lifecycle', None)
+        if not lifecycle:
+            return {'trial_state': 'none', 'trial_ends_at': None, 'grace_ends_at': None}
+        
+        if lifecycle.trial_starts_at and lifecycle.trial_ends_at and now < lifecycle.trial_ends_at:
+            return {
+                'trial_state': 'trial_active',
+                'trial_ends_at': lifecycle.trial_ends_at.isoformat(),
+                'grace_ends_at': None,
+            }
+        
+        if lifecycle.grace_ends_at and now < lifecycle.grace_ends_at:
+            return {
+                'trial_state': 'grace_active',
+                'trial_ends_at': lifecycle.trial_ends_at.isoformat() if lifecycle.trial_ends_at else None,
+                'grace_ends_at': lifecycle.grace_ends_at.isoformat(),
+            }
+        
+        if lifecycle.grace_ends_at and now >= lifecycle.grace_ends_at:
+            return {
+                'trial_state': 'expired',
+                'trial_ends_at': lifecycle.trial_ends_at.isoformat() if lifecycle.trial_ends_at else None,
+                'grace_ends_at': lifecycle.grace_ends_at.isoformat(),
+            }
+    except Exception:
+        pass
+    
+    return {'trial_state': 'none', 'trial_ends_at': None, 'grace_ends_at': None}
 
 
 def _get_plan(user) -> str:
@@ -62,9 +151,16 @@ def build_abilities(plan: str) -> list:
 def resolve_user_entitlements(user) -> dict:
     """Trả về contract quyền dùng chung cho Whale Alerts và auth/me."""
     plan = _get_plan(user)
+    tier = _resolve_tier(plan)
+    trial_state = _resolve_trial_state(user, plan)
     return {
         'plan': plan,
+        'tier': tier,
         'abilities': build_abilities(plan),
+        'quota_caps': _resolve_quota_caps(tier),
+        'trial_state': trial_state['trial_state'],
+        'trial_ends_at': trial_state['trial_ends_at'],
+        'grace_ends_at': trial_state['grace_ends_at'],
         'can_read_whale_feed': True,
         'can_read_whale_advisory': has_plan(user, 'pro'),
         'can_read_whale_advisory_detail': has_plan(user, 'premium'),

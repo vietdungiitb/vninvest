@@ -1,6 +1,11 @@
 from django.conf import settings
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from . import trading_views, views
+from .opencore_api import (
+    DPILicenseViewSet, DPIUsageViewSet, DPIPremiumIndicatorsViewSet,
+    DPIBillingViewSet
+)
 
 
 def _toggle_trading_view(view_name: str):
@@ -56,5 +61,18 @@ urlpatterns = [
     # --- Whale Advisory (AI — Pro+) ---
     path('whale-advisory/', views.WhaleAdvisoryListView.as_view(), name='whale-advisory-list'),
     path('whale-advisory/<str:symbol>/refresh/', views.refresh_whale_advisory_api, name='whale-advisory-refresh'),
+]
+
+# ============================================================================
+# OpenCore API Router
+# ============================================================================
+opencore_router = DefaultRouter()
+opencore_router.register(r'license', DPILicenseViewSet, basename='dpi-license')
+opencore_router.register(r'usage', DPIUsageViewSet, basename='dpi-usage')
+opencore_router.register(r'indicators', DPIPremiumIndicatorsViewSet, basename='dpi-indicators')
+opencore_router.register(r'billing', DPIBillingViewSet, basename='dpi-billing')
+
+urlpatterns += [
+    path('opencore/', include(opencore_router.urls), name='opencore-api'),
 ]
 
