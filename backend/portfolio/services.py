@@ -1466,7 +1466,7 @@ def fetch_and_save_daily_prices(
         logger.error('vnstock chưa được cài đặt. Chạy: pip install vnstock -U')
         result['errors'] += 1
         return result
-    except Exception as exc:
+    except (Exception, SystemExit) as exc:
         logger.error('vnstock lỗi khi lấy dữ liệu %s: %s', symbol, exc)
         result['errors'] += 1
         return result
@@ -1750,12 +1750,12 @@ def fetch_market_sectors_and_groups() -> dict:
                     'color': color,
                     'symbols': sorted(series.str.upper().tolist()),
                 })
-            except Exception as exc:
+            except (Exception, SystemExit) as exc:
                 logger.warning('symbols_by_group(%s) lỗi: %s', group_code, exc)
 
         return {'sectors': sectors, 'cap_groups': cap_groups, 'error': None}
 
-    except Exception as exc:
+    except (Exception, SystemExit) as exc:
         logger.error('fetch_market_sectors_and_groups thất bại: %s', exc)
         return {'sectors': [], 'cap_groups': [], 'error': str(exc)}
 

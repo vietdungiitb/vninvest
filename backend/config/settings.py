@@ -280,6 +280,7 @@ STREAM_MAX_LEN = int(os.getenv("STREAM_MAX_LEN", "50000"))
 STREAM_CONSUMER_BATCH = int(os.getenv("STREAM_CONSUMER_BATCH", "100"))
 STREAM_SNAPSHOT_TTL = int(os.getenv("STREAM_SNAPSHOT_TTL", "60"))
 STREAM_BLOCK_MS = int(os.getenv("STREAM_BLOCK_MS", "2000"))
+STREAM_STALE_AFTER_SECONDS = int(os.getenv("STREAM_STALE_AFTER_SECONDS", "30"))
 
 # ---------- OpenClaw AI Advisory ----------
 OPENCLAW_API_KEY  = os.getenv("OPENCLAW_API_KEY", "")

@@ -92,7 +92,13 @@ def _store_prefetch_meta(payload: dict, timeout: int = 600) -> None:
 
 def _is_rate_limited_error(exc: Exception) -> bool:
     message = str(exc or '').lower()
-    return '429' in message or 'too many requests' in message
+    return (
+        '429' in message
+        or 'too many requests' in message
+        or 'rate limit' in message
+        or 'gioi han api' in message
+        or 'giới hạn api' in message
+    )
 
 
 def _prefetch_retry_countdown(retries: int) -> int:

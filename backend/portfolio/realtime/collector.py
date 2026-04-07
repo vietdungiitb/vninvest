@@ -46,7 +46,7 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 rows.append({'ts': str(raw_time), 'price': price_val, 'volume': vol_val, 'side': side})
             if rows:
                 return pd.DataFrame(rows)
-    except Exception:
+    except (Exception, SystemExit):
         pass
 
     # Fallback: synthetic one-tick frame từ DB price

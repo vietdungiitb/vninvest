@@ -487,7 +487,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [fetchedAt, setFetchedAt] = useState(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const debounceRef = useRef(null);
   const prevVolumeRef = useRef(null);

@@ -16,6 +16,7 @@ Cách dùng trong view:
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any
 
 from django.conf import settings
@@ -47,10 +48,34 @@ class StreamReader:
             return None
         try:
             ticks = self.producer.read_latest_ticks(symbol, count=count)
+            if ticks and self._is_stream_payload_stale(ticks):
+                logger.info("StreamReader._from_stream(%s): ignore stale stream payload", symbol)
+                return None
             return ticks if ticks else None
         except Exception as exc:
             logger.warning("StreamReader._from_stream(%s): %s", symbol, exc)
             return None
+
+    def _is_stream_payload_stale(self, ticks: list[dict]) -> bool:
+        """
+        Redis stream can contain old ticks when collector is down.
+        If newest message is too old, skip stream tier and fallback.
+        """
+        if not ticks:
+            return True
+
+        stale_after_seconds = int(getattr(settings, "STREAM_STALE_AFTER_SECONDS", 120) or 120)
+        newest = ticks[0] or {}
+        stream_id = str(newest.get("stream_id") or "")
+        if not stream_id or "-" not in stream_id:
+            return False
+
+        try:
+            stream_ms = int(stream_id.split("-", 1)[0])
+            age_seconds = max(0.0, time.time() - (stream_ms / 1000.0))
+            return age_seconds > stale_after_seconds
+        except (TypeError, ValueError):
+            return False
 
     def _snapshot_from_stream(self, symbol: str) -> dict | None:
         if self.producer is None:
