@@ -1,0 +1,9 @@
+{$DOMAIN} {
+    encode gzip
+
+    # Frontend SPA
+    reverse_proxy frontend:80
+
+    # Automatic HTTPS via Let's Encrypt
+    tls {$LETSENCRYPT_EMAIL}
+}
