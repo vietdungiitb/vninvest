@@ -7,7 +7,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
-from portfolio.models import DailyPrice, IntradayTick, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
 from portfolio.email_verification import generate_email_verification_token
 from datetime import date, datetime, timedelta
 from rest_framework import status
@@ -300,6 +300,147 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         created_user = User.objects.get(username='normalize_email_user')
         self.assertEqual(created_user.email, 'mixedcase@example.com')
+
+    @patch('portfolio.auth_views.send_verification_email', return_value=1)
+    def test_register_endpoint_applies_active_onboarding_policy(self, _mock_send_verification_email):
+        OnboardingPlanPolicy.objects.create(
+            is_active=True,
+            trial_plan=UserConfig.PlanChoices.PRO,
+            trial_duration_days=14,
+            fallback_plan=UserConfig.PlanChoices.BASIC,
+        )
+
+        response = self.client.post(
+            '/api/auth/register/',
+            {
+                'username': 'onboarding_policy_user',
+                'email': 'onboarding-policy@example.com',
+                'password': 'Test@123456',
+                'password_confirm': 'Test@123456',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['plan'], UserConfig.PlanChoices.PRO)
+
+        created_user = User.objects.get(username='onboarding_policy_user')
+        created_user.user_config.refresh_from_db()
+        self.assertEqual(created_user.user_config.plan, UserConfig.PlanChoices.PRO)
+        self.assertEqual(created_user.user_config.plan_source, UserConfig.PlanSourceChoices.ONBOARDING_TRIAL)
+        self.assertIsNotNone(created_user.user_config.plan_expires_at)
+        self.assertIsNotNone(created_user.user_config.plan_assigned_at)
+
+        self.assertTrue(
+            PlanAssignmentLog.objects.filter(
+                user=created_user,
+                reason=PlanAssignmentLog.ReasonChoices.SIGNUP_TRIAL,
+                new_plan=UserConfig.PlanChoices.PRO,
+            ).exists()
+        )
+
+    @override_settings(ONBOARDING_TRIAL_APPLY_ON_SIGNUP=False)
+    @patch('portfolio.auth_views.send_verification_email', return_value=1)
+    def test_register_endpoint_respects_signup_trial_feature_flag(self, _mock_send_verification_email):
+        OnboardingPlanPolicy.objects.create(
+            is_active=True,
+            trial_plan=UserConfig.PlanChoices.PRO,
+            trial_duration_days=14,
+            fallback_plan=UserConfig.PlanChoices.BASIC,
+        )
+
+        response = self.client.post(
+            '/api/auth/register/',
+            {
+                'username': 'onboarding_flag_off_user',
+                'email': 'onboarding-flag-off@example.com',
+                'password': 'Test@123456',
+                'password_confirm': 'Test@123456',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['plan'], UserConfig.PlanChoices.FREE)
+
+        created_user = User.objects.get(username='onboarding_flag_off_user')
+        created_user.user_config.refresh_from_db()
+        self.assertEqual(created_user.user_config.plan, UserConfig.PlanChoices.FREE)
+        self.assertEqual(created_user.user_config.plan_source, UserConfig.PlanSourceChoices.SYSTEM_DEFAULT)
+        self.assertFalse(
+            PlanAssignmentLog.objects.filter(
+                user=created_user,
+                reason=PlanAssignmentLog.ReasonChoices.SIGNUP_TRIAL,
+            ).exists()
+        )
+
+    @patch('portfolio.auth_views.fetch_google_user_email', return_value='oauth-signup@example.com')
+    def test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy(self, _mock_fetch_google_email):
+        OnboardingPlanPolicy.objects.create(
+            is_active=True,
+            trial_plan=UserConfig.PlanChoices.PRO,
+            trial_duration_days=10,
+            fallback_plan=UserConfig.PlanChoices.BASIC,
+        )
+
+        response = self.client.post(
+            '/api/auth/oauth/google/',
+            {'access_token': 'fake-google-access-token'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['created'])
+        self.assertEqual(response.data['email'], 'oauth-signup@example.com')
+        self.assertIn('access', response.data)
+        self.assertIn('refresh', response.data)
+        self.assertEqual(response.data['plan'], UserConfig.PlanChoices.PRO)
+
+        created_user = User.objects.get(email='oauth-signup@example.com')
+        created_user.user_config.refresh_from_db()
+        self.assertEqual(created_user.user_config.oauth_provider, 'google')
+        self.assertTrue(created_user.user_config.email_verified)
+        self.assertEqual(created_user.user_config.plan_source, UserConfig.PlanSourceChoices.ONBOARDING_TRIAL)
+
+    @patch('portfolio.auth_views.fetch_google_user_email', return_value='oauth-existing@example.com')
+    def test_google_oauth_endpoint_existing_user_no_reassignment(self, _mock_fetch_google_email):
+        existing_user = User.objects.create_user(
+            username='oauth_existing',
+            email='oauth-existing@example.com',
+            password='Test@123456',
+        )
+        cfg, _ = UserConfig.objects.get_or_create(user=existing_user)
+        cfg.plan = UserConfig.PlanChoices.PREMIUM
+        cfg.plan_source = UserConfig.PlanSourceChoices.PAID
+        cfg.email_verified = True
+        cfg.save(update_fields=['plan', 'plan_source', 'email_verified', 'updated_at'])
+
+        OnboardingPlanPolicy.objects.create(
+            is_active=True,
+            trial_plan=UserConfig.PlanChoices.PRO,
+            trial_duration_days=10,
+            fallback_plan=UserConfig.PlanChoices.BASIC,
+        )
+
+        response = self.client.post(
+            '/api/auth/oauth/google/',
+            {'access_token': 'fake-google-access-token'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['created'])
+        self.assertEqual(response.data['plan'], UserConfig.PlanChoices.PREMIUM)
+
+        cfg.refresh_from_db()
+        self.assertEqual(cfg.plan, UserConfig.PlanChoices.PREMIUM)
+        self.assertEqual(cfg.plan_source, UserConfig.PlanSourceChoices.PAID)
+        self.assertFalse(
+            PlanAssignmentLog.objects.filter(
+                user=existing_user,
+                reason=PlanAssignmentLog.ReasonChoices.SIGNUP_TRIAL,
+            ).exists()
+        )
 
     def test_register_endpoint_rejects_password_mismatch(self):
         response = self.client.post(
