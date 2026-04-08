@@ -219,6 +219,10 @@ CELERY_TIMEZONE = TIME_ZONE
 WATCHLIST_SYNC_ENABLED = os.getenv("WATCHLIST_SYNC_ENABLED", "False").lower() == "true"
 WATCHLIST_SYNC_MINUTES = _env_int("WATCHLIST_SYNC_MINUTES", 15)
 WATCHLIST_SYNC_DAYS = _env_int("WATCHLIST_SYNC_DAYS", 5)
+ONBOARDING_TRIAL_APPLY_ON_SIGNUP = os.getenv("ONBOARDING_TRIAL_APPLY_ON_SIGNUP", "True").lower() == "true"
+ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED = os.getenv("ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED", "True").lower() == "true"
+ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES = _env_int("ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES", 15)
+ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE = _env_int("ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE", 500)
 ENABLE_NEW_MARKET_VIEWS = os.getenv("ENABLE_NEW_MARKET_VIEWS", "False").lower() == "true"
 MARKET_VIEWS_CANARY_PERCENT = _env_int("MARKET_VIEWS_CANARY_PERCENT", 100)
 ENABLE_NEW_TRADING_VIEWS = os.getenv("ENABLE_NEW_TRADING_VIEWS", "False").lower() == "true"
@@ -265,6 +269,12 @@ if WATCHLIST_SYNC_ENABLED:
         "task": "portfolio.tasks.sync_all_watch_assets",
         "schedule": timedelta(minutes=max(WATCHLIST_SYNC_MINUTES, 1)),
         "args": (WATCHLIST_SYNC_DAYS,),
+    }
+if ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED:
+    CELERY_BEAT_SCHEDULE["process-expired-onboarding-trials"] = {
+        "task": "portfolio.tasks.process_expired_onboarding_trials_task",
+        "schedule": timedelta(minutes=max(ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES, 1)),
+        "args": (max(ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE, 1),),
     }
 
 # Stream consumer batch — chạy mỗi 3 giây khi REALTIME_ENABLED=true

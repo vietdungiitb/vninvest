@@ -37,6 +37,7 @@ from portfolio.services import (
     refresh_rollout_propagation_status,
     sync_watchlist_prices,
 )
+from portfolio.onboarding_trial_service import process_expired_onboarding_trials
 
 logger = logging.getLogger(__name__)
 
@@ -891,4 +892,19 @@ def process_plan_lifecycle_transitions(self) -> dict:
         transitions['errors'] += 1
     
     return {'status': 'ok', **transitions}
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+def process_expired_onboarding_trials_task(self, batch_size: int = 500) -> dict:
+    """Downgrade expired onboarding trials to fallback plan in bounded batches."""
+    result = process_expired_onboarding_trials(batch_size=batch_size)
+    logger.info(
+        'event=onboarding_trial_expiry_task_run processed=%s downgraded=%s skipped=%s fallback_plan=%s batch_size=%s',
+        result.get('processed', 0),
+        result.get('downgraded', 0),
+        result.get('skipped', 0),
+        result.get('fallback_plan', ''),
+        batch_size,
+    )
+    return {'status': 'ok', **result}
 

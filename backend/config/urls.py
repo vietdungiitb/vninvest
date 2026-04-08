@@ -5,6 +5,7 @@ from .health import healthcheck, market_observability_health, prefetch_health, r
 import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
+    GoogleOAuthView,
     RegisterView,
     ResendVerificationEmailView,
     UserMeView,
@@ -18,6 +19,7 @@ urlpatterns = [
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
     path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
+    path('api/auth/oauth/google/', GoogleOAuthView.as_view(), name='auth-oauth-google'),
     path('api/auth/verify-email/', VerifyEmailView.as_view(), name='auth-verify-email'),
     path('api/auth/resend-verification/', ResendVerificationEmailView.as_view(), name='auth-resend-verification'),
     path('api/portfolio/', include('portfolio.urls')),

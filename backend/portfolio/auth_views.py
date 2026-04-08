@@ -1,4 +1,6 @@
 """Auth views for registration, verification, login gating, and /api/auth/me."""
+import logging
+
 from django.conf import settings
 from django.core import signing
 from django.db import transaction
@@ -11,11 +13,17 @@ from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, AuthenticationFailed, ValidationError
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .email_verification import resolve_email_verification_token, send_verification_email
+from .google_oauth_service import fetch_google_user_email
 from .models import UserConfig
+from .onboarding_trial_service import apply_onboarding_trial_for_new_user
 from .permissions import _get_plan, resolve_user_entitlements
+
+
+logger = logging.getLogger(__name__)
 
 
 class EmailDeliveryFailed(APIException):
@@ -137,6 +145,15 @@ class RegisterView(CreateAPIView):
             user = serializer.save()
             user_config = user.user_config
 
+            # Apply onboarding trial policy for every non-superuser signup path.
+            if getattr(settings, 'ONBOARDING_TRIAL_APPLY_ON_SIGNUP', True):
+                try:
+                    apply_onboarding_trial_for_new_user(user=user, signup_method='email_password')
+                    user_config.refresh_from_db()
+                except Exception:
+                    # Fail-soft to avoid blocking signup if policy logic has transient issue.
+                    logger.exception('Failed to apply onboarding trial for user_id=%s', user.id)
+
             try:
                 send_verification_email(user)
                 user_config.email_verified = False
@@ -229,5 +246,94 @@ class ResendVerificationEmailView(APIView):
 
         return Response(
             {'message': 'Neu tai khoan ton tai va chua xac thuc, he thong da gui lai email xac thuc.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class GoogleOAuthSerializer(serializers.Serializer):
+    access_token = serializers.CharField(required=True, allow_blank=False)
+
+
+class GoogleOAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    def _generate_username(self, email: str) -> str:
+        base = (email.split('@', 1)[0] or 'google_user').strip().lower()
+        normalized = ''.join(ch if ch.isalnum() or ch == '_' else '_' for ch in base)
+        normalized = normalized.strip('_') or 'google_user'
+        normalized = normalized[:24]
+
+        candidate = normalized
+        suffix = 1
+        while User.objects.filter(username=candidate).exists():
+            suffix_token = f'_{suffix}'
+            candidate = f"{normalized[: max(1, 30 - len(suffix_token))]}{suffix_token}"
+            suffix += 1
+        return candidate
+
+    def post(self, request, *args, **kwargs):
+        serializer = GoogleOAuthSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        access_token = serializer.validated_data['access_token'].strip()
+        try:
+            email = fetch_google_user_email(access_token=access_token)
+        except Exception as exc:
+            raise ValidationError({'access_token': f'Khong the xac thuc Google access token: {exc}'})
+
+        if not email:
+            raise ValidationError({'access_token': 'Google access token khong tra ve email hop le.'})
+
+        created = False
+        with transaction.atomic():
+            user = User.objects.filter(email__iexact=email).first()
+            if user is None:
+                username = self._generate_username(email)
+                user = User.objects.create_user(
+                    username=username,
+                    email=email,
+                    password=User.objects.make_random_password(),
+                )
+                created = True
+
+            cfg, _ = UserConfig.objects.get_or_create(user=user)
+            if cfg.oauth_provider != 'google' or not cfg.oauth_uid:
+                cfg.oauth_provider = 'google'
+                cfg.oauth_uid = email
+
+            # Google OAuth account is treated as verified by identity provider.
+            if not cfg.email_verified:
+                cfg.email_verified = True
+                cfg.email_verified_at = timezone.now()
+                cfg.email_verification_sent_at = None
+
+            cfg.save(
+                update_fields=[
+                    'oauth_provider',
+                    'oauth_uid',
+                    'email_verified',
+                    'email_verified_at',
+                    'email_verification_sent_at',
+                    'updated_at',
+                ]
+            )
+
+            if created and getattr(settings, 'ONBOARDING_TRIAL_APPLY_ON_SIGNUP', True):
+                try:
+                    apply_onboarding_trial_for_new_user(user=user, signup_method='google_oauth')
+                    cfg.refresh_from_db()
+                except Exception:
+                    logger.exception('Failed to apply onboarding trial for Google OAuth user_id=%s', user.id)
+
+        refresh = RefreshToken.for_user(user)
+        return Response(
+            {
+                'username': user.username,
+                'email': user.email,
+                'plan': _get_plan(user),
+                'created': created,
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+            },
             status=status.HTTP_200_OK,
         )

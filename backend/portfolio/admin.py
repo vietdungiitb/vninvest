@@ -24,9 +24,11 @@ from .models import (
     MarketGroupSyncLog,
     Portfolio,
     PriceAlertRule,
+    PlanAssignmentLog,
     ScreenerRule,
     SecuritiesGroup,
     SecuritiesItem,
+    OnboardingPlanPolicy,
     StockProfile,
     StockProfileSyncLog,
     SubAccount,
@@ -971,6 +973,11 @@ class AccountSnapshotAdmin(admin.ModelAdmin):
 class UserConfigAdmin(admin.ModelAdmin):
     list_display = (
         'user',
+        'plan',
+        'plan_source',
+        'plan_expires_at',
+        'plan_locked_by_admin',
+        'auto_downgrade_enabled',
         'verification_status',
         'email_verification_sent_at',
         'email_verified_at',
@@ -978,7 +985,7 @@ class UserConfigAdmin(admin.ModelAdmin):
         'theme',
         'updated_at',
     )
-    list_filter = ('theme', 'email_verified')
+    list_filter = ('theme', 'email_verified', 'plan', 'plan_source', 'plan_locked_by_admin', 'auto_downgrade_enabled')
     search_fields = ('user__username', 'user__email')
     ordering = ('user__username',)
     change_form_template = 'admin/portfolio/userconfig/change_form.html'
@@ -988,10 +995,59 @@ class UserConfigAdmin(admin.ModelAdmin):
         ('Nguoi dung', {'fields': ('user',)}),
         ('Xac thuc email', {'fields': ('email_verified', 'email_verification_sent_at', 'email_verified_at')}),
         ('Cau hinh ca nhan', {'fields': ('whale_alert_threshold', 'theme')}),
-        ('Goi dich vu', {'fields': ('plan', 'plan_expires_at')}),
+        (
+            'Goi dich vu',
+            {
+                'fields': (
+                    'plan',
+                    'plan_expires_at',
+                    'plan_source',
+                    'plan_assigned_at',
+                    'downgraded_at',
+                    'plan_locked_by_admin',
+                    'auto_downgrade_enabled',
+                )
+            },
+        ),
         ('OAuth', {'fields': ('oauth_provider', 'oauth_uid')}),
         ('He thong', {'fields': ('created_at', 'updated_at')}),
     )
+
+    def save_model(self, request, obj, form, change):
+        previous = None
+        if change:
+            previous = UserConfig.objects.filter(pk=obj.pk).first()
+
+        super().save_model(request, obj, form, change)
+
+        if not previous:
+            return
+
+        tracked_fields = {
+            'plan',
+            'plan_expires_at',
+            'plan_source',
+            'plan_locked_by_admin',
+            'auto_downgrade_enabled',
+        }
+        changed_fields = sorted(set(form.changed_data).intersection(tracked_fields))
+        if not changed_fields:
+            return
+
+        PlanAssignmentLog.objects.create(
+            user=obj.user,
+            old_plan=previous.plan or '',
+            new_plan=obj.plan,
+            old_expires_at=previous.plan_expires_at,
+            new_expires_at=obj.plan_expires_at,
+            reason=PlanAssignmentLog.ReasonChoices.ADMIN_OVERRIDE,
+            actor_type=PlanAssignmentLog.ActorTypeChoices.ADMIN,
+            actor_user=request.user if request.user.is_authenticated else None,
+            metadata_json={
+                'changed_fields': changed_fields,
+                'source': 'admin_userconfig_save',
+            },
+        )
 
     @admin.display(description='Trang thai email')
     def verification_status(self, obj):
@@ -1066,6 +1122,88 @@ class UserConfigAdmin(admin.ModelAdmin):
             self.message_user(request, f'Bo qua {skipped_count} tai khoan da xac thuc email.', level=messages.INFO)
         if failure_count and not success_count:
             self.message_user(request, 'Khong co email xac thuc nao duoc gui thanh cong.', level=messages.WARNING)
+
+
+@admin.register(OnboardingPlanPolicy)
+class OnboardingPlanPolicyAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'is_active',
+        'trial_plan',
+        'trial_duration_days',
+        'fallback_plan',
+        'effective_from',
+        'effective_to',
+        'updated_at',
+    )
+    list_filter = ('is_active', 'trial_plan', 'fallback_plan')
+    search_fields = ('id', 'created_by__username', 'updated_by__username')
+    ordering = ('-updated_at',)
+    actions = ('activate_selected_policy',)
+    readonly_fields = ('created_by', 'updated_by', 'created_at', 'updated_at')
+
+    @admin.action(description='Kich hoat policy da chon (tu dong tat policy khac)')
+    def activate_selected_policy(self, request, queryset):
+        policy = queryset.order_by('-updated_at').first()
+        if not policy:
+            self.message_user(request, 'Khong co policy nao duoc chon.', level=messages.WARNING)
+            return
+
+        OnboardingPlanPolicy.objects.exclude(pk=policy.pk).filter(is_active=True).update(
+            is_active=False,
+            updated_by=request.user,
+            updated_at=timezone.now(),
+        )
+        if not policy.is_active:
+            policy.is_active = True
+            policy.updated_by = request.user
+            policy.save(update_fields=['is_active', 'updated_by', 'updated_at'])
+
+        self.message_user(
+            request,
+            f'Da kich hoat policy #{policy.pk} va tat cac policy active khac.',
+            level=messages.SUCCESS,
+        )
+
+    def save_model(self, request, obj, form, change):
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(PlanAssignmentLog)
+class PlanAssignmentLogAdmin(admin.ModelAdmin):
+    list_display = (
+        'created_at',
+        'user',
+        'old_plan',
+        'new_plan',
+        'reason',
+        'actor_type',
+        'actor_user',
+    )
+    list_filter = ('reason', 'actor_type', 'created_at', 'new_plan')
+    search_fields = ('user__username', 'user__email', 'actor_user__username', 'old_plan', 'new_plan')
+    ordering = ('-created_at',)
+    readonly_fields = (
+        'user',
+        'old_plan',
+        'new_plan',
+        'old_expires_at',
+        'new_expires_at',
+        'reason',
+        'actor_type',
+        'actor_user',
+        'metadata_json',
+        'created_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 class SystemEmailAccountAdminForm(forms.ModelForm):

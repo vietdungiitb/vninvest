@@ -630,6 +630,12 @@ class UserConfig(models.Model):
         VI = 'vi', 'Tiếng Việt'
         EN = 'en', 'English'
 
+    class PlanSourceChoices(models.TextChoices):
+        SYSTEM_DEFAULT = 'system_default', 'Hệ thống mặc định'
+        ONBOARDING_TRIAL = 'onboarding_trial', 'Onboarding trial'
+        MANUAL_ADMIN = 'manual_admin', 'Admin chỉnh thủ công'
+        PAID = 'paid', 'Đã trả phí'
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
@@ -667,6 +673,33 @@ class UserConfig(models.Model):
         blank=True,
         verbose_name='Ngày hết hạn gói',
         help_text='Null = không hết hạn (admin hoặc lifetime)',
+    )
+    plan_source = models.CharField(
+        max_length=30,
+        choices=PlanSourceChoices.choices,
+        default=PlanSourceChoices.SYSTEM_DEFAULT,
+        verbose_name='Nguồn gói dịch vụ',
+        db_index=True,
+    )
+    auto_downgrade_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Cho phép tự động hạ gói',
+        help_text='Nếu tắt, job tự động sẽ không hạ gói khi hết hạn.',
+    )
+    plan_locked_by_admin = models.BooleanField(
+        default=False,
+        verbose_name='Khóa gói bởi quản trị',
+        help_text='Nếu bật, tác vụ hệ thống không được tự động đổi gói.',
+    )
+    plan_assigned_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Thời điểm gán gói gần nhất',
+    )
+    downgraded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Thời điểm hạ gói gần nhất',
     )
     oauth_provider = models.CharField(
         max_length=20,
@@ -733,6 +766,136 @@ class UserConfig(models.Model):
 
     def get_ai_api_key(self) -> str:
         return decrypt_text(self.ai_api_key)
+
+
+class OnboardingPlanPolicy(models.Model):
+    """Chính sách gói trải nghiệm áp dụng cho người dùng đăng ký mới."""
+
+    class TrialPlanChoices(models.TextChoices):
+        FREE = UserConfig.PlanChoices.FREE
+        BASIC = UserConfig.PlanChoices.BASIC
+        PRO = UserConfig.PlanChoices.PRO
+        PREMIUM = UserConfig.PlanChoices.PREMIUM
+
+    is_active = models.BooleanField(default=False, verbose_name='Đang kích hoạt')
+    trial_plan = models.CharField(
+        max_length=20,
+        choices=TrialPlanChoices.choices,
+        default=TrialPlanChoices.BASIC,
+        verbose_name='Gói trải nghiệm',
+    )
+    trial_duration_days = models.PositiveIntegerField(
+        default=30,
+        verbose_name='Thời lượng trải nghiệm (ngày)',
+        validators=[MinValueValidator(1)],
+    )
+    fallback_plan = models.CharField(
+        max_length=20,
+        choices=TrialPlanChoices.choices,
+        default=TrialPlanChoices.BASIC,
+        verbose_name='Gói sau khi hết hạn',
+    )
+    effective_from = models.DateTimeField(null=True, blank=True, verbose_name='Hiệu lực từ')
+    effective_to = models.DateTimeField(null=True, blank=True, verbose_name='Hiệu lực đến')
+    created_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_onboarding_policies',
+        verbose_name='Tạo bởi',
+    )
+    updated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='updated_onboarding_policies',
+        verbose_name='Cập nhật bởi',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Chính sách onboarding trial'
+        verbose_name_plural = 'Chính sách onboarding trial'
+        ordering = ['-updated_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=models.Q(is_active=True),
+                name='uniq_active_onboarding_policy',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.effective_from and self.effective_to and self.effective_to <= self.effective_from:
+            raise ValidationError({'effective_to': 'Hiệu lực đến phải lớn hơn hiệu lực từ.'})
+
+    def __str__(self):
+        state = 'ACTIVE' if self.is_active else 'INACTIVE'
+        return f'Policy {self.pk} | {self.trial_plan}->{self.fallback_plan} | {state}'
+
+
+class PlanAssignmentLog(models.Model):
+    """Audit trail cho mọi lần thay đổi gói dịch vụ của user."""
+
+    class ReasonChoices(models.TextChoices):
+        SIGNUP_TRIAL = 'signup_trial', 'Gán trial khi đăng ký'
+        TRIAL_EXPIRED = 'trial_expired', 'Hết hạn trial tự động hạ gói'
+        ADMIN_OVERRIDE = 'admin_override', 'Quản trị chỉnh thủ công'
+        PAYMENT_UPGRADE = 'payment_upgrade', 'Nâng cấp từ thanh toán'
+
+    class ActorTypeChoices(models.TextChoices):
+        SYSTEM = 'system', 'Hệ thống'
+        ADMIN = 'admin', 'Quản trị'
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='plan_assignment_logs',
+        verbose_name='Người dùng',
+    )
+    old_plan = models.CharField(max_length=20, blank=True, default='', verbose_name='Gói cũ')
+    new_plan = models.CharField(max_length=20, verbose_name='Gói mới')
+    old_expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Hết hạn cũ')
+    new_expires_at = models.DateTimeField(null=True, blank=True, verbose_name='Hết hạn mới')
+    reason = models.CharField(
+        max_length=30,
+        choices=ReasonChoices.choices,
+        verbose_name='Lý do',
+        db_index=True,
+    )
+    actor_type = models.CharField(
+        max_length=20,
+        choices=ActorTypeChoices.choices,
+        default=ActorTypeChoices.SYSTEM,
+        verbose_name='Nguồn tác động',
+        db_index=True,
+    )
+    actor_user = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='plan_assignment_actions',
+        verbose_name='Người thao tác',
+    )
+    metadata_json = models.JSONField(null=True, blank=True, verbose_name='Metadata JSON')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Nhật ký thay đổi gói'
+        verbose_name_plural = 'Nhật ký thay đổi gói'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at'], name='idx_plan_log_user_created'),
+            models.Index(fields=['reason', '-created_at'], name='idx_plan_log_reason_created'),
+        ]
+
+    def __str__(self):
+        return f'{self.user.username}: {self.old_plan}->{self.new_plan} ({self.reason})'
 
 
 class SystemEmailAccount(models.Model):
