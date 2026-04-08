@@ -130,11 +130,12 @@ function advisorySynthesisPreferenceLabel(preference, t) {
   return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
-function KLineChartComponent({ data, activePeriod, onPeriodChange }) {
+function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const indicatorPaneMapRef = useRef({});
+  const lastVisibleRangeRef = useRef({ from_ts: null, to_ts: null });
   const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
   const [fullScreen, setFullScreen] = useState(false);
 
@@ -290,6 +291,53 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange }) {
     setActiveTimeframe(tf.id);
     onPeriodChange?.(tf.days);
   };
+
+  const emitVisibleRangeFromChart = useCallback((kLineData = []) => {
+    const chart = chartRef.current;
+    if (!chart || !onVisibleRangeChange) return;
+
+    const fallbackFrom = kLineData[0]?.timestamp ?? null;
+    const fallbackTo = kLineData[kLineData.length - 1]?.timestamp ?? null;
+
+    let nextFrom = fallbackFrom;
+    let nextTo = fallbackTo;
+
+    try {
+      const visibleRange = chart.getVisibleRange?.();
+      if (visibleRange && kLineData.length) {
+        const fromIndexRaw = Number(
+          visibleRange.from
+          ?? visibleRange.realFrom
+          ?? visibleRange.left
+          ?? visibleRange.start
+        );
+        const toIndexRaw = Number(
+          visibleRange.to
+          ?? visibleRange.realTo
+          ?? visibleRange.right
+          ?? visibleRange.end
+        );
+
+        if (Number.isFinite(fromIndexRaw) && Number.isFinite(toIndexRaw)) {
+          const fromIndex = Math.max(0, Math.min(kLineData.length - 1, Math.floor(fromIndexRaw)));
+          const toIndex = Math.max(fromIndex, Math.min(kLineData.length - 1, Math.ceil(toIndexRaw)));
+          nextFrom = kLineData[fromIndex]?.timestamp ?? fallbackFrom;
+          nextTo = kLineData[toIndex]?.timestamp ?? fallbackTo;
+        }
+      }
+    } catch (_) {
+      nextFrom = fallbackFrom;
+      nextTo = fallbackTo;
+    }
+
+    if (
+      lastVisibleRangeRef.current.from_ts !== nextFrom
+      || lastVisibleRangeRef.current.to_ts !== nextTo
+    ) {
+      lastVisibleRangeRef.current = { from_ts: nextFrom, to_ts: nextTo };
+      onVisibleRangeChange({ from_ts: nextFrom, to_ts: nextTo });
+    }
+  }, [onVisibleRangeChange]);
 
   const handleScreenshot = () => {
     if (chartRef.current) {
@@ -465,7 +513,20 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange }) {
       .sort((a, b) => a.timestamp - b.timestamp);
 
     chartRef.current.applyNewData(kLineData);
-  }, [data]);
+    emitVisibleRangeFromChart(kLineData);
+  }, [data, emitVisibleRangeFromChart]);
+
+  useEffect(() => {
+    if (!chartRef.current || !data?.length || !onVisibleRangeChange) return;
+    const timer = window.setInterval(() => {
+      const kLineData = data
+        .filter((d) => d.date && d.close != null)
+        .map((d) => ({ timestamp: new Date(d.date).getTime() }))
+        .filter((d) => Number.isFinite(d.timestamp));
+      emitVisibleRangeFromChart(kLineData);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [data, emitVisibleRangeFromChart, onVisibleRangeChange]);
 
   return (
     <div className="flex flex-col w-full h-full bg-[#131722] rounded-lg overflow-hidden border border-[#2a2e39]">
@@ -1235,6 +1296,7 @@ export default function StockDetail() {
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
+  const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [orderFlowData, setOrderFlowData] = useState(null);
   const [orderFlowLoading, setOrderFlowLoading] = useState(true);
   const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
@@ -1676,8 +1738,10 @@ export default function StockDetail() {
       .filter(Boolean)
       .slice(-300);
 
-    const fromTs = normalizedPoints[0]?.ts ?? null;
-    const toTs = normalizedPoints[normalizedPoints.length - 1]?.ts ?? null;
+    const fallbackFromTs = normalizedPoints[0]?.ts ?? null;
+    const fallbackToTs = normalizedPoints[normalizedPoints.length - 1]?.ts ?? null;
+    const fromTs = Number.isFinite(Number(chartVisibleRange?.from_ts)) ? Number(chartVisibleRange.from_ts) : fallbackFromTs;
+    const toTs = Number.isFinite(Number(chartVisibleRange?.to_ts)) ? Number(chartVisibleRange.to_ts) : fallbackToTs;
 
     const avgVol = normalizedPoints.length
       ? normalizedPoints.reduce((sum, row) => sum + Number(row.v || 0), 0) / normalizedPoints.length
@@ -1705,7 +1769,7 @@ export default function StockDetail() {
       },
       client_generated_at: new Date().toISOString(),
     };
-  }, [chartData, chartPerformance, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
+  }, [chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
 
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
@@ -2068,7 +2132,12 @@ export default function StockDetail() {
                   {t('stockDetail.noChartData')}
                 </div>
               ) : (
-                <KLineChartComponent data={chartData} activePeriod={activePeriod} onPeriodChange={setActivePeriod} />
+                <KLineChartComponent
+                  data={chartData}
+                  activePeriod={activePeriod}
+                  onPeriodChange={setActivePeriod}
+                  onVisibleRangeChange={setChartVisibleRange}
+                />
               )}
             </div>
           </section>

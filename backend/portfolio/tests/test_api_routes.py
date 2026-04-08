@@ -1173,6 +1173,108 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(response.data['chart_context_used'])
         self.assertIn('chart_context_invalid', response.data['chart_context_warnings'])
 
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.order_flow.detect_dark_flow')
+    def test_stock_ai_advisory_components_generate_without_chart_context_has_no_warning(
+        self,
+        mock_detect_dark_flow,
+        mock_generate_with_ai,
+        mock_build_templates,
+    ):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+
+        mock_detect_dark_flow.return_value = {
+            'signal_type': 'iceberg',
+            'strength': 40,
+            'confidence': 'medium',
+            'components': {},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'MA',
+                'status': 'neutral',
+                'confidence_score': 5,
+                'suggested_action': 'watch',
+                'rationale_text': 'no-chart-context',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            },
+        ]
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '30m'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(response.data['chart_context_used'])
+        self.assertEqual(response.data['chart_context_warnings'], [])
+        kwargs = mock_generate_with_ai.call_args.kwargs
+        self.assertIsNone(kwargs.get('chart_context'))
+
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.order_flow.detect_dark_flow')
+    def test_stock_ai_advisory_components_generate_chart_context_oversize_points_sets_warning(
+        self,
+        mock_detect_dark_flow,
+        mock_generate_with_ai,
+        mock_build_templates,
+    ):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+
+        mock_detect_dark_flow.return_value = {
+            'signal_type': 'iceberg',
+            'strength': 40,
+            'confidence': 'medium',
+            'components': {},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'MA',
+                'status': 'neutral',
+                'confidence_score': 5,
+                'suggested_action': 'watch',
+                'rationale_text': 'oversize-chart-context',
+                'timeframe': '30m',
+                'include_in_summary': True,
+            },
+        ]
+
+        ohlcv = [
+            {'ts': 1712500000000 + i * 60000, 'o': 70.0, 'h': 70.3, 'l': 69.9, 'c': 70.1, 'v': 100000}
+            for i in range(301)
+        ]
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {
+                'timeframe': '30m',
+                'chart_context': {
+                    'symbol': 'BCM',
+                    'chart_timeframe': '30m',
+                    'ohlcv': ohlcv,
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(response.data['chart_context_used'])
+        self.assertIn('chart_context_invalid', response.data['chart_context_warnings'])
+        kwargs = mock_generate_with_ai.call_args.kwargs
+        self.assertIsNone(kwargs.get('chart_context'))
+
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._sprint17_generate_component_templates_with_ai')
     def test_stock_workspace_p1_regression_matrix_matches_current_gating_policy(self, mock_generate_with_ai, _mock_cache_get):

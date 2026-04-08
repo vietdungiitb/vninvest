@@ -91,16 +91,16 @@
 ## 4) Bang theo doi ticket thuc thi
 | Ticket | Owner | ETA | Status | Blocker | Next Action |
 |---|---|---|---|---|---|
-| B0-01 | [TEN_BE] | Day 1 | Not Started | - | Chot schema voi FE/QA |
+| B0-01 | [TEN_BE] | Day 1 | Done | - | Schema chart_context v1 da chot va dong bo BE/FE |
 | B0-02 | [TEN_BE] | Day 2 | Done | - | Serializer da merge, tiep tuc hardening telemetry |
 | B0-03 | [TEN_BE] | Day 3 | Done | B0-02 | Endpoint da nhan chart_context + response flags |
 | B0-04 | [TEN_BE] | Day 3 | Done | B0-03 | Prompt da inject chart context block |
 | B0-05 | [TEN_BE] | Day 4 | Done | B0-03 | Telemetry da map vao runtime KPI snapshot (`ai_chart_context`) va test pass |
-| F0-01 | [TEN_FE] | Day 3 | In Progress | B0-01 | Collector da gui context tu chartData, can bo sung visible-range theo chart viewport |
-| F0-02 | [TEN_FE] | Day 4 | In Progress | F0-01, B0-03 | Payload da gui chart_context, tiep tuc polish warning badge |
+| F0-01 | [TEN_FE] | Day 3 | Done | B0-01 | Collector da gui visible-range theo viewport chart (co fallback an toan) |
+| F0-02 | [TEN_FE] | Day 4 | Done | F0-01, B0-03 | Payload da gui chart_context on generate, warning badge da polish |
 | F0-03 | [TEN_FE] | Day 5 | Done | F0-02 | Da them badge used/fallback + warning UI trong advisory panel |
 | F0-04 | [TEN_FE] | Day 1 | Done | - | Keep regression checks |
-| Q0-01 | [TEN_QA] | Day 5 | In Progress | B0-03 | 2 test chart_context moi da pass, mo rong matrix con lai |
+| Q0-01 | [TEN_QA] | Day 5 | Done | B0-03 | Matrix valid/invalid/missing/oversize chart_context da bo sung test |
 | Q0-02 | [TEN_QA] | Day 6 | Not Started | F0-02 | E2E stock detail flow |
 | Q0-03 | [TEN_QA] | Day 6 | Not Started | B0-05 | Performance report |
 | R0-01 | [TEN_DEVOPS] | Day 8 | Not Started | Q0-03 | Feature flag + canary |
