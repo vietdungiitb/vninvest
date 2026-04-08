@@ -79,7 +79,7 @@ class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         data = super().validate(attrs)
         user_config, _ = UserConfig.objects.get_or_create(user=self.user)
-        if not user_config.email_verified:
+        if not self.user.is_superuser and not user_config.email_verified:
             raise AuthenticationFailed('Tai khoan chua xac thuc email. Vui long kiem tra email va kich hoat tai khoan truoc khi dang nhap.')
         return data
 

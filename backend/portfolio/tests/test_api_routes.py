@@ -170,6 +170,26 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertIn('xac thuc email', str(response.data['detail']).lower())
 
+    def test_login_allows_unverified_superuser(self):
+        admin_user = User.objects.create_superuser(
+            username='root',
+            email='root@example.com',
+            password='Root@123456',
+        )
+        UserConfig.objects.update_or_create(
+            user=admin_user,
+            defaults={'email_verified': False},
+        )
+
+        response = self.client.post(
+            '/api/auth/token/',
+            {'username': 'root', 'password': 'Root@123456'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('access', response.data)
+
     @patch('portfolio.auth_views.send_verification_email', return_value=1)
     def test_verify_email_endpoint_marks_user_as_verified(self, _mock_send_verification_email):
         register_response = self.client.post(
