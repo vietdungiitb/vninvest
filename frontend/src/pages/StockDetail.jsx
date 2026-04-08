@@ -1294,6 +1294,7 @@ export default function StockDetail() {
   const [advisoryRegeneratingSummary, setAdvisoryRegeneratingSummary] = useState(false);
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
+  const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [orderFlowData, setOrderFlowData] = useState(null);
   const [orderFlowLoading, setOrderFlowLoading] = useState(true);
   const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
@@ -1775,6 +1776,11 @@ export default function StockDetail() {
       });
       const payload = response?.data || {};
       const nextComponents = Array.isArray(payload.components) ? payload.components : [];
+      const nextWarnings = Array.isArray(payload.chart_context_warnings) ? payload.chart_context_warnings : [];
+      setAdvisoryChartContextState({
+        used: typeof payload.chart_context_used === 'boolean' ? payload.chart_context_used : null,
+        warnings: nextWarnings,
+      });
       setAdvisoryComponents(nextComponents);
       setAdvisoryDeletedComponents([]);
       setActiveAdvisoryComponentId(nextComponents[0]?.id || null);
@@ -2148,6 +2154,17 @@ export default function StockDetail() {
                 <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('stockDetail.aiAdvisoryFor', { symbol: normalizedSymbol })}</h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {advisoryChartContextState.used !== null ? (
+                  <span
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
+                      advisoryChartContextState.used
+                        ? 'border-emerald-700 bg-emerald-950/40 text-emerald-300'
+                        : 'border-amber-700 bg-amber-950/40 text-amber-300'
+                    }`}
+                  >
+                    {advisoryChartContextState.used ? 'Chart context: used' : 'Chart context: fallback'}
+                  </span>
+                ) : null}
                 <button
                   type="button"
                   onClick={handleGenerateAdvisoryComponents}
@@ -2350,6 +2367,9 @@ export default function StockDetail() {
 
               {advisoryMessage ? (
                 <p className="text-xs text-cyan-300">{advisoryMessage}</p>
+              ) : null}
+              {advisoryChartContextState.warnings.length > 0 ? (
+                <p className="text-xs text-amber-300">Chart context warnings: {advisoryChartContextState.warnings.join(', ')}</p>
               ) : null}
             </div>
           </section>

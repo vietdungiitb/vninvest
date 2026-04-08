@@ -3255,7 +3255,13 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
     chart_context_used = False
     chart_context_warnings = []
     raw_chart_context = request.data.get('chart_context')
+    chart_context_payload_bytes = 0
+    chart_context_ohlcv_points = 0
     if raw_chart_context is not None:
+        try:
+            chart_context_payload_bytes = len(json.dumps(raw_chart_context, ensure_ascii=False).encode('utf-8'))
+        except Exception:
+            chart_context_payload_bytes = 0
         context_serializer = StockAIChartContextSerializer(
             data=raw_chart_context,
             context={'symbol': normalized_symbol, 'max_ohlcv_points': 300},
@@ -3263,8 +3269,19 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         if context_serializer.is_valid():
             chart_context = dict(context_serializer.validated_data)
             chart_context_used = True
+            chart_context_ohlcv_points = len(chart_context.get('ohlcv') or [])
         else:
             chart_context_warnings.append('chart_context_invalid')
+
+    logger.info(
+        'stock_ai_advisory_components_generate telemetry symbol=%s chart_context_present=%s chart_context_used=%s chart_context_ohlcv_points=%s chart_context_payload_bytes=%s chart_context_warning_count=%s',
+        normalized_symbol,
+        raw_chart_context is not None,
+        chart_context_used,
+        chart_context_ohlcv_points,
+        chart_context_payload_bytes,
+        len(chart_context_warnings),
+    )
 
     dark_flow = detect_dark_flow(normalized_symbol)
     templates = _sprint17_generate_component_templates_with_ai(
