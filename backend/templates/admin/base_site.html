@@ -5,22 +5,46 @@
 <style>
   /* Global changelist layout fix for this project: keep list filter on the right. */
   .change-list #changelist .changelist-form-container {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
     align-items: flex-start;
     gap: 24px;
   }
 
   .change-list #changelist .changelist-form-container > #changelist-filter {
-    flex: 0 0 260px;
     width: 260px;
     margin: 0;
-    order: 2;
+    min-width: 0;
   }
 
   .change-list #changelist .changelist-form-container > div {
-    flex: 1 1 auto;
     min-width: 0;
-    order: 1;
+    width: 100%;
+  }
+
+  .change-list #changelist,
+  .change-list #changelist-form,
+  .change-list #content-main {
+    min-width: 0;
+  }
+
+  .change-list #changelist .results {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .change-list #changelist #result_list {
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .change-list #changelist #result_list th,
+  .change-list #changelist #result_list td {
+    white-space: nowrap;
   }
 
   @media (max-width: 1200px) {
