@@ -7,8 +7,9 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
-from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
 from portfolio.email_verification import generate_email_verification_token
+from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -146,6 +147,14 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(created_user.email, 'new-register@example.com')
         self.assertTrue(UserConfig.objects.filter(user=created_user, email_verified=False).exists())
         self.assertIsNotNone(created_user.user_config.email_verification_sent_at)
+        self.assertEqual(
+            Portfolio.objects.filter(user=created_user).count(),
+            len(STARTER_PORTFOLIO_TEMPLATES),
+        )
+        self.assertEqual(
+            SubAccount.objects.filter(portfolio__user=created_user).count(),
+            len(STARTER_PORTFOLIO_TEMPLATES) * len(STARTER_SUBACCOUNT_TEMPLATES),
+        )
         mock_send_verification_email.assert_called_once_with(created_user)
 
     @patch('portfolio.auth_views.send_verification_email', return_value=1)
@@ -394,6 +403,31 @@ class ApiRouteSmokeTests(APITestCase):
             ).exists()
         )
 
+    @patch('portfolio.auth_views.should_provision_starter_portfolios_for_user', return_value=True)
+    @patch('portfolio.auth_views.provision_starter_portfolios_for_user', side_effect=RuntimeError('starter seed failed'))
+    @patch('portfolio.auth_views.send_verification_email', return_value=1)
+    def test_register_endpoint_fail_soft_when_starter_provisioning_fails(
+        self,
+        _mock_send_verification_email,
+        _mock_provision,
+        _mock_should_provision,
+    ):
+        response = self.client.post(
+            '/api/auth/register/',
+            {
+                'username': 'register_failsoft_user',
+                'email': 'register-failsoft@example.com',
+                'password': 'Test@123456',
+                'password_confirm': 'Test@123456',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created_user = User.objects.get(username='register_failsoft_user')
+        self.assertEqual(Portfolio.objects.filter(user=created_user).count(), 0)
+        self.assertEqual(SubAccount.objects.filter(portfolio__user=created_user).count(), 0)
+
     @patch('portfolio.auth_views.fetch_google_user_email', return_value='oauth-signup@example.com')
     def test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy(self, _mock_fetch_google_email):
         OnboardingPlanPolicy.objects.create(
@@ -421,6 +455,14 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(created_user.user_config.oauth_provider, 'google')
         self.assertTrue(created_user.user_config.email_verified)
         self.assertEqual(created_user.user_config.plan_source, UserConfig.PlanSourceChoices.ONBOARDING_TRIAL)
+        self.assertEqual(
+            Portfolio.objects.filter(user=created_user).count(),
+            len(STARTER_PORTFOLIO_TEMPLATES),
+        )
+        self.assertEqual(
+            SubAccount.objects.filter(portfolio__user=created_user).count(),
+            len(STARTER_PORTFOLIO_TEMPLATES) * len(STARTER_SUBACCOUNT_TEMPLATES),
+        )
 
     @patch('portfolio.auth_views.fetch_google_user_email', return_value='oauth-existing@example.com')
     def test_google_oauth_endpoint_existing_user_no_reassignment(self, _mock_fetch_google_email):
@@ -461,6 +503,27 @@ class ApiRouteSmokeTests(APITestCase):
                 reason=PlanAssignmentLog.ReasonChoices.SIGNUP_TRIAL,
             ).exists()
         )
+
+    @patch('portfolio.auth_views.should_provision_starter_portfolios_for_user', return_value=True)
+    @patch('portfolio.auth_views.provision_starter_portfolios_for_user', side_effect=RuntimeError('starter seed failed'))
+    @patch('portfolio.auth_views.fetch_google_user_email', return_value='oauth-failsoft@example.com')
+    def test_google_oauth_endpoint_fail_soft_when_starter_provisioning_fails(
+        self,
+        _mock_fetch_google_email,
+        _mock_provision,
+        _mock_should_provision,
+    ):
+        response = self.client.post(
+            '/api/auth/oauth/google/',
+            {'access_token': 'fake-google-access-token'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['created'])
+        created_user = User.objects.get(email='oauth-failsoft@example.com')
+        self.assertEqual(Portfolio.objects.filter(user=created_user).count(), 0)
+        self.assertEqual(SubAccount.objects.filter(portfolio__user=created_user).count(), 0)
 
     def test_register_endpoint_rejects_password_mismatch(self):
         response = self.client.post(

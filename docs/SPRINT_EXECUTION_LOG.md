@@ -1095,6 +1095,11 @@ Bug da fix:
 
 Trang thai: IMPLEMENTED, QA browser pending
 
+Luu y cap nhat (2026-04-08):
+- Cac dong mo ta cu ve `auto-login sau dang ky` duoc xem la lich su implementation o thoi diem truoc.
+- Trang thai contract hien tai cua he thong: dang ky thanh cong -> yeu cau verify email -> moi duoc phep dang nhap.
+- Nhanh mo rong tiep theo `starter portfolios provisioning` da duoc attach ve Sprint 12 de track tiep, khong tach sprint doc moi.
+
 Da thuc hien:
 - Backend `POST /api/auth/register/` bat buoc `email`, giu username regex hien tai, va van tao `UserConfig` mac dinh `plan=free`.
 - Register response duoc mo rong tra `access` + `refresh` JWT de frontend auto-login ngay sau khi tao tai khoan.
@@ -1123,6 +1128,87 @@ Files da sua:
 Validation:
 - Frontend compiled successfully, khong con Maximum update depth.
 - API POST watchlist item tra 201 Created thay vi 400.
+
+## Sprint 12 - Starter portfolios provisioning prep (2026-04-08)
+
+Trang thai: PLANNED, IMPLEMENTATION-READY
+
+Muc tieu:
+- Sau dang ky thanh cong, user co san bo danh muc + tieu khoan mac dinh de su dung ngay.
+
+Pham vi da chot de code:
+1. Provision 3 portfolio mac dinh (Tich luy dai han / Giao dich ngan han / Theo doi va thu nghiem).
+2. Moi portfolio co 3 sub-account thong dung (duoi 1/3/6).
+3. Hook vao 2 signup paths: email/password va Google OAuth (`created=True`).
+4. Co feature flags rollout + command backfill user cu.
+5. Co tracking seed status tren UserConfig.
+
+Task IDs duoc mo:
+- S12-17: Service provisioning idempotent.
+- S12-18: Integrate signup paths.
+- S12-19: Feature flag + backfill command.
+- S12-20: QA + docs sync + sign-off.
+
+DoR da dat:
+1. Scope nghiep vu da chot.
+2. File-level implementation map da chot.
+3. Test matrix toi thieu da chot.
+4. Canonical docs da duoc sync roadmap/taskboard/plan/checklist.
+
+Tai lieu canonical de follow implementation:
+- `docs/SPRINT12_USER_REGISTRATION_PLAN.md`
+- `docs/SPRINT12_ACCEPTANCE_CHECKLIST.md`
+- `docs/ROADMAP_STATUS.md`
+- `docs/NEXT_GEN_TASKBOARD_4_WEEKS.md`
+
+Cap nhat implementation (2026-04-08, dot 1):
+- S12-17 DONE:
+	- Da tao service `backend/portfolio/starter_portfolio_service.py` voi template 3 portfolio x 3 sub-account.
+	- Service idempotent qua `get_or_create`, co ket qua tong hop `StarterProvisionResult`.
+	- Unit tests moi: `backend/portfolio/tests/test_starter_portfolio_service.py`.
+- S12-18 DONE:
+	- Da hook provisioning vao `RegisterView` va `GoogleOAuthView` (chi khi OAuth user moi duoc tao).
+	- Provisioning duoc thuc thi theo co che fail-soft (log exception, khong chan signup flow).
+
+Validation da chay:
+- `manage.py test portfolio.tests.test_starter_portfolio_service -v 2` -> 3/3 PASS.
+- `manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_creates_unverified_user_and_sends_verification_email portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy -v 2` -> 2/2 PASS.
+
+Cap nhat implementation (2026-04-08, dot 2):
+- S12-19 DONE:
+	- Da mo rong `UserConfig` voi 3 truong tracking starter seed (`starter_portfolios_seeded`, `starter_portfolios_seeded_at`, `starter_portfolios_template_version`) + migration `0024_userconfig_starter_portfolios`.
+	- Da them feature flags rollout trong settings: `STARTER_PORTFOLIOS_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`.
+	- Da tao command backfill: `manage.py backfill_starter_portfolios` ho tro `--username`, `--all`, `--limit`, `--dry-run`, `--force`.
+	- Da them gate helper `should_provision_starter_portfolios_for_user()` cho deterministic canary rollout.
+
+Validation bo sung:
+- `manage.py test portfolio.tests.test_starter_portfolio_service portfolio.tests.test_backfill_starter_portfolios_command portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_creates_unverified_user_and_sends_verification_email portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy -v 2` -> 10/10 PASS.
+
+Cap nhat implementation (2026-04-08, dot 3):
+- S12-20 (phan automation) DONE:
+	- Da bo sung fail-soft integration tests cho 2 signup paths khi starter provisioning raise exception.
+	- Xac nhan API van success (register 201, oauth 200), user van duoc tao, va khong rollback signup transaction.
+	- Da tao browser QA checklist artifact cho sign-off tay:
+		- `docs/SPRINT12_BROWSER_QA_CHECKLIST_STARTER_PORTFOLIOS_20260408.md`
+	- Da tao mau bien ban sign-off 1 trang:
+		- `docs/SPRINT12_SIGNOFF_REPORT_STARTER_PORTFOLIOS_20260408.md`
+
+Validation fail-soft:
+- `manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_fail_soft_when_starter_provisioning_fails portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_google_oauth_endpoint_fail_soft_when_starter_provisioning_fails -v 2` -> 2/2 PASS.
+
+Con lai theo roadmap S12:
+- S12-20: browser QA closure + PM sign-off + release checklist.
+
+Cap nhat implementation (2026-04-08, dot 4):
+- Da chay lai final targeted regression cho starter portfolios stack:
+	- `manage.py test portfolio.tests.test_starter_portfolio_service portfolio.tests.test_backfill_starter_portfolios_command portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_creates_unverified_user_and_sends_verification_email portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_fail_soft_when_starter_provisioning_fails portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_google_oauth_endpoint_fail_soft_when_starter_provisioning_fails -v 2` -> 12/12 PASS.
+	- `manage.py check` -> no issues.
+- Da tao handoff artifact de chuyen stack:
+	- `docs/SPRINT12_STACK_HANDOFF_READY_20260408.md`
+
+Trang thai chot de chuyen stack:
+- Engineering: COMPLETE
+- Manual gate: PENDING (browser QA + PM sign-off)
 
 ---
 

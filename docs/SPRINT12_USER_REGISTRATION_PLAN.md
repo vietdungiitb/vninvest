@@ -268,3 +268,150 @@ Regression:
 | S12-14 | Login/Register UI implementation + auto-login redirect | FE | 1d |
 | S12-15 | QA register flow + regression | QA/FE/BE | 1d |
 | S12-16 | Docs and sign-off update | PM | 0.5d |
+
+## 13. Extension tiep theo: Starter portfolios provisioning
+
+Muc tieu:
+- Sau khi user dang ky thanh cong, he thong tu provision mot bo danh muc dau tu mau.
+- Moi danh muc co day du cac tieu khoan thong dung de user khong phai tao thu cong tu dau.
+
+Scope nghiep vu de xuat:
+1. Tao 3 portfolio mac dinh:
+   - Tich luy dai han
+   - Giao dich ngan han
+   - Theo doi va thu nghiem
+2. Moi portfolio tu tao 3 tieu khoan thong dung:
+   - Duoi 1 (Tien mat)
+   - Duoi 3 (Chuyen biet)
+   - Duoi 6 (Margin)
+
+Nguyen tac ky thuat:
+1. Idempotent: goi lai khong tao trung.
+2. Fail-soft: seed loi khong chan flow dang ky.
+3. Transaction-safe: tao theo lo, tranh trang thai nua chung.
+4. Feature-flag rollout: canary theo ty le user moi.
+5. Co backfill command cho user cu chua duoc seed.
+
+Diem tich hop:
+1. Email/password signup path trong RegisterView.
+2. Google OAuth signup path khi `created=True`.
+3. Luu trang thai seed vao UserConfig (seeded flag, seeded_at, template_version).
+
+Acceptance bo sung:
+1. User moi co du bo portfolio/tieu khoan mac dinh ngay sau dang ky.
+2. Retry cung user khong tao trung du lieu.
+3. Seed loi khong lam fail API dang ky.
+4. Co command backfill va co log ket qua theo user.
+
+## 14. Chinh sach dong bo tai lieu (canonical)
+
+De tranh phan manh tinh nang, moi cap nhat cho nhanh dang ky + provisioning phai dong bo dong thoi:
+1. docs/SPRINT12_USER_REGISTRATION_PLAN.md
+2. docs/SPRINT12_ACCEPTANCE_CHECKLIST.md
+3. docs/SPRINT_EXECUTION_LOG.md
+4. docs/ROADMAP_STATUS.md
+
+Khong mo tai lieu sprint moi cho nhanh nay neu 4 tai lieu canonical tren chua duoc cap nhat.
+
+## 15. Implementation-ready package (de co the code ngay)
+
+Phan nay chot toi muc dev co the bat dau lap trinh khong can hop bo sung.
+
+### 15.1 Work items ky thuat
+
+| ID | Task | Owner | Estimate | DoD ky thuat |
+|---|---|---|---|---|
+| S12-17 | Tao service provision starter portfolios | BE | 0.75d | Co ham idempotent tao du 3 portfolio x 3 sub-account, co unit test |
+| S12-18 | Hook vao signup paths | BE | 0.5d | Email/password va Google OAuth (created=True) deu goi provision service |
+| S12-19 | Them feature flag + backfill command | BE/DevOps | 0.75d | Co flag bat/tat rollout + command seed cho user cu + summary log |
+| S12-20 | QA + docs sync + sign-off | QA/PM/BE | 0.5d | Checklist pass, execution log cap nhat, roadmap/taskboard dong bo |
+
+### 15.2 File-level implementation map
+
+Backend files can sua/cham toi:
+1. `backend/portfolio/starter_portfolio_service.py` (tao moi)
+2. `backend/portfolio/auth_views.py` (hook RegisterView + GoogleOAuthView)
+3. `backend/portfolio/models.py` (bo sung field tracking seed trong UserConfig)
+4. `backend/portfolio/management/commands/backfill_starter_portfolios.py` (tao moi)
+5. `backend/config/settings.py` (feature flags)
+6. `backend/portfolio/tests/test_starter_portfolio_service.py` (tao moi)
+7. `backend/portfolio/tests/test_api_routes.py` (bo sung test integration signup)
+
+### 15.3 UserConfig tracking fields de xuat
+
+De xuat mo rong `UserConfig`:
+1. `starter_portfolios_seeded` (bool, default False)
+2. `starter_portfolios_seeded_at` (datetime, nullable)
+3. `starter_portfolios_template_version` (char, default `v1`)
+
+Muc dich:
+1. Truy vet rollout theo user.
+2. Dam bao idempotency va skip nhanh.
+3. Ho tro backfill co dieu kien.
+
+### 15.4 Provision template v1
+
+Danh muc mac dinh:
+1. Tich luy dai han
+2. Giao dich ngan han
+3. Theo doi va thu nghiem
+
+Moi danh muc tao 3 tieu khoan:
+1. Duoi 1 - Tien mat (type=`1`, margin_ratio=`1.000`)
+2. Duoi 3 - Chuyen biet (type=`3`, margin_ratio=`1.000`)
+3. Duoi 6 - Margin (type=`6`, margin_ratio=`0.500`)
+
+### 15.5 Pseudo-flow implementation
+
+```text
+if not settings.STARTER_PORTFOLIOS_ENABLED:
+   return skipped(flag_off)
+
+cfg = UserConfig.objects.get_or_create(user=user)
+if cfg.starter_portfolios_seeded is True:
+   return skipped(already_seeded)
+
+with transaction.atomic():
+   for portfolio_name in TEMPLATE_PORTFOLIOS:
+      portfolio = Portfolio.objects.get_or_create(user=user, name=portfolio_name)
+      for sub_template in TEMPLATE_SUBACCOUNTS:
+         SubAccount.objects.get_or_create(portfolio=portfolio, name=sub_template.name, defaults={...})
+   cfg.starter_portfolios_seeded = True
+   cfg.starter_portfolios_seeded_at = now
+   cfg.starter_portfolios_template_version = "v1"
+   cfg.save(update_fields=[...])
+
+return success
+```
+
+### 15.6 Feature flags rollout
+
+Flags de xuat:
+1. `STARTER_PORTFOLIOS_ENABLED=false` (global on/off)
+2. `STARTER_PORTFOLIOS_CANARY_PERCENT=0` (0-100)
+
+Rule canary de xuat:
+1. Deterministic by `user.id % 100 < CANARY_PERCENT`.
+2. Superuser bo qua canary (always off) de tranh seed mau trong tai khoan quan tri.
+
+### 15.7 Backfill command contract
+
+Command de xuat:
+1. `python manage.py backfill_starter_portfolios --limit 200 --dry-run`
+2. `python manage.py backfill_starter_portfolios --username alice`
+3. `python manage.py backfill_starter_portfolios --all`
+
+Output can co:
+1. so user da seed thanh cong
+2. so user skip do da seeded
+3. so user fail + danh sach username
+
+## 16. Definition of Ready (DoR) cho coding
+
+Coding duoc phep bat dau khi dat du 6 dieu kien:
+1. Chot template v1 (3 portfolio x 3 sub-account).
+2. Chot field UserConfig tracking seed.
+3. Chot naming feature flags + default values.
+4. Chot command options cho backfill.
+5. Chot test matrix toi thieu (unit + integration).
+6. Chot 4 tai lieu canonical da duoc cap nhat dong bo.

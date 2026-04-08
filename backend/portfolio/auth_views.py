@@ -21,6 +21,10 @@ from .google_oauth_service import fetch_google_user_email
 from .models import UserConfig
 from .onboarding_trial_service import apply_onboarding_trial_for_new_user
 from .permissions import _get_plan, resolve_user_entitlements
+from .starter_portfolio_service import (
+    provision_starter_portfolios_for_user,
+    should_provision_starter_portfolios_for_user,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class EmailDeliveryFailed(APIException):
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    default_detail = 'Khong the gui email xac thuc tai thoi diem nay.'
+    default_detail = 'Không thể gửi email xác thực tại thời điểm này.'
     default_code = 'email_delivery_failed'
 
 
@@ -80,7 +84,7 @@ class VerifiedEmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         user_config, _ = UserConfig.objects.get_or_create(user=self.user)
         if not self.user.is_superuser and not user_config.email_verified:
-            raise AuthenticationFailed('Tai khoan chua xac thuc email. Vui long kiem tra email va kich hoat tai khoan truoc khi dang nhap.')
+            raise AuthenticationFailed('Tài khoản chưa xác thực email. Vui lòng kiểm tra email và kích hoạt tài khoản trước khi đăng nhập.')
         return data
 
 
@@ -139,7 +143,7 @@ class RegisterView(CreateAPIView):
         serializer.is_valid(raise_exception=True)
 
         verification_required = True
-        response_message = 'Dang ky thanh cong. Vui long kiem tra email de xac thuc tai khoan truoc khi dang nhap.'
+        response_message = 'Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản trước khi đăng nhập.'
 
         with transaction.atomic():
             user = serializer.save()
@@ -154,6 +158,13 @@ class RegisterView(CreateAPIView):
                     # Fail-soft to avoid blocking signup if policy logic has transient issue.
                     logger.exception('Failed to apply onboarding trial for user_id=%s', user.id)
 
+            if should_provision_starter_portfolios_for_user(user=user):
+                try:
+                    provision_starter_portfolios_for_user(user=user)
+                except Exception:
+                    # Fail-soft to keep signup healthy if starter provisioning has transient issue.
+                    logger.exception('Failed to provision starter portfolios for user_id=%s', user.id)
+
             try:
                 send_verification_email(user)
                 user_config.email_verified = False
@@ -167,11 +178,11 @@ class RegisterView(CreateAPIView):
                     user_config.email_verified_at = timezone.now()
                     verification_required = False
                     response_message = (
-                        'Dang ky thanh cong (DEV mode). He thong chua gui duoc email xac thuc '
-                        'nen tai khoan da duoc kich hoat tam thoi.'
+                        'Đăng ký thành công (DEV mode). Hệ thống chưa gửi được email xác thực '
+                        'nên tài khoản đã được kích hoạt tạm thời.'
                     )
                 else:
-                    raise EmailDeliveryFailed(detail=f'Khong the gui email xac thuc: {exc}') from exc
+                    raise EmailDeliveryFailed(detail=f'Không thể gửi email xác thực: {exc}') from exc
 
             user_config.save(update_fields=['email_verified', 'email_verification_sent_at', 'email_verified_at', 'updated_at'])
 
@@ -201,7 +212,7 @@ class VerifyEmailView(APIView):
         try:
             user = resolve_email_verification_token(serializer.validated_data['token'])
         except (KeyError, signing.BadSignature, User.DoesNotExist):
-            raise ValidationError({'token': 'Link xac thuc khong hop le hoac da het han.'})
+            raise ValidationError({'token': 'Link xác thực không hợp lệ hoặc đã hết hạn.'})
 
         user_config, _ = UserConfig.objects.get_or_create(user=user)
         if not user_config.email_verified:
@@ -212,7 +223,7 @@ class VerifyEmailView(APIView):
         return Response(
             {
                 'username': user.username,
-                'message': 'Xac thuc email thanh cong. Ban da co the dang nhap vao he thong.',
+                'message': 'Xác thực email thành công. Bạn đã có thể đăng nhập vào hệ thống.',
             },
             status=status.HTTP_200_OK,
         )
@@ -242,10 +253,10 @@ class ResendVerificationEmailView(APIView):
                     user_config.email_verification_sent_at = timezone.now()
                     user_config.save(update_fields=['email_verification_sent_at', 'updated_at'])
                 except Exception as exc:
-                    raise EmailDeliveryFailed(detail=f'Khong the gui lai email xac thuc: {exc}') from exc
+                    raise EmailDeliveryFailed(detail=f'Không thể gửi lại email xác thực: {exc}') from exc
 
         return Response(
-            {'message': 'Neu tai khoan ton tai va chua xac thuc, he thong da gui lai email xac thuc.'},
+            {'message': 'Nếu tài khoản tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.'},
             status=status.HTTP_200_OK,
         )
 
@@ -279,10 +290,10 @@ class GoogleOAuthView(APIView):
         try:
             email = fetch_google_user_email(access_token=access_token)
         except Exception as exc:
-            raise ValidationError({'access_token': f'Khong the xac thuc Google access token: {exc}'})
+            raise ValidationError({'access_token': f'Không thể xác thực Google access token: {exc}'})
 
         if not email:
-            raise ValidationError({'access_token': 'Google access token khong tra ve email hop le.'})
+            raise ValidationError({'access_token': 'Google access token không trả về email hợp lệ.'})
 
         created = False
         with transaction.atomic():
@@ -324,6 +335,12 @@ class GoogleOAuthView(APIView):
                     cfg.refresh_from_db()
                 except Exception:
                     logger.exception('Failed to apply onboarding trial for Google OAuth user_id=%s', user.id)
+
+            if created and should_provision_starter_portfolios_for_user(user=user):
+                try:
+                    provision_starter_portfolios_for_user(user=user)
+                except Exception:
+                    logger.exception('Failed to provision starter portfolios for Google OAuth user_id=%s', user.id)
 
         refresh = RefreshToken.for_user(user)
         return Response(

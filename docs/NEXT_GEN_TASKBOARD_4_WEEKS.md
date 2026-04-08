@@ -404,3 +404,57 @@ Chi mo planning cho cac hang muc sau khi dat KPI 4 tuan:
 1. MessagePack/Protobuf (chi khi co bang chung bottleneck bang thong).
 2. AI Rebalancing (sau khi threshold on dinh it nhat 1-2 thang).
 3. Multi-asset Derivatives (di stream doc lap, khong tron voi wave on dinh loi).
+
+---
+
+## 7. Cross-sprint dependency tracker (tranh phan manh tai lieu)
+
+Muc tieu:
+- Taskboard 4 tuan van tap trung Sprint 21-22.
+- Cac nhanh mo rong lien quan auth/onboarding phai tro ve sprint goc de theo doi.
+
+Item D-01: Starter portfolios provisioning sau dang ky
+- Sprint goc quy chieu: Sprint 12 (User registration extension)
+- Trang thai: In Progress (S12-17 Done, S12-18 Done, S12-19 Done)
+- Owner de xuat: BE + PM
+- Tai lieu canonical:
+	- docs/SPRINT12_USER_REGISTRATION_PLAN.md
+	- docs/SPRINT12_ACCEPTANCE_CHECKLIST.md
+	- docs/SPRINT_EXECUTION_LOG.md
+	- docs/ROADMAP_STATUS.md
+- Luu y governance: Khong tao sprint doc moi neu chua cap nhat day du 4 tai lieu canonical ben tren.
+
+Breakdown coding de giao ngay:
+1. D-01.1 (S12-17)
+- Task: Tao `starter_portfolio_service` idempotent
+- Owner: Backend Engineer
+- Output: Service tao 3 portfolio x 3 sub-account + unit tests
+- Done khi: Retry khong tao trung, test pass
+- Trang thai: Done
+
+2. D-01.2 (S12-18)
+- Task: Hook service vao RegisterView + GoogleOAuthView
+- Owner: Backend Engineer
+- Output: Signup paths deu goi provisioning theo flag
+- Done khi: Integration test register/oauth pass
+- Trang thai: Done
+
+3. D-01.3 (S12-19)
+- Task: Them feature flags va command backfill
+- Owner: Backend Engineer + DevOps
+- Output: `STARTER_PORTFOLIOS_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`, command backfill
+- Done khi: Dry-run/all mode chay duoc, co summary log
+- Trang thai: Done
+
+4. D-01.4 (S12-20)
+- Task: QA + docs closure
+- Owner: QA + PM + Backend Engineer
+- Output: Checklist pass + execution log cap nhat + bien ban sign-off + browser QA checklist artifact
+- Done khi: Regression register khong vo va docs canonical dong bo
+- Trang thai: Engineering complete, waiting manual QA/PM sign-off
+- Artifact: docs/SPRINT12_BROWSER_QA_CHECKLIST_STARTER_PORTFOLIOS_20260408.md
+- Sign-off template: docs/SPRINT12_SIGNOFF_REPORT_STARTER_PORTFOLIOS_20260408.md
+- Decision templates:
+	- docs/SPRINT12_SIGNOFF_DECISION_GO_TEMPLATE_20260408.md
+	- docs/SPRINT12_SIGNOFF_DECISION_NOGO_TEMPLATE_20260408.md
+- Handoff note: docs/SPRINT12_STACK_HANDOFF_READY_20260408.md

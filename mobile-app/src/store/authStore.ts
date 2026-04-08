@@ -17,7 +17,7 @@ type AuthState = {
 };
 
 const readApiError = (error: unknown): string => {
-  const fallback = 'Da xay ra loi. Vui long thu lai.';
+  const fallback = 'Đã xảy ra lỗi. Vui lòng thử lại.';
   if (!(error instanceof AxiosError)) {
     return fallback;
   }
@@ -79,7 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const result = await registerApi(payload);
       set({
         isLoading: false,
-        infoMessage: result.message || 'Dang ky thanh cong. Vui long dang nhap.',
+        infoMessage: result.message || 'Đăng ký thành công. Vui lòng đăng nhập.',
       });
       return true;
     } catch (error) {

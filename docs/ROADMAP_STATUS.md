@@ -10,6 +10,19 @@
 - `Sprint 1-2` chỉ là bucket kế hoạch nội bộ cho plan/tier/CASL/auth design, không phải mốc sprint chính thức của chức năng đã deliver.
 - `Sprint 13` là phần mở rộng `Admin Operations` và thống kê người dùng, không phải mốc `User Management Core`.
 - Chức năng `Đăng ký người dùng` da duoc implement trong `Sprint 12 extension`; browser QA va sign-off van con mo.
+- Huong mo rong `dang ky -> tu dong provision danh muc/tieu khoan mac dinh` duoc track tiep theo nhom `Sprint 12 extension` de tranh tach nhanh tai lieu.
+- Tai lieu canonical cho nhanh nay:
+  - `docs/SPRINT12_USER_REGISTRATION_PLAN.md`
+  - `docs/SPRINT12_ACCEPTANCE_CHECKLIST.md`
+  - `docs/SPRINT_EXECUTION_LOG.md`
+
+### Tracking note (2026-04-08)
+
+- Feature bo sung moi: Starter portfolios provisioning sau dang ky thanh cong.
+- Sprint goc quy chieu: `Sprint 12 - User registration extension`.
+- Huong tich hop: sau khi tao `User` + `UserConfig`, he thong tu tao bo `Portfolio` mac dinh va cac `SubAccount` thong dung.
+- Nguyen tac van hanh: idempotent, fail-soft, co feature flag rollout, co command backfill user cu.
+- Tinh trang hien tai: Planned (chua coding), da gan vao roadmap de theo doi dong bo cung nhanh Sprint 12.
 
 ---
 

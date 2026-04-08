@@ -176,7 +176,7 @@ def _admin_resend_latest_verification_view(request):
     )
 
     if not pending_config:
-        messages.warning(request, 'Khong con tai khoan nao dang cho xac thuc email.')
+        messages.warning(request, 'Không còn tài khoản nào đang chờ xác thực email.')
         return HttpResponseRedirect(next_url)
 
     try:
@@ -184,13 +184,13 @@ def _admin_resend_latest_verification_view(request):
     except Exception as exc:
         messages.error(
             request,
-            f'Gui lai email xac thuc that bai cho {pending_config.user.username}: {exc}',
+            f'Gửi lại email xác thực thất bại cho {pending_config.user.username}: {exc}',
         )
         return HttpResponseRedirect(next_url)
 
     messages.success(
         request,
-        f'Da gui lai email xac thuc cho {pending_config.user.username}.',
+        f'Đã gửi lại email xác thực cho {pending_config.user.username}.',
     )
     return HttpResponseRedirect(next_url)
 
@@ -789,7 +789,7 @@ def _vninvest_get_app_list(request, app_label=None):
             object_name = model.get('object_name')
             if object_name in menu_name_override:
                 model['name'] = menu_name_override[object_name]
-            # Menu chi dung de dieu huong, khong hien thi thao tac them moi.
+            # Menu chỉ dùng để điều hướng, không hiển thị thao tác thêm mới.
             model['add_url'] = None
 
     for app in app_list:
@@ -1020,11 +1020,11 @@ class UserConfigAdmin(admin.ModelAdmin):
     actions = ('resend_verification_email_to_selected_users',)
     readonly_fields = ('email_verified', 'email_verification_sent_at', 'email_verified_at', 'created_at', 'updated_at')
     fieldsets = (
-        ('Nguoi dung', {'fields': ('user',)}),
-        ('Xac thuc email', {'fields': ('email_verified', 'email_verification_sent_at', 'email_verified_at')}),
-        ('Cau hinh ca nhan', {'fields': ('whale_alert_threshold', 'theme')}),
+        ('Người dùng', {'fields': ('user',)}),
+        ('Xác thực email', {'fields': ('email_verified', 'email_verification_sent_at', 'email_verified_at')}),
+        ('Cấu hình cá nhân', {'fields': ('whale_alert_threshold', 'theme')}),
         (
-            'Goi dich vu',
+            'Gói dịch vụ',
             {
                 'fields': (
                     'plan',
@@ -1038,7 +1038,7 @@ class UserConfigAdmin(admin.ModelAdmin):
             },
         ),
         ('OAuth', {'fields': ('oauth_provider', 'oauth_uid')}),
-        ('He thong', {'fields': ('created_at', 'updated_at')}),
+        ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )
 
     def save_model(self, request, obj, form, change):
@@ -1077,9 +1077,9 @@ class UserConfigAdmin(admin.ModelAdmin):
             },
         )
 
-    @admin.display(description='Trang thai email')
+    @admin.display(description='Trạng thái email')
     def verification_status(self, obj):
-        return 'Da xac thuc' if obj.email_verified else 'Chua xac thuc'
+        return 'Đã xác thực' if obj.email_verified else 'Chưa xác thực'
 
     def get_urls(self):
         return [
@@ -1110,19 +1110,19 @@ class UserConfigAdmin(admin.ModelAdmin):
         change_url = reverse('admin:portfolio_userconfig_change', args=[user_config.pk])
 
         if user_config.email_verified:
-            messages.info(request, f'Tai khoan {user_config.user.username} da xac thuc email, khong can gui lai.')
+            messages.info(request, f'Tài khoản {user_config.user.username} đã xác thực email, không cần gửi lại.')
             return HttpResponseRedirect(change_url)
 
         try:
             _resend_verification_for_user_config(user_config)
         except Exception as exc:
-            messages.error(request, f'Gui lai email xac thuc that bai cho {user_config.user.username}: {exc}')
+            messages.error(request, f'Gửi lại email xác thực thất bại cho {user_config.user.username}: {exc}')
             return HttpResponseRedirect(change_url)
 
-        messages.success(request, f'Da gui lai email xac thuc cho {user_config.user.username}.')
+        messages.success(request, f'Đã gửi lại email xác thực cho {user_config.user.username}.')
         return HttpResponseRedirect(change_url)
 
-    @admin.action(description='Gui lai email xac thuc cho cac tai khoan chua verify')
+    @admin.action(description='Gửi lại email xác thực cho các tài khoản chưa verify')
     def resend_verification_email_to_selected_users(self, request, queryset):
         success_count = 0
         skipped_count = 0
@@ -1140,16 +1140,16 @@ class UserConfigAdmin(admin.ModelAdmin):
                 failure_count += 1
                 self.message_user(
                     request,
-                    f'Gui lai email xac thuc that bai cho {user_config.user.username}: {exc}',
+                    f'Gửi lại email xác thực thất bại cho {user_config.user.username}: {exc}',
                     level=messages.ERROR,
                 )
 
         if success_count:
-            self.message_user(request, f'Da gui lai email xac thuc cho {success_count} tai khoan.', level=messages.SUCCESS)
+            self.message_user(request, f'Đã gửi lại email xác thực cho {success_count} tài khoản.', level=messages.SUCCESS)
         if skipped_count:
-            self.message_user(request, f'Bo qua {skipped_count} tai khoan da xac thuc email.', level=messages.INFO)
+            self.message_user(request, f'Bỏ qua {skipped_count} tài khoản đã xác thực email.', level=messages.INFO)
         if failure_count and not success_count:
-            self.message_user(request, 'Khong co email xac thuc nao duoc gui thanh cong.', level=messages.WARNING)
+            self.message_user(request, 'Không có email xác thực nào được gửi thành công.', level=messages.WARNING)
 
 
 @admin.register(OnboardingPlanPolicy)
@@ -1170,11 +1170,11 @@ class OnboardingPlanPolicyAdmin(admin.ModelAdmin):
     actions = ('activate_selected_policy',)
     readonly_fields = ('created_by', 'updated_by', 'created_at', 'updated_at')
 
-    @admin.action(description='Kich hoat policy da chon (tu dong tat policy khac)')
+    @admin.action(description='Kích hoạt policy đã chọn (tự động tắt policy khác)')
     def activate_selected_policy(self, request, queryset):
         policy = queryset.order_by('-updated_at').first()
         if not policy:
-            self.message_user(request, 'Khong co policy nao duoc chon.', level=messages.WARNING)
+            self.message_user(request, 'Không có policy nào được chọn.', level=messages.WARNING)
             return
 
         OnboardingPlanPolicy.objects.exclude(pk=policy.pk).filter(is_active=True).update(
@@ -1189,7 +1189,7 @@ class OnboardingPlanPolicyAdmin(admin.ModelAdmin):
 
         self.message_user(
             request,
-            f'Da kich hoat policy #{policy.pk} va tat cac policy active khac.',
+            f'Đã kích hoạt policy #{policy.pk} và tắt các policy active khác.',
             level=messages.SUCCESS,
         )
 
@@ -1828,7 +1828,7 @@ def _push_whale_config_preview_messages(model_admin, request, preview):
     else:
         model_admin.message_user(
             request,
-            'Diff preview: khong co thay doi tren cac truong quan trong.',
+            'Diff preview: không có thay đổi trên các trường quan trọng.',
             level=messages.INFO,
         )
 
@@ -1973,9 +1973,9 @@ class WhaleConfigDraftAdmin(admin.ModelAdmin):
             )
 
         if updated:
-            self.message_user(request, f'Da submit {updated} draft.', level=messages.SUCCESS)
+            self.message_user(request, f'Đã submit {updated} draft.', level=messages.SUCCESS)
         else:
-            self.message_user(request, 'Khong co draft hop le de submit.', level=messages.WARNING)
+            self.message_user(request, 'Không có draft hợp lệ để submit.', level=messages.WARNING)
 
 
 @admin.register(WhaleAdvisory)
@@ -2126,18 +2126,18 @@ class WhaleConfigVersionAdmin(admin.ModelAdmin):
     @admin.action(description='Approve & mark selected version as active')
     def mark_as_active_version(self, request, queryset):
         if not _is_supervisor(request.user):
-            self.message_user(request, 'Ban khong co quyen apply config.', level=messages.ERROR)
+            self.message_user(request, 'Bạn không có quyền apply config.', level=messages.ERROR)
             return
 
         target = queryset.order_by('-id').first()
         if not target:
-            self.message_user(request, 'Khong co version nao duoc chon.', level=messages.WARNING)
+            self.message_user(request, 'Không có version nào được chọn.', level=messages.WARNING)
             return
 
         preview = build_whale_config_runtime_preview(target.config_json, rollout_mode='now')
         _push_whale_config_preview_messages(self, request, preview)
         if preview.get('blocking_issues'):
-            self.message_user(request, 'Apply bi chan boi integrity checks.', level=messages.ERROR)
+            self.message_user(request, 'Apply bị chặn bởi integrity checks.', level=messages.ERROR)
             return
 
         before_status = target.status
@@ -2174,13 +2174,13 @@ class WhaleConfigVersionAdmin(admin.ModelAdmin):
             },
         )
 
-        self.message_user(request, f'Version {target.version_code} da duoc kich hoat.', level=messages.SUCCESS)
+        self.message_user(request, f'Version {target.version_code} đã được kích hoạt.', level=messages.SUCCESS)
         self.message_user(request, f'Propagation: {propagation["summary"]}', level=messages.INFO)
 
     @admin.action(description='Mark selected versions as rolled back')
     def mark_as_rolled_back(self, request, queryset):
         if not _is_supervisor(request.user):
-            self.message_user(request, 'Ban khong co quyen rollback.', level=messages.ERROR)
+            self.message_user(request, 'Bạn không có quyền rollback.', level=messages.ERROR)
             return
 
         count = 0
@@ -2200,9 +2200,9 @@ class WhaleConfigVersionAdmin(admin.ModelAdmin):
             )
 
         if count:
-            self.message_user(request, f'Da rollback {count} version.', level=messages.SUCCESS)
+            self.message_user(request, f'Đã rollback {count} version.', level=messages.SUCCESS)
         else:
-            self.message_user(request, 'Khong co version nao de rollback.', level=messages.WARNING)
+            self.message_user(request, 'Không có version nào để rollback.', level=messages.WARNING)
 
 
 @admin.register(WhaleConfigRollout)
@@ -2255,7 +2255,7 @@ class WhaleConfigRolloutAdmin(admin.ModelAdmin):
         )
         _push_whale_config_preview_messages(self, request, preview)
         if preview.get('blocking_issues'):
-            self.message_user(request, 'Rollout bi chan boi integrity checks.', level=messages.ERROR)
+            self.message_user(request, 'Rollout bị chặn bởi integrity checks.', level=messages.ERROR)
             return
 
         if not obj.initiated_by_id:

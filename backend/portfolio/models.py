@@ -725,6 +725,20 @@ class UserConfig(models.Model):
         blank=True,
         verbose_name='Thoi diem xac thuc email',
     )
+    starter_portfolios_seeded = models.BooleanField(
+        default=False,
+        verbose_name='Da tao bo danh muc mac dinh',
+    )
+    starter_portfolios_seeded_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Thoi diem tao bo danh muc mac dinh',
+    )
+    starter_portfolios_template_version = models.CharField(
+        max_length=16,
+        default='v1',
+        verbose_name='Phien ban template danh muc mac dinh',
+    )
     ai_provider = models.CharField(
         max_length=50,
         choices=PROVIDER_CHOICES,

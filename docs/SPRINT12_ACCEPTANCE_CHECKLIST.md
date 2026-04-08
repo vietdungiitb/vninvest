@@ -42,12 +42,27 @@ Dung checklist nay khi review va chot Sprint 12.
 ## F. User Registration Extension
 
 - [x] Co tai lieu ke hoach implementation cho registration flow: `docs/SPRINT12_USER_REGISTRATION_PLAN.md`.
-- [x] Chot nghiep vu: email required, auto-login sau dang ky.
+- [x] Chot nghiep vu: email required, khong auto-login, can verify email truoc dang nhap.
 - [x] Frontend co mode `Dang ky` canh `Dang nhap` tai auth entrypoint.
 - [x] API helper frontend cho `POST /api/auth/register/` duoc them va dung dung contract.
 - [x] Dang ky thanh cong tao duoc `User` + `UserConfig(plan=free)`.
 - [x] Hien thi dung loi cho duplicate username, invalid email, password mismatch, password qua ngan.
 - [x] Backend targeted tests cho register flow pass.
-- [ ] Frontend smoke test: dang ky moi -> auto-login -> vao duoc dashboard.
+- [ ] Frontend smoke test: dang ky moi -> verify email -> dang nhap -> vao duoc dashboard.
 - [x] Docs va taskboard Sprint 12 duoc cap nhat sau implementation.
+- [x] Co browser QA checklist artifact: `docs/SPRINT12_BROWSER_QA_CHECKLIST_STARTER_PORTFOLIOS_20260408.md`.
 - [ ] QA regression mo rong cho login/register flow duoc chay tren browser that.
+
+## G. Starter Portfolios Provisioning (Sprint 12 extension tiep theo)
+
+- [x] Scope duoc gan ve dung sprint goc Sprint 12, khong tach tai lieu sprint moi.
+- [x] Da co implementation-ready plan trong `docs/SPRINT12_USER_REGISTRATION_PLAN.md` (muc 15-16).
+- [x] Co service idempotent tao 3 portfolio mac dinh va 3 sub-account moi portfolio.
+- [x] Hook provisioning vao ca 2 signup paths: email/password va Google OAuth (`created=True`).
+- [x] Co tracking fields trong `UserConfig`: seeded flag, seeded_at, template_version.
+- [x] Co feature flags rollout (`STARTER_PORTFOLIOS_ENABLED`, `STARTER_PORTFOLIOS_CANARY_PERCENT`).
+- [x] Co command backfill cho user cu va co che do `--dry-run`.
+- [x] Unit tests cho service provisioning pass.
+- [x] Integration tests cho register flow + oauth signup flow pass.
+- [x] Seed loi khong lam fail API register (fail-soft duoc test).
+- [x] Docs canonical da sync day du: registration plan + checklist + execution log + roadmap.
