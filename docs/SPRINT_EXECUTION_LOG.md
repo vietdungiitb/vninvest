@@ -1,5 +1,19 @@
 # Sprint Execution Log
 
+## OAuth redirect hotfix log-in (2026-04-08)
+
+Trang thai: HOTFIX DEPLOY BRANCH READY
+
+Da ghi lai day du log khac phuc loi Google OAuth redirect URI (`http` -> `https`):
+- `docs/OAUTH_REDIRECT_HOTFIX_LOG_20260408.md`
+
+Tom tat nhanh:
+- Da fix trust proxy trong backend settings.
+- Da them safety-net ep `https` cho callback OAuth.
+- Da cap nhat frontend nginx header `X-Forwarded-Proto`.
+- Da bo sung env `GOOGLE_OAUTH_REDIRECT_URI` vao stack Portainer.
+- Da push branch `deploy` voi commit `f0542140`.
+
 ## Sprint 24 planning lock-in (2026-04-05)
 
 Trang thai: READY FOR CODING EXECUTION
