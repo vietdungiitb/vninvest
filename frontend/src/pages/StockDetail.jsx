@@ -29,6 +29,7 @@ import {
   deleteStockAIAdvisoryComponent,
   clearDeletedStockAIAdvisoryComponents,
   regenerateStockAIExecutiveSummary,
+  deleteStockAIExecutiveSummary,
   restoreStockAIAdvisoryComponent,
   refreshStockAIAdvisoryComponent,
   toggleStockAIAdvisoryComponentInclude,
@@ -1295,6 +1296,7 @@ export default function StockDetail() {
   const [advisoryGeneratingComponents, setAdvisoryGeneratingComponents] = useState(false);
   const [advisoryClearingDeleted, setAdvisoryClearingDeleted] = useState(false);
   const [advisoryRegeneratingSummary, setAdvisoryRegeneratingSummary] = useState(false);
+  const [advisoryDeletingSummary, setAdvisoryDeletingSummary] = useState(false);
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
@@ -1905,6 +1907,24 @@ export default function StockDetail() {
     }
   };
 
+  const handleDeleteExecutiveSummary = async () => {
+    if (!normalizedSymbol || !advisoryExecutiveSummary?.id) return;
+    setAdvisoryDeletingSummary(true);
+    try {
+      await deleteStockAIExecutiveSummary(normalizedSymbol, advisoryExecutiveSummary.id);
+      setAdvisoryExecutiveSummaries((prev) => {
+        const next = prev.filter((item) => item.id !== advisoryExecutiveSummary.id);
+        setAdvisoryExecutiveSummary(next[0] || null);
+        return next;
+      });
+      setAdvisoryMessage('Da xoa thong tin tong hop.');
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Khong the xoa thong tin tong hop.');
+    } finally {
+      setAdvisoryDeletingSummary(false);
+    }
+  };
+
   const activeAdvisoryComponent = advisoryComponents.find((item) => item.id === activeAdvisoryComponentId) || advisoryComponents[0] || null;
 
 
@@ -2332,6 +2352,14 @@ export default function StockDetail() {
                           className="btn-secondary"
                         >
                           {advisoryRegeneratingSummary ? t('stockDetail.summarizing') : t('stockDetail.regenerateSummary')}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteExecutiveSummary}
+                          disabled={advisoryDeletingSummary || !advisoryExecutiveSummary}
+                          className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20 disabled:opacity-60"
+                        >
+                          {advisoryDeletingSummary ? 'Dang xoa...' : 'Xoa thong tin tong hop'}
                         </button>
                       </div>
                     </div>

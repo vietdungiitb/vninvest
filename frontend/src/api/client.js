@@ -165,6 +165,8 @@ export const clearDeletedStockAIAdvisoryComponents = (symbol) =>
   apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/deleted/`);
 export const regenerateStockAIExecutiveSummary = (symbol, payload = {}) =>
   apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/regenerate/`, payload);
+export const deleteStockAIExecutiveSummary = (symbol, summaryId) =>
+  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/${summaryId}/`);
 export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
 export const getIntradayMatched = (symbol, pageSize = 50) =>
   apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`);

@@ -59,6 +59,7 @@ urlpatterns = [
     path("ai-advisory-components/<int:component_id>/restore/", views.stock_ai_advisory_component_restore_api, name="stock-ai-advisory-component-restore"),
     path("ai-advisory-components/<int:component_id>/", views.stock_ai_advisory_component_delete_api, name="stock-ai-advisory-component-delete"),
     path("stocks/<str:symbol>/ai-advisory-summary/regenerate/", views.stock_ai_advisory_summary_regenerate_api, name="stock-ai-advisory-summary-regenerate"),
+    path("stocks/<str:symbol>/ai-advisory-summary/<int:summary_id>/", views.stock_ai_advisory_summary_delete_api, name="stock-ai-advisory-summary-delete"),
     path("stocks/<str:symbol>/", views.StockProfileDetailView.as_view(), name="stock-detail"),
 
     # Quản lý nhóm chứng khoán

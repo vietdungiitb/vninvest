@@ -2392,6 +2392,28 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_201_CREATED)
 
+    def test_stock_ai_advisory_summary_delete_removes_selected_summary(self):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+        summary = AIAdvisoryExecutiveSummary.objects.create(
+            user=self.user,
+            symbol='BCM',
+            summary_version=1,
+            strategy_action='HOLD',
+            risk_level='medium',
+            overall_confidence=6,
+            synthesis_text='summary',
+            used_component_ids=[1, 2],
+        )
+
+        response = self.client.delete(
+            f'/api/stock-management/stocks/BCM/ai-advisory-summary/{summary.id}/'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertFalse(AIAdvisoryExecutiveSummary.objects.filter(id=summary.id).exists())
+
     @patch('portfolio.views._cache_get', return_value=None)
     def test_stock_ai_advisory_session_returns_summary_history_desc_by_version(self, _mock_cache_get):
         self.authenticate()

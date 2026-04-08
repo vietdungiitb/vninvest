@@ -3050,6 +3050,7 @@ _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_ai_advisory_component_delete_api': 'sentiment_score',
     'stock_ai_advisory_component_clear_deleted_api': 'sentiment_score',
     'stock_ai_advisory_component_restore_api': 'sentiment_score',
+    'stock_ai_advisory_summary_delete_api': 'sentiment_score',
 }
 
 _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
@@ -3081,6 +3082,9 @@ _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
     },
     'stock_ai_advisory_component_restore_api': {
         'POST': 'api_calls_per_day',
+    },
+    'stock_ai_advisory_summary_delete_api': {
+        'DELETE': 'api_calls_per_day',
     },
 }
 
@@ -3556,6 +3560,41 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     _cache_set(lock_key, timezone.now().isoformat(), timeout=cooldown)
 
     return _tracked_response({'ok': True, 'executive_summary': AIAdvisoryExecutiveSummarySerializer(summary).data}, status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_summary_delete_api(request, symbol: str, summary_id: int):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_summary_delete_api')
+    if denied_response is not None:
+        return denied_response
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_summary_delete_api')
+    if quota_response is not None:
+        return quota_response
+
+    summary = AIAdvisoryExecutiveSummary.objects.filter(
+        id=summary_id,
+        user=request.user,
+        symbol=normalized_symbol,
+    ).first()
+    if summary is None:
+        return Response({'ok': False, 'message': 'Thong tin tong hop khong ton tai.'}, status=status.HTTP_404_NOT_FOUND)
+
+    summary.delete()
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_summary_delete_api', status.HTTP_200_OK)
+    return Response(
+        {
+            'ok': True,
+            'summary_id': summary_id,
+            'message': 'Da xoa thong tin tong hop.',
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET', 'POST'])
