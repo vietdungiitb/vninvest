@@ -44,8 +44,13 @@ class TransactionSerializer(serializers.ModelSerializer):
     def validate_symbol(self, value):
         normalized_symbol = value.upper().strip()
         if not StockProfile.objects.filter(symbol=normalized_symbol).exists():
-            raise serializers.ValidationError(
-                'Mã chứng khoán không tồn tại trong danh mục hệ thống. Vui lòng kiểm tra lại.'
+            # Soft-bootstrap profile to avoid blocking first transaction of a new symbol.
+            StockProfile.objects.create(
+                symbol=normalized_symbol,
+                company_name=normalized_symbol,
+                industry='Unknown',
+                exchange='UNKNOWN',
+                is_active=True,
             )
         return normalized_symbol
 
