@@ -3,25 +3,7 @@
 {% block extrastyle %}
 {{ block.super }}
 <style>
-  /* Global changelist layout fix for this project: keep list filter on the right. */
-  .change-list #changelist .changelist-form-container {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
-    align-items: flex-start;
-    gap: 24px;
-  }
-
-  .change-list #changelist .changelist-form-container > #changelist-filter {
-    width: 260px;
-    margin: 0;
-    min-width: 0;
-  }
-
-  .change-list #changelist .changelist-form-container > div {
-    min-width: 0;
-    width: 100%;
-  }
-
+  /* Only control table overflow; avoid overriding Django changelist layout. */
   .change-list #changelist,
   .change-list #changelist-form,
   .change-list #content-main {
@@ -45,17 +27,6 @@
   .change-list #changelist #result_list th,
   .change-list #changelist #result_list td {
     white-space: nowrap;
-  }
-
-  @media (max-width: 1200px) {
-    .change-list #changelist .changelist-form-container {
-      display: block;
-    }
-
-    .change-list #changelist .changelist-form-container > #changelist-filter {
-      width: auto;
-      margin-top: 16px;
-    }
   }
 </style>
 {% endblock %}
