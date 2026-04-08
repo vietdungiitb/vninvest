@@ -3310,7 +3310,7 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
     )
     generated_by_ai = bool(templates)
     if not templates:
-        templates = _sprint17_build_component_templates(normalized_symbol, latest, dark_flow, timeframe)
+        templates = _sprint17_build_component_templates(normalized_symbol, latest, dark_flow, timeframe, chart_context=chart_context)
     created = [
         AIAdvisoryComponentRecord.objects.create(user=request.user, **payload)
         for payload in templates

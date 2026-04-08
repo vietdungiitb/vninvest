@@ -132,7 +132,7 @@ function advisorySynthesisPreferenceLabel(preference, t) {
   return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
-function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange }) {
+function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -497,6 +497,10 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRang
       setActiveTimeframe(match.id);
     }
   }, [activePeriod]);
+
+  useEffect(() => {
+    onActiveIndicatorsChange?.(activeIndicators);
+  }, [activeIndicators, onActiveIndicatorsChange]);
 
   // Cập nhật dữ liệu khi prop thay đổi
   useEffect(() => {
@@ -1301,6 +1305,7 @@ export default function StockDetail() {
   const [advisoryMessage, setAdvisoryMessage] = useState('');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
+  const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
   const [orderFlowData, setOrderFlowData] = useState(null);
   const [orderFlowLoading, setOrderFlowLoading] = useState(true);
   const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
@@ -1760,11 +1765,7 @@ export default function StockDetail() {
         to_ts: toTs,
       },
       ohlcv: normalizedPoints,
-      active_indicators: {
-        MA: true,
-        VOL: true,
-        MACD: true,
-      },
+      active_indicators: chartActiveIndicators,
       computed_metrics: {
         change_visible_pct: Number(chartPerformance ?? 0),
         volatility_visible: Number(technical?.volatility_20 ?? 0),
@@ -1773,7 +1774,7 @@ export default function StockDetail() {
       },
       client_generated_at: new Date().toISOString(),
     };
-  }, [chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
+  }, [chartActiveIndicators, chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
 
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
@@ -2174,6 +2175,7 @@ export default function StockDetail() {
                   activePeriod={activePeriod}
                   onPeriodChange={setActivePeriod}
                   onVisibleRangeChange={setChartVisibleRange}
+                  onActiveIndicatorsChange={setChartActiveIndicators}
                 />
               )}
             </div>

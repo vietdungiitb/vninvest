@@ -37,7 +37,7 @@ def _sprint17_suggested_action_from_status(status_value: str) -> str:
     return mapping.get(status_value, AIAdvisoryComponentRecord.SuggestedAction.WATCH)
 
 
-def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
+def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow: dict, timeframe: str, chart_context: dict | None = None) -> list[dict]:
     side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
     signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
     signal_strength = float((dark_flow or {}).get('strength') or 0)
@@ -63,6 +63,8 @@ def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow:
         if side == 'BUY'
         else AIAdvisoryComponentRecord.StatusChoice.NEUTRAL
     )
+    preferred_indicator = _sprint29_pick_primary_indicator(chart_context)
+    indicator_name = preferred_indicator or 'RSI + Bollinger Bands'
 
     return [
         {
@@ -78,7 +80,7 @@ def _sprint17_build_component_templates(symbol: str, latest_advisory, dark_flow:
         {
             'symbol': symbol,
             'component_type': AIAdvisoryComponentRecord.ComponentType.INDICATOR,
-            'indicator_name': 'RSI + Bollinger Bands',
+            'indicator_name': indicator_name,
             'status': indicator_status,
             'confidence_score': 5,
             'suggested_action': _sprint17_suggested_action_from_status(indicator_status),
@@ -202,6 +204,34 @@ def _sprint29_render_chart_context_block(chart_context: dict | None) -> str:
     return json.dumps(compact_payload, ensure_ascii=False, separators=(',', ':'))
 
 
+def _sprint29_get_enabled_indicators(chart_context: dict | None) -> list[str]:
+    if not isinstance(chart_context, dict):
+        return []
+    active_indicators = chart_context.get('active_indicators')
+    if not isinstance(active_indicators, dict):
+        return []
+    enabled = []
+    for key, value in active_indicators.items():
+        indicator_key = str(key or '').strip().upper()
+        if indicator_key and bool(value):
+            enabled.append(indicator_key)
+    return enabled
+
+
+def _sprint29_pick_primary_indicator(chart_context: dict | None) -> str | None:
+    enabled = _sprint29_get_enabled_indicators(chart_context)
+    if not enabled:
+        return None
+
+    # Prioritize indicators that users most often expect dedicated tabs for.
+    priority = ['RSI', 'MACD', 'VOL', 'KDJ', 'STOCH', 'OBV', 'ATR', 'EMA', 'BOLL', 'MA', 'SAR']
+    enabled_set = set(enabled)
+    for indicator in priority:
+        if indicator in enabled_set:
+            return indicator
+    return enabled[0]
+
+
 def _sprint17_generate_component_templates_with_ai(
     user,
     symbol: str,
@@ -224,6 +254,8 @@ def _sprint17_generate_component_templates_with_ai(
     signal_strength = float((dark_flow or {}).get('strength') or 0)
     tick_rate = float(((dark_flow or {}).get('components') or {}).get('tick_rate', {}).get('score') or 0)
     chart_context_block = _sprint29_render_chart_context_block(chart_context)
+    enabled_indicators = _sprint29_get_enabled_indicators(chart_context)
+    preferred_indicator = _sprint29_pick_primary_indicator(chart_context)
 
     prompt = (
         'Ban la AI analyst cho TTCK Viet Nam. '\
@@ -242,6 +274,10 @@ def _sprint17_generate_component_templates_with_ai(
         f'Input context: symbol={symbol}, timeframe={timeframe}, advisory_side={side}, '
         f'order_flow_signal={signal_type}, order_flow_strength={signal_strength:.1f}, tick_rate_score={tick_rate:.1f}.\n'
     )
+    if enabled_indicators:
+        prompt += f'Active indicators tren chart hien tai: {", ".join(enabled_indicators)}.\n'
+    if preferred_indicator:
+        prompt += f'Yeu cau dac biet: component_type="indicator" bat buoc uu tien indicator_name="{preferred_indicator}" neu indicator nay dang active.\n'
     if chart_context_block:
         prompt += f'Client chart context (uu tien boi canh nay neu co xung dot du lieu): {chart_context_block}\n'
     prompt += 'Output phai la JSON hop le.'
