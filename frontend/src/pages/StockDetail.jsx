@@ -1717,18 +1717,78 @@ export default function StockDetail() {
     }
   };
 
+  const buildChartContextPayload = useCallback(() => {
+    const normalizedPoints = (Array.isArray(chartData) ? chartData : [])
+      .map((item) => {
+        const ts = item?.date ? new Date(item.date).getTime() : null;
+        if (!Number.isFinite(ts)) return null;
+        return {
+          ts,
+          o: Number(item?.open ?? item?.close ?? 0),
+          h: Number(item?.high ?? item?.close ?? 0),
+          l: Number(item?.low ?? item?.close ?? 0),
+          c: Number(item?.close ?? 0),
+          v: Number(item?.volume ?? 0),
+        };
+      })
+      .filter(Boolean)
+      .slice(-300);
+
+    const fromTs = normalizedPoints[0]?.ts ?? null;
+    const toTs = normalizedPoints[normalizedPoints.length - 1]?.ts ?? null;
+
+    const avgVol = normalizedPoints.length
+      ? normalizedPoints.reduce((sum, row) => sum + Number(row.v || 0), 0) / normalizedPoints.length
+      : 0;
+    const latestVol = normalizedPoints.length ? Number(normalizedPoints[normalizedPoints.length - 1].v || 0) : 0;
+
+    return {
+      symbol: normalizedSymbol,
+      chart_timeframe: orderFlowWindow || '30m',
+      visible_range: {
+        from_ts: fromTs,
+        to_ts: toTs,
+      },
+      ohlcv: normalizedPoints,
+      active_indicators: {
+        MA: true,
+        VOL: true,
+        MACD: true,
+      },
+      computed_metrics: {
+        change_visible_pct: Number(chartPerformance ?? 0),
+        volatility_visible: Number(technical?.volatility_20 ?? 0),
+        volume_ratio_vs_20: avgVol > 0 ? Number((latestVol / avgVol).toFixed(4)) : 0,
+        atr_estimate: Number(technical?.atr ?? 0),
+      },
+      client_generated_at: new Date().toISOString(),
+    };
+  }, [chartData, chartPerformance, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
+
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
     setAdvisoryGeneratingComponents(true);
     try {
-      const response = await generateStockAIAdvisoryComponents(normalizedSymbol, { timeframe: orderFlowWindow || '30m' });
+      const response = await generateStockAIAdvisoryComponents(normalizedSymbol, {
+        timeframe: orderFlowWindow || '30m',
+        chart_context: buildChartContextPayload(),
+      });
       const payload = response?.data || {};
       const nextComponents = Array.isArray(payload.components) ? payload.components : [];
       setAdvisoryComponents(nextComponents);
       setAdvisoryDeletedComponents([]);
       setActiveAdvisoryComponentId(nextComponents[0]?.id || null);
       const generationSource = payload.generated_by_ai ? 'AI schema' : 'template fallback';
-      setAdvisoryMessage(payload.message || t('stockDetail.generateTabsSuccess', { count: payload.created_count || nextComponents.length || 0, source: generationSource }));
+      const contextUsage = payload.chart_context_used
+        ? 'Chart context: used'
+        : 'Chart context: fallback';
+      const warningSuffix = Array.isArray(payload.chart_context_warnings) && payload.chart_context_warnings.length
+        ? ` (${payload.chart_context_warnings.join(', ')})`
+        : '';
+      setAdvisoryMessage(
+        payload.message
+          || `${t('stockDetail.generateTabsSuccess', { count: payload.created_count || nextComponents.length || 0, source: generationSource })} | ${contextUsage}${warningSuffix}`
+      );
     } catch (err) {
       setAdvisoryMessage(err?.response?.data?.message || t('stockDetail.generateTabsFailed'));
     } finally {

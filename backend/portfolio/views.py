@@ -316,6 +316,7 @@ from .serializers import (
     StockWorkspaceGroupRefSerializer, StockWorkspaceOverviewSerializer,
     StockWorkspaceTechnicalSerializer, StockWorkspaceWatchlistMembershipSerializer,
     WhaleAdvisorySerializer, AIAdvisoryComponentRecordSerializer, AIAdvisoryExecutiveSummarySerializer,
+    StockAIChartContextSerializer,
 )
 
 from .services import (
@@ -3250,6 +3251,21 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
     if timeframe not in valid_timeframes:
         timeframe = '30m'
 
+    chart_context = None
+    chart_context_used = False
+    chart_context_warnings = []
+    raw_chart_context = request.data.get('chart_context')
+    if raw_chart_context is not None:
+        context_serializer = StockAIChartContextSerializer(
+            data=raw_chart_context,
+            context={'symbol': normalized_symbol, 'max_ohlcv_points': 300},
+        )
+        if context_serializer.is_valid():
+            chart_context = dict(context_serializer.validated_data)
+            chart_context_used = True
+        else:
+            chart_context_warnings.append('chart_context_invalid')
+
     dark_flow = detect_dark_flow(normalized_symbol)
     templates = _sprint17_generate_component_templates_with_ai(
         user=request.user,
@@ -3257,6 +3273,7 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         latest_advisory=latest,
         dark_flow=dark_flow,
         timeframe=timeframe,
+        chart_context=chart_context,
     )
     generated_by_ai = bool(templates)
     if not templates:
@@ -3273,6 +3290,8 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
             'symbol': normalized_symbol,
             'created_count': len(created),
             'generated_by_ai': generated_by_ai,
+            'chart_context_used': chart_context_used,
+            'chart_context_warnings': chart_context_warnings,
             'components': AIAdvisoryComponentRecordSerializer(created, many=True).data,
         },
         status=status.HTTP_201_CREATED,

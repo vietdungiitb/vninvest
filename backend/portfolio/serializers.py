@@ -197,6 +197,59 @@ class AIAdvisoryExecutiveSummarySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class StockAIChartVisibleRangeSerializer(serializers.Serializer):
+    from_ts = serializers.IntegerField(required=False, allow_null=True)
+    to_ts = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate(self, attrs):
+        from_ts = attrs.get('from_ts')
+        to_ts = attrs.get('to_ts')
+        if from_ts is not None and to_ts is not None and from_ts > to_ts:
+            raise serializers.ValidationError('visible_range.from_ts must be <= visible_range.to_ts')
+        return attrs
+
+
+class StockAIChartOHLCVPointSerializer(serializers.Serializer):
+    ts = serializers.IntegerField()
+    o = serializers.FloatField(required=False, allow_null=True)
+    h = serializers.FloatField(required=False, allow_null=True)
+    l = serializers.FloatField(required=False, allow_null=True)
+    c = serializers.FloatField(required=False, allow_null=True)
+    v = serializers.FloatField(required=False, allow_null=True)
+
+
+class StockAIChartDrawingMetaSerializer(serializers.Serializer):
+    overlay_count = serializers.IntegerField(required=False, min_value=0)
+    types = serializers.ListField(child=serializers.CharField(max_length=40), required=False)
+
+
+class StockAIChartContextSerializer(serializers.Serializer):
+    symbol = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    chart_timeframe = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    visible_range = StockAIChartVisibleRangeSerializer(required=False)
+    ohlcv = StockAIChartOHLCVPointSerializer(many=True, required=False)
+    active_indicators = serializers.DictField(child=serializers.BooleanField(), required=False)
+    computed_metrics = serializers.DictField(child=serializers.FloatField(), required=False)
+    drawing_meta = StockAIChartDrawingMetaSerializer(required=False)
+    client_generated_at = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_symbol(self, value):
+        return str(value or '').strip().upper()
+
+    def validate_ohlcv(self, value):
+        max_points = int(self.context.get('max_ohlcv_points', 300))
+        if len(value) > max_points:
+            raise serializers.ValidationError(f'ohlcv exceeds max points ({max_points})')
+        return value
+
+    def validate(self, attrs):
+        request_symbol = str(self.context.get('symbol') or '').strip().upper()
+        payload_symbol = str(attrs.get('symbol') or '').strip().upper()
+        if payload_symbol and request_symbol and payload_symbol != request_symbol:
+            raise serializers.ValidationError({'symbol': 'chart_context.symbol mismatch URL symbol'})
+        return attrs
+
+
 # ---------------------------------------------------------------------------
 # Read-only serializers cho dữ liệu tổng hợp (Holdings, Chart, Summary)
 # ---------------------------------------------------------------------------

@@ -92,15 +92,15 @@
 | Ticket | Owner | ETA | Status | Blocker | Next Action |
 |---|---|---|---|---|---|
 | B0-01 | [TEN_BE] | Day 1 | Not Started | - | Chot schema voi FE/QA |
-| B0-02 | [TEN_BE] | Day 2 | Not Started | - | Implement serializer + tests |
-| B0-03 | [TEN_BE] | Day 3 | Not Started | B0-02 | Update endpoint payload |
-| B0-04 | [TEN_BE] | Day 3 | Not Started | B0-03 | Prompt injection |
-| B0-05 | [TEN_BE] | Day 4 | Not Started | B0-03 | Add telemetry fields |
-| F0-01 | [TEN_FE] | Day 3 | Not Started | B0-01 | Build chart context collector |
-| F0-02 | [TEN_FE] | Day 4 | Not Started | F0-01, B0-03 | Send payload to API |
+| B0-02 | [TEN_BE] | Day 2 | Done | - | Serializer da merge, tiep tuc hardening telemetry |
+| B0-03 | [TEN_BE] | Day 3 | Done | B0-02 | Endpoint da nhan chart_context + response flags |
+| B0-04 | [TEN_BE] | Day 3 | Done | B0-03 | Prompt da inject chart context block |
+| B0-05 | [TEN_BE] | Day 4 | In Progress | B0-03 | Add telemetry fields vao dashboard observability |
+| F0-01 | [TEN_FE] | Day 3 | In Progress | B0-01 | Collector da gui context tu chartData, can bo sung visible-range theo chart viewport |
+| F0-02 | [TEN_FE] | Day 4 | In Progress | F0-01, B0-03 | Payload da gui chart_context, tiep tuc polish warning badge |
 | F0-03 | [TEN_FE] | Day 5 | Not Started | F0-02 | Add badge and warning UI |
 | F0-04 | [TEN_FE] | Day 1 | Done | - | Keep regression checks |
-| Q0-01 | [TEN_QA] | Day 5 | Not Started | B0-03 | API contract suite |
+| Q0-01 | [TEN_QA] | Day 5 | In Progress | B0-03 | 2 test chart_context moi da pass, mo rong matrix con lai |
 | Q0-02 | [TEN_QA] | Day 6 | Not Started | F0-02 | E2E stock detail flow |
 | Q0-03 | [TEN_QA] | Day 6 | Not Started | B0-05 | Performance report |
 | R0-01 | [TEN_DEVOPS] | Day 8 | Not Started | Q0-03 | Feature flag + canary |

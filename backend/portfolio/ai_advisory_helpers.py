@@ -158,7 +158,58 @@ def _sprint17_normalize_ai_component_payload(raw_item: dict, symbol: str, timefr
     }
 
 
-def _sprint17_generate_component_templates_with_ai(user, symbol: str, latest_advisory, dark_flow: dict, timeframe: str) -> list[dict]:
+def _sprint29_render_chart_context_block(chart_context: dict | None) -> str:
+    if not isinstance(chart_context, dict) or not chart_context:
+        return ''
+
+    visible_range = chart_context.get('visible_range') or {}
+    from_ts = visible_range.get('from_ts')
+    to_ts = visible_range.get('to_ts')
+    active_indicators = chart_context.get('active_indicators') or {}
+    enabled_indicators = [name for name, enabled in active_indicators.items() if bool(enabled)]
+
+    ohlcv_rows = chart_context.get('ohlcv') or []
+    sampled_rows = ohlcv_rows[-20:] if len(ohlcv_rows) > 20 else ohlcv_rows
+    sampled_rows = [
+        {
+            'ts': row.get('ts'),
+            'o': row.get('o'),
+            'h': row.get('h'),
+            'l': row.get('l'),
+            'c': row.get('c'),
+            'v': row.get('v'),
+        }
+        for row in sampled_rows
+        if isinstance(row, dict)
+    ]
+
+    metrics = chart_context.get('computed_metrics') or {}
+    compact_metrics = {
+        'change_visible_pct': metrics.get('change_visible_pct'),
+        'volatility_visible': metrics.get('volatility_visible'),
+        'volume_ratio_vs_20': metrics.get('volume_ratio_vs_20'),
+        'atr_estimate': metrics.get('atr_estimate'),
+    }
+
+    compact_payload = {
+        'symbol': chart_context.get('symbol'),
+        'chart_timeframe': chart_context.get('chart_timeframe'),
+        'visible_range': {'from_ts': from_ts, 'to_ts': to_ts},
+        'enabled_indicators': enabled_indicators,
+        'sampled_ohlcv': sampled_rows,
+        'computed_metrics': compact_metrics,
+    }
+    return json.dumps(compact_payload, ensure_ascii=False, separators=(',', ':'))
+
+
+def _sprint17_generate_component_templates_with_ai(
+    user,
+    symbol: str,
+    latest_advisory,
+    dark_flow: dict,
+    timeframe: str,
+    chart_context: dict | None = None,
+) -> list[dict]:
     from portfolio.ai_options import get_default_model
     from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
     from portfolio.openclaw_client import _call as _openclaw_call
@@ -172,6 +223,7 @@ def _sprint17_generate_component_templates_with_ai(user, symbol: str, latest_adv
     signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
     signal_strength = float((dark_flow or {}).get('strength') or 0)
     tick_rate = float(((dark_flow or {}).get('components') or {}).get('tick_rate', {}).get('score') or 0)
+    chart_context_block = _sprint29_render_chart_context_block(chart_context)
 
     prompt = (
         'Ban la AI analyst cho TTCK Viet Nam. '\
@@ -189,8 +241,10 @@ def _sprint17_generate_component_templates_with_ai(user, symbol: str, latest_adv
         'Khong duoc lap component_type, khong them field khac.\n'
         f'Input context: symbol={symbol}, timeframe={timeframe}, advisory_side={side}, '
         f'order_flow_signal={signal_type}, order_flow_strength={signal_strength:.1f}, tick_rate_score={tick_rate:.1f}.\n'
-        'Output phai la JSON hop le.'
     )
+    if chart_context_block:
+        prompt += f'Client chart context (uu tien boi canh nay neu co xung dot du lieu): {chart_context_block}\n'
+    prompt += 'Output phai la JSON hop le.'
 
     if provider != 'openclaw' and not api_key:
         return []

@@ -9,6 +9,12 @@
 - Frontend hien tai chi gui symbol + timeframe khi goi API generate AI components.
 - AI prompt cho component generation chua nhan chart snapshot data (ohlcv window, indicator state, viewport state).
 - Backend build context dua tren du lieu tong hop (daily/intraday/order-flow) tu database, khong phai exact chart state tren UI.
+- Screenshot chart hien tai chi dung de download local, chua co luong upload/gui anh cho AI.
+
+## 2.1 Thuc trang da xac minh
+- Da fix xong loi toggle indicator tren KlineChart (MACD/RSI/VOL... tat la an dung).
+- Chua co payload image trong request tao AI tab.
+- Chua co response flag xac nhan AI da su dung chart-context.
 
 ## 3) Pham vi nang cap
 In scope:
@@ -62,6 +68,11 @@ Out of scope (phase sau):
 - ohlcv toi da 300 diem.
 - kich thuoc JSON <= 64 KB.
 - bo qua truong khong hop le, fallback ve context hien co.
+
+### 4.3 Image policy (phase sau)
+- Phase 1: khong gui anh, chi gui du lieu so (de nhanh va an toan).
+- Phase 2 (optional): gui image_url da upload object storage (khong gui base64 truc tiep neu payload lon).
+- Neu provider khong ho tro vision: bo qua image, van dung chart_context dang so.
 
 ## 5) Thiet ke backend
 ### 5.1 API contract
@@ -142,6 +153,24 @@ Khi bam "Tao tab AI":
 - Toi uu prompt + telemetry dashboard.
 - Bat 100% neu KPI dat.
 
+## 9.1 Ke hoach phase chi tiet de trien khai
+### Phase P0 (1-2 ngay): Hardening co so
+- Hoan tat fix Kline indicator toggle/remove (DONE).
+- Kiem tra regression toolbar chart + screenshot + fullscreen.
+- Chot schema chart_context v1 va gioi han payload.
+
+### Phase P1 (3-5 ngay): Chart numeric context
+- FE: thu thap visible OHLCV + indicator state + viewport + metrics.
+- BE: validate serializer + sanitize + inject prompt block.
+- API response: them `chart_context_used` va `chart_context_warnings`.
+- QA: smoke + regression + E2E generate tab.
+
+### Phase P2 (2-4 ngay, optional): Vision image context
+- FE: upload screenshot len storage, gui image_url kem chart_context.
+- BE: route theo provider capability (vision/non-vision).
+- Prompt strategy: uu tien so lieu, image chi de bo sung boi canh.
+- Add safety gate theo feature flag.
+
 ## 10) KPI chap nhan
 - >= 95% request generate tab co chart_context hop le.
 - p95 latency tang khong qua 15% so voi baseline.
@@ -162,6 +191,28 @@ Khi bam "Tao tab AI":
 5. E2E test scripts + canary rollout.
 6. KPI tracking + tuning prompt.
 
+## 12.1 Checklist implementation theo team
+### Backend
+- [ ] Tao `StockAIChartContextSerializer` validate payload.
+- [ ] Cap nhat `stock_ai_advisory_components_generate_api` nhan `chart_context`.
+- [ ] Cap nhat `_sprint17_generate_component_templates_with_ai` de nhan chart context block.
+- [ ] Them response fields: `chart_context_used`, `chart_context_warnings`.
+- [ ] Them telemetry fields cho dashboard observability.
+- [ ] Viet tests: valid payload, invalid payload fallback, oversize payload.
+
+### Frontend
+- [ ] Expose helper build chart context tu `KLineChartComponent`.
+- [ ] Gui payload moi khi bam "Tao tab AI".
+- [ ] Hien badge "AI da doc chart hien tai" khi `chart_context_used=true`.
+- [ ] Hien warning nhe khi backend fallback.
+- [ ] Test toggle indicators + generate AI tab trong cung session.
+
+### QA
+- [ ] Functional test cho tung indicator toggle.
+- [ ] API contract test voi/khong co chart_context.
+- [ ] E2E cho symbol VNM/VCB/FPT voi 3 timeframe.
+- [ ] Performance check p95 truoc/sau rollout.
+
 ## 13) Rui ro va giam thieu
 - Rui ro prompt qua dai: gioi han point + compact format.
 - Rui ro mismatch du lieu chart va backend: uu tien visible range, log discrepancy.
@@ -173,3 +224,14 @@ Khi bam "Tao tab AI":
 - Frontend gui payload chart_context on-demand.
 - Advisory tao ra co dau vet da su dung chart context (telemetry + response flag).
 - Docs cap nhat va team QA sign-off.
+
+## 15) De xuat implementation order (de tranh block)
+1. Merge fix Kline indicator (hoan tat).
+2. Implement BE serializer + API contract truoc.
+3. Implement FE chart_context payload theo contract da chot.
+4. Bat feature flag cho internal/staging.
+5. Chay E2E + tuning prompt, sau do canary production.
+
+## 16) Tai lieu taskboard trien khai
+- Xem board chi tiet ticket-ready tai:
+  - docs/AI_ADVISORY_KLINE_CONTEXT_TASKBOARD_20260408.md
