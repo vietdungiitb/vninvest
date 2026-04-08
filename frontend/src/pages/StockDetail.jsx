@@ -27,6 +27,7 @@ import {
   getWatchlistGroups,
   getWhaleFeed,
   deleteStockAIAdvisoryComponent,
+  clearDeletedStockAIAdvisoryComponents,
   regenerateStockAIExecutiveSummary,
   restoreStockAIAdvisoryComponent,
   refreshStockAIAdvisoryComponent,
@@ -1292,6 +1293,7 @@ export default function StockDetail() {
   const [advisoryLoading, setAdvisoryLoading] = useState(true);
   const [advisoryComponentBusyId, setAdvisoryComponentBusyId] = useState(null);
   const [advisoryGeneratingComponents, setAdvisoryGeneratingComponents] = useState(false);
+  const [advisoryClearingDeleted, setAdvisoryClearingDeleted] = useState(false);
   const [advisoryRegeneratingSummary, setAdvisoryRegeneratingSummary] = useState(false);
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
@@ -1866,6 +1868,21 @@ export default function StockDetail() {
     }
   };
 
+  const handleClearDeletedAdvisoryComponents = async () => {
+    if (!normalizedSymbol || advisoryClearingDeleted) return;
+    setAdvisoryClearingDeleted(true);
+    try {
+      const response = await clearDeletedStockAIAdvisoryComponents(normalizedSymbol);
+      const deletedCount = Number(response?.data?.deleted_count || advisoryDeletedComponents.length || 0);
+      setAdvisoryDeletedComponents([]);
+      setAdvisoryMessage(`Deleted tabs cleaned: ${deletedCount}`);
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Khong the xoa Deleted tabs luc nay.');
+    } finally {
+      setAdvisoryClearingDeleted(false);
+    }
+  };
+
   const handleRegenerateExecutiveSummary = async () => {
     if (!normalizedSymbol) return;
     setAdvisoryRegeneratingSummary(true);
@@ -2189,7 +2206,17 @@ export default function StockDetail() {
 
                   {advisoryDeletedComponents.length > 0 ? (
                     <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{t('stockDetail.deletedTabs')}</p>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{t('stockDetail.deletedTabs')}</p>
+                        <button
+                          type="button"
+                          onClick={handleClearDeletedAdvisoryComponents}
+                          disabled={advisoryClearingDeleted}
+                          className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20 disabled:opacity-60"
+                        >
+                          {advisoryClearingDeleted ? 'Clearing...' : 'Clear Deleted Tabs'}
+                        </button>
+                      </div>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {advisoryDeletedComponents.map((item) => (
                           <button

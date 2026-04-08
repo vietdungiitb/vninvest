@@ -3048,6 +3048,7 @@ _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_ai_advisory_summary_regenerate_api': 'sentiment_score',
     'stock_ai_advisory_component_toggle_include_api': 'sentiment_score',
     'stock_ai_advisory_component_delete_api': 'sentiment_score',
+    'stock_ai_advisory_component_clear_deleted_api': 'sentiment_score',
     'stock_ai_advisory_component_restore_api': 'sentiment_score',
 }
 
@@ -3073,6 +3074,9 @@ _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
         'POST': 'api_calls_per_day',
     },
     'stock_ai_advisory_component_delete_api': {
+        'DELETE': 'api_calls_per_day',
+    },
+    'stock_ai_advisory_component_clear_deleted_api': {
         'DELETE': 'api_calls_per_day',
     },
     'stock_ai_advisory_component_restore_api': {
@@ -3424,6 +3428,41 @@ def stock_ai_advisory_component_delete_api(request, component_id: int):
     component.save(update_fields=['is_deleted', 'include_in_summary', 'updated_at'])
     _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_delete_api', status.HTTP_200_OK)
     return Response({'ok': True, 'message': 'Da xoa component (soft delete).'}, status=status.HTTP_200_OK)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_component_clear_deleted_api(request, symbol: str):
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_component_clear_deleted_api')
+    if denied_response is not None:
+        return denied_response
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_clear_deleted_api')
+    if quota_response is not None:
+        return quota_response
+
+    deleted_qs = AIAdvisoryComponentRecord.objects.filter(
+        user=request.user,
+        symbol=normalized_symbol,
+        is_deleted=True,
+    )
+    deleted_count = deleted_qs.count()
+    deleted_qs.delete()
+
+    _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_component_clear_deleted_api', status.HTTP_200_OK)
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'deleted_count': deleted_count,
+            'message': 'Da xoa toan bo deleted tabs.',
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['POST'])

@@ -161,6 +161,8 @@ export const restoreStockAIAdvisoryComponent = (componentId) =>
   apiClient.post(`/stock-management/ai-advisory-components/${componentId}/restore/`);
 export const deleteStockAIAdvisoryComponent = (componentId) =>
   apiClient.delete(`/stock-management/ai-advisory-components/${componentId}/`);
+export const clearDeletedStockAIAdvisoryComponents = (symbol) =>
+  apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-components/deleted/`);
 export const regenerateStockAIExecutiveSummary = (symbol, payload = {}) =>
   apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/regenerate/`, payload);
 export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);

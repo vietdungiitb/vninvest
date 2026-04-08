@@ -53,6 +53,7 @@ urlpatterns = [
     path("stocks/<str:symbol>/order-flow/", views.stock_order_flow_api, name="stock-order-flow"),
     path("stocks/<str:symbol>/ai-advisory-session/", views.stock_ai_advisory_session_api, name="stock-ai-advisory-session"),
     path("stocks/<str:symbol>/ai-advisory-components/generate/", views.stock_ai_advisory_components_generate_api, name="stock-ai-advisory-components-generate"),
+    path("stocks/<str:symbol>/ai-advisory-components/deleted/", views.stock_ai_advisory_component_clear_deleted_api, name="stock-ai-advisory-components-clear-deleted"),
     path("ai-advisory-components/<int:component_id>/toggle-include/", views.stock_ai_advisory_component_toggle_include_api, name="stock-ai-advisory-component-toggle-include"),
     path("ai-advisory-components/<int:component_id>/refresh/", views.stock_ai_advisory_component_refresh_api, name="stock-ai-advisory-component-refresh"),
     path("ai-advisory-components/<int:component_id>/restore/", views.stock_ai_advisory_component_restore_api, name="stock-ai-advisory-component-restore"),

@@ -2005,6 +2005,48 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('feature'), 'sentiment_score')
         self.assertEqual(mock_track_api_call.call_args.kwargs.get('status_code'), status.HTTP_200_OK)
 
+    def test_stock_ai_advisory_component_clear_deleted_hard_deletes_deleted_records(self):
+        self._attach_dpi_license('pro', {'sentiment_score': True})
+        self.authenticate()
+
+        deleted_component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='MACD',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='deleted',
+            timeframe='30m',
+            include_in_summary=False,
+            is_deleted=True,
+        )
+        AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='BCM',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            confidence_score=5,
+            suggested_action='watch',
+            rationale_text='active',
+            timeframe='30m',
+            include_in_summary=True,
+            is_deleted=False,
+        )
+
+        response = self.client.delete('/api/stock-management/stocks/BCM/ai-advisory-components/deleted/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['deleted_count'], 1)
+        self.assertFalse(AIAdvisoryComponentRecord.objects.filter(id=deleted_component.id).exists())
+        self.assertEqual(
+            AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(),
+            1,
+        )
+
     def test_stock_ai_advisory_component_restore_reactivates_record(self):
         self.authenticate()
         component = AIAdvisoryComponentRecord.objects.create(
