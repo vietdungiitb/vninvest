@@ -1,7 +1,7 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
-> **Cập nhật lần cuối**: 2026-04-05  
-> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 CLOSED (CONDITIONAL GO) / Sprint 24 READY TO EXECUTE  
+> **Cập nhật lần cuối**: 2026-04-08  
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 CLOSED (CONDITIONAL GO) / Sprint 24 READY TO EXECUTE / Sprint 29 READY TO EXECUTE  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
@@ -103,6 +103,28 @@ Tai lieu chuan cho sprint nay:
 - `docs/SPRINT24_DAILY_STANDUP_TEMPLATE.md`
 - `docs/SPRINT24_CODING_BREAKDOWN_PLAN.md`
 - `scripts/ops/sprint24_collect_dashboard_evidence.ps1`
+
+## 0.4 Sprint 29 - READY TO EXECUTE (AI Advisory + Kline Chart Context Sprint)
+
+Focus: dua context chart hien tai (du lieu so) vao luong tao AI advisory tabs de tang do chinh xac theo boi canh user dang xem.
+
+Trang thai hien tai: READY TO EXECUTE.
+
+Muc tieu sprint:
+1. FE gui chart_context khi tao AI tab tren `/stocks/:symbol`.
+2. BE validate/sanitize chart_context va inject vao prompt generation.
+3. API response co `chart_context_used` + `chart_context_warnings` de FE hien thi minh bach.
+4. Co telemetry + canary gate + rollback gate truoc full rollout.
+
+Tai lieu chuan cho sprint nay:
+- `docs/SPRINT29_AI_ADVISORY_KLINE_CONTEXT_EXECUTION_PLAN.md`
+- `docs/SPRINT29_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT29_TASKBOARD.csv`
+
+Tai lieu implementation companion:
+- `docs/AI_ADVISORY_KLINE_CONTEXT_UPGRADE_PLAN_20260408.md`
+- `docs/AI_ADVISORY_KLINE_CONTEXT_TASKBOARD_20260408.md`
+- `docs/AI_ADVISORY_KLINE_CONTEXT_EXECUTION_TRACKER_20260408.md`
 
 ---
 
@@ -631,4 +653,4 @@ python manage.py realtime_tick --sync --user-id 3
 | Web routes working | 100% |
 | WebSocket duplication | 0 (single hook) |
 | Sprint hoàn thành | 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 |
-| Sprint tiếp theo | 18 (planning cua sprint tiep theo) |
+| Sprint tiếp theo | 29 (READY TO EXECUTE - AI Advisory + Kline Chart Context) |

@@ -161,6 +161,24 @@ Tham chieu sprint moi:
 - `docs/SPRINT28_ACCEPTANCE_CHECKLIST.md`
 - `docs/SPRINT28_TASKBOARD.csv`
 
+### Epic B12 — Sprint 29 AI Advisory + Kline Chart Context
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B12-1 | Sprint 29 planning lock | Chot execution plan + acceptance checklist + taskboard canonical | PM/BE/FE | 0.5d | None | Co bo tai lieu canonical cho dev thuc thi | Done |
+| B12-2 | Backend contract + serializer | Tao chart_context serializer + validate/clamp + response flags | BE | 2.0d | B12-1 | API contract pass matrix valid/invalid/oversize | Todo |
+| B12-3 | Prompt + telemetry integration | Inject chart block vao prompt + metric context usage | BE/DevOps | 1.5d | B12-2 | Co evidence chart_context_used va dashboard metric | Todo |
+| B12-4 | Frontend chart context collector | Build collector tu Kline (visible OHLCV + indicators + metrics) | FE | 1.5d | B12-1 | Payload tra dung schema v1, fallback an toan | Todo |
+| B12-5 | Frontend generate + UX state | Gui chart_context khi generate tab + badge/warning states | FE | 1.5d | B12-4,B12-2 | UX minh bach context used/fallback | Todo |
+| B12-6 | QA + canary + go/no-go | API/E2E/perf + canary 10% + rollback verification | QA/PM/DevOps | 2.0d | B12-3,B12-5 | Checklist Sprint 29 duoc sign-off | Todo |
+
+Tham chieu sprint moi:
+- `docs/SPRINT29_AI_ADVISORY_KLINE_CONTEXT_EXECUTION_PLAN.md`
+- `docs/SPRINT29_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT29_TASKBOARD.csv`
+- `docs/AI_ADVISORY_KLINE_CONTEXT_UPGRADE_PLAN_20260408.md`
+- `docs/AI_ADVISORY_KLINE_CONTEXT_TASKBOARD_20260408.md`
+- `docs/AI_ADVISORY_KLINE_CONTEXT_EXECUTION_TRACKER_20260408.md`
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)
