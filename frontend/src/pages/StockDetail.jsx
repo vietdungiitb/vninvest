@@ -36,8 +36,6 @@ import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsD
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 
-const PERIODS = [30, 90, 180, 365];
-
 function formatCurrency(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
@@ -132,13 +130,12 @@ function advisorySynthesisPreferenceLabel(preference, t) {
   return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
-function KLineChartComponent({ data }) {
+function KLineChartComponent({ data, activePeriod, onPeriodChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const indicatorPaneMapRef = useRef({});
   const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
-  const [drawingMode, setDrawingMode] = useState(null);
   const [fullScreen, setFullScreen] = useState(false);
 
   const MAIN_PANE_INDICATORS = new Set(['MA', 'EMA', 'BOLL', 'SAR']);
@@ -158,12 +155,22 @@ function KLineChartComponent({ data }) {
     { id: 'OBV', name: t('stockDetail.indicatorObv') },
   ];
 
-  const DRAWING_TOOLS = [
-    { id: 'line', name: 'Line' },
-    { id: 'rect', name: 'Rect' },
-    { id: 'polygon', name: 'Polygon' },
-    { id: 'text', name: 'Text' },
+  const TIMEFRAMES = [
+    { id: '1m',  days: 30 },
+    { id: '5m',  days: 90 },
+    { id: '15m', days: 180 },
+    { id: '1H',  days: 365 },
+    { id: '2H',  days: 730 },
+    { id: '4H',  days: 1460 },
+    { id: 'D',   days: 365 },
+    { id: 'W',   days: 1095 },
+    { id: 'M',   days: 1825 },
+    { id: 'Y',   days: 3650 },
   ];
+  const [activeTimeframe, setActiveTimeframe] = useState(() => {
+    const match = TIMEFRAMES.find(tf => tf.days === activePeriod);
+    return match ? match.id : '1H';
+  });
 
   const rememberIndicatorPane = (indicatorId, paneId) => {
     if (paneId) {
@@ -279,76 +286,9 @@ function KLineChartComponent({ data }) {
     }
   };
 
-  const handleDrawingMode = (toolId) => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    const legacySetDrawingMode = typeof chart.setDrawingMode === 'function';
-    const hasCreateOverlay = typeof chart.createOverlay === 'function';
-
-    if (legacySetDrawingMode) {
-      if (drawingMode === toolId) {
-        chart.setDrawingMode(false);
-        setDrawingMode(null);
-      } else {
-        const modeMap = {
-          line: 'line',
-          rect: 'rect',
-          polygon: 'polygon',
-          text: 'text',
-        };
-        chart.setDrawingMode(modeMap[toolId]);
-        setDrawingMode(toolId);
-      }
-      return;
-    }
-
-    if (hasCreateOverlay) {
-      const overlayCandidates = {
-        line: ['segment', 'straightLine'],
-        rect: ['rect', 'rectangle'],
-        polygon: ['polygon', 'priceChannelLine'],
-        text: ['text'],
-      };
-      try {
-        const candidates = overlayCandidates[toolId] || ['segment'];
-        let created = false;
-        for (const overlayName of candidates) {
-          try {
-            chart.createOverlay(overlayName);
-            created = true;
-            break;
-          } catch (err) {
-            // try next fallback name
-          }
-        }
-        if (!created) throw new Error(`No matching overlay for ${toolId}`);
-        setDrawingMode(toolId);
-      } catch (e) {
-        console.error('Error creating overlay:', e);
-      }
-      return;
-    }
-
-    console.warn('Drawing API is not available on this klinecharts instance.');
-  };
-
-  const handleClearDrawings = () => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    if (typeof chart.removeAllGraphicMarks === 'function') {
-      chart.removeAllGraphicMarks();
-      return;
-    }
-    if (typeof chart.removeOverlay === 'function') {
-      try {
-        // klinecharts v9 overlay API can clear by calling removeOverlay with no id.
-        chart.removeOverlay();
-      } catch (e) {
-        console.error('Error clearing overlays:', e);
-      }
-    }
+  const handleTimeframe = (tf) => {
+    setActiveTimeframe(tf.id);
+    onPeriodChange?.(tf.days);
   };
 
   const handleScreenshot = () => {
@@ -501,6 +441,13 @@ function KLineChartComponent({ data }) {
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
+  useEffect(() => {
+    const match = TIMEFRAMES.find((tf) => tf.days === activePeriod);
+    if (match) {
+      setActiveTimeframe(match.id);
+    }
+  }, [activePeriod]);
+
   // Cập nhật dữ liệu khi prop thay đổi
   useEffect(() => {
     if (!chartRef.current || !data?.length) return;
@@ -524,8 +471,25 @@ function KLineChartComponent({ data }) {
     <div className="flex flex-col w-full h-full bg-[#131722] rounded-lg overflow-hidden border border-[#2a2e39]">
       {/* Toolbar */}
       <div className="bg-[#1e222d] border-b border-[#2a2e39] p-1.5 flex flex-wrap gap-1.5 items-center">
-        {/* Indicators */}
+        {/* Timeframes */}
         <div className="flex gap-1 items-center">
+          {TIMEFRAMES.map((tf) => (
+            <button
+              key={tf.id}
+              onClick={() => handleTimeframe(tf)}
+              className={`h-7 min-w-[34px] px-2 py-1 text-[11px] font-medium rounded transition ${
+                activeTimeframe === tf.id
+                  ? 'bg-[#2962ff] text-white'
+                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
+              }`}
+            >
+              {tf.id}
+            </button>
+          ))}
+        </div>
+
+        {/* Indicators */}
+        <div className="flex gap-1 items-center border-l border-[#2a2e39] pl-2">
           {AVAILABLE_INDICATORS.map(ind => (
             <button
               key={ind.id}
@@ -542,33 +506,8 @@ function KLineChartComponent({ data }) {
           ))}
         </div>
 
-        {/* Drawing Tools */}
-        <div className="flex gap-1 border-l border-[#2a2e39] pl-2">
-          {DRAWING_TOOLS.map(tool => (
-            <button
-              key={tool.id}
-              onClick={() => handleDrawingMode(tool.id)}
-              className={`h-7 px-2 py-1 text-[11px] rounded transition ${
-                drawingMode === tool.id
-                  ? 'bg-[#f59e0b] text-white'
-                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
-              }`}
-              title={tool.name}
-            >
-              {tool.name}
-            </button>
-          ))}
-          <button
-            onClick={handleClearDrawings}
-            className="h-7 px-2 py-1 text-[11px] bg-[#2a2e39] text-[#b2b5be] rounded hover:bg-[#363a45] transition"
-            title={t('stockDetail.clearAllDrawings')}
-          >
-            Clear
-          </button>
-        </div>
-
         {/* Actions */}
-        <div className="flex gap-1 border-l border-[#2a2e39] pl-2 ml-auto">
+        <div className="flex gap-1 border-l border-[#2a2e39] pl-2">
           <button
             onClick={handleScreenshot}
             className="h-7 px-2 py-1 text-[11px] bg-[#2a2e39] text-[#b2b5be] rounded hover:bg-[#363a45] transition"
@@ -2118,22 +2057,7 @@ export default function StockDetail() {
                 <p className="text-label">{t('stockDetail.klineWorkspace')}</p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('stockDetail.candlestickFor', { symbol: normalizedSymbol })}</h2>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {PERIODS.map((period) => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setActivePeriod(period)}
-                    className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                      activePeriod === period
-                        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
-                        : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
-                    }`}
-                  >
-                    {period}D
-                  </button>
-                ))}
-              </div>
+              <div />
             </div>
 
             <div className="mt-3 h-[520px]">
@@ -2144,7 +2068,7 @@ export default function StockDetail() {
                   {t('stockDetail.noChartData')}
                 </div>
               ) : (
-                <KLineChartComponent data={chartData} />
+                <KLineChartComponent data={chartData} activePeriod={activePeriod} onPeriodChange={setActivePeriod} />
               )}
             </div>
           </section>
