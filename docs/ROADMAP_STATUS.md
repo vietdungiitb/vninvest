@@ -104,17 +104,23 @@ Tai lieu chuan cho sprint nay:
 - `docs/SPRINT24_CODING_BREAKDOWN_PLAN.md`
 - `scripts/ops/sprint24_collect_dashboard_evidence.ps1`
 
-## 0.4 Sprint 29 - READY TO EXECUTE (AI Advisory + Kline Chart Context Sprint)
+## 0.4 Sprint 29 - IN PROGRESS (DEV COMPLETE, QA/CANARY PENDING)
 
 Focus: dua context chart hien tai (du lieu so) vao luong tao AI advisory tabs de tang do chinh xac theo boi canh user dang xem.
 
-Trang thai hien tai: READY TO EXECUTE.
+Trang thai hien tai: IN PROGRESS.
 
 Muc tieu sprint:
 1. FE gui chart_context khi tao AI tab tren `/stocks/:symbol`.
 2. BE validate/sanitize chart_context va inject vao prompt generation.
 3. API response co `chart_context_used` + `chart_context_warnings` de FE hien thi minh bach.
 4. Co telemetry + canary gate + rollback gate truoc full rollout.
+
+Tien do cap nhat:
+- Da hoan tat code BE/FE cho chart_context, prompt injection, response flags va runtime KPI telemetry.
+- Da bo sung matrix API test (valid/invalid/missing/oversize) va pass targeted tests.
+- Da hoan tat UI badge/warning + viewport visible-range collector tren Kline.
+- Con lai: Q0-02 E2E VNM/VCB/FPT, Q0-03 performance report, R0-01 canary + go/no-go.
 
 Tai lieu chuan cho sprint nay:
 - `docs/SPRINT29_AI_ADVISORY_KLINE_CONTEXT_EXECUTION_PLAN.md`

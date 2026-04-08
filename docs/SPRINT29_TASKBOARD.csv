@@ -1,13 +1,13 @@
 id,story,task_detail,owner,estimate_days,dependency,dod,status
 S29-01,Sprint 29 planning lock,Chot execution plan + acceptance checklist + taskboard canonical,PM/BE/FE,0.5,None,Bo tai lieu canonical day du,Done
-S29-02,Chart context serializer,Tao StockAIChartContextSerializer validate+clamp payload,BE,1.0,S29-01,Serializer pass unit tests,Todo
-S29-03,Generate API upgrade,Cap nhat endpoint generate components nhan chart_context + response flags,BE,1.0,S29-02,API pass contract tests,Todo
-S29-04,Prompt chart block,Inject chart_context block vao AI component prompt,BE,1.0,S29-03,Prompt behavior pass tests,Todo
-S29-05,Telemetry rollout,Them telemetry context usage + warnings + payload size,BE/DevOps,0.75,S29-03,Dashboard co metric can theo doi,Todo
-S29-06,FE chart context collector,Build helper lay visible OHLCV + indicators + metrics tu Kline,FE,1.5,S29-01,Collector tra schema dung,Todo
-S29-07,FE API integration,Gui chart_context khi bam tao AI tab + fallback payload cu,FE,1.0,S29-06|S29-03,Generate flow hoat dong on dinh,Todo
-S29-08,FE UX indicators,Hien badge/warning context_used/context_warnings,FE,1.0,S29-07,UX states dung theo response,Todo
-S29-09,Regression chart toolbar,Kiem tra tat/bat tat ca indicator + screenshot/fullscreen/drawing,FE/QA,0.75,S29-07,Khong regression chart UX,Todo
-S29-10,QA contract tests,Test matrix payload valid/invalid/oversize/missing,QA,1.0,S29-03,API contract suite pass,Todo
-S29-11,QA E2E tests,E2E tren VNM/VCB/FPT voi generate AI tab,QA,1.0,S29-08,E2E evidence day du,Todo
-S29-12,Perf and canary,Do p95/failure + canary 10% + go/no-go report,QA/DevOps/PM,1.5,S29-05|S29-11,KPI gate dat va co report,Todo
+S29-02,Chart context serializer,Tao StockAIChartContextSerializer validate+clamp payload,BE,1.0,S29-01,Serializer pass unit tests,Done
+S29-03,Generate API upgrade,Cap nhat endpoint generate components nhan chart_context + response flags,BE,1.0,S29-02,API pass contract tests,Done
+S29-04,Prompt chart block,Inject chart_context block vao AI component prompt,BE,1.0,S29-03,Prompt behavior pass tests,Done
+S29-05,Telemetry rollout,Them telemetry context usage + warnings + payload size,BE/DevOps,0.75,S29-03,Dashboard co metric can theo doi,Done
+S29-06,FE chart context collector,Build helper lay visible OHLCV + indicators + metrics tu Kline,FE,1.5,S29-01,Collector tra schema dung,Done
+S29-07,FE API integration,Gui chart_context khi bam tao AI tab + fallback payload cu,FE,1.0,S29-06|S29-03,Generate flow hoat dong on dinh,Done
+S29-08,FE UX indicators,Hien badge/warning context_used/context_warnings,FE,1.0,S29-07,UX states dung theo response,Done
+S29-09,Regression chart toolbar,Kiem tra tat/bat tat ca indicator + screenshot/fullscreen/drawing,FE/QA,0.75,S29-07,Khong regression chart UX,Done
+S29-10,QA contract tests,Test matrix payload valid/invalid/oversize/missing,QA,1.0,S29-03,API contract suite pass,Done
+S29-11,QA E2E tests,E2E tren VNM/VCB/FPT voi generate AI tab,QA,1.0,S29-08,E2E evidence day du,In Progress
+S29-12,Perf and canary,Do p95/failure + canary 10% + go/no-go report,QA/DevOps/PM,1.5,S29-05|S29-11,KPI gate dat va co report,Not Started
