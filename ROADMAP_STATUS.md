@@ -86,6 +86,50 @@
 - From: None (independent work)
 - To: Sprint 27 (Payment gateway), Sprint 28 (Subscription UI)
 
+---
+
+### ✅ Sprint 27 - COMPLETED (Onboarding Trial Plan Admin Policy)
+**Focus**: Chuẩn hóa cơ chế gói trải nghiệm cho user mới qua cấu hình admin  
+**Status**: DONE (M1-M6 completed in Sprint execution)
+
+**Business decisions đã chốt:**
+- ✅ Danh sách plan áp dụng: `free/basic/pro/premium/admin`
+- ✅ Chỉ bỏ qua `superuser`
+- ✅ Áp dụng mọi kiểu đăng ký mới (email/password + OAuth)
+- ✅ Chỉ cho phép một policy active tại một thời điểm
+- ✅ Admin UI đầy đủ ngay phase 1 (policy + user override + audit filter)
+
+**Scope Sprint 27:**
+- Tạo model `OnboardingPlanPolicy` + ràng buộc chỉ 1 policy active
+- Mở rộng `UserConfig` với metadata nguồn plan và cờ khóa downgrade
+- Tạo `PlanAssignmentLog` để audit mọi lần đổi plan
+- Hook auto-assign trial plan vào luồng đăng ký user mới
+- Job định kỳ auto-downgrade khi hết hạn trial về fallback plan
+- Admin UI đầy đủ cho policy, override và audit filter
+
+**Deliverables:**
+- Migration + service layer + Celery expiry task
+- Admin pages hoàn chỉnh cho policy và audit
+- Test matrix pass (unit + integration + admin)
+- Runbook rollout 4 pha + rollback bằng feature flags
+
+**Timeline ước lượng:** 3.5 - 4.5 ngày làm việc
+- M1: Schema + migration
+- M2: Service core
+- M3: Registration integration
+- M4: Expiry task
+- M5: Full admin UI + audit
+- M6: Observability + docs finalize
+
+**Dependencies:**
+- From: Sprint 26 không chặn trực tiếp
+- To: Sprint 28 (Subscription UX/billing orchestration có thể tận dụng plan audit trail)
+
+**Canonical references:**
+- `docs/ONBOARDING_TRIAL_PLAN_ADMIN_POLICY_20260408.md`
+- `docs/ONBOARDING_TRIAL_PLAN_IMPLEMENTATION_CHECKLIST_20260408.md`
+- `docs/ONBOARDING_TRIAL_PLAN_PRECODE_DECISION_PACK_20260408.md`
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  
@@ -254,6 +298,13 @@ Target: Consolidate `Watchlist` + `Dashboard` websocket logic vào một shared 
 - Giảm code lap từ ~400 lines → ~200 lines (40% reduction)
 - Dễ mở rộng cho bước 17-19 (P/L, alerts, sync)
 - Chuẩn bị cho observability metrics ở bước tiếp
+
+### Priority 3: Sprint 27 Go/No-Go (Completed)
+Target: Chốt quyết định và hoàn tất coding execution cho onboarding trial policy
+- [x] Hoàn tất policy doc + implementation checklist + pre-code decision pack
+- [x] Product Owner xác nhận GO cho M1-M2
+- [x] Hoàn tất coding phase M1-M6
+- [x] Đóng QA gates với test evidence + rollback runbook
 
 ---
 

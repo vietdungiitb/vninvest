@@ -1,5 +1,156 @@
 # Sprint Execution Log
 
+## Onboarding trial policy planning (2026-04-08)
+
+Trang thai: PLANNING COMPLETED - AWAITING BUSINESS APPROVAL
+
+Da tao tai lieu ke hoach chi tiet cho co che admin cau hinh goi trai nghiem khi user dang ky moi:
+- docs/ONBOARDING_TRIAL_PLAN_ADMIN_POLICY_20260408.md
+
+Pham vi ke hoach bao gom:
+- Data model policy + audit log
+- Tich hop registration flow
+- Expiry downgrade job
+- Admin UI va acceptance criteria
+
+Cap nhat quyet dinh business da chot:
+- Danh sach plan he thong: free/basic/pro/premium/admin
+- Chi bo qua superuser
+- Ap dung moi kieu dang ky
+- Chi 1 policy active
+- Admin UI day du ngay phase 1
+
+Da tao implementation checklist de vao coding execution:
+- docs/ONBOARDING_TRIAL_PLAN_IMPLEMENTATION_CHECKLIST_20260408.md
+
+Da tao decision pack truoc coding (GO/NO-GO):
+- docs/ONBOARDING_TRIAL_PLAN_PRECODE_DECISION_PACK_20260408.md
+
+Da tao artifact van hanh Sprint 27:
+- docs/SPRINT27_TASKBOARD.csv
+- docs/SPRINT27_ACCEPTANCE_CHECKLIST.md
+- docs/SPRINT27_ONBOARDING_TRIAL_EXECUTION_PLAN.md
+
+Cap nhat execution M1 (schema/migration):
+- Da them schema cho Sprint 27 trong codebase:
+	- `OnboardingPlanPolicy`
+	- `PlanAssignmentLog`
+	- bo sung field lifecycle cho `UserConfig`
+- Da tao migration: `backend/portfolio/migrations/0021_onboarding_trial_policy.py`
+
+Cho xac nhan business truoc khi bat dau coding implementation.
+
+Cap nhat execution M2-M4 (2026-04-08):
+- Da them service core onboarding trial:
+	- `backend/portfolio/onboarding_trial_service.py`
+	- `get_active_onboarding_policy()`
+	- `apply_onboarding_trial_for_new_user()`
+	- `process_expired_onboarding_trials()`
+- Da wire registration flow email/password:
+	- `backend/portfolio/auth_views.py`
+	- Goi onboarding service ngay sau khi tao user + user_config.
+- Da them Celery task + scheduler flags:
+	- `backend/portfolio/tasks.py` them `process_expired_onboarding_trials_task`
+	- `backend/config/settings.py` them:
+		- `ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED`
+		- `ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES`
+		- `ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE`
+	- Da add beat entry `process-expired-onboarding-trials`.
+- Da them test cover cho Sprint 27:
+	- `backend/portfolio/tests/test_onboarding_trial_service.py`
+	- bo sung register integration test trong `backend/portfolio/tests/test_api_routes.py`.
+
+Evidence test focused:
+- Command:
+	- `manage.py test portfolio.tests.test_onboarding_trial_service portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_applies_active_onboarding_policy`
+- Ket qua:
+	- Ran 5 tests
+	- OK
+
+Open point:
+- OAuth signup path cho user moi chua thay ro trong flow auth hien tai; can xac nhan endpoint/hook tao user OAuth de hoan tat S27-04.
+
+Cap nhat execution M5 (admin UI + feature flags) (2026-04-08):
+- Da mo rong admin cho Sprint 27:
+	- `OnboardingPlanPolicyAdmin`: list/filter + action activate policy + stamp created_by/updated_by.
+	- `PlanAssignmentLogAdmin`: read-only audit view + reason/actor/date/user filters.
+	- `UserConfigAdmin`: bo sung truong lifecycle va auto ghi `PlanAssignmentLog` khi admin override.
+- Da bo sung feature flag apply khi signup:
+	- `ONBOARDING_TRIAL_APPLY_ON_SIGNUP` trong settings.
+	- register flow chi apply trial khi flag bat.
+
+Evidence test focused sau thay doi admin:
+- Command:
+	- `manage.py test portfolio.tests.test_onboarding_trial_service portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_applies_active_onboarding_policy portfolio.tests.test_admin_ops`
+- Ket qua:
+	- Ran 22 tests
+	- OK
+
+Cap nhat quality gate idempotent + signup feature flag (2026-04-08):
+- Da them tests:
+	- `test_process_expired_onboarding_trials_is_idempotent`
+	- `test_register_endpoint_respects_signup_trial_feature_flag`
+- Evidence test focused:
+	- `manage.py test portfolio.tests.test_onboarding_trial_service portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_applies_active_onboarding_policy portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_register_endpoint_respects_signup_trial_feature_flag`
+	- Ket qua: Ran 7 tests, OK.
+
+Ket luan OAuth signup path:
+- Da truy vet route/backend entrypoint, hien tai chua co endpoint OAuth signup public tao user moi.
+- S27-04 giu trang thai In Progress de doi implementation OAuth auth flow trong sprint tiep theo hoac bo sung endpoint moi.
+
+Cap nhat observability + rollback + auth regression (2026-04-08):
+- Da them structured logs cho onboarding trial:
+	- `event=onboarding_trial_assigned`
+	- `event=onboarding_trial_downgraded`
+	- `event=onboarding_trial_skipped`
+	- `event=onboarding_trial_expiry_summary`
+	- `event=onboarding_trial_expiry_task_run`
+- Da tao rollback runbook:
+	- `docs/SPRINT27_ROLLBACK_RUNBOOK.md`
+- Da chay auth/register regression focused:
+	- 14 tests (login/register/verify/resend + onboarding register scenarios)
+	- Ket qua: OK
+
+Cap nhat S27-04 OAuth registration integration (2026-04-08):
+- Da them endpoint:
+	- `POST /api/auth/oauth/google/`
+	- file: `backend/portfolio/auth_views.py` + route `backend/config/urls.py`
+- Luong endpoint:
+	- Verify Google access token -> lay email
+	- Neu user moi: tao user, mark oauth_provider=google, email verified
+	- Neu bat flag: apply onboarding trial service voi signup_method=google_oauth
+	- Tra ve JWT access/refresh cho login flow
+- Da them integration tests:
+	- `test_google_oauth_endpoint_creates_user_and_applies_onboarding_policy`
+	- `test_google_oauth_endpoint_existing_user_no_reassignment`
+- Evidence test focused:
+	- Ran 8 tests, OK (bao gom OAuth + onboarding service regression)
+
+Cap nhat migration alignment sau implementation (2026-04-08):
+- Phat hien drift metadata giua model hien tai va migration 0021 khi chay `makemigrations --check`.
+- Da generate migration dong bo: `backend/portfolio/migrations/0022_alter_onboardingplanpolicy_options_and_more.py`.
+- Validation sau dong bo:
+	- `manage.py makemigrations --check` -> No changes detected
+	- `manage.py check` -> OK
+	- Focused regression tests (onboarding + oauth) -> OK
+
+Cap nhat handoff artifact cho deploy (2026-04-08):
+- Da tao checklist staging smoke 15-20 phut:
+	- `docs/SPRINT27_STAGING_SMOKE_CHECKLIST.md`
+- Da tao mau report quyet dinh release:
+	- `docs/SPRINT27_GO_NO_GO_REPORT_TEMPLATE.md`
+
+Cap nhat final technical verification truoc deploy (2026-04-08):
+- Da chay lai bo verify Sprint 27:
+	- `manage.py makemigrations --check` -> No changes detected
+	- `manage.py check` -> OK
+	- Focused regression tests (onboarding + signup/email + signup/oauth) -> Ran 9 tests, OK
+- Ket luan:
+	- Sprint 27 code/state da san sang deploy.
+	- Buoc con lai la staging smoke + ky GO/NO-GO thu cong theo:
+		- `docs/SPRINT27_STAGING_SMOKE_CHECKLIST.md`
+		- `docs/SPRINT27_GO_NO_GO_REPORT_TEMPLATE.md`
+
 ## OAuth redirect hotfix log-in (2026-04-08)
 
 Trang thai: HOTFIX DEPLOY BRANCH READY

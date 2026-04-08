@@ -1,0 +1,8 @@
+ID,Story,Owner,Estimate,Dependency,Status,Evidence
+S27-01,Sprint 27 planning lock and scope freeze,PM-BE-1,0.5d,None,Done,Business decisions locked + canonical docs finalized
+S27-02,Schema and migration for onboarding policy,BE-Lead-1,1d,S27-01,Done,Added OnboardingPlanPolicy + PlanAssignmentLog + UserConfig lifecycle fields + migrations 0021 and 0022 alignment
+S27-03,Service core for signup assign and expiry downgrade,BE-Lead-1,1d,S27-02,Done,Added onboarding_trial_service with active-policy resolution signup assignment and expiry downgrade batch processing
+S27-04,Registration integration for all signup methods,BE-Auth-1,0.75d,S27-03,Done,Integrated email/password plus Google OAuth endpoint /api/auth/oauth/google with onboarding trial assignment for new users
+S27-05,Celery expiry task and schedule flags,BE-DevOps-1,0.5d,S27-03,Done,Added process_expired_onboarding_trials_task and settings flags for beat schedule and batch size
+S27-06,Full admin UI policy plus override and audit,BE-QA-1,1d,S27-02|S27-03,Done,Added OnboardingPlanPolicyAdmin PlanAssignmentLogAdmin and UserConfig admin override audit log
+S27-07,QA matrix plus rollout go-no-go,PM-QA-1,0.5d,S27-04|S27-05|S27-06,Done,OAuth integration tests pass plus staging smoke checklist and go-no-go report template prepared

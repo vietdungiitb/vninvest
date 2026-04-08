@@ -124,6 +124,28 @@ Tham chieu sprint moi:
 - `docs/SPRINT24_TRUST_DECISION_STORIES.md`
 - `docs/SPRINT24_CODING_BREAKDOWN_PLAN.md`
 
+### Epic B10 — Sprint 27 Onboarding Trial Plan Admin Policy
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B10-1 | Sprint 27 planning lock | Chot business decisions + policy/checklist/decision pack | PM/BE | 0.5d | None | 3 tai lieu canonical da du va duoc phe duyet | Done |
+| B10-2 | Schema + migration | Tao OnboardingPlanPolicy + PlanAssignmentLog + mo rong UserConfig | BE | 1d | B10-1 | Migration pass, constraint 1 policy active hoat dong | Done |
+| B10-3 | Service core | Implement signup assign + expiry downgrade + audit helper | BE | 1d | B10-2 | Unit tests pass, idempotent va race-safe | Done |
+| B10-4 | Registration integration | Hook auto-assign cho email/password va OAuth signup | BE | 0.75d | B10-3 | User moi nhan plan dung theo policy | Done |
+| B10-5 | Celery expiry job | Tao task + schedule + feature flag rollout | BE/DevOps | 0.5d | B10-3 | Downgrade dung dieu kien, co metrics/log | Done |
+| B10-6 | Full admin UI + audit | Policy admin, user override, audit filter day du | BE/QA | 1d | B10-2 | Admin thao tac duoc full luong + co log | Done |
+| B10-7 | QA + rollout decision | Test matrix + go/no-go + rollback runbook | QA/PM/DevOps | 0.5d | B10-4,B10-5,B10-6 | Checklist pass, san sang deploy | Done |
+
+Tham chieu sprint moi:
+- `docs/ONBOARDING_TRIAL_PLAN_ADMIN_POLICY_20260408.md`
+- `docs/ONBOARDING_TRIAL_PLAN_IMPLEMENTATION_CHECKLIST_20260408.md`
+- `docs/ONBOARDING_TRIAL_PLAN_PRECODE_DECISION_PACK_20260408.md`
+- `docs/SPRINT27_ONBOARDING_TRIAL_EXECUTION_PLAN.md`
+- `docs/SPRINT27_TASKBOARD.csv`
+- `docs/SPRINT27_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT27_STAGING_SMOKE_CHECKLIST.md`
+- `docs/SPRINT27_GO_NO_GO_REPORT_20260408.md`
+- `docs/SPRINT27_RELEASE_COMMANDS.md`
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)
