@@ -3590,6 +3590,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
         advisory_data = payload.get('advisory')
         if advisory_data and _get_plan(request.user) not in ('premium', 'admin'):
             advisory_data['ai_detail'] = ''
+        payload['user_ai_provider'] = str(user_cfg.ai_provider or 'openclaw').strip().lower()
         return payload
 
     def _tracked_response(payload: dict, response_status: int):

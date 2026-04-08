@@ -1283,6 +1283,7 @@ export default function StockDetail() {
   const [financialsLoading, setFinancialsLoading] = useState(true);
   const [financialsYear, setFinancialsYear] = useState(null);
   const [advisorySession, setAdvisorySession] = useState(null);
+  const [advisoryUserProvider, setAdvisoryUserProvider] = useState(null);
   const [advisoryComponents, setAdvisoryComponents] = useState([]);
   const [advisoryDeletedComponents, setAdvisoryDeletedComponents] = useState([]);
   const [advisoryExecutiveSummary, setAdvisoryExecutiveSummary] = useState(null);
@@ -1328,6 +1329,7 @@ export default function StockDetail() {
       const response = await getStockAIAdvisorySession(normalizedSymbol);
       const payload = response?.data || {};
       setAdvisorySession(payload.advisory || null);
+      setAdvisoryUserProvider(payload.user_ai_provider || null);
       const nextComponents = Array.isArray(payload.components) ? payload.components : [];
       const nextDeletedComponents = Array.isArray(payload.deleted_components) ? payload.deleted_components : [];
       setAdvisoryComponents(nextComponents);
@@ -2183,7 +2185,7 @@ export default function StockDetail() {
                 <>
                   <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500 border-b border-slate-800 pb-2">
                     <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
-                      {advisorySession.ai_provider || 'openclaw'}
+                      {advisoryUserProvider || advisorySession.ai_provider || 'openclaw'}
                     </span>
                     <span>
                       {advisorySession.created_at ? new Date(advisorySession.created_at).toLocaleString(undefined) : '—'}
