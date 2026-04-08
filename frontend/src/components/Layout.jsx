@@ -2,20 +2,38 @@
  * components/Layout.jsx
  * Sidebar + Header bao ngoài tất cả các trang.
  */
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
+import { fetchLegalPages } from '../api/client';
 
 export default function Layout() {
   const { t, locale, setLanguage } = useI18n();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('layout.sidebarCollapsed') === '1';
     } catch (_) {
       return false;
     }
   });
+
+  // Legal pages state
+  const [legalPages, setLegalPages] = useState([]);
+  const [legalModal, setLegalModal] = useState(null);
+
+  const loadLegal = useCallback(async () => {
+    try {
+      const pages = await fetchLegalPages(null, locale || 'vi');
+      setLegalPages(pages);
+    } catch {
+      // fail-soft
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    loadLegal();
+  }, [loadLegal]);
 
   React.useEffect(() => {
     try {
@@ -214,6 +232,22 @@ export default function Layout() {
           >
             {isSidebarCollapsed ? '⎋' : t('layout.logout')}
           </button>
+
+          {/* Legal links */}
+          {!isSidebarCollapsed && legalPages.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-2">
+              {legalPages.map((page) => (
+                <button
+                  key={page.slug}
+                  type="button"
+                  onClick={() => setLegalModal(page)}
+                  className="text-[11px] text-gray-600 hover:text-gray-400 transition-colors"
+                >
+                  {page.title || t(`legal.${page.slug}`)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -221,6 +255,48 @@ export default function Layout() {
       <main className="flex-1 overflow-y-auto bg-gray-950">
         <Outlet />
       </main>
+
+      {/* Legal content modal */}
+      {legalModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          onClick={() => setLegalModal(null)}
+        >
+          <div
+            className="w-full max-w-lg bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+              <h2 className="text-base font-semibold text-gray-100">{legalModal.title}</h2>
+              <button
+                type="button"
+                onClick={() => setLegalModal(null)}
+                className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+                aria-label={t('legal.close')}
+              >
+                ×
+              </button>
+            </div>
+            {legalModal.summary && (
+              <p className="px-6 pt-4 text-xs text-gray-400 italic">{legalModal.summary}</p>
+            )}
+            <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+              <pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-sans">
+                {legalModal.content_markdown || t('legal.noContent')}
+              </pre>
+            </div>
+            <div className="px-6 py-3 border-t border-gray-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setLegalModal(null)}
+                className="px-4 py-1.5 rounded-md bg-brand-600 hover:bg-brand-700 text-sm text-white transition-colors"
+              >
+                {t('legal.close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -146,6 +146,21 @@ Tham chieu sprint moi:
 - `docs/SPRINT27_GO_NO_GO_REPORT_20260408.md`
 - `docs/SPRINT27_RELEASE_COMMANDS.md`
 
+### Epic B11 — Sprint 28 Legal Content at Login + User Menu
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B11-1 | Sprint 28 planning lock | Chot execution plan + checklist + taskboard cho legal content | PM/BE/FE | 0.25d | None | Co bo tai lieu canonical cho dev thuc thi | Done |
+| B11-2 | Schema + admin | Tao LegalPage model + migration + admin list/filter/active action | BE | 1d | B11-1 | Admin sua duoc about/disclaimer vi/en, 1 active version moi slug+locale | Todo |
+| B11-3 | Public legal API | Tao endpoint public legal pages + locale fallback logic | BE | 0.75d | B11-2 | API khong can auth, response dung contract | Todo |
+| B11-4 | Login integration | Hien legal content tai man hinh login/register (truoc dang ky) | FE | 1d | B11-3 | User doc duoc legal content truoc khi dang ky, fail-soft khi API loi | Todo |
+| B11-5 | User menu integration | Them legal links trong menu sau dang nhap + legal routes | FE | 0.75d | B11-3 | User doc lai legal content sau login tren desktop/mobile | Todo |
+| B11-6 | QA + release gate | Backend tests + frontend smoke + go/no-go + rollback note | QA/PM/DevOps | 0.75d | B11-4,B11-5 | Checklist pass va san sang deploy | Todo |
+
+Tham chieu sprint moi:
+- `docs/SPRINT28_LEGAL_CONTENT_EXECUTION_PLAN.md`
+- `docs/SPRINT28_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT28_TASKBOARD.csv`
+
 ---
 
 ## Board C — Future Expansion (Backlog-linked)

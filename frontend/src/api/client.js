@@ -250,6 +250,27 @@ export const bulkUpdateTrackedSymbolThreshold = (trackedSymbolIds, whaleAlertThr
   });
 export const deleteTrackedSymbol = (id) => apiClient.delete(`/stock-management/tracked-symbols/${id}/`);
 
+// ---------------------------------------------------------------------------
+// Sprint 28 — Legal content (public, no auth required)
+// ---------------------------------------------------------------------------
+const publicApiClient = axios.create({
+  baseURL: apiBaseURL,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+/**
+ * Lấy nội dung trang pháp lý đang active.
+ * @param {string|null} slug - 'about' | 'disclaimer' | null (lấy tất cả)
+ * @param {string} locale - 'vi' | 'en', mặc định 'vi'
+ * @returns {Promise<Array>} - mảng LegalPage objects
+ */
+export const fetchLegalPages = async (slug = null, locale = 'vi') => {
+  const params = { locale };
+  if (slug) params.slug = slug;
+  const response = await publicApiClient.get('/public/legal-pages/', { params });
+  return response.data?.results ?? [];
+};
+
 export const getPriceAlerts = () => apiClient.get('/stock-management/price-alerts/');
 export const createPriceAlert = (data) => apiClient.post('/stock-management/price-alerts/', data);
 export const updatePriceAlert = (id, data) => apiClient.patch(`/stock-management/price-alerts/${id}/`, data);

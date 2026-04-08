@@ -4,7 +4,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
-from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .ai_options import get_default_model, is_valid_model, is_valid_provider
 
 
@@ -433,4 +433,25 @@ class MarketStockChartQuerySerializer(serializers.Serializer):
 
 class TradingSubAccountCreateRequestSerializer(serializers.Serializer):
     portfolio = serializers.IntegerField(required=False, min_value=1)
+
+
+# ---------------------------------------------------------------------------
+# Sprint 28 — LegalPage Serializer
+# ---------------------------------------------------------------------------
+class LegalPageSerializer(serializers.ModelSerializer):
+    slug_display = serializers.CharField(source='get_slug_display', read_only=True)
+    locale_display = serializers.CharField(source='get_locale_display', read_only=True)
+
+    class Meta:
+        model = LegalPage
+        fields = [
+            'id', 'slug', 'slug_display', 'locale', 'locale_display',
+            'title', 'summary', 'content_markdown',
+            'version', 'published_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'slug', 'slug_display', 'locale', 'locale_display',
+            'title', 'summary', 'content_markdown',
+            'version', 'published_at', 'updated_at',
+        ]
 

@@ -12,6 +12,7 @@ from portfolio.auth_views import (
     VerifiedEmailTokenObtainPairView,
     VerifyEmailView,
 )
+from portfolio.legal_views import LegalPagePublicView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -39,4 +40,6 @@ urlpatterns = [
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
     path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),
     path('api/ai-config/test-connection/', portfolio_views.ai_test_connection_api, name='ai-test-connection'),
+    # Sprint 28 — Public legal content (no auth required)
+    path('api/public/legal-pages/', LegalPagePublicView.as_view(), name='public-legal-pages'),
 ]

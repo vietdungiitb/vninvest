@@ -130,6 +130,33 @@
 - `docs/ONBOARDING_TRIAL_PLAN_IMPLEMENTATION_CHECKLIST_20260408.md`
 - `docs/ONBOARDING_TRIAL_PLAN_PRECODE_DECISION_PACK_20260408.md`
 
+### 📌 Sprint 28 - PLANNED (Legal Content at Login + User Menu)
+**Focus**: Hien thi Gioi thieu va Tuyen bo trach nhiem truoc dang ky va sau dang nhap  
+**Status**: READY FOR IMPLEMENTATION
+
+**Scope da chot Sprint 28:**
+- [ ] Tao LegalPage CMS trong Django Admin de sua noi dung.
+- [ ] API public legal content (khong can auth) + locale fallback.
+- [ ] Hien legal content tai man hinh login/register truoc dang ky.
+- [ ] Hien legal content trong menu nguoi dung sau dang nhap.
+- [ ] i18n vi/en + UI loading/error/fail-soft.
+- [ ] Backend tests + frontend smoke + release checklist.
+
+**Deliverables:**
+- docs/SPRINT28_LEGAL_CONTENT_EXECUTION_PLAN.md
+- docs/SPRINT28_ACCEPTANCE_CHECKLIST.md
+- docs/SPRINT28_TASKBOARD.csv
+
+**Timeline uoc luong:**
+- 3.5 - 4.0 ngay cong
+- Day 1: Schema/Admin + API
+- Day 2: Login integration + User menu integration
+- Day 3: i18n + QA + release gate
+
+**Dependencies:**
+- From: Sprint 27 user/auth flow da san sang
+- To: Co the mo rong Sprint sau cho consent acceptance tracking theo user/version
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  

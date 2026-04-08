@@ -2,9 +2,10 @@
  * components/LoginModal.jsx
  * Form auth JWT với 2 chế độ đăng nhập và đăng ký.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
+import { fetchLegalPages } from '../api/client';
 
 // SVG icons nhỏ gọn cho Google / Facebook
 const GoogleIcon = () => (
@@ -95,7 +96,7 @@ function validateRegisterForm(form, t) {
 
 export default function LoginModal({ onSuccess }) {
   const { login, register, resendVerification } = usePortfolio();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [mode, setMode] = useState('login');
   const [form, setForm] = useState(INITIAL_FORM);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -104,6 +105,23 @@ export default function LoginModal({ onSuccess }) {
   const [pendingIdentifier, setPendingIdentifier] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Legal pages state
+  const [legalPages, setLegalPages] = useState([]);
+  const [legalModal, setLegalModal] = useState(null); // { slug, title, content_markdown }
+
+  const loadLegalPages = useCallback(async () => {
+    try {
+      const pages = await fetchLegalPages(null, locale || 'vi');
+      setLegalPages(pages);
+    } catch {
+      // Fail-soft: không hiển thị lỗi, chỉ bỏ qua
+    }
+  }, [locale]);
+
+  useEffect(() => {
+    loadLegalPages();
+  }, [loadLegalPages]);
 
   const isRegisterMode = mode === 'register';
 
@@ -214,6 +232,7 @@ export default function LoginModal({ onSuccess }) {
     : !form.username.trim() || !form.email.trim() || !form.password || !form.passwordConfirm || form.password !== form.passwordConfirm);
 
   return (
+    <>
     <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-gray-900 rounded-xl border border-gray-800 p-8">
         <h1 className="text-2xl font-bold text-brand-500 mb-1">{t('auth.brandName')}</h1>
@@ -396,8 +415,87 @@ export default function LoginModal({ onSuccess }) {
             </span>
           </button>
         </div>
+
+        {/* Legal links — chỉ hiển thị khi có dữ liệu từ server */}
+        {legalPages.length > 0 && (
+          <div className="mt-5 pt-4 border-t border-gray-800 text-center">
+            {isRegisterMode && (
+              <p className="text-xs text-gray-600 mb-2">{t('legal.loginNotice')}{' '}
+                {legalPages.map((page, idx) => (
+                  <span key={page.slug}>
+                    <button
+                      type="button"
+                      onClick={() => setLegalModal(page)}
+                      className="text-brand-400 hover:text-brand-300 underline underline-offset-2 transition-colors"
+                    >
+                      {page.title || t(`legal.${page.slug}`)}
+                    </button>
+                    {idx < legalPages.length - 1 && <span className="text-gray-600"> {t('legal.and')} </span>}
+                  </span>
+                ))}
+              </p>
+            )}
+            {!isRegisterMode && (
+              <div className="flex justify-center gap-4">
+                {legalPages.map((page) => (
+                  <button
+                    key={page.slug}
+                    type="button"
+                    onClick={() => setLegalModal(page)}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {page.title || t(`legal.${page.slug}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
+
+    {/* Legal content modal overlay */}
+    {legalModal && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+        onClick={() => setLegalModal(null)}
+      >
+        <div
+          className="w-full max-w-lg bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+            <h2 className="text-base font-semibold text-gray-100">{legalModal.title}</h2>
+            <button
+              type="button"
+              onClick={() => setLegalModal(null)}
+              className="text-gray-400 hover:text-white transition-colors text-xl leading-none"
+              aria-label={t('legal.close')}
+            >
+              ×
+            </button>
+          </div>
+          {legalModal.summary && (
+            <p className="px-6 pt-4 text-xs text-gray-400 italic">{legalModal.summary}</p>
+          )}
+          <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+            <pre className="whitespace-pre-wrap text-sm text-gray-300 leading-relaxed font-sans">
+              {legalModal.content_markdown || t('legal.noContent')}
+            </pre>
+          </div>
+          <div className="px-6 py-3 border-t border-gray-800 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setLegalModal(null)}
+              className="px-4 py-1.5 rounded-md bg-brand-600 hover:bg-brand-700 text-sm text-white transition-colors"
+            >
+              {t('legal.close')}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

@@ -1275,6 +1275,74 @@ class WhaleConfigAuditLog(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# Sprint 28 — LegalPage: Nội dung pháp lý (Giới thiệu, Tuyên bố trách nhiệm)
+# ---------------------------------------------------------------------------
+class LegalPage(models.Model):
+    """
+    Nội dung pháp lý do admin quản lý: Giới thiệu và Tuyên bố trách nhiệm.
+    Mỗi (slug, locale) chỉ có 1 bản active (UniqueConstraint).
+    Hiển thị công khai tại trang đăng nhập/đăng ký và menu người dùng.
+    """
+
+    class SlugChoices(models.TextChoices):
+        ABOUT = 'about', 'Giới thiệu'
+        DISCLAIMER = 'disclaimer', 'Tuyên bố trách nhiệm'
+
+    class LocaleChoices(models.TextChoices):
+        VI = 'vi', 'Tiếng Việt'
+        EN = 'en', 'English'
+
+    slug = models.CharField(
+        max_length=30,
+        choices=SlugChoices.choices,
+        verbose_name='Loại trang',
+        db_index=True,
+    )
+    locale = models.CharField(
+        max_length=10,
+        choices=LocaleChoices.choices,
+        default=LocaleChoices.VI,
+        verbose_name='Ngôn ngữ',
+        db_index=True,
+    )
+    title = models.CharField(max_length=255, verbose_name='Tiêu đề')
+    summary = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Tóm tắt (hiển thị dưới form đăng nhập)',
+    )
+    content_markdown = models.TextField(verbose_name='Nội dung (Markdown)')
+    is_active = models.BooleanField(default=False, verbose_name='Đang hiển thị', db_index=True)
+    version = models.PositiveSmallIntegerField(default=1, verbose_name='Phiên bản')
+    published_at = models.DateTimeField(null=True, blank=True, verbose_name='Ngày công bố')
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='legal_pages_updated',
+        verbose_name='Người cập nhật',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')
+
+    class Meta:
+        verbose_name = 'Trang pháp lý'
+        verbose_name_plural = 'Trang pháp lý'
+        ordering = ['slug', 'locale', '-version']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['slug', 'locale'],
+                condition=models.Q(is_active=True),
+                name='uniq_active_legal_page_slug_locale',
+            )
+        ]
+
+    def __str__(self):
+        return f'[{self.get_locale_display()}] {self.get_slug_display()} v{self.version} ({"active" if self.is_active else "draft"})'
+
+
+# ---------------------------------------------------------------------------
 # Sprint 15 — Order Flow & Dark Money Detection
 # ---------------------------------------------------------------------------
 class OrderFlowSignal(models.Model):

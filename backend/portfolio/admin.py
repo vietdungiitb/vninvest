@@ -46,6 +46,7 @@ from .models import (
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
     OrderFlowSignal,
+    LegalPage,
 )
 from .mail_service import get_active_email_account, send_test_email
 from .google_oauth_service import (
@@ -2013,6 +2014,59 @@ class WhaleConfigApprovalAdmin(admin.ModelAdmin):
 
     def has_view_permission(self, request, obj=None):
         return _is_analyst(request.user)
+
+
+# ---------------------------------------------------------------------------
+# Sprint 28 — LegalPage Admin
+# ---------------------------------------------------------------------------
+@admin.register(LegalPage)
+class LegalPageAdmin(admin.ModelAdmin):
+    list_display = ('id', 'slug', 'locale', 'title', 'version', 'is_active', 'published_at', 'updated_at')
+    list_filter = ('slug', 'locale', 'is_active')
+    search_fields = ('title', 'summary', 'content_markdown')
+    ordering = ('slug', 'locale', '-version')
+    readonly_fields = ('created_at', 'updated_at', 'updated_by')
+    actions = ('activate_selected_legal_page',)
+
+    fieldsets = (
+        ('Thông tin cơ bản', {
+            'fields': ('slug', 'locale', 'title', 'version', 'is_active', 'published_at'),
+        }),
+        ('Nội dung', {
+            'fields': ('summary', 'content_markdown'),
+        }),
+        ('Metadata', {
+            'fields': ('updated_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    @admin.action(description='Kích hoạt trang đã chọn (tắt bản active cùng slug+locale)')
+    def activate_selected_legal_page(self, request, queryset):
+        from django.db import transaction as _tx
+        page = queryset.order_by('-version').first()
+        if not page:
+            self.message_user(request, 'Không có trang nào được chọn.', level=messages.WARNING)
+            return
+        with _tx.atomic():
+            LegalPage.objects.filter(
+                slug=page.slug, locale=page.locale, is_active=True
+            ).exclude(pk=page.pk).update(is_active=False)
+            if not page.is_active:
+                page.is_active = True
+            if not page.published_at:
+                page.published_at = timezone.now()
+            page.updated_by = request.user
+            page.save(update_fields=['is_active', 'published_at', 'updated_by', 'updated_at'])
+        self.message_user(
+            request,
+            f'Đã kích hoạt "{page.title}" [{page.slug}/{page.locale}] và tắt các bản cũ.',
+            level=messages.SUCCESS,
+        )
+
+    def save_model(self, request, obj, form, change):
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
 
     def has_add_permission(self, request):
         return _is_supervisor(request.user)
