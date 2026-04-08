@@ -136,15 +136,19 @@ function KLineChartComponent({ data }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
-  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true });
+  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
   const [drawingMode, setDrawingMode] = useState(null);
   const [fullScreen, setFullScreen] = useState(false);
 
+  const MAIN_PANE_INDICATORS = new Set(['MA', 'EMA', 'BOLL', 'SAR']);
+  const SUB_PANE_CANDIDATES = ['volume_pane', 'indicator_pane'];
+
   const AVAILABLE_INDICATORS = [
+    { id: 'VOL', name: 'Volume', default: true },
     { id: 'MA', name: t('stockDetail.indicatorMovingAverage'), default: true },
     { id: 'EMA', name: t('stockDetail.indicatorEma') },
     { id: 'BOLL', name: t('stockDetail.indicatorBollingerBands') },
-    { id: 'MACD', name: t('stockDetail.indicatorMacd') },
+    { id: 'MACD', name: t('stockDetail.indicatorMacd'), default: true },
     { id: 'RSI', name: t('stockDetail.indicatorRsi') },
     { id: 'KDJ', name: t('stockDetail.indicatorKdj') },
     { id: 'STOCH', name: t('stockDetail.indicatorStochastic') },
@@ -154,30 +158,65 @@ function KLineChartComponent({ data }) {
   ];
 
   const DRAWING_TOOLS = [
-    { id: 'line', name: `📏 ${t('stockDetail.drawingToolLine')}` },
-    { id: 'rect', name: `📦 ${t('stockDetail.drawingToolRectangle')}` },
-    { id: 'polygon', name: `🔺 ${t('stockDetail.drawingToolPolygon')}` },
-    { id: 'text', name: `📝 ${t('stockDetail.drawingToolText')}` },
+    { id: 'line', name: 'Line' },
+    { id: 'rect', name: 'Rect' },
+    { id: 'polygon', name: 'Polygon' },
+    { id: 'text', name: 'Text' },
   ];
+
+  const removeIndicatorFromAnySubPane = (chart, indicatorId) => {
+    let removed = false;
+    for (const paneId of SUB_PANE_CANDIDATES) {
+      try {
+        chart.removeIndicator(paneId, indicatorId);
+        removed = true;
+      } catch (e) {
+        // keep trying other pane ids for compatibility across klinecharts variants
+      }
+    }
+    if (!removed) {
+      throw new Error(`Failed to remove ${indicatorId} from sub panes`);
+    }
+  };
 
   const handleToggleIndicator = (indicatorId) => {
     if (indicatorId === 'VOL') {
-      setActiveIndicators(prev => ({ ...prev, [indicatorId]: !prev[indicatorId] }));
+      setActiveIndicators(prev => {
+        const isNextEnabled = !prev[indicatorId];
+        if (chartRef.current) {
+          try {
+            if (isNextEnabled) {
+              chartRef.current.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+            } else {
+              removeIndicatorFromAnySubPane(chartRef.current, 'VOL');
+            }
+          } catch (e) {
+            console.error(`Error toggling indicator ${indicatorId}:`, e);
+          }
+        }
+        return { ...prev, [indicatorId]: isNextEnabled };
+      });
     } else {
       setActiveIndicators(prev => {
         const newState = { ...prev, [indicatorId]: !prev[indicatorId] };
         if (chartRef.current) {
           if (newState[indicatorId]) {
-            setTimeout(() => {
-              try {
+            try {
+              if (MAIN_PANE_INDICATORS.has(indicatorId)) {
                 chartRef.current.createIndicator(indicatorId, false, { id: 'candle_pane' });
-              } catch (e) {
-                console.error(`Error creating indicator ${indicatorId}:`, e);
+              } else {
+                chartRef.current.createIndicator(indicatorId, false);
               }
-            }, 100);
+            } catch (e) {
+              console.error(`Error creating indicator ${indicatorId}:`, e);
+            }
           } else {
             try {
-              chartRef.current.removeIndicator('candle_pane', indicatorId);
+              if (MAIN_PANE_INDICATORS.has(indicatorId)) {
+                chartRef.current.removeIndicator('candle_pane', indicatorId);
+              } else {
+                removeIndicatorFromAnySubPane(chartRef.current, indicatorId);
+              }
             } catch (e) {
               console.error(`Error removing indicator ${indicatorId}:`, e);
             }
@@ -213,15 +252,25 @@ function KLineChartComponent({ data }) {
     }
 
     if (hasCreateOverlay) {
-      const overlayMap = {
-        line: 'segment',
-        rect: 'rect',
-        polygon: 'priceChannelLine',
-        text: 'text',
+      const overlayCandidates = {
+        line: ['segment', 'straightLine'],
+        rect: ['rect', 'rectangle'],
+        polygon: ['polygon', 'priceChannelLine'],
+        text: ['text'],
       };
-      const overlayName = overlayMap[toolId] || 'segment';
       try {
-        chart.createOverlay(overlayName);
+        const candidates = overlayCandidates[toolId] || ['segment'];
+        let created = false;
+        for (const overlayName of candidates) {
+          try {
+            chart.createOverlay(overlayName);
+            created = true;
+            break;
+          } catch (err) {
+            // try next fallback name
+          }
+        }
+        if (!created) throw new Error(`No matching overlay for ${toolId}`);
         setDrawingMode(toolId);
       } catch (e) {
         console.error('Error creating overlay:', e);
@@ -252,10 +301,9 @@ function KLineChartComponent({ data }) {
 
   const handleScreenshot = () => {
     if (chartRef.current) {
-      const canvas = chartRef.current.getConvertPx2PixelRatio();
       const image = chartRef.current.getImage({
         type: 'png',
-        backgroundColor: '#0f172a'
+        backgroundColor: '#131722'
       });
       if (image) {
         const link = document.createElement('a');
@@ -281,35 +329,37 @@ function KLineChartComponent({ data }) {
     if (!containerRef.current) return;
 
     const chart = klineChartInit(containerRef.current, {
+      locale: 'en-US',
       timezone: 'Asia/Ho_Chi_Minh',
       styles: {
+        background: { color: '#131722' },
         grid: {
-          horizontal: { show: true, size: 1, color: '#1e293b', style: 'dashed' },
-          vertical: { show: false },
+          horizontal: { show: true, size: 1, color: '#2a2e39', style: 'dashed' },
+          vertical: { show: true, size: 1, color: '#2a2e39', style: 'dashed' },
         },
         candle: {
           type: 'candle_solid',
           bar: {
-            upColor: '#22c55e',
-            downColor: '#f43f5e',
+            upColor: '#26a69a',
+            downColor: '#ef5350',
             noChangeColor: '#94a3b8',
-            upBorderColor: '#16a34a',
-            downBorderColor: '#be123c',
+            upBorderColor: '#26a69a',
+            downBorderColor: '#ef5350',
             noChangeBorderColor: '#94a3b8',
-            upWickColor: '#16a34a',
-            downWickColor: '#be123c',
+            upWickColor: '#26a69a',
+            downWickColor: '#ef5350',
             noChangeWickColor: '#94a3b8',
           },
           tooltip: {
             showRule: 'follow_cross',
             showType: 'rect',
             labels: [
-              t('stockDetail.klineTooltipTime'),
-              t('stockDetail.klineTooltipOpen'),
-              t('stockDetail.klineTooltipClose'),
-              t('stockDetail.klineTooltipLow'),
-              t('stockDetail.klineTooltipHigh'),
-              t('stockDetail.klineTooltipVolume'),
+              'Time',
+              'Open',
+              'High',
+              'Low',
+              'Close',
+              'Volume',
             ],
             values: null,
             defaultValue: t('common.notAvailable'),
@@ -324,44 +374,45 @@ function KLineChartComponent({ data }) {
               offsetRight: 8,
               borderRadius: 6,
               borderSize: 1,
-              borderColor: '#1e293b',
-              color: '#0f172a',
+              borderColor: '#2a2e39',
+              color: '#131722',
             },
-            text: { size: 11, family: 'inherit', weight: 'normal', color: '#94a3b8', marginLeft: 8 },
+            text: { size: 11, family: 'inherit', weight: 'normal', color: '#d1d4dc', marginLeft: 8 },
           },
         },
         xAxis: {
           show: true,
-          axisLine: { show: true, color: '#1e293b', size: 1 },
-          tickLine: { show: true, size: 1, length: 3, color: '#1e293b' },
-          tickText: { show: true, color: '#64748b', size: 11, family: 'inherit' },
+          axisLine: { show: true, color: '#2a2e39', size: 1 },
+          tickLine: { show: true, size: 1, length: 3, color: '#2a2e39' },
+          tickText: { show: true, color: '#b2b5be', size: 11, family: 'inherit' },
         },
         yAxis: {
           show: true,
           type: 'normal',
           position: 'right',
-          axisLine: { show: true, color: '#1e293b', size: 1 },
-          tickLine: { show: true, size: 1, length: 3, color: '#1e293b' },
-          tickText: { show: true, color: '#64748b', size: 11, family: 'inherit' },
+          axisLine: { show: true, color: '#2a2e39', size: 1 },
+          tickLine: { show: true, size: 1, length: 3, color: '#2a2e39' },
+          tickText: { show: true, color: '#b2b5be', size: 11, family: 'inherit' },
         },
         crosshair: {
           show: true,
           horizontal: {
             show: true,
-            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#475569' },
-            text: { show: true, style: 'fill', color: '#e2e8f0', size: 11, borderRadius: 4, borderColor: '#1e293b', backgroundColor: '#0f172a' },
+            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#758696' },
+            text: { show: true, style: 'fill', color: '#d1d4dc', size: 11, borderRadius: 2, borderColor: '#2a2e39', backgroundColor: '#131722' },
           },
           vertical: {
             show: true,
-            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#475569' },
-            text: { show: true, style: 'fill', color: '#e2e8f0', size: 11, borderRadius: 4, borderColor: '#1e293b', backgroundColor: '#0f172a' },
+            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#758696' },
+            text: { show: true, style: 'fill', color: '#d1d4dc', size: 11, borderRadius: 2, borderColor: '#2a2e39', backgroundColor: '#131722' },
           },
         },
         separator: {
           size: 1,
-          color: '#1e293b',
+          color: '#2a2e39',
           fill: true,
-          activeBackgroundColor: 'rgba(30,41,59,0.3)',
+          dragEnabled: true,
+          activeBackgroundColor: 'rgba(67, 70, 81, 0.45)',
         },
       },
     });
@@ -370,6 +421,8 @@ function KLineChartComponent({ data }) {
     chart.createIndicator('MA', false, { id: 'candle_pane' });
     // Volume ở pane phụ (chiều cao 20%)
     chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+    // MACD mặc định để gần hành vi preview hơn.
+    chart.createIndicator('MACD', false);
 
     chartRef.current = chart;
 
@@ -385,6 +438,14 @@ function KLineChartComponent({ data }) {
       }
       chartRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setFullScreen(Boolean(document.fullscreenElement));
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
 
   // Cập nhật dữ liệu khi prop thay đổi
@@ -407,19 +468,19 @@ function KLineChartComponent({ data }) {
   }, [data]);
 
   return (
-    <div className="flex flex-col w-full h-full bg-slate-900 rounded-lg overflow-hidden">
+    <div className="flex flex-col w-full h-full bg-[#131722] rounded-lg overflow-hidden border border-[#2a2e39]">
       {/* Toolbar */}
-      <div className="bg-slate-800 border-b border-slate-700 p-3 flex flex-wrap gap-2">
+      <div className="bg-[#1e222d] border-b border-[#2a2e39] p-1.5 flex flex-wrap gap-1.5 items-center">
         {/* Indicators */}
-        <div className="flex gap-1">
+        <div className="flex gap-1 items-center">
           {AVAILABLE_INDICATORS.map(ind => (
             <button
               key={ind.id}
               onClick={() => handleToggleIndicator(ind.id)}
-              className={`px-2 py-1 text-xs rounded transition ${
+              className={`h-7 min-w-[38px] px-2 py-1 text-[11px] rounded transition ${
                 activeIndicators[ind.id]
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-700 text-gray-400 hover:bg-slate-600'
+                  ? 'bg-[#2962ff] text-white'
+                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
               }`}
               title={ind.name}
             >
@@ -429,15 +490,15 @@ function KLineChartComponent({ data }) {
         </div>
 
         {/* Drawing Tools */}
-        <div className="flex gap-1 border-l border-slate-600 pl-2">
+        <div className="flex gap-1 border-l border-[#2a2e39] pl-2">
           {DRAWING_TOOLS.map(tool => (
             <button
               key={tool.id}
               onClick={() => handleDrawingMode(tool.id)}
-              className={`px-2 py-1 text-xs rounded transition ${
+              className={`h-7 px-2 py-1 text-[11px] rounded transition ${
                 drawingMode === tool.id
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-slate-700 text-gray-400 hover:bg-slate-600'
+                  ? 'bg-[#f59e0b] text-white'
+                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
               }`}
               title={tool.name}
             >
@@ -446,28 +507,32 @@ function KLineChartComponent({ data }) {
           ))}
           <button
             onClick={handleClearDrawings}
-            className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700 transition"
+            className="h-7 px-2 py-1 text-[11px] bg-[#2a2e39] text-[#b2b5be] rounded hover:bg-[#363a45] transition"
             title={t('stockDetail.clearAllDrawings')}
           >
-            🗑️ {t('stockDetail.clear')}
+            Clear
           </button>
         </div>
 
         {/* Actions */}
-        <div className="flex gap-1 border-l border-slate-600 pl-2 ml-auto">
+        <div className="flex gap-1 border-l border-[#2a2e39] pl-2 ml-auto">
           <button
             onClick={handleScreenshot}
-            className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition"
+            className="h-7 px-2 py-1 text-[11px] bg-[#2a2e39] text-[#b2b5be] rounded hover:bg-[#363a45] transition"
             title={t('stockDetail.takeScreenshot')}
           >
-            📸 {t('stockDetail.screenshot')}
+            Screenshot
           </button>
           <button
             onClick={handleToggleFullscreen}
-            className="px-2 py-1 text-xs bg-slate-700 text-gray-400 rounded hover:bg-slate-600 transition"
+            className={`h-7 px-2 py-1 text-[11px] rounded transition ${
+              fullScreen
+                ? 'bg-[#2962ff] text-white'
+                : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
+            }`}
             title={t('stockDetail.fullscreen')}
           >
-            ⛶ {t('stockDetail.fullscreen')}
+            Fullscreen
           </button>
         </div>
       </div>
@@ -475,7 +540,7 @@ function KLineChartComponent({ data }) {
       {/* Chart Container */}
       <div
         ref={containerRef}
-        style={{ width: '100%', flex: 1, background: '#0f172a', overflow: 'hidden' }}
+        style={{ width: '100%', flex: 1, background: '#131722', overflow: 'hidden' }}
       />
     </div>
   );
