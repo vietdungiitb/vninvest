@@ -182,20 +182,61 @@ def ai_options_api(request):
 def ai_test_connection_api(request):
     """POST /api/ai-config/test-connection/ - kiểm tra provider/model/api key trước khi lưu."""
     from .ai_options import is_valid_model, is_valid_provider
-    from .ai_service import test_ai_connection
+    from .ai_service import _resolve_provider_api_key, test_ai_connection
 
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     provider = str(request.data.get('ai_provider') or user_cfg.ai_provider or 'openclaw').strip().lower()
-    model = str(request.data.get('ai_model') or user_cfg.get_effective_ai_model() or '').strip()
+    model = str(request.data.get('ai_model') or user_cfg.ai_model or '').strip()
     api_key = str(request.data.get('ai_api_key') or '').strip() or user_cfg.get_ai_api_key()
 
     if not is_valid_provider(provider):
         return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not model:
+        return Response({'ok': False, 'message': 'Bạn chưa chọn AI model.'}, status=status.HTTP_400_BAD_REQUEST)
     if not is_valid_model(provider, model):
         return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not _resolve_provider_api_key(provider, api_key):
+        return Response({'ok': False, 'message': 'Bạn chưa cấu hình API key cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
 
     payload = test_ai_connection(provider=provider, model=model, api_key=api_key)
     return Response(payload, status=status.HTTP_200_OK if payload.get('ok') else status.HTTP_400_BAD_REQUEST)
+
+
+def _get_ai_runtime_config_status(user_cfg) -> dict:
+    from .ai_service import _resolve_provider_api_key
+
+    provider = str(getattr(user_cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
+    model = str(getattr(user_cfg, 'ai_model', '') or '').strip()
+    has_key = bool(_resolve_provider_api_key(provider, user_cfg.get_ai_api_key()))
+
+    if not model:
+        return {
+            'provider': provider,
+            'model': model,
+            'has_key': has_key,
+            'ready': False,
+            'reason': 'missing_ai_model',
+            'message': 'Bạn chưa cấu hình AI model. Vui lòng mở phần cấu hình AI để chọn model trước khi dùng AI advisory.',
+        }
+
+    if not has_key:
+        return {
+            'provider': provider,
+            'model': model,
+            'has_key': has_key,
+            'ready': False,
+            'reason': 'missing_ai_api_key',
+            'message': 'Bạn chưa cấu hình API key cho AI provider hiện tại. Vui lòng hoàn tất cấu hình AI trước khi dùng AI advisory.',
+        }
+
+    return {
+        'provider': provider,
+        'model': model,
+        'has_key': has_key,
+        'ready': True,
+        'reason': None,
+        'message': '',
+    }
 
 
 @api_view(['GET', 'PUT'])
@@ -209,12 +250,16 @@ def ai_config_api(request):
     def _has_effective_ai_key(provider: str) -> bool:
         return bool(_resolve_provider_api_key(provider, user_cfg.get_ai_api_key()))
 
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+
     if request.method == 'GET':
         return Response(
             {
                 'ai_provider': user_cfg.ai_provider,
-                'ai_model': user_cfg.get_effective_ai_model(),
+                'ai_model': str(user_cfg.ai_model or '').strip(),
                 'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
+                'ai_ready': ai_status['ready'],
+                'ai_config_message': ai_status['message'],
             },
             status=status.HTTP_200_OK,
         )
@@ -223,13 +268,13 @@ def ai_config_api(request):
     model = str(request.data.get('ai_model') or '').strip()
     api_key = request.data.get('ai_api_key', None)
 
-    from .ai_options import get_default_model, is_valid_model, is_valid_provider
+    from .ai_options import is_valid_model, is_valid_provider
 
     if not is_valid_provider(provider):
         return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
 
     if not model:
-        model = get_default_model(provider)
+        return Response({'ok': False, 'message': 'Bạn chưa chọn AI model.'}, status=status.HTTP_400_BAD_REQUEST)
     if not is_valid_model(provider, model):
         return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -244,8 +289,10 @@ def ai_config_api(request):
             'ok': True,
             'message': 'Đã cập nhật cấu hình AI.',
             'ai_provider': user_cfg.ai_provider,
-            'ai_model': user_cfg.get_effective_ai_model(),
+            'ai_model': str(user_cfg.ai_model or '').strip(),
             'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
+            'ai_ready': _get_ai_runtime_config_status(user_cfg)['ready'],
+            'ai_config_message': _get_ai_runtime_config_status(user_cfg)['message'],
         },
         status=status.HTTP_200_OK,
     )
@@ -293,7 +340,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
+from django.db.models import Case, ExpressionWrapper, F, FloatField, IntegerField, Max, Min, Q, When
 from django.conf import settings
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -2951,7 +2998,13 @@ class WhaleAdvisoryListView(generics.ListAPIView):
     serializer_class = WhaleAdvisorySerializer
 
     def get_queryset(self):
-        return WhaleAdvisory.objects.order_by('-created_at')[:100]
+        # Return only user-owned advisories (no legacy fallback)
+        # Legacy records with user=NULL should not appear in user-facing lists
+        return (
+            WhaleAdvisory.objects
+            .filter(user=self.request.user)
+            .order_by('-created_at')[:100]
+        )
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
@@ -2972,6 +3025,20 @@ def refresh_whale_advisory_api(request, symbol: str):
     Làm mới advisory thủ công để tiết kiệm token: chỉ gọi khi user chủ động bấm Refresh.
     """
     from portfolio.tasks import generate_whale_advisory_task
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+    if not ai_status['ready']:
+        return Response(
+            {
+                'queued': False,
+                'symbol': str(symbol or '').strip().upper(),
+                'message': ai_status['message'],
+                'reason': 'ai_not_configured',
+                'config_issue': ai_status['reason'],
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
@@ -2994,7 +3061,7 @@ def refresh_whale_advisory_api(request, symbol: str):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
-    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
     if latest is None:
         return Response(
             {
@@ -3024,6 +3091,7 @@ def refresh_whale_advisory_api(request, symbol: str):
             'side': latest.side,
             'threshold': float(latest.threshold or 0),
             'force_refresh': True,
+            'user_id': request.user.id,
         },
         countdown=0,
     )
@@ -3247,9 +3315,22 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
     if latest is None:
         return Response({'ok': False, 'message': 'Chua co advisory goc de tao components.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+    if not ai_status['ready']:
+        return Response(
+            {
+                'ok': False,
+                'message': ai_status['message'],
+                'reason': 'ai_not_configured',
+                'config_issue': ai_status['reason'],
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_components_generate_api')
     if quota_response is not None:
@@ -3365,9 +3446,22 @@ def stock_ai_advisory_component_refresh_api(request, component_id: int):
     if component is None:
         return Response({'ok': False, 'message': 'Component không tồn tại.'}, status=status.HTTP_404_NOT_FOUND)
 
-    latest = WhaleAdvisory.objects.filter(symbol=component.symbol).order_by('-created_at').first()
+    latest = WhaleAdvisory.objects.filter(symbol=component.symbol, user=request.user).order_by('-created_at').first()
     if latest is None:
         return Response({'ok': False, 'message': 'Chưa có advisory gốc để làm mới tab.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+    if not ai_status['ready']:
+        return Response(
+            {
+                'ok': False,
+                'message': ai_status['message'],
+                'reason': 'ai_not_configured',
+                'config_issue': ai_status['reason'],
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
 
     quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'stock_ai_advisory_component_refresh_api')
     if quota_response is not None:
@@ -3505,6 +3599,19 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     def _tracked_response(payload: dict, response_status: int):
         _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_summary_regenerate_api', response_status)
         return Response(payload, status=response_status)
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+    if not ai_status['ready']:
+        return _tracked_response(
+            {
+                'ok': False,
+                'message': ai_status['message'],
+                'reason': 'ai_not_configured',
+                'config_issue': ai_status['reason'],
+            },
+            status.HTTP_409_CONFLICT,
+        )
 
     cooldown = max(int(getattr(settings, 'AI_ADVISORY_SUMMARY_REGEN_COOLDOWN_SECONDS', 30)), 5)
     lock_key = f'ai_advisory_summary_regen:{request.user.id}:{normalized_symbol}'
@@ -3675,7 +3782,8 @@ def stock_ai_advisory_session_api(request, symbol: str):
         _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_session_api', response_status)
         return Response(payload, status=response_status)
 
-    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
+    ai_status = _get_ai_runtime_config_status(user_cfg)
 
     if request.method == 'GET':
         if latest is not None:
@@ -3691,6 +3799,25 @@ def stock_ai_advisory_session_api(request, symbol: str):
 
         auto_cooldown = max(int(getattr(settings, 'STOCK_AI_ADVISORY_AUTOGEN_COOLDOWN_SECONDS', 45)), 10)
         auto_lock_key = f'stock_ai_advisory_autogen_lock:{request.user.id}:{normalized_symbol}'
+        if not ai_status['ready']:
+            return _tracked_response(
+                {
+                    'ok': False,
+                    'queued': False,
+                    'symbol': normalized_symbol,
+                    'advisory': None,
+                    'components': [],
+                    'deleted_components': [],
+                    'executive_summary': None,
+                    'executive_summaries': [],
+                    'components_count': 0,
+                    'active_components_count': 0,
+                    'message': ai_status['message'],
+                    'reason': 'ai_not_configured',
+                    'config_issue': ai_status['reason'],
+                },
+                status.HTTP_409_CONFLICT,
+            )
         if _cache_get(auto_lock_key):
             return _tracked_response(
                 {
@@ -3709,6 +3836,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
             'side': 'UNKNOWN',
             'threshold': threshold_vnd,
             'force_refresh': False,
+            'user_id': request.user.id,
         }
         submit_result = _queue_or_run(payload_kwargs)
         if submit_result.get('queue_error'):
@@ -3730,7 +3858,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
             )
         _cache_set(auto_lock_key, timezone.now().isoformat(), timeout=auto_cooldown)
 
-        latest_after_submit = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+        latest_after_submit = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
         if submit_result.get('sync') and latest_after_submit is not None:
             return _tracked_response(
                 {
@@ -3761,6 +3889,19 @@ def stock_ai_advisory_session_api(request, symbol: str):
 
     refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
     refresh_lock_key = f'stock_ai_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
+    if not ai_status['ready']:
+        return _tracked_response(
+            {
+                'ok': False,
+                'queued': False,
+                'symbol': normalized_symbol,
+                **_build_session_payload(latest),
+                'message': ai_status['message'],
+                'reason': 'ai_not_configured',
+                'config_issue': ai_status['reason'],
+            },
+            status.HTTP_409_CONFLICT,
+        )
     if _cache_get(refresh_lock_key):
         return _tracked_response(
             {
@@ -3782,6 +3923,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
         'side': advisory_side,
         'threshold': advisory_threshold,
         'force_refresh': True,
+        'user_id': request.user.id,
     }
     submit_result = _queue_or_run(payload_kwargs)
     if submit_result.get('queue_error'):
@@ -3797,7 +3939,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
         )
     _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
 
-    latest_after_refresh = WhaleAdvisory.objects.filter(symbol=normalized_symbol).order_by('-created_at').first()
+    latest_after_refresh = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
     if submit_result.get('sync') and latest_after_refresh is not None:
         return _tracked_response(
             {

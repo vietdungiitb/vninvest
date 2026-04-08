@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
+import pandas as pd
 
 from portfolio.adapters import cache_adapter, vnstock_adapter
 from portfolio.exceptions import ExternalSystemException
@@ -100,3 +101,51 @@ class VnstockAdapterTests(SimpleTestCase):
         self.assertEqual(result, {'rows': 5})
         mock_build_stock.assert_called_once_with(symbol='HPG', source='KBS')
         self.assertEqual(mock_run_timeout.call_count, 1)
+
+    def test_normalize_price_board_dataframe_multiplies_vci_price_fields_to_vnd(self):
+        source_df = pd.DataFrame(
+            [
+                [63.0, 61.4, 67.0, 58.0, 63.0, 62.9, 63.1, 100000],
+            ],
+            columns=pd.MultiIndex.from_tuples(
+                [
+                    ('match', 'match_price'),
+                    ('listing', 'ref_price'),
+                    ('listing', 'ceiling'),
+                    ('listing', 'floor'),
+                    ('bid_ask', 'bid_1_price'),
+                    ('bid_ask', 'ask_1_price'),
+                    ('match', 'open_price'),
+                    ('match', 'accumulated_volume'),
+                ]
+            ),
+        )
+
+        result = vnstock_adapter._normalize_price_board_dataframe(source_df)
+
+        self.assertEqual(result[('match', 'match_price')].iloc[0], 63000.0)
+        self.assertEqual(result[('listing', 'ref_price')].iloc[0], 61400.0)
+        self.assertEqual(result[('listing', 'ceiling')].iloc[0], 67000.0)
+        self.assertEqual(result[('listing', 'floor')].iloc[0], 58000.0)
+        self.assertEqual(result[('bid_ask', 'bid_1_price')].iloc[0], 63000.0)
+        self.assertEqual(result[('bid_ask', 'ask_1_price')].iloc[0], 62900.0)
+        self.assertEqual(result[('match', 'open_price')].iloc[0], 63100.0)
+        self.assertEqual(result[('match', 'accumulated_volume')].iloc[0], 100000)
+
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_price_board_dataframe_normalizes_prices_to_vnd(self, mock_build_stock, mock_run_timeout):
+        fake_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = pd.DataFrame(
+            [[63.0, 61.4]],
+            columns=pd.MultiIndex.from_tuples([
+                ('match', 'match_price'),
+                ('listing', 'ref_price'),
+            ]),
+        )
+
+        result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
+
+        self.assertEqual(result[('match', 'match_price')].iloc[0], 63000.0)
+        self.assertEqual(result[('listing', 'ref_price')].iloc[0], 61400.0)

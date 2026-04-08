@@ -170,7 +170,7 @@ class WhaleAdvisorySerializer(serializers.ModelSerializer):
         model = WhaleAdvisory
         fields = [
             'id', 'symbol', 'matched_value', 'side', 'threshold',
-            'ai_summary', 'ai_detail', 'ai_provider', 'created_at',
+            'ai_summary', 'ai_detail', 'ai_provider', 'ai_model', 'created_at',
         ]
         read_only_fields = fields
 

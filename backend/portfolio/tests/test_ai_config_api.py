@@ -33,6 +33,8 @@ class AIConfigApiTests(APITestCase):
         get_resp = self.client.get('/api/ai-config/')
         self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
         self.assertIn('ai_provider', get_resp.data)
+        self.assertEqual(get_resp.data['ai_model'], '')
+        self.assertFalse(get_resp.data['ai_ready'])
 
         put_resp = self.client.put(
             '/api/ai-config/',
@@ -45,11 +47,26 @@ class AIConfigApiTests(APITestCase):
         )
         self.assertEqual(put_resp.status_code, status.HTTP_200_OK)
         self.assertTrue(put_resp.data.get('ok'))
+        self.assertTrue(put_resp.data.get('ai_ready'))
 
         cfg = UserConfig.objects.get(user=self.user)
         self.assertEqual(cfg.ai_provider, 'claude')
         self.assertEqual(cfg.ai_model, 'claude-3-5-sonnet-20240620')
         self.assertTrue(cfg.ai_api_key_configured)
+
+    def test_ai_config_put_rejects_missing_model(self):
+        response = self.client.put(
+            '/api/ai-config/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': '',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok', False))
+        self.assertIn('AI model', response.data.get('message', ''))
 
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_env_test_token'}, clear=False)
     def test_ai_config_get_uses_env_key_for_configured_flag(self):
@@ -110,3 +127,33 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data.get('ok'))
         self.assertEqual(response.data.get('provider'), 'openai')
+
+    def test_ai_test_connection_rejects_missing_model(self):
+        response = self.client.post(
+            '/api/ai-config/test-connection/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': '',
+                'ai_api_key': 'sk-test',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok', False))
+        self.assertIn('AI model', response.data.get('message', ''))
+
+    def test_ai_test_connection_rejects_missing_api_key(self):
+        response = self.client.post(
+            '/api/ai-config/test-connection/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_api_key': '',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok', False))
+        self.assertIn('API key', response.data.get('message', ''))

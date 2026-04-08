@@ -15,6 +15,7 @@ import {
   createPriceAlert,
   deleteTrackedSymbol,
   deleteWatchlistItem,
+  getUserConfig,
   getIntradayMatched,
   getPriceBoard,
   getSectorBreadth,
@@ -1713,6 +1714,17 @@ export default function StockDetail() {
 
   const handleRefreshActiveAdvisoryComponent = async (componentId) => {
     if (!componentId) return;
+    try {
+      const cfgResp = await getUserConfig();
+      const cfg = cfgResp?.data || {};
+      if (!cfg.ai_ready) {
+        setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');
+        return;
+      }
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không kiểm tra được cấu hình AI hiện tại.');
+      return;
+    }
     setAdvisoryComponentBusyId(componentId);
     try {
       const response = await refreshStockAIAdvisoryComponent(componentId);
@@ -1778,6 +1790,17 @@ export default function StockDetail() {
 
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
+    try {
+      const cfgResp = await getUserConfig();
+      const cfg = cfgResp?.data || {};
+      if (!cfg.ai_ready) {
+        setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');
+        return;
+      }
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không kiểm tra được cấu hình AI hiện tại.');
+      return;
+    }
     setAdvisoryGeneratingComponents(true);
     try {
       const response = await generateStockAIAdvisoryComponents(normalizedSymbol, {
@@ -1888,6 +1911,17 @@ export default function StockDetail() {
 
   const handleRegenerateExecutiveSummary = async () => {
     if (!normalizedSymbol) return;
+    try {
+      const cfgResp = await getUserConfig();
+      const cfg = cfgResp?.data || {};
+      if (!cfg.ai_ready) {
+        setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');
+        return;
+      }
+    } catch (err) {
+      setAdvisoryMessage(err?.response?.data?.message || 'Không kiểm tra được cấu hình AI hiện tại.');
+      return;
+    }
     setAdvisoryRegeneratingSummary(true);
     try {
       const activeIds = advisoryComponents.filter((item) => item.include_in_summary).map((item) => item.id);

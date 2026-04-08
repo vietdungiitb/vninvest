@@ -1045,6 +1045,7 @@ class WhaleAdvisory(models.Model):
     detail: ~200 từ dành cho gói Premium+.
     Cooldown 15 phút / symbol để tránh spam token.
     """
+    user              = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='whale_advisories', verbose_name='Người dùng')
     symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
     matched_value     = models.BigIntegerField(verbose_name='Giá trị khớp lệnh (VNĐ)')
     side              = models.CharField(max_length=10, verbose_name='Chiều lệnh')   # BUY/SELL/UNKNOWN
@@ -1052,6 +1053,7 @@ class WhaleAdvisory(models.Model):
     ai_summary        = models.TextField(verbose_name='Tóm tắt AI (Pro+)')
     ai_detail         = models.TextField(blank=True, default='', verbose_name='Phân tích chi tiết (Premium+)')
     ai_provider       = models.CharField(max_length=50, default='openclaw', verbose_name='AI provider')
+    ai_model          = models.CharField(max_length=100, blank=True, default='', verbose_name='AI model')
     prompt_tokens     = models.PositiveIntegerField(default=0, verbose_name='Prompt tokens dùng')
     completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Completion tokens dùng')
     created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm tạo')
@@ -1060,10 +1062,11 @@ class WhaleAdvisory(models.Model):
         verbose_name = 'Tư vấn AI Whale'
         verbose_name_plural = 'Tư vấn AI Whale'
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['symbol', 'created_at'])]
+        indexes = [models.Index(fields=['user', 'symbol', 'created_at']), models.Index(fields=['symbol', 'created_at'])]
 
     def __str__(self):
-        return f'{self.symbol} {self.side} | {self.ai_summary[:60]}'
+        owner = self.user.username if self.user_id else 'legacy'
+        return f'{owner}:{self.symbol} {self.side} | {self.ai_summary[:60]}'
 
 
 # ---------------------------------------------------------------------------

@@ -28,6 +28,11 @@ class ApiRouteSmokeTests(APITestCase):
             user=self.user,
             defaults={'email_verified': True},
         )
+        user_cfg = UserConfig.objects.get(user=self.user)
+        user_cfg.ai_provider = 'openai'
+        user_cfg.ai_model = 'gpt-4o'
+        user_cfg.set_ai_api_key('sk-route-smoke')
+        user_cfg.save(update_fields=['ai_provider', 'ai_model', 'ai_api_key'])
 
     def authenticate(self):
         response = self.client.post(
@@ -106,6 +111,7 @@ class ApiRouteSmokeTests(APITestCase):
 
     def _create_stock_workspace_advisory(self, symbol='BCM'):
         return WhaleAdvisory.objects.create(
+            user=self.user,
             symbol=symbol,
             matched_value=7_000_000_000,
             side='BUY',
@@ -113,6 +119,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
     def test_jwt_token_obtain_endpoint(self):
@@ -177,7 +184,7 @@ class ApiRouteSmokeTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-        self.assertIn('xac thuc email', str(response.data['detail']).lower())
+        self.assertIn('xác thực', str(response.data['detail']).lower())
 
     def test_login_allows_unverified_superuser(self):
         admin_user = User.objects.create_superuser(
@@ -610,12 +617,14 @@ class ApiRouteSmokeTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='VCB',
             matched_value=9_200_000_000,
             side='SELL',
             threshold=5_000_000_000,
             ai_summary='Tom tat pro',
             ai_detail='Chi tiet premium',
+            ai_model='gpt-4o',
         )
 
         response = self.client.get('/api/portfolio/whale-advisory/')
@@ -629,12 +638,14 @@ class ApiRouteSmokeTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'premium', 'email_verified': True})
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='HPG',
             matched_value=7_100_000_000,
             side='BUY',
             threshold=5_000_000_000,
             ai_summary='Tom tat premium',
             ai_detail='Chi tiet premium day du',
+            ai_model='gpt-4o',
         )
 
         response = self.client.get('/api/portfolio/whale-advisory/')
@@ -645,15 +656,20 @@ class ApiRouteSmokeTests(APITestCase):
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async, _mock_cache_get):
-        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='FPT',
             matched_value=8_500_000_000,
             side='BUY',
             threshold=5_000_000_000,
             ai_summary='Tom tat refresh',
             ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
         )
 
         mock_task = MagicMock()
@@ -667,6 +683,56 @@ class ApiRouteSmokeTests(APITestCase):
         kwargs = mock_apply_async.call_args.kwargs['kwargs']
         self.assertEqual(kwargs['symbol'], 'FPT')
         self.assertTrue(kwargs['force_refresh'])
+        self.assertEqual(kwargs['user_id'], self.user.id)
+
+    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_model_missing(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
+        )
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
+        )
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['reason'], 'ai_not_configured')
+        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
+
+    def test_whale_advisory_refresh_endpoint_returns_409_when_ai_api_key_missing(self):
+        cfg, _ = UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
+        cfg.ai_api_key = ''
+        cfg.save(update_fields=['ai_api_key'])
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
+        )
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.data['reason'], 'ai_not_configured')
+        self.assertEqual(response.data['config_issue'], 'missing_ai_api_key')
 
     def test_whale_advisory_refresh_endpoint_returns_404_if_no_existing(self):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
@@ -681,12 +747,14 @@ class ApiRouteSmokeTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='FPT',
             matched_value=8_500_000_000,
             side='BUY',
             threshold=5_000_000_000,
             ai_summary='Tom tat refresh',
             ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
         )
 
         response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
@@ -714,12 +782,14 @@ class ApiRouteSmokeTests(APITestCase):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='FPT',
             matched_value=8_500_000_000,
             side='BUY',
             threshold=5_000_000_000,
             ai_summary='Tom tat refresh',
             ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
         )
 
         mock_task = MagicMock()
@@ -739,6 +809,10 @@ class ApiRouteSmokeTests(APITestCase):
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_stock_ai_advisory_session_get_queues_generation_when_missing(self, mock_apply_async, _mock_cache_get):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
         self.authenticate()
         mock_task = MagicMock()
         mock_task.id = 'stock-ai-task-1'
@@ -751,6 +825,21 @@ class ApiRouteSmokeTests(APITestCase):
         kwargs = mock_apply_async.call_args.kwargs['kwargs']
         self.assertEqual(kwargs['symbol'], 'BCM')
         self.assertFalse(kwargs['force_refresh'])
+        self.assertEqual(kwargs['user_id'], self.user.id)
+
+    def test_stock_ai_advisory_session_get_returns_409_when_ai_model_missing(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['reason'], 'ai_not_configured')
+        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
@@ -768,6 +857,7 @@ class ApiRouteSmokeTests(APITestCase):
     def test_stock_ai_advisory_session_get_returns_latest_advisory(self):
         self.authenticate()
         advisory = WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -775,6 +865,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
@@ -877,6 +968,7 @@ class ApiRouteSmokeTests(APITestCase):
         cache.clear()
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -884,6 +976,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
         first = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
@@ -1511,6 +1604,7 @@ class ApiRouteSmokeTests(APITestCase):
     def test_stock_ai_advisory_components_generate_creates_component_records(self):
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -1518,6 +1612,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
         response = self.client.post(
@@ -1531,6 +1626,35 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertGreaterEqual(response.data['created_count'], 3)
         self.assertIn('generated_by_ai', response.data)
         self.assertEqual(AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(), response.data['created_count'])
+
+    def test_stock_ai_advisory_components_generate_returns_409_when_ai_api_not_configured(self):
+        self.authenticate()
+        cfg = UserConfig.objects.get(user=self.user)
+        cfg.ai_model = ''
+        cfg.ai_api_key = ''
+        cfg.save(update_fields=['ai_model', 'ai_api_key'])
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+        )
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '15m'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['reason'], 'ai_not_configured')
+        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
 
     @override_settings(
         OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,
@@ -1549,6 +1673,7 @@ class ApiRouteSmokeTests(APITestCase):
         cache.clear()
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -1556,6 +1681,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
         mock_build_templates.return_value = [
@@ -1719,6 +1845,7 @@ class ApiRouteSmokeTests(APITestCase):
     def test_stock_ai_advisory_component_refresh_updates_only_target_component(self, mock_generate_with_ai):
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -1726,6 +1853,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
         target = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
@@ -2462,6 +2590,7 @@ class ApiRouteSmokeTests(APITestCase):
     def test_stock_ai_advisory_session_returns_summary_history_desc_by_version(self, _mock_cache_get):
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -2469,6 +2598,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
         component = AIAdvisoryComponentRecord.objects.create(
             user=self.user,
@@ -2521,6 +2651,7 @@ class ApiRouteSmokeTests(APITestCase):
     def test_stock_ai_advisory_session_post_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_cache_get):
         self.authenticate()
         WhaleAdvisory.objects.create(
+            user=self.user,
             symbol='BCM',
             matched_value=7_000_000_000,
             side='BUY',
@@ -2528,6 +2659,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_summary='Stock workspace summary',
             ai_detail='Stock workspace detail',
             ai_provider='copilot',
+            ai_model='openai/gpt-4o',
         )
 
         response = self.client.post('/api/stock-management/stocks/BCM/ai-advisory-session/', {}, format='json')

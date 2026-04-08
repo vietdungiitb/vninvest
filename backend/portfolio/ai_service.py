@@ -92,12 +92,23 @@ def _resolve_provider_api_key(provider: str, decrypted_user_key: str = '') -> st
     return os.getenv(env_name, '')
 
 
-def generate_whale_text(provider: str, model: str, api_key: str, symbol: str, matched_value_vnd: float, side: str, deep: bool) -> dict[str, Any]:
+def generate_whale_text(
+    provider: str,
+    model: str,
+    api_key: str,
+    symbol: str,
+    matched_value_vnd: float,
+    side: str,
+    deep: bool,
+    user=None,
+) -> dict[str, Any]:
     provider_key = str(provider or 'openclaw').strip().lower()
-    model_id = str(model or get_default_model(provider_key)).strip() or get_default_model(provider_key)
+    model_id = str(model or '').strip()
+    if not model_id:
+        raise RuntimeError(f'Missing AI model for provider {provider_key}')
     max_tokens = 450 if deep else 130
     mode_text = '200 từ' if deep else '50 từ'
-    context_payload = build_symbol_ai_context(symbol)
+    context_payload = build_symbol_ai_context(symbol, user=user)
     context_block = render_context_for_prompt(context_payload)
     prompt = (
         f"Phân tích tín hiệu giao dịch tại TTCK Việt Nam cho mã {symbol}. "
@@ -106,15 +117,17 @@ def generate_whale_text(provider: str, model: str, api_key: str, symbol: str, ma
         f"{context_block}"
     )
 
+    if not api_key:
+        if provider_key == 'openclaw':
+            raise RuntimeError('Missing API key for provider openclaw')
+        raise RuntimeError(f'Missing API key for provider {provider_key}')
+
     if provider_key == 'openclaw':
         return (
             generate_whale_deep(symbol, matched_value_vnd, side, extra_context=context_block)
             if deep
             else generate_whale_summary(symbol, matched_value_vnd, side, extra_context=context_block)
         )
-
-    if not api_key:
-        raise RuntimeError(f'Missing API key for provider {provider_key}')
 
     if provider_key == 'claude':
         return _claude_completion(api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
@@ -152,12 +165,16 @@ def test_ai_connection(provider: str, model: str, api_key: str) -> dict[str, Any
     model_id = str(model or get_default_model(provider_key)).strip()
     key = _resolve_provider_api_key(provider_key, api_key)
 
-    if provider_key == 'openclaw' and not key:
-        # Keep behavior compatible with current placeholder mode in openclaw_client.
-        return {'ok': True, 'provider': provider_key, 'model': model_id, 'message': 'OPENCLAW_API_KEY chưa cấu hình, sẽ chạy placeholder mode.'}
+    if not model_id:
+        return {
+            'ok': False,
+            'provider': provider_key,
+            'model': model_id,
+            'message': 'Bạn chưa chọn AI model.',
+        }
 
-    if provider_key != 'openclaw' and not key:
-        return {'ok': False, 'provider': provider_key, 'model': model_id, 'message': 'Thiếu API key cho provider đã chọn.'}
+    if not key:
+        return {'ok': False, 'provider': provider_key, 'model': model_id, 'message': 'Bạn chưa cấu hình API key cho provider đã chọn.'}
 
     try:
         response = generate_whale_text(

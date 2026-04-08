@@ -4,12 +4,53 @@ import os
 import threading
 import time
 
+import pandas as pd
+
 from portfolio.exceptions import ExternalSystemException
 
 from .cache_adapter import is_rate_limited_error
 
 
 logger = logging.getLogger(__name__)
+
+
+_PRICE_BOARD_FIELDS_BY_SECTION = {
+    'listing': {'ref_price', 'ceiling', 'floor'},
+    'match': {'match_price', 'reference_price', 'ceiling_price', 'floor_price', 'open_price', 'highest', 'lowest'},
+    'bid_ask': {
+        'bid_1_price', 'bid_2_price', 'bid_3_price',
+        'ask_1_price', 'ask_2_price', 'ask_3_price',
+    },
+}
+
+
+def _normalize_price_board_dataframe(price_board_df):
+    if price_board_df is None or getattr(price_board_df, 'empty', True):
+        return price_board_df
+
+    if not isinstance(price_board_df, pd.DataFrame):
+        return price_board_df
+
+    normalized_df = price_board_df.copy()
+    columns = normalized_df.columns
+    if isinstance(columns, pd.MultiIndex):
+        for column in columns:
+            if not isinstance(column, tuple) or len(column) < 2:
+                continue
+            section = str(column[0] or '').strip().lower()
+            field = str(column[1] or '').strip().lower()
+            if field not in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
+                continue
+            numeric_series = pd.to_numeric(normalized_df[column], errors='coerce')
+            normalized_df[column] = numeric_series * 1000
+        return normalized_df
+
+    for column in columns:
+        field = str(column or '').strip().lower()
+        if any(field in section_fields for section_fields in _PRICE_BOARD_FIELDS_BY_SECTION.values()):
+            numeric_series = pd.to_numeric(normalized_df[column], errors='coerce')
+            normalized_df[column] = numeric_series * 1000
+    return normalized_df
 
 
 def _resolve_int_env(name: str, default_value: int, min_value: int = 0) -> int:
@@ -122,12 +163,13 @@ def fetch_intraday_dataframe(symbol: str, page_size: int):
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str):
     stock_client = _build_stock_client(symbol=anchor_symbol, source='VCI')
 
-    return _run_with_timeout(
+    result = _run_with_timeout(
         lambda: stock_client.trading.price_board(
             symbols_list=symbols_list,
         ),
         timeout=_resolve_timeout('price_board', 8),
     )
+    return _normalize_price_board_dataframe(result)
 
 
 def fetch_financial_ratio_dataframe(

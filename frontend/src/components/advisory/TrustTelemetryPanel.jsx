@@ -13,6 +13,10 @@ const EVENT_KEYS = [
   'recommendation_history_opened',
 ];
 
+function getEventLabel(t, eventKey) {
+  return t(`trustTelemetry.events.${eventKey}`, { defaultValue: eventKey });
+}
+
 function safeParse(raw, fallback) {
   try {
     return JSON.parse(raw || '');
@@ -64,7 +68,7 @@ export default function TrustTelemetryPanel() {
         </div>
         {EVENT_KEYS.map((key) => (
           <div key={key} className="rounded border border-slate-800 bg-slate-950/40 px-3 py-2">
-            <p className="text-[11px] text-slate-500 truncate" title={key}>{key}</p>
+            <p className="text-[11px] text-slate-500 truncate" title={getEventLabel(t, key)}>{getEventLabel(t, key)}</p>
             <p className="text-sm font-semibold text-slate-100">{Number(counters[key] || 0)}</p>
           </div>
         ))}
@@ -76,12 +80,15 @@ export default function TrustTelemetryPanel() {
           <p className="text-xs text-slate-600">{t('trustTelemetry.empty', { defaultValue: 'Chưa có telemetry event.' })}</p>
         ) : (
           <ul className="space-y-1.5 max-h-40 overflow-y-auto">
-            {recentEvents.map((item, idx) => (
-              <li key={`${item.ts || 'ts'}-${idx}`} className="text-[11px] text-slate-300 flex items-start justify-between gap-3">
-                <span className="truncate">{item.event}</span>
-                <span className="text-slate-500 shrink-0">{item.ts ? new Date(item.ts).toLocaleTimeString() : '—'}</span>
-              </li>
-            ))}
+            {recentEvents.map((item, idx) => {
+              const eventLabel = item && item.event ? getEventLabel(t, item.event) : '—';
+              return (
+                <li key={`${item?.ts || idx}`} className="text-[11px] text-slate-300 flex items-start justify-between gap-3">
+                  <span className="truncate">{eventLabel}</span>
+                  <span className="text-slate-500 shrink-0">{item?.ts ? new Date(item.ts).toLocaleTimeString() : '—'}</span>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

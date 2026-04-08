@@ -1193,6 +1193,14 @@ const en = {
     total: 'Total events',
     recent: 'Recent events',
     empty: 'No telemetry events yet.',
+    events: {
+      recommendation_explainability_opened: 'Opened recommendation explainability',
+      recommendation_explainability_insufficient: 'Insufficient explainability data',
+      recommendation_risk_mode_changed: 'Changed risk mode',
+      recommendation_action_checklist_completed: 'Completed action checklist',
+      recommendation_action_attempt_blocked: 'Blocked action attempt',
+      recommendation_history_opened: 'Opened recommendation history',
+    },
   },
   runtimeKPI: {
     title: 'Runtime KPI — Telemetry',

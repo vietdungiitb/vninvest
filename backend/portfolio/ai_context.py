@@ -18,7 +18,7 @@ def _to_float(value, default=0.0) -> float:
         return float(default)
 
 
-def build_symbol_ai_context(symbol: str) -> dict:
+def build_symbol_ai_context(symbol: str, user=None) -> dict:
     normalized_symbol = str(symbol or '').strip().upper()
     today = timezone.localdate()
 
@@ -61,10 +61,16 @@ def build_symbol_ai_context(symbol: str) -> dict:
 
     active_alerts_count = PriceAlertRule.objects.filter(symbol=normalized_symbol, is_active=True).count()
 
+    # Recent advisories: only include user-owned ones to avoid legacy/placeholder records
+    advisory_qs = WhaleAdvisory.objects.filter(symbol=normalized_symbol)
+    if user is not None:
+        advisory_qs = advisory_qs.filter(user=user)
+    else:
+        # If no user specified, return empty advisory history
+        advisory_qs = advisory_qs.filter(user__isnull=False).none()
     recent_advisories = list(
-        WhaleAdvisory.objects.filter(symbol=normalized_symbol)
-        .order_by('-created_at')
-        .values('created_at', 'side', 'matched_value', 'ai_provider')[:5]
+        advisory_qs.order_by('-created_at')
+        .values('created_at', 'side', 'matched_value', 'ai_provider', 'ai_model')[:5]
     )
 
     recent_order_flow_signals = list(
@@ -133,7 +139,9 @@ def render_context_for_prompt(context: dict) -> str:
         side = str(row.get('side') or 'UNKNOWN')
         value = _to_float(row.get('matched_value'))
         provider = str(row.get('ai_provider') or '')
-        recent_lines.append(f"- {ts}: {side} {value:,.0f} VND ({provider})")
+        model = str(row.get('ai_model') or '')
+        provider_label = f'{provider}/{model}' if model else provider
+        recent_lines.append(f"- {ts}: {side} {value:,.0f} VND ({provider_label})")
     recent_block = '\n'.join(recent_lines) if recent_lines else '- none'
 
     order_flow_lines = []

@@ -175,7 +175,7 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
         </div>
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-slate-500">
           <span>{fmtTime(item.created_at)}</span>
-          <span className="uppercase tracking-widest">{item.ai_provider || 'openclaw'}</span>
+          <span className="tracking-widest">{[item.ai_provider || 'openclaw', item.ai_model || 'default'].join(' / ')}</span>
           <DataFreshnessBadge
             lastEventAt={item.created_at}
             realtimeStatus={realtimeStatus}
@@ -300,13 +300,14 @@ export default function WhaleAdvisory() {
   const [error, setError] = useState('');
   const [aiProviders, setAiProviders] = useState(FALLBACK_MODELS);
   const [aiProvider, setAiProvider] = useState('openclaw');
-  const [aiModel, setAiModel] = useState('default');
+  const [aiModel, setAiModel] = useState('');
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
+  const [aiReady, setAiReady] = useState(false);
   const [refreshingSymbol, setRefreshingSymbol] = useState('');
   const [refreshMessage, setRefreshMessage] = useState('');
   const [riskMode, setRiskMode] = useState(() => {
@@ -347,13 +348,13 @@ export default function WhaleAdvisory() {
         const providers = optionsResp?.data?.providers || FALLBACK_MODELS;
         const cfg = cfgResp?.data || {};
         const provider = (cfg.ai_provider || 'openclaw').toLowerCase();
-        const providerModels = providers[provider] || FALLBACK_MODELS[provider] || ['default'];
-        const model = cfg.ai_model || providerModels[0] || 'default';
+        const model = (cfg.ai_model || '').trim();
 
         setAiProviders(providers);
         setAiProvider(provider);
         setAiModel(model);
         setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
+        setAiReady(Boolean(cfg.ai_ready));
       } catch (_) {
         // Không chặn trang advisory khi API options lỗi.
       }
@@ -365,17 +366,44 @@ export default function WhaleAdvisory() {
     };
   }, []);
 
-  const modelOptions = useMemo(() => aiProviders[aiProvider] || ['default'], [aiProvider, aiProviders]);
+  const modelOptions = useMemo(() => aiProviders[aiProvider] || [], [aiProvider, aiProviders]);
 
   useEffect(() => {
-    if (!modelOptions.includes(aiModel)) {
-      setAiModel(modelOptions[0] || 'default');
+    if (aiModel && !modelOptions.includes(aiModel)) {
+      setAiModel('');
     }
   }, [aiModel, modelOptions]);
+
+  const hasSelectedAiModel = Boolean(aiModel);
+
+  const ensureAiConfigured = useCallback(async () => {
+    try {
+      const cfgResp = await getUserConfig();
+      const cfg = cfgResp?.data || {};
+      const ready = Boolean(cfg.ai_ready);
+      setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
+      setAiReady(ready);
+      setAiModel((cfg.ai_model || '').trim());
+      setAiProvider((cfg.ai_provider || 'openclaw').toLowerCase());
+      if (ready) {
+        return true;
+      }
+      setRefreshMessage(cfg.ai_config_message || t('whaleAdvisory.configRequired', { defaultValue: 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.' }));
+      return false;
+    } catch (err) {
+      setRefreshMessage(err?.response?.data?.message || t('whaleAdvisory.configCheckFailed', { defaultValue: 'Không kiểm tra được cấu hình AI hiện tại.' }));
+      return false;
+    }
+  }, [t]);
 
   const handleSaveAiConfig = useCallback(async () => {
     setSavingAi(true);
     setAiMessage('');
+    if (!aiModel) {
+      setAiMessage(t('whaleAdvisory.modelRequired', { defaultValue: 'Bạn cần chọn AI model trước khi lưu.' }));
+      setSavingAi(false);
+      return;
+    }
     try {
       const payload = {
         ai_provider: aiProvider,
@@ -386,6 +414,7 @@ export default function WhaleAdvisory() {
       }
       const resp = await updateUserConfig(payload);
       setAiKeyConfigured(Boolean(resp?.data?.ai_api_key_configured) || Boolean(apiKey.trim()));
+      setAiReady(Boolean(resp?.data?.ai_ready));
       setApiKey('');
       setAiMessage(t('whaleAdvisory.saveSuccess'));
     } catch (err) {
@@ -398,6 +427,11 @@ export default function WhaleAdvisory() {
   const handleTestAiConnection = useCallback(async () => {
     setTestingAi(true);
     setAiMessage('');
+    if (!aiModel) {
+      setAiMessage(t('whaleAdvisory.modelRequired', { defaultValue: 'Bạn cần chọn AI model trước khi kiểm tra kết nối.' }));
+      setTestingAi(false);
+      return;
+    }
     try {
       const payload = {
         ai_provider: aiProvider,
@@ -418,6 +452,9 @@ export default function WhaleAdvisory() {
 
   const handleRefreshAdvisory = useCallback(async (symbol) => {
     if (!symbol) return;
+    if (!(await ensureAiConfigured())) {
+      return;
+    }
     setRefreshingSymbol(symbol);
     setRefreshMessage('');
     try {
@@ -430,7 +467,7 @@ export default function WhaleAdvisory() {
     } finally {
       setRefreshingSymbol('');
     }
-  }, [fetchData, t]);
+  }, [ensureAiConfigured, fetchData, t]);
 
   const filteredItems = useMemo(() => {
     if (riskMode === 'aggressive') return items;
@@ -512,6 +549,7 @@ export default function WhaleAdvisory() {
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
             >
+              <option value="">{t('whaleAdvisory.selectModel', { defaultValue: 'Chọn model' })}</option>
               {modelOptions.map((model) => (
                 <option key={model} value={model}>{model}</option>
               ))}
@@ -560,6 +598,11 @@ export default function WhaleAdvisory() {
 
         {aiMessage && (
           <p className="mt-3 text-xs text-cyan-300">{aiMessage}</p>
+        )}
+        {!aiReady && (
+          <p className="mt-2 text-xs text-amber-300">
+            {t('whaleAdvisory.configRequired', { defaultValue: 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.' })}
+          </p>
         )}
       </section>
 
