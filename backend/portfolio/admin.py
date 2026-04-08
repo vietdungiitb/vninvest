@@ -769,6 +769,8 @@ def _vninvest_get_app_list(request, app_label=None):
         'StockProfile': 'Hồ sơ mã chứng khoán',
         'DailyPrice': 'Dữ liệu giá hàng ngày',
         'UserConfig': 'Cấu hình người dùng',
+        'OnboardingPlanPolicy': 'Chính sách onboarding trial',
+        'PlanAssignmentLog': 'Nhật ký thay đổi gói',
         'SystemEmailAccount': 'Tài khoản gửi mail',
         'WhaleAdvisory': 'Whale Alerts AI',
         'WhaleConfigDraft': 'Whale Config Drafts',
@@ -840,6 +842,8 @@ def _vninvest_get_app_list(request, app_label=None):
             '04. Cấu hình hệ thống',
             [
                 'UserConfig',
+                'OnboardingPlanPolicy',
+                'PlanAssignmentLog',
                 'SystemEmailAccount',
             ],
         ),
@@ -859,8 +863,15 @@ def _vninvest_get_app_list(request, app_label=None):
     ]
 
     grouped_apps = []
+    grouped_model_names = set()
     for pseudo_label, title, model_names in grouped_definitions:
-        grouped_models = [models_by_name[name] for name in model_names if name in models_by_name]
+        grouped_models = []
+        for name in model_names:
+            model = models_by_name.get(name)
+            if not model:
+                continue
+            grouped_models.append(model)
+            grouped_model_names.add(name)
         if not grouped_models:
             continue
 
@@ -871,6 +882,22 @@ def _vninvest_get_app_list(request, app_label=None):
                 'app_url': '',
                 'has_module_perms': True,
                 'models': grouped_models,
+            }
+        )
+
+    remaining_models = [
+        model
+        for object_name, model in models_by_name.items()
+        if object_name not in grouped_model_names
+    ]
+    if remaining_models:
+        grouped_apps.append(
+            {
+                'name': '99. Danh mục khác (tự động)',
+                'app_label': 'portfolio_misc',
+                'app_url': '',
+                'has_module_perms': True,
+                'models': sorted(remaining_models, key=lambda item: item.get('name', '')),
             }
         )
 

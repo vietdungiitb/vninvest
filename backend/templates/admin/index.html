@@ -453,6 +453,17 @@
         <li><a href="{% url 'admin:portfolio_dailyprice_changelist' %}">Dữ liệu giá hàng ngày</a></li>
       </ul>
     </section>
+
+    <section class="function-card">
+      <h3>4) Cấu hình hệ thống</h3>
+      <p>Quản trị cấu hình gói dịch vụ, policy onboarding trial và nhật ký thay đổi gói.</p>
+      <ul>
+        <li><a href="{% url 'admin:portfolio_userconfig_changelist' %}">Cấu hình người dùng</a></li>
+        <li><a href="{% url 'admin:portfolio_onboardingplanpolicy_changelist' %}">Chính sách onboarding trial</a></li>
+        <li><a href="{% url 'admin:portfolio_planassignmentlog_changelist' %}">Nhật ký thay đổi gói</a></li>
+        <li><a href="{% url 'admin:portfolio_systememailaccount_changelist' %}">Tài khoản gửi mail</a></li>
+      </ul>
+    </section>
   </div>
 
   {% if app_list %}
