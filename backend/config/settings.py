@@ -10,6 +10,32 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    value = value.strip()
+    if not value:
+        return default
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    value = value.strip()
+    if not value:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production-use-env-variable")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 
@@ -21,6 +47,14 @@ ALLOWED_HOSTS = [
     ).split(",")
     if host.strip()
 ]
+
+# Trust reverse-proxy headers so build_absolute_uri() keeps https scheme in production.
+USE_X_FORWARDED_HOST = os.getenv("USE_X_FORWARDED_HOST", "True").lower() == "true"
+USE_X_FORWARDED_PORT = os.getenv("USE_X_FORWARDED_PORT", "True").lower() == "true"
+SECURE_PROXY_SSL_HEADER = (
+    os.getenv("SECURE_PROXY_SSL_HEADER_NAME", "HTTP_X_FORWARDED_PROTO"),
+    os.getenv("SECURE_PROXY_SSL_HEADER_VALUE", "https"),
+)
 
 INSTALLED_APPS = [
     'daphne',
@@ -151,7 +185,7 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORI
 # Optional hard override for Google OAuth callback URL to avoid redirect_uri_mismatch behind proxies.
 GOOGLE_OAUTH_REDIRECT_URI = os.getenv('GOOGLE_OAUTH_REDIRECT_URI', '').strip()
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
-EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS = int(os.getenv("EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS", "86400"))
+EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS = _env_int("EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS", 86400)
 
 # Celery / Redis
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
@@ -183,25 +217,25 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 WATCHLIST_SYNC_ENABLED = os.getenv("WATCHLIST_SYNC_ENABLED", "False").lower() == "true"
-WATCHLIST_SYNC_MINUTES = int(os.getenv("WATCHLIST_SYNC_MINUTES", "15"))
-WATCHLIST_SYNC_DAYS = int(os.getenv("WATCHLIST_SYNC_DAYS", "5"))
+WATCHLIST_SYNC_MINUTES = _env_int("WATCHLIST_SYNC_MINUTES", 15)
+WATCHLIST_SYNC_DAYS = _env_int("WATCHLIST_SYNC_DAYS", 5)
 ENABLE_NEW_MARKET_VIEWS = os.getenv("ENABLE_NEW_MARKET_VIEWS", "False").lower() == "true"
-MARKET_VIEWS_CANARY_PERCENT = int(os.getenv("MARKET_VIEWS_CANARY_PERCENT", "100"))
+MARKET_VIEWS_CANARY_PERCENT = _env_int("MARKET_VIEWS_CANARY_PERCENT", 100)
 ENABLE_NEW_TRADING_VIEWS = os.getenv("ENABLE_NEW_TRADING_VIEWS", "False").lower() == "true"
 ENABLE_REALTIME_CONNECTION_MANAGER = os.getenv("ENABLE_REALTIME_CONNECTION_MANAGER", "False").lower() == "true"
 MARKET_OBSERVABILITY_ENABLED = os.getenv("MARKET_OBSERVABILITY_ENABLED", "True").lower() == "true"
-MARKET_OBSERVABILITY_LATENCY_WINDOW = int(os.getenv("MARKET_OBSERVABILITY_LATENCY_WINDOW", "300"))
+MARKET_OBSERVABILITY_LATENCY_WINDOW = _env_int("MARKET_OBSERVABILITY_LATENCY_WINDOW", 300)
 
 CELERY_BEAT_SCHEDULE = {}
 # Pre-fetch ticker cache: chạy luôn luôn để tránh gọi vnstock trong HTTP request handler
 # 1 call/20s cho tất cả symbols thay vì 1 call/request — tránh thread pool exhaustion
-_TICKER_PREFETCH_INTERVAL = int(os.getenv("TICKER_PREFETCH_INTERVAL", "20"))
+_TICKER_PREFETCH_INTERVAL = _env_int("TICKER_PREFETCH_INTERVAL", 20)
 CELERY_BEAT_SCHEDULE["prefetch-ticker-price-board"] = {
     "task": "portfolio.tasks.prefetch_ticker_price_board",
     "schedule": timedelta(seconds=max(_TICKER_PREFETCH_INTERVAL, 10)),
 }
 ORDER_FLOW_DETECTION_ENABLED = os.getenv("ORDER_FLOW_DETECTION_ENABLED", "True").lower() == "true"
-ORDER_FLOW_DETECTION_INTERVAL_SECONDS = int(os.getenv("ORDER_FLOW_DETECTION_INTERVAL_SECONDS", "30"))
+ORDER_FLOW_DETECTION_INTERVAL_SECONDS = _env_int("ORDER_FLOW_DETECTION_INTERVAL_SECONDS", 30)
 if ORDER_FLOW_DETECTION_ENABLED:
     CELERY_BEAT_SCHEDULE["detect-order-flow"] = {
         "task": "portfolio.tasks.detect_and_store_order_flow",
@@ -209,12 +243,12 @@ if ORDER_FLOW_DETECTION_ENABLED:
     }
 
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED = os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED", "True").lower() == "true"
-MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS = int(
-    os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS", "60")
+MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS = _env_int(
+    "MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS", 60
 )
 MISSION_CONTROL_ANOMALY_MONITOR_ENABLED = os.getenv("MISSION_CONTROL_ANOMALY_MONITOR_ENABLED", "True").lower() == "true"
-MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS = int(
-    os.getenv("MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS", "60")
+MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS = _env_int(
+    "MISSION_CONTROL_ANOMALY_MONITOR_INTERVAL_SECONDS", 60
 )
 if MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED:
     CELERY_BEAT_SCHEDULE["activate-due-whale-config-rollouts"] = {
@@ -234,7 +268,7 @@ if WATCHLIST_SYNC_ENABLED:
     }
 
 # Stream consumer batch — chạy mỗi 3 giây khi REALTIME_ENABLED=true
-STREAM_CONSUMER_INTERVAL = int(os.getenv("STREAM_CONSUMER_INTERVAL", "3"))
+STREAM_CONSUMER_INTERVAL = _env_int("STREAM_CONSUMER_INTERVAL", 3)
 _REALTIME_ENABLED_FLAG = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 if _REALTIME_ENABLED_FLAG:
     CELERY_BEAT_SCHEDULE["stream-consumer-db-writer"] = {
@@ -262,7 +296,7 @@ if _REALTIME_ENABLED_FLAG:
         "kwargs": {"keep_days": 7},
     }
     # Thu thập + publish realtime mỗi 5 giây (giống polling cũ nhưng cũng push vào Stream)
-    _REALTIME_POLL_INTERVAL = int(os.getenv("REALTIME_POLL_INTERVAL", "5"))
+    _REALTIME_POLL_INTERVAL = _env_int("REALTIME_POLL_INTERVAL", 5)
     CELERY_BEAT_SCHEDULE["collect-and-publish-realtime"] = {
         "task": "portfolio.tasks.collect_and_publish_realtime",
         "schedule": timedelta(seconds=_REALTIME_POLL_INTERVAL),
@@ -280,7 +314,7 @@ if _OPENCORE_ENABLED:
     }
     
     # Reset monthly quotas on the 1st of each month
-    _OPENCORE_QUOTA_RESET_HOUR = int(os.getenv("OPENCORE_QUOTA_RESET_HOUR", "0"))
+    _OPENCORE_QUOTA_RESET_HOUR = _env_int("OPENCORE_QUOTA_RESET_HOUR", 0)
     from celery.schedules import crontab
     CELERY_BEAT_SCHEDULE["opencore-reset-monthly-quotas"] = {
         "task": "portfolio.opencore_celery_tasks.reset_monthly_quotas",
@@ -319,38 +353,38 @@ if _OPENCORE_ENABLED:
 
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
-REALTIME_DEFAULT_WHALE_THRESHOLD = int(os.getenv("REALTIME_DEFAULT_WHALE_THRESHOLD", "500000000"))
+REALTIME_DEFAULT_WHALE_THRESHOLD = _env_int("REALTIME_DEFAULT_WHALE_THRESHOLD", 500000000)
 REALTIME_REDIS_URL = os.getenv("REALTIME_REDIS_URL", CELERY_BROKER_URL)
 REALTIME_CHANNEL_LAYER = os.getenv("REALTIME_CHANNEL_LAYER", "redis").lower()
 
 # Redis Streams — db=1 (riêng với Celery db=0 và Cache db=2)
 STREAM_REDIS_URL = os.getenv("STREAM_REDIS_URL", "redis://localhost:6379/1")
-STREAM_MAX_LEN = int(os.getenv("STREAM_MAX_LEN", "50000"))
-STREAM_CONSUMER_BATCH = int(os.getenv("STREAM_CONSUMER_BATCH", "100"))
-STREAM_SNAPSHOT_TTL = int(os.getenv("STREAM_SNAPSHOT_TTL", "60"))
-STREAM_BLOCK_MS = int(os.getenv("STREAM_BLOCK_MS", "2000"))
-STREAM_STALE_AFTER_SECONDS = int(os.getenv("STREAM_STALE_AFTER_SECONDS", "30"))
+STREAM_MAX_LEN = _env_int("STREAM_MAX_LEN", 50000)
+STREAM_CONSUMER_BATCH = _env_int("STREAM_CONSUMER_BATCH", 100)
+STREAM_SNAPSHOT_TTL = _env_int("STREAM_SNAPSHOT_TTL", 60)
+STREAM_BLOCK_MS = _env_int("STREAM_BLOCK_MS", 2000)
+STREAM_STALE_AFTER_SECONDS = _env_int("STREAM_STALE_AFTER_SECONDS", 30)
 
 # Open Core quota enforcement (Slice B)
 OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED = os.getenv("OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED", "False").lower() == "true"
 OPEN_CORE_QUOTA_CAPS_BY_TIER = {
     "community": {
-        "api_calls_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY", "300")),
-        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY", "0")),
-        "whale_symbols_max": int(os.getenv("OPEN_CORE_COMMUNITY_WHALE_SYMBOLS_MAX", "10")),
-        "exports_per_day": int(os.getenv("OPEN_CORE_COMMUNITY_EXPORTS_PER_DAY", "0")),
+        "api_calls_per_day": _env_int("OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY", 300),
+        "ai_regenerate_per_day": _env_int("OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY", 0),
+        "whale_symbols_max": _env_int("OPEN_CORE_COMMUNITY_WHALE_SYMBOLS_MAX", 10),
+        "exports_per_day": _env_int("OPEN_CORE_COMMUNITY_EXPORTS_PER_DAY", 0),
     },
     "pro_individual": {
-        "api_calls_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY", "3000")),
-        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY", "30")),
-        "whale_symbols_max": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_WHALE_SYMBOLS_MAX", "25")),
-        "exports_per_day": int(os.getenv("OPEN_CORE_PRO_INDIVIDUAL_EXPORTS_PER_DAY", "20")),
+        "api_calls_per_day": _env_int("OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY", 3000),
+        "ai_regenerate_per_day": _env_int("OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY", 30),
+        "whale_symbols_max": _env_int("OPEN_CORE_PRO_INDIVIDUAL_WHALE_SYMBOLS_MAX", 25),
+        "exports_per_day": _env_int("OPEN_CORE_PRO_INDIVIDUAL_EXPORTS_PER_DAY", 20),
     },
     "pro_team": {
-        "api_calls_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY", "10000")),
-        "ai_regenerate_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY", "120")),
-        "whale_symbols_max": int(os.getenv("OPEN_CORE_PRO_TEAM_WHALE_SYMBOLS_MAX", "100")),
-        "exports_per_day": int(os.getenv("OPEN_CORE_PRO_TEAM_EXPORTS_PER_DAY", "100")),
+        "api_calls_per_day": _env_int("OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY", 10000),
+        "ai_regenerate_per_day": _env_int("OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY", 120),
+        "whale_symbols_max": _env_int("OPEN_CORE_PRO_TEAM_WHALE_SYMBOLS_MAX", 100),
+        "exports_per_day": _env_int("OPEN_CORE_PRO_TEAM_EXPORTS_PER_DAY", 100),
     },
     "admin": {
         "api_calls_per_day": -1,
@@ -365,17 +399,17 @@ OPENCLAW_API_KEY  = os.getenv("OPENCLAW_API_KEY", "")
 OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "https://api.openclaw.ai/v1")
 OPENCLAW_MODEL    = os.getenv("OPENCLAW_MODEL", "openclaw-finance-v1")
 # Cooldown: tránh gọi AI 2 lần cho cùng symbol trong khoảng thời gian này (giây)
-WHALE_ADVISORY_COOLDOWN_SECONDS = int(os.getenv("WHALE_ADVISORY_COOLDOWN_SECONDS", "900"))  # 15 phút
-MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES = int(os.getenv("MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES", "5"))
-MISSION_CONTROL_ANOMALY_BASELINE_MINUTES = int(os.getenv("MISSION_CONTROL_ANOMALY_BASELINE_MINUTES", "30"))
-MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS = int(os.getenv("MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS", "3"))
-MISSION_CONTROL_ANOMALY_MIN_ADVISORIES = int(os.getenv("MISSION_CONTROL_ANOMALY_MIN_ADVISORIES", "1"))
-MISSION_CONTROL_ANOMALY_SPIKE_RATIO = float(os.getenv("MISSION_CONTROL_ANOMALY_SPIKE_RATIO", "3.0"))
-MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO = float(os.getenv("MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO", "2.0"))
+WHALE_ADVISORY_COOLDOWN_SECONDS = _env_int("WHALE_ADVISORY_COOLDOWN_SECONDS", 900)  # 15 phút
+MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES", 5)
+MISSION_CONTROL_ANOMALY_BASELINE_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_BASELINE_MINUTES", 30)
+MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS = _env_int("MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS", 3)
+MISSION_CONTROL_ANOMALY_MIN_ADVISORIES = _env_int("MISSION_CONTROL_ANOMALY_MIN_ADVISORIES", 1)
+MISSION_CONTROL_ANOMALY_SPIKE_RATIO = _env_float("MISSION_CONTROL_ANOMALY_SPIKE_RATIO", 3.0)
+MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO = _env_float("MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO", 2.0)
 MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND = float(
-    os.getenv("MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND", "5000000000")
+    _env_float("MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND", 5000000000.0)
 )
-MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT = int(os.getenv("MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT", "200"))
+MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT = _env_int("MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT", 200)
 
 if REALTIME_CHANNEL_LAYER == "inmemory":
     CHANNEL_LAYERS = {

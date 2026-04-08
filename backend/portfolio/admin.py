@@ -82,7 +82,17 @@ def _resolve_google_oauth_redirect_uri(request) -> str:
     configured_redirect_uri = str(getattr(settings, GOOGLE_OAUTH_REDIRECT_URI_SETTING, '') or '').strip()
     if configured_redirect_uri:
         return configured_redirect_uri
-    return request.build_absolute_uri(reverse('admin:portfolio_systememailaccount_google_callback'))
+    callback_path = reverse('admin:portfolio_systememailaccount_google_callback')
+    redirect_uri = request.build_absolute_uri(callback_path)
+
+    # Safety net: if app runs behind chained proxies and scheme is still http,
+    # force https for non-local hosts to prevent Google redirect_uri_mismatch.
+    if redirect_uri.startswith('http://'):
+        host = request.get_host().split(':', 1)[0].lower()
+        if host not in {'localhost', '127.0.0.1'}:
+            redirect_uri = 'https://' + redirect_uri[len('http://'):]
+
+    return redirect_uri
 
 
 def _push_market_group_sync_messages(request, result):
