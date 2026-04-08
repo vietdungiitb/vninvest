@@ -12,6 +12,13 @@ _LOCK = Lock()
 _HTTP_STATS: dict[str, dict] = {}
 _FALLBACK_COUNTS: dict[str, dict[str, int]] = defaultdict(dict)
 _TIMEOUT_COUNTS: dict[str, dict[str, int]] = defaultdict(dict)
+_AI_CHART_CONTEXT_STATS: dict[str, float] = {
+    'present': 0,
+    'used': 0,
+    'warnings': 0,
+    'ohlcv_points_total': 0,
+    'payload_bytes_total': 0,
+}
 _STARTED_AT_EPOCH = time()
 
 
@@ -57,6 +64,15 @@ def reset_market_observability() -> None:
         _HTTP_STATS.clear()
         _FALLBACK_COUNTS.clear()
         _TIMEOUT_COUNTS.clear()
+        _AI_CHART_CONTEXT_STATS.update(
+            {
+                'present': 0,
+                'used': 0,
+                'warnings': 0,
+                'ohlcv_points_total': 0,
+                'payload_bytes_total': 0,
+            }
+        )
         _STARTED_AT_EPOCH = time()
 
 
@@ -102,6 +118,27 @@ def record_market_external_timeout(endpoint: str, provider: str = 'vnstock') -> 
         provider_map[provider_key] = int(provider_map.get(provider_key, 0)) + 1
 
 
+def record_ai_chart_context_observation(
+    *,
+    present: bool,
+    used: bool,
+    warning_count: int,
+    ohlcv_points: int,
+    payload_bytes: int,
+) -> None:
+    if not _metrics_enabled():
+        return
+
+    with _LOCK:
+        if present:
+            _AI_CHART_CONTEXT_STATS['present'] += 1
+        if used:
+            _AI_CHART_CONTEXT_STATS['used'] += 1
+        _AI_CHART_CONTEXT_STATS['warnings'] += max(int(warning_count or 0), 0)
+        _AI_CHART_CONTEXT_STATS['ohlcv_points_total'] += max(int(ohlcv_points or 0), 0)
+        _AI_CHART_CONTEXT_STATS['payload_bytes_total'] += max(int(payload_bytes or 0), 0)
+
+
 def get_market_observability_snapshot() -> dict:
     with _LOCK:
         endpoints = {}
@@ -139,6 +176,12 @@ def get_market_observability_snapshot() -> dict:
             timeout_breakdown[endpoint] = dict(providers)
             timeout_total += sum(int(value) for value in providers.values())
 
+        chart_present = int(_AI_CHART_CONTEXT_STATS.get('present', 0))
+        chart_used = int(_AI_CHART_CONTEXT_STATS.get('used', 0))
+        chart_warnings = int(_AI_CHART_CONTEXT_STATS.get('warnings', 0))
+        ohlcv_points_total = int(_AI_CHART_CONTEXT_STATS.get('ohlcv_points_total', 0))
+        payload_bytes_total = int(_AI_CHART_CONTEXT_STATS.get('payload_bytes_total', 0))
+
         return {
             'enabled': _metrics_enabled(),
             'window': {
@@ -151,6 +194,16 @@ def get_market_observability_snapshot() -> dict:
                 'http_5xx_ratio_pct': round((total_5xx / total_requests) * 100, 2) if total_requests else 0.0,
                 'fallback_hits': fallback_total,
                 'external_timeouts': timeout_total,
+            },
+            'ai_chart_context': {
+                'present': chart_present,
+                'used': chart_used,
+                'usage_ratio_pct': round((chart_used / chart_present) * 100, 2) if chart_present else 0.0,
+                'warnings_total': chart_warnings,
+                'ohlcv_points_total': ohlcv_points_total,
+                'payload_bytes_total': payload_bytes_total,
+                'avg_ohlcv_points': round(ohlcv_points_total / chart_present, 2) if chart_present else 0.0,
+                'avg_payload_bytes': round(payload_bytes_total / chart_present, 2) if chart_present else 0.0,
             },
             'endpoints': endpoints,
             'fallback_breakdown': fallback_breakdown,

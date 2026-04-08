@@ -3229,6 +3229,7 @@ def stock_order_flow_api(request, symbol: str):
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_components_generate_api(request, symbol: str):
     from portfolio.order_flow import detect_dark_flow
+    from portfolio.observability import record_ai_chart_context_observation
 
     denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_components_generate_api')
     if denied_response is not None:
@@ -3281,6 +3282,13 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         chart_context_ohlcv_points,
         chart_context_payload_bytes,
         len(chart_context_warnings),
+    )
+    record_ai_chart_context_observation(
+        present=raw_chart_context is not None,
+        used=chart_context_used,
+        warning_count=len(chart_context_warnings),
+        ohlcv_points=chart_context_ohlcv_points,
+        payload_bytes=chart_context_payload_bytes,
     )
 
     dark_flow = detect_dark_flow(normalized_symbol)

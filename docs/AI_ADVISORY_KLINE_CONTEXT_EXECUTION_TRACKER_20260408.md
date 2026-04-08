@@ -95,7 +95,7 @@
 | B0-02 | [TEN_BE] | Day 2 | Done | - | Serializer da merge, tiep tuc hardening telemetry |
 | B0-03 | [TEN_BE] | Day 3 | Done | B0-02 | Endpoint da nhan chart_context + response flags |
 | B0-04 | [TEN_BE] | Day 3 | Done | B0-03 | Prompt da inject chart context block |
-| B0-05 | [TEN_BE] | Day 4 | In Progress | B0-03 | Telemetry log fields da co; tiep tuc map vao dashboard observability |
+| B0-05 | [TEN_BE] | Day 4 | Done | B0-03 | Telemetry da map vao runtime KPI snapshot (`ai_chart_context`) va test pass |
 | F0-01 | [TEN_FE] | Day 3 | In Progress | B0-01 | Collector da gui context tu chartData, can bo sung visible-range theo chart viewport |
 | F0-02 | [TEN_FE] | Day 4 | In Progress | F0-01, B0-03 | Payload da gui chart_context, tiep tuc polish warning badge |
 | F0-03 | [TEN_FE] | Day 5 | Done | F0-02 | Da them badge used/fallback + warning UI trong advisory panel |

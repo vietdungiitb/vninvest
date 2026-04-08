@@ -139,5 +139,8 @@ class AdminRuntimeKPITests(APITestCase):
         obs = data['market_observability']
         self.assertIn('overall', obs)
         self.assertIn('http_requests', obs['overall'])
+        self.assertIn('ai_chart_context', obs)
+        self.assertIn('present', obs['ai_chart_context'])
+        self.assertIn('used', obs['ai_chart_context'])
         self.assertIn('alive', data['celery'])
 
