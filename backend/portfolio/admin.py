@@ -2077,35 +2077,6 @@ class LegalPageAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return _is_supervisor(request.user)
 
-    def save_model(self, request, obj, form, change):
-        if not _is_supervisor(request.user):
-            self.message_user(request, 'Ban khong co quyen phe duyet.', level=messages.ERROR)
-            return
-
-        if obj.draft and obj.draft.created_by_id == request.user.id:
-            self.message_user(request, 'Maker-checker violation: creator khong duoc tu approve.', level=messages.ERROR)
-            return
-
-        super().save_model(request, obj, form, change)
-
-        if obj.decision == WhaleConfigApproval.DecisionChoices.APPROVED:
-            obj.draft.status = WhaleConfigDraft.StatusChoices.APPROVED
-            obj.draft.save(update_fields=['status', 'updated_at'])
-            action = 'approve'
-        else:
-            obj.draft.status = WhaleConfigDraft.StatusChoices.REJECTED
-            obj.draft.save(update_fields=['status', 'updated_at'])
-            action = 'reject'
-
-        _log_whale_config_audit(
-            actor=request.user,
-            action=action,
-            draft=obj.draft,
-            reason=obj.comment,
-            before_json={'status': WhaleConfigDraft.StatusChoices.SUBMITTED},
-            after_json={'status': obj.draft.status, 'decision': obj.decision},
-        )
-
 
 @admin.register(WhaleConfigVersion)
 class WhaleConfigVersionAdmin(admin.ModelAdmin):
