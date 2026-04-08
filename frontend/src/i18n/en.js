@@ -97,6 +97,7 @@ const en = {
     lastUpdated: 'Last price sync: {value}',
     syncPrices: 'Sync prices',
     syncPricesLive: 'Sync prices live',
+    syncPricesIdle: 'Sync prices',
     syncingPrices: 'Syncing...',
     syncSuccess: 'Synced {total} symbols.',
     syncError: 'Sync failed. Please check the server.',

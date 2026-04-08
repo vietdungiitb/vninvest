@@ -97,6 +97,7 @@ const vi = {
     lastUpdated: 'Giá cập nhật lần cuối: {value}',
     syncPrices: 'Đồng bộ giá',
     syncPricesLive: 'Đồng bộ giá trực tiếp',
+    syncPricesIdle: 'Đồng bộ giá',
     syncingPrices: 'Đang đồng bộ...',
     syncSuccess: 'Đã đồng bộ {total} mã chứng khoán.',
     syncError: 'Đồng bộ thất bại, kiểm tra server.',
