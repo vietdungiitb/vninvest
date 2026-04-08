@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.urls import path, include
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework.routers import DefaultRouter
 from . import trading_views, views
 from .opencore_api import (
@@ -16,7 +17,8 @@ def _toggle_trading_view(view_name: str):
         selected_view = refactored_view if getattr(settings, 'ENABLE_NEW_TRADING_VIEWS', False) else legacy_view
         return selected_view(request, *args, **kwargs)
 
-    return _view
+    # Keep CSRF exemption on wrapped API views; otherwise POST/PUT/PATCH/DELETE may return 403.
+    return csrf_exempt(_view)
 
 urlpatterns = [
     # --- Portfolios ---
