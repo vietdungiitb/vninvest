@@ -136,6 +136,7 @@ function KLineChartComponent({ data }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
+  const indicatorPaneMapRef = useRef({});
   const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
   const [drawingMode, setDrawingMode] = useState(null);
   const [fullScreen, setFullScreen] = useState(false);
@@ -164,9 +165,49 @@ function KLineChartComponent({ data }) {
     { id: 'text', name: 'Text' },
   ];
 
+  const rememberIndicatorPane = (indicatorId, paneId) => {
+    if (paneId) {
+      indicatorPaneMapRef.current[indicatorId] = paneId;
+    }
+  };
+
+  const forgetIndicatorPane = (indicatorId) => {
+    delete indicatorPaneMapRef.current[indicatorId];
+  };
+
+  const findIndicatorPaneIds = (chart, indicatorId) => {
+    const paneIds = [];
+    try {
+      const allIndicators = chart.getIndicatorByPaneId?.();
+      if (allIndicators instanceof Map) {
+        for (const [paneId, indicators] of allIndicators.entries()) {
+          if (indicators instanceof Map && indicators.has(indicatorId)) {
+            paneIds.push(paneId);
+          }
+        }
+      }
+    } catch (e) {
+      // fallback handled by static pane candidates below
+    }
+    return paneIds;
+  };
+
   const removeIndicatorFromAnySubPane = (chart, indicatorId) => {
+    const dynamicPaneIds = findIndicatorPaneIds(chart, indicatorId);
+    const rememberedPaneId = indicatorPaneMapRef.current[indicatorId];
+    const paneIdsToTry = [
+      ...(rememberedPaneId ? [rememberedPaneId] : []),
+      ...dynamicPaneIds,
+      ...SUB_PANE_CANDIDATES,
+    ];
+
     let removed = false;
-    for (const paneId of SUB_PANE_CANDIDATES) {
+    const seen = new Set();
+    for (const paneId of paneIdsToTry) {
+      if (!paneId || seen.has(paneId)) {
+        continue;
+      }
+      seen.add(paneId);
       try {
         chart.removeIndicator(paneId, indicatorId);
         removed = true;
@@ -177,6 +218,20 @@ function KLineChartComponent({ data }) {
     if (!removed) {
       throw new Error(`Failed to remove ${indicatorId} from sub panes`);
     }
+    forgetIndicatorPane(indicatorId);
+  };
+
+  const createIndicatorWithTracking = (chart, indicatorId) => {
+    let paneId = null;
+    if (indicatorId === 'VOL') {
+      paneId = chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+    } else if (MAIN_PANE_INDICATORS.has(indicatorId)) {
+      chart.createIndicator(indicatorId, false, { id: 'candle_pane' });
+      paneId = 'candle_pane';
+    } else {
+      paneId = chart.createIndicator(indicatorId, false);
+    }
+    rememberIndicatorPane(indicatorId, paneId || (MAIN_PANE_INDICATORS.has(indicatorId) ? 'candle_pane' : null));
   };
 
   const handleToggleIndicator = (indicatorId) => {
@@ -186,7 +241,7 @@ function KLineChartComponent({ data }) {
         if (chartRef.current) {
           try {
             if (isNextEnabled) {
-              chartRef.current.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+              createIndicatorWithTracking(chartRef.current, 'VOL');
             } else {
               removeIndicatorFromAnySubPane(chartRef.current, 'VOL');
             }
@@ -202,11 +257,7 @@ function KLineChartComponent({ data }) {
         if (chartRef.current) {
           if (newState[indicatorId]) {
             try {
-              if (MAIN_PANE_INDICATORS.has(indicatorId)) {
-                chartRef.current.createIndicator(indicatorId, false, { id: 'candle_pane' });
-              } else {
-                chartRef.current.createIndicator(indicatorId, false);
-              }
+              createIndicatorWithTracking(chartRef.current, indicatorId);
             } catch (e) {
               console.error(`Error creating indicator ${indicatorId}:`, e);
             }
@@ -214,6 +265,7 @@ function KLineChartComponent({ data }) {
             try {
               if (MAIN_PANE_INDICATORS.has(indicatorId)) {
                 chartRef.current.removeIndicator('candle_pane', indicatorId);
+                forgetIndicatorPane(indicatorId);
               } else {
                 removeIndicatorFromAnySubPane(chartRef.current, indicatorId);
               }
@@ -418,11 +470,11 @@ function KLineChartComponent({ data }) {
     });
 
     // MA trên pane chính
-    chart.createIndicator('MA', false, { id: 'candle_pane' });
+    createIndicatorWithTracking(chart, 'MA');
     // Volume ở pane phụ (chiều cao 20%)
-    chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
+    createIndicatorWithTracking(chart, 'VOL');
     // MACD mặc định để gần hành vi preview hơn.
-    chart.createIndicator('MACD', false);
+    createIndicatorWithTracking(chart, 'MACD');
 
     chartRef.current = chart;
 
@@ -436,6 +488,7 @@ function KLineChartComponent({ data }) {
       if (containerRef.current) {
         klineChartDispose(containerRef.current);
       }
+      indicatorPaneMapRef.current = {};
       chartRef.current = null;
     };
   }, []);
