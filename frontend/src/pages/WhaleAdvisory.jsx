@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   getAIOptions,
   getUserConfig,
+  getTrackedSymbols,
   refreshWhaleAdvisory,
   getWhaleAdvisories,
   testAIConnection,
@@ -312,6 +313,7 @@ export default function WhaleAdvisory() {
   const { userPlan } = usePortfolio();
   const { t } = useI18n();
   const [items, setItems] = useState([]);
+  const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [aiProviders, setAiProviders] = useState(FALLBACK_MODELS);
@@ -336,13 +338,22 @@ export default function WhaleAdvisory() {
   });
   const [riskModeNotice, setRiskModeNotice] = useState('');
   const [activeSymbol, setActiveSymbol] = useState('');
+  const [symbolSearch, setSymbolSearch] = useState('');
+  const [advisoryFilter, setAdvisoryFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('symbol_asc');
+  const [pageSize, setPageSize] = useState(20);
+  const [page, setPage] = useState(1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await getWhaleAdvisories();
-      setItems(response.data || []);
+      const [advisoryResp, trackedResp] = await Promise.all([
+        getWhaleAdvisories(),
+        getTrackedSymbols(),
+      ]);
+      setItems(advisoryResp.data || []);
+      setTrackedSymbols(trackedResp.data || []);
     } catch (err) {
       setError(err.response?.data?.detail || t('whaleAdvisory.loadFailed'));
     } finally {
@@ -515,7 +526,126 @@ export default function WhaleAdvisory() {
     });
   }, [items, riskMode]);
 
-  const symbolStats = useMemo(() => buildSymbolStats(filteredItems), [filteredItems]);
+  const trackedSymbolList = useMemo(() => {
+    const seen = new Set();
+    const symbols = [];
+    (trackedSymbols || []).forEach((item) => {
+      const symbol = String(item?.symbol || '').trim().toUpperCase();
+      if (!symbol || seen.has(symbol)) return;
+      seen.add(symbol);
+      symbols.push(symbol);
+    });
+    return symbols;
+  }, [trackedSymbols]);
+
+  const symbolStatsMap = useMemo(() => {
+    const stats = buildSymbolStats(filteredItems);
+    return Object.fromEntries((stats || []).map((row) => [row.symbol, row]));
+  }, [filteredItems]);
+
+  const latestBySymbol = useMemo(() => {
+    const sorted = [...filteredItems].sort((a, b) => {
+      const ta = new Date(a?.created_at || 0).getTime();
+      const tb = new Date(b?.created_at || 0).getTime();
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
+    const map = {};
+    sorted.forEach((item) => {
+      const symbol = String(item?.symbol || '').trim().toUpperCase();
+      if (!symbol || map[symbol]) return;
+      map[symbol] = item;
+    });
+    return map;
+  }, [filteredItems]);
+
+  const advisoryRows = useMemo(() => {
+    return trackedSymbolList.map((symbol) => {
+      const stats = symbolStatsMap[symbol] || {
+        symbol,
+        buyCount: 0,
+        sellCount: 0,
+        totalValue: 0,
+        totalVolume: 0,
+        count: 0,
+      };
+      const latest = latestBySymbol[symbol] || null;
+      const latestTs = latest?.created_at || null;
+      return {
+        symbol,
+        stats,
+        latest,
+        hasAdvisory: Boolean(latest),
+        latestTs,
+        confidence: inferConfidence(latest),
+      };
+    });
+  }, [latestBySymbol, symbolStatsMap, trackedSymbolList]);
+
+  const searchedRows = useMemo(() => {
+    const keyword = String(symbolSearch || '').trim().toUpperCase();
+    if (!keyword) return advisoryRows;
+    return advisoryRows.filter((row) => row.symbol.includes(keyword));
+  }, [advisoryRows, symbolSearch]);
+
+  const filteredRows = useMemo(() => {
+    if (advisoryFilter === 'with_advisory') {
+      return searchedRows.filter((row) => row.hasAdvisory);
+    }
+    if (advisoryFilter === 'no_advisory') {
+      return searchedRows.filter((row) => !row.hasAdvisory);
+    }
+    if (advisoryFilter === 'buy_dominant') {
+      return searchedRows.filter((row) => row.stats.buyCount > row.stats.sellCount);
+    }
+    if (advisoryFilter === 'sell_dominant') {
+      return searchedRows.filter((row) => row.stats.sellCount > row.stats.buyCount);
+    }
+    return searchedRows;
+  }, [advisoryFilter, searchedRows]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...filteredRows];
+    const safeDate = (value) => {
+      if (!value) return 0;
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+    const safeNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : -Infinity);
+
+    if (sortBy === 'symbol_desc') {
+      rows.sort((a, b) => b.symbol.localeCompare(a.symbol));
+      return rows;
+    }
+    if (sortBy === 'value_desc') {
+      rows.sort((a, b) => safeNumber(b.stats.totalValue) - safeNumber(a.stats.totalValue));
+      return rows;
+    }
+    if (sortBy === 'value_asc') {
+      rows.sort((a, b) => safeNumber(a.stats.totalValue) - safeNumber(b.stats.totalValue));
+      return rows;
+    }
+    if (sortBy === 'recent_desc') {
+      rows.sort((a, b) => safeDate(b.latestTs) - safeDate(a.latestTs));
+      return rows;
+    }
+    if (sortBy === 'recent_asc') {
+      rows.sort((a, b) => safeDate(a.latestTs) - safeDate(b.latestTs));
+      return rows;
+    }
+    if (sortBy === 'confidence_desc') {
+      rows.sort((a, b) => safeNumber(b.confidence) - safeNumber(a.confidence));
+      return rows;
+    }
+    rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
+    return rows;
+  }, [filteredRows, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedRows.slice(start, start + pageSize);
+  }, [currentPage, pageSize, sortedRows]);
 
   useEffect(() => {
     localStorage.setItem('vninvest:risk-mode', riskMode);
@@ -525,14 +655,18 @@ export default function WhaleAdvisory() {
   }, [riskMode, t]);
 
   useEffect(() => {
-    if (!symbolStats.length) {
+    setPage(1);
+  }, [symbolSearch, advisoryFilter, sortBy, pageSize]);
+
+  useEffect(() => {
+    if (!sortedRows.length) {
       setActiveSymbol('');
       return;
     }
-    if (!activeSymbol || !symbolStats.some((row) => row.symbol === activeSymbol)) {
-      setActiveSymbol(symbolStats[0].symbol);
+    if (!activeSymbol || !sortedRows.some((row) => row.symbol === activeSymbol)) {
+      setActiveSymbol(sortedRows[0].symbol);
     }
-  }, [activeSymbol, symbolStats]);
+  }, [activeSymbol, sortedRows]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
@@ -656,13 +790,63 @@ export default function WhaleAdvisory() {
 
       <section className="card-section px-5 py-4 space-y-3">
         <RiskModeSelector
-          symbol={activeSymbol || symbolStats[0]?.symbol || ''}
+          symbol={activeSymbol || sortedRows[0]?.symbol || ''}
           value={riskMode}
           onChange={setRiskMode}
         />
         {riskModeNotice && (
           <p className="text-xs text-cyan-300">{riskModeNotice}</p>
         )}
+      </section>
+
+      <section className="card-section px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={symbolSearch}
+              onChange={(e) => setSymbolSearch(e.target.value.toUpperCase())}
+              placeholder={t('whaleAdvisory.searchSymbolPlaceholder')}
+              className="w-56 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+            />
+            <select
+              value={advisoryFilter}
+              onChange={(e) => setAdvisoryFilter(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+            >
+              <option value="all">{t('whaleAdvisory.filterAll')}</option>
+              <option value="with_advisory">{t('whaleAdvisory.filterWithAdvisory')}</option>
+              <option value="no_advisory">{t('whaleAdvisory.filterNoAdvisory')}</option>
+              <option value="buy_dominant">{t('whaleAdvisory.filterBuyDominant')}</option>
+              <option value="sell_dominant">{t('whaleAdvisory.filterSellDominant')}</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+            >
+              <option value="symbol_asc">{t('whaleAdvisory.sortSymbolAsc')}</option>
+              <option value="symbol_desc">{t('whaleAdvisory.sortSymbolDesc')}</option>
+              <option value="value_desc">{t('whaleAdvisory.sortValueDesc')}</option>
+              <option value="value_asc">{t('whaleAdvisory.sortValueAsc')}</option>
+              <option value="recent_desc">{t('whaleAdvisory.sortRecentDesc')}</option>
+              <option value="recent_asc">{t('whaleAdvisory.sortRecentAsc')}</option>
+              <option value="confidence_desc">{t('whaleAdvisory.sortConfidenceDesc')}</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <span>{t('whaleAdvisory.pageSize')}</span>
+            <select
+              value={pageSize}
+              onChange={(e) => setPageSize(Number(e.target.value) || 20)}
+              className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100"
+            >
+              {[10, 15, 20, 50, 100].map((size) => (
+                <option key={size} value={size}>{size}</option>
+              ))}
+            </select>
+          </div>
+        </div>
       </section>
 
       {/* Bảng */}
@@ -703,27 +887,29 @@ export default function WhaleAdvisory() {
               </div>
             ))}
           </div>
-        ) : symbolStats.length === 0 ? (
+        ) : sortedRows.length === 0 ? (
           <div className="px-5 py-12 text-center">
-            <p className="text-sm text-slate-400">{t('whaleAdvisory.emptyTitle')}</p>
+            <p className="text-sm text-slate-400">
+              {trackedSymbolList.length === 0 ? t('whaleAdvisory.emptyTrackedTitle') : t('whaleAdvisory.noMatchFilter')}
+            </p>
             <p className="mt-2 text-xs text-slate-600">
-              {t('whaleAdvisory.emptyDescription')}
+              {trackedSymbolList.length === 0 ? t('whaleAdvisory.emptyTrackedDescription') : t('whaleAdvisory.emptyDescription')}
             </p>
           </div>
         ) : (
           <div>
-            {symbolStats.map((stats, idx) => {
-              const latest = filteredItems.find(i => i.symbol === stats.symbol) || null;
-              const isActive = activeSymbol === stats.symbol;
+            {pagedRows.map((row, idx) => {
+              const latest = row.latest;
+              const isActive = activeSymbol === row.symbol;
 
               return (
-                <div key={stats.symbol} className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${idx > 0 ? 'border-t border-slate-800' : ''}`}>
+                <div key={row.symbol} className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${idx > 0 ? 'border-t border-slate-800' : ''}`}>
                   {/* Cột trái */}
                   <div>
                     <SymbolCell
-                      stats={stats}
+                      stats={row.stats}
                       isActive={isActive}
-                      onClick={() => setActiveSymbol(stats.symbol)}
+                      onClick={() => setActiveSymbol(row.symbol)}
                     />
                   </div>
 
@@ -733,7 +919,7 @@ export default function WhaleAdvisory() {
                       <AdvisoryCell
                         item={latest}
                         onRefresh={handleRefreshAdvisory}
-                        refreshing={refreshingSymbol === latest.symbol}
+                        refreshing={refreshingSymbol === row.symbol}
                       />
                     ) : (
                       <div className="flex items-center p-4 text-xs text-slate-600">
@@ -744,6 +930,34 @@ export default function WhaleAdvisory() {
                 </div>
               );
             })}
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-400">
+              <span>
+                {t('whaleAdvisory.paginationSummary', {
+                  from: ((currentPage - 1) * pageSize) + 1,
+                  to: Math.min(currentPage * pageSize, sortedRows.length),
+                  total: sortedRows.length,
+                })}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  disabled={currentPage <= 1}
+                  className="rounded border border-slate-700 px-2.5 py-1 text-slate-200 disabled:opacity-40"
+                >
+                  {t('whaleAdvisory.prevPage')}
+                </button>
+                <span>{t('whaleAdvisory.pageLabel', { page: currentPage, total: totalPages })}</span>
+                <button
+                  type="button"
+                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage >= totalPages}
+                  className="rounded border border-slate-700 px-2.5 py-1 text-slate-200 disabled:opacity-40"
+                >
+                  {t('whaleAdvisory.nextPage')}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </section>
