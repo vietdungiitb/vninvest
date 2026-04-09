@@ -182,3 +182,13 @@
 - Da bo sung test task-level cho kip ban merge 180s:
   - 2 event (whale_alert + dark_flow) cung user/symbol trong window 180s chi schedule flush 1 lan.
   - Merge state gom day du sources va source_scores.
+
+### Tien do tiep tuc (2026-04-09 - endpoint ops)
+- Da bo sung endpoint admin-only:
+  - `GET /api/admin-ops/runtime-kpi/advisory-merge/`
+  - Muc tieu: tra nhanh chi so `scheduled/merged/flushed/skipped` cua merge pipeline.
+- Da bo sung smoke script ops:
+  - `scripts/ops/sprint30_runtime_kpi_smoke.ps1`
+  - Thu thap artifact cho:
+    - `/api/admin-ops/runtime-kpi/`
+    - `/api/admin-ops/runtime-kpi/advisory-merge/`

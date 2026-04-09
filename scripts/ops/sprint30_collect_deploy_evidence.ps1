@@ -89,9 +89,11 @@ Write-Step "Manual production gate reminders"
 Set-Content -Path "$OutDir/manual-gates.txt" -Value @(
   "1. Smoke /api/ai-options and advisory model dropdown on frontend.",
   "2. Smoke admin-only endpoints: /api/admin-ops/system-ai-settings, /test-connection, /audit-logs.",
-  "3. Verify user-first -> system fallback path with one user missing API key.",
-  "4. Run prune_system_ai_audit_logs --dry-run and archive output for ops evidence.",
-  "5. Collect QA/BE/DevOps/PM sign-off before production GO."
+  "3. Smoke observability endpoints: /api/admin-ops/runtime-kpi and /api/admin-ops/runtime-kpi/advisory-merge.",
+  "4. Verify user-first -> system fallback path with one user missing API key.",
+  "5. Run prune_system_ai_audit_logs --dry-run and archive output for ops evidence.",
+  "6. Run scripts/ops/sprint30_runtime_kpi_smoke.ps1 to archive runtime KPI evidence.",
+  "7. Collect QA/BE/DevOps/PM sign-off before production GO."
 ) -Encoding utf8
 
 Write-Step "Artifact index"
