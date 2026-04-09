@@ -305,11 +305,11 @@ export default function DashboardRealtimePanel({
       {compact && (
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 py-1">
           <span>
-            <span className="text-blue-300 font-semibold">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</span>
+            <span className="text-blue-300 font-semibold">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' k VND')}</span>
             <span className="ml-1 text-gray-600">{t('dashboardRealtime.liveValue')}</span>
           </span>
           <span className={realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300 font-semibold' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300 font-semibold' : 'text-gray-300 font-semibold'}>
-            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
+            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' k VND')}
             {' '}({realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%)
           </span>
           <span>{formatNumber(monitoredSymbols.length)} {t('dashboardRealtime.monitoredSymbols')}</span>
@@ -326,13 +326,13 @@ export default function DashboardRealtimePanel({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
-            <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' đ')}</p>
+            <p className="text-2xl font-bold text-gray-100 mt-1">{formatPrice(realtimePortfolioStats.totalMarketValue, formatNumber, ' k VND')}</p>
             <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
           </div>
           <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
             <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-              {formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' đ')}
+              {formatPrice(realtimePortfolioStats.totalUnrealizedPL, formatNumber, ' k VND')}
             </p>
             <p className={`text-xs mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-500'}`}>
               {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%
@@ -345,7 +345,7 @@ export default function DashboardRealtimePanel({
           <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
             <p className={`text-2xl font-bold mt-1 ${liveVsSnapshotDelta > 0 ? 'text-emerald-300' : liveVsSnapshotDelta < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-              {formatPrice(liveVsSnapshotDelta, formatNumber, ' đ')}
+              {formatPrice(liveVsSnapshotDelta, formatNumber, ' k VND')}
             </p>
             <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
           </div>
@@ -414,7 +414,7 @@ export default function DashboardRealtimePanel({
                             {item.symbol}
                           </Link>
                         </td>
-                        <td className="px-4 py-3 text-gray-200">{formatPrice(item.current_price, formatNumber, ' đ')}</td>
+                        <td className="px-4 py-3 text-gray-200">{formatPrice(item.current_price, formatNumber, ' k VND')}</td>
                         <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
                           {item.change_pct === null || item.change_pct === undefined
                             ? '—'

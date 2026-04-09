@@ -41,15 +41,13 @@ def _normalize_price_board_dataframe(price_board_df):
             field = str(column[1] or '').strip().lower()
             if field not in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
                 continue
-            numeric_series = pd.to_numeric(normalized_df[column], errors='coerce')
-            normalized_df[column] = numeric_series * 1000
+            normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
         return normalized_df
 
     for column in columns:
         field = str(column or '').strip().lower()
         if any(field in section_fields for section_fields in _PRICE_BOARD_FIELDS_BY_SECTION.values()):
-            numeric_series = pd.to_numeric(normalized_df[column], errors='coerce')
-            normalized_df[column] = numeric_series * 1000
+            normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
     return normalized_df
 
 

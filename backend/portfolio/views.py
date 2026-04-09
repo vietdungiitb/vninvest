@@ -2761,10 +2761,9 @@ class StockWorkspaceOverviewView(APIView):
                 source='VCI',
             )
             if hist_df is not None and not hist_df.empty and 'high' in hist_df.columns:
-                # vnstock history trả về đơn vị nghìn đồng (VND/1000)
-                _scale = 1000.0
-                w52_high = round(float(hist_df['high'].max()) * _scale, 0)
-                w52_low = round(float(hist_df['low'].min()) * _scale, 0)
+                # Giữ nguyên đơn vị gốc từ vnstock (nghìn đồng)
+                w52_high = round(float(hist_df['high'].max()), 0)
+                w52_low = round(float(hist_df['low'].min()), 0)
                 if w52_high > 0:
                     payload['week52_high'] = w52_high
                 if w52_low > 0:

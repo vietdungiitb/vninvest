@@ -26,7 +26,7 @@ class PrefetchTickerPriceBoardNormalizationTests(TestCase):
             ('match', 'accumulated_volume'),
         ])
         mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
-            ['FPT', 78000.0, 79000.0, 79500.0, 77500.0, 78100.0, 123456],
+            ['FPT', 78.0, 79.0, 79.5, 77.5, 78.1, 123456],
         ], columns=columns)
 
         result = prefetch_ticker_price_board.run()
@@ -36,8 +36,8 @@ class PrefetchTickerPriceBoardNormalizationTests(TestCase):
 
         cached_ticker = cache.get('ticker:FPT')
         self.assertIsNotNone(cached_ticker)
-        self.assertEqual(cached_ticker['current_price'], 79000.0)
-        self.assertEqual(cached_ticker['prev_price'], 78000.0)
-        self.assertEqual(cached_ticker['high_price'], 79500.0)
-        self.assertEqual(cached_ticker['low_price'], 77500.0)
-        self.assertEqual(cached_ticker['open_price'], 78100.0)
+        self.assertEqual(cached_ticker['current_price'], 79.0)
+        self.assertEqual(cached_ticker['prev_price'], 78.0)
+        self.assertEqual(cached_ticker['high_price'], 79.5)
+        self.assertEqual(cached_ticker['low_price'], 77.5)
+        self.assertEqual(cached_ticker['open_price'], 78.1)

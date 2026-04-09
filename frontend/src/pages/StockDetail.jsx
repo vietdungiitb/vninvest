@@ -43,11 +43,7 @@ function formatCurrency(value) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
   }
-  return Number(value).toLocaleString(undefined, {
-    style: 'currency',
-    currency: 'VND',
-    maximumFractionDigits: 0,
-  });
+  return `${Number(value).toLocaleString(undefined)} k VND`;
 }
 
 function formatChartAxis(value) {

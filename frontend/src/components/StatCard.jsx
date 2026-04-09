@@ -10,12 +10,11 @@ function formatVND(value, locale = 'vi') {
   if (value === null || value === undefined) return '—';
   const num = parseFloat(value);
   if (isNaN(num)) return '—';
-  return new Intl.NumberFormat(getLocaleTag(locale), {
-    style: 'currency',
-    currency: 'VND',
+  const formatted = new Intl.NumberFormat(getLocaleTag(locale), {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(num);
+  return `${formatted} k VND`;
 }
 
 export default function StatCard({ label, value, sub, isPositive, isNegative, loading }) {
