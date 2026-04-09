@@ -720,6 +720,7 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
+        self.assertEqual(response.data.get('runtime_ai_source'), 'user')
         kwargs = mock_apply_async.call_args.kwargs['kwargs']
         self.assertEqual(kwargs['symbol'], 'FPT')
         self.assertTrue(kwargs['force_refresh'])
@@ -992,21 +993,66 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
 
-    def test_whale_advisory_refresh_endpoint_queues_when_no_existing(self):
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
+    @patch('portfolio.tasks.generate_whale_advisory_task.run')
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_runs_sync_when_no_existing(
+        self,
+        mock_apply_async,
+        mock_task_run,
+        _mock_worker_available,
+        _mock_cache_get,
+    ):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
+        mock_task_run.return_value = {
+            'status': 'ok',
+            'advisory_id': 456,
+            'symbol': 'SSI',
+            'ai_source': 'user',
+            'ai_provider': 'openai',
+            'ai_model': 'gpt-4o',
+        }
 
-        with patch('portfolio.tasks.generate_whale_advisory_task.apply_async') as mock_apply_async:
-            with patch('portfolio.views._is_celery_worker_available', return_value=True):
-                mock_task = MagicMock()
-                mock_task.id = 'task-bootstrap-1'
-                mock_apply_async.return_value = mock_task
+        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
 
-                response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['queued'])
+        self.assertTrue(response.data['fallback_sync'])
+        self.assertEqual(response.data['symbol'], 'SSI')
+        self.assertEqual(response.data.get('runtime_ai_source'), 'user')
+        self.assertEqual(response.data.get('runtime_ai_provider'), 'openai')
+        self.assertEqual(response.data.get('runtime_ai_model'), 'gpt-4o')
+        mock_apply_async.assert_not_called()
+        mock_task_run.assert_called_once()
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_queues_when_existing(self, mock_apply_async, _mock_worker_available, _mock_cache_get):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
+        )
+        mock_task = MagicMock()
+        mock_task.id = 'task-existing-1'
+        mock_apply_async.return_value = mock_task
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
-        self.assertEqual(response.data['symbol'], 'SSI')
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(response.data.get('runtime_ai_source'), 'user')
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._is_celery_worker_available', return_value=False)

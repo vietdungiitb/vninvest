@@ -3490,8 +3490,9 @@ def refresh_whale_advisory_api(request, symbol: str):
     prefer_sync_fallback = bool(getattr(settings, 'WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
 
     worker_available = _is_celery_worker_available()
+    should_force_sync_first_create = latest is None and prefer_sync_fallback
 
-    if worker_available:
+    if worker_available and not should_force_sync_first_create:
         try:
             task = generate_whale_advisory_task.apply_async(
                 kwargs=task_kwargs,
@@ -3503,6 +3504,9 @@ def refresh_whale_advisory_api(request, symbol: str):
                     'queued': True,
                     'symbol': normalized_symbol,
                     'task_id': task.id,
+                    'runtime_ai_source': ai_status.get('source'),
+                    'runtime_ai_provider': ai_status.get('provider'),
+                    'runtime_ai_model': ai_status.get('model'),
                     'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
                 },
                 status=status.HTTP_202_ACCEPTED,
@@ -3524,6 +3528,13 @@ def refresh_whale_advisory_api(request, symbol: str):
                     },
                     status=status.HTTP_503_SERVICE_UNAVAILABLE,
                 )
+
+    if should_force_sync_first_create:
+        logger.info(
+            'Force sync first advisory creation for user=%s symbol=%s to avoid queue-only bootstrap',
+            request.user.id,
+            normalized_symbol,
+        )
 
     if not prefer_sync_fallback:
         return Response(
@@ -3560,6 +3571,9 @@ def refresh_whale_advisory_api(request, symbol: str):
                 'fallback_sync': True,
                 'symbol': normalized_symbol,
                 'advisory_id': result.get('advisory_id'),
+                'runtime_ai_source': result.get('ai_source') or ai_status.get('source'),
+                'runtime_ai_provider': result.get('ai_provider') or ai_status.get('provider'),
+                'runtime_ai_model': result.get('ai_model') or ai_status.get('model'),
                 'message': 'Đã tạo advisory ngay lập tức (fallback đồng bộ).',
             },
             status=status.HTTP_200_OK,
@@ -3571,6 +3585,9 @@ def refresh_whale_advisory_api(request, symbol: str):
             'queued': False,
             'fallback_sync': True,
             'symbol': normalized_symbol,
+            'runtime_ai_source': ai_status.get('source'),
+            'runtime_ai_provider': ai_status.get('provider'),
+            'runtime_ai_model': ai_status.get('model'),
             'message': f'Đã xử lý fallback đồng bộ nhưng chưa tạo advisory mới (reason={reason}).',
         },
         status=status.HTTP_202_ACCEPTED,
