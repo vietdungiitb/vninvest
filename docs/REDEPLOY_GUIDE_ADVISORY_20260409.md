@@ -80,3 +80,8 @@ Can cap nhat env theo file portainer-nginx-proxy.env.example:
 - Frontend build: PASS
 - makemigrations --check --dry-run: no changes detected
 
+## Ops evidence script
+
+- Sprint 29 deploy evidence:
+  - `powershell -File scripts/ops/sprint29_collect_deploy_evidence.ps1`
+

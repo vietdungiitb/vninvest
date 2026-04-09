@@ -98,9 +98,15 @@
 - [x] **QA:** Smoke test matrix prepared
 - [x] **Monitoring:** Key metrics identified
 
-**Status:** ✅ **READY FOR PRODUCTION DEPLOY**
+**Status:** ⚠️ **CODE READY, PRODUCTION GATE PENDING**
+
+Remaining gates before full production sign-off:
+- [ ] Q0-02 manual E2E stock detail flow for VNM, VCB, FPT
+- [ ] Q0-03 performance report with p95 latency and failure-rate delta
+- [ ] R0-01 feature-flag canary execution and rollback verification
+- [ ] QA + Product/AI sign-off recorded with evidence
 
 **Release Date:** April 8, 2026  
 **Version:** 1.0  
-**Commitments Met:** ✅ 100%
+**Commitments Met:** ✅ Engineering scope complete, ops gates pending
 
