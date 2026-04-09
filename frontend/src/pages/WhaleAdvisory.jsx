@@ -172,11 +172,14 @@ function SymbolCell({ stats, isActive, onClick }) {
 }
 
 // ─── Ô cột phải: AI Advisory tương ứng ────────────────────────
-function AdvisoryCell({ item, onRefresh, refreshing }) {
+function AdvisoryCell({ item, symbol, onRefresh, refreshing, rowMessage }) {
   const { t } = useI18n();
-  const side = (item.side || '').toUpperCase();
+  const advisory = item || {};
+  const resolvedSymbol = String(symbol || item?.symbol || '').toUpperCase();
+  const hasAdvisory = Boolean(item);
+  const side = (advisory.side || '').toUpperCase();
   const isBuy = side === 'BUY';
-  const freshnessSeconds = getFreshnessSeconds(item.created_at);
+  const freshnessSeconds = getFreshnessSeconds(advisory.created_at);
   const realtimeStatus = getRealtimeStatusByFreshness(freshnessSeconds);
 
   return (
@@ -189,40 +192,40 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
           }`}>
             {side || 'UNKNOWN'}
           </span>
-          {item.severity && item.severity !== 'info' && (
+          {advisory.severity && advisory.severity !== 'info' && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-              item.severity === 'urgent' ? 'bg-red-900/70 text-red-300 animate-pulse'
+              advisory.severity === 'urgent' ? 'bg-red-900/70 text-red-300 animate-pulse'
               : 'bg-amber-900/60 text-amber-300'
             }`}>
-              {item.severity === 'urgent'
+              {advisory.severity === 'urgent'
                 ? t('whaleAdvisory.severityUrgent')
                 : t('whaleAdvisory.severityWarning')}
             </span>
           )}
-          {item.advisory_type === 'reversal' && (
+          {advisory.advisory_type === 'reversal' && (
             <span className="rounded-full bg-fuchsia-900/50 px-2 py-0.5 text-[10px] font-bold uppercase text-fuchsia-300">
               {t('whaleAdvisory.advisoryTypeReversal')}
             </span>
           )}
           <span className="text-xs font-semibold text-slate-100">
-            {fmtCompact(item.matched_value)} VND
+            {fmtCompact(advisory.matched_value)} VND
           </span>
         </div>
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-slate-500">
-          <span>{fmtTime(item.created_at)}</span>
-          <span className="tracking-widest">{[item.ai_provider || 'openclaw', item.ai_model || 'default'].join(' / ')}</span>
-          {item.source && (
+          <span>{fmtTime(advisory.created_at)}</span>
+          <span className="tracking-widest">{[advisory.ai_provider || 'openclaw', advisory.ai_model || 'default'].join(' / ')}</span>
+          {advisory.source && (
             <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-              item.source === 'periodic_job' ? 'bg-slate-800 text-slate-400'
-              : item.source === 'user_refresh' ? 'bg-cyan-900/40 text-cyan-400'
+              advisory.source === 'periodic_job' ? 'bg-slate-800 text-slate-400'
+              : advisory.source === 'user_refresh' ? 'bg-cyan-900/40 text-cyan-400'
               : 'bg-indigo-900/40 text-indigo-400'
             }`}>
-              {item.source === 'periodic_job' ? 'Auto' : item.source === 'user_refresh' ? 'Manual' : item.source}
-              {item.refresh_count > 0 && ` ×${item.refresh_count}`}
+              {advisory.source === 'periodic_job' ? 'Auto' : advisory.source === 'user_refresh' ? 'Manual' : advisory.source}
+              {advisory.refresh_count > 0 && ` ×${advisory.refresh_count}`}
             </span>
           )}
           <DataFreshnessBadge
-            lastEventAt={item.created_at}
+            lastEventAt={advisory.created_at}
             realtimeStatus={realtimeStatus}
             compact
           />
@@ -230,17 +233,23 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
       </div>
 
       <div className="mt-3">
-        <RecommendationCardExplainability
-          advisory={item}
-          freshnessSeconds={freshnessSeconds}
-          realtimeStatus={realtimeStatus}
-        />
+        {hasAdvisory ? (
+          <RecommendationCardExplainability
+            advisory={advisory}
+            freshnessSeconds={freshnessSeconds}
+            realtimeStatus={realtimeStatus}
+          />
+        ) : (
+          <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
+            {t('whaleAdvisory.noAdvisory')}
+          </div>
+        )}
       </div>
 
       {/* AI Summary */}
       <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
         <p className="text-xs leading-6 whitespace-pre-line text-slate-300">
-          {item.ai_summary || t('whaleHub.noAiSummary')}
+          {hasAdvisory ? (advisory.ai_summary || t('whaleHub.noAiSummary')) : t('whaleAdvisory.noAdvisory')}
         </p>
       </div>
 
@@ -257,10 +266,10 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
           </Link>
         }
       >
-        {item.ai_detail ? (
+        {hasAdvisory && advisory.ai_detail ? (
           <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
             <p className="text-xs leading-6 whitespace-pre-line text-slate-400">
-              {item.ai_detail}
+              {advisory.ai_detail}
             </p>
           </div>
         ) : null}
@@ -270,38 +279,43 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
       <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
         <button
           type="button"
-          onClick={() => onRefresh?.(item.symbol)}
+          onClick={() => onRefresh?.(resolvedSymbol)}
           disabled={Boolean(refreshing)}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
           {refreshing ? t('whaleAdvisory.refreshing') : t('whaleAdvisory.refreshAi')}
         </button>
         <Link
-          to={`/whale-alerts/${item.symbol}`}
+          to={`/whale-alerts/${resolvedSymbol}`}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
           {t('whaleHub.openSymbolDashboard')}
         </Link>
         <Link
-          to={`/stocks/${item.symbol}`}
+          to={`/stocks/${resolvedSymbol}`}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
           {t('whaleHub.openStockWorkspace')}
         </Link>
       </div>
+      {rowMessage ? (
+        <p className="mt-2 text-xs text-cyan-300">{rowMessage}</p>
+      ) : null}
 
-      <div className="mt-3">
-        <ActionChecklist
-          symbol={item.symbol}
-          isBlocked={freshnessSeconds !== null && freshnessSeconds > 120}
-          blockedReason={
-            freshnessSeconds !== null && freshnessSeconds > 120
-              ? t('actionChecklist.blockedDefault', { defaultValue: 'Dữ liệu không đủ tin cậy để tiến hành. Hãy làm mới và xem lại khuyến nghị.' })
-              : ''
-          }
-          onProceed={() => onRefresh?.(item.symbol)}
-        />
-      </div>
+      {hasAdvisory ? (
+        <div className="mt-3">
+          <ActionChecklist
+            symbol={resolvedSymbol}
+            isBlocked={freshnessSeconds !== null && freshnessSeconds > 120}
+            blockedReason={
+              freshnessSeconds !== null && freshnessSeconds > 120
+                ? t('actionChecklist.blockedDefault', { defaultValue: 'Dữ liệu không đủ tin cậy để tiến hành. Hãy làm mới và xem lại khuyến nghị.' })
+                : ''
+            }
+            onProceed={() => onRefresh?.(resolvedSymbol)}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -355,7 +369,8 @@ export default function WhaleAdvisory() {
   const [aiMessage, setAiMessage] = useState('');
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
   const [aiReady, setAiReady] = useState(false);
-  const [refreshingSymbol, setRefreshingSymbol] = useState('');
+  const [pendingRefreshSymbols, setPendingRefreshSymbols] = useState({});
+  const [rowMessages, setRowMessages] = useState({});
   const [refreshMessage, setRefreshMessage] = useState('');
   const [riskMode, setRiskMode] = useState(() => {
     const stored = localStorage.getItem('vninvest:risk-mode');
@@ -385,22 +400,29 @@ export default function WhaleAdvisory() {
     // Advisory list filters
     const [watchlistOnly, setWatchlistOnly] = useState(false);
 
+  const fetchDataSnapshot = useCallback(async () => {
+    const [advisoryResp, trackedResp] = await Promise.all([
+      getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true' } : {}),
+      getTrackedSymbols(),
+    ]);
+    const advisories = advisoryResp.data || [];
+    const tracked = trackedResp.data || [];
+    setItems(advisories);
+    setTrackedSymbols(tracked);
+    return advisories;
+  }, [watchlistOnly]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const [advisoryResp, trackedResp] = await Promise.all([
-        getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true' } : {}),
-        getTrackedSymbols(),
-      ]);
-      setItems(advisoryResp.data || []);
-      setTrackedSymbols(trackedResp.data || []);
+      await fetchDataSnapshot();
     } catch (err) {
       setError(err.response?.data?.detail || t('whaleAdvisory.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [t, watchlistOnly]);
+  }, [fetchDataSnapshot, t]);
 
   useEffect(() => {
     fetchData();
@@ -487,7 +509,7 @@ export default function WhaleAdvisory() {
 
   const hasSelectedAiModel = Boolean(aiModel);
 
-  const ensureAiConfigured = useCallback(async () => {
+  const ensureAiConfigured = useCallback(async (symbol) => {
     try {
       const cfgResp = await getUserConfig();
       const cfg = cfgResp?.data || {};
@@ -499,10 +521,16 @@ export default function WhaleAdvisory() {
       if (ready) {
         return true;
       }
-      setRefreshMessage(cfg.ai_config_message || t('whaleAdvisory.configRequired'));
+      setRowMessages((prev) => ({
+        ...prev,
+        [symbol]: cfg.ai_config_message || t('whaleAdvisory.configRequired'),
+      }));
       return false;
     } catch (err) {
-      setRefreshMessage(err?.response?.data?.message || t('whaleAdvisory.configCheckFailed'));
+      setRowMessages((prev) => ({
+        ...prev,
+        [symbol]: err?.response?.data?.message || err?.response?.data?.detail || t('whaleAdvisory.configCheckFailed'),
+      }));
       return false;
     }
   }, [t]);
@@ -599,22 +627,60 @@ export default function WhaleAdvisory() {
 
   const handleRefreshAdvisory = useCallback(async (symbol) => {
     if (!symbol) return;
-    if (!(await ensureAiConfigured())) {
+    if (pendingRefreshSymbols[symbol]) {
       return;
     }
-    setRefreshingSymbol(symbol);
-    setRefreshMessage('');
+    if (!(await ensureAiConfigured(symbol))) {
+      return;
+    }
+    const baselineMs = (() => {
+      const latestForSymbol = items
+        .filter((entry) => String(entry?.symbol || '').toUpperCase() === symbol)
+        .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())[0];
+      const parsed = latestForSymbol?.created_at ? new Date(latestForSymbol.created_at).getTime() : 0;
+      return Number.isFinite(parsed) ? parsed : 0;
+    })();
+
+    setPendingRefreshSymbols((prev) => ({ ...prev, [symbol]: true }));
+    setRowMessages((prev) => ({ ...prev, [symbol]: '' }));
     try {
       const resp = await refreshWhaleAdvisory(symbol);
-      setRefreshMessage(resp?.data?.message || t('whaleAdvisory.refreshQueued', { symbol }));
-      await fetchData();
+      setRowMessages((prev) => ({
+        ...prev,
+        [symbol]: resp?.data?.message || t('whaleAdvisory.refreshQueued', { symbol }),
+      }));
+
+      let done = false;
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        const advisories = await fetchDataSnapshot();
+        const latestForSymbol = advisories
+          .filter((entry) => String(entry?.symbol || '').toUpperCase() === symbol)
+          .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())[0];
+        const currentMs = latestForSymbol?.created_at ? new Date(latestForSymbol.created_at).getTime() : 0;
+        if (Number.isFinite(currentMs) && currentMs > baselineMs) {
+          done = true;
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 5000));
+      }
+
+      if (!done) {
+        setRowMessages((prev) => ({
+          ...prev,
+          [symbol]: t('whaleAdvisory.refreshQueued', { symbol }),
+        }));
+      }
     } catch (err) {
-      const message = err?.response?.data?.message || t('whaleAdvisory.refreshFailed');
-      setRefreshMessage(message);
+      const message = err?.response?.data?.message || err?.response?.data?.detail || t('whaleAdvisory.refreshFailed');
+      setRowMessages((prev) => ({ ...prev, [symbol]: message }));
     } finally {
-      setRefreshingSymbol('');
+      setPendingRefreshSymbols((prev) => {
+        const next = { ...prev };
+        delete next[symbol];
+        return next;
+      });
     }
-  }, [ensureAiConfigured, fetchData, t]);
+  }, [ensureAiConfigured, fetchDataSnapshot, items, pendingRefreshSymbols, t]);
 
   const filteredItems = useMemo(() => {
     if (riskMode === 'aggressive') return items;
@@ -1127,17 +1193,13 @@ export default function WhaleAdvisory() {
 
                   {/* Cột phải: Advisory mới nhất */}
                   <div>
-                    {latest ? (
-                      <AdvisoryCell
-                        item={latest}
-                        onRefresh={handleRefreshAdvisory}
-                        refreshing={refreshingSymbol === row.symbol}
-                      />
-                    ) : (
-                      <div className="flex items-center p-4 text-xs text-slate-600">
-                        {t('whaleAdvisory.noAdvisory')}
-                      </div>
-                    )}
+                    <AdvisoryCell
+                      item={latest}
+                      symbol={row.symbol}
+                      onRefresh={handleRefreshAdvisory}
+                      refreshing={Boolean(pendingRefreshSymbols[row.symbol])}
+                      rowMessage={rowMessages[row.symbol] || ''}
+                    />
                   </div>
                 </div>
               );

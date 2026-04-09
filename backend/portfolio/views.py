@@ -3404,15 +3404,14 @@ def refresh_whale_advisory_api(request, symbol: str):
         )
 
     latest = WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
-    if latest is None:
-        return Response(
-            {
-                'queued': False,
-                'symbol': normalized_symbol,
-                'message': 'Chưa có advisory để refresh. Hệ thống sẽ tạo tự động khi có tín hiệu whale mới.',
-            },
-            status=status.HTTP_404_NOT_FOUND,
-        )
+    latest_symbol_side = (
+        WhaleAdvisory.objects
+        .filter(symbol=normalized_symbol)
+        .exclude(side__iexact='UNKNOWN')
+        .order_by('-created_at')
+        .values_list('side', flat=True)
+        .first()
+    )
 
     entitlements = resolve_user_entitlements(request.user)
     regenerate_quota = consume_quota(
@@ -3426,12 +3425,16 @@ def refresh_whale_advisory_api(request, symbol: str):
             status=status.HTTP_429_TOO_MANY_REQUESTS,
         )
 
+    matched_value_vnd = float(latest.matched_value) if latest else float(user_cfg.whale_alert_threshold or 500) * 1_000_000
+    advisory_side = latest.side if latest else (str(latest_symbol_side or 'UNKNOWN').upper())
+    advisory_threshold = float(latest.threshold or 0) if latest else float(user_cfg.whale_alert_threshold or 500) * 1_000_000
+
     task = generate_whale_advisory_task.apply_async(
         kwargs={
             'symbol': normalized_symbol,
-            'matched_value_vnd': float(latest.matched_value),
-            'side': latest.side,
-            'threshold': float(latest.threshold or 0),
+            'matched_value_vnd': matched_value_vnd,
+            'side': advisory_side,
+            'threshold': advisory_threshold,
             'force_refresh': True,
             'user_id': request.user.id,
             'source': WhaleAdvisory.SourceChoices.USER_REFRESH,
@@ -3445,7 +3448,7 @@ def refresh_whale_advisory_api(request, symbol: str):
             'queued': True,
             'symbol': normalized_symbol,
             'task_id': task.id,
-            'message': 'Đã nhận yêu cầu refresh advisory.',
+            'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
         },
         status=status.HTTP_202_ACCEPTED,
     )

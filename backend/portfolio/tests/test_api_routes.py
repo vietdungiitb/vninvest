@@ -971,13 +971,20 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
 
-    def test_whale_advisory_refresh_endpoint_returns_404_if_no_existing(self):
+    def test_whale_advisory_refresh_endpoint_queues_when_no_existing(self):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()
 
-        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+        with patch('portfolio.tasks.generate_whale_advisory_task.apply_async') as mock_apply_async:
+            mock_task = MagicMock()
+            mock_task.id = 'task-bootstrap-1'
+            mock_apply_async.return_value = mock_task
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'SSI')
 
     @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
     def test_whale_advisory_refresh_endpoint_returns_429_when_manual_cooldown_active(self, _mock_cache_get):
