@@ -1400,7 +1400,7 @@ class ApiRouteSmokeTests(APITestCase):
             },
         },
     )
-    def test_stock_ai_advisory_session_get_returns_429_when_api_quota_exceeded(self):
+    def test_stock_ai_advisory_session_get_is_not_blocked_by_api_quota(self):
         cache.clear()
         self.authenticate()
         WhaleAdvisory.objects.create(
@@ -1419,11 +1419,7 @@ class ApiRouteSmokeTests(APITestCase):
         second = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
 
         self.assertEqual(first.status_code, status.HTTP_200_OK)
-        self.assertEqual(second.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-        self.assertEqual(second.data['code'], 'quota_exceeded')
-        self.assertEqual(second.data['quota_key'], 'api_calls_per_day')
-        self.assertEqual(second.data['limit'], 1)
-        self.assertEqual(second.data['remaining'], 0)
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
 
     def test_stock_ai_advisory_components_generate_returns_403_when_feature_locked_for_free_dpi_license(self):
         self._attach_dpi_license('free', {'sentiment_score': False})

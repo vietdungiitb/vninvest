@@ -3661,7 +3661,6 @@ _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
         'POST': 'api_calls_per_day',
     },
     'stock_ai_advisory_session_api': {
-        'GET': 'api_calls_per_day',
         'POST': 'ai_regenerate_per_day',
     },
     'stock_ai_advisory_components_generate_api': {
