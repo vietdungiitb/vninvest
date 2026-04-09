@@ -196,3 +196,14 @@
 - Da bo sung wrapper release gate:
   - `scripts/ops/sprint30_run_release_gate.ps1`
   - Muc tieu: chay mot lenh cho `collect deploy evidence` + `runtime KPI smoke`, co ho tro skip flags.
+
+### Tien do tiep tuc (2026-04-09 - hardening refresh advisory)
+- Da bo sung co che hardening cho manual refresh Whale Advisory khi worker Celery khong san sang:
+  - Them env flag `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER` trong settings.
+  - Flag=True: endpoint refresh co the fallback dong bo, tao advisory ngay.
+  - Flag=False: endpoint refresh fail-fast `503` de uu tien mo hinh async nghiem ngat.
+- Da cap nhat env template:
+  - `backend/.env.example`
+  - `backend/.env.production.example`
+- Da bo sung regression test:
+  - no worker + fallback disabled -> `503`.

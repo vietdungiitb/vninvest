@@ -693,8 +693,9 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data[0]['symbol'], 'AAA')
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async, _mock_cache_get):
+    def test_whale_advisory_refresh_endpoint_queues_task_for_pro(self, mock_apply_async, _mock_worker_available, _mock_cache_get):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
@@ -726,8 +727,9 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(kwargs['source'], WhaleAdvisory.SourceChoices.USER_REFRESH)
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_whale_advisory_refresh_endpoint_returns_business_403_for_community_plan(self, mock_apply_async, _mock_cache_get):
+    def test_whale_advisory_refresh_endpoint_returns_business_403_for_community_plan(self, mock_apply_async, _mock_worker_available, _mock_cache_get):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'free', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
@@ -953,8 +955,9 @@ class ApiRouteSmokeTests(APITestCase):
 
     @patch.dict('os.environ', {'OPENCLAW_API_KEY': 'system-openclaw-key'}, clear=False)
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_whale_advisory_refresh_endpoint_uses_system_fallback_when_user_ai_missing(self, mock_apply_async, _mock_cache_get):
+    def test_whale_advisory_refresh_endpoint_uses_system_fallback_when_user_ai_missing(self, mock_apply_async, _mock_worker_available, _mock_cache_get):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
@@ -994,15 +997,128 @@ class ApiRouteSmokeTests(APITestCase):
         self.authenticate()
 
         with patch('portfolio.tasks.generate_whale_advisory_task.apply_async') as mock_apply_async:
-            mock_task = MagicMock()
-            mock_task.id = 'task-bootstrap-1'
-            mock_apply_async.return_value = mock_task
+            with patch('portfolio.views._is_celery_worker_available', return_value=True):
+                mock_task = MagicMock()
+                mock_task.id = 'task-bootstrap-1'
+                mock_apply_async.return_value = mock_task
 
-            response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+                response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(response.data['queued'])
         self.assertEqual(response.data['symbol'], 'SSI')
+
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=False)
+    @patch('portfolio.tasks.generate_whale_advisory_task.run')
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_runs_sync_fallback_when_worker_unavailable(
+        self,
+        mock_apply_async,
+        mock_task_run,
+        _mock_worker_available,
+        _mock_cache_get,
+    ):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        mock_task_run.return_value = {
+            'status': 'ok',
+            'advisory_id': 123,
+            'symbol': 'SSI',
+        }
+
+        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['queued'])
+        self.assertTrue(response.data['fallback_sync'])
+        self.assertEqual(response.data['symbol'], 'SSI')
+        mock_apply_async.assert_not_called()
+        mock_task_run.assert_called_once()
+
+    @override_settings(WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=False)
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=False)
+    @patch('portfolio.tasks.generate_whale_advisory_task.run')
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_returns_503_when_no_worker_and_sync_fallback_disabled(
+        self,
+        mock_apply_async,
+        mock_task_run,
+        _mock_worker_available,
+        _mock_cache_get,
+    ):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+
+        response = self.client.post('/api/portfolio/whale-advisory/SSI/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'SSI')
+        mock_apply_async.assert_not_called()
+        mock_task_run.assert_not_called()
+
+    def test_delete_current_whale_advisory_endpoint_deletes_latest_for_symbol(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        old_record = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=5_000_000_000,
+            side='BUY',
+            threshold=3_000_000_000,
+            ai_summary='old',
+            ai_detail='old detail',
+            ai_model='gpt-4o',
+        )
+        latest_record = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_000_000_000,
+            side='SELL',
+            threshold=3_000_000_000,
+            ai_summary='latest',
+            ai_detail='latest detail',
+            ai_model='gpt-4o',
+        )
+
+        response = self.client.delete('/api/portfolio/whale-advisory/FPT/current/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['deleted_id'], latest_record.id)
+        self.assertTrue(WhaleAdvisory.objects.filter(id=old_record.id).exists())
+        self.assertFalse(WhaleAdvisory.objects.filter(id=latest_record.id).exists())
+
+    def test_delete_current_whale_advisory_endpoint_returns_404_when_missing(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+
+        response = self.client.delete('/api/portfolio/whale-advisory/SSI/current/')
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(response.data['ok'])
+
+    def test_delete_current_whale_advisory_endpoint_returns_business_403_for_community(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'free', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_000_000_000,
+            side='SELL',
+            threshold=3_000_000_000,
+            ai_summary='latest',
+            ai_detail='latest detail',
+            ai_model='gpt-4o',
+        )
+
+        response = self.client.delete('/api/portfolio/whale-advisory/FPT/current/')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['reason'], 'plan_upgrade_required')
 
     @patch('portfolio.views._cache_get', return_value='2026-04-04T10:00:00+07:00')
     def test_whale_advisory_refresh_endpoint_returns_429_when_manual_cooldown_active(self, _mock_cache_get):
@@ -1038,8 +1154,9 @@ class ApiRouteSmokeTests(APITestCase):
         },
     )
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_whale_advisory_refresh_endpoint_returns_429_when_ai_regenerate_quota_exceeded(self, mock_apply_async, _mock_cache_get):
+    def test_whale_advisory_refresh_endpoint_returns_429_when_ai_regenerate_quota_exceeded(self, mock_apply_async, _mock_worker_available, _mock_cache_get):
         cache.clear()
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
         self.authenticate()

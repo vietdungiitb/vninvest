@@ -46,6 +46,8 @@ Evidence / tools:
   - Mitigation: execute one controlled smoke case with user config intentionally incomplete.
 - Risk 3: audit log growth in production.
   - Mitigation: run retention command on schedule and keep dry-run evidence before first prune.
+- Risk 4: worker Celery tam thoi khong available lam refresh advisory chi queue ma khong tao record.
+  - Mitigation: dung env `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER` de control fallback dong bo theo moi truong.
 
 ## 5) Decision
 
@@ -69,6 +71,11 @@ Evidence / tools:
 3. Attach fallback scenario evidence (user config invalid, system config valid).
 4. Attach retention dry-run output (`prune_system_ai_audit_logs --dry-run`).
 5. Collect QA/BE/DevOps/PM signatures.
+6. Verify env flag da set dung:
+  - `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True` (khuyen nghi cho staging va giai doan dau production).
+7. Verify contract runtime khi worker dung:
+  - Neu flag=True: endpoint refresh tra `200` + `fallback_sync=true`.
+  - Neu flag=False: endpoint refresh tra `503` fail-fast.
 
 ## 8) Partial-run commands (ops convenience)
 

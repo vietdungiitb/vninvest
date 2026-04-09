@@ -430,6 +430,11 @@ OPENCLAW_BASE_URL = os.getenv("OPENCLAW_BASE_URL", "https://api.openclaw.ai/v1")
 OPENCLAW_MODEL    = os.getenv("OPENCLAW_MODEL", "openclaw-finance-v1")
 # Cooldown: tránh gọi AI 2 lần cho cùng symbol trong khoảng thời gian này (giây)
 WHALE_ADVISORY_COOLDOWN_SECONDS = _env_int("WHALE_ADVISORY_COOLDOWN_SECONDS", 900)  # 15 phút
+# Khi không có Celery worker, cho phép endpoint refresh chạy fallback đồng bộ.
+# Khuyến nghị:
+# - Staging: True để giảm false-negative khi worker restart.
+# - Production: True nếu ưu tiên UX tạo advisory ngay; False nếu muốn fail-fast (503) khi worker down.
+WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER", "True").lower() == "true"
 MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES", 5)
 MISSION_CONTROL_ANOMALY_BASELINE_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_BASELINE_MINUTES", 30)
 MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS = _env_int("MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS", 3)

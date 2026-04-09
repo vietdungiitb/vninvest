@@ -3385,6 +3385,17 @@ def whale_advisory_auto_refresh_info_api(request, symbol: str):
     return Response(response_payload, status=status.HTTP_200_OK)
 
 
+def _is_celery_worker_available() -> bool:
+    try:
+        from config.celery import app as celery_app
+
+        inspect = celery_app.control.inspect(timeout=1.0)
+        ping_result = inspect.ping() or {}
+        return bool(ping_result)
+    except Exception:
+        return False
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def refresh_whale_advisory_api(request, symbol: str):
@@ -3466,28 +3477,151 @@ def refresh_whale_advisory_api(request, symbol: str):
     advisory_side = latest.side if latest else (str(latest_symbol_side or 'UNKNOWN').upper())
     advisory_threshold = float(latest.threshold or 0) if latest else float(user_cfg.whale_alert_threshold or 500) * 1_000_000
 
-    task = generate_whale_advisory_task.apply_async(
-        kwargs={
-            'symbol': normalized_symbol,
-            'matched_value_vnd': matched_value_vnd,
-            'side': advisory_side,
-            'threshold': advisory_threshold,
-            'force_refresh': True,
-            'user_id': request.user.id,
-            'source': WhaleAdvisory.SourceChoices.USER_REFRESH,
-        },
-        countdown=0,
-    )
-    _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+    task_kwargs = {
+        'symbol': normalized_symbol,
+        'matched_value_vnd': matched_value_vnd,
+        'side': advisory_side,
+        'threshold': advisory_threshold,
+        'force_refresh': True,
+        'user_id': request.user.id,
+        'source': WhaleAdvisory.SourceChoices.USER_REFRESH,
+    }
 
+    prefer_sync_fallback = bool(getattr(settings, 'WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
+
+    worker_available = _is_celery_worker_available()
+
+    if worker_available:
+        try:
+            task = generate_whale_advisory_task.apply_async(
+                kwargs=task_kwargs,
+                countdown=0,
+            )
+            _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+            return Response(
+                {
+                    'queued': True,
+                    'symbol': normalized_symbol,
+                    'task_id': task.id,
+                    'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
+        except Exception as exc:
+            logger.warning(
+                'Queue refresh whale advisory failed for user=%s symbol=%s, fallback sync=%s err=%s',
+                request.user.id,
+                normalized_symbol,
+                prefer_sync_fallback,
+                exc,
+            )
+            if not prefer_sync_fallback:
+                return Response(
+                    {
+                        'queued': False,
+                        'symbol': normalized_symbol,
+                        'message': 'Không thể đưa yêu cầu vào hàng đợi xử lý advisory. Vui lòng thử lại sau.',
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+    if not prefer_sync_fallback:
+        return Response(
+            {
+                'queued': False,
+                'symbol': normalized_symbol,
+                'message': 'Không có worker xử lý advisory. Vui lòng thử lại sau.',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    try:
+        result = generate_whale_advisory_task.run(**task_kwargs)
+    except Exception as exc:
+        logger.exception(
+            'Sync fallback refresh whale advisory failed for user=%s symbol=%s',
+            request.user.id,
+            normalized_symbol,
+        )
+        return Response(
+            {
+                'queued': False,
+                'symbol': normalized_symbol,
+                'message': f'Không thể tạo advisory ngay lúc này: {exc}',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+    if isinstance(result, dict) and result.get('status') == 'ok':
+        return Response(
+            {
+                'queued': False,
+                'fallback_sync': True,
+                'symbol': normalized_symbol,
+                'advisory_id': result.get('advisory_id'),
+                'message': 'Đã tạo advisory ngay lập tức (fallback đồng bộ).',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    reason = result.get('reason') if isinstance(result, dict) else 'unknown'
     return Response(
         {
-            'queued': True,
+            'queued': False,
+            'fallback_sync': True,
             'symbol': normalized_symbol,
-            'task_id': task.id,
-            'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
+            'message': f'Đã xử lý fallback đồng bộ nhưng chưa tạo advisory mới (reason={reason}).',
         },
         status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_current_whale_advisory_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    entitlements = resolve_user_entitlements(request.user)
+    if not entitlements.get('can_read_whale_advisory', False):
+        return Response(
+            {
+                'ok': False,
+                'symbol': normalized_symbol,
+                'reason': 'plan_upgrade_required',
+                'message': 'Gói hiện tại chưa hỗ trợ thao tác này. Vui lòng nâng cấp lên Pro.',
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    latest = (
+        WhaleAdvisory.objects
+        .filter(user=request.user, symbol=normalized_symbol)
+        .order_by('-created_at')
+        .first()
+    )
+    if latest is None:
+        return Response(
+            {
+                'ok': False,
+                'symbol': normalized_symbol,
+                'message': 'Không tìm thấy advisory hiện tại để xóa.',
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    deleted_id = latest.id
+    latest.delete()
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'deleted_id': deleted_id,
+            'message': 'Đã xóa advisory hiện tại.',
+        },
+        status=status.HTTP_200_OK,
     )
 
 

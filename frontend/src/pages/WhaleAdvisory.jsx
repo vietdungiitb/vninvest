@@ -6,6 +6,7 @@ import {
   getPortfolioUserConfig,
   getTrackedSymbols,
   refreshWhaleAdvisory,
+  deleteCurrentWhaleAdvisory,
   getWhaleAdvisories,
   testAIConnection,
   updateUserConfig,
@@ -172,7 +173,7 @@ function SymbolCell({ stats, isActive, onClick }) {
 }
 
 // ─── Ô cột phải: AI Advisory tương ứng ────────────────────────
-function AdvisoryCell({ item, symbol, onRefresh, refreshing, rowMessage }) {
+function AdvisoryCell({ item, symbol, onRefresh, onDeleteCurrent, refreshing, deleting, rowMessage }) {
   const { t } = useI18n();
   const advisory = item || {};
   const resolvedSymbol = String(symbol || item?.symbol || '').toUpperCase();
@@ -290,10 +291,18 @@ function AdvisoryCell({ item, symbol, onRefresh, refreshing, rowMessage }) {
         <button
           type="button"
           onClick={() => onRefresh?.(resolvedSymbol)}
-          disabled={Boolean(refreshing)}
+          disabled={Boolean(refreshing) || Boolean(deleting)}
           className="btn-secondary inline-flex items-center justify-center text-[11px]"
         >
           {refreshing ? t('whaleAdvisory.refreshing') : t('whaleAdvisory.refreshAi')}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDeleteCurrent?.(resolvedSymbol)}
+          disabled={!hasAdvisory || Boolean(refreshing) || Boolean(deleting)}
+          className="inline-flex items-center justify-center rounded-md border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-[11px] text-rose-300 transition hover:bg-rose-900/40 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleting ? 'Đang xóa...' : 'Xóa advisory hiện tại'}
         </button>
         <Link
           to={`/whale-alerts/${resolvedSymbol}`}
@@ -380,6 +389,7 @@ export default function WhaleAdvisory() {
   const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
   const [aiReady, setAiReady] = useState(false);
   const [pendingRefreshSymbols, setPendingRefreshSymbols] = useState({});
+  const [pendingDeleteSymbols, setPendingDeleteSymbols] = useState({});
   const [rowMessages, setRowMessages] = useState({});
   const [refreshMessage, setRefreshMessage] = useState('');
   const [riskMode, setRiskMode] = useState(() => {
@@ -691,6 +701,33 @@ export default function WhaleAdvisory() {
       });
     }
   }, [ensureAiConfigured, fetchDataSnapshot, items, pendingRefreshSymbols, t]);
+
+  const handleDeleteCurrentAdvisory = useCallback(async (symbol) => {
+    if (!symbol) return;
+    if (pendingDeleteSymbols[symbol] || pendingRefreshSymbols[symbol]) {
+      return;
+    }
+
+    setPendingDeleteSymbols((prev) => ({ ...prev, [symbol]: true }));
+    setRowMessages((prev) => ({ ...prev, [symbol]: '' }));
+    try {
+      const resp = await deleteCurrentWhaleAdvisory(symbol);
+      await fetchDataSnapshot();
+      setRowMessages((prev) => ({
+        ...prev,
+        [symbol]: resp?.data?.message || 'Đã xóa advisory hiện tại.',
+      }));
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.response?.data?.detail || 'Không thể xóa advisory hiện tại.';
+      setRowMessages((prev) => ({ ...prev, [symbol]: message }));
+    } finally {
+      setPendingDeleteSymbols((prev) => {
+        const next = { ...prev };
+        delete next[symbol];
+        return next;
+      });
+    }
+  }, [fetchDataSnapshot, pendingDeleteSymbols, pendingRefreshSymbols]);
 
   const filteredItems = useMemo(() => {
     if (riskMode === 'aggressive') return items;
@@ -1207,7 +1244,9 @@ export default function WhaleAdvisory() {
                       item={latest}
                       symbol={row.symbol}
                       onRefresh={handleRefreshAdvisory}
+                      onDeleteCurrent={handleDeleteCurrentAdvisory}
                       refreshing={Boolean(pendingRefreshSymbols[row.symbol])}
+                      deleting={Boolean(pendingDeleteSymbols[row.symbol])}
                       rowMessage={rowMessages[row.symbol] || ''}
                     />
                   </div>

@@ -207,6 +207,8 @@ export const getWhaleAdvisories = (params = {}) => {
 };
 export const refreshWhaleAdvisory = (symbol) =>
   apiClient.post(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/refresh/`);
+export const deleteCurrentWhaleAdvisory = (symbol) =>
+  apiClient.delete(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/current/`);
 export const getAdvisoryAutoRefreshInfo = (symbol) =>
   apiClient.get(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/auto-refresh-info/`);
 export const getPortfolioUserConfig = () => apiClient.get('/portfolio/userconfig/');
