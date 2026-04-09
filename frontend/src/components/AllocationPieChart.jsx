@@ -21,9 +21,11 @@ const COLORS = [
 ];
 
 function formatVND(value, formatNumberFn, localeTag) {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
-  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(0)}M`;
-  return new Intl.NumberFormat(localeTag).format(value);
+  // market_value đơn vị k đ → ×1000 ra VNĐ, compact cho dễ đọc
+  const vnd = (Number(value) || 0) * 1000;
+  if (vnd >= 1_000_000_000) return `${(vnd / 1_000_000_000).toFixed(2)}B VNĐ`;
+  if (vnd >= 1_000_000) return `${(vnd / 1_000_000).toFixed(0)}tr VNĐ`;
+  return `${new Intl.NumberFormat(localeTag).format(Math.round(vnd))} VNĐ`;
 }
 
 function CustomTooltip({ active, payload, mode, formatNumberFn, localeTag }) {
@@ -34,7 +36,7 @@ function CustomTooltip({ active, payload, mode, formatNumberFn, localeTag }) {
       <p className="text-sm font-bold text-gray-100 mb-1">
         {mode === 'sector' ? d.sector : d.symbol}
       </p>
-      <p className="text-xs text-gray-400">{formatVND(d.value, formatNumberFn, localeTag)} ₫</p>
+      <p className="text-xs text-gray-400">{formatVND(d.value, formatNumberFn, localeTag)}</p>
       <p className="text-xs font-medium text-brand-400">{d.percentage.toFixed(2)}%</p>
     </div>
   );

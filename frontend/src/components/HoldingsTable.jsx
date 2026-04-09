@@ -4,18 +4,17 @@
  */
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { formatVND } from './StatCard';
 import EmptyState from './EmptyState';
 import { useI18n } from '../context/LangContext';
 
-function PLCell({ value, pct, locale }) {
+function PLCell({ value, pct, formatQuotePriceFn }) {
   if (value === null || value === undefined) return <span className="text-gray-500">—</span>;
   const num = parseFloat(value);
   const color = num > 0 ? 'text-brand-500' : num < 0 ? 'text-red-400' : 'text-gray-400';
   const sign = num > 0 ? '+' : '';
   return (
     <span className={color}>
-      {sign}{formatVND(value, locale)}
+      {sign}{formatQuotePriceFn(value)}
       {pct !== null && pct !== undefined && (
         <span className="ml-1 text-xs opacity-75">
           ({sign}{parseFloat(pct).toFixed(2)}%)
@@ -26,7 +25,7 @@ function PLCell({ value, pct, locale }) {
 }
 
 export default function HoldingsTable({ holdings, loading }) {
-  const { locale, t, formatNumber } = useI18n();
+  const { t, formatQuotePrice, formatQuoteVolume } = useI18n();
   if (loading) {
     return (
       <div className="space-y-2">
@@ -59,6 +58,7 @@ export default function HoldingsTable({ holdings, loading }) {
 
   return (
     <div className="overflow-x-auto">
+      <p className="mb-2 text-[11px] text-gray-500">{t('holdings.priceUnitHint')}</p>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-800 text-left">
@@ -78,32 +78,32 @@ export default function HoldingsTable({ holdings, loading }) {
                 </Link>
               </td>
               <td className="py-3 pr-4 text-gray-300">
-                {formatNumber(h.quantity)}
+                {formatQuoteVolume(h.quantity)}
               </td>
-              <td className="py-3 pr-4 text-gray-300">{formatVND(h.avg_cost, locale)}</td>
+              <td className="py-3 pr-4 text-gray-300 tabular-nums">{formatQuotePrice(h.avg_cost)}</td>
               <td className="py-3 pr-4 text-gray-300">
                 {(h.live_current_price ?? h.current_price)
-                  ? formatVND(h.live_current_price ?? h.current_price, locale)
+                  ? formatQuotePrice(h.live_current_price ?? h.current_price)
                   : <span className="text-gray-600">{t('holdings.notSynced')}</span>}
               </td>
               <td className="py-3 pr-4 text-gray-300">
                 {(h.live_market_value ?? h.market_value)
-                  ? formatVND(h.live_market_value ?? h.market_value, locale)
+                  ? formatQuotePrice(h.live_market_value ?? h.market_value)
                   : '—'}
               </td>
               <td className="py-3 pr-4">
                 <PLCell
                   value={h.live_unrealized_pl ?? h.unrealized_pl}
                   pct={h.live_unrealized_pl_pct ?? h.unrealized_pl_pct}
-                  locale={locale}
+                  formatQuotePriceFn={formatQuotePrice}
                 />
               </td>
               <td className="py-3 pr-4">
-                <PLCell value={h.realized_pl} pct={null} locale={locale} />
+                <PLCell value={h.realized_pl} pct={null} formatQuotePriceFn={formatQuotePrice} />
               </td>
               <td className="py-3 pr-4 text-yellow-400 text-sm">
                 {parseFloat(h.dividends_received || 0) > 0
-                  ? formatVND(h.dividends_received, locale)
+                  ? formatQuotePrice(h.dividends_received)
                   : <span className="text-gray-700">—</span>}
               </td>
             </tr>

@@ -1098,8 +1098,8 @@ class MarketDataService:
                 source='VCI',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
-                week52_high = round(float(history_df['high'].max()), 0)
-                week52_low = round(float(history_df['low'].min()), 0)
+                week52_high = round(float(history_df['high'].max()), 2)
+                week52_low = round(float(history_df['low'].min()), 2)
                 if week52_high > 0:
                     payload['week52_high'] = week52_high
                 if week52_low > 0:

@@ -39,12 +39,7 @@ import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsD
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 
-function formatCurrency(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  return `${Number(value).toLocaleString(undefined)} k VND`;
-}
+// Giá hiển thị theo chuẩn bảng giá: en-US, 2 chữ số thập phân, không kèm đơn vị trong từng ô.
 
 function formatChartAxis(value) {
   const numericValue = Number(value);
@@ -84,10 +79,10 @@ function fmtPrice(v) {
 
 function fmtVol(v) {
   if (v == null || !Number.isFinite(Number(v))) return '—';
-  const n = Number(v);
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString(undefined);
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(v));
 }
 
 function advisoryStatusLabel(status, t) {
@@ -603,7 +598,7 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRang
 }
 
 function IntradayMatchedPanel({ symbol, liveVolume }) {
-  const { t } = useI18n();
+  const { t, formatQuotePrice } = useI18n();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -756,7 +751,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
               >
                 <span className="text-slate-500">{row.time}</span>
                 <span className={`font-semibold tabular-nums ${row.side === 'buy' ? 'text-emerald-300' : row.side === 'sell' ? 'text-rose-300' : 'text-slate-200'}`}>
-                  {row.price != null ? Number(row.price).toLocaleString(undefined) : '—'}
+                  {row.price != null ? formatQuotePrice(row.price) : '—'}
                 </span>
                 <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
                 <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
@@ -893,7 +888,7 @@ function biasMeta(bias, t) {
 }
 
 function PriceDepthPanel({ symbol, liveVolume }) {
-  const { t } = useI18n();
+  const { t, formatQuotePrice } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -992,10 +987,10 @@ function PriceDepthPanel({ symbol, liveVolume }) {
           <div className="mt-2 space-y-2">
             {depth.map((row) => (
               <div key={row.level} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
-                <span className="text-slate-300">{formatCompactNumber(row.bid_volume)}</span>
-                <span className="font-semibold text-emerald-300">{formatCurrency(row.bid_price)}</span>
-                <span className="font-semibold text-rose-300">{formatCurrency(row.ask_price)}</span>
-                <span className="text-right text-slate-300">{formatCompactNumber(row.ask_volume)}</span>
+                <span className="text-slate-300">{fmtVol(row.bid_volume)}</span>
+                <span className="font-semibold text-emerald-300">{formatQuotePrice(row.bid_price)}</span>
+                <span className="font-semibold text-rose-300">{formatQuotePrice(row.ask_price)}</span>
+                <span className="text-right text-slate-300">{fmtVol(row.ask_volume)}</span>
               </div>
             ))}
           </div>
@@ -1005,17 +1000,17 @@ function PriceDepthPanel({ symbol, liveVolume }) {
             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-[12px]">
               <div>
                 <span className="text-slate-500">{t('stockDetail.foreignBuy')} </span>
-                <span className="font-semibold text-cyan-300">{formatCompactNumber(match.foreign_buy_volume)}</span>
+                <span className="font-semibold text-cyan-300">{fmtVol(match.foreign_buy_volume)}</span>
               </div>
               <div className="text-right">
                 <span className="text-slate-500">{t('stockDetail.foreignSell')} </span>
-                <span className="font-semibold text-orange-300">{formatCompactNumber(match.foreign_sell_volume)}</span>
+                <span className="font-semibold text-orange-300">{fmtVol(match.foreign_sell_volume)}</span>
               </div>
             </div>
           )}
           {ref && (
             <p className="mt-2 text-right text-[10px] text-slate-600">
-              {t('stockDetail.reference')} {formatCurrency(ref)} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
+              {t('stockDetail.reference')} {formatQuotePrice(ref)} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
             </p>
           )}
         </>
@@ -1264,7 +1259,7 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 }
 
 export default function StockDetail() {
-  const { t } = useI18n();
+  const { t, formatQuotePrice } = useI18n();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
   const [overview, setOverview] = useState(null);
@@ -2043,11 +2038,12 @@ export default function StockDetail() {
             {/* Current price + change */}
             <div>
               <p className="text-label">{t('stockDetail.currentPrice')}</p>
+              <p className="mt-1 text-[11px] text-slate-500">{t('stockDetail.priceUnitHint')}</p>
               <div className="mt-1 flex flex-wrap items-end gap-4">
-                <span className="text-5xl font-semibold leading-none text-white">{formatCurrency(currentPrice)}</span>
+                <span className="text-5xl font-semibold leading-none text-white">{formatQuotePrice(currentPrice)}</span>
                 <span className={`pb-1 text-lg font-semibold ${changeClass}`}>
                   {changeValue > 0 ? '+' : ''}
-                  {changeValue !== null && changeValue !== undefined ? formatCurrency(Math.abs(changeValue)).replace('₫', '').trim() : '—'}
+                  {changeValue !== null && changeValue !== undefined ? formatQuotePrice(Math.abs(changeValue)) : '—'}
                   {' · '}
                   {formatPercent(changePct)}
                 </span>
@@ -2072,22 +2068,22 @@ export default function StockDetail() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.refCeilFloor')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.reference_price)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">{formatCurrency(overview.ceiling_price)} / {formatCurrency(overview.floor_price)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.reference_price)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{formatQuotePrice(overview.ceiling_price)} / {formatQuotePrice(overview.floor_price)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.dayRange')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(liveLowPrice)} → {formatCurrency(liveHighPrice)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">{t('stockDetail.quantityShort')}: {formatCompactNumber(liveVolume)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(liveLowPrice)} → {formatQuotePrice(liveHighPrice)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{t('stockDetail.quantityShort')}: {fmtVol(liveVolume)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.range52w')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.week52_low)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">→ {formatCurrency(overview.week52_high)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.week52_low)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(overview.week52_high)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.average')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatCurrency(overview.average_price)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.average_price)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.bias')}</p>
@@ -2496,8 +2492,8 @@ export default function StockDetail() {
                     <p className="text-sm font-semibold text-rose-200">
                       {alert.condition === 'ABOVE' ? `▲ ${t('stockDetail.above')}` : `▼ ${t('stockDetail.below')}`}{' '}
                       {alert.target_price
-                        ? Number(alert.target_price).toLocaleString(undefined) + ' ₫'
-                        : formatCurrency(alert.price)}
+                        ? formatQuotePrice(alert.target_price)
+                        : formatQuotePrice(alert.price)}
                     </p>
                     {alert.ts && (
                       <p className="mt-1 text-[11px] text-slate-500">

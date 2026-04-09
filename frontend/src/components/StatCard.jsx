@@ -3,18 +3,11 @@
  * Card hiển thị một chỉ số tài chính (Net Worth, P/L...).
  */
 import React from 'react';
-import { getLocaleTag } from '../i18n';
+import { formatPriceVND } from '../i18n';
 import { useI18n } from '../context/LangContext';
 
 function formatVND(value, locale = 'vi') {
-  if (value === null || value === undefined) return '—';
-  const num = parseFloat(value);
-  if (isNaN(num)) return '—';
-  const formatted = new Intl.NumberFormat(getLocaleTag(locale), {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(num);
-  return `${formatted} k VND`;
+  return formatPriceVND(value, locale);
 }
 
 export default function StatCard({ label, value, sub, isPositive, isNegative, loading }) {

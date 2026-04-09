@@ -61,6 +61,47 @@ export function formatCurrency(value, locale, currency = 'VND', options = {}) {
   }).format(Number(value));
 }
 
+const QUOTE_LOCALE_TAG = 'en-US';
+
+export function formatQuotePrice(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return new Intl.NumberFormat(QUOTE_LOCALE_TAG, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
+export function formatQuoteVolume(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return new Intl.NumberFormat(QUOTE_LOCALE_TAG, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+}
+
+/**
+ * Chuẩn hóa hiển thị giá chứng khoán VN.
+ * Input : giá raw từ vnstock (đơn vị nghìn đồng, ví dụ 78.7)
+ * Output: "78.700 VNĐ" (vi-VN) / "78,700 VNĐ" (en-US)
+ * Không có số thập phân — làm tròn về VNĐ nguyên.
+ */
+export function formatPriceVND(value, locale) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  const vnd = Math.round(Number(value) * 1000);
+  return (
+    new Intl.NumberFormat(getLocaleTag(locale), {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(vnd) + ' VNĐ'
+  );
+}
+
 export function formatDateTime(value, locale, options = {}) {
   if (!value) {
     return '—';
