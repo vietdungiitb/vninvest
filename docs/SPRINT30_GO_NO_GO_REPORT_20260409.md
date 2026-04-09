@@ -25,6 +25,8 @@ Notes:
 Evidence / tools:
 - `docs/SPRINT30_SYSTEM_AI_UNIFICATION_20260409.md`
 - `scripts/ops/sprint30_collect_deploy_evidence.ps1`
+- `scripts/ops/sprint30_runtime_kpi_smoke.ps1`
+- `scripts/ops/sprint30_run_release_gate.ps1`
 
 ## 3) Remaining release gates
 
@@ -55,6 +57,10 @@ Evidence / tools:
 
 1. Run:
    - `powershell -File scripts/ops/sprint30_collect_deploy_evidence.ps1`
+   - `$cred = Get-Credential`
+   - `powershell -File scripts/ops/sprint30_runtime_kpi_smoke.ps1 -ApiBase <base> -Credential $cred`
+  - Hoac mot lenh gate:
+     - `powershell -File scripts/ops/sprint30_run_release_gate.ps1 -ApiBase <base> -Credential $cred`
 2. Attach staging screenshots/logs for:
    - `/api/ai-options/`
    - `/api/admin-ops/system-ai-settings/`
@@ -63,6 +69,15 @@ Evidence / tools:
 3. Attach fallback scenario evidence (user config invalid, system config valid).
 4. Attach retention dry-run output (`prune_system_ai_audit_logs --dry-run`).
 5. Collect QA/BE/DevOps/PM signatures.
+
+## 8) Partial-run commands (ops convenience)
+
+- Chi thu thap deploy evidence:
+  - `powershell -File scripts/ops/sprint30_run_release_gate.ps1 -SkipRuntimeKpiSmoke`
+- Chi runtime KPI smoke:
+  - `powershell -File scripts/ops/sprint30_run_release_gate.ps1 -SkipDeployEvidence -Credential $cred`
+- Bo qua network checks trong evidence script:
+  - `powershell -File scripts/ops/sprint30_run_release_gate.ps1 -SkipNetworkChecks -Credential $cred`
 
 ## 7) Signatures
 

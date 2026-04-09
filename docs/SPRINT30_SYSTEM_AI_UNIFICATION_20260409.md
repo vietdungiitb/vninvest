@@ -192,3 +192,7 @@
   - Thu thap artifact cho:
     - `/api/admin-ops/runtime-kpi/`
     - `/api/admin-ops/runtime-kpi/advisory-merge/`
+  - Auth input: `-AccessToken` hoac `-Credential` (khong truyen plain password string).
+- Da bo sung wrapper release gate:
+  - `scripts/ops/sprint30_run_release_gate.ps1`
+  - Muc tieu: chay mot lenh cho `collect deploy evidence` + `runtime KPI smoke`, co ho tro skip flags.

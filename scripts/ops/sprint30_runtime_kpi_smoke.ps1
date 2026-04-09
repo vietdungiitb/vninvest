@@ -1,8 +1,7 @@
 param(
   [string]$ApiBase = "http://127.0.0.1:8000",
-  [string]$Username,
-  [string]$Password,
-  [string]$AccessToken,
+  [System.Management.Automation.PSCredential]$Credential,
+  [System.Security.SecureString]$AccessToken,
   [string]$OutDir = "c:/Mujoco Projects/vninvest/docs/ops-evidence/sprint30/runtime-kpi"
 )
 
@@ -30,6 +29,14 @@ function Save-JsonArtifact {
 
   $json = $Object | ConvertTo-Json -Depth 10
   Set-Content -Path $Path -Value $json -Encoding utf8
+}
+
+function Convert-SecureToPlain {
+  param([System.Security.SecureString]$Secure)
+  if ($null -eq $Secure) {
+    return ""
+  }
+  return (New-Object System.Net.NetworkCredential('', $Secure)).Password
 }
 
 function Invoke-JsonRequest {
@@ -87,21 +94,24 @@ function Invoke-JsonRequest {
 }
 
 if (-not $AccessToken) {
-  if ([string]::IsNullOrWhiteSpace($Username) -or [string]::IsNullOrWhiteSpace($Password)) {
-    throw "Provide either -AccessToken or both -Username and -Password."
+  if ($null -eq $Credential) {
+    throw "Provide either -AccessToken or -Credential."
   }
 
   Write-Step "Authenticate"
+  $username = $Credential.UserName
+  $password = $Credential.GetNetworkCredential().Password
   $authResponse = Invoke-JsonRequest -Method "POST" -Url "$ApiBase/api/auth/token/" -Headers @{} -Body @{
-    username = $Username
-    password = $Password
+    username = $username
+    password = $password
   } -AllowedStatusCodes @(200)
 
   Save-JsonArtifact -Path "$OutDir/auth-token.json" -Object $authResponse.body
-  $AccessToken = [string]$authResponse.body.access
+  $AccessToken = (ConvertTo-SecureString -String ([string]$authResponse.body.access) -AsPlainText -Force)
 }
 
-$headers = @{ Authorization = "Bearer $AccessToken" }
+$accessTokenPlain = Convert-SecureToPlain -Secure $AccessToken
+$headers = @{ Authorization = "Bearer $accessTokenPlain" }
 
 Write-Step "Auth me"
 $meResponse = Invoke-JsonRequest -Method "GET" -Url "$ApiBase/api/auth/me/" -Headers $headers -Body $null -AllowedStatusCodes @(200)
