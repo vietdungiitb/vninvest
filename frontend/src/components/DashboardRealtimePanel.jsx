@@ -44,6 +44,7 @@ export default function DashboardRealtimePanel({
   alerts = [],
   metrics = null,
   monitoredSymbols = [],
+  enableSnapshot = true,
   onSyncRequest = null,
 }) {
   const { t, formatNumber, formatTime, formatQuotePrice } = useI18n();
@@ -86,6 +87,13 @@ export default function DashboardRealtimePanel({
     let cancelled = false;
 
     const loadSnapshotAlerts = async () => {
+      if (!enableSnapshot) {
+        if (!cancelled) {
+          setSnapshotAlerts([]);
+        }
+        return;
+      }
+
       if (!monitoredSymbols.length) {
         if (!cancelled) {
           setSnapshotAlerts([]);
@@ -116,7 +124,7 @@ export default function DashboardRealtimePanel({
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [monitoredKey, monitoredSymbols]);
+  }, [monitoredKey, monitoredSymbols, enableSnapshot]);
 
   const mergedAlerts = useMemo(() => {
     const combined = [];

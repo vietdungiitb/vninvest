@@ -21,7 +21,7 @@ import {
 } from '../utils/dashboardRealtimeSelectors';
 
 export default function Dashboard() {
-  const { activePortfolioId } = usePortfolio();
+  const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatDateTime } = useI18n();
 
   const [summary, setSummary] = useState(null);
@@ -92,11 +92,15 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    if (!isAuthenticated || !activePortfolioId) {
+      setTrackedSymbols([]);
+      return () => { cancelled = true; };
+    }
     getTrackedSymbols()
       .then((res) => { if (!cancelled) setTrackedSymbols(res.data || []); })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, []);
+  }, [isAuthenticated, activePortfolioId]);
 
   const handleSync = async () => {
     if (!activePortfolioId || syncing) return;
@@ -232,6 +236,7 @@ export default function Dashboard() {
         alerts={alerts}
         metrics={metrics}
         monitoredSymbols={monitoredSymbols}
+        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
         onSyncRequest={handleSync}
       />
 

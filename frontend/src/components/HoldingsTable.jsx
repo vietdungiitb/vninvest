@@ -26,7 +26,7 @@ function PLCell({ value, pct, formatQuotePriceFn, showInteger = false }) {
 }
 
 export default function HoldingsTable({ holdings, loading }) {
-  const { t, formatQuotePrice, formatQuoteVolume } = useI18n();
+  const { t, formatQuotePrice, formatQuoteVolume, formatQuoteInteger } = useI18n();
   if (loading) {
     return (
       <div className="space-y-2">
