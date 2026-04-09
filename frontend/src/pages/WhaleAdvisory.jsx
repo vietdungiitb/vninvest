@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import {
   getAIOptions,
   getUserConfig,
+  getPortfolioUserConfig,
   getTrackedSymbols,
   refreshWhaleAdvisory,
   getWhaleAdvisories,
   testAIConnection,
   updateUserConfig,
+  updatePortfolioUserConfig,
   getAdvisoryAutoRefreshInfo,
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -409,12 +411,21 @@ export default function WhaleAdvisory() {
 
     async function fetchAiSettings() {
       try {
-        const [optionsResp, cfgResp] = await Promise.all([getAIOptions(), getUserConfig()]);
+        const [optionsResult, aiCfgResult, userCfgResult] = await Promise.allSettled([
+          getAIOptions(),
+          getUserConfig(),
+          getPortfolioUserConfig(),
+        ]);
         if (!mounted) return;
+
+        const optionsResp = optionsResult.status === 'fulfilled' ? optionsResult.value : null;
+        const aiCfgResp = aiCfgResult.status === 'fulfilled' ? aiCfgResult.value : null;
+        const userCfgResp = userCfgResult.status === 'fulfilled' ? userCfgResult.value : null;
 
         const providers = optionsResp?.data?.providers || FALLBACK_MODELS;
         const modelCatalog = optionsResp?.data?.model_catalog || buildFallbackModelCatalog(providers);
-        const cfg = cfgResp?.data || {};
+        const cfg = aiCfgResp?.data || {};
+        const userCfg = userCfgResp?.data || {};
         const provider = (cfg.ai_provider || 'openclaw').toLowerCase();
         const model = (cfg.ai_model || '').trim();
 
@@ -426,17 +437,17 @@ export default function WhaleAdvisory() {
         setAiReady(Boolean(cfg.ai_ready));
 
         // Load advisory schedule settings
-        if (cfg.advisory_auto_generation_enabled !== undefined) {
-          setScheduleAutoEnabled(Boolean(cfg.advisory_auto_generation_enabled));
+        if (userCfg.advisory_auto_generation_enabled !== undefined) {
+          setScheduleAutoEnabled(Boolean(userCfg.advisory_auto_generation_enabled));
         }
-        if (cfg.advisory_refresh_interval_hours !== undefined) {
-          setScheduleIntervalHours(Number(cfg.advisory_refresh_interval_hours) || 24);
+        if (userCfg.advisory_refresh_interval_hours !== undefined) {
+          setScheduleIntervalHours(Number(userCfg.advisory_refresh_interval_hours) || 24);
         }
-        if (cfg.advisory_max_auto_refreshes_per_day !== undefined) {
-          setScheduleMaxRefreshes(Number(cfg.advisory_max_auto_refreshes_per_day) || 24);
+        if (userCfg.advisory_max_auto_refreshes_per_day !== undefined) {
+          setScheduleMaxRefreshes(Number(userCfg.advisory_max_auto_refreshes_per_day) || 24);
         }
-        if (cfg.advisory_max_tokens_per_day !== undefined) {
-          setScheduleMaxTokens(Number(cfg.advisory_max_tokens_per_day) || 5000);
+        if (userCfg.advisory_max_tokens_per_day !== undefined) {
+          setScheduleMaxTokens(Number(userCfg.advisory_max_tokens_per_day) || 5000);
         }
       } catch (_) {
         // Không chặn trang advisory khi API options lỗi.
@@ -554,7 +565,7 @@ export default function WhaleAdvisory() {
     setSavingSchedule(true);
     setScheduleMessage('');
     try {
-      await updateUserConfig({
+      await updatePortfolioUserConfig({
         advisory_auto_generation_enabled: scheduleAutoEnabled,
         advisory_refresh_interval_hours: Math.max(1, Number(scheduleIntervalHours) || 24),
         advisory_max_auto_refreshes_per_day: Math.max(1, Number(scheduleMaxRefreshes) || 24),

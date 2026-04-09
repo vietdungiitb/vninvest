@@ -209,9 +209,13 @@ export const refreshWhaleAdvisory = (symbol) =>
   apiClient.post(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/refresh/`);
 export const getAdvisoryAutoRefreshInfo = (symbol) =>
   apiClient.get(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/auto-refresh-info/`);
+export const getPortfolioUserConfig = () => apiClient.get('/portfolio/userconfig/');
+export const updatePortfolioUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);
+export const getAIConfig = () => apiClient.get('/ai-config/');
+export const updateAIConfig = (data) => apiClient.put('/ai-config/', data);
 export const getAIOptions = () => apiClient.get('/ai-options/');
-export const getUserConfig = () => apiClient.get('/ai-config/');
-export const updateUserConfig = (data) => apiClient.put('/ai-config/', data);
+export const getUserConfig = getAIConfig;
+export const updateUserConfig = updateAIConfig;
 export const testAIConnection = (data) => apiClient.post('/ai-config/test-connection/', data);
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
