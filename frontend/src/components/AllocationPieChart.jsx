@@ -20,15 +20,17 @@ const COLORS = [
   '#f97316', '#a855f7',
 ];
 
-function formatVND(value, formatNumberFn, localeTag) {
-  // market_value đơn vị k đ → ×1000 ra VNĐ, compact cho dễ đọc
-  const vnd = (Number(value) || 0) * 1000;
-  if (vnd >= 1_000_000_000) return `${(vnd / 1_000_000_000).toFixed(2)}B VNĐ`;
-  if (vnd >= 1_000_000) return `${(vnd / 1_000_000).toFixed(0)}tr VNĐ`;
-  return `${new Intl.NumberFormat(localeTag).format(Math.round(vnd))} VNĐ`;
+function formatVND(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
 }
 
-function CustomTooltip({ active, payload, mode, formatNumberFn, localeTag }) {
+function CustomTooltip({ active, payload, mode }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
   return (
@@ -65,7 +67,7 @@ function CustomLegend({ data, mode }) {
 }
 
 export default function AllocationPieChart({ portfolioId }) {
-  const { t, localeTag, formatNumber } = useI18n();
+  const { t } = useI18n();
   const [data, setData] = useState([]);
   const [hhi, setHhi] = useState(null);
   const [mode, setMode] = useState('symbol'); // 'symbol' | 'sector'
@@ -99,9 +101,12 @@ export default function AllocationPieChart({ portfolioId }) {
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       {/* Header + toggle */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-          {t('allocation.title')}
-        </h2>
+        <div>
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+            {t('allocation.title')}
+          </h2>
+          <p className="mt-1 text-[11px] text-gray-500">{t('allocation.priceUnitHint')}</p>
+        </div>
         <div className="flex rounded-md overflow-hidden border border-gray-700 text-xs">
           {['symbol', 'sector'].map((m) => (
             <button
@@ -147,7 +152,7 @@ export default function AllocationPieChart({ portfolioId }) {
                   />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip mode={mode} formatNumberFn={formatNumber} localeTag={localeTag} />} />
+              <Tooltip content={<CustomTooltip mode={mode} />} />
             </PieChart>
           </ResponsiveContainer>
           {/* HHI badge — chỉ hiện khi theo ngành */}

@@ -3,15 +3,13 @@
  * Card hiển thị một chỉ số tài chính (Net Worth, P/L...).
  */
 import React from 'react';
-import { formatPriceVND } from '../i18n';
-import { useI18n } from '../context/LangContext';
+import { formatQuotePrice } from '../i18n';
 
-function formatVND(value, locale = 'vi') {
-  return formatPriceVND(value, locale);
+function formatVND(value) {
+  return formatQuotePrice(value);
 }
 
 export default function StatCard({ label, value, sub, isPositive, isNegative, loading }) {
-  const { locale } = useI18n();
   const valueColor =
     isPositive ? 'text-brand-500' :
     isNegative ? 'text-red-400' :
@@ -23,7 +21,7 @@ export default function StatCard({ label, value, sub, isPositive, isNegative, lo
       {loading ? (
         <div className="h-7 bg-gray-800 rounded animate-pulse w-3/4" />
       ) : (
-        <p className={`text-2xl font-bold ${valueColor}`}>{formatVND(value, locale)}</p>
+        <p className={`text-2xl font-bold ${valueColor}`}>{formatVND(value)}</p>
       )}
       {sub && !loading && (
         <p className={`text-xs mt-1 ${isPositive ? 'text-brand-500' : isNegative ? 'text-red-400' : 'text-gray-500'}`}>

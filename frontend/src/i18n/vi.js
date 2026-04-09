@@ -225,6 +225,7 @@ const vi = {
   },
   allocation: {
     title: 'Phân bổ danh mục',
+    priceUnitHint: 'Đơn vị giá trị: nghìn VNĐ',
     bySymbol: 'Theo mã',
     bySector: 'Theo ngành',
     empty: 'Chưa có dữ liệu phân bổ.',

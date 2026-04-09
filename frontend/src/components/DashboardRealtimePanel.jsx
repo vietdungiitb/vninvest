@@ -46,7 +46,7 @@ export default function DashboardRealtimePanel({
   monitoredSymbols = [],
   onSyncRequest = null,
 }) {
-  const { t, formatNumber, formatTime, formatPriceVND, formatQuotePrice } = useI18n();
+  const { t, formatNumber, formatTime, formatQuotePrice } = useI18n();
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [snapshotAlerts, setSnapshotAlerts] = useState([]);
   const [compact, setCompact] = useState(false);
@@ -298,11 +298,11 @@ export default function DashboardRealtimePanel({
       {compact && (
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 py-1">
           <span>
-            <span className="text-blue-300 font-semibold">{formatPriceVND(realtimePortfolioStats.totalMarketValue)}</span>
+            <span className="text-blue-300 font-semibold">{formatQuotePrice(realtimePortfolioStats.totalMarketValue)}</span>
             <span className="ml-1 text-gray-600">{t('dashboardRealtime.liveValue')}</span>
           </span>
           <span className={realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300 font-semibold' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300 font-semibold' : 'text-gray-300 font-semibold'}>
-            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{formatPriceVND(realtimePortfolioStats.totalUnrealizedPL)}
+            {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{formatQuotePrice(realtimePortfolioStats.totalUnrealizedPL)}
             {' '}({realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%)
           </span>
           <span>{formatNumber(monitoredSymbols.length)} {t('dashboardRealtime.monitoredSymbols')}</span>
@@ -319,13 +319,13 @@ export default function DashboardRealtimePanel({
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
-            <p className="text-2xl font-bold text-gray-100 mt-1">{formatPriceVND(realtimePortfolioStats.totalMarketValue)}</p>
+            <p className="text-2xl font-bold text-gray-100 mt-1">{formatQuotePrice(realtimePortfolioStats.totalMarketValue)}</p>
             <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
           </div>
           <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
             <p className={`text-2xl font-bold mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-              {formatPriceVND(realtimePortfolioStats.totalUnrealizedPL)}
+              {formatQuotePrice(realtimePortfolioStats.totalUnrealizedPL)}
             </p>
             <p className={`text-xs mt-1 ${realtimePortfolioStats.totalUnrealizedPL > 0 ? 'text-emerald-300' : realtimePortfolioStats.totalUnrealizedPL < 0 ? 'text-red-300' : 'text-gray-500'}`}>
               {realtimePortfolioStats.totalUnrealizedPL > 0 ? '+' : ''}{realtimePortfolioStats.totalUnrealizedPLPct.toFixed(2)}%
@@ -338,7 +338,7 @@ export default function DashboardRealtimePanel({
           <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
             <p className={`text-2xl font-bold mt-1 ${liveVsSnapshotDelta > 0 ? 'text-emerald-300' : liveVsSnapshotDelta < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-              {formatPriceVND(liveVsSnapshotDelta)}
+              {formatQuotePrice(liveVsSnapshotDelta)}
             </p>
             <p className="text-xs text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
           </div>

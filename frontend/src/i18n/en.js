@@ -225,6 +225,7 @@ const en = {
   },
   allocation: {
     title: 'Portfolio allocation',
+    priceUnitHint: 'Value unit: thousand VND',
     bySymbol: 'By symbol',
     bySector: 'By sector',
     empty: 'No allocation data yet.',
