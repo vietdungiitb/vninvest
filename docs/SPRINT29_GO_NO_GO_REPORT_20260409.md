@@ -28,6 +28,7 @@ Evidence / tools:
 - `docs/REDEPLOY_GUIDE_ADVISORY_20260409.md`
 - `scripts/ops/sprint29_collect_deploy_evidence.ps1`
 - `scripts/ops/sprint29_advisory_auth_smoke.ps1`
+- `scripts/ops/sprint29_run_release_gate.ps1`
 
 ## 3) Remaining release gates
 
