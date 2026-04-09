@@ -931,6 +931,7 @@ const vi = {
     apiKeyStatus: 'API key: {status}',
     provider: 'Provider',
     model: 'Model',
+    selectModel: 'Chọn model',
     apiKeyOptional: 'API key (optional)',
     apiKeyPlaceholder: 'Nhập để override key hệ thống',
     hide: 'Ẩn',

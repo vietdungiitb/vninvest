@@ -138,3 +138,30 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 - Formatting only at UI render layer.
 - Null/invalid values render as `—`.
 
+## 8. Deployment Update 2026-04-09
+
+### Scope included in this release
+- System AI unification completed for user-first then system fallback runtime.
+- Admin operations endpoints for System AI settings, connection test, and audit log query.
+- Audit log improvements: filtering, pagination, ordering, DB indexes, retention command.
+- Provider/model catalog updated to include current production model set (Copilot, Claude, Gemini updates).
+- Frontend i18n fix for Whale Advisory model placeholder (removed raw key rendering).
+
+### Validation summary
+- Backend focused suites passed:
+	- `portfolio.tests.test_ai_config_api`
+	- `portfolio.tests.test_system_ai_admin_api`
+	- `portfolio.tests.test_ai_runtime_config`
+	- `portfolio.tests.test_prune_system_ai_audit_logs_command`
+- Frontend build passed with optimized production bundle output.
+
+### Redeploy run checklist
+1. Pull latest commit on target environment.
+2. Apply backend migrations (`0027`, `0028`, `0029`).
+3. Restart backend web + celery worker + celery beat.
+4. Rebuild/restart frontend container.
+5. Smoke test:
+	 - `/api/ai-options/` includes updated model list.
+	 - User AI config page and Whale Advisory dropdown render labels correctly.
+	 - Admin System AI APIs return 200 for authorized admin users.
+

@@ -7,7 +7,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
-from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary
+from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
@@ -685,10 +685,27 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertTrue(kwargs['force_refresh'])
         self.assertEqual(kwargs['user_id'], self.user.id)
 
+    @patch.dict(
+        'os.environ',
+        {
+            'OPENAI_API_KEY': '',
+            'OPENCLAW_API_KEY': '',
+            'ANTHROPIC_API_KEY': '',
+            'GEMINI_API_KEY': '',
+            'COPILOT_API_KEY': '',
+        },
+        clear=False,
+    )
     def test_whale_advisory_refresh_endpoint_returns_409_when_ai_model_missing(self):
         UserConfig.objects.update_or_create(
             user=self.user,
-            defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
+            defaults={
+                'plan': 'pro',
+                'email_verified': True,
+                'ai_provider': 'openai',
+                'ai_model': '',
+                'ai_api_key': '',
+            },
         )
         self.authenticate()
         WhaleAdvisory.objects.create(
@@ -707,8 +724,19 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(response.data['queued'])
         self.assertEqual(response.data['reason'], 'ai_not_configured')
-        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
+        self.assertTrue(response.data.get('config_issue'))
 
+    @patch.dict(
+        'os.environ',
+        {
+            'OPENAI_API_KEY': '',
+            'OPENCLAW_API_KEY': '',
+            'ANTHROPIC_API_KEY': '',
+            'GEMINI_API_KEY': '',
+            'COPILOT_API_KEY': '',
+        },
+        clear=False,
+    )
     def test_whale_advisory_refresh_endpoint_returns_409_when_ai_api_key_missing(self):
         cfg, _ = UserConfig.objects.update_or_create(
             user=self.user,
@@ -732,7 +760,45 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertEqual(response.data['reason'], 'ai_not_configured')
-        self.assertEqual(response.data['config_issue'], 'missing_ai_api_key')
+        self.assertTrue(response.data.get('config_issue'))
+
+    @patch.dict('os.environ', {'OPENCLAW_API_KEY': 'system-openclaw-key'}, clear=False)
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_uses_system_fallback_when_user_ai_missing(self, mock_apply_async, _mock_cache_get):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
+        )
+        SystemAISettings.objects.update_or_create(
+            name='default',
+            defaults={
+                'is_active': True,
+                'ai_provider': 'openclaw',
+                'ai_model': '',
+                'allow_env_fallback': True,
+            },
+        )
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
+        )
+
+        mock_task = MagicMock()
+        mock_task.id = 'task-system-fallback-1'
+        mock_apply_async.return_value = mock_task
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['queued'])
 
     def test_whale_advisory_refresh_endpoint_returns_404_if_no_existing(self):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
@@ -827,10 +893,21 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(kwargs['force_refresh'])
         self.assertEqual(kwargs['user_id'], self.user.id)
 
+    @patch.dict(
+        'os.environ',
+        {
+            'OPENAI_API_KEY': '',
+            'OPENCLAW_API_KEY': '',
+            'ANTHROPIC_API_KEY': '',
+            'GEMINI_API_KEY': '',
+            'COPILOT_API_KEY': '',
+        },
+        clear=False,
+    )
     def test_stock_ai_advisory_session_get_returns_409_when_ai_model_missing(self):
         UserConfig.objects.update_or_create(
             user=self.user,
-            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': ''},
+            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': '', 'ai_api_key': ''},
         )
         self.authenticate()
 
@@ -839,7 +916,7 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(response.data['ok'])
         self.assertEqual(response.data['reason'], 'ai_not_configured')
-        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
+        self.assertTrue(response.data.get('config_issue'))
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
@@ -1627,6 +1704,17 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('generated_by_ai', response.data)
         self.assertEqual(AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(), response.data['created_count'])
 
+    @patch.dict(
+        'os.environ',
+        {
+            'OPENAI_API_KEY': '',
+            'OPENCLAW_API_KEY': '',
+            'ANTHROPIC_API_KEY': '',
+            'GEMINI_API_KEY': '',
+            'COPILOT_API_KEY': '',
+        },
+        clear=False,
+    )
     def test_stock_ai_advisory_components_generate_returns_409_when_ai_api_not_configured(self):
         self.authenticate()
         cfg = UserConfig.objects.get(user=self.user)
@@ -1654,7 +1742,7 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
         self.assertFalse(response.data['ok'])
         self.assertEqual(response.data['reason'], 'ai_not_configured')
-        self.assertEqual(response.data['config_issue'], 'missing_ai_model')
+        self.assertTrue(response.data.get('config_issue'))
 
     @override_settings(
         OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,

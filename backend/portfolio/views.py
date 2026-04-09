@@ -120,6 +120,245 @@ def admin_runtime_kpi_api(request):
     )
 
 
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAdminUser])
+def admin_system_ai_settings_api(request):
+    """
+    GET/PUT /api/admin-ops/system-ai-settings/
+    Admin-only: quản trị System AI Settings cho fallback runtime.
+    """
+    from django.core.exceptions import ValidationError
+    from .ai_options import is_valid_model, is_valid_provider
+    from .models import SystemAISettings, SystemAISettingsAuditLog
+
+    settings_obj = SystemAISettings.get_active()
+    if settings_obj is None:
+        settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
+
+    def _serialize(obj):
+        return {
+            'id': obj.id,
+            'name': obj.name,
+            'is_active': bool(obj.is_active),
+            'ai_provider': str(obj.ai_provider or '').strip().lower(),
+            'ai_model': str(obj.ai_model or '').strip(),
+            'effective_ai_model': obj.get_effective_ai_model(),
+            'allow_env_fallback': bool(obj.allow_env_fallback),
+            'ai_api_key_configured': obj.ai_api_key_configured,
+            'notes': str(obj.notes or ''),
+            'updated_at': obj.updated_at.isoformat() if obj.updated_at else None,
+        }
+
+    def _snapshot(obj):
+        return {
+            'id': obj.id,
+            'name': obj.name,
+            'is_active': bool(obj.is_active),
+            'ai_provider': str(obj.ai_provider or '').strip().lower(),
+            'ai_model': str(obj.ai_model or '').strip(),
+            'effective_ai_model': obj.get_effective_ai_model(),
+            'allow_env_fallback': bool(obj.allow_env_fallback),
+            'ai_api_key_configured': obj.ai_api_key_configured,
+            'notes': str(obj.notes or ''),
+        }
+
+    if request.method == 'GET':
+        return Response({'ok': True, 'settings': _serialize(settings_obj)}, status=status.HTTP_200_OK)
+
+    before_snapshot = _snapshot(settings_obj)
+
+    provider = str(request.data.get('ai_provider') or settings_obj.ai_provider or 'openclaw').strip().lower()
+    model = str(request.data.get('ai_model') or '').strip()
+    notes = str(request.data.get('notes') or settings_obj.notes or '').strip()
+    allow_env_fallback = bool(request.data.get('allow_env_fallback', settings_obj.allow_env_fallback))
+    is_active = bool(request.data.get('is_active', settings_obj.is_active))
+    raw_key = request.data.get('ai_api_key', None)
+
+    if not is_valid_provider(provider):
+        return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    effective_model = model or settings_obj.get_effective_ai_model()
+    if effective_model and not is_valid_model(provider, effective_model):
+        return Response({'ok': False, 'message': 'AI model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    settings_obj.ai_provider = provider
+    settings_obj.ai_model = model
+    settings_obj.notes = notes
+    settings_obj.allow_env_fallback = allow_env_fallback
+    settings_obj.is_active = is_active
+    if raw_key is not None:
+        settings_obj.set_ai_api_key(str(raw_key or '').strip())
+
+    try:
+        settings_obj.full_clean()
+        settings_obj.save()
+    except ValidationError as exc:
+        return Response({'ok': False, 'message': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    after_snapshot = _snapshot(settings_obj)
+    if before_snapshot != after_snapshot:
+        SystemAISettingsAuditLog.objects.create(
+            settings=settings_obj,
+            actor=request.user if request.user.is_authenticated else None,
+            action='update_settings',
+            reason='updated_via_admin_api',
+            before_json=before_snapshot,
+            after_json=after_snapshot,
+        )
+
+    return Response(
+        {
+            'ok': True,
+            'message': 'Đã cập nhật System AI Settings.',
+            'settings': _serialize(settings_obj),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_system_ai_test_connection_api(request):
+    """
+    POST /api/admin-ops/system-ai-settings/test-connection/
+    Admin-only: kiểm tra kết nối theo System AI Settings hiện hành.
+    """
+    from .ai_runtime_config import resolve_ai_runtime_config
+    from .ai_service import test_ai_connection
+    from .models import SystemAISettings, SystemAISettingsAuditLog
+
+    settings_obj = SystemAISettings.get_active()
+    if settings_obj is None:
+        return Response(
+            {
+                'ok': False,
+                'message': 'Chưa có System AI Settings để test kết nối.',
+                'reason': 'missing_system_ai_settings',
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    runtime_cfg = resolve_ai_runtime_config(user=None, system_settings=settings_obj)
+    if not runtime_cfg.get('ready'):
+        SystemAISettingsAuditLog.objects.create(
+            settings=settings_obj,
+            actor=request.user if request.user.is_authenticated else None,
+            action='test_connection_failed',
+            reason=str(runtime_cfg.get('reason') or 'runtime_not_ready'),
+            before_json={
+                'provider': runtime_cfg.get('provider'),
+                'model': runtime_cfg.get('model'),
+            },
+            after_json={'ready': False},
+        )
+        return Response(
+            {
+                'ok': False,
+                'message': runtime_cfg.get('message') or 'System AI runtime chưa sẵn sàng.',
+                'reason': runtime_cfg.get('reason') or 'runtime_not_ready',
+                'provider': runtime_cfg.get('provider'),
+                'model': runtime_cfg.get('model'),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    payload = test_ai_connection(
+        provider=str(runtime_cfg.get('provider') or ''),
+        model=str(runtime_cfg.get('model') or ''),
+        api_key=str(runtime_cfg.get('api_key') or ''),
+    )
+    SystemAISettingsAuditLog.objects.create(
+        settings=settings_obj,
+        actor=request.user if request.user.is_authenticated else None,
+        action='test_connection_success' if payload.get('ok') else 'test_connection_failed',
+        reason=str(payload.get('message') or ''),
+        before_json={
+            'provider': runtime_cfg.get('provider'),
+            'model': runtime_cfg.get('model'),
+        },
+        after_json={
+            'ok': bool(payload.get('ok')),
+            'prompt_tokens': int(payload.get('prompt_tokens') or 0),
+            'completion_tokens': int(payload.get('completion_tokens') or 0),
+        },
+    )
+    status_code = status.HTTP_200_OK if payload.get('ok') else status.HTTP_400_BAD_REQUEST
+    return Response(payload, status=status_code)
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_system_ai_audit_logs_api(request):
+    """
+    GET /api/admin-ops/system-ai-settings/audit-logs/
+    Admin-only: xem lịch sử thay đổi/test của System AI Settings.
+    """
+    from .models import SystemAISettingsAuditLog
+
+    from django.utils.dateparse import parse_datetime
+
+    limit = max(1, min(int(request.query_params.get('limit', 50)), 200))
+    offset = max(0, int(request.query_params.get('offset', 0)))
+    action = str(request.query_params.get('action') or '').strip().lower()
+    actor_username = str(request.query_params.get('actor') or '').strip()
+    start_at_raw = str(request.query_params.get('start_at') or '').strip()
+    end_at_raw = str(request.query_params.get('end_at') or '').strip()
+    order = str(request.query_params.get('order') or 'desc').strip().lower()
+    if order not in {'asc', 'desc'}:
+        return Response({'ok': False, 'message': 'order chỉ hỗ trợ asc hoặc desc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    ordering = 'created_at' if order == 'asc' else '-created_at'
+    logs_qs = SystemAISettingsAuditLog.objects.select_related('actor', 'settings').order_by(ordering)
+    if action:
+        logs_qs = logs_qs.filter(action=action)
+    if actor_username:
+        logs_qs = logs_qs.filter(actor__username__iexact=actor_username)
+
+    if start_at_raw:
+        start_at = parse_datetime(start_at_raw)
+        if not start_at:
+            return Response({'ok': False, 'message': 'start_at không đúng định dạng ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+        logs_qs = logs_qs.filter(created_at__gte=start_at)
+
+    if end_at_raw:
+        end_at = parse_datetime(end_at_raw)
+        if not end_at:
+            return Response({'ok': False, 'message': 'end_at không đúng định dạng ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+        logs_qs = logs_qs.filter(created_at__lte=end_at)
+
+    total = logs_qs.count()
+    logs = list(logs_qs[offset: offset + limit])
+
+    payload = []
+    for log in logs:
+        payload.append(
+            {
+                'id': log.id,
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+                'action': log.action,
+                'reason': log.reason,
+                'actor': log.actor.username if log.actor_id else None,
+                'settings_id': log.settings_id,
+                'before_json': log.before_json,
+                'after_json': log.after_json,
+            }
+        )
+
+    return Response(
+        {
+            'ok': True,
+            'count': len(payload),
+            'total': total,
+            'offset': offset,
+            'limit': limit,
+            'order': order,
+            'has_more': (offset + len(payload)) < total,
+            'results': payload,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def warm_ticker_prefetch_api(request):
@@ -203,39 +442,38 @@ def ai_test_connection_api(request):
 
 
 def _get_ai_runtime_config_status(user_cfg) -> dict:
-    from .ai_service import _resolve_provider_api_key
+    from .ai_runtime_config import resolve_ai_runtime_config
 
-    provider = str(getattr(user_cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(getattr(user_cfg, 'ai_model', '') or '').strip()
-    has_key = bool(_resolve_provider_api_key(provider, user_cfg.get_ai_api_key()))
+    runtime_cfg = resolve_ai_runtime_config(user=getattr(user_cfg, 'user', None))
+    provider = str(runtime_cfg.get('provider') or '').strip().lower()
+    model = str(runtime_cfg.get('model') or '').strip()
+    source = runtime_cfg.get('source')
+    ready = bool(runtime_cfg.get('ready'))
+    reason = runtime_cfg.get('reason')
+    message = str(runtime_cfg.get('message') or '').strip()
 
-    if not model:
+    if ready:
         return {
             'provider': provider,
             'model': model,
-            'has_key': has_key,
-            'ready': False,
-            'reason': 'missing_ai_model',
-            'message': 'Bạn chưa cấu hình AI model. Vui lòng mở phần cấu hình AI để chọn model trước khi dùng AI advisory.',
+            'source': source,
+            'has_key': True,
+            'ready': True,
+            'reason': None,
+            'message': '',
         }
 
-    if not has_key:
-        return {
-            'provider': provider,
-            'model': model,
-            'has_key': has_key,
-            'ready': False,
-            'reason': 'missing_ai_api_key',
-            'message': 'Bạn chưa cấu hình API key cho AI provider hiện tại. Vui lòng hoàn tất cấu hình AI trước khi dùng AI advisory.',
-        }
+    if not message:
+        message = 'AI runtime chưa sẵn sàng. Vui lòng kiểm tra User AI hoặc System AI Settings.'
 
     return {
         'provider': provider,
         'model': model,
-        'has_key': has_key,
-        'ready': True,
-        'reason': None,
-        'message': '',
+        'source': source,
+        'has_key': False,
+        'ready': False,
+        'reason': reason,
+        'message': message,
     }
 
 
@@ -260,6 +498,9 @@ def ai_config_api(request):
                 'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
                 'ai_ready': ai_status['ready'],
                 'ai_config_message': ai_status['message'],
+                'effective_ai_provider': ai_status['provider'],
+                'effective_ai_model': ai_status['model'],
+                'effective_ai_source': ai_status.get('source'),
             },
             status=status.HTTP_200_OK,
         )
@@ -293,6 +534,9 @@ def ai_config_api(request):
             'ai_api_key_configured': _has_effective_ai_key(user_cfg.ai_provider),
             'ai_ready': _get_ai_runtime_config_status(user_cfg)['ready'],
             'ai_config_message': _get_ai_runtime_config_status(user_cfg)['message'],
+            'effective_ai_provider': _get_ai_runtime_config_status(user_cfg)['provider'],
+            'effective_ai_model': _get_ai_runtime_config_status(user_cfg)['model'],
+            'effective_ai_source': _get_ai_runtime_config_status(user_cfg).get('source'),
         },
         status=status.HTTP_200_OK,
     )
@@ -3775,6 +4019,9 @@ def stock_ai_advisory_session_api(request, symbol: str):
         if advisory_data and _get_plan(request.user) not in ('premium', 'admin'):
             advisory_data['ai_detail'] = ''
         payload['user_ai_provider'] = str(user_cfg.ai_provider or 'openclaw').strip().lower()
+        payload['effective_ai_provider'] = ai_status.get('provider')
+        payload['effective_ai_model'] = ai_status.get('model')
+        payload['effective_ai_source'] = ai_status.get('source')
         return payload
 
     def _tracked_response(payload: dict, response_status: int):

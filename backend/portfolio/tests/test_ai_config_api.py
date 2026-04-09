@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import UserConfig
+from portfolio.models import SystemAISettings, UserConfig
 
 
 class AIConfigApiTests(APITestCase):
@@ -27,7 +27,12 @@ class AIConfigApiTests(APITestCase):
         self.assertIn('defaults', response.data)
         self.assertIn('openai', response.data['providers'])
         self.assertIn('copilot', response.data['providers'])
-        self.assertEqual(response.data['defaults']['copilot'], 'openai/gpt-4.1-mini')
+        self.assertEqual(response.data['defaults']['copilot'], 'gpt-5.4')
+        self.assertEqual(response.data['defaults']['claude'], 'claude-4.6-sonnet')
+        self.assertEqual(response.data['defaults']['gemini'], 'gemini-3.1-pro')
+        self.assertIn('mai-image-2', response.data['providers']['copilot'])
+        self.assertIn('claude-4.6-opus', response.data['providers']['claude'])
+        self.assertIn('gemini-3.1-flash-lite', response.data['providers']['gemini'])
 
     def test_ai_config_get_and_put(self):
         get_resp = self.client.get('/api/ai-config/')
@@ -157,3 +162,29 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok', False))
         self.assertIn('API key', response.data.get('message', ''))
+
+    @patch.dict('os.environ', {'OPENCLAW_API_KEY': 'system-openclaw-key'}, clear=False)
+    def test_ai_config_get_uses_system_fallback_when_user_missing_config(self):
+        cfg = UserConfig.objects.get(user=self.user)
+        cfg.ai_provider = 'openai'
+        cfg.ai_model = ''
+        cfg.ai_api_key = ''
+        cfg.save(update_fields=['ai_provider', 'ai_model', 'ai_api_key'])
+
+        SystemAISettings.objects.update_or_create(
+            name='default',
+            defaults={
+                'is_active': True,
+                'ai_provider': 'openclaw',
+                'ai_model': '',
+                'allow_env_fallback': True,
+            },
+        )
+
+        response = self.client.get('/api/ai-config/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('ai_ready'))
+        self.assertEqual(response.data.get('effective_ai_source'), 'system')
+        self.assertEqual(response.data.get('effective_ai_provider'), 'openclaw')
+        self.assertEqual(response.data.get('effective_ai_model'), 'default')

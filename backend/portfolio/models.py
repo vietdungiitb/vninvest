@@ -5,7 +5,7 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
-from .ai_options import PROVIDER_CHOICES, get_default_model
+from .ai_options import PROVIDER_CHOICES, get_default_model, is_valid_model, is_valid_provider
 from .encryption_utils import decrypt_text, encrypt_text
 
 # ============================================================================
@@ -780,6 +780,125 @@ class UserConfig(models.Model):
 
     def get_ai_api_key(self) -> str:
         return decrypt_text(self.ai_api_key)
+
+
+class SystemAISettings(models.Model):
+    """Cấu hình AI mặc định toàn hệ thống (singleton)."""
+
+    name = models.CharField(max_length=80, default='default', unique=True, verbose_name='Tên cấu hình')
+    is_active = models.BooleanField(default=True, verbose_name='Đang kích hoạt')
+    ai_provider = models.CharField(
+        max_length=50,
+        choices=PROVIDER_CHOICES,
+        default='openclaw',
+        verbose_name='AI provider hệ thống',
+    )
+    ai_model = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='AI model hệ thống',
+        help_text='Để trống để dùng model mặc định theo provider.',
+    )
+    ai_api_key = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='AI API key hệ thống (encrypted)',
+    )
+    allow_env_fallback = models.BooleanField(
+        default=True,
+        verbose_name='Cho phép fallback API key từ biến môi trường',
+        help_text='Nếu không lưu key trong DB, hệ thống sẽ thử đọc biến môi trường tương ứng provider.',
+    )
+    notes = models.TextField(blank=True, default='', verbose_name='Ghi chú vận hành')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'System AI Settings'
+        verbose_name_plural = 'System AI Settings'
+        ordering = ['-is_active', '-updated_at']
+
+    def __str__(self):
+        status = 'active' if self.is_active else 'inactive'
+        return f'{self.name} ({self.ai_provider}/{self.get_effective_ai_model()}) [{status}]'
+
+    @classmethod
+    def get_active(cls):
+        return cls.objects.filter(is_active=True).order_by('-updated_at', '-id').first() or cls.objects.order_by('-updated_at', '-id').first()
+
+    @property
+    def ai_api_key_configured(self) -> bool:
+        return bool(self.ai_api_key)
+
+    def get_effective_ai_model(self) -> str:
+        return (self.ai_model or '').strip() or get_default_model(self.ai_provider)
+
+    def set_ai_api_key(self, raw_key: str) -> None:
+        raw = str(raw_key or '').strip()
+        self.ai_api_key = encrypt_text(raw) if raw else ''
+
+    def get_ai_api_key(self) -> str:
+        return decrypt_text(self.ai_api_key)
+
+    def clean(self):
+        provider = str(self.ai_provider or '').strip().lower()
+        model = self.get_effective_ai_model()
+
+        if not is_valid_provider(provider):
+            raise ValidationError({'ai_provider': 'AI provider không hợp lệ.'})
+        if not is_valid_model(provider, model):
+            raise ValidationError({'ai_model': 'AI model không thuộc provider đã chọn.'})
+
+    def save(self, *args, **kwargs):
+        if not self.name:
+            self.name = 'default'
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if self.is_active:
+                type(self).objects.exclude(pk=self.pk).filter(is_active=True).update(is_active=False)
+
+
+class SystemAISettingsAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('update_settings', 'Update settings'),
+        ('test_connection_success', 'Test connection success'),
+        ('test_connection_failed', 'Test connection failed'),
+    ]
+
+    settings = models.ForeignKey(
+        SystemAISettings,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_logs',
+        verbose_name='System AI settings',
+    )
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='system_ai_audit_logs',
+        verbose_name='Người thao tác',
+    )
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES, db_index=True, verbose_name='Hành động')
+    reason = models.TextField(blank=True, default='', verbose_name='Mô tả')
+    before_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái trước')
+    after_json = models.JSONField(default=dict, blank=True, verbose_name='Trạng thái sau')
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'System AI Audit Log'
+        verbose_name_plural = 'System AI Audit Logs'
+        indexes = [
+            models.Index(fields=['action', 'created_at'], name='sysai_act_created_idx'),
+            models.Index(fields=['actor', 'created_at'], name='sysai_actor_created_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.action} by {self.actor_id} at {self.created_at}'
 
 
 class OnboardingPlanPolicy(models.Model):

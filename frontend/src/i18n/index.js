@@ -30,12 +30,17 @@ export function createTranslator(locale) {
   const fallbackDictionary = dictionaries[DEFAULT_LOCALE];
 
   return function translate(key, vars = {}) {
-    const template = getNestedValue(dictionary, key) ?? getNestedValue(fallbackDictionary, key) ?? key;
+    const hasDefaultValue = Object.prototype.hasOwnProperty.call(vars, 'defaultValue');
+    const defaultValue = hasDefaultValue ? String(vars.defaultValue) : String(key);
+    const template = getNestedValue(dictionary, key) ?? getNestedValue(fallbackDictionary, key) ?? defaultValue;
     if (typeof template !== 'string') {
-      return key;
+      return defaultValue;
     }
 
     return Object.entries(vars).reduce((result, [name, value]) => {
+      if (name === 'defaultValue') {
+        return result;
+      }
       return result.replaceAll(`{${name}}`, String(value));
     }, template);
   };

@@ -32,6 +32,8 @@ from .models import (
     StockProfile,
     StockProfileSyncLog,
     SubAccount,
+    SystemAISettings,
+    SystemAISettingsAuditLog,
     SystemEmailAccount,
     TrackedSymbol,
     Transaction,
@@ -1150,6 +1152,125 @@ class UserConfigAdmin(admin.ModelAdmin):
             self.message_user(request, f'Bỏ qua {skipped_count} tài khoản đã xác thực email.', level=messages.INFO)
         if failure_count and not success_count:
             self.message_user(request, 'Không có email xác thực nào được gửi thành công.', level=messages.WARNING)
+
+
+class SystemAISettingsAdminForm(forms.ModelForm):
+    ai_api_key_raw = forms.CharField(
+        label='AI API key hệ thống',
+        required=False,
+        widget=forms.PasswordInput(render_value=False),
+        help_text='Để trống nếu không thay đổi key đã lưu.',
+    )
+
+    class Meta:
+        model = SystemAISettings
+        exclude = ('ai_api_key',)
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        raw_key = str(self.cleaned_data.get('ai_api_key_raw') or '').strip()
+        if raw_key:
+            instance.set_ai_api_key(raw_key)
+        if commit:
+            instance.save()
+        return instance
+
+
+@admin.register(SystemAISettings)
+class SystemAISettingsAdmin(admin.ModelAdmin):
+    form = SystemAISettingsAdminForm
+    list_display = (
+        'name',
+        'is_active',
+        'ai_provider',
+        'effective_model_display',
+        'allow_env_fallback',
+        'api_key_status',
+        'updated_at',
+    )
+    list_filter = ('is_active', 'ai_provider', 'allow_env_fallback')
+    search_fields = ('name', 'notes')
+    readonly_fields = ('api_key_status', 'created_at', 'updated_at')
+    actions = ('mark_as_active', 'test_connection_for_selected')
+    fieldsets = (
+        ('Nhận diện', {'fields': ('name', 'is_active', 'notes')}),
+        ('AI runtime', {'fields': ('ai_provider', 'ai_model', 'allow_env_fallback', 'ai_api_key_raw', 'api_key_status')}),
+        ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
+    )
+
+    @admin.display(description='Model hiệu lực')
+    def effective_model_display(self, obj):
+        return obj.get_effective_ai_model()
+
+    @admin.display(description='API key hệ thống')
+    def api_key_status(self, obj):
+        return 'Đã lưu' if obj.ai_api_key_configured else 'Chưa lưu trong DB'
+
+    @admin.action(description='Đặt làm cấu hình AI hệ thống đang active')
+    def mark_as_active(self, request, queryset):
+        target = queryset.order_by('-updated_at', '-id').first()
+        if not target:
+            self.message_user(request, 'Không có cấu hình nào được chọn.', level=messages.WARNING)
+            return
+
+        target.is_active = True
+        target.save(update_fields=['is_active', 'updated_at'])
+        self.message_user(request, f'Đã kích hoạt System AI Settings: {target.name}.', level=messages.SUCCESS)
+
+    @admin.action(description='Kiểm tra kết nối AI cho cấu hình đã chọn')
+    def test_connection_for_selected(self, request, queryset):
+        from .ai_runtime_config import resolve_ai_runtime_config
+        from .ai_service import test_ai_connection
+
+        target = queryset.order_by('-updated_at', '-id').first()
+        if not target:
+            self.message_user(request, 'Không có cấu hình nào được chọn.', level=messages.WARNING)
+            return
+
+        resolved = resolve_ai_runtime_config(user=None, system_settings=target)
+        if not resolved.get('ready'):
+            self.message_user(
+                request,
+                f"Cấu hình chưa sẵn sàng: {resolved.get('message') or resolved.get('reason')}",
+                level=messages.ERROR,
+            )
+            return
+
+        payload = test_ai_connection(
+            provider=str(resolved.get('provider') or ''),
+            model=str(resolved.get('model') or ''),
+            api_key=str(resolved.get('api_key') or ''),
+        )
+        if payload.get('ok'):
+            self.message_user(
+                request,
+                f"Test kết nối thành công ({payload.get('provider')}/{payload.get('model')}).",
+                level=messages.SUCCESS,
+            )
+            return
+
+        self.message_user(
+            request,
+            f"Test kết nối thất bại: {payload.get('message')}",
+            level=messages.ERROR,
+        )
+
+
+@admin.register(SystemAISettingsAuditLog)
+class SystemAISettingsAuditLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at', 'actor', 'action', 'settings', 'reason')
+    list_filter = ('action', 'actor')
+    search_fields = ('reason', 'actor__username', 'settings__name')
+    readonly_fields = ('settings', 'actor', 'action', 'reason', 'before_json', 'after_json', 'created_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(OnboardingPlanPolicy)

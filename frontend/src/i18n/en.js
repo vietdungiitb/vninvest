@@ -931,6 +931,7 @@ const en = {
     apiKeyStatus: 'API key: {status}',
     provider: 'Provider',
     model: 'Model',
+    selectModel: 'Select model',
     apiKeyOptional: 'API key (optional)',
     apiKeyPlaceholder: 'Enter to override system key',
     hide: 'Hide',

@@ -447,8 +447,8 @@ def generate_whale_advisory_task(
     from django.core.cache import cache
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
-    from portfolio.ai_options import is_valid_model, is_valid_provider
-    from portfolio.ai_service import generate_whale_text, _resolve_provider_api_key
+    from portfolio.ai_runtime_config import resolve_ai_runtime_config
+    from portfolio.ai_service import generate_whale_text
     from portfolio.models import WhaleAdvisory
 
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
@@ -466,50 +466,31 @@ def generate_whale_advisory_task(
         logger.info('Whale advisory cooldown active — skipping %s', symbol)
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
 
+    target_user = None
     if user_id is not None:
         cfg = UserConfig.objects.filter(user_id=user_id).select_related('user').first()
-    else:
-        # Fallback cho các luồng hệ thống chưa truyền user_id.
-        cfg = UserConfig.objects.filter(user__is_staff=True).select_related('user').order_by('id').first()
+        target_user = getattr(cfg, 'user', None)
 
-    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(getattr(cfg, 'ai_model', '') or '').strip()
-    if not is_valid_provider(provider):
-        provider = 'openclaw'
-    if not model:
-        logger.info('Whale advisory skipped for %s: missing ai_model user_id=%s', symbol, user_id)
+    runtime_cfg = resolve_ai_runtime_config(user=target_user)
+    if not runtime_cfg.get('ready'):
+        logger.info(
+            'Whale advisory skipped for %s: runtime AI not ready reason=%s user_id=%s',
+            symbol,
+            runtime_cfg.get('reason'),
+            user_id,
+        )
         return {
             'status': 'skipped',
             'symbol': symbol,
-            'reason': 'missing_ai_model',
+            'reason': str(runtime_cfg.get('reason') or 'runtime_ai_not_ready'),
             'user_id': user_id,
-            'ai_provider': provider,
-        }
-    if not is_valid_model(provider, model):
-        logger.info('Whale advisory skipped for %s: invalid ai_model=%s provider=%s user_id=%s', symbol, model, provider, user_id)
-        return {
-            'status': 'skipped',
-            'symbol': symbol,
-            'reason': 'invalid_ai_model',
-            'user_id': user_id,
-            'ai_provider': provider,
-            'ai_model': model,
+            'ai_source': runtime_cfg.get('source'),
         }
 
-    api_key = ''
-    if cfg:
-        api_key = cfg.get_ai_api_key()
-    api_key = _resolve_provider_api_key(provider, api_key)
-    if not api_key:
-        logger.info('Whale advisory skipped for %s: missing ai_api_key provider=%s user_id=%s', symbol, provider, user_id)
-        return {
-            'status': 'skipped',
-            'symbol': symbol,
-            'reason': 'missing_ai_api_key',
-            'user_id': user_id,
-            'ai_provider': provider,
-            'ai_model': model,
-        }
+    provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
+    model = str(runtime_cfg.get('model') or '').strip()
+    api_key = str(runtime_cfg.get('api_key') or '').strip()
+    ai_source = str(runtime_cfg.get('source') or 'unknown')
 
     try:
         summary_resp = generate_whale_text(
@@ -520,7 +501,7 @@ def generate_whale_advisory_task(
             matched_value_vnd=matched_value_vnd,
             side=side,
             deep=False,
-            user=getattr(cfg, 'user', None),
+            user=target_user,
         )
         deep_resp = generate_whale_text(
             provider=provider,
@@ -530,14 +511,14 @@ def generate_whale_advisory_task(
             matched_value_vnd=matched_value_vnd,
             side=side,
             deep=True,
-            user=getattr(cfg, 'user', None),
+            user=target_user,
         )
     except Exception as exc:
         logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
         raise  # Celery retry
 
     advisory = WhaleAdvisory.objects.create(
-        user=getattr(cfg, 'user', None),
+        user=target_user,
         symbol=symbol,
         matched_value=int(matched_value_vnd),
         side=side,
@@ -588,6 +569,7 @@ def generate_whale_advisory_task(
         'symbol': symbol,
         'ai_provider': provider,
         'ai_model': model,
+        'ai_source': ai_source,
         'force_refresh': bool(force_refresh),
         'user_id': user_id,
     }

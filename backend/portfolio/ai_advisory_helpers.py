@@ -12,7 +12,8 @@ import re
 
 from django.utils import timezone
 
-from .models import AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, UserConfig, WhaleAdvisory
+from .ai_runtime_config import resolve_ai_runtime_config
+from .models import AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, WhaleAdvisory
 from .serializers import (
     AIAdvisoryComponentRecordSerializer,
     AIAdvisoryExecutiveSummarySerializer,
@@ -240,14 +241,15 @@ def _sprint17_generate_component_templates_with_ai(
     timeframe: str,
     chart_context: dict | None = None,
 ) -> list[dict]:
-    from portfolio.ai_options import get_default_model
-    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
+    from portfolio.ai_service import _claude_completion, _openai_compatible_completion
     from portfolio.openclaw_client import _call as _openclaw_call
 
-    cfg, _ = UserConfig.objects.get_or_create(user=user)
-    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
-    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
+    runtime_cfg = resolve_ai_runtime_config(user=user)
+    if not runtime_cfg.get('ready'):
+        return []
+    provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
+    model = str(runtime_cfg.get('model') or '').strip()
+    api_key = str(runtime_cfg.get('api_key') or '').strip()
 
     side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
     signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
@@ -439,14 +441,15 @@ def _sprint17_generate_executive_synthesis_with_ai(
     summary_payload: dict,
     synthesis_preference: str = 'balanced',
 ) -> str | None:
-    from portfolio.ai_options import get_default_model
-    from portfolio.ai_service import _claude_completion, _openai_compatible_completion, _resolve_provider_api_key
+    from portfolio.ai_service import _claude_completion, _openai_compatible_completion
     from portfolio.openclaw_client import _call as _openclaw_call
 
-    cfg, _ = UserConfig.objects.get_or_create(user=user)
-    provider = str(getattr(cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower()
-    model = str(cfg.get_effective_ai_model() or get_default_model(provider) or '').strip()
-    api_key = _resolve_provider_api_key(provider, cfg.get_ai_api_key())
+    runtime_cfg = resolve_ai_runtime_config(user=user)
+    if not runtime_cfg.get('ready'):
+        return None
+    provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
+    model = str(runtime_cfg.get('model') or '').strip()
+    api_key = str(runtime_cfg.get('api_key') or '').strip()
 
     if not api_key:
         return None
