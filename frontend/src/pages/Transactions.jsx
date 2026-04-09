@@ -32,6 +32,40 @@ function isValidUsQuantityInput(value) {
   return US_QUANTITY_PATTERN.test(String(value ?? '').trim());
 }
 
+function formatUsIntegerInput(value) {
+  const raw = String(value ?? '').replace(/,/g, '').replace(/\s+/g, '');
+  if (!raw) return '';
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return '';
+  return new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Number(digits));
+}
+
+function formatUsDecimalInput(value, maxDecimals = 2) {
+  const raw = String(value ?? '').replace(/,/g, '').replace(/\s+/g, '');
+  if (!raw) return '';
+
+  let sanitized = raw.replace(/[^\d.]/g, '');
+  const firstDot = sanitized.indexOf('.');
+  if (firstDot !== -1) {
+    sanitized = sanitized.slice(0, firstDot + 1) + sanitized.slice(firstDot + 1).replace(/\./g, '');
+  }
+
+  const [intPartRaw = '', decPartRaw = ''] = sanitized.split('.');
+  const intDigits = intPartRaw.replace(/\D/g, '');
+  const intFormatted = intDigits
+    ? new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Number(intDigits))
+    : '0';
+
+  if (sanitized.includes('.')) {
+    const dec = decPartRaw.replace(/\D/g, '').slice(0, maxDecimals);
+    return `${intFormatted}.${dec}`;
+  }
+  return intFormatted;
+}
+
 const ALL_TAB = '__all__';
 
 // Biểu phí chuẩn thị trường Việt Nam
@@ -225,7 +259,33 @@ export default function Transactions() {
       // Khi giá/KL/loại thay đổi, nếu preset đang bật thì reset về auto
       if (FEE_PRESETS[feePresetIdx]?.brokerage) setFeeAutoManual(false);
     }
+
+    if (name === 'price') {
+      setForm((prev) => ({ ...prev, price: formatUsDecimalInput(value, 2) }));
+      return;
+    }
+    if (name === 'quantity') {
+      setForm((prev) => ({ ...prev, quantity: formatUsIntegerInput(value) }));
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: name === 'symbol' ? value.toUpperCase() : value }));
+  };
+
+  const handleNumericBlur = (name) => {
+    if (name === 'price') {
+      const parsed = parseUsNumber(form.price);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setForm((prev) => ({ ...prev, price: formatQuotePrice(parsed) }));
+      }
+      return;
+    }
+    if (name === 'quantity') {
+      const parsed = parseUsNumber(form.quantity);
+      if (Number.isFinite(parsed) && parsed > 0) {
+        setForm((prev) => ({ ...prev, quantity: formatQuoteVolume(parsed) }));
+      }
+    }
   };
 
   const handleFeePresetChange = (idx) => {
@@ -256,8 +316,8 @@ export default function Transactions() {
       symbol: tx.symbol,
       transaction_type: tx.transaction_type,
       date: tx.date,
-      price: String(tx.price),
-      quantity: String(tx.quantity),
+      price: formatQuotePrice(tx.price),
+      quantity: formatQuoteVolume(tx.quantity),
       fee: String(tx.fee ?? 0),
       notes: tx.notes || '',
     });
@@ -545,6 +605,7 @@ export default function Transactions() {
               name="price"
               value={form.price}
               onChange={handleChange}
+              onBlur={() => handleNumericBlur('price')}
               placeholder="78.20"
               inputMode="decimal"
               required
@@ -562,6 +623,7 @@ export default function Transactions() {
               name="quantity"
               value={form.quantity}
               onChange={handleChange}
+              onBlur={() => handleNumericBlur('quantity')}
               placeholder="10,500"
               inputMode="numeric"
               required
