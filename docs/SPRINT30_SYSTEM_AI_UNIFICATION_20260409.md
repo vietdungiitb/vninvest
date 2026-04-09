@@ -99,6 +99,10 @@
   1) `/api/ai-options/` tra danh sach model moi.
   2) Whale Advisory config dropdown khong con hien key i18n.
   3) Admin API `/api/admin-ops/system-ai-settings/` hoat dong binh thuong.
+- Script thu thap evidence Sprint 30:
+  - `powershell -File scripts/ops/sprint30_collect_deploy_evidence.ps1`
+- Bao cao gate:
+  - `docs/SPRINT30_GO_NO_GO_REPORT_20260409.md`
 
 ## Ghi chu quan tri cay module
 
