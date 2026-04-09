@@ -88,6 +88,16 @@ export function formatQuoteVolume(value) {
   }).format(Number(value));
 }
 
+export function formatQuoteInteger(value) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '—';
+  }
+  return new Intl.NumberFormat(QUOTE_LOCALE_TAG, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(Math.round(Number(value)));
+}
+
 /**
  * Chuẩn hóa hiển thị giá chứng khoán VN.
  * Input : giá raw từ vnstock (đơn vị nghìn đồng, ví dụ 78.7)

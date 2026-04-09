@@ -7,14 +7,15 @@ import { Link } from 'react-router-dom';
 import EmptyState from './EmptyState';
 import { useI18n } from '../context/LangContext';
 
-function PLCell({ value, pct, formatQuotePriceFn }) {
+function PLCell({ value, pct, formatQuotePriceFn, showInteger = false }) {
   if (value === null || value === undefined) return <span className="text-gray-500">—</span>;
   const num = parseFloat(value);
   const color = num > 0 ? 'text-brand-500' : num < 0 ? 'text-red-400' : 'text-gray-400';
   const sign = num > 0 ? '+' : '';
+  const displayValue = showInteger ? Math.round(num).toLocaleString('en-US') : formatQuotePriceFn(value);
   return (
     <span className={color}>
-      {sign}{formatQuotePriceFn(value)}
+      {sign}{displayValue}
       {pct !== null && pct !== undefined && (
         <span className="ml-1 text-xs opacity-75">
           ({sign}{parseFloat(pct).toFixed(2)}%)
@@ -88,7 +89,7 @@ export default function HoldingsTable({ holdings, loading }) {
               </td>
               <td className="py-3 pr-4 text-gray-300">
                 {(h.live_market_value ?? h.market_value)
-                  ? formatQuotePrice(h.live_market_value ?? h.market_value)
+                  ? formatQuoteInteger(h.live_market_value ?? h.market_value)
                   : '—'}
               </td>
               <td className="py-3 pr-4">
@@ -96,6 +97,7 @@ export default function HoldingsTable({ holdings, loading }) {
                   value={h.live_unrealized_pl ?? h.unrealized_pl}
                   pct={h.live_unrealized_pl_pct ?? h.unrealized_pl_pct}
                   formatQuotePriceFn={formatQuotePrice}
+                  showInteger={true}
                 />
               </td>
               <td className="py-3 pr-4">

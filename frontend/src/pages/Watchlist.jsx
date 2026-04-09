@@ -1238,6 +1238,7 @@ export default function WatchlistPage() {
                         <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
                       ) : (
                         <div className="overflow-x-auto">
+                          <p className="px-4 py-2 text-[11px] text-gray-500">{t('watchlist.priceUnitHint')}</p>
                         <table className="w-full min-w-[1020px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
@@ -1406,7 +1407,9 @@ export default function WatchlistPage() {
                       {t('watchlist.noMatchFilter')}
                     </div>
                   ) : (
-                    <table className="w-full text-sm">
+                    <div className="overflow-x-auto">
+                      <p className="px-4 py-2 text-[11px] text-gray-500">{t('watchlist.priceUnitHint')}</p>
+                      <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
@@ -1489,6 +1492,7 @@ export default function WatchlistPage() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   )}
                 </div>
               </div>

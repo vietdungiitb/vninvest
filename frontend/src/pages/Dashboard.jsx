@@ -197,6 +197,7 @@ export default function Dashboard() {
           label={t('dashboard.marketValue')}
           value={marketValue}
           loading={loadingSummary}
+          showInteger={true}
         />
         <StatCard
           label={t('dashboard.unrealizedPL')}
@@ -205,6 +206,7 @@ export default function Dashboard() {
           isPositive={unrealizedPL > 0}
           isNegative={unrealizedPL < 0}
           loading={loadingSummary}
+          showInteger={true}
         />
         <StatCard
           label={t('dashboard.realizedPL')}
@@ -212,11 +214,13 @@ export default function Dashboard() {
           isPositive={realizedPL > 0}
           isNegative={realizedPL < 0}
           loading={loadingSummary}
+          showInteger={true}
         />
         <StatCard
           label={t('dashboard.dividends')}
           value={summary?.total_dividends}
           loading={loadingSummary}
+          showInteger={true}
         />
       </div>
 

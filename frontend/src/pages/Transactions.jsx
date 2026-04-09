@@ -760,6 +760,7 @@ export default function Transactions() {
           <div className="p-8 text-center text-gray-500">{t('transactions.empty')}</div>
         ) : (
           <div className="overflow-x-auto">
+            <p className="px-4 pt-4 pb-2 text-[11px] text-gray-500">{t('transactions.priceUnitHint')}</p>
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-800">
