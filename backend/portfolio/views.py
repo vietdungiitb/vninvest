@@ -3360,7 +3360,7 @@ def whale_advisory_auto_refresh_info_api(request, symbol: str):
 
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsProPlan])
+@permission_classes([IsAuthenticated])
 def refresh_whale_advisory_api(request, symbol: str):
     """
     POST /api/portfolio/whale-advisory/<symbol>/refresh/
@@ -3368,23 +3368,35 @@ def refresh_whale_advisory_api(request, symbol: str):
     """
     from portfolio.tasks import generate_whale_advisory_task
 
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'queued': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    entitlements = resolve_user_entitlements(request.user)
+    if not entitlements.get('can_read_whale_advisory', False):
+        return Response(
+            {
+                'queued': False,
+                'symbol': normalized_symbol,
+                'reason': 'plan_upgrade_required',
+                'message': 'Gói hiện tại chưa hỗ trợ Refresh AI Advisory. Vui lòng nâng cấp lên Pro để sử dụng tính năng này.',
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     ai_status = _get_ai_runtime_config_status(user_cfg)
     if not ai_status['ready']:
         return Response(
             {
                 'queued': False,
-                'symbol': str(symbol or '').strip().upper(),
+                'symbol': normalized_symbol,
                 'message': ai_status['message'],
                 'reason': 'ai_not_configured',
                 'config_issue': ai_status['reason'],
             },
             status=status.HTTP_409_CONFLICT,
         )
-
-    normalized_symbol = str(symbol or '').strip().upper()
-    if not normalized_symbol:
-        return Response({'queued': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
 
     refresh_cooldown = max(int(getattr(settings, 'WHALE_ADVISORY_MANUAL_REFRESH_COOLDOWN_SECONDS', 90)), 10)
     refresh_lock_key = f'whale_advisory_refresh_lock:{request.user.id}:{normalized_symbol}'
@@ -3413,7 +3425,6 @@ def refresh_whale_advisory_api(request, symbol: str):
         .first()
     )
 
-    entitlements = resolve_user_entitlements(request.user)
     regenerate_quota = consume_quota(
         request.user,
         quota_key='ai_regenerate_per_day',

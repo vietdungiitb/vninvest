@@ -725,6 +725,24 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(kwargs['user_id'], self.user.id)
         self.assertEqual(kwargs['source'], WhaleAdvisory.SourceChoices.USER_REFRESH)
 
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_whale_advisory_refresh_endpoint_returns_business_403_for_community_plan(self, mock_apply_async, _mock_cache_get):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
+        self.authenticate()
+
+        response = self.client.post('/api/portfolio/whale-advisory/FPT/refresh/', {}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['reason'], 'plan_upgrade_required')
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertIn('nâng cấp', response.data['message'])
+        mock_apply_async.assert_not_called()
+
     def test_whale_advisory_auto_refresh_info_returns_status_and_budget(self):
         UserConfig.objects.update_or_create(
             user=self.user,

@@ -165,3 +165,12 @@
    - whale + dark flow trong 180s -> chi tao 1 advisory.
    - pending row disable dung hanh vi.
 4. Them observability metric cho merge queue (scheduled/merged/flushed/skipped).
+
+### Tien do bo sung tiep theo (2026-04-09)
+- Da chuan hoa contract block cho community plan tai endpoint refresh:
+  - Endpoint `POST /api/portfolio/whale-advisory/<symbol>/refresh/` nhan `IsAuthenticated`.
+  - Neu user khong du quyen whale advisory: tra `403` voi payload business:
+    - `reason=plan_upgrade_required`
+    - `message` huong dan nang cap Pro
+    - `symbol`, `queued=false`
+- Da bo sung regression test xac nhan community plan bi chan dung contract va khong queue task advisory.
