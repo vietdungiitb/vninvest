@@ -1233,6 +1233,8 @@ class WhaleAdvisory(models.Model):
     refresh_count     = models.PositiveIntegerField(default=0, verbose_name='Số lần refresh')
     is_auto_generated = models.BooleanField(default=False, verbose_name='Được tạo tự động?')
     source            = models.CharField(max_length=20, choices=SourceChoices.choices, default=SourceChoices.WHALE_SIGNAL, verbose_name='Nguồn')
+    merged_sources    = models.JSONField(default=list, blank=True, verbose_name='Nguồn trigger gộp')
+    primary_source    = models.CharField(max_length=30, blank=True, default='', verbose_name='Nguồn trigger chính')
     advisory_type     = models.CharField(max_length=20, choices=AdvisoryTypeChoices.choices, default=AdvisoryTypeChoices.DEFAULT, db_index=True, verbose_name='Loại advisory')
     severity          = models.CharField(max_length=10, choices=SeverityChoices.choices, default=SeverityChoices.INFO, db_index=True, verbose_name='Mức độ nghiêm trọng')
 

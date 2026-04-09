@@ -224,6 +224,16 @@ function AdvisoryCell({ item, symbol, onRefresh, refreshing, rowMessage }) {
               {advisory.refresh_count > 0 && ` ×${advisory.refresh_count}`}
             </span>
           )}
+          {Array.isArray(advisory.merged_sources) && advisory.merged_sources.length > 1 ? (
+            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[10px] text-violet-300">
+              Merged: {advisory.merged_sources.join(' + ')}
+            </span>
+          ) : null}
+          {advisory.primary_source ? (
+            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
+              Primary: {advisory.primary_source}
+            </span>
+          ) : null}
           <DataFreshnessBadge
             lastEventAt={advisory.created_at}
             realtimeStatus={realtimeStatus}

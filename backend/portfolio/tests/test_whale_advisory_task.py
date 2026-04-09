@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
-from portfolio.tasks import auto_generate_advisories_for_all_tracked, detect_whale_reversal, generate_whale_advisory_task
+from portfolio.tasks import auto_generate_advisories_for_all_tracked, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
 from portfolio.tasks import _compute_advisory_severity
 
 
@@ -435,3 +435,70 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(kwargs['symbol'], 'REV1')
         self.assertEqual(kwargs['advisory_type'], WhaleAdvisory.AdvisoryTypeChoices.REVERSAL)
         self.assertEqual(kwargs['severity_override'], WhaleAdvisory.SeverityChoices.URGENT)
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_flush_merged_event_passes_primary_and_sources(self, mock_apply_async):
+        user = self._create_user_config('staff-merge-flush', api_key='sk-test-merge')
+        cache_key = f'advisory:event-merge:{user.id}:FPT'
+        cache.set(
+            cache_key,
+            {
+                'user_id': user.id,
+                'symbol': 'FPT',
+                'threshold_vnd': 1_000_000_000,
+                'matched_value_vnd': 2_000_000_000,
+                'score_sum': 35.0,
+                'sources': ['dark_flow', 'whale_alert'],
+                'source_scores': {'dark_flow': 10.0, 'whale_alert': 25.0},
+            },
+            timeout=120,
+        )
+        mock_task = MagicMock()
+        mock_task.id = 'merge-task-001'
+        mock_apply_async.return_value = mock_task
+
+        result = flush_merged_advisory_event(user_id=user.id, symbol='FPT')
+
+        self.assertEqual(result['status'], 'queued')
+        self.assertEqual(result['resolved_side'], 'BUY')
+        self.assertEqual(result['primary_source'], 'whale_alert')
+        queued_kwargs = mock_apply_async.call_args.kwargs['kwargs']
+        self.assertEqual(queued_kwargs['primary_source'], 'whale_alert')
+        self.assertEqual(sorted(queued_kwargs['merged_sources']), ['dark_flow', 'whale_alert'])
+
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_generate_task_persists_merge_metadata(
+        self,
+        mock_generate_text,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        symbol = 'MERGE1'
+        staff_user = self._create_user_config('staff-merge-store', api_key='sk-test-merge-store')
+        cache.delete(f'whale_advisory_lock:{symbol}')
+        mock_generate_text.side_effect = [
+            {'text': 'Summary merge', 'prompt_tokens': 10, 'completion_tokens': 20},
+            {'text': 'Detail merge', 'prompt_tokens': 30, 'completion_tokens': 40},
+        ]
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        result = generate_whale_advisory_task(
+            symbol=symbol,
+            matched_value_vnd=3_000_000_000,
+            side='BUY',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            merged_sources=['dark_flow', 'whale_alert'],
+            primary_source='whale_alert',
+        )
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(sorted(result['merged_sources']), ['dark_flow', 'whale_alert'])
+        self.assertEqual(result['primary_source'], 'whale_alert')
+        advisory = WhaleAdvisory.objects.get(id=result['advisory_id'])
+        self.assertEqual(sorted(advisory.merged_sources), ['dark_flow', 'whale_alert'])
+        self.assertEqual(advisory.primary_source, 'whale_alert')

@@ -136,6 +136,7 @@ def _accumulate_user_advisory_event(
             'matched_value_vnd': float(max(matched_value_candidate, threshold_vnd)),
             'score_sum': float(event_side_score),
             'sources': [str(source)],
+            'source_scores': {str(source): float(event_side_score)},
             'first_event_at': now.isoformat(),
             'updated_at': now.isoformat(),
         }
@@ -149,11 +150,15 @@ def _accumulate_user_advisory_event(
     source_list = [str(item) for item in (existing.get('sources') or [])]
     source_set = set(source_list)
     source_set.add(str(source))
+    source_scores = existing.get('source_scores') or {}
+    current_source_score = _safe_float(source_scores.get(str(source)), 0.0)
+    source_scores[str(source)] = float(current_source_score + event_side_score)
 
     existing['threshold_vnd'] = float(max(_safe_float(existing.get('threshold_vnd'), threshold_vnd), threshold_vnd))
     existing['matched_value_vnd'] = float(max(_safe_float(existing.get('matched_value_vnd'), threshold_vnd), matched_value_candidate, threshold_vnd))
     existing['score_sum'] = float(_safe_float(existing.get('score_sum'), 0.0) + event_side_score)
     existing['sources'] = sorted(source_set)
+    existing['source_scores'] = source_scores
     existing['updated_at'] = now.isoformat()
     cache.set(cache_key, existing, timeout=cache_ttl)
     return {'status': 'merged', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
@@ -171,6 +176,14 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     matched_value_vnd = _safe_float(state.get('matched_value_vnd'), threshold_vnd)
     score_sum = _safe_float(state.get('score_sum'), 0.0)
     side = _resolve_side_by_dynamic_score(score_sum)
+    merged_sources = [str(item) for item in (state.get('sources') or [])]
+    source_scores = state.get('source_scores') or {}
+    primary_source = ''
+    if source_scores:
+        ranked_source = max(source_scores.items(), key=lambda kv: abs(_safe_float(kv[1], 0.0)))
+        primary_source = str(ranked_source[0])
+    elif merged_sources:
+        primary_source = merged_sources[0]
 
     task = generate_whale_advisory_task.apply_async(
         kwargs={
@@ -181,6 +194,8 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
             'force_refresh': True,
             'user_id': int(user_id),
             'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+            'merged_sources': merged_sources,
+            'primary_source': primary_source,
         },
         countdown=0,
     )
@@ -193,7 +208,8 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
         'task_id': task.id,
         'score_sum': score_sum,
         'resolved_side': side,
-        'sources': state.get('sources') or [],
+        'sources': merged_sources,
+        'primary_source': primary_source,
     }
 
 
@@ -738,6 +754,8 @@ def generate_whale_advisory_task(
     force_refresh: bool = False,
     user_id: int | None = None,
     source: str = WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+    merged_sources: list[str] | None = None,
+    primary_source: str | None = None,
     advisory_type: str = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
     severity_override: str | None = None,
 ) -> dict:
@@ -880,6 +898,11 @@ def generate_whale_advisory_task(
     }:
         advisory_type_key = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT
 
+    normalized_merged_sources = sorted({str(item).strip().lower() for item in (merged_sources or []) if str(item).strip()})
+    normalized_primary_source = str(primary_source or '').strip().lower()
+    if not normalized_primary_source and normalized_merged_sources:
+        normalized_primary_source = normalized_merged_sources[0]
+
     advisory = WhaleAdvisory.objects.create(
         user=target_user,
         symbol=symbol,
@@ -896,6 +919,8 @@ def generate_whale_advisory_task(
         refresh_count=refresh_count,
         is_auto_generated=source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB,
         source=source_key,
+        merged_sources=normalized_merged_sources,
+        primary_source=normalized_primary_source,
         advisory_type=advisory_type_key,
         severity=resolved_severity,
     )
@@ -951,6 +976,8 @@ def generate_whale_advisory_task(
         'force_refresh': bool(force_refresh),
         'user_id': user_id,
         'source': source_key,
+        'merged_sources': normalized_merged_sources,
+        'primary_source': normalized_primary_source,
         'used_concise': use_concise,
     }
 
