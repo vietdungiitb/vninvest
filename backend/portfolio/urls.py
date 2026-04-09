@@ -62,6 +62,7 @@ urlpatterns = [
 
     # --- Whale Advisory (AI — Pro+) ---
     path('whale-advisory/', views.WhaleAdvisoryListView.as_view(), name='whale-advisory-list'),
+    path('whale-advisory/<str:symbol>/auto-refresh-info/', views.whale_advisory_auto_refresh_info_api, name='whale-advisory-auto-refresh-info'),
     path('whale-advisory/<str:symbol>/refresh/', views.refresh_whale_advisory_api, name='whale-advisory-refresh'),
 ]
 

@@ -777,6 +777,12 @@ class UserConfig(models.Model):
         verbose_name='Khoảng thời gian refresh tự động (giờ)',
         help_text='Advisory sẽ được tạo lại khi tuổi > số giờ này',
     )
+    advisory_max_auto_refreshes_per_day = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1)],
+        verbose_name='Số lần auto refresh advisory tối đa mỗi ngày',
+        help_text='Giới hạn số advisory do periodic job tự tạo/làm mới trong ngày',
+    )
     advisory_max_tokens_per_day = models.PositiveIntegerField(
         default=5000,
         validators=[MinValueValidator(1000)],
@@ -1199,6 +1205,15 @@ class WhaleAdvisory(models.Model):
         WHALE_SIGNAL = 'whale_signal', 'Phát hiện tín hiệu cá voi'
         PERIODIC_JOB = 'periodic_job', 'Công việc định kỳ auto-gen'
         USER_REFRESH = 'user_refresh', 'Làm mới thủ công bởi user'
+
+    class AdvisoryTypeChoices(models.TextChoices):
+        DEFAULT = 'default', 'Whale signal mặc định'
+        REVERSAL = 'reversal', 'Đảo chiều dòng tiền'
+
+    class SeverityChoices(models.TextChoices):
+        URGENT = 'urgent', 'Khẩn cấp'
+        WARNING = 'warning', 'Cảnh báo'
+        INFO = 'info', 'Thông tin'
     
     user              = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='whale_advisories', verbose_name='Người dùng')
     symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
@@ -1218,6 +1233,8 @@ class WhaleAdvisory(models.Model):
     refresh_count     = models.PositiveIntegerField(default=0, verbose_name='Số lần refresh')
     is_auto_generated = models.BooleanField(default=False, verbose_name='Được tạo tự động?')
     source            = models.CharField(max_length=20, choices=SourceChoices.choices, default=SourceChoices.WHALE_SIGNAL, verbose_name='Nguồn')
+    advisory_type     = models.CharField(max_length=20, choices=AdvisoryTypeChoices.choices, default=AdvisoryTypeChoices.DEFAULT, db_index=True, verbose_name='Loại advisory')
+    severity          = models.CharField(max_length=10, choices=SeverityChoices.choices, default=SeverityChoices.INFO, db_index=True, verbose_name='Mức độ nghiêm trọng')
 
     class Meta:
         verbose_name = 'Tư vấn AI Whale'
@@ -1226,8 +1243,8 @@ class WhaleAdvisory(models.Model):
         indexes = [
             models.Index(fields=['user', 'symbol', 'created_at']),
             models.Index(fields=['symbol', 'created_at']),
-            models.Index(fields=['user', 'next_refresh_at']),  # PHASE 1
-            models.Index(fields=['symbol', 'next_refresh_at']),  # PHASE 1
+            models.Index(fields=['user', 'next_refresh_at'], name='idx_wha_user_refresh_at'),  # PHASE 1
+            models.Index(fields=['symbol', 'next_refresh_at'], name='idx_wha_symb_refresh_at'),  # PHASE 1
         ]
 
     def __str__(self):
@@ -1767,7 +1784,7 @@ class AdvisoryTokenLog(models.Model):
         indexes = [
             models.Index(fields=['user', 'created_at'], name='idx_adv_token_log_user_date'),
             models.Index(fields=['source', 'created_at'], name='idx_adv_token_log_source_date'),
-            models.Index(fields=['user', '-created_at'], name='idx_adv_token_log_user_created_desc'),
+            models.Index(fields=['user', '-created_at'], name='idx_adv_tok_user_created'),
         ]
     
     def __str__(self):

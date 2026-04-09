@@ -248,6 +248,14 @@ if ORDER_FLOW_DETECTION_ENABLED:
         "schedule": timedelta(seconds=max(ORDER_FLOW_DETECTION_INTERVAL_SECONDS, 30)),
     }
 
+REVERSAL_DETECTION_ENABLED = os.getenv("REVERSAL_DETECTION_ENABLED", "True").lower() == "true"
+REVERSAL_DETECTION_INTERVAL_SECONDS = _env_int("REVERSAL_DETECTION_INTERVAL_SECONDS", 30)
+if REVERSAL_DETECTION_ENABLED:
+    CELERY_BEAT_SCHEDULE["detect-whale-reversal"] = {
+        "task": "portfolio.tasks.detect_whale_reversal",
+        "schedule": timedelta(seconds=max(REVERSAL_DETECTION_INTERVAL_SECONDS, 30)),
+    }
+
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED = os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED", "True").lower() == "true"
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS = _env_int(
     "MISSION_CONTROL_SCHEDULED_ROLLOUTS_INTERVAL_SECONDS", 60
@@ -277,6 +285,16 @@ if ONBOARDING_TRIAL_AUTO_DOWNGRADE_ENABLED:
         "task": "portfolio.tasks.process_expired_onboarding_trials_task",
         "schedule": timedelta(minutes=max(ONBOARDING_TRIAL_AUTO_DOWNGRADE_MINUTES, 1)),
         "args": (max(ONBOARDING_TRIAL_AUTO_DOWNGRADE_BATCH_SIZE, 1),),
+    }
+ADVISORY_AUTO_GENERATION_ENABLED = os.getenv("ADVISORY_AUTO_GENERATION_ENABLED", "True").lower() == "true"
+ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES = _env_int("ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES", 240)
+ADVISORY_AUTO_GENERATION_BATCH_SIZE = _env_int("ADVISORY_AUTO_GENERATION_BATCH_SIZE", 200)
+if ADVISORY_AUTO_GENERATION_ENABLED:
+    CELERY_BEAT_SCHEDULE["auto-generate-advisories"] = {
+        "task": "portfolio.tasks.auto_generate_advisories_for_all_tracked",
+        "schedule": timedelta(minutes=max(ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES, 15)),
+        "kwargs": {"batch_size": max(ADVISORY_AUTO_GENERATION_BATCH_SIZE, 1)},
+        "options": {"expires": max(ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES * 60 // 2, 300)},
     }
 
 # Stream consumer batch — chạy mỗi 3 giây khi REALTIME_ENABLED=true

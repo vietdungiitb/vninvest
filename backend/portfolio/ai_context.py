@@ -214,7 +214,7 @@ def render_concise_context_for_prompt(context: dict) -> str:
     
     lines = [
         f"Symbol: {context.get('symbol')} | {profile.get('company_name', 'N/A')} | {profile.get('industry', 'N/A')}",
-        f"Price: {market.get('latest_close', 0),.2f} VND | Change: 1D {market.get('change_1d_pct', 0):.1f}%, 5D {market.get('change_5d_pct', 0):.1f}%, 20D {market.get('change_20d_pct', 0):.1f}%",
+        f"Price: {market.get('latest_close', 0):,.2f} VND | Change: 1D {market.get('change_1d_pct', 0):.1f}%, 5D {market.get('change_5d_pct', 0):.1f}%, 20D {market.get('change_20d_pct', 0):.1f}%",
         f"Today: {intraday.get('total_value_today', 0):,.0f} VND traded (buy {intraday.get('buy_value_today', 0):,.0f}, sell {intraday.get('sell_value_today', 0):,.0f})",
         f"Order flow: {order_flow.get('latest_signal_type', 'none')} | Confidence: {order_flow.get('latest_confidence', 'low')} | Strength: {order_flow.get('latest_strength', 0):.1f}",
     ]

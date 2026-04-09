@@ -115,6 +115,9 @@ class AIConfigApiTests(APITestCase):
                 'ai_provider': 'openai',
                 'ai_model': 'gpt-4o',
                 'ai_api_key': 'sk-test-key',
+                'advisory_refresh_interval_hours': 12,
+                'advisory_max_auto_refreshes_per_day': 3,
+                'advisory_max_tokens_per_day': 4500,
             },
             format='json',
         )
@@ -125,6 +128,9 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(cfg.ai_model, 'gpt-4o')
         self.assertTrue(cfg.ai_api_key)
         self.assertNotEqual(cfg.ai_api_key, 'sk-test-key')
+        self.assertEqual(cfg.advisory_refresh_interval_hours, 12)
+        self.assertEqual(cfg.advisory_max_auto_refreshes_per_day, 3)
+        self.assertEqual(cfg.advisory_max_tokens_per_day, 4500)
 
     @patch('portfolio.ai_service.test_ai_connection')
     def test_ai_test_connection_endpoint(self, mock_test_ai_connection):

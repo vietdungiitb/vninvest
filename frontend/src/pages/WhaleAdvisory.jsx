@@ -8,6 +8,7 @@ import {
   getWhaleAdvisories,
   testAIConnection,
   updateUserConfig,
+  getAdvisoryAutoRefreshInfo,
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import Can from '../components/Can';
@@ -186,6 +187,21 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
           }`}>
             {side || 'UNKNOWN'}
           </span>
+          {item.severity && item.severity !== 'info' && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+              item.severity === 'urgent' ? 'bg-red-900/70 text-red-300 animate-pulse'
+              : 'bg-amber-900/60 text-amber-300'
+            }`}>
+              {item.severity === 'urgent'
+                ? t('whaleAdvisory.severityUrgent')
+                : t('whaleAdvisory.severityWarning')}
+            </span>
+          )}
+          {item.advisory_type === 'reversal' && (
+            <span className="rounded-full bg-fuchsia-900/50 px-2 py-0.5 text-[10px] font-bold uppercase text-fuchsia-300">
+              {t('whaleAdvisory.advisoryTypeReversal')}
+            </span>
+          )}
           <span className="text-xs font-semibold text-slate-100">
             {fmtCompact(item.matched_value)} VND
           </span>
@@ -193,6 +209,16 @@ function AdvisoryCell({ item, onRefresh, refreshing }) {
         <div className="flex flex-col items-end gap-0.5 text-[11px] text-slate-500">
           <span>{fmtTime(item.created_at)}</span>
           <span className="tracking-widest">{[item.ai_provider || 'openclaw', item.ai_model || 'default'].join(' / ')}</span>
+          {item.source && (
+            <span className={`rounded px-1.5 py-0.5 text-[10px] ${
+              item.source === 'periodic_job' ? 'bg-slate-800 text-slate-400'
+              : item.source === 'user_refresh' ? 'bg-cyan-900/40 text-cyan-400'
+              : 'bg-indigo-900/40 text-indigo-400'
+            }`}>
+              {item.source === 'periodic_job' ? 'Auto' : item.source === 'user_refresh' ? 'Manual' : item.source}
+              {item.refresh_count > 0 && ` ×${item.refresh_count}`}
+            </span>
+          )}
           <DataFreshnessBadge
             lastEventAt={item.created_at}
             realtimeStatus={realtimeStatus}
@@ -344,12 +370,25 @@ export default function WhaleAdvisory() {
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
 
+  // Advisory schedule settings
+  const [scheduleAutoEnabled, setScheduleAutoEnabled] = useState(true);
+  const [scheduleIntervalHours, setScheduleIntervalHours] = useState(24);
+  const [scheduleMaxRefreshes, setScheduleMaxRefreshes] = useState(24);
+  const [scheduleMaxTokens, setScheduleMaxTokens] = useState(5000);
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [scheduleMessage, setScheduleMessage] = useState('');
+  // Selected symbol auto-refresh quota
+  const [refreshInfo, setRefreshInfo] = useState(null);
+
+    // Advisory list filters
+    const [watchlistOnly, setWatchlistOnly] = useState(false);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const [advisoryResp, trackedResp] = await Promise.all([
-        getWhaleAdvisories(),
+        getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true' } : {}),
         getTrackedSymbols(),
       ]);
       setItems(advisoryResp.data || []);
@@ -359,7 +398,7 @@ export default function WhaleAdvisory() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, watchlistOnly]);
 
   useEffect(() => {
     fetchData();
@@ -385,6 +424,20 @@ export default function WhaleAdvisory() {
         setAiModel(model);
         setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
         setAiReady(Boolean(cfg.ai_ready));
+
+        // Load advisory schedule settings
+        if (cfg.advisory_auto_generation_enabled !== undefined) {
+          setScheduleAutoEnabled(Boolean(cfg.advisory_auto_generation_enabled));
+        }
+        if (cfg.advisory_refresh_interval_hours !== undefined) {
+          setScheduleIntervalHours(Number(cfg.advisory_refresh_interval_hours) || 24);
+        }
+        if (cfg.advisory_max_auto_refreshes_per_day !== undefined) {
+          setScheduleMaxRefreshes(Number(cfg.advisory_max_auto_refreshes_per_day) || 24);
+        }
+        if (cfg.advisory_max_tokens_per_day !== undefined) {
+          setScheduleMaxTokens(Number(cfg.advisory_max_tokens_per_day) || 5000);
+        }
       } catch (_) {
         // Không chặn trang advisory khi API options lỗi.
       }
@@ -435,10 +488,10 @@ export default function WhaleAdvisory() {
       if (ready) {
         return true;
       }
-      setRefreshMessage(cfg.ai_config_message || t('whaleAdvisory.configRequired', { defaultValue: 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.' }));
+      setRefreshMessage(cfg.ai_config_message || t('whaleAdvisory.configRequired'));
       return false;
     } catch (err) {
-      setRefreshMessage(err?.response?.data?.message || t('whaleAdvisory.configCheckFailed', { defaultValue: 'Không kiểm tra được cấu hình AI hiện tại.' }));
+      setRefreshMessage(err?.response?.data?.message || t('whaleAdvisory.configCheckFailed'));
       return false;
     }
   }, [t]);
@@ -447,7 +500,7 @@ export default function WhaleAdvisory() {
     setSavingAi(true);
     setAiMessage('');
     if (!aiModel) {
-      setAiMessage(t('whaleAdvisory.modelRequired', { defaultValue: 'Bạn cần chọn AI model trước khi lưu.' }));
+      setAiMessage(t('whaleAdvisory.modelRequired'));
       setSavingAi(false);
       return;
     }
@@ -475,7 +528,7 @@ export default function WhaleAdvisory() {
     setTestingAi(true);
     setAiMessage('');
     if (!aiModel) {
-      setAiMessage(t('whaleAdvisory.modelRequired', { defaultValue: 'Bạn cần chọn AI model trước khi kiểm tra kết nối.' }));
+      setAiMessage(t('whaleAdvisory.modelRequired'));
       setTestingAi(false);
       return;
     }
@@ -496,6 +549,42 @@ export default function WhaleAdvisory() {
       setTestingAi(false);
     }
   }, [aiModel, aiProvider, apiKey, t]);
+
+  const handleSaveSchedule = useCallback(async () => {
+    setSavingSchedule(true);
+    setScheduleMessage('');
+    try {
+      await updateUserConfig({
+        advisory_auto_generation_enabled: scheduleAutoEnabled,
+        advisory_refresh_interval_hours: Math.max(1, Number(scheduleIntervalHours) || 24),
+        advisory_max_auto_refreshes_per_day: Math.max(1, Number(scheduleMaxRefreshes) || 24),
+        advisory_max_tokens_per_day: Math.max(100, Number(scheduleMaxTokens) || 5000),
+      });
+      setScheduleMessage(t('whaleAdvisory.scheduleSaveSuccess'));
+    } catch (err) {
+      setScheduleMessage(err?.response?.data?.detail || t('whaleAdvisory.scheduleSaveFailed'));
+    } finally {
+      setSavingSchedule(false);
+    }
+  }, [scheduleAutoEnabled, scheduleIntervalHours, scheduleMaxRefreshes, scheduleMaxTokens, t]);
+
+  const handleLoadRefreshInfo = useCallback(async (symbol) => {
+    if (!symbol) return;
+    try {
+      const resp = await getAdvisoryAutoRefreshInfo(symbol);
+      setRefreshInfo(resp?.data || null);
+    } catch (_) {
+      setRefreshInfo(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeSymbol) {
+      handleLoadRefreshInfo(activeSymbol);
+    } else {
+      setRefreshInfo(null);
+    }
+  }, [activeSymbol, handleLoadRefreshInfo]);
 
   const handleRefreshAdvisory = useCallback(async (symbol) => {
     if (!symbol) return;
@@ -719,7 +808,7 @@ export default function WhaleAdvisory() {
               value={aiModel}
               onChange={(e) => setAiModel(e.target.value)}
             >
-              <option value="">{t('whaleAdvisory.selectModel', { defaultValue: 'Chọn model' })}</option>
+              <option value="">{t('whaleAdvisory.selectModel')}</option>
               {modelOptionEntries.map((entry) => (
                 <option key={entry.id} value={entry.id}>{entry.label || entry.id}</option>
               ))}
@@ -771,8 +860,80 @@ export default function WhaleAdvisory() {
         )}
         {!aiReady && (
           <p className="mt-2 text-xs text-amber-300">
-            {t('whaleAdvisory.configRequired', { defaultValue: 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.' })}
+            {t('whaleAdvisory.configRequired')}
           </p>
+        )}
+      </section>
+
+      {/* Advisory Auto-Generation Schedule Settings */}
+      <section className="card-section px-5 py-4">
+        <div className="mb-3">
+          <p className="text-label">{t('whaleAdvisory.scheduleSection')}</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAdvisory.scheduleTitle')}</h2>
+          <p className="mt-1 text-xs text-slate-400">{t('whaleAdvisory.scheduleDesc')}</p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="flex items-center gap-3 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500"
+              checked={scheduleAutoEnabled}
+              onChange={(e) => setScheduleAutoEnabled(e.target.checked)}
+            />
+            {t('whaleAdvisory.scheduleAutoEnabled')}
+          </label>
+
+          <label className="text-xs text-slate-400">
+            {t('whaleAdvisory.scheduleInterval')}
+            <input
+              type="number"
+              min="1"
+              max="720"
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              value={scheduleIntervalHours}
+              onChange={(e) => setScheduleIntervalHours(e.target.value)}
+            />
+          </label>
+
+          <label className="text-xs text-slate-400">
+            {t('whaleAdvisory.scheduleMaxRefreshes')}
+            <input
+              type="number"
+              min="1"
+              max="100"
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              value={scheduleMaxRefreshes}
+              onChange={(e) => setScheduleMaxRefreshes(e.target.value)}
+            />
+          </label>
+
+          <label className="text-xs text-slate-400">
+            {t('whaleAdvisory.scheduleMaxTokens')}
+            <input
+              type="number"
+              min="100"
+              max="100000"
+              step="100"
+              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+              value={scheduleMaxTokens}
+              onChange={(e) => setScheduleMaxTokens(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <div className="mt-3">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={handleSaveSchedule}
+            disabled={savingSchedule}
+          >
+            {savingSchedule ? t('whaleAdvisory.saving') : t('whaleAdvisory.scheduleSave')}
+          </button>
+        </div>
+        {scheduleMessage && (
+          <p className="mt-2 text-xs text-cyan-300">{scheduleMessage}</p>
         )}
       </section>
 
@@ -785,6 +946,37 @@ export default function WhaleAdvisory() {
       {refreshMessage && (
         <section className="rounded-2xl border border-cyan-800/60 bg-cyan-950/20 px-5 py-4 text-sm text-cyan-200">
           {refreshMessage}
+        </section>
+      )}
+
+      {/* Advisory quota info for active symbol */}
+      {activeSymbol && refreshInfo && (
+        <section className="card-section px-5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-200">{activeSymbol}</span>
+              <span>—</span>
+              <span>
+                {t('whaleAdvisory.quotaAutoRefresh')}{' '}
+                <span className={refreshInfo.auto_refreshes_remaining_today === 0 ? 'text-rose-400' : 'text-cyan-300'}>
+                  {refreshInfo.auto_refreshes_used_today ?? '—'} / {refreshInfo.advisory_max_auto_refreshes_per_day ?? '—'}
+                </span>
+              </span>
+              <span className="text-slate-600">|</span>
+              <span>
+                {t('whaleAdvisory.quotaTokens')}{' '}
+                <span className={(refreshInfo.tokens_remaining_today ?? 0) < 500 ? 'text-amber-400' : 'text-slate-300'}>
+                  {(refreshInfo.tokens_remaining_today ?? 0).toLocaleString()}
+                </span>
+              </span>
+            </div>
+            {refreshInfo.next_refresh_at && (
+              <span className="text-slate-500">
+                {t('whaleAdvisory.nextRefreshAt')}{' '}
+                <span className="text-slate-300">{fmtTime(refreshInfo.next_refresh_at)}</span>
+              </span>
+            )}
+          </div>
         </section>
       )}
 
@@ -834,6 +1026,15 @@ export default function WhaleAdvisory() {
               <option value="confidence_desc">{t('whaleAdvisory.sortConfidenceDesc')}</option>
             </select>
           </div>
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-400 select-none">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-cyan-500"
+                checked={watchlistOnly}
+                onChange={(e) => setWatchlistOnly(e.target.checked)}
+              />
+              {t('whaleAdvisory.watchlistOnly')}
+            </label>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span>{t('whaleAdvisory.pageSize')}</span>
             <select

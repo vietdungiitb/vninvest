@@ -114,6 +114,12 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'ai_model',
             'ai_api_key',
             'ai_api_key_configured',
+            'advisory_auto_generation_enabled',
+            'advisory_whale_signal_enabled',
+            'advisory_manual_refresh_enabled',
+            'advisory_refresh_interval_hours',
+            'advisory_max_auto_refreshes_per_day',
+            'advisory_max_tokens_per_day',
             'created_at',
             'updated_at',
         ]
@@ -135,6 +141,11 @@ class UserConfigSerializer(serializers.ModelSerializer):
     def validate_whale_alert_threshold(self, value):
         if value < 1:
             raise serializers.ValidationError('Ngưỡng phải >= 1 triệu VNĐ.')
+        return value
+
+    def validate_advisory_max_auto_refreshes_per_day(self, value):
+        if value < 1:
+            raise serializers.ValidationError('Số lần auto refresh/ngày phải >= 1.')
         return value
 
     def validate_ai_provider(self, value):
@@ -173,6 +184,7 @@ class WhaleAdvisorySerializer(serializers.ModelSerializer):
         fields = [
             'id', 'symbol', 'matched_value', 'side', 'threshold',
             'ai_summary', 'ai_detail', 'ai_provider', 'ai_model', 'created_at',
+            'next_refresh_at', 'refresh_count', 'is_auto_generated', 'source', 'advisory_type', 'severity',
         ]
         read_only_fields = fields
 

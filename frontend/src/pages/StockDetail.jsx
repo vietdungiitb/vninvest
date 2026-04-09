@@ -2245,6 +2245,22 @@ export default function StockDetail() {
                     <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
                       {advisoryUserProvider || advisorySession.ai_provider || 'openclaw'}
                     </span>
+                    {advisorySession.severity && advisorySession.severity !== 'info' ? (
+                      <span className={`rounded-full px-2 py-0.5 font-semibold uppercase ${
+                        advisorySession.severity === 'urgent'
+                          ? 'border border-rose-700/70 bg-rose-500/10 text-rose-300'
+                          : 'border border-amber-700/70 bg-amber-500/10 text-amber-300'
+                      }`}>
+                        {advisorySession.severity === 'urgent'
+                          ? t('stockDetail.severityUrgent')
+                          : t('stockDetail.severityWarning')}
+                      </span>
+                    ) : null}
+                    {advisorySession.advisory_type === 'reversal' ? (
+                      <span className="rounded-full border border-fuchsia-700/70 bg-fuchsia-500/10 px-2 py-0.5 font-semibold uppercase text-fuchsia-300">
+                        {t('stockDetail.advisoryTypeReversal')}
+                      </span>
+                    ) : null}
                     <span>
                       {advisorySession.created_at ? new Date(advisorySession.created_at).toLocaleString(undefined) : '—'}
                     </span>

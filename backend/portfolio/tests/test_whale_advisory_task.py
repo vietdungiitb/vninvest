@@ -1,11 +1,14 @@
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase, override_settings
 from django.core.cache import cache
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
-from portfolio.models import UserConfig, WhaleAdvisory
-from portfolio.tasks import generate_whale_advisory_task
+from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
+from portfolio.tasks import auto_generate_advisories_for_all_tracked, detect_whale_reversal, generate_whale_advisory_task
+from portfolio.tasks import _compute_advisory_severity
 
 
 @override_settings(WHALE_ADVISORY_COOLDOWN_SECONDS=900)
@@ -190,7 +193,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         )
 
         self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason'], 'missing_ai_api_key')
+        self.assertEqual(result['reason'], 'missing_system_ai_settings')
         self.assertFalse(WhaleAdvisory.objects.filter(symbol='VNM').exists())
 
     def test_task_skips_when_user_has_no_ai_model(self):
@@ -206,5 +209,229 @@ class WhaleAdvisoryTaskTests(TestCase):
         )
 
         self.assertEqual(result['status'], 'skipped')
-        self.assertEqual(result['reason'], 'missing_ai_model')
+        self.assertEqual(result['reason'], 'missing_system_ai_settings')
         self.assertFalse(WhaleAdvisory.objects.filter(symbol='VCB').exists())
+
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_advisory_concise')
+    def test_periodic_job_uses_concise_mode_and_logs_tokens(
+        self,
+        mock_generate_concise,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        staff_user = self._create_user_config('staff-periodic', api_key='sk-test-periodic')
+        mock_generate_concise.return_value = {
+            'text': 'Tom tat ngan gon',
+            'prompt_tokens': 21,
+            'completion_tokens': 34,
+        }
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        result = generate_whale_advisory_task(
+            symbol='MBB',
+            matched_value_vnd=2_500_000_000,
+            side='INFO',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+
+        advisory = WhaleAdvisory.objects.get(symbol='MBB', user=staff_user)
+        token_log = AdvisoryTokenLog.objects.get(advisory=advisory)
+        self.assertEqual(result['status'], 'ok')
+        self.assertTrue(result['used_concise'])
+        self.assertEqual(advisory.source, WhaleAdvisory.SourceChoices.PERIODIC_JOB)
+        self.assertTrue(advisory.is_auto_generated)
+        self.assertEqual(advisory.ai_detail, '')
+        self.assertIsNotNone(advisory.next_refresh_at)
+        self.assertEqual(token_log.tokens_used, 55)
+        self.assertEqual(token_log.source, AdvisoryTokenLog.SourceChoices.AUTO_GENERATION)
+
+    def test_task_skips_when_daily_budget_exceeded(self):
+        staff_user = self._create_user_config('staff-budget', api_key='sk-test-budget')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_max_tokens_per_day = 1000
+        config.save(update_fields=['advisory_max_tokens_per_day'])
+        AdvisoryTokenLog.objects.create(
+            user=staff_user,
+            tokens_used=1000,
+            source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+            symbol='HPG',
+        )
+
+        result = generate_whale_advisory_task(
+            symbol='HPG',
+            matched_value_vnd=1_500_000_000,
+            side='INFO',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason'], 'daily_budget_exceeded')
+        self.assertFalse(WhaleAdvisory.objects.filter(symbol='HPG', user=staff_user).exists())
+
+    def test_task_skips_when_daily_auto_refresh_limit_exceeded(self):
+        staff_user = self._create_user_config('staff-autolimit', api_key='sk-test-autolimit')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_max_auto_refreshes_per_day = 1
+        config.save(update_fields=['advisory_max_auto_refreshes_per_day'])
+        AdvisoryTokenLog.objects.create(
+            user=staff_user,
+            tokens_used=120,
+            source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+            symbol='ACB',
+        )
+
+        result = generate_whale_advisory_task(
+            symbol='ACB',
+            matched_value_vnd=1_500_000_000,
+            side='INFO',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason'], 'daily_auto_refresh_limit_exceeded')
+        self.assertFalse(WhaleAdvisory.objects.filter(symbol='ACB', user=staff_user).exists())
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_auto_generate_task_queues_missing_and_stale_tracked_symbols(self, mock_apply_async):
+        cache.delete('advisory:auto-generation:job-lock')
+        staff_user = self._create_user_config('staff-auto-queue')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_refresh_interval_hours = 24
+        config.advisory_max_tokens_per_day = 5000
+        config.advisory_max_auto_refreshes_per_day = 5
+        config.save(update_fields=['advisory_refresh_interval_hours', 'advisory_max_tokens_per_day', 'advisory_max_auto_refreshes_per_day'])
+        TrackedSymbol.objects.create(user=staff_user, symbol='AAA')
+        TrackedSymbol.objects.create(user=staff_user, symbol='BBB')
+        cache.delete(f'advisory:auto-generation:queue:{staff_user.id}:AAA')
+        cache.delete(f'advisory:auto-generation:queue:{staff_user.id}:BBB')
+        WhaleAdvisory.objects.create(
+            user=staff_user,
+            symbol='BBB',
+            matched_value=2_000_000_000,
+            side='BUY',
+            threshold=1_000_000_000,
+            ai_summary='old summary',
+            ai_detail='old detail',
+            ai_provider='openclaw',
+            next_refresh_at=timezone.now() - timedelta(hours=1),
+        )
+
+        result = auto_generate_advisories_for_all_tracked(batch_size=10)
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['queued_count'], 2)
+        self.assertEqual(mock_apply_async.call_count, 2)
+        first_kwargs = mock_apply_async.call_args_list[0].kwargs['kwargs']
+        second_kwargs = mock_apply_async.call_args_list[1].kwargs['kwargs']
+        self.assertEqual(first_kwargs['source'], WhaleAdvisory.SourceChoices.PERIODIC_JOB)
+        self.assertEqual(second_kwargs['source'], WhaleAdvisory.SourceChoices.PERIODIC_JOB)
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_auto_generate_task_respects_daily_auto_refresh_limit(self, mock_apply_async):
+        cache.delete('advisory:auto-generation:job-lock')
+        staff_user = self._create_user_config('staff-auto-limit')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_max_tokens_per_day = 5000
+        config.advisory_max_auto_refreshes_per_day = 1
+        config.save(update_fields=['advisory_max_tokens_per_day', 'advisory_max_auto_refreshes_per_day'])
+        TrackedSymbol.objects.create(user=staff_user, symbol='AAA')
+        TrackedSymbol.objects.create(user=staff_user, symbol='BBB')
+        AdvisoryTokenLog.objects.create(
+            user=staff_user,
+            tokens_used=111,
+            source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+            symbol='ZZZ',
+        )
+
+        result = auto_generate_advisories_for_all_tracked(batch_size=10)
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['queued_count'], 0)
+        self.assertEqual(result['users_skipped_budget'], 1)
+        mock_apply_async.assert_not_called()
+
+    def test_compute_advisory_severity_thresholds(self):
+        self.assertEqual(_compute_advisory_severity(25_000_000_000, 5_000_000_000), 'urgent')
+        self.assertEqual(_compute_advisory_severity(10_000_000_000, 5_000_000_000), 'warning')
+        self.assertEqual(_compute_advisory_severity(5_500_000_000, 5_000_000_000), 'info')
+        self.assertEqual(_compute_advisory_severity(5_000_000_000, 0), 'info')
+
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_task_sets_severity_based_on_value_threshold_ratio(
+        self,
+        mock_generate_text,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        symbol = 'URGENT1'
+        staff_user = self._create_user_config('staff-severity', api_key='sk-test-sev')
+        cache.delete(f'whale_advisory_lock:{symbol}')
+
+        mock_generate_text.side_effect = [
+            {
+                'text': 'Summary',
+                'prompt_tokens': 10,
+                'completion_tokens': 20,
+            },
+            {
+                'text': 'Detail',
+                'prompt_tokens': 30,
+                'completion_tokens': 40,
+            },
+        ]
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        result = generate_whale_advisory_task(
+            symbol=symbol,
+            matched_value_vnd=30_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            force_refresh=False,
+            user_id=staff_user.id,
+        )
+
+        self.assertEqual(result['status'], 'ok')
+        advisory = WhaleAdvisory.objects.get(id=result['advisory_id'])
+        self.assertEqual(advisory.severity, WhaleAdvisory.SeverityChoices.URGENT)
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_detect_whale_reversal_queues_reversal_advisory(self, mock_apply_async):
+        staff_user = self._create_user_config('staff-reversal', api_key='sk-test-reversal')
+        TrackedSymbol.objects.create(user=staff_user, symbol='REV1')
+        cache.delete('reversal_alert_lock:REV1')
+
+        now = timezone.localtime()
+        today = timezone.localdate()
+        base_time = (now - timedelta(minutes=5)).time()
+
+        # 3 lệnh BUY liên tiếp
+        IntradayTick.objects.create(symbol='REV1', trade_date=today, trade_time=base_time, price=10000, volume=100000, side='BUY')
+        IntradayTick.objects.create(symbol='REV1', trade_date=today, trade_time=(now - timedelta(minutes=4)).time(), price=10010, volume=90000, side='BUY')
+        IntradayTick.objects.create(symbol='REV1', trade_date=today, trade_time=(now - timedelta(minutes=3)).time(), price=10020, volume=95000, side='BUY')
+        # 1 lệnh SELL lớn đảo chiều
+        IntradayTick.objects.create(symbol='REV1', trade_date=today, trade_time=(now - timedelta(minutes=2)).time(), price=25000, volume=300000, side='SELL')
+
+        result = detect_whale_reversal(symbol='REV1')
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertGreaterEqual(result['processed'], 1)
+        self.assertGreaterEqual(result['queued'], 1)
+        kwargs = mock_apply_async.call_args.kwargs['kwargs']
+        self.assertEqual(kwargs['symbol'], 'REV1')
+        self.assertEqual(kwargs['advisory_type'], WhaleAdvisory.AdvisoryTypeChoices.REVERSAL)
+        self.assertEqual(kwargs['severity_override'], WhaleAdvisory.SeverityChoices.URGENT)

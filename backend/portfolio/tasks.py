@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+from datetime import timedelta, datetime
 import logging
 import os
+import random
 
 from celery import shared_task
 from django.conf import settings
 from django.core.cache import cache
+from django.db.models import Sum
 from django.utils import timezone
 
 from portfolio.models import (
+    AdvisoryTokenLog,
     PriceAlertRule,
     SecuritiesGroup,
     SecuritiesItem,
@@ -17,6 +21,7 @@ from portfolio.models import (
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
+    WhaleAdvisory,
     WhaleConfigRollout,
 )
 from portfolio.realtime.collector import collect_intraday_frame, collect_symbols_for_user, collect_and_push
@@ -44,6 +49,147 @@ logger = logging.getLogger(__name__)
 
 TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
 VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnstock:rate-limit:price_board'
+ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY = 'advisory:auto-generation:job-lock'
+
+
+def _normalize_advisory_source(source: str | None) -> str:
+    source_key = str(source or WhaleAdvisory.SourceChoices.WHALE_SIGNAL).strip().lower()
+    allowed = {
+        WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+        WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        WhaleAdvisory.SourceChoices.USER_REFRESH,
+    }
+    if source_key in allowed:
+        return source_key
+    return WhaleAdvisory.SourceChoices.WHALE_SIGNAL
+
+
+def _token_log_source_for_advisory_source(source: str) -> str:
+    source_key = _normalize_advisory_source(source)
+    if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB:
+        return AdvisoryTokenLog.SourceChoices.AUTO_GENERATION
+    if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH:
+        return AdvisoryTokenLog.SourceChoices.MANUAL_REFRESH
+    return AdvisoryTokenLog.SourceChoices.WHALE_SIGNAL
+
+
+def _get_tokens_used_today(user_id: int) -> int:
+    total = AdvisoryTokenLog.objects.filter(
+        user_id=user_id,
+        created_at__date=timezone.localdate(),
+    ).aggregate(total=Sum('tokens_used'))['total']
+    return int(total or 0)
+
+
+def _get_remaining_advisory_budget(user_config: UserConfig) -> int:
+    budget = int(user_config.advisory_max_tokens_per_day or 0)
+    return max(budget - _get_tokens_used_today(user_config.user_id), 0)
+
+
+def _get_auto_generation_count_today(user_id: int) -> int:
+    return AdvisoryTokenLog.objects.filter(
+        user_id=user_id,
+        source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+        created_at__date=timezone.localdate(),
+    ).count()
+
+
+def _get_remaining_auto_refreshes(user_config: UserConfig) -> int:
+    daily_limit = int(user_config.advisory_max_auto_refreshes_per_day or 0)
+    return max(daily_limit - _get_auto_generation_count_today(user_config.user_id), 0)
+
+
+def _resolve_next_refresh_at(user_config: UserConfig | None) -> timezone.datetime | None:
+    if user_config is None:
+        return None
+    refresh_hours = max(int(user_config.advisory_refresh_interval_hours or 24), 1)
+    return timezone.now() + timedelta(hours=refresh_hours)
+
+
+def _resolve_advisory_threshold_vnd(user_config: UserConfig, tracked_symbol: TrackedSymbol | None = None) -> float:
+    if tracked_symbol is not None and tracked_symbol.whale_alert_threshold_million is not None:
+        return float(tracked_symbol.whale_alert_threshold_million) * 1_000_000
+    return float(user_config.whale_alert_threshold or 500) * 1_000_000
+
+
+def _should_use_concise_advisory(source: str, remaining_budget: int | None) -> bool:
+    threshold = max(int(os.getenv('ADVISORY_CONCISE_BUDGET_THRESHOLD', '1200')), 200)
+    return source == WhaleAdvisory.SourceChoices.PERIODIC_JOB or (
+        remaining_budget is not None and remaining_budget <= threshold
+    )
+
+
+def _compute_advisory_severity(matched_value_vnd: float, threshold: float) -> str:
+    """
+    Tính mức độ nghiêm trọng từ tỷ lệ matched_value / threshold:
+    - >= 5x → urgent (cá mập lớn, giá trị khớp rất cao)
+    - >= 2x → warning (cá mập bình thường)
+    - else  → info
+    """
+    if threshold and threshold > 0:
+        ratio = float(matched_value_vnd) / float(threshold)
+        if ratio >= 5.0:
+            return WhaleAdvisory.SeverityChoices.URGENT
+        if ratio >= 2.0:
+            return WhaleAdvisory.SeverityChoices.WARNING
+    return WhaleAdvisory.SeverityChoices.INFO
+
+
+def _detect_reversal_signal(symbol: str) -> dict | None:
+    """
+    Phát hiện đảo chiều: >= N lệnh BUY liên tiếp trong cửa sổ 15 phút,
+    sau đó xuất hiện 1 lệnh SELL lớn vượt ngưỡng.
+    """
+    from portfolio.models import IntradayTick
+
+    window_minutes = max(int(os.getenv('REVERSAL_WINDOW_MINUTES', '15')), 5)
+    min_consecutive_buy = max(int(os.getenv('REVERSAL_MIN_CONSECUTIVE_BUY', '3')), 2)
+    min_sell_value_vnd = float(os.getenv('REVERSAL_MIN_SELL_VALUE_VND', '5000000000'))
+
+    now = timezone.now()
+    today = timezone.localdate()
+    cutoff_dt = now - timedelta(minutes=window_minutes)
+    cutoff_t = cutoff_dt.time()
+
+    ticks = list(
+        IntradayTick.objects.filter(symbol=symbol, trade_date=today)
+        .filter(trade_time__gte=cutoff_t)
+        .values('trade_time', 'price', 'volume', 'side')
+        .order_by('trade_time')
+    )
+    if len(ticks) < min_consecutive_buy + 1:
+        return None
+
+    buy_streak = 0
+    for idx, tick in enumerate(ticks):
+        side = str(tick.get('side') or '').upper()
+        if side == 'BUY':
+            buy_streak += 1
+            continue
+
+        if side != 'SELL':
+            buy_streak = 0
+            continue
+
+        sell_value = float(tick.get('price') or 0) * float(tick.get('volume') or 0)
+        if buy_streak >= min_consecutive_buy and sell_value >= min_sell_value_vnd:
+            buy_values = [
+                float(item.get('price') or 0) * float(item.get('volume') or 0)
+                for item in ticks[max(0, idx - buy_streak):idx]
+                if str(item.get('side') or '').upper() == 'BUY'
+            ]
+            avg_buy_value = (sum(buy_values) / len(buy_values)) if buy_values else 0
+            return {
+                'symbol': symbol,
+                'sell_value_vnd': sell_value,
+                'buy_streak': buy_streak,
+                'avg_buy_value_vnd': avg_buy_value,
+                'triggered_at': datetime.combine(today, tick['trade_time']).isoformat(),
+            }
+
+        buy_streak = 0
+
+    return None
 
 
 def _distinct_symbols(queryset) -> list[str]:
@@ -437,6 +583,9 @@ def generate_whale_advisory_task(
     threshold: float = 0,
     force_refresh: bool = False,
     user_id: int | None = None,
+    source: str = WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+    advisory_type: str = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
+    severity_override: str | None = None,
 ) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
@@ -448,17 +597,18 @@ def generate_whale_advisory_task(
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
     from portfolio.ai_runtime_config import resolve_ai_runtime_config
-    from portfolio.ai_service import generate_whale_text
-    from portfolio.models import WhaleAdvisory
+    from portfolio.ai_service import generate_advisory_concise, generate_whale_text
 
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
     cache_key = f'whale_advisory_lock:{user_id}:{symbol}' if user_id is not None else f'whale_advisory_lock:{symbol}'
+    source_key = _normalize_advisory_source(source)
 
     advisory_qs = WhaleAdvisory.objects.filter(symbol=symbol)
     if user_id is not None:
         advisory_qs = advisory_qs.filter(user_id=user_id)
+    latest_existing_advisory = advisory_qs.order_by('-created_at').first()
 
-    if not force_refresh and advisory_qs.exists():
+    if not force_refresh and latest_existing_advisory is not None:
         logger.info('Whale advisory already exists — skipping auto generation for %s', symbol)
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'existing_advisory'}
 
@@ -467,9 +617,39 @@ def generate_whale_advisory_task(
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
 
     target_user = None
+    user_cfg = None
+    remaining_budget = None
     if user_id is not None:
-        cfg = UserConfig.objects.filter(user_id=user_id).select_related('user').first()
-        target_user = getattr(cfg, 'user', None)
+        user_cfg = UserConfig.objects.filter(user_id=user_id).select_related('user').first()
+        target_user = getattr(user_cfg, 'user', None)
+
+    if user_cfg is not None:
+        if source_key == WhaleAdvisory.SourceChoices.WHALE_SIGNAL and not user_cfg.advisory_whale_signal_enabled:
+            return {'status': 'skipped', 'symbol': symbol, 'reason': 'whale_signal_disabled', 'user_id': user_id}
+        if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and not user_cfg.advisory_auto_generation_enabled:
+            return {'status': 'skipped', 'symbol': symbol, 'reason': 'auto_generation_disabled', 'user_id': user_id}
+        if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH and not user_cfg.advisory_manual_refresh_enabled:
+            return {'status': 'skipped', 'symbol': symbol, 'reason': 'manual_refresh_disabled', 'user_id': user_id}
+
+        remaining_budget = _get_remaining_advisory_budget(user_cfg)
+        if remaining_budget <= 0:
+            logger.info('Whale advisory budget exhausted for user=%s symbol=%s source=%s', user_id, symbol, source_key)
+            return {
+                'status': 'skipped',
+                'symbol': symbol,
+                'reason': 'daily_budget_exceeded',
+                'user_id': user_id,
+                'source': source_key,
+            }
+        if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and _get_remaining_auto_refreshes(user_cfg) <= 0:
+            logger.info('Whale advisory auto-refresh count exhausted for user=%s symbol=%s', user_id, symbol)
+            return {
+                'status': 'skipped',
+                'symbol': symbol,
+                'reason': 'daily_auto_refresh_limit_exceeded',
+                'user_id': user_id,
+                'source': source_key,
+            }
 
     runtime_cfg = resolve_ai_runtime_config(user=target_user)
     if not runtime_cfg.get('ready'):
@@ -491,31 +671,60 @@ def generate_whale_advisory_task(
     model = str(runtime_cfg.get('model') or '').strip()
     api_key = str(runtime_cfg.get('api_key') or '').strip()
     ai_source = str(runtime_cfg.get('source') or 'unknown')
+    use_concise = _should_use_concise_advisory(source_key, remaining_budget)
 
     try:
-        summary_resp = generate_whale_text(
-            provider=provider,
-            model=model,
-            api_key=api_key,
-            symbol=symbol,
-            matched_value_vnd=matched_value_vnd,
-            side=side,
-            deep=False,
-            user=target_user,
-        )
-        deep_resp = generate_whale_text(
-            provider=provider,
-            model=model,
-            api_key=api_key,
-            symbol=symbol,
-            matched_value_vnd=matched_value_vnd,
-            side=side,
-            deep=True,
-            user=target_user,
-        )
+        if use_concise:
+            summary_resp = generate_advisory_concise(
+                provider=provider,
+                model=model,
+                api_key=api_key,
+                symbol=symbol,
+                matched_value_vnd=matched_value_vnd,
+                side=side,
+                user=target_user,
+            )
+            deep_resp = {'text': '', 'prompt_tokens': 0, 'completion_tokens': 0}
+        else:
+            summary_resp = generate_whale_text(
+                provider=provider,
+                model=model,
+                api_key=api_key,
+                symbol=symbol,
+                matched_value_vnd=matched_value_vnd,
+                side=side,
+                deep=False,
+                user=target_user,
+            )
+            deep_resp = generate_whale_text(
+                provider=provider,
+                model=model,
+                api_key=api_key,
+                symbol=symbol,
+                matched_value_vnd=matched_value_vnd,
+                side=side,
+                deep=True,
+                user=target_user,
+            )
     except Exception as exc:
         logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
         raise  # Celery retry
+
+    refresh_count = (latest_existing_advisory.refresh_count + 1) if (force_refresh and latest_existing_advisory is not None) else 0
+    resolved_severity = str(severity_override or '').strip().lower() or _compute_advisory_severity(matched_value_vnd, float(threshold or 0))
+    if resolved_severity not in {
+        WhaleAdvisory.SeverityChoices.URGENT,
+        WhaleAdvisory.SeverityChoices.WARNING,
+        WhaleAdvisory.SeverityChoices.INFO,
+    }:
+        resolved_severity = WhaleAdvisory.SeverityChoices.INFO
+
+    advisory_type_key = str(advisory_type or WhaleAdvisory.AdvisoryTypeChoices.DEFAULT).strip().lower()
+    if advisory_type_key not in {
+        WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
+        WhaleAdvisory.AdvisoryTypeChoices.REVERSAL,
+    }:
+        advisory_type_key = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT
 
     advisory = WhaleAdvisory.objects.create(
         user=target_user,
@@ -529,7 +738,22 @@ def generate_whale_advisory_task(
         ai_model=model,
         prompt_tokens=summary_resp['prompt_tokens'] + deep_resp['prompt_tokens'],
         completion_tokens=summary_resp['completion_tokens'] + deep_resp['completion_tokens'],
+        next_refresh_at=_resolve_next_refresh_at(user_cfg),
+        refresh_count=refresh_count,
+        is_auto_generated=source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        source=source_key,
+        advisory_type=advisory_type_key,
+        severity=resolved_severity,
     )
+
+    if target_user is not None:
+        AdvisoryTokenLog.objects.create(
+            user=target_user,
+            advisory=advisory,
+            tokens_used=advisory.prompt_tokens + advisory.completion_tokens,
+            source=_token_log_source_for_advisory_source(source_key),
+            symbol=symbol,
+        )
 
     # Set cooldown lock cho luồng auto; refresh thủ công có cooldown riêng ở API endpoint.
     if not force_refresh:
@@ -572,7 +796,124 @@ def generate_whale_advisory_task(
         'ai_source': ai_source,
         'force_refresh': bool(force_refresh),
         'user_id': user_id,
+        'source': source_key,
+        'used_concise': use_concise,
     }
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None) -> dict:
+    """
+    Queue advisory generation for tracked symbols that do not have an advisory yet
+    or whose last advisory is due for refresh.
+    """
+    job_lock_timeout = max(int(os.getenv('ADVISORY_AUTO_GENERATION_JOB_LOCK_SECONDS', '1800')), 60)
+    if not cache.add(ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY, timezone.now().isoformat(), timeout=job_lock_timeout):
+        return {'status': 'skipped', 'reason': 'job_locked'}
+
+    try:
+        estimated_tokens_per_job = max(int(os.getenv('ADVISORY_AUTO_GENERATION_ESTIMATED_TOKENS', '250')), 50)
+        queue_lock_timeout = max(int(os.getenv('ADVISORY_AUTO_GENERATION_QUEUE_LOCK_SECONDS', '1800')), 60)
+        max_symbols = max(int(batch_size or os.getenv('ADVISORY_AUTO_GENERATION_BATCH_SIZE', '200')), 1)
+        jitter_min = max(int(os.getenv('ADVISORY_AUTO_GENERATION_JITTER_MIN_SECONDS', '5')), 0)
+        jitter_max = max(int(os.getenv('ADVISORY_AUTO_GENERATION_JITTER_MAX_SECONDS', '15')), jitter_min)
+        now = timezone.now()
+
+        stats = {
+            'status': 'ok',
+            'users_considered': 0,
+            'users_skipped_budget': 0,
+            'symbols_considered': 0,
+            'queued_count': 0,
+            'skipped_existing': 0,
+            'skipped_locked': 0,
+            'skipped_budget': 0,
+        }
+
+        user_configs = UserConfig.objects.select_related('user').filter(
+            user__is_active=True,
+            advisory_auto_generation_enabled=True,
+            user__tracked_symbols__isnull=False,
+        ).distinct()
+
+        for user_config in user_configs:
+            if stats['queued_count'] >= max_symbols:
+                break
+
+            stats['users_considered'] += 1
+            remaining_budget = _get_remaining_advisory_budget(user_config)
+            remaining_auto_refreshes = _get_remaining_auto_refreshes(user_config)
+            if remaining_budget < estimated_tokens_per_job:
+                stats['users_skipped_budget'] += 1
+                continue
+            if remaining_auto_refreshes <= 0:
+                stats['users_skipped_budget'] += 1
+                continue
+
+            tracked_symbols = list(
+                TrackedSymbol.objects.filter(user_id=user_config.user_id).order_by('-updated_at', '-added_at')
+            )
+            for tracked_symbol in tracked_symbols:
+                if stats['queued_count'] >= max_symbols:
+                    break
+
+                stats['symbols_considered'] += 1
+                if remaining_budget < estimated_tokens_per_job:
+                    stats['skipped_budget'] += 1
+                    break
+                if remaining_auto_refreshes <= 0:
+                    stats['skipped_budget'] += 1
+                    break
+
+                latest_advisory = WhaleAdvisory.objects.filter(
+                    user_id=user_config.user_id,
+                    symbol=tracked_symbol.symbol,
+                ).order_by('-created_at').first()
+
+                if latest_advisory is None:
+                    should_queue = True
+                    force_refresh = False
+                    matched_value_vnd = _resolve_advisory_threshold_vnd(user_config, tracked_symbol)
+                    advisory_side = 'INFO'
+                    advisory_threshold = matched_value_vnd
+                else:
+                    refresh_due_at = latest_advisory.next_refresh_at or (
+                        latest_advisory.created_at + timedelta(hours=max(int(user_config.advisory_refresh_interval_hours or 24), 1))
+                    )
+                    should_queue = refresh_due_at <= now
+                    force_refresh = should_queue
+                    matched_value_vnd = float(latest_advisory.matched_value or 0) or _resolve_advisory_threshold_vnd(user_config, tracked_symbol)
+                    advisory_side = latest_advisory.side or 'INFO'
+                    advisory_threshold = float(latest_advisory.threshold or 0) or _resolve_advisory_threshold_vnd(user_config, tracked_symbol)
+
+                if not should_queue:
+                    stats['skipped_existing'] += 1
+                    continue
+
+                queue_lock_key = f'advisory:auto-generation:queue:{user_config.user_id}:{tracked_symbol.symbol}'
+                if not cache.add(queue_lock_key, now.isoformat(), timeout=queue_lock_timeout):
+                    stats['skipped_locked'] += 1
+                    continue
+
+                generate_whale_advisory_task.apply_async(
+                    kwargs={
+                        'symbol': tracked_symbol.symbol,
+                        'matched_value_vnd': matched_value_vnd,
+                        'side': advisory_side,
+                        'threshold': advisory_threshold,
+                        'force_refresh': force_refresh,
+                        'user_id': user_config.user_id,
+                        'source': WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+                    },
+                    countdown=random.randint(jitter_min, jitter_max),
+                )
+                stats['queued_count'] += 1
+                remaining_budget = max(remaining_budget - estimated_tokens_per_job, 0)
+                remaining_auto_refreshes = max(remaining_auto_refreshes - 1, 0)
+
+        return stats
+    finally:
+        cache.delete(ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY)
 
 
 # ---------------------------------------------------------------------------
@@ -856,6 +1197,75 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
         'stored': stored,
         'alerted': alerted,
         'errors': errors,
+    }
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
+def detect_whale_reversal(self, symbol: str | None = None) -> dict:
+    """
+    Detect reversal signal và queue advisory loại REVERSAL cho các user đang theo dõi symbol.
+    Chạy định kỳ qua Celery Beat, có lock để tránh queue trùng.
+    """
+    if not getattr(settings, 'REVERSAL_DETECTION_ENABLED', True):
+        return {'status': 'disabled'}
+
+    if symbol:
+        symbols = [str(symbol).strip().upper()]
+    else:
+        tracked = list(TrackedSymbol.objects.values_list('symbol', flat=True).distinct())
+        watchlisted = list(WatchlistItem.objects.values_list('symbol', flat=True).distinct())
+        symbols = sorted({str(s).strip().upper() for s in tracked + watchlisted if s})[:ORDER_FLOW_MAX_SYMBOLS]
+
+    queued = 0
+    processed = 0
+    skipped_locked = 0
+
+    for sym in symbols:
+        lock_key = f'reversal_alert_lock:{sym}'
+        lock_seconds = max(int(os.getenv('REVERSAL_COOLDOWN_SECONDS', '300')), 60)
+        if not cache.add(lock_key, timezone.now().isoformat(), timeout=lock_seconds):
+            skipped_locked += 1
+            continue
+
+        signal = _detect_reversal_signal(sym)
+        if not signal:
+            continue
+
+        processed += 1
+        tracked_user_ids = list(
+            TrackedSymbol.objects.filter(symbol=sym).values_list('user_id', flat=True).distinct()
+        )
+        if not tracked_user_ids:
+            continue
+
+        for user_id in tracked_user_ids:
+            user_cfg = UserConfig.objects.filter(user_id=user_id).first()
+            if user_cfg is None:
+                continue
+
+            threshold_vnd = float(user_cfg.whale_alert_threshold or 500) * 1_000_000
+            generate_whale_advisory_task.apply_async(
+                kwargs={
+                    'symbol': sym,
+                    'matched_value_vnd': signal['sell_value_vnd'],
+                    'side': 'SELL',
+                    'threshold': threshold_vnd,
+                    'force_refresh': True,
+                    'user_id': user_id,
+                    'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+                    'advisory_type': WhaleAdvisory.AdvisoryTypeChoices.REVERSAL,
+                    'severity_override': WhaleAdvisory.SeverityChoices.URGENT,
+                },
+                countdown=1,
+            )
+            queued += 1
+
+    return {
+        'status': 'ok',
+        'symbols': len(symbols),
+        'processed': processed,
+        'queued': queued,
+        'skipped_locked': skipped_locked,
     }
 
 

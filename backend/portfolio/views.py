@@ -595,7 +595,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-from django.db.models import Case, ExpressionWrapper, F, FloatField, IntegerField, Max, Min, Q, When
+from django.db.models import Case, ExpressionWrapper, F, FloatField, IntegerField, Max, Min, Q, Sum, When
 from django.conf import settings
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -608,7 +608,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Portfolio, Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
+from .models import Portfolio, Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, AdvisoryTokenLog, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -3254,11 +3254,29 @@ class WhaleAdvisoryListView(generics.ListAPIView):
     def get_queryset(self):
         # Return only user-owned advisories (no legacy fallback)
         # Legacy records with user=NULL should not appear in user-facing lists
-        return (
+        qs = (
             WhaleAdvisory.objects
             .filter(user=self.request.user)
-            .order_by('-created_at')[:100]
+            .order_by('-created_at')
         )
+
+        refresh_status = str(self.request.query_params.get('refresh_status') or '').strip().lower()
+        now = timezone.now()
+        if refresh_status == 'ready':
+            qs = qs.filter(next_refresh_at__isnull=False, next_refresh_at__lte=now)
+        elif refresh_status == 'pending':
+            qs = qs.filter(next_refresh_at__isnull=False, next_refresh_at__gt=now)
+        elif refresh_status == 'recent':
+            cutoff = now - timedelta(hours=4)
+            qs = qs.filter(created_at__gte=cutoff)
+
+        # ?watchlist_only=true: chỉ trả advisory cho mã trong TrackedSymbol của user
+        watchlist_only = str(self.request.query_params.get('watchlist_only') or '').strip().lower()
+        if watchlist_only == 'true':
+            tracked_symbols = TrackedSymbol.objects.filter(user=self.request.user).values_list('symbol', flat=True)
+            qs = qs.filter(symbol__in=tracked_symbols)
+
+        return qs[:100]
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
@@ -3269,6 +3287,76 @@ class WhaleAdvisoryListView(generics.ListAPIView):
             for item in data:
                 item['ai_detail'] = ''
         return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsProPlan])
+def whale_advisory_auto_refresh_info_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    tracked = TrackedSymbol.objects.filter(user=request.user, symbol=normalized_symbol).first()
+    if tracked is None:
+        return Response(
+            {'ok': False, 'symbol': normalized_symbol, 'message': 'Symbol chưa nằm trong danh sách theo dõi.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    latest = WhaleAdvisory.objects.filter(user=request.user, symbol=normalized_symbol).order_by('-created_at').first()
+    tokens_today = AdvisoryTokenLog.objects.filter(
+        user=request.user,
+        created_at__date=timezone.localdate(),
+    ).aggregate(total=Sum('tokens_used'))['total'] or 0
+    auto_refreshes_today = AdvisoryTokenLog.objects.filter(
+        user=request.user,
+        source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+        created_at__date=timezone.localdate(),
+    ).count()
+
+    response_payload = {
+        'ok': True,
+        'symbol': normalized_symbol,
+        'tracked_since': tracked.added_at,
+        'advisory_auto_generation_enabled': bool(user_cfg.advisory_auto_generation_enabled),
+        'advisory_manual_refresh_enabled': bool(user_cfg.advisory_manual_refresh_enabled),
+        'advisory_refresh_interval_hours': int(user_cfg.advisory_refresh_interval_hours or 24),
+        'advisory_max_auto_refreshes_per_day': int(user_cfg.advisory_max_auto_refreshes_per_day or 0),
+        'auto_refreshes_used_today': int(auto_refreshes_today),
+        'auto_refreshes_remaining_today': max(int(user_cfg.advisory_max_auto_refreshes_per_day or 0) - int(auto_refreshes_today), 0),
+        'daily_token_budget': int(user_cfg.advisory_max_tokens_per_day or 0),
+        'tokens_used_today': int(tokens_today),
+        'tokens_remaining_today': max(int(user_cfg.advisory_max_tokens_per_day or 0) - int(tokens_today), 0),
+    }
+
+    if latest is None:
+        response_payload.update({
+            'status': 'no_advisory',
+            'advisory_id': None,
+            'last_refreshed_at': None,
+            'next_refresh_at': None,
+            'refresh_count': 0,
+            'is_stale': False,
+            'is_auto_generated': False,
+            'source': None,
+        })
+        return Response(response_payload, status=status.HTTP_200_OK)
+
+    next_refresh_at = latest.next_refresh_at or (
+        latest.created_at + timedelta(hours=max(int(user_cfg.advisory_refresh_interval_hours or 24), 1))
+    )
+    response_payload.update({
+        'status': 'ready' if next_refresh_at <= timezone.now() else 'scheduled',
+        'advisory_id': latest.id,
+        'last_refreshed_at': latest.created_at,
+        'next_refresh_at': next_refresh_at,
+        'refresh_count': int(latest.refresh_count or 0),
+        'is_stale': next_refresh_at <= timezone.now(),
+        'is_auto_generated': bool(latest.is_auto_generated),
+        'source': latest.source,
+    })
+    return Response(response_payload, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -3346,6 +3434,7 @@ def refresh_whale_advisory_api(request, symbol: str):
             'threshold': float(latest.threshold or 0),
             'force_refresh': True,
             'user_id': request.user.id,
+            'source': WhaleAdvisory.SourceChoices.USER_REFRESH,
         },
         countdown=0,
     )
@@ -4181,6 +4270,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
         'threshold': advisory_threshold,
         'force_refresh': True,
         'user_id': request.user.id,
+        'source': WhaleAdvisory.SourceChoices.USER_REFRESH,
     }
     submit_result = _queue_or_run(payload_kwargs)
     if submit_result.get('queue_error'):

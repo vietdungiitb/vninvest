@@ -633,6 +633,11 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['ai_summary'], 'Tom tat pro')
         self.assertEqual(response.data[0]['ai_detail'], '')
+        self.assertIn('next_refresh_at', response.data[0])
+        self.assertIn('refresh_count', response.data[0])
+        self.assertIn('source', response.data[0])
+        self.assertIn('advisory_type', response.data[0])
+        self.assertIn('severity', response.data[0])
 
     def test_whale_advisory_endpoint_returns_detail_for_premium(self):
         UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'premium', 'email_verified': True})
@@ -652,6 +657,40 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data[0]['ai_detail'], 'Chi tiet premium day du')
+
+    def test_whale_advisory_endpoint_can_filter_ready_for_refresh(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='AAA',
+            matched_value=5_000_000_000,
+            side='BUY',
+            threshold=3_000_000_000,
+            ai_summary='Ready advisory',
+            ai_detail='Ready detail',
+            ai_model='gpt-4o',
+            next_refresh_at=timezone.now() - timedelta(minutes=5),
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BBB',
+            matched_value=5_000_000_000,
+            side='BUY',
+            threshold=3_000_000_000,
+            ai_summary='Pending advisory',
+            ai_detail='Pending detail',
+            ai_model='gpt-4o',
+            next_refresh_at=timezone.now() + timedelta(hours=2),
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+
+        response = self.client.get('/api/portfolio/whale-advisory/?refresh_status=ready')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]['symbol'], 'AAA')
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
@@ -684,6 +723,138 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(kwargs['symbol'], 'FPT')
         self.assertTrue(kwargs['force_refresh'])
         self.assertEqual(kwargs['user_id'], self.user.id)
+        self.assertEqual(kwargs['source'], WhaleAdvisory.SourceChoices.USER_REFRESH)
+
+    def test_whale_advisory_auto_refresh_info_returns_status_and_budget(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'plan': 'pro',
+                'email_verified': True,
+                'advisory_refresh_interval_hours': 12,
+                'advisory_max_auto_refreshes_per_day': 3,
+                'advisory_max_tokens_per_day': 5000,
+            },
+        )
+        self.authenticate()
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=8_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Tom tat refresh',
+            ai_detail='Chi tiet refresh',
+            ai_model='gpt-4o',
+            next_refresh_at=timezone.now() + timedelta(hours=6),
+            refresh_count=2,
+            is_auto_generated=True,
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+        from portfolio.models import AdvisoryTokenLog
+        AdvisoryTokenLog.objects.create(
+            user=self.user,
+            advisory=advisory,
+            tokens_used=320,
+            source=AdvisoryTokenLog.SourceChoices.AUTO_GENERATION,
+            symbol='FPT',
+        )
+
+        response = self.client.get('/api/portfolio/whale-advisory/FPT/auto-refresh-info/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(response.data['status'], 'scheduled')
+        self.assertEqual(response.data['advisory_id'], advisory.id)
+        self.assertEqual(response.data['refresh_count'], 2)
+        self.assertTrue(response.data['is_auto_generated'])
+        self.assertEqual(response.data['source'], WhaleAdvisory.SourceChoices.PERIODIC_JOB)
+        self.assertEqual(response.data['tokens_used_today'], 320)
+        self.assertEqual(response.data['tokens_remaining_today'], 4680)
+        self.assertEqual(response.data['advisory_max_auto_refreshes_per_day'], 3)
+        self.assertEqual(response.data['auto_refreshes_used_today'], 1)
+        self.assertEqual(response.data['auto_refreshes_remaining_today'], 2)
+
+    def test_whale_advisory_auto_refresh_info_returns_no_advisory_for_tracked_symbol(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        TrackedSymbol.objects.create(user=self.user, symbol='SSI')
+
+        response = self.client.get('/api/portfolio/whale-advisory/SSI/auto-refresh-info/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['status'], 'no_advisory')
+        self.assertIsNone(response.data['advisory_id'])
+
+    def test_whale_advisory_severity_tag_returned_in_list(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='VIC',
+            matched_value=25_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='High value advisory',
+            ai_detail='',
+            ai_model='gpt-4o',
+            severity=WhaleAdvisory.SeverityChoices.URGENT,
+        )
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='MSN',
+            matched_value=3_000_000_000,
+            side='SELL',
+            threshold=2_000_000_000,
+            ai_summary='Warning advisory',
+            ai_detail='',
+            ai_model='gpt-4o',
+            severity=WhaleAdvisory.SeverityChoices.WARNING,
+        )
+
+        response = self.client.get('/api/portfolio/whale-advisory/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        symbols_by_severity = {item['symbol']: item['severity'] for item in response.data}
+        self.assertEqual(symbols_by_severity.get('VIC'), 'urgent')
+        self.assertEqual(symbols_by_severity.get('MSN'), 'warning')
+
+    def test_whale_advisory_watchlist_only_filter(self):
+        UserConfig.objects.update_or_create(user=self.user, defaults={'plan': 'pro', 'email_verified': True})
+        self.authenticate()
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='FPT',
+            matched_value=5_000_000_000,
+            side='BUY',
+            threshold=3_000_000_000,
+            ai_summary='FPT advisory',
+            ai_detail='',
+            ai_model='gpt-4o',
+        )
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='VNM',
+            matched_value=4_000_000_000,
+            side='BUY',
+            threshold=3_000_000_000,
+            ai_summary='VNM advisory',
+            ai_detail='',
+            ai_model='gpt-4o',
+        )
+
+        response_all = self.client.get('/api/portfolio/whale-advisory/')
+        response_wl = self.client.get('/api/portfolio/whale-advisory/?watchlist_only=true')
+
+        self.assertEqual(response_all.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_all.data), 2)
+        self.assertEqual(response_wl.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response_wl.data), 1)
+        self.assertEqual(response_wl.data[0]['symbol'], 'FPT')
 
     @patch.dict(
         'os.environ',
