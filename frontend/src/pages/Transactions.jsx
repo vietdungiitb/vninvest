@@ -13,8 +13,24 @@ import {
   deleteTransaction,
   getStockProfile,
 } from '../api/client';
-import { formatVND } from '../components/StatCard';
 import { useI18n } from '../context/LangContext';
+
+const US_PRICE_PATTERN = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/;
+const US_QUANTITY_PATTERN = /^(?:\d+|\d{1,3}(?:,\d{3})+)$/;
+
+function parseUsNumber(value) {
+  const normalized = String(value ?? '').trim().replace(/,/g, '');
+  if (!normalized) return NaN;
+  return Number(normalized);
+}
+
+function isValidUsPriceInput(value) {
+  return US_PRICE_PATTERN.test(String(value ?? '').trim());
+}
+
+function isValidUsQuantityInput(value) {
+  return US_QUANTITY_PATTERN.test(String(value ?? '').trim());
+}
 
 const ALL_TAB = '__all__';
 
@@ -32,8 +48,8 @@ const TAX_SELL_RATE = 0.001;  // 0.1%  — thuế TNCN chỉ khi BÁN
 const MIN_FEE = 10_000;       // 10,000 VNĐ phí tối thiểu
 
 function calcFee(price, quantity, txType, brokerageRate) {
-  const priceParsed = parseFloat(price);
-  const qtyParsed = parseFloat(quantity);
+  const priceParsed = parseUsNumber(price);
+  const qtyParsed = parseUsNumber(quantity);
   if (!brokerageRate || !priceParsed || !qtyParsed || priceParsed <= 0 || qtyParsed <= 0) return null;
   const txValue = priceParsed * qtyParsed;
   const brokerageFee = Math.max(MIN_FEE, txValue * brokerageRate);
@@ -68,7 +84,7 @@ const SA_COLORS = [
 
 export default function Transactions() {
   const { activePortfolioId } = usePortfolio();
-  const { t, locale, formatNumber } = useI18n();
+  const { t, formatNumber, formatQuotePrice, formatQuoteVolume } = useI18n();
   const [subAccounts, setSubAccounts] = useState([]);
   const [activeTab, setActiveTab] = useState(ALL_TAB); // sub_account id hoặc ALL_TAB
   const [txBySubAccount, setTxBySubAccount] = useState({}); // { subAccountId: [...txs] }
@@ -78,6 +94,7 @@ export default function Transactions() {
   const [editId, setEditId] = useState(null); // null = tạo mới
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
   const [feePresetIdx, setFeePresetIdx] = useState(0); // index vào FEE_PRESETS
   const [feeAutoManual, setFeeAutoManual] = useState(false); // true = user đã tự nhập phí
 
@@ -197,6 +214,9 @@ export default function Transactions() {
   // ---------- Handlers ----------
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'price' || name === 'quantity') {
+      setFieldErrors((prev) => ({ ...prev, [name]: '' }));
+    }
     if (name === 'fee') {
       // User đang tự nhập phí => tắt auto
       setFeeAutoManual(true);
@@ -254,13 +274,38 @@ export default function Transactions() {
     setEditId(null);
     setForm(EMPTY_FORM);
     setError('');
+    setFieldErrors({});
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
+    setFieldErrors({});
     const normalizedSymbol = (form.symbol || '').trim().toUpperCase();
+
+    const nextFieldErrors = {};
+    if (!isValidUsPriceInput(form.price)) {
+      nextFieldErrors.price = t('transactions.priceFormatInvalid');
+    }
+    if (!isValidUsQuantityInput(form.quantity)) {
+      nextFieldErrors.quantity = t('transactions.quantityFormatInvalid');
+    }
+
+    const parsedPrice = parseUsNumber(form.price);
+    const parsedQuantity = parseUsNumber(form.quantity);
+    if (!(parsedPrice > 0)) {
+      nextFieldErrors.price = t('transactions.priceMustBePositive');
+    }
+    if (!(parsedQuantity > 0)) {
+      nextFieldErrors.quantity = t('transactions.quantityMustBePositive');
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors);
+      setSubmitting(false);
+      return;
+    }
 
     try {
       await getStockProfile(normalizedSymbol);
@@ -278,8 +323,8 @@ export default function Transactions() {
       symbol: normalizedSymbol,
       transaction_type: form.transaction_type,
       date: form.date,
-      price: parseFloat(form.price),
-      quantity: parseFloat(form.quantity),
+      price: parsedPrice,
+      quantity: parsedQuantity,
       fee: parseFloat(form.fee || 0),
       notes: form.notes,
     };
@@ -496,33 +541,37 @@ export default function Transactions() {
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.price')}</label>
             <input
-              type="number"
+              type="text"
               name="price"
               value={form.price}
               onChange={handleChange}
-              placeholder="50000"
+              placeholder="78.20"
+              inputMode="decimal"
               required
-              min="0"
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
+            <p className="text-[10px] text-gray-500 mt-1">{t('transactions.priceFormatHint')}</p>
+            {fieldErrors.price && <p className="text-[10px] text-red-400 mt-1">{fieldErrors.price}</p>}
           </div>
 
           {/* Khối lượng */}
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">{t('transactions.quantity')}</label>
             <input
-              type="number"
+              type="text"
               name="quantity"
               value={form.quantity}
               onChange={handleChange}
-              placeholder="100"
+              placeholder="10,500"
+              inputMode="numeric"
               required
-              min="0"
               className="w-full bg-gray-800 border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-1 focus:ring-brand-500"
             />
+            <p className="text-[10px] text-gray-500 mt-1">{t('transactions.quantityFormatHint')}</p>
+            {fieldErrors.quantity && <p className="text-[10px] text-red-400 mt-1">{fieldErrors.quantity}</p>}
             {form.price && form.quantity && (
               <p className="text-[10px] text-gray-500 mt-1">
-                {t('transactions.transactionValue')}: <span className="text-gray-300 font-semibold">{formatNumber(parseFloat(form.price) * parseFloat(form.quantity))} đ</span>
+                {t('transactions.transactionValue')}: <span className="text-gray-300 font-semibold">{Number.isFinite(parseUsNumber(form.price) * parseUsNumber(form.quantity)) ? formatQuotePrice(parseUsNumber(form.price) * parseUsNumber(form.quantity)) : '—'}</span>
               </p>
             )}
           </div>
@@ -554,18 +603,18 @@ export default function Transactions() {
               <div className="grid grid-cols-3 gap-2 mb-3 text-[11px]">
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
                   <div className="text-gray-500">{t('transactions.brokerageFee')}</div>
-                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.brokerageFee))} đ</div>
+                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.brokerageFee))}</div>
                 </div>
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
                   <div className="text-gray-500">{t('transactions.vsdFee')}</div>
-                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.vsdFee))} đ</div>
+                  <div className="text-gray-200 font-semibold mt-0.5">{formatNumber(Math.round(feeBreakdown.vsdFee))}</div>
                 </div>
                 <div className="bg-gray-900/60 rounded-lg px-3 py-2">
                   <div className="text-gray-500">
                     {form.transaction_type === 'SELL' ? t('transactions.personalIncomeTaxSell') : t('transactions.personalIncomeTaxSellOnly')}
                   </div>
                   <div className={`font-semibold mt-0.5 ${form.transaction_type === 'SELL' ? 'text-red-300' : 'text-gray-600'}`}>
-                    {formatNumber(Math.round(feeBreakdown.taxFee))} đ
+                    {formatNumber(Math.round(feeBreakdown.taxFee))}
                   </div>
                 </div>
               </div>
@@ -692,10 +741,10 @@ export default function Transactions() {
                         </span>
                       </td>
                     )}
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.price, locale)}</td>
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right">{formatNumber(tx.quantity)}</td>
-                    <td className="px-4 py-3 text-gray-400 tabular-nums text-right">{formatVND(tx.fee, locale)}</td>
-                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatVND(tx.total_value, locale)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatQuotePrice(tx.price)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right">{formatQuoteVolume(tx.quantity)}</td>
+                    <td className="px-4 py-3 text-gray-400 tabular-nums text-right">{formatNumber(tx.fee)}</td>
+                    <td className="px-4 py-3 text-gray-200 tabular-nums text-right whitespace-nowrap">{formatNumber(tx.total_value)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <button
                         onClick={() => openEdit(tx)}
