@@ -120,6 +120,32 @@ def admin_runtime_kpi_api(request):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_runtime_kpi_advisory_merge_api(request):
+    """
+    GET /api/admin-ops/runtime-kpi/advisory-merge/
+    Admin-only: trả về nhanh chỉ số merge pipeline của advisory event.
+    """
+    from time import time as _time
+    from portfolio.observability import get_market_observability_snapshot
+
+    snapshot = get_market_observability_snapshot()
+    merge_stats = snapshot.get('advisory_event_merge') or {}
+    return Response(
+        {
+            'sampled_at': _time(),
+            'advisory_event_merge': {
+                'scheduled': int(merge_stats.get('scheduled', 0)),
+                'merged': int(merge_stats.get('merged', 0)),
+                'flushed': int(merge_stats.get('flushed', 0)),
+                'skipped': int(merge_stats.get('skipped', 0)),
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAdminUser])
 def admin_system_ai_settings_api(request):

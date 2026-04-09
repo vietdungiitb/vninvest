@@ -144,3 +144,21 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('used', obs['ai_chart_context'])
         self.assertIn('alive', data['celery'])
 
+    def test_admin_runtime_kpi_advisory_merge_requires_staff(self):
+        self._authenticate(self.regular_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/advisory-merge/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_runtime_kpi_advisory_merge_returns_structure(self):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/advisory-merge/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('sampled_at', data)
+        self.assertIn('advisory_event_merge', data)
+        merge = data['advisory_event_merge']
+        self.assertIn('scheduled', merge)
+        self.assertIn('merged', merge)
+        self.assertIn('flushed', merge)
+        self.assertIn('skipped', merge)
+
