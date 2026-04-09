@@ -29,17 +29,40 @@ def _openai_compatible_completion(
     if extra_headers:
         headers.update(extra_headers)
 
+    endpoint = str(base_url or '').strip().rstrip('/')
+    if endpoint.endswith('/chat/completions'):
+        target_url = endpoint
+    else:
+        target_url = f"{endpoint}/chat/completions"
+
+    payload = {
+        'model': model,
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': max_tokens,
+        'temperature': 0.3,
+    }
+
     resp = httpx.post(
-        f"{base_url.rstrip('/')}/chat/completions",
+        target_url,
         headers=headers,
-        json={
-            'model': model,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'max_tokens': max_tokens,
-            'temperature': 0.3,
-        },
+        json=payload,
         timeout=30.0,
     )
+
+    # Some GitHub Models deployments expose OpenAI-compatible endpoint on
+    # models.inference.ai.azure.com instead of models.github.ai/inference.
+    if resp.status_code == 404 and 'models.github.ai' in target_url:
+        fallback_url = target_url.replace('models.github.ai/inference', 'models.inference.ai.azure.com')
+        if fallback_url != target_url:
+            fallback_resp = httpx.post(
+                fallback_url,
+                headers=headers,
+                json=payload,
+                timeout=30.0,
+            )
+            if fallback_resp.status_code < 400:
+                resp = fallback_resp
+
     resp.raise_for_status()
     body = resp.json()
     return {
