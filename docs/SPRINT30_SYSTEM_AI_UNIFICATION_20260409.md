@@ -110,3 +110,58 @@
 - File nguon cay tong: `module_tree_full.md`.
 - Script cap nhat tu dong: `scripts/ops/generate_module_tree.py`.
 - Quy uoc: moi thay doi class/function/variable can chay script va commit cung code thay doi de giu tai lieu dong bo.
+
+## Cap nhat luong Whale Advisory (2026-04-09)
+
+### Muc tieu bo sung
+- Chuan hoa luong Whale Advisory theo huong "always actionable per tracked symbol":
+  - Moi ma trong tracked list deu co 3 action co dinh: `Refresh AI`, `Mo dashboard ma`, `Mo stock workspace`.
+  - Co the tao/lam moi advisory tu nhieu trigger: periodic, whale alert, dark flow, manual refresh.
+
+### Quyet dinh da chot voi owner
+1. Ma moi them vao tracked list: cho trigger dau tien hoac user tu refresh.
+2. Whale Alert + Dark Money xay ra gan nhau: gop 1 advisory.
+3. Manual refresh: van giu cooldown.
+4. Loi/quota/policy: hien thi theo tung row.
+5. Community plan: van thay nut `Refresh AI`, nhan se bi chan theo plan.
+6. Cua so gop su kien: `180s`.
+7. Uu tien trigger: `score dong hoan toan` (khong hard-code whale > dark flow).
+8. Khi row dang pending: disable nut refresh den khi xong.
+
+### Da trien khai dot 1 (frontend + manual refresh bootstrap)
+- Backend `POST /api/portfolio/whale-advisory/<symbol>/refresh/`:
+  - Bo hanh vi 404 khi chua co advisory.
+  - Cho phep queue tao advisory dau tien ngay tren nut refresh.
+  - Message response tach rieng cho truong hop first-create.
+- Frontend `WhaleAdvisory`:
+  - Moi row symbol deu hien 3 nut co dinh (ke ca khi chua co advisory).
+  - Them row-level message (khong chi banner global).
+  - Pending theo tung symbol va disable nut refresh den khi ket thuc polling.
+- Regression test da cap nhat theo contract moi:
+  - Case "no existing advisory" doi tu 404 -> 202 queued.
+
+### Da trien khai dot 2 (merge trigger 180s + score dong)
+- Bo sung co che gom su kien advisory theo `user_id + symbol` trong `180s`:
+  - Cache key: `advisory:event-merge:<user_id>:<symbol>`.
+  - Whale alert va dark flow cung ghi vao bucket gom su kien.
+  - Sau khi het cua so 180s, flush 1 lan va queue 1 advisory duy nhat.
+- Tinh score dong:
+  - Whale: dung `event_score` * huong side.
+  - Dark flow: dung `strength` + huong suy luan tu signal_type/cvd_change.
+  - Tong diem (`score_sum`) -> resolve `BUY/SELL/UNKNOWN` theo neutral band.
+- Fan-out theo user tracked symbol:
+  - Trigger whale alert va dark flow deu queue theo tung user dang track ma.
+
+### File thay doi chinh
+- `backend/portfolio/views.py`
+- `frontend/src/pages/WhaleAdvisory.jsx`
+- `backend/portfolio/tests/test_api_routes.py`
+- `backend/portfolio/tasks.py`
+
+### Ke hoach tiep tuc (dot ke)
+1. Bo sung metadata merge vao advisory payload de frontend hien thi `merged_sources` va `primary_source`.
+2. Chuan hoa thong diep chan theo plan (community) de row hien thi ro ly do.
+3. Them test integration cho kip ban:
+   - whale + dark flow trong 180s -> chi tao 1 advisory.
+   - pending row disable dung hanh vi.
+4. Them observability metric cho merge queue (scheduled/merged/flushed/skipped).

@@ -50,6 +50,151 @@ logger = logging.getLogger(__name__)
 TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
 VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnstock:rate-limit:price_board'
 ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY = 'advisory:auto-generation:job-lock'
+ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX = 'advisory:event-merge'
+
+
+def _advisory_event_merge_cache_key(user_id: int, symbol: str) -> str:
+    return f'{ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX}:{user_id}:{symbol}'
+
+
+def _safe_float(value, default: float = 0.0) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _normalize_symbol(symbol: str) -> str:
+    return str(symbol or '').strip().upper()
+
+
+def _infer_dark_flow_direction(signal_type: str, cvd_change: float) -> int:
+    signal_key = str(signal_type or '').strip().lower()
+    if any(token in signal_key for token in ('buy', 'bid', 'accum', 'absorb_buy', 'accumulation')):
+        return 1
+    if any(token in signal_key for token in ('sell', 'ask', 'dist', 'distribution', 'absorb_sell')):
+        return -1
+    if cvd_change > 0:
+        return 1
+    if cvd_change < 0:
+        return -1
+    return 0
+
+
+def _compute_event_side_score(source: str, payload: dict) -> float:
+    source_key = str(source or '').strip().lower()
+    if source_key == 'whale_alert':
+        event_score = _safe_float(payload.get('event_score'), 0.0)
+        side = str(payload.get('side') or '').strip().lower()
+        direction = 1 if side == 'buy' else -1 if side == 'sell' else 0
+        return direction * event_score
+
+    if source_key == 'dark_flow':
+        strength = _safe_float(payload.get('strength'), 0.0)
+        cvd_change = _safe_float(payload.get('cvd_change'), 0.0)
+        direction = _infer_dark_flow_direction(payload.get('signal_type'), cvd_change)
+        return direction * strength
+
+    return 0.0
+
+
+def _resolve_side_by_dynamic_score(score: float) -> str:
+    neutral_band = max(_safe_float(os.getenv('ADVISORY_DYNAMIC_SCORE_NEUTRAL_BAND', '8'), 8.0), 0.0)
+    if score > neutral_band:
+        return 'BUY'
+    if score < -neutral_band:
+        return 'SELL'
+    return 'UNKNOWN'
+
+
+def _accumulate_user_advisory_event(
+    *,
+    user_id: int,
+    symbol: str,
+    source: str,
+    payload: dict,
+    threshold_vnd: float,
+) -> dict:
+    normalized_symbol = _normalize_symbol(symbol)
+    if not normalized_symbol:
+        return {'status': 'skipped', 'reason': 'invalid_symbol'}
+
+    merge_window_seconds = max(int(os.getenv('ADVISORY_EVENT_MERGE_WINDOW_SECONDS', '180')), 30)
+    cache_ttl = merge_window_seconds + 300
+    now = timezone.now()
+    cache_key = _advisory_event_merge_cache_key(user_id, normalized_symbol)
+
+    existing = cache.get(cache_key)
+    matched_value_candidate = _safe_float(payload.get('matched_value_vnd') or payload.get('matched_value'), threshold_vnd)
+    event_side_score = _compute_event_side_score(source, payload)
+
+    if existing is None:
+        state = {
+            'user_id': int(user_id),
+            'symbol': normalized_symbol,
+            'threshold_vnd': float(threshold_vnd),
+            'matched_value_vnd': float(max(matched_value_candidate, threshold_vnd)),
+            'score_sum': float(event_side_score),
+            'sources': [str(source)],
+            'first_event_at': now.isoformat(),
+            'updated_at': now.isoformat(),
+        }
+        cache.set(cache_key, state, timeout=cache_ttl)
+        flush_merged_advisory_event.apply_async(
+            kwargs={'user_id': int(user_id), 'symbol': normalized_symbol},
+            countdown=merge_window_seconds,
+        )
+        return {'status': 'scheduled', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
+
+    source_list = [str(item) for item in (existing.get('sources') or [])]
+    source_set = set(source_list)
+    source_set.add(str(source))
+
+    existing['threshold_vnd'] = float(max(_safe_float(existing.get('threshold_vnd'), threshold_vnd), threshold_vnd))
+    existing['matched_value_vnd'] = float(max(_safe_float(existing.get('matched_value_vnd'), threshold_vnd), matched_value_candidate, threshold_vnd))
+    existing['score_sum'] = float(_safe_float(existing.get('score_sum'), 0.0) + event_side_score)
+    existing['sources'] = sorted(source_set)
+    existing['updated_at'] = now.isoformat()
+    cache.set(cache_key, existing, timeout=cache_ttl)
+    return {'status': 'merged', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
+    normalized_symbol = _normalize_symbol(symbol)
+    cache_key = _advisory_event_merge_cache_key(int(user_id), normalized_symbol)
+    state = cache.get(cache_key)
+    if not state:
+        return {'status': 'skipped', 'reason': 'no_merged_state', 'user_id': int(user_id), 'symbol': normalized_symbol}
+
+    threshold_vnd = _safe_float(state.get('threshold_vnd'), 0.0)
+    matched_value_vnd = _safe_float(state.get('matched_value_vnd'), threshold_vnd)
+    score_sum = _safe_float(state.get('score_sum'), 0.0)
+    side = _resolve_side_by_dynamic_score(score_sum)
+
+    task = generate_whale_advisory_task.apply_async(
+        kwargs={
+            'symbol': normalized_symbol,
+            'matched_value_vnd': max(matched_value_vnd, threshold_vnd),
+            'side': side,
+            'threshold': threshold_vnd,
+            'force_refresh': True,
+            'user_id': int(user_id),
+            'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+        },
+        countdown=0,
+    )
+
+    cache.delete(cache_key)
+    return {
+        'status': 'queued',
+        'user_id': int(user_id),
+        'symbol': normalized_symbol,
+        'task_id': task.id,
+        'score_sum': score_sum,
+        'resolved_side': side,
+        'sources': state.get('sources') or [],
+    }
 
 
 def _normalize_advisory_source(source: str | None) -> str:
@@ -423,16 +568,25 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 user_payload = {**whale_payload, "seq": user_seq}
                 if publisher.publish(user_channel, user_payload):
                     published += 1
-            # Trigger AI advisory — delay 2s để không block main task
-            generate_whale_advisory_task.apply_async(
-                kwargs={
-                    'symbol': signal.symbol,
-                    'matched_value_vnd': signal.matched_value,
-                    'side': signal.side,
-                    'threshold': signal.threshold,
-                },
-                countdown=2,
+            tracked_user_ids = list(
+                TrackedSymbol.objects.filter(symbol=signal.symbol).values_list('user_id', flat=True).distinct()
             )
+            for tracked_user_id in tracked_user_ids:
+                user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
+                if user_cfg is None:
+                    continue
+                threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
+                _accumulate_user_advisory_event(
+                    user_id=int(tracked_user_id),
+                    symbol=signal.symbol,
+                    source='whale_alert',
+                    payload={
+                        'event_score': whale_payload.get('event_score', 0),
+                        'side': whale_payload.get('side') or signal.side,
+                        'matched_value': signal.matched_value,
+                    },
+                    threshold_vnd=threshold_vnd,
+                )
 
     if user_id is not None:
         heartbeat_channel = f"user:{user_id}:alerts"
@@ -1183,6 +1337,27 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                     },
                 )
                 alerted += 1
+
+                tracked_user_ids = list(
+                    TrackedSymbol.objects.filter(symbol=sym).values_list('user_id', flat=True).distinct()
+                )
+                for tracked_user_id in tracked_user_ids:
+                    user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
+                    if user_cfg is None:
+                        continue
+                    threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
+                    _accumulate_user_advisory_event(
+                        user_id=int(tracked_user_id),
+                        symbol=sym,
+                        source='dark_flow',
+                        payload={
+                            'strength': strength,
+                            'signal_type': signal_type,
+                            'cvd_change': cvd_change,
+                            'matched_value_vnd': threshold_vnd,
+                        },
+                        threshold_vnd=threshold_vnd,
+                    )
             except Exception as exc:
                 logger.warning('dark_flow_alert WS push failed for %s: %s', sym, exc)
 
