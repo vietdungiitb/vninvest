@@ -44,6 +44,7 @@ from portfolio.services import (
 )
 from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
 from portfolio.onboarding_trial_service import process_expired_onboarding_trials
+from portfolio.observability import record_advisory_merge_observation
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,7 @@ def _accumulate_user_advisory_event(
 ) -> dict:
     normalized_symbol = _normalize_symbol(symbol)
     if not normalized_symbol:
+        record_advisory_merge_observation('skipped')
         return {'status': 'skipped', 'reason': 'invalid_symbol'}
 
     merge_window_seconds = max(int(os.getenv('ADVISORY_EVENT_MERGE_WINDOW_SECONDS', '180')), 30)
@@ -145,6 +147,7 @@ def _accumulate_user_advisory_event(
             kwargs={'user_id': int(user_id), 'symbol': normalized_symbol},
             countdown=merge_window_seconds,
         )
+        record_advisory_merge_observation('scheduled')
         return {'status': 'scheduled', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
 
     source_list = [str(item) for item in (existing.get('sources') or [])]
@@ -161,6 +164,7 @@ def _accumulate_user_advisory_event(
     existing['source_scores'] = source_scores
     existing['updated_at'] = now.isoformat()
     cache.set(cache_key, existing, timeout=cache_ttl)
+    record_advisory_merge_observation('merged')
     return {'status': 'merged', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
 
 
@@ -170,6 +174,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     cache_key = _advisory_event_merge_cache_key(int(user_id), normalized_symbol)
     state = cache.get(cache_key)
     if not state:
+        record_advisory_merge_observation('skipped')
         return {'status': 'skipped', 'reason': 'no_merged_state', 'user_id': int(user_id), 'symbol': normalized_symbol}
 
     threshold_vnd = _safe_float(state.get('threshold_vnd'), 0.0)
@@ -201,6 +206,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     )
 
     cache.delete(cache_key)
+    record_advisory_merge_observation('flushed')
     return {
         'status': 'queued',
         'user_id': int(user_id),

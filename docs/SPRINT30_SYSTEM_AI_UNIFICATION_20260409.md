@@ -174,3 +174,11 @@
     - `message` huong dan nang cap Pro
     - `symbol`, `queued=false`
 - Da bo sung regression test xac nhan community plan bi chan dung contract va khong queue task advisory.
+
+### Tien do tiep tuc (2026-04-09 - dot tiep)
+- Da them observability cho pipeline merge event advisory:
+  - Counter: `scheduled`, `merged`, `flushed`, `skipped`.
+  - Expose trong `get_market_observability_snapshot()` tai key `advisory_event_merge`.
+- Da bo sung test task-level cho kip ban merge 180s:
+  - 2 event (whale_alert + dark_flow) cung user/symbol trong window 180s chi schedule flush 1 lan.
+  - Merge state gom day du sources va source_scores.

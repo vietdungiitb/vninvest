@@ -19,6 +19,12 @@ _AI_CHART_CONTEXT_STATS: dict[str, float] = {
     'ohlcv_points_total': 0,
     'payload_bytes_total': 0,
 }
+_ADVISORY_MERGE_STATS: dict[str, float] = {
+    'scheduled': 0,
+    'merged': 0,
+    'flushed': 0,
+    'skipped': 0,
+}
 _STARTED_AT_EPOCH = time()
 
 
@@ -71,6 +77,14 @@ def reset_market_observability() -> None:
                 'warnings': 0,
                 'ohlcv_points_total': 0,
                 'payload_bytes_total': 0,
+            }
+        )
+        _ADVISORY_MERGE_STATS.update(
+            {
+                'scheduled': 0,
+                'merged': 0,
+                'flushed': 0,
+                'skipped': 0,
             }
         )
         _STARTED_AT_EPOCH = time()
@@ -139,6 +153,18 @@ def record_ai_chart_context_observation(
         _AI_CHART_CONTEXT_STATS['payload_bytes_total'] += max(int(payload_bytes or 0), 0)
 
 
+def record_advisory_merge_observation(status: str) -> None:
+    if not _metrics_enabled():
+        return
+
+    status_key = str(status or '').strip().lower()
+    if status_key not in _ADVISORY_MERGE_STATS:
+        status_key = 'skipped'
+
+    with _LOCK:
+        _ADVISORY_MERGE_STATS[status_key] += 1
+
+
 def get_market_observability_snapshot() -> dict:
     with _LOCK:
         endpoints = {}
@@ -181,6 +207,10 @@ def get_market_observability_snapshot() -> dict:
         chart_warnings = int(_AI_CHART_CONTEXT_STATS.get('warnings', 0))
         ohlcv_points_total = int(_AI_CHART_CONTEXT_STATS.get('ohlcv_points_total', 0))
         payload_bytes_total = int(_AI_CHART_CONTEXT_STATS.get('payload_bytes_total', 0))
+        advisory_merge_scheduled = int(_ADVISORY_MERGE_STATS.get('scheduled', 0))
+        advisory_merge_merged = int(_ADVISORY_MERGE_STATS.get('merged', 0))
+        advisory_merge_flushed = int(_ADVISORY_MERGE_STATS.get('flushed', 0))
+        advisory_merge_skipped = int(_ADVISORY_MERGE_STATS.get('skipped', 0))
 
         return {
             'enabled': _metrics_enabled(),
@@ -204,6 +234,12 @@ def get_market_observability_snapshot() -> dict:
                 'payload_bytes_total': payload_bytes_total,
                 'avg_ohlcv_points': round(ohlcv_points_total / chart_present, 2) if chart_present else 0.0,
                 'avg_payload_bytes': round(payload_bytes_total / chart_present, 2) if chart_present else 0.0,
+            },
+            'advisory_event_merge': {
+                'scheduled': advisory_merge_scheduled,
+                'merged': advisory_merge_merged,
+                'flushed': advisory_merge_flushed,
+                'skipped': advisory_merge_skipped,
             },
             'endpoints': endpoints,
             'fallback_breakdown': fallback_breakdown,

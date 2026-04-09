@@ -7,7 +7,8 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
-from portfolio.tasks import auto_generate_advisories_for_all_tracked, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
+from portfolio.observability import get_market_observability_snapshot, reset_market_observability
+from portfolio.tasks import _accumulate_user_advisory_event, auto_generate_advisories_for_all_tracked, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
 from portfolio.tasks import _compute_advisory_severity
 
 
@@ -24,6 +25,10 @@ class WhaleAdvisoryTaskTests(TestCase):
             cfg.set_ai_api_key(api_key)
             cfg.save(update_fields=['ai_api_key'])
         return user
+
+    def setUp(self):
+        reset_market_observability()
+        return super().setUp()
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
@@ -502,3 +507,38 @@ class WhaleAdvisoryTaskTests(TestCase):
         advisory = WhaleAdvisory.objects.get(id=result['advisory_id'])
         self.assertEqual(sorted(advisory.merged_sources), ['dark_flow', 'whale_alert'])
         self.assertEqual(advisory.primary_source, 'whale_alert')
+
+    @patch('portfolio.tasks.flush_merged_advisory_event.apply_async')
+    @override_settings(ADVISORY_EVENT_MERGE_WINDOW_SECONDS=180)
+    def test_merge_window_180s_schedules_single_flush_for_whale_and_dark_flow(self, mock_flush_apply_async):
+        user = self._create_user_config('staff-merge-180s', api_key='sk-test-merge-180s')
+        cache_key = f'advisory:event-merge:{user.id}:FPT'
+        cache.delete(cache_key)
+
+        first = _accumulate_user_advisory_event(
+            user_id=user.id,
+            symbol='FPT',
+            source='whale_alert',
+            payload={'event_score': 35, 'side': 'buy', 'matched_value': 3_000_000_000},
+            threshold_vnd=1_000_000_000,
+        )
+        second = _accumulate_user_advisory_event(
+            user_id=user.id,
+            symbol='FPT',
+            source='dark_flow',
+            payload={'strength': 60, 'signal_type': 'distribution', 'cvd_change': -12, 'matched_value_vnd': 2_500_000_000},
+            threshold_vnd=1_000_000_000,
+        )
+
+        self.assertEqual(first['status'], 'scheduled')
+        self.assertEqual(second['status'], 'merged')
+        self.assertEqual(mock_flush_apply_async.call_count, 1)
+
+        merged_state = cache.get(cache_key)
+        self.assertIsNotNone(merged_state)
+        self.assertEqual(sorted(merged_state.get('sources') or []), ['dark_flow', 'whale_alert'])
+        self.assertIn('source_scores', merged_state)
+
+        snapshot = get_market_observability_snapshot()
+        self.assertEqual(snapshot['advisory_event_merge']['scheduled'], 1)
+        self.assertEqual(snapshot['advisory_event_merge']['merged'], 1)
