@@ -5,8 +5,10 @@ from decimal import Decimal
 from statistics import pstdev
 
 from django.utils import timezone
+from django.db.models import Sum, Q, DecimalField, Value
+from django.db.models.functions import Cast
 
-from .models import DailyPrice, IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory
+from .models import DailyPrice, IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory, Transaction
 
 
 def _to_float(value, default=0.0) -> float:
@@ -87,6 +89,34 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
     )
     latest_order_flow = recent_order_flow_signals[0] if recent_order_flow_signals else {}
 
+    # PHASE 1 Enhancement: Get user's portfolio position for this symbol
+    portfolio_position = None
+    if user is not None:
+        user_portfolio_data = Transaction.objects.filter(
+            sub_account__portfolio__user=user,
+            symbol=normalized_symbol,
+        ).aggregate(
+            total_shares=Sum('quantity'),
+            total_amount=Sum(Cast('price', DecimalField()) * Cast('quantity', DecimalField()), output_field=DecimalField()),
+        )
+        
+        total_shares = _to_float(user_portfolio_data.get('total_shares'))
+        total_cost = _to_float(user_portfolio_data.get('total_amount'))
+        
+        if total_shares != 0:
+            avg_cost = total_cost / total_shares if total_shares else 0
+            current_value = total_shares * latest_close
+            unrealized_pnl = current_value - total_cost
+            unrealized_pct = (unrealized_pnl / total_cost * 100) if total_cost else 0
+            
+            portfolio_position = {
+                'shares_owned': int(total_shares),
+                'avg_buy_price': float(avg_cost),
+                'current_value': float(current_value),
+                'unrealized_pnl': float(unrealized_pnl),
+                'unrealized_pnl_pct': float(unrealized_pct),
+            }
+
     return {
         'symbol': normalized_symbol,
         'profile': profile,
@@ -120,6 +150,8 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
         'history': {
             'recent_advisories': recent_advisories,
         },
+        # PHASE 1 Enhancement: Include portfolio position
+        'portfolio_position': portfolio_position,
         'generated_at': timezone.now().isoformat(),
     }
 
@@ -167,3 +199,28 @@ def render_context_for_prompt(context: dict) -> str:
         f"Recent advisories:\n{recent_block}\n"
         f"Use this context to reduce hallucination and ground recommendations in data."
     )
+
+
+def render_concise_context_for_prompt(context: dict) -> str:
+    """
+    PHASE 1: Render compact context (5-10 lines) for concise advisory generation.
+    Optimized for token efficiency without losing critical information.
+    """
+    profile = context.get('profile') or {}
+    market = context.get('market') or {}
+    intraday = context.get('intraday') or {}
+    portfolio_pos = context.get('portfolio_position')
+    order_flow = context.get('order_flow') or {}
+    
+    lines = [
+        f"Symbol: {context.get('symbol')} | {profile.get('company_name', 'N/A')} | {profile.get('industry', 'N/A')}",
+        f"Price: {market.get('latest_close', 0),.2f} VND | Change: 1D {market.get('change_1d_pct', 0):.1f}%, 5D {market.get('change_5d_pct', 0):.1f}%, 20D {market.get('change_20d_pct', 0):.1f}%",
+        f"Today: {intraday.get('total_value_today', 0):,.0f} VND traded (buy {intraday.get('buy_value_today', 0):,.0f}, sell {intraday.get('sell_value_today', 0):,.0f})",
+        f"Order flow: {order_flow.get('latest_signal_type', 'none')} | Confidence: {order_flow.get('latest_confidence', 'low')} | Strength: {order_flow.get('latest_strength', 0):.1f}",
+    ]
+    
+    if portfolio_pos:
+        lines.append(f"Your position: {portfolio_pos.get('shares_owned', 0)} shares @ avg {portfolio_pos.get('avg_buy_price', 0):.2f} | P&L: {portfolio_pos.get('unrealized_pnl', 0):+,.0f} ({portfolio_pos.get('unrealized_pnl_pct', 0):+.1f}%)")
+    
+    return "\n".join(lines)
+

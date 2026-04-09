@@ -757,6 +757,33 @@ class UserConfig(models.Model):
         default='',
         verbose_name='AI API key (encrypted)',
     )
+    
+    # PHASE 1 fields: Advisory auto-generation & cost control
+    advisory_auto_generation_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Cho phép tạo khuyến nghị tự động (mỗi 4h)',
+    )
+    advisory_whale_signal_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Cho phép tạo khuyến nghị khi phát hiện tín hiệu cá voi',
+    )
+    advisory_manual_refresh_enabled = models.BooleanField(
+        default=True,
+        verbose_name='Cho phép user làm mới khuyến nghị thủ công',
+    )
+    advisory_refresh_interval_hours = models.PositiveIntegerField(
+        default=24,
+        validators=[MinValueValidator(1)],
+        verbose_name='Khoảng thời gian refresh tự động (giờ)',
+        help_text='Advisory sẽ được tạo lại khi tuổi > số giờ này',
+    )
+    advisory_max_tokens_per_day = models.PositiveIntegerField(
+        default=5000,
+        validators=[MinValueValidator(1000)],
+        verbose_name='Ngân sách token AI mỗi ngày',
+        help_text='Giới hạn tokens dùng cho tạo/refresh khuyến nghị',
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1165,7 +1192,14 @@ class WhaleAdvisory(models.Model):
     summary: ~50 từ dành cho gói Pro+.
     detail: ~200 từ dành cho gói Premium+.
     Cooldown 15 phút / symbol để tránh spam token.
+    
+    PHASE 1 Enhancement: Support auto-generation + auto-refresh + token tracking
     """
+    class SourceChoices(models.TextChoices):
+        WHALE_SIGNAL = 'whale_signal', 'Phát hiện tín hiệu cá voi'
+        PERIODIC_JOB = 'periodic_job', 'Công việc định kỳ auto-gen'
+        USER_REFRESH = 'user_refresh', 'Làm mới thủ công bởi user'
+    
     user              = models.ForeignKey(User, null=True, blank=True, on_delete=models.CASCADE, related_name='whale_advisories', verbose_name='Người dùng')
     symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
     matched_value     = models.BigIntegerField(verbose_name='Giá trị khớp lệnh (VNĐ)')
@@ -1178,12 +1212,23 @@ class WhaleAdvisory(models.Model):
     prompt_tokens     = models.PositiveIntegerField(default=0, verbose_name='Prompt tokens dùng')
     completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Completion tokens dùng')
     created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm tạo')
+    
+    # PHASE 1 fields: Auto-generation & refresh tracking
+    next_refresh_at   = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Lần refresh tự động tiếp theo')
+    refresh_count     = models.PositiveIntegerField(default=0, verbose_name='Số lần refresh')
+    is_auto_generated = models.BooleanField(default=False, verbose_name='Được tạo tự động?')
+    source            = models.CharField(max_length=20, choices=SourceChoices.choices, default=SourceChoices.WHALE_SIGNAL, verbose_name='Nguồn')
 
     class Meta:
         verbose_name = 'Tư vấn AI Whale'
         verbose_name_plural = 'Tư vấn AI Whale'
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['user', 'symbol', 'created_at']), models.Index(fields=['symbol', 'created_at'])]
+        indexes = [
+            models.Index(fields=['user', 'symbol', 'created_at']),
+            models.Index(fields=['symbol', 'created_at']),
+            models.Index(fields=['user', 'next_refresh_at']),  # PHASE 1
+            models.Index(fields=['symbol', 'next_refresh_at']),  # PHASE 1
+        ]
 
     def __str__(self):
         owner = self.user.username if self.user_id else 'legacy'
@@ -1662,3 +1707,68 @@ class UserPlanLifecycle(models.Model):
 
     def __str__(self):
         return f"{self.user.username} | trial={self.trial_starts_at} -> grace={self.grace_ends_at}"
+
+
+# ---------------------------------------------------------------------------
+# AdvisoryTokenLog: PHASE 1 - Track token usage for advisory generation
+# ---------------------------------------------------------------------------
+class AdvisoryTokenLog(models.Model):
+    """
+    PHASE 1: Log từng lần dùng token để tạo/refresh khuyến nghị AI.
+    Dùng để tracking chi phí API cho từng user và enforce daily budget.
+    """
+    class SourceChoices(models.TextChoices):
+        AUTO_GENERATION = 'auto_generation', 'Tạo tự động'
+        WHALE_SIGNAL = 'whale_signal', 'Phát hiện tín hiệu cá voi'
+        MANUAL_REFRESH = 'manual_refresh', 'Làm mới thủ công'
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='advisory_token_logs',
+        verbose_name='Người dùng',
+    )
+    advisory = models.ForeignKey(
+        WhaleAdvisory,
+        on_delete=models.CASCADE,
+        related_name='token_logs',
+        null=True,
+        blank=True,
+        verbose_name='Khuyến nghị',
+    )
+    tokens_used = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Số token sử dụng (prompt + completion)',
+    )
+    source = models.CharField(
+        max_length=20,
+        choices=SourceChoices.choices,
+        default=SourceChoices.WHALE_SIGNAL,
+        verbose_name='Nguồn tạo khuyến nghị',
+        db_index=True,
+    )
+    symbol = models.CharField(
+        max_length=10,
+        blank=True,
+        default='',
+        verbose_name='Mã chứng khoán',
+        db_index=True,
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Thời điểm sử dụng token',
+    )
+    
+    class Meta:
+        verbose_name = 'Log token khuyến nghị'
+        verbose_name_plural = 'Log token khuyến nghị'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'created_at'], name='idx_adv_token_log_user_date'),
+            models.Index(fields=['source', 'created_at'], name='idx_adv_token_log_source_date'),
+            models.Index(fields=['user', '-created_at'], name='idx_adv_token_log_user_created_desc'),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username} | {self.symbol} | {self.get_source_display()} | {self.tokens_used} tokens'

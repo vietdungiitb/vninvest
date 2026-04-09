@@ -51,6 +51,28 @@ def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str, extra_
     return _call(prompt, max_tokens=450)
 
 
+# PHASE 1: Concise advisory (5-10 dòng, ~100 tokens)
+def generate_whale_concise(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
+    """
+    PHASE 1: Tạo khuyến nghị ngắn gọn (5-10 dòng, ~100 tokens) cho auto-gen & refresh.
+    Tiết kiệm token so với summary/deep, nhưng vẫn đủ thông tin.
+    Returns: {text: str, prompt_tokens: int, completion_tokens: int}
+    """
+    prompt = (
+        f"Phân tích ngắn gọn (5-10 dòng tối đa) về tín hiệu giao dịch cá mập tại TTCK Việt Nam:\n\n"
+        f"Lệnh: {side}\n"
+        f"Mã: {symbol}\n"
+        f"Giá trị: {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ\n\n"
+        f"{extra_context or ''}\n\n"
+        f"Hãy trả lời (5-10 dòng):\n"
+        f"1. Động lực có thể (1-2 dòng)\n"
+        f"2. Rủi ro chính (1-2 dòng)\n"
+        f"3. Điểm theo dõi (1-2 dòng)\n\n"
+        f"{_DISCLAIMER}"
+    )
+    return _call(prompt, max_tokens=130)
+
+
 def _call(prompt: str, max_tokens: int) -> dict:
     api_key = _API_KEY()
     if not api_key:

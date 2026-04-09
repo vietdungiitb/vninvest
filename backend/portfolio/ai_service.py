@@ -7,7 +7,7 @@ from typing import Any
 import httpx
 from django.conf import settings
 
-from .ai_context import build_symbol_ai_context, render_context_for_prompt
+from .ai_context import build_symbol_ai_context, render_context_for_prompt, render_concise_context_for_prompt
 from .ai_options import get_default_model
 from .openclaw_client import generate_whale_deep, generate_whale_summary
 
@@ -225,3 +225,81 @@ def test_ai_connection(provider: str, model: str, api_key: str) -> dict[str, Any
             'model': model_id,
             'message': str(exc),
         }
+
+
+# PHASE 1: Concise advisory generation (5-10 lines, ~100 tokens)
+def generate_advisory_concise(
+    provider: str,
+    model: str,
+    api_key: str,
+    symbol: str,
+    matched_value_vnd: float,
+    side: str,
+    user=None,
+) -> dict[str, Any]:
+    """
+    PHASE 1: Generate a concise advisory (5-10 lines, optimized for token efficiency).
+    Used for auto-generation and manual refresh to save API costs.
+    
+    Returns dict with 'text', 'prompt_tokens', 'completion_tokens'
+    """
+    provider_key = str(provider or 'openclaw').strip().lower()
+    model_id = str(model or '').strip()
+    if not model_id:
+        raise RuntimeError(f'Missing AI model for provider {provider_key}')
+    
+    context_payload = build_symbol_ai_context(symbol, user=user)
+    context_block = render_concise_context_for_prompt(context_payload)
+    
+    # Concise prompt: target ~100 tokens output, 5-10 lines max
+    prompt = (
+        f"Phân tích ngắn gọn (5-10 dòng) về tín hiệu giao dịch tại TTCK Việt Nam:\n\n"
+        f"{context_block}\n\n"
+        f"Lệnh: {side}\n"
+        f"Giá trị: {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ\n\n"
+        f"Hãy viết nhanh gọn (5-10 dòng tối đa) bao gồm:\n"
+        f"- Động lực có thể của tín hiệu\n"
+        f"- Rủi ro chính cần chú ý\n"
+        f"- Điểm cần theo dõi ngắn hạn\n\n"
+        f"[Thông tin tham khảo, không phải lời khuyên đầu tư tài chính]"
+    )
+    
+    if not api_key:
+        if provider_key == 'openclaw':
+            raise RuntimeError('Missing API key for provider openclaw')
+        raise RuntimeError(f'Missing API key for provider {provider_key}')
+    
+    # Call appropriate provider
+    max_tokens = 130  # ~100 tokens for output, rest for overhead
+    
+    if provider_key == 'openclaw':
+        from .openclaw_client import generate_whale_concise
+        return generate_whale_concise(symbol, matched_value_vnd, side, extra_context=context_block)
+    
+    if provider_key == 'claude':
+        return _claude_completion(api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
+    
+    if provider_key == 'openai':
+        base_url = os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1')
+        return _openai_compatible_completion(base_url=base_url, api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
+    
+    if provider_key == 'gemini':
+        base_url = os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai')
+        return _openai_compatible_completion(base_url=base_url, api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
+    
+    if provider_key == 'copilot':
+        base_url = os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference')
+        api_version = os.getenv('COPILOT_API_VERSION', '2026-03-10')
+        return _openai_compatible_completion(
+            base_url=base_url,
+            api_key=api_key,
+            model=model_id,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            extra_headers={
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': api_version,
+            },
+        )
+    
+    raise RuntimeError(f'Unsupported AI provider: {provider_key}')

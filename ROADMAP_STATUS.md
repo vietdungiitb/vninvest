@@ -157,6 +157,98 @@
 - From: Sprint 27 user/auth flow da san sang
 - To: Co the mo rong Sprint sau cho consent acceptance tracking theo user/version
 
+---
+
+### 🐋 **Sprint 32 (NEW) - Whale Advisory Auto-Generation & Auto-Refresh**
+**Focus**: Auto-generate khuyến nghị AI cho TẤT CẢ tracked symbols + auto-refresh stale advisories  
+**Status**: PLANNING PHASE (Ready for code implementation)
+
+**Business Requirements:**
+- ✅ Generate advisory automatically cho mọi tracked symbol (không chỉ whale signals)
+- ✅ Auto-refresh advisory khi > 24h cũ (configurable)
+- ✅ Advisory text giới hạn 5-10 dòng (~100 tokens)
+- ✅ Portfolio-aware AI prompt (shows user's position, P&L, etc.)
+- ✅ User-level cost control (toggle auto/whale/manual modes + daily budget)
+- ✅ Token tracking + monitoring dashboard
+
+**Problem Statement:**
+| Vấn đề | Impact |
+|--------|--------|
+| Advisory chỉ tạo khi có whale signal | Tracked symbols không whale alert = không có khuyến nghị |
+| Không auto-refresh | Advisory cũ > 24h vẫn hiển thị |
+| AI prompt thiếu context user | Không biết user có sở hữu, vị trí P&L |
+| Văn bản dài (50-200 từ) | Không phải 5-10 dòng yêu cầu |
+| Không cost control | Uncontrolled API spending |
+
+**Architecture Overview:**
+```
+TRIGGER PATHS:
+├─ Auto-Generation (Periodic Job, Every 4h)
+│  └─ Celery Beat → auto_generate_advisories_for_all_tracked()
+│
+├─ Whale Signal (Real-time)
+│  └─ detect_whale_signals() → generate_whale_advisory_task()
+│
+└─ Manual Refresh (User-triggered)
+   └─ /api/whale-advisory/<symbol>/refresh/ (POST)
+
+COST CONTROL:
+UserConfig settings
+├─ advisory_auto_generation_enabled (default: True)
+├─ advisory_whale_signal_enabled (default: True)
+├─ advisory_manual_refresh_enabled (default: True)
+├─ advisory_refresh_interval_hours (default: 24)
+└─ advisory_max_tokens_per_day (default: 5000)
+```
+
+**7-Phase Implementation Plan:**
+
+| Phase | Scope | Duration | Dependencies |
+|-------|-------|----------|--------------|
+| 1 | DB model: WhaleAdvisory + UserConfig + AdvisoryTokenLog | 4h | None |
+| 2 | AI context enrichment + concise prompt (5-10 lines) | 6h | Phase 1 |
+| 3 | Celery periodic job + Beat schedule | 5h | Phase 1-2 |
+| 4 | API endpoints + serializers | 4h | Phase 1-3 |
+| 5 | Frontend UI (age badge, refresh button, empty states) | 5h | Phase 4 |
+| 6 | Config UI + settings page | 6h | Phase 4 |
+| 7 | Monitoring + error handling + dashboard | 4h | Phase 3 |
+
+**Total Estimate**: 34 hours (4-5 days) + testing + deployment
+
+**Configuration Presets:**
+- **Pro**: Auto on (24h interval), Whale on, Manual on, 5000 tokens/day
+- **Premium**: Auto on (12h interval), Whale on, Manual on, 10000 tokens/day
+- **Admin**: Auto on (8h interval), Whale on, Manual on, 50000 tokens/day
+
+**Success Criteria:**
+- ✅ 100% tracked symbols have advisory (no empty states)
+- ✅ Advisories refresh automatically when > 24h old
+- ✅ Advisory text 5-10 lines (~100 tokens)
+- ✅ User settings control auto/whale/manual generation
+- ✅ Daily token budget tracked per user
+- ✅ No API exceeds quota
+- ✅ Production deployed to `deploy` branch
+
+**Detailed Plan:**
+👉 See: `docs/WHALE_ADVISORY_AUTO_GENERATION_ROADMAP.md` (comprehensive 1,500-line spec)
+
+**Timeline**: Estimated 5-7 working days
+- Days 1-2: Phase 1-2 (models + AI enhancement)
+- Days 3-4: Phase 3-4 (Celery job + API)
+- Days 5-6: Phase 5-6 (Frontend + Settings)
+- Day 7: Phase 7 (Monitoring + QA + deployment)
+
+**Dependencies:**
+- From: Sprint 26/27 (OpenCore licensing + plan policies)
+- To: Sprint 33+ (can add export/bulk-actions to advisory)
+
+**Canonical References:**
+- `docs/WHALE_ADVISORY_AUTO_GENERATION_ROADMAP.md` - Full technical spec
+- `docs/WHALE_ADVISORY_AUDIT_BACKEND.md` - Backend architecture
+- `docs/WHALE_ADVISORY_I18N_LABELS.md` - i18n configuration
+
+---
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  
