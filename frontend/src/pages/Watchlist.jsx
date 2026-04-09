@@ -161,6 +161,10 @@ export default function WatchlistPage() {
   const [groupPage, setGroupPage] = useState(1);
   const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
   const [trackedSortBy, setTrackedSortBy] = useState('symbol_asc');
+  const [trackedDataFilter, setTrackedDataFilter] = useState('all');
+  const [trackedSymbolSearch, setTrackedSymbolSearch] = useState('');
+  const [trackedPageSize, setTrackedPageSize] = useState(20);
+  const [trackedPage, setTrackedPage] = useState(1);
   const triggeringAlertIdsRef = useRef(new Set());
   const handleSyncStockProfile = async () => {
     setSyncingStockProfile(true);
@@ -300,9 +304,43 @@ export default function WatchlistPage() {
     }
     return true;
   });
+  const searchedTrackedSymbolsWithRealtime = filteredTrackedSymbolsWithRealtime.filter((item) => {
+    const keyword = String(trackedSymbolSearch || '').trim().toUpperCase();
+    if (!keyword) {
+      return true;
+    }
+    return String(item.symbol || '').toUpperCase().includes(keyword);
+  });
+  const filteredByDataTrackedSymbolsWithRealtime = searchedTrackedSymbolsWithRealtime.filter((item) => {
+    if (trackedDataFilter === 'synced') {
+      return !item.stale && item.current_price !== null && item.current_price !== undefined;
+    }
+    if (trackedDataFilter === 'stale') {
+      return item.stale || item.current_price === null || item.current_price === undefined;
+    }
+    if (trackedDataFilter === 'gainers') {
+      return Number(item.change_pct) > 0;
+    }
+    if (trackedDataFilter === 'losers') {
+      return Number(item.change_pct) < 0;
+    }
+    if (trackedDataFilter === 'flat') {
+      return Number(item.change_pct) === 0;
+    }
+    return true;
+  });
   const sortedTrackedSymbolsWithRealtime = useMemo(() => {
-    const rows = [...filteredTrackedSymbolsWithRealtime];
+    const rows = [...filteredByDataTrackedSymbolsWithRealtime];
     const scoreThreshold = (item) => (item.whale_alert_threshold_million == null ? -1 : Number(item.whale_alert_threshold_million));
+    const scoreNumber = (value) => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : -Infinity;
+    };
+    const scoreDate = (value) => {
+      if (!value) return 0;
+      const parsed = new Date(value).getTime();
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
 
     if (trackedSortBy === 'threshold_desc') {
       rows.sort((a, b) => scoreThreshold(b) - scoreThreshold(a));
@@ -316,9 +354,71 @@ export default function WatchlistPage() {
       rows.sort((a, b) => String(b.symbol || '').localeCompare(String(a.symbol || '')));
       return rows;
     }
+    if (trackedSortBy === 'current_price_asc') {
+      rows.sort((a, b) => scoreNumber(a.current_price) - scoreNumber(b.current_price));
+      return rows;
+    }
+    if (trackedSortBy === 'current_price_desc') {
+      rows.sort((a, b) => scoreNumber(b.current_price) - scoreNumber(a.current_price));
+      return rows;
+    }
+    if (trackedSortBy === 'change_value_asc') {
+      rows.sort((a, b) => scoreNumber(a.change_value) - scoreNumber(b.change_value));
+      return rows;
+    }
+    if (trackedSortBy === 'change_value_desc') {
+      rows.sort((a, b) => scoreNumber(b.change_value) - scoreNumber(a.change_value));
+      return rows;
+    }
+    if (trackedSortBy === 'change_pct_asc') {
+      rows.sort((a, b) => scoreNumber(a.change_pct) - scoreNumber(b.change_pct));
+      return rows;
+    }
+    if (trackedSortBy === 'change_pct_desc') {
+      rows.sort((a, b) => scoreNumber(b.change_pct) - scoreNumber(a.change_pct));
+      return rows;
+    }
+    if (trackedSortBy === 'updated_at_asc') {
+      rows.sort((a, b) => scoreDate(a.updated_at) - scoreDate(b.updated_at));
+      return rows;
+    }
+    if (trackedSortBy === 'updated_at_desc') {
+      rows.sort((a, b) => scoreDate(b.updated_at) - scoreDate(a.updated_at));
+      return rows;
+    }
     rows.sort((a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')));
     return rows;
-  }, [filteredTrackedSymbolsWithRealtime, trackedSortBy]);
+  }, [filteredByDataTrackedSymbolsWithRealtime, trackedSortBy]);
+  const trackedTotalPages = Math.max(1, Math.ceil(sortedTrackedSymbolsWithRealtime.length / trackedPageSize));
+  const trackedCurrentPage = Math.min(trackedPage, trackedTotalPages);
+  const pagedTrackedSymbolsWithRealtime = useMemo(() => {
+    const start = (trackedCurrentPage - 1) * trackedPageSize;
+    return sortedTrackedSymbolsWithRealtime.slice(start, start + trackedPageSize);
+  }, [sortedTrackedSymbolsWithRealtime, trackedCurrentPage, trackedPageSize]);
+
+  const toggleTrackedSort = useCallback((key) => {
+    setTrackedSortBy((prev) => {
+      const normalizedPrev = String(prev || 'symbol_asc');
+      const splitIndex = normalizedPrev.lastIndexOf('_');
+      const prevKey = splitIndex > 0 ? normalizedPrev.slice(0, splitIndex) : 'symbol';
+      const prevDir = splitIndex > 0 ? normalizedPrev.slice(splitIndex + 1) : 'asc';
+      if (prevKey === key) {
+        return `${key}_${prevDir === 'asc' ? 'desc' : 'asc'}`;
+      }
+      return `${key}_asc`;
+    });
+  }, []);
+
+  const getTrackedSortIndicator = useCallback((key) => {
+    const normalized = String(trackedSortBy || 'symbol_asc');
+    const splitIndex = normalized.lastIndexOf('_');
+    const activeKey = splitIndex > 0 ? normalized.slice(0, splitIndex) : 'symbol';
+    const activeDirection = splitIndex > 0 ? normalized.slice(splitIndex + 1) : 'asc';
+    if (activeKey !== key) {
+      return '↕';
+    }
+    return activeDirection === 'asc' ? '↑' : '↓';
+  }, [trackedSortBy]);
   const trackedSymbolMap = new Map(trackedSymbolsWithRealtime.map((item) => [item.symbol, item]));
   const trackedSymbolSet = new Set(trackedSymbolsWithRealtime.map((item) => item.symbol));
   const activeGroupItems = activeGroup?.items || [];
@@ -490,6 +590,10 @@ export default function WatchlistPage() {
   useEffect(() => {
     setGroupPage(1);
   }, [view, groupTrackedFilter, groupDataFilter, groupSymbolSearch, groupPageSize]);
+
+  useEffect(() => {
+    setTrackedPage(1);
+  }, [trackedThresholdFilter, trackedDataFilter, trackedSymbolSearch, trackedPageSize]);
 
   const handleSeed = async () => {
     setSeeding(true);
@@ -1303,7 +1407,49 @@ export default function WatchlistPage() {
                             <option value="symbol_desc">{t('watchlist.sortSymbolDesc')}</option>
                             <option value="threshold_desc">{t('watchlist.sortThresholdDesc')}</option>
                             <option value="threshold_asc">{t('watchlist.sortThresholdAsc')}</option>
+                            <option value="current_price_desc">{t('watchlist.sortPriceDesc')}</option>
+                            <option value="current_price_asc">{t('watchlist.sortPriceAsc')}</option>
+                            <option value="change_pct_desc">{t('watchlist.sortPctDesc')}</option>
+                            <option value="change_pct_asc">{t('watchlist.sortPctAsc')}</option>
+                            <option value="updated_at_desc">{t('watchlist.sortUpdatedDesc')}</option>
+                            <option value="updated_at_asc">{t('watchlist.sortUpdatedAsc')}</option>
                           </select>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="text"
+                              value={trackedSymbolSearch}
+                              onChange={(e) => setTrackedSymbolSearch(e.target.value.toUpperCase())}
+                              placeholder={t('watchlist.searchSymbolPlaceholder')}
+                              className="w-52 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                            />
+                            <select
+                              value={trackedDataFilter}
+                              onChange={(e) => setTrackedDataFilter(e.target.value)}
+                              className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                            >
+                              <option value="all">{t('watchlist.dataFilterAll')}</option>
+                              <option value="synced">{t('watchlist.dataFilterSynced')}</option>
+                              <option value="stale">{t('watchlist.dataFilterStale')}</option>
+                              <option value="gainers">{t('watchlist.dataFilterGainers')}</option>
+                              <option value="losers">{t('watchlist.dataFilterLosers')}</option>
+                              <option value="flat">{t('watchlist.dataFilterFlat')}</option>
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-gray-400">
+                            <span>{t('watchlist.pageSize')}</span>
+                            <select
+                              value={trackedPageSize}
+                              onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
+                              className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                            >
+                              {[10, 15, 20, 50, 100].map((size) => (
+                                <option key={size} value={size}>{size}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
@@ -1333,7 +1479,7 @@ export default function WatchlistPage() {
                         </div>
                       </div>
 
-                      {filteredTrackedSymbolsWithRealtime.length === 0 ? (
+                      {sortedTrackedSymbolsWithRealtime.length === 0 ? (
                         <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
                       ) : (
                         <div className="overflow-x-auto">
@@ -1341,18 +1487,43 @@ export default function WatchlistPage() {
                         <table className="w-full min-w-[1020px] text-sm">
                       <thead>
                         <tr className="border-b border-gray-800">
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                            <button onClick={() => toggleTrackedSort('symbol')} className="inline-flex items-center gap-1 hover:text-gray-200">
+                              {t('watchlist.tableSymbol')}
+                              <span className="text-[10px] text-gray-600">{getTrackedSortIndicator('symbol')}</span>
+                            </button>
+                          </th>
                           <th className="w-[180px] px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.sourceGroup')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableChange')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tablePctChange')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                            <button onClick={() => toggleTrackedSort('current_price')} className="inline-flex items-center gap-1 hover:text-gray-200">
+                              {t('watchlist.tableCurrentPrice')}
+                              <span className="text-[10px] text-gray-600">{getTrackedSortIndicator('current_price')}</span>
+                            </button>
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                            <button onClick={() => toggleTrackedSort('change_value')} className="inline-flex items-center gap-1 hover:text-gray-200">
+                              {t('watchlist.tableChange')}
+                              <span className="text-[10px] text-gray-600">{getTrackedSortIndicator('change_value')}</span>
+                            </button>
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                            <button onClick={() => toggleTrackedSort('change_pct')} className="inline-flex items-center gap-1 hover:text-gray-200">
+                              {t('watchlist.tablePctChange')}
+                              <span className="text-[10px] text-gray-600">{getTrackedSortIndicator('change_pct')}</span>
+                            </button>
+                          </th>
                           <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.whaleThresholdColumn')}</th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableUpdatedAt')}</th>
+                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
+                            <button onClick={() => toggleTrackedSort('updated_at')} className="inline-flex items-center gap-1 hover:text-gray-200">
+                              {t('watchlist.tableUpdatedAt')}
+                              <span className="text-[10px] text-gray-600">{getTrackedSortIndicator('updated_at')}</span>
+                            </button>
+                          </th>
                           <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800/60">
-                        {sortedTrackedSymbolsWithRealtime.map((item) => (
+                        {pagedTrackedSymbolsWithRealtime.map((item) => (
                           <tr key={item.id} className="hover:bg-gray-800/50 transition-colors">
                             <td className="px-4 py-3">
                               <button
@@ -1368,7 +1539,7 @@ export default function WatchlistPage() {
                             >
                               {item.source_group_name || t('watchlist.manualAdded')}
                             </td>
-                            <td className="px-4 py-3">{formatPrice(item.current_price, formatNumber)}</td>
+                            <td className="px-4 py-3">{formatPrice(item.current_price, formatQuotePrice)}</td>
                             <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
                             <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
                             <td className="px-4 py-3 text-xs">
@@ -1425,6 +1596,32 @@ export default function WatchlistPage() {
                         ))}
                       </tbody>
                         </table>
+                        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-gray-800 bg-gray-950/50 text-xs text-gray-400">
+                          <span>
+                            {t('watchlist.paginationSummary', {
+                              from: formatNumber((trackedCurrentPage - 1) * trackedPageSize + 1),
+                              to: formatNumber(Math.min(trackedCurrentPage * trackedPageSize, sortedTrackedSymbolsWithRealtime.length)),
+                              total: formatNumber(sortedTrackedSymbolsWithRealtime.length),
+                            })}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setTrackedPage((prev) => Math.max(1, prev - 1))}
+                              disabled={trackedCurrentPage <= 1}
+                              className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
+                            >
+                              {t('watchlist.prevPage')}
+                            </button>
+                            <span>{t('watchlist.pageLabel', { page: formatNumber(trackedCurrentPage), total: formatNumber(trackedTotalPages) })}</span>
+                            <button
+                              onClick={() => setTrackedPage((prev) => Math.min(trackedTotalPages, prev + 1))}
+                              disabled={trackedCurrentPage >= trackedTotalPages}
+                              className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
+                            >
+                              {t('watchlist.nextPage')}
+                            </button>
+                          </div>
+                        </div>
                         </div>
                       )}
                     </div>
