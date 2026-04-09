@@ -37,6 +37,7 @@ from portfolio.services import (
     refresh_rollout_propagation_status,
     sync_watchlist_prices,
 )
+from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
 from portfolio.onboarding_trial_service import process_expired_onboarding_trials
 
 logger = logging.getLogger(__name__)
@@ -653,12 +654,9 @@ def prefetch_ticker_price_board(self) -> dict:
         _store_prefetch_meta(payload)
         return payload
     try:
-        from vnstock import Vnstock
-
         for start in range(0, len(symbols), batch_size):
             batch_symbols = symbols[start:start + batch_size]
-            stock = Vnstock().stock(symbol=batch_symbols[0], source='VCI')
-            df = stock.trading.price_board(symbols_list=batch_symbols)
+            df = fetch_price_board_dataframe(batch_symbols, anchor_symbol=batch_symbols[0])
             processed_batches += 1
 
             if df is None or df.empty:
