@@ -820,6 +820,7 @@ const vi = {
     tableChange: 'Thay đổi',
     tablePctChange: '% thay đổi',
     tableUpdatedAt: 'Cập nhật',
+    priceUnitHint: 'Don vi gia: nghin VND',
     paused: 'Tạm dừng',
     hitThreshold: 'Đang chạm ngưỡng',
     tracking: 'Đang theo dõi',

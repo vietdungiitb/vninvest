@@ -111,7 +111,7 @@ function extractApiErrorMessage(error, fallbackMessage) {
 export default function WatchlistPage() {
   const navigate = useNavigate();
   const { userConfig } = usePortfolio();
-  const { t, formatNumber, formatTime, formatDateTime } = useI18n();
+  const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice } = useI18n();
   const realtimeLabels = useMemo(() => ({
     idle: t('watchlist.statusIdle'),
     connecting: t('watchlist.statusConnecting'),
@@ -1107,61 +1107,66 @@ export default function WatchlistPage() {
                     ) : priceAlertsWithRealtime.length === 0 ? (
                       <div className="py-8 text-center text-gray-500 text-sm">{t('watchlist.emptyPriceAlerts')}</div>
                     ) : (
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-800">
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCondition')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableTarget')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableStatus')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCooldown')}</th>
-                            <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableLastTrigger')}</th>
-                            <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-800/60">
-                          {priceAlertsWithRealtime.map((rule) => (
-                            <tr key={rule.id} className="hover:bg-gray-900/40 transition-colors">
-                              <td className="px-4 py-3 font-bold text-blue-300">{rule.symbol}</td>
-                              <td className="px-4 py-3 text-gray-300">{priceAlertConditionLabels[rule.condition]}</td>
-                              <td className="px-4 py-3 text-gray-300 tabular-nums">{formatNumber(rule.target_price)} VNĐ</td>
-                              <td className="px-4 py-3 text-gray-300 tabular-nums">
-                                {rule.current_price ? `${formatNumber(rule.current_price)} VNĐ` : '—'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                  !rule.is_active
-                                    ? 'bg-gray-800 text-gray-400'
-                                    : isPriceAlertMatched(rule, rule.current_price) && !rule.stale
-                                      ? 'bg-blue-900/40 text-blue-300'
-                                      : 'bg-emerald-900/30 text-emerald-300'
-                                }`}>
-                                  {!rule.is_active ? t('watchlist.paused') : isPriceAlertMatched(rule, rule.current_price) && !rule.stale ? t('watchlist.hitThreshold') : t('watchlist.tracking')}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3 text-gray-400">{rule.cooldown_seconds}s</td>
-                              <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDateTime(rule.last_triggered_at)}</td>
-                              <td className="px-4 py-3 text-right">
-                                <div className="flex items-center justify-end gap-3">
-                                  <button
-                                    onClick={() => handleTogglePriceAlert(rule)}
-                                    className="text-xs text-gray-300 hover:text-gray-100 font-semibold"
-                                  >
-                                    {rule.is_active ? t('watchlist.pause') : t('watchlist.activate')}
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeletePriceAlert(rule)}
-                                    className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                                  >
-                                    {t('watchlist.delete')}
-                                  </button>
-                                </div>
-                              </td>
+                      <>
+                        <p className="px-4 pt-3 text-[11px] text-gray-500">{t('watchlist.priceUnitHint')}</p>
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-gray-800">
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCondition')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableTarget')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableStatus')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCooldown')}</th>
+                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableLastTrigger')}</th>
+                              <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-gray-800/60">
+                            {priceAlertsWithRealtime.map((rule) => (
+                              <tr key={rule.id} className="hover:bg-gray-900/40 transition-colors">
+                                <td className="px-4 py-3 font-bold text-blue-300">{rule.symbol}</td>
+                                <td className="px-4 py-3 text-gray-300">{priceAlertConditionLabels[rule.condition]}</td>
+                                <td className="px-4 py-3 text-gray-300 tabular-nums">{formatQuotePrice(rule.target_price)}</td>
+                                <td className="px-4 py-3 text-gray-300 tabular-nums">
+                                  {(rule.current_price !== null && rule.current_price !== undefined)
+                                    ? formatQuotePrice(rule.current_price)
+                                    : '—'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+                                    !rule.is_active
+                                      ? 'bg-gray-800 text-gray-400'
+                                      : isPriceAlertMatched(rule, rule.current_price) && !rule.stale
+                                        ? 'bg-blue-900/40 text-blue-300'
+                                        : 'bg-emerald-900/30 text-emerald-300'
+                                  }`}>
+                                    {!rule.is_active ? t('watchlist.paused') : isPriceAlertMatched(rule, rule.current_price) && !rule.stale ? t('watchlist.hitThreshold') : t('watchlist.tracking')}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-gray-400">{rule.cooldown_seconds}s</td>
+                                <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDateTime(rule.last_triggered_at)}</td>
+                                <td className="px-4 py-3 text-right">
+                                  <div className="flex items-center justify-end gap-3">
+                                    <button
+                                      onClick={() => handleTogglePriceAlert(rule)}
+                                      className="text-xs text-gray-300 hover:text-gray-100 font-semibold"
+                                    >
+                                      {rule.is_active ? t('watchlist.pause') : t('watchlist.activate')}
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeletePriceAlert(rule)}
+                                      className="text-xs text-red-400 hover:text-red-300 font-semibold"
+                                    >
+                                      {t('watchlist.delete')}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </>
                     )}
                   </div>
                 </div>

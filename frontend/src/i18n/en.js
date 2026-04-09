@@ -820,6 +820,7 @@ const en = {
     tableChange: 'Change',
     tablePctChange: '% change',
     tableUpdatedAt: 'Updated',
+    priceUnitHint: 'Price unit: thousand VND',
     paused: 'Paused',
     hitThreshold: 'At threshold',
     tracking: 'Tracking',
