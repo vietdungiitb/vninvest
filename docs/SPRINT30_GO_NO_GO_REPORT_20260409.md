@@ -92,3 +92,16 @@ Evidence / tools:
 - BE Lead: ____________________  Date: __________
 - DevOps Lead: ____________________  Date: __________
 - PM / Product-AI: ____________________  Date: __________
+
+## 9) Quick GO/NO-GO Checklist (Redeploy)
+
+- [ ] Pull nhanh `origin/deploy` va xac nhan commit `a757a5a9` da co tren server.
+- [ ] Kiem tra env backend: `WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True`.
+- [ ] Redeploy backend/frontend theo quy trinh van hanh hien tai.
+- [ ] Chay `sprint30_run_release_gate.ps1` de thu thap artifact gate.
+- [ ] Verify `GET /api/admin-ops/runtime-kpi/` tra `200`.
+- [ ] Verify `GET /api/admin-ops/runtime-kpi/advisory-merge/` tra `200`.
+- [ ] Smoke test manual refresh Whale Advisory khi worker san sang (expect `queued=true`).
+- [ ] Smoke test manual refresh khi worker tam dung (expect `fallback_sync=true` neu flag=True).
+- [ ] Smoke test nut `Xoa advisory hien tai` theo tung symbol (expect xoa ban ghi moi nhat).
+- [ ] Thu thap ky xac nhan QA/BE/DevOps/PM va chot GO/NO-GO.
