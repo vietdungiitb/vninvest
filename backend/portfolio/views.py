@@ -128,7 +128,7 @@ def admin_system_ai_settings_api(request):
     Admin-only: quản trị System AI Settings cho fallback runtime.
     """
     from django.core.exceptions import ValidationError
-    from .ai_options import is_valid_model, is_valid_provider
+    from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_model, is_valid_provider
     from .models import SystemAISettings, SystemAISettingsAuditLog
 
     settings_obj = SystemAISettings.get_active()
@@ -180,6 +180,8 @@ def admin_system_ai_settings_api(request):
     effective_model = model or settings_obj.get_effective_ai_model()
     if effective_model and not is_valid_model(provider, effective_model):
         return Response({'ok': False, 'message': 'AI model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+    if effective_model and not is_model_allowed_for_capability(provider, effective_model, ADVISORY_CAPABILITY):
+        return Response({'ok': False, 'message': 'AI model này chưa được hỗ trợ cho advisory runtime hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
     settings_obj.ai_provider = provider
     settings_obj.ai_model = model
@@ -405,12 +407,17 @@ def warm_ticker_prefetch_api(request):
 @permission_classes([IsAuthenticated])
 def ai_options_api(request):
     """GET /api/ai-options/ - provider/model khả dụng cho frontend dropdown."""
-    from .ai_options import AVAILABLE_MODELS, get_default_model
+    from .ai_options import ADVISORY_CAPABILITY, AVAILABLE_MODELS, MODEL_CATALOG, get_default_model, get_model_entries
 
     return Response(
         {
             'providers': AVAILABLE_MODELS,
             'defaults': {provider: get_default_model(provider) for provider in AVAILABLE_MODELS.keys()},
+            'model_catalog': {
+                provider: get_model_entries(provider)
+                for provider in MODEL_CATALOG.keys()
+            },
+            'scope': ADVISORY_CAPABILITY,
         },
         status=status.HTTP_200_OK,
     )
@@ -420,7 +427,7 @@ def ai_options_api(request):
 @permission_classes([IsAuthenticated])
 def ai_test_connection_api(request):
     """POST /api/ai-config/test-connection/ - kiểm tra provider/model/api key trước khi lưu."""
-    from .ai_options import is_valid_model, is_valid_provider
+    from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_model, is_valid_provider
     from .ai_service import _resolve_provider_api_key, test_ai_connection
 
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
@@ -434,6 +441,8 @@ def ai_test_connection_api(request):
         return Response({'ok': False, 'message': 'Bạn chưa chọn AI model.'}, status=status.HTTP_400_BAD_REQUEST)
     if not is_valid_model(provider, model):
         return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+        return Response({'ok': False, 'message': 'Model này chưa được hỗ trợ cho AI advisory hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
     if not _resolve_provider_api_key(provider, api_key):
         return Response({'ok': False, 'message': 'Bạn chưa cấu hình API key cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -509,7 +518,7 @@ def ai_config_api(request):
     model = str(request.data.get('ai_model') or '').strip()
     api_key = request.data.get('ai_api_key', None)
 
-    from .ai_options import is_valid_model, is_valid_provider
+    from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 
     if not is_valid_provider(provider):
         return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -518,6 +527,8 @@ def ai_config_api(request):
         return Response({'ok': False, 'message': 'Bạn chưa chọn AI model.'}, status=status.HTTP_400_BAD_REQUEST)
     if not is_valid_model(provider, model):
         return Response({'ok': False, 'message': 'Model không hợp lệ cho provider đã chọn.'}, status=status.HTTP_400_BAD_REQUEST)
+    if not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+        return Response({'ok': False, 'message': 'Model này chưa được hỗ trợ cho AI advisory hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
     user_cfg.ai_provider = provider
     user_cfg.ai_model = model

@@ -5,7 +5,7 @@ from django.core import signing
 from django.core.exceptions import ValidationError
 from decimal import Decimal
 
-from .ai_options import PROVIDER_CHOICES, get_default_model, is_valid_model, is_valid_provider
+from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 from .encryption_utils import decrypt_text, encrypt_text
 
 # ============================================================================
@@ -849,6 +849,8 @@ class SystemAISettings(models.Model):
             raise ValidationError({'ai_provider': 'AI provider không hợp lệ.'})
         if not is_valid_model(provider, model):
             raise ValidationError({'ai_model': 'AI model không thuộc provider đã chọn.'})
+        if not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+            raise ValidationError({'ai_model': 'AI model này chưa được hỗ trợ cho luồng advisory hiện tại.'})
 
     def save(self, *args, **kwargs):
         if not self.name:

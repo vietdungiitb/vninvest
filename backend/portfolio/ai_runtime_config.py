@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from .ai_options import get_default_model, is_valid_model, is_valid_provider
+from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_provider
 from .ai_service import _resolve_provider_api_key
 from .models import SystemAISettings, UserConfig
 
@@ -55,7 +55,7 @@ def resolve_ai_runtime_config(user=None, system_settings: SystemAISettings | Non
         if (
             is_valid_provider(user_provider)
             and bool(user_model)
-            and is_valid_model(user_provider, user_model)
+            and is_model_allowed_for_capability(user_provider, user_model, ADVISORY_CAPABILITY)
             and bool(user_key)
         ):
             return {
@@ -92,7 +92,7 @@ def resolve_ai_runtime_config(user=None, system_settings: SystemAISettings | Non
             model=system_model,
         )
 
-    if not system_model or not is_valid_model(system_provider, system_model):
+    if not system_model or not is_model_allowed_for_capability(system_provider, system_model, ADVISORY_CAPABILITY):
         return _build_not_ready_payload(
             reason='invalid_system_ai_model',
             message='System AI model không hợp lệ. Vui lòng cập nhật lại System AI Settings.',

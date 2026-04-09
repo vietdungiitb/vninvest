@@ -25,14 +25,18 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('providers', response.data)
         self.assertIn('defaults', response.data)
+        self.assertIn('model_catalog', response.data)
+        self.assertEqual(response.data.get('scope'), 'text_advisory')
         self.assertIn('openai', response.data['providers'])
         self.assertIn('copilot', response.data['providers'])
         self.assertEqual(response.data['defaults']['copilot'], 'openai/gpt-4.1-mini')
-        self.assertEqual(response.data['defaults']['claude'], 'claude-4.6-sonnet')
-        self.assertEqual(response.data['defaults']['gemini'], 'gemini-3.1-pro')
+        self.assertEqual(response.data['defaults']['claude'], 'claude-3-5-sonnet-20240620')
+        self.assertEqual(response.data['defaults']['gemini'], 'gemini-1.5-pro')
         self.assertIn('openai/gpt-4.1', response.data['providers']['copilot'])
-        self.assertIn('claude-4.6-opus', response.data['providers']['claude'])
-        self.assertIn('gemini-3.1-flash-lite', response.data['providers']['gemini'])
+        self.assertNotIn('claude-4.6-opus', response.data['providers']['claude'])
+        self.assertNotIn('gemini-3.1-flash-lite', response.data['providers']['gemini'])
+        claude_catalog = response.data['model_catalog']['claude']
+        self.assertTrue(any(item['id'] == 'claude-4.6-opus' and not item['validated_for_runtime'] for item in claude_catalog))
 
     def test_ai_config_get_and_put(self):
         get_resp = self.client.get('/api/ai-config/')
@@ -72,6 +76,20 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok', False))
         self.assertIn('AI model', response.data.get('message', ''))
+
+    def test_ai_config_put_rejects_model_not_supported_for_advisory(self):
+        response = self.client.put(
+            '/api/ai-config/',
+            {
+                'ai_provider': 'claude',
+                'ai_model': 'claude-4.6-sonnet',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok', False))
+        self.assertIn('advisory', response.data.get('message', '').lower())
 
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_env_test_token'}, clear=False)
     def test_ai_config_get_uses_env_key_for_configured_flag(self):
@@ -162,6 +180,21 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok', False))
         self.assertIn('API key', response.data.get('message', ''))
+
+    def test_ai_test_connection_rejects_model_not_supported_for_advisory(self):
+        response = self.client.post(
+            '/api/ai-config/test-connection/',
+            {
+                'ai_provider': 'gemini',
+                'ai_model': 'nano-banana-2',
+                'ai_api_key': 'test-gemini-key',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok', False))
+        self.assertIn('advisory', response.data.get('message', '').lower())
 
     @patch.dict('os.environ', {'OPENCLAW_API_KEY': 'system-openclaw-key'}, clear=False)
     def test_ai_config_get_uses_system_fallback_when_user_missing_config(self):

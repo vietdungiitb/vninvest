@@ -81,6 +81,10 @@
 - Fix loi hien thi key i18n `whaleAdvisory.selectModel` trong combo model:
   - Bo sung key vao dictionary `vi` va `en`.
   - Nang cap translator de ho tro `defaultValue` fallback khi key chua co.
+- Bo sung capability-aware model filtering:
+  - `/api/ai-options/` tra ve them `model_catalog` metadata va `scope=text_advisory`.
+  - Dropdown Whale Advisory chi hien model da `validated_for_runtime=True` va ho tro capability `text_advisory`.
+  - Backend chan luon cac model chi la product label / chua verify runtime cho advisory flow.
 
 ### Kiem thu da chay
 - Backend:

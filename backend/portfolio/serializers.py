@@ -5,7 +5,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
-from .ai_options import get_default_model, is_valid_model, is_valid_provider
+from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 
 
 
@@ -150,6 +150,8 @@ class UserConfigSerializer(serializers.ModelSerializer):
             attrs['ai_model'] = get_default_model(provider)
         if provider and not is_valid_model(provider, attrs.get('ai_model')):
             raise serializers.ValidationError({'ai_model': 'Model không thuộc provider đã chọn.'})
+        if provider and not is_model_allowed_for_capability(provider, attrs.get('ai_model'), ADVISORY_CAPABILITY):
+            raise serializers.ValidationError({'ai_model': 'Model này chưa được hỗ trợ cho AI advisory hiện tại.'})
         return attrs
 
     def update(self, instance, validated_data):

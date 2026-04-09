@@ -26,6 +26,22 @@ const FALLBACK_MODELS = {
   openclaw: ['default'],
 };
 
+const ADVISORY_SCOPE = 'text_advisory';
+
+function buildFallbackModelCatalog(providerMap) {
+  return Object.fromEntries(
+    Object.entries(providerMap || {}).map(([provider, models]) => [
+      provider,
+      (models || []).map((model) => ({
+        id: model,
+        label: model,
+        capabilities: [ADVISORY_SCOPE],
+        validated_for_runtime: true,
+      })),
+    ]),
+  );
+}
+
 function fmtCurrency(value) {
   return Number(value || 0).toLocaleString(undefined);
 }
@@ -299,6 +315,7 @@ export default function WhaleAdvisory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [aiProviders, setAiProviders] = useState(FALLBACK_MODELS);
+  const [aiModelCatalog, setAiModelCatalog] = useState(buildFallbackModelCatalog(FALLBACK_MODELS));
   const [aiProvider, setAiProvider] = useState('openclaw');
   const [aiModel, setAiModel] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -346,11 +363,13 @@ export default function WhaleAdvisory() {
         if (!mounted) return;
 
         const providers = optionsResp?.data?.providers || FALLBACK_MODELS;
+        const modelCatalog = optionsResp?.data?.model_catalog || buildFallbackModelCatalog(providers);
         const cfg = cfgResp?.data || {};
         const provider = (cfg.ai_provider || 'openclaw').toLowerCase();
         const model = (cfg.ai_model || '').trim();
 
         setAiProviders(providers);
+        setAiModelCatalog(modelCatalog);
         setAiProvider(provider);
         setAiModel(model);
         setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
@@ -366,7 +385,24 @@ export default function WhaleAdvisory() {
     };
   }, []);
 
-  const modelOptions = useMemo(() => aiProviders[aiProvider] || [], [aiProvider, aiProviders]);
+  const modelOptionEntries = useMemo(() => {
+    const entries = aiModelCatalog[aiProvider] || [];
+    const filtered = entries.filter((entry) => {
+      const capabilities = Array.isArray(entry?.capabilities) ? entry.capabilities : [];
+      return Boolean(entry?.validated_for_runtime) && capabilities.includes(ADVISORY_SCOPE);
+    });
+    if (filtered.length > 0) {
+      return filtered;
+    }
+    return (aiProviders[aiProvider] || []).map((model) => ({
+      id: model,
+      label: model,
+      capabilities: [ADVISORY_SCOPE],
+      validated_for_runtime: true,
+    }));
+  }, [aiModelCatalog, aiProvider, aiProviders]);
+
+  const modelOptions = useMemo(() => modelOptionEntries.map((entry) => entry.id), [modelOptionEntries]);
 
   useEffect(() => {
     if (aiModel && !modelOptions.includes(aiModel)) {
@@ -550,8 +586,8 @@ export default function WhaleAdvisory() {
               onChange={(e) => setAiModel(e.target.value)}
             >
               <option value="">{t('whaleAdvisory.selectModel', { defaultValue: 'Chọn model' })}</option>
-              {modelOptions.map((model) => (
-                <option key={model} value={model}>{model}</option>
+              {modelOptionEntries.map((entry) => (
+                <option key={entry.id} value={entry.id}>{entry.label || entry.id}</option>
               ))}
             </select>
           </label>
