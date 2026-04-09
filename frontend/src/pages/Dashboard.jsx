@@ -229,7 +229,7 @@ export default function Dashboard() {
       </div>
 
       <DashboardRealtimePanel
-        holdings={holdings}
+        holdings={liveHoldings}
         quotesBySymbol={quotesBySymbol}
         realtimeStatus={realtimeStatus}
         lastEventAt={lastEventAt}
