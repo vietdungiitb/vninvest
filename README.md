@@ -145,6 +145,7 @@ npm run build   # → build/ ready, 0 errors
 |----------|----------|
 | [docs/ROADMAP_STATUS.md](docs/ROADMAP_STATUS.md) | Trạng thái toàn dự án, kiến trúc, API contract, quy tắc phát triển |
 | [docs/SPRINT_EXECUTION_LOG.md](docs/SPRINT_EXECUTION_LOG.md) | Lịch sử công việc chi tiết theo sprint |
+| [docs/MODULE_TREE_WORKFLOW.md](docs/MODULE_TREE_WORKFLOW.md) | Quy trình tự động cập nhật cây module/class/function/variable |
 | [docs/WEBSOCKET_EVENT_CONTRACT.md](docs/WEBSOCKET_EVENT_CONTRACT.md) | WS message envelope + event types |
 | [docs/VNSTOCK_THROUGHPUT_RUNTIME_GUIDE.md](docs/VNSTOCK_THROUGHPUT_RUNTIME_GUIDE.md) | Hướng dẫn kỹ thuật cho runtime throughput mới của vnstock, Celery prefetch, Redis cache và benchmark |
 | [docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md](docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md) | Tài liệu tổng hợp duy nhất cho hiện trạng, hardening, roadmap và admin của Whale Alerts |

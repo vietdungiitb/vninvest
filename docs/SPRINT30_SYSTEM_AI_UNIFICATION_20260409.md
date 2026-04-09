@@ -99,3 +99,10 @@
   1) `/api/ai-options/` tra danh sach model moi.
   2) Whale Advisory config dropdown khong con hien key i18n.
   3) Admin API `/api/admin-ops/system-ai-settings/` hoat dong binh thuong.
+
+## Ghi chu quan tri cay module
+
+- Da them quy trinh cap nhat cay module tai `docs/MODULE_TREE_WORKFLOW.md`.
+- File nguon cay tong: `module_tree_full.md`.
+- Script cap nhat tu dong: `scripts/ops/generate_module_tree.py`.
+- Quy uoc: moi thay doi class/function/variable can chay script va commit cung code thay doi de giu tai lieu dong bo.
