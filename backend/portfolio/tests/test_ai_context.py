@@ -1,5 +1,6 @@
 from datetime import date, time
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -85,3 +86,16 @@ class AIContextTests(TestCase):
         self.assertIn('Active price alerts', prompt_context)
         self.assertIn('Latest order flow', prompt_context)
         self.assertIn('Recent order-flow signals', prompt_context)
+
+    @patch('portfolio.ai_context.Transaction.objects.filter')
+    def test_build_context_handles_non_numeric_transaction_values(self, mock_filter):
+        mock_filter.return_value.values_list.return_value = [
+            ('none', '10'),
+            ('100.5', '2'),
+        ]
+
+        context = build_symbol_ai_context('FPT', user=self.user)
+
+        self.assertIn('portfolio_position', context)
+        self.assertIsNotNone(context['portfolio_position'])
+        self.assertEqual(context['portfolio_position']['shares_owned'], 12)

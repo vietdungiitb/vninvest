@@ -6,7 +6,6 @@ from statistics import pstdev
 
 from django.utils import timezone
 from django.db.models import Sum, Q, DecimalField, Value
-from django.db.models.functions import Cast
 
 from .models import DailyPrice, IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory, Transaction
 
@@ -92,16 +91,18 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
     # PHASE 1 Enhancement: Get user's portfolio position for this symbol
     portfolio_position = None
     if user is not None:
-        user_portfolio_data = Transaction.objects.filter(
+        tx_rows = Transaction.objects.filter(
             sub_account__portfolio__user=user,
             symbol=normalized_symbol,
-        ).aggregate(
-            total_shares=Sum('quantity'),
-            total_amount=Sum(Cast('price', DecimalField()) * Cast('quantity', DecimalField()), output_field=DecimalField()),
-        )
-        
-        total_shares = _to_float(user_portfolio_data.get('total_shares'))
-        total_cost = _to_float(user_portfolio_data.get('total_amount'))
+        ).values_list('price', 'quantity')
+
+        total_shares = 0.0
+        total_cost = 0.0
+        for raw_price, raw_quantity in tx_rows:
+            quantity = _to_float(raw_quantity)
+            price = _to_float(raw_price)
+            total_shares += quantity
+            total_cost += price * quantity
         
         if total_shares != 0:
             avg_cost = total_cost / total_shares if total_shares else 0
