@@ -1232,25 +1232,43 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(second.data['remaining'], 0)
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.run')
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_stock_ai_advisory_session_get_queues_generation_when_missing(self, mock_apply_async, _mock_cache_get):
+    def test_stock_ai_advisory_session_get_creates_sync_when_missing(self, mock_apply_async, mock_task_run, _mock_cache_get):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
         )
         self.authenticate()
-        mock_task = MagicMock()
-        mock_task.id = 'stock-ai-task-1'
-        mock_apply_async.return_value = mock_task
+
+        def _mock_run_side_effect(**kwargs):
+            advisory = WhaleAdvisory.objects.create(
+                user=self.user,
+                symbol=kwargs['symbol'],
+                matched_value=int(kwargs['matched_value_vnd']),
+                side=kwargs['side'],
+                threshold=float(kwargs['threshold']),
+                ai_summary='sync summary',
+                ai_detail='sync detail',
+                ai_provider='openai',
+                ai_model='gpt-4o',
+            )
+            return {
+                'status': 'ok',
+                'advisory_id': advisory.id,
+                'symbol': kwargs['symbol'],
+                'ai_source': 'user',
+            }
+
+        mock_task_run.side_effect = _mock_run_side_effect
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
-        self.assertTrue(response.data['queued'])
-        kwargs = mock_apply_async.call_args.kwargs['kwargs']
-        self.assertEqual(kwargs['symbol'], 'BCM')
-        self.assertFalse(kwargs['force_refresh'])
-        self.assertEqual(kwargs['user_id'], self.user.id)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        mock_apply_async.assert_not_called()
+        mock_task_run.assert_called_once()
 
     @patch.dict(
         'os.environ',
@@ -1278,8 +1296,9 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertTrue(response.data.get('config_issue'))
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.tasks.generate_whale_advisory_task.run', side_effect=RuntimeError('sync failed'))
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
-    def test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_cache_get):
+    def test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_task_run, _mock_cache_get):
         self.authenticate()
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')

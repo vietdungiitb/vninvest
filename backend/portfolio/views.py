@@ -4264,16 +4264,16 @@ def stock_ai_advisory_session_api(request, symbol: str):
     threshold_vnd = threshold_m * 1_000_000
 
     def _should_use_sync_fallback() -> bool:
-        if not bool(getattr(settings, 'DEBUG', False)):
-            return False
-        try:
-            host = str(request.get_host() or '').lower()
-        except Exception:
-            host = ''
-        # Giữ hành vi async trong test suite để tránh làm flaky unit tests.
-        return 'testserver' not in host
+        return bool(getattr(settings, 'STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
 
-    def _queue_or_run(payload_kwargs: dict) -> dict:
+    def _queue_or_run(payload_kwargs: dict, *, force_sync: bool = False) -> dict:
+        if force_sync:
+            try:
+                result = generate_whale_advisory_task.run(**payload_kwargs)
+                return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
+            except Exception as exc:
+                logger.warning('stock_ai_advisory_session_api force sync failed %s: %s', normalized_symbol, exc)
+
         if _should_use_sync_fallback():
             try:
                 from celery import current_app
@@ -4374,7 +4374,8 @@ def stock_ai_advisory_session_api(request, symbol: str):
             'force_refresh': False,
             'user_id': request.user.id,
         }
-        submit_result = _queue_or_run(payload_kwargs)
+        force_sync_first_create = bool(getattr(settings, 'STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE', True))
+        submit_result = _queue_or_run(payload_kwargs, force_sync=force_sync_first_create)
         if submit_result.get('queue_error'):
             return _tracked_response(
                 {

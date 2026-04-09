@@ -435,6 +435,11 @@ WHALE_ADVISORY_COOLDOWN_SECONDS = _env_int("WHALE_ADVISORY_COOLDOWN_SECONDS", 90
 # - Staging: True để giảm false-negative khi worker restart.
 # - Production: True nếu ưu tiên UX tạo advisory ngay; False nếu muốn fail-fast (503) khi worker down.
 WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER", "True").lower() == "true"
+# Stock workspace AI advisory session:
+# - force sync create on first session call to avoid queue-only bootstrap.
+# - keep sync fallback when queue worker is temporarily unavailable.
+STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE = os.getenv("STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE", "True").lower() == "true"
+STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER", "True").lower() == "true"
 MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_LOOKBACK_MINUTES", 5)
 MISSION_CONTROL_ANOMALY_BASELINE_MINUTES = _env_int("MISSION_CONTROL_ANOMALY_BASELINE_MINUTES", 30)
 MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS = _env_int("MISSION_CONTROL_ANOMALY_MIN_TICK_EVENTS", 3)
