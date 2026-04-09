@@ -144,7 +144,7 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 - System AI unification completed for user-first then system fallback runtime.
 - Admin operations endpoints for System AI settings, connection test, and audit log query.
 - Audit log improvements: filtering, pagination, ordering, DB indexes, retention command.
-- Provider/model catalog updated to include current production model set (Copilot, Claude, Gemini updates).
+- Provider/model catalog updated with current validated API model IDs; Copilot remains limited to GitHub Models inference-compatible IDs currently wired in backend.
 - Frontend i18n fix for Whale Advisory model placeholder (removed raw key rendering).
 
 ### Validation summary

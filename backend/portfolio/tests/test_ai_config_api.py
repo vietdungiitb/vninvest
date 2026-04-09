@@ -27,10 +27,10 @@ class AIConfigApiTests(APITestCase):
         self.assertIn('defaults', response.data)
         self.assertIn('openai', response.data['providers'])
         self.assertIn('copilot', response.data['providers'])
-        self.assertEqual(response.data['defaults']['copilot'], 'gpt-5.4')
+        self.assertEqual(response.data['defaults']['copilot'], 'openai/gpt-4.1-mini')
         self.assertEqual(response.data['defaults']['claude'], 'claude-4.6-sonnet')
         self.assertEqual(response.data['defaults']['gemini'], 'gemini-3.1-pro')
-        self.assertIn('mai-image-2', response.data['providers']['copilot'])
+        self.assertIn('openai/gpt-4.1', response.data['providers']['copilot'])
         self.assertIn('claude-4.6-opus', response.data['providers']['claude'])
         self.assertIn('gemini-3.1-flash-lite', response.data['providers']['gemini'])
 

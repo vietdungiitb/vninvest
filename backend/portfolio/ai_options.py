@@ -21,15 +21,7 @@ AVAILABLE_MODELS = {
         'gemini-1.5-pro',
         'gemini-1.5-flash',
     ],
-    'copilot': [
-        'gpt-5.4',
-        'mai-image-2',
-        'mai-voice-1',
-        'transcribe-1',
-        'copilot-cowork',
-        'openai/gpt-4.1-mini',
-        'openai/gpt-4.1',
-    ],
+    'copilot': ['openai/gpt-4.1-mini', 'openai/gpt-4.1'],
     'openclaw': ['default'],
 }
 
@@ -37,7 +29,7 @@ DEFAULT_MODELS = {
     'openai': 'gpt-4o',
     'claude': 'claude-4.6-sonnet',
     'gemini': 'gemini-3.1-pro',
-    'copilot': 'gpt-5.4',
+    'copilot': 'openai/gpt-4.1-mini',
     'openclaw': 'default',
 }
 

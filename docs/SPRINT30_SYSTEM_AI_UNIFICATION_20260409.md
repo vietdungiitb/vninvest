@@ -68,11 +68,12 @@
 
 ### Backend
 - Cap nhat danh sach model AI su dung thuc te trong `portfolio/ai_options.py`:
-  - `copilot`: `gpt-5.4`, `mai-image-2`, `mai-voice-1`, `transcribe-1`, `copilot-cowork` + model cu de tuong thich.
+  - `copilot`: giu catalog GitHub Models API-compatible dang wired on dinh: `openai/gpt-4.1-mini`, `openai/gpt-4.1`.
+    - Luu y: cac ten nhu `GPT-5.4`, `MAI-Image-2`, `MAI-Voice-1`, `Transcribe-1`, `Copilot Cowork` la product labels, khong phai model IDs da map vao endpoint GitHub Models inference hien tai.
   - `claude`: `claude-mythos-5`, `claude-4.6-opus`, `claude-4.6-sonnet`, `claude-4.5-haiku` + model cu de tuong thich.
   - `gemini`: `gemini-3.1-pro`, `gemini-3.1-flash`, `gemini-3.1-flash-lite`, `nano-banana-2` + model cu de tuong thich.
 - Cap nhat default model:
-  - `copilot -> gpt-5.4`
+  - `copilot -> openai/gpt-4.1-mini`
   - `claude -> claude-4.6-sonnet`
   - `gemini -> gemini-3.1-pro`
 
