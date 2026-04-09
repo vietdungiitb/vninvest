@@ -58,6 +58,10 @@ Notes:
 
 1. Chay script:
    - `powershell -File scripts/ops/sprint29_collect_deploy_evidence.ps1`
+   - Hoac wrapper:
+   - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -Username <user_or_email> -Password <password> -Symbol FPT`
+   - Neu chua co credential test user:
+   - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -SkipAuthSmoke -SkipNetworkChecks`
 2. Dinh kem ket qua E2E stock detail cho `VNM`, `VCB`, `FPT`.
 3. Dinh kem bang so sanh p95 latency va failure-rate delta.
 4. Xac nhan rollback flag da test thanh cong.

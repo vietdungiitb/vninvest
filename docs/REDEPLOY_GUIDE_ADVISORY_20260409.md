@@ -92,4 +92,8 @@ Can cap nhat env theo file portainer-nginx-proxy.env.example:
   - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -Username <user_or_email> -Password <password> -Symbol FPT`
   - Hoac dung token co san:
   - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -AccessToken <jwt> -Symbol FPT`
+  - Chi chay deploy evidence (bo qua auth smoke):
+  - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -SkipAuthSmoke -SkipNetworkChecks`
+  - Chi chay auth smoke (bo qua deploy evidence):
+  - `powershell -File scripts/ops/sprint29_run_release_gate.ps1 -SkipDeployEvidence -Username <user_or_email> -Password <password> -Symbol FPT`
 

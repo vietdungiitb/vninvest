@@ -4,7 +4,9 @@ param(
   [string]$Password,
   [string]$AccessToken,
   [string]$Symbol = "FPT",
-  [switch]$SkipNetworkChecks
+  [switch]$SkipNetworkChecks,
+  [switch]$SkipDeployEvidence,
+  [switch]$SkipAuthSmoke
 )
 
 $ErrorActionPreference = "Stop"
@@ -17,14 +19,22 @@ if ($SkipNetworkChecks) {
   $deployEvidenceParams.SkipNetworkChecks = $true
 }
 
-Write-Host "=== Sprint 29 release gate: collect deploy evidence ==="
-& (Join-Path $ScriptRoot "sprint29_collect_deploy_evidence.ps1") @deployEvidenceParams
-
-Write-Host "=== Sprint 29 release gate: advisory auth smoke ==="
-if ($AccessToken) {
-  & (Join-Path $ScriptRoot "sprint29_advisory_auth_smoke.ps1") -ApiBase $ApiBase -AccessToken $AccessToken -Symbol $Symbol
+if (-not $SkipDeployEvidence) {
+  Write-Host "=== Sprint 29 release gate: collect deploy evidence ==="
+  & (Join-Path $ScriptRoot "sprint29_collect_deploy_evidence.ps1") @deployEvidenceParams
 } else {
-  & (Join-Path $ScriptRoot "sprint29_advisory_auth_smoke.ps1") -ApiBase $ApiBase -Username $Username -Password $Password -Symbol $Symbol
+  Write-Host "=== Sprint 29 release gate: skip deploy evidence (-SkipDeployEvidence) ==="
+}
+
+if (-not $SkipAuthSmoke) {
+  Write-Host "=== Sprint 29 release gate: advisory auth smoke ==="
+  if ($AccessToken) {
+    & (Join-Path $ScriptRoot "sprint29_advisory_auth_smoke.ps1") -ApiBase $ApiBase -AccessToken $AccessToken -Symbol $Symbol
+  } else {
+    & (Join-Path $ScriptRoot "sprint29_advisory_auth_smoke.ps1") -ApiBase $ApiBase -Username $Username -Password $Password -Symbol $Symbol
+  }
+} else {
+  Write-Host "=== Sprint 29 release gate: skip auth smoke (-SkipAuthSmoke) ==="
 }
 
 Write-Host "=== Sprint 29 release gate completed ==="
