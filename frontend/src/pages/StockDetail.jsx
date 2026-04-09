@@ -21,6 +21,7 @@ import {
   getSectorBreadth,
   getStockFinancials,
   getStockAIAdvisorySession,
+  refreshStockAIAdvisorySession,
   generateStockAIAdvisoryComponents,
   getStockOrderFlow,
   getStockPriceChart,
@@ -1793,6 +1794,35 @@ export default function StockDetail() {
       return;
     }
     setAdvisoryGeneratingComponents(true);
+
+    // Nếu chưa có advisory gốc, tạo mới trước khi generate components
+    let currentSession = advisorySession;
+    if (!currentSession) {
+      try {
+        setAdvisoryMessage('Đang tạo advisory AI gốc, vui lòng đợi...');
+        const sessionResp = await refreshStockAIAdvisorySession(normalizedSymbol);
+        const sessionPayload = sessionResp?.data || {};
+        if (sessionPayload.advisory) {
+          // Sync fallback: có advisory ngay
+          currentSession = sessionPayload.advisory;
+          setAdvisorySession(currentSession);
+          if (Array.isArray(sessionPayload.components)) setAdvisoryComponents(sessionPayload.components);
+          if (Array.isArray(sessionPayload.executive_summaries)) setAdvisoryExecutiveSummaries(sessionPayload.executive_summaries);
+        } else {
+          // Async: đã queue, cần đợi
+          setAdvisoryMessage(sessionPayload.message || 'Đã gửi yêu cầu tạo advisory AI. Vui lòng đợi vài giây rồi bấm lại.');
+          setAdvisoryGeneratingComponents(false);
+          // Tự động thử lại sau 5 giây
+          setTimeout(() => fetchAdvisorySession({ silent: true }), 5000);
+          return;
+        }
+      } catch (err) {
+        setAdvisoryMessage(err?.response?.data?.message || 'Không thể tạo advisory gốc. Vui lòng thử lại.');
+        setAdvisoryGeneratingComponents(false);
+        return;
+      }
+    }
+
     try {
       const response = await generateStockAIAdvisoryComponents(normalizedSymbol, {
         timeframe: orderFlowWindow || '30m',
