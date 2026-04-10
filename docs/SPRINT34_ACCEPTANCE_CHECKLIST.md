@@ -9,6 +9,8 @@ Evidence snapshot:
 - 5-page cursor traversal no duplicate/missing.
 - Cursor replay consistency.
 - Deterministic event_id persistence + dedup behavior.
+4. Focused hardening suite pass: 9/9 PASS (OrderFlowApi + OrderFlowSignalTask).
+5. Delivery commit published on deploy: 3f2c4907.
 
 ## A. Scope acceptance
 
@@ -40,6 +42,10 @@ Evidence snapshot:
 1. [ ] Duplicate event rate < 1%.
 2. [ ] Pagination consistency > 99.9%.
 3. [ ] KPI before/after report is published.
+
+Provisional local evidence (pending formal KPI report):
+1. Regression traversal scenario: 0 duplicate on 23 records (0.0%).
+2. Cursor pagination scenario: 5-page traversal consistent (local test evidence).
 
 ## F. Handoff acceptance
 

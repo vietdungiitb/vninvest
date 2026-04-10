@@ -12,7 +12,7 @@ QA,QA1.2,Run contract and paging regression,QA-Lead,1.0,A2.3,P0,Day8,Done,Regres
 QA,QA1.3,Run severity regression and compare baseline,QA-Lead,0.5,B1.3,P0,Day9,Done,Before after delta documented
 OPS,OBS1.1,Capture baseline KPI on pilot symbols,DevOps-Lead,0.5,,P1,Day1,Todo,Baseline metrics frozen
 OPS,OBS1.2,Capture post-change KPI and publish delta,DevOps-Lead,0.5,"A2.3;B1.3",P1,Day9,Todo,KPI delta report published
-PM,PM1.1,Scope freeze and owner lock,PM-Lead,0.5,,P0,Day1,Todo,Scope lock approved
-PM,PM1.2,Gate G1 review and decision log,PM-Lead,0.5,"A1.1;A2.1;B1.1",P0,Day5,Todo,G1 log published
+PM,PM1.1,Scope freeze and owner lock,PM-Lead,0.5,,P0,Day1,Done,Scope lock approved
+PM,PM1.2,Gate G1 review and decision log,PM-Lead,0.5,"A1.1;A2.1;B1.1",P0,Day5,InProgress,G1 log published
 PM,PM1.3,Gate G2 closeout and roadmap update,PM-Lead,0.5,"QA1.2;QA1.3;OBS1.2",P0,Day10,Todo,G2 pass and roadmap synced
 FE,FE1.1,Validate FE parsing with cursor v2 contract,FE-Lead,0.5,A2.1,P1,Day7,Todo,No FE contract break on staging

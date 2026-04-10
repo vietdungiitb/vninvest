@@ -81,3 +81,29 @@ Start date target: 2026-04-11
 1. KPI baseline + after-change measurement capture.
 2. Source parity validation across redis_stream/intraday_tick_db/vnstock fallback.
 3. Closeout note + roadmap status final sync.
+
+## Day 1 (Delivery + hardening) - 2026-04-10
+
+### Completed
+1. Final hardening pass:
+- Fixed response/payload indentation for clean review diff.
+- Re-ran focused regression suite:
+	- python backend/manage.py test portfolio.tests.test_order_flow.TestOrderFlowApi portfolio.tests.test_order_flow.TestOrderFlowSignalTask
+	- Result: 9/9 PASS.
+
+2. Delivery commit:
+- Commit hash: 3f2c4907
+- Message: Sprint34: implement A1 A2 B1 with tests and execution docs
+
+3. Remote publish:
+- Branch: deploy
+- Push: origin/deploy updated successfully.
+
+### Notes
+1. Test runtime still logs OpenCore DPIPlan warnings and Redis WS connection warnings in local environment.
+2. These warnings did not fail the Sprint 34 target test suites.
+
+### Remaining for full closeout
+1. KPI report before/after (formal numbers for acceptance sheet).
+2. Source parity validation sign-off across data sources.
+3. PM/QA sign-off completion for sprint closure package.
