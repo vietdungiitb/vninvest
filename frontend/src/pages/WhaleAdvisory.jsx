@@ -1,16 +1,11 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  getAIOptions,
   getUserConfig,
-  getPortfolioUserConfig,
   getTrackedSymbols,
   refreshWhaleAdvisory,
   deleteCurrentWhaleAdvisory,
   getWhaleAdvisories,
-  testAIConnection,
-  updateUserConfig,
-  updatePortfolioUserConfig,
   getAdvisoryAutoRefreshInfo,
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -22,30 +17,6 @@ import ActionChecklist from '../components/advisory/ActionChecklist';
 import RiskModeSelector from '../components/advisory/RiskModeSelector';
 import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
 import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
-
-const FALLBACK_MODELS = {
-  openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  claude: ['claude-3-5-sonnet-20240620', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
-  gemini: ['gemini-1.5-pro', 'gemini-1.5-flash'],
-  copilot: ['openai/gpt-4.1-mini', 'openai/gpt-4.1'],
-  openclaw: ['default'],
-};
-
-const ADVISORY_SCOPE = 'text_advisory';
-
-function buildFallbackModelCatalog(providerMap) {
-  return Object.fromEntries(
-    Object.entries(providerMap || {}).map(([provider, models]) => [
-      provider,
-      (models || []).map((model) => ({
-        id: model,
-        label: model,
-        capabilities: [ADVISORY_SCOPE],
-        validated_for_runtime: true,
-      })),
-    ]),
-  );
-}
 
 function fmtCurrency(value) {
   return Number(value || 0).toLocaleString(undefined);
@@ -377,17 +348,6 @@ export default function WhaleAdvisory() {
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiProviders, setAiProviders] = useState(FALLBACK_MODELS);
-  const [aiModelCatalog, setAiModelCatalog] = useState(buildFallbackModelCatalog(FALLBACK_MODELS));
-  const [aiProvider, setAiProvider] = useState('openclaw');
-  const [aiModel, setAiModel] = useState('');
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [savingAi, setSavingAi] = useState(false);
-  const [testingAi, setTestingAi] = useState(false);
-  const [aiMessage, setAiMessage] = useState('');
-  const [aiKeyConfigured, setAiKeyConfigured] = useState(false);
-  const [aiReady, setAiReady] = useState(false);
   const [pendingRefreshSymbols, setPendingRefreshSymbols] = useState({});
   const [pendingDeleteSymbols, setPendingDeleteSymbols] = useState({});
   const [rowMessages, setRowMessages] = useState({});
@@ -407,13 +367,6 @@ export default function WhaleAdvisory() {
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
 
-  // Advisory schedule settings
-  const [scheduleAutoEnabled, setScheduleAutoEnabled] = useState(true);
-  const [scheduleIntervalHours, setScheduleIntervalHours] = useState(24);
-  const [scheduleMaxRefreshes, setScheduleMaxRefreshes] = useState(24);
-  const [scheduleMaxTokens, setScheduleMaxTokens] = useState(5000);
-  const [savingSchedule, setSavingSchedule] = useState(false);
-  const [scheduleMessage, setScheduleMessage] = useState('');
   // Selected symbol auto-refresh quota
   const [refreshInfo, setRefreshInfo] = useState(null);
 
@@ -448,96 +401,11 @@ export default function WhaleAdvisory() {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function fetchAiSettings() {
-      try {
-        const [optionsResult, aiCfgResult, userCfgResult] = await Promise.allSettled([
-          getAIOptions(),
-          getUserConfig(),
-          getPortfolioUserConfig(),
-        ]);
-        if (!mounted) return;
-
-        const optionsResp = optionsResult.status === 'fulfilled' ? optionsResult.value : null;
-        const aiCfgResp = aiCfgResult.status === 'fulfilled' ? aiCfgResult.value : null;
-        const userCfgResp = userCfgResult.status === 'fulfilled' ? userCfgResult.value : null;
-
-        const providers = optionsResp?.data?.providers || FALLBACK_MODELS;
-        const modelCatalog = optionsResp?.data?.model_catalog || buildFallbackModelCatalog(providers);
-        const cfg = aiCfgResp?.data || {};
-        const userCfg = userCfgResp?.data || {};
-        const provider = (cfg.ai_provider || 'openclaw').toLowerCase();
-        const model = (cfg.ai_model || '').trim();
-
-        setAiProviders(providers);
-        setAiModelCatalog(modelCatalog);
-        setAiProvider(provider);
-        setAiModel(model);
-        setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
-        setAiReady(Boolean(cfg.ai_ready));
-
-        // Load advisory schedule settings
-        if (userCfg.advisory_auto_generation_enabled !== undefined) {
-          setScheduleAutoEnabled(Boolean(userCfg.advisory_auto_generation_enabled));
-        }
-        if (userCfg.advisory_refresh_interval_hours !== undefined) {
-          setScheduleIntervalHours(Number(userCfg.advisory_refresh_interval_hours) || 24);
-        }
-        if (userCfg.advisory_max_auto_refreshes_per_day !== undefined) {
-          setScheduleMaxRefreshes(Number(userCfg.advisory_max_auto_refreshes_per_day) || 24);
-        }
-        if (userCfg.advisory_max_tokens_per_day !== undefined) {
-          setScheduleMaxTokens(Number(userCfg.advisory_max_tokens_per_day) || 5000);
-        }
-      } catch (_) {
-        // Không chặn trang advisory khi API options lỗi.
-      }
-    }
-
-    fetchAiSettings();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const modelOptionEntries = useMemo(() => {
-    const entries = aiModelCatalog[aiProvider] || [];
-    const filtered = entries.filter((entry) => {
-      const capabilities = Array.isArray(entry?.capabilities) ? entry.capabilities : [];
-      return Boolean(entry?.validated_for_runtime) && capabilities.includes(ADVISORY_SCOPE);
-    });
-    if (filtered.length > 0) {
-      return filtered;
-    }
-    return (aiProviders[aiProvider] || []).map((model) => ({
-      id: model,
-      label: model,
-      capabilities: [ADVISORY_SCOPE],
-      validated_for_runtime: true,
-    }));
-  }, [aiModelCatalog, aiProvider, aiProviders]);
-
-  const modelOptions = useMemo(() => modelOptionEntries.map((entry) => entry.id), [modelOptionEntries]);
-
-  useEffect(() => {
-    if (aiModel && !modelOptions.includes(aiModel)) {
-      setAiModel('');
-    }
-  }, [aiModel, modelOptions]);
-
-  const hasSelectedAiModel = Boolean(aiModel);
-
   const ensureAiConfigured = useCallback(async (symbol) => {
     try {
       const cfgResp = await getUserConfig();
       const cfg = cfgResp?.data || {};
       const ready = Boolean(cfg.ai_ready);
-      setAiKeyConfigured(Boolean(cfg.ai_api_key_configured));
-      setAiReady(ready);
-      setAiModel((cfg.ai_model || '').trim());
-      setAiProvider((cfg.ai_provider || 'openclaw').toLowerCase());
       if (ready) {
         return true;
       }
@@ -554,78 +422,6 @@ export default function WhaleAdvisory() {
       return false;
     }
   }, [t]);
-
-  const handleSaveAiConfig = useCallback(async () => {
-    setSavingAi(true);
-    setAiMessage('');
-    if (!aiModel) {
-      setAiMessage(t('whaleAdvisory.modelRequired'));
-      setSavingAi(false);
-      return;
-    }
-    try {
-      const payload = {
-        ai_provider: aiProvider,
-        ai_model: aiModel,
-      };
-      if (apiKey.trim()) {
-        payload.ai_api_key = apiKey.trim();
-      }
-      const resp = await updateUserConfig(payload);
-      setAiKeyConfigured(Boolean(resp?.data?.ai_api_key_configured) || Boolean(apiKey.trim()));
-      setAiReady(Boolean(resp?.data?.ai_ready));
-      setApiKey('');
-      setAiMessage(t('whaleAdvisory.saveSuccess'));
-    } catch (err) {
-      setAiMessage(err?.response?.data?.detail || t('whaleAdvisory.saveFailed'));
-    } finally {
-      setSavingAi(false);
-    }
-  }, [aiModel, aiProvider, apiKey, t]);
-
-  const handleTestAiConnection = useCallback(async () => {
-    setTestingAi(true);
-    setAiMessage('');
-    if (!aiModel) {
-      setAiMessage(t('whaleAdvisory.modelRequired'));
-      setTestingAi(false);
-      return;
-    }
-    try {
-      const payload = {
-        ai_provider: aiProvider,
-        ai_model: aiModel,
-      };
-      if (apiKey.trim()) {
-        payload.ai_api_key = apiKey.trim();
-      }
-      const resp = await testAIConnection(payload);
-      const message = resp?.data?.message || t('whaleAdvisory.testSuccess');
-      setAiMessage(message);
-    } catch (err) {
-      setAiMessage(err?.response?.data?.message || t('whaleAdvisory.testFailed'));
-    } finally {
-      setTestingAi(false);
-    }
-  }, [aiModel, aiProvider, apiKey, t]);
-
-  const handleSaveSchedule = useCallback(async () => {
-    setSavingSchedule(true);
-    setScheduleMessage('');
-    try {
-      await updatePortfolioUserConfig({
-        advisory_auto_generation_enabled: scheduleAutoEnabled,
-        advisory_refresh_interval_hours: Math.max(1, Number(scheduleIntervalHours) || 24),
-        advisory_max_auto_refreshes_per_day: Math.max(1, Number(scheduleMaxRefreshes) || 24),
-        advisory_max_tokens_per_day: Math.max(100, Number(scheduleMaxTokens) || 5000),
-      });
-      setScheduleMessage(t('whaleAdvisory.scheduleSaveSuccess'));
-    } catch (err) {
-      setScheduleMessage(err?.response?.data?.detail || t('whaleAdvisory.scheduleSaveFailed'));
-    } finally {
-      setSavingSchedule(false);
-    }
-  }, [scheduleAutoEnabled, scheduleIntervalHours, scheduleMaxRefreshes, scheduleMaxTokens, t]);
 
   const handleLoadRefreshInfo = useCallback(async (symbol) => {
     if (!symbol) return;
@@ -904,161 +700,17 @@ export default function WhaleAdvisory() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-label">{t('whaleAdvisory.providerConfig')}</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAdvisory.providerTitle')}</h2>
+            <h2 className="mt-1 text-lg font-semibold text-slate-100">
+              {t('settings.movedTitle')}
+            </h2>
             <p className="mt-1 text-xs text-slate-400">
-              {t('whaleAdvisory.apiKeyStatus', { status: aiKeyConfigured ? t('whaleAdvisory.configured') : t('whaleAdvisory.notConfigured') })}.
+              {t('settings.movedDescription')}
             </p>
           </div>
+          <Link to="/settings" className="btn-primary">
+            {t('layout.nav.settings')}
+          </Link>
         </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.provider')}
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              value={aiProvider}
-              onChange={(e) => setAiProvider(e.target.value)}
-            >
-              {Object.keys(aiProviders).map((provider) => (
-                <option key={provider} value={provider}>{provider}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.model')}
-            <select
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              value={aiModel}
-              onChange={(e) => setAiModel(e.target.value)}
-            >
-              <option value="">{t('whaleAdvisory.selectModel')}</option>
-              {modelOptionEntries.map((entry) => (
-                <option key={entry.id} value={entry.id}>{entry.label || entry.id}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.apiKeyOptional')}
-            <div className="mt-1 flex gap-2">
-              <input
-                type={showApiKey ? 'text' : 'password'}
-                className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder={t('whaleAdvisory.apiKeyPlaceholder')}
-              />
-              <button
-                type="button"
-                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200"
-                onClick={() => setShowApiKey((prev) => !prev)}
-              >
-                {showApiKey ? t('whaleAdvisory.hide') : t('whaleAdvisory.show')}
-              </button>
-            </div>
-          </label>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleSaveAiConfig}
-            disabled={savingAi}
-          >
-            {savingAi ? t('whaleAdvisory.saving') : t('whaleAdvisory.saveConfig')}
-          </button>
-          <button
-            type="button"
-            className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-100 hover:bg-slate-800"
-            onClick={handleTestAiConnection}
-            disabled={testingAi}
-          >
-            {testingAi ? t('whaleAdvisory.testing') : t('whaleAdvisory.testConnection')}
-          </button>
-        </div>
-
-        {aiMessage && (
-          <p className="mt-3 text-xs text-cyan-300">{aiMessage}</p>
-        )}
-        {!aiReady && (
-          <p className="mt-2 text-xs text-amber-300">
-            {t('whaleAdvisory.configRequired')}
-          </p>
-        )}
-      </section>
-
-      {/* Advisory Auto-Generation Schedule Settings */}
-      <section className="card-section px-5 py-4">
-        <div className="mb-3">
-          <p className="text-label">{t('whaleAdvisory.scheduleSection')}</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAdvisory.scheduleTitle')}</h2>
-          <p className="mt-1 text-xs text-slate-400">{t('whaleAdvisory.scheduleDesc')}</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <label className="flex items-center gap-3 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-cyan-500"
-              checked={scheduleAutoEnabled}
-              onChange={(e) => setScheduleAutoEnabled(e.target.checked)}
-            />
-            {t('whaleAdvisory.scheduleAutoEnabled')}
-          </label>
-
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.scheduleInterval')}
-            <input
-              type="number"
-              min="1"
-              max="720"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              value={scheduleIntervalHours}
-              onChange={(e) => setScheduleIntervalHours(e.target.value)}
-            />
-          </label>
-
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.scheduleMaxRefreshes')}
-            <input
-              type="number"
-              min="1"
-              max="100"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              value={scheduleMaxRefreshes}
-              onChange={(e) => setScheduleMaxRefreshes(e.target.value)}
-            />
-          </label>
-
-          <label className="text-xs text-slate-400">
-            {t('whaleAdvisory.scheduleMaxTokens')}
-            <input
-              type="number"
-              min="100"
-              max="100000"
-              step="100"
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-              value={scheduleMaxTokens}
-              onChange={(e) => setScheduleMaxTokens(e.target.value)}
-            />
-          </label>
-        </div>
-
-        <div className="mt-3">
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleSaveSchedule}
-            disabled={savingSchedule}
-          >
-            {savingSchedule ? t('whaleAdvisory.saving') : t('whaleAdvisory.scheduleSave')}
-          </button>
-        </div>
-        {scheduleMessage && (
-          <p className="mt-2 text-xs text-cyan-300">{scheduleMessage}</p>
-        )}
       </section>
 
       {error && (

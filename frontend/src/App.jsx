@@ -14,6 +14,7 @@ import AdminOps from './pages/AdminOps';
 import Screener from './pages/Screener';
 import VerifyEmail from './pages/VerifyEmail';
 import PortfolioManagement from './pages/PortfolioManagement';
+import UserConfig from './pages/UserConfig';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
@@ -69,6 +70,7 @@ export default function App() {
                 <Route path="admin-ops" element={<AdminOps />} />
                 <Route path="screener" element={<Screener />} />
                 <Route path="portfolios" element={<PortfolioManagement />} />
+                <Route path="settings" element={<UserConfig />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

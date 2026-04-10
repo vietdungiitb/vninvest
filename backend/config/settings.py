@@ -36,8 +36,28 @@ def _env_float(name: str, default: float) -> float:
     except (TypeError, ValueError):
         return default
 
+
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    value = value.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    return default
+
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production-use-env-variable")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+
+# Security defaults: strict in production, permissive in local dev.
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", not DEBUG)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", not DEBUG)
+SECURE_HSTS_SECONDS = _env_int("DJANGO_SECURE_HSTS_SECONDS", 0 if DEBUG else 3600)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
+SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -186,6 +206,18 @@ CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in os.getenv("CSRF_TRUSTED_ORI
 GOOGLE_OAUTH_REDIRECT_URI = os.getenv('GOOGLE_OAUTH_REDIRECT_URI', '').strip()
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
 EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS = _env_int("EMAIL_VERIFICATION_TOKEN_MAX_AGE_SECONDS", 86400)
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@vninvest.local")
+SYSTEM_EMAIL_FALLBACK_ENABLED = _env_bool("SYSTEM_EMAIL_FALLBACK_ENABLED", DEBUG)
+SYSTEM_EMAIL_FALLBACK_HOST = os.getenv("SYSTEM_EMAIL_FALLBACK_HOST", "")
+SYSTEM_EMAIL_FALLBACK_PORT = _env_int("SYSTEM_EMAIL_FALLBACK_PORT", 1025)
+SYSTEM_EMAIL_FALLBACK_USERNAME = os.getenv("SYSTEM_EMAIL_FALLBACK_USERNAME", "")
+SYSTEM_EMAIL_FALLBACK_PASSWORD = os.getenv("SYSTEM_EMAIL_FALLBACK_PASSWORD", "")
+SYSTEM_EMAIL_FALLBACK_USE_TLS = _env_bool("SYSTEM_EMAIL_FALLBACK_USE_TLS", False)
+SYSTEM_EMAIL_FALLBACK_USE_SSL = _env_bool("SYSTEM_EMAIL_FALLBACK_USE_SSL", False)
+SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS = _env_int("SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS", 20)
+SYSTEM_EMAIL_FALLBACK_FROM_EMAIL = os.getenv("SYSTEM_EMAIL_FALLBACK_FROM_EMAIL", DEFAULT_FROM_EMAIL)
+SYSTEM_EMAIL_FALLBACK_FROM_NAME = os.getenv("SYSTEM_EMAIL_FALLBACK_FROM_NAME", "VNInvest")
+SYSTEM_EMAIL_FALLBACK_REPLY_TO = os.getenv("SYSTEM_EMAIL_FALLBACK_REPLY_TO", "")
 
 # Celery / Redis
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")

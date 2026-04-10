@@ -51,6 +51,34 @@ function normalizeErrorMessage(errorData, fallbackMessage) {
   return fallbackMessage;
 }
 
+function resolveLoginErrorMessage(err, t) {
+  const errorData = err?.response?.data;
+  const detail = String(errorData?.detail || errorData?.message || '').toLowerCase();
+  const status = Number(err?.response?.status || 0);
+
+  if (!err?.response) {
+    return t('auth.loginErrorNetwork');
+  }
+
+  if (detail.includes('chua xac thuc email') || detail.includes('chưa xác thực email') || detail.includes('verify')) {
+    return t('auth.loginErrorUnverifiedEmail');
+  }
+
+  if (status === 401) {
+    return t('auth.loginErrorInvalidCredentials');
+  }
+
+  if (status === 429) {
+    return t('auth.loginErrorRateLimited');
+  }
+
+  if (status >= 500) {
+    return t('auth.loginErrorServer');
+  }
+
+  return normalizeErrorMessage(errorData, t('auth.loginError'));
+}
+
 function normalizeFieldErrors(errorData) {
   if (!errorData || typeof errorData !== 'object') {
     return {};
@@ -196,12 +224,9 @@ export default function LoginModal({ onSuccess }) {
         setPendingIdentifier(form.username.trim());
       }
       setError(
-        normalizeErrorMessage(
-          errorData,
-          isRegisterMode
-            ? t('auth.registerError')
-            : t('auth.loginError'),
-        ),
+        isRegisterMode
+          ? normalizeErrorMessage(errorData, t('auth.registerError'))
+          : resolveLoginErrorMessage(err, t),
       );
     } finally {
       setLoading(false);

@@ -249,6 +249,97 @@ UserConfig settings
 
 ---
 
+### 📌 Sprint 33 - PLANNED (UserConfig Consolidation & Advisory Governance)
+**Focus**: Chuẩn hóa cấu hình người dùng, làm rõ login UX, và đưa event-based AI advisory về quyền kiểm soát của user  
+**Status**: READY FOR PLANNING / ROADMAP CANDIDATE
+
+**Why this is a standalone sprint:**
+- Cross-cutting change across backend, frontend, auth UX, advisory policy, and documentation.
+- Changes product behavior, not just implementation detail.
+- Touches persistent settings architecture and user-facing control model.
+- Requires regression coverage for auth, advisory triggers, settings persistence, and copy/i18n.
+
+**Scope đề xuất Sprint 33:**
+- Dedicated UserConfig page làm nơi tập trung cho mọi persistent user settings.
+- Login error mapping rõ ràng hơn cho các case:
+  - sai thông tin đăng nhập
+  - email chưa xác thực
+  - lỗi mạng / lỗi backend
+- AI Advisory policy được gom về một nhóm cấu hình user thống nhất.
+- `event-based auto advisory` trở thành một tùy chọn của user thay vì quyết định cứng trong code.
+- V1 dùng lại field `advisory_whale_signal_enabled` làm toggle bao phủ:
+  - whale event
+  - dark flow merge
+  - reversal auto queue
+- Backend chặn sớm event accumulation / reversal queue khi user đã tắt event-based advisory.
+- Whale Advisory page chuyển về vai trò màn hình sử dụng advisory, không còn là nơi chứa account-level settings chính.
+
+**Deliverables:**
+- `docs/SPRINT33_USERCONFIG_ADVISORY_GOVERNANCE_PLAN_20260410.md`
+- `docs/SPRINT33_DETAILED_EXECUTION_PLAN.md`
+- `docs/SPRINT33_API_DATA_CONTRACT.md`
+- `docs/SPRINT33_QA_TEST_MATRIX.md`
+- `docs/SPRINT33_RELEASE_RUNBOOK.md`
+- `docs/SPRINT33_EXECUTION_LOG.md`
+- `docs/SPRINT33_IMPLEMENTATION_CHECKLIST.md`
+- `docs/SPRINT33_PR_SLICING_PLAN.md`
+- `docs/SPRINT33_FRONTEND_SMOKE_CHECKLIST.md`
+- `docs/SPRINT33_PRODUCTION_READINESS_20260410.md`
+- `docs/SPRINT33_STAGING_EXECUTION_CHECKLIST.md`
+- `docs/SPRINT33_RELEASE_NOTES_20260410.md`
+- `docs/SPRINT33_GO_LIVE_COMMAND_SHEET.md`
+- `docs/SPRINT33_LIVE_EVIDENCE_TEMPLATE_20260410.md`
+- `docs/SPRINT33_RELEASE_DAY_TIMELINE_20260410.md`
+- `docs/SPRINT33_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT33_TASKBOARD.csv`
+- UserConfig page route + UI sections
+- Auth/login UX fix checklist
+- Backend task gating for event-based advisory
+- Regression tests for disabled event-based path
+- Updated copy/i18n for advisory generation rules
+
+**Definition of Done:**
+- User có thể tìm mọi persistent settings ở một trang riêng.
+- Login hiển thị lỗi đủ rõ để user biết cần làm gì tiếp theo.
+- Manual refresh và periodic advisory vẫn hoạt động đúng.
+- Event-based advisory chỉ chạy khi user bật toggle tương ứng.
+- Whale alert, dark flow, reversal không còn enqueue advisory work cho user đã tắt event-based mode.
+
+**Timeline ước lượng:**
+- 4.5 - 6.0 ngày công
+- Day 1: UX audit finalization + API/field decision + route skeleton
+- Day 2: UserConfig page + config migration khỏi Whale Advisory
+- Day 3: Login error handling + resend verification polish
+- Day 4: Backend early gating for event-based advisory
+- Day 5: Tests + copy/i18n + smoke QA
+- Buffer: 0.5 - 1 day for regression and release prep
+
+**Dependencies:**
+- From: Sprint 32 advisory settings foundation and existing UserConfig API
+- To: Future subscription/control sprints can reuse the consolidated UserConfig IA and policy model
+
+**Canonical References:**
+- `docs/AUDIT_CONTINUATION_PLAN_20260410.md`
+- `docs/SPRINT33_USERCONFIG_ADVISORY_GOVERNANCE_PLAN_20260410.md`
+- `docs/SPRINT33_DETAILED_EXECUTION_PLAN.md`
+- `docs/SPRINT33_API_DATA_CONTRACT.md`
+- `docs/SPRINT33_QA_TEST_MATRIX.md`
+- `docs/SPRINT33_RELEASE_RUNBOOK.md`
+- `docs/SPRINT33_EXECUTION_LOG.md`
+- `docs/SPRINT33_IMPLEMENTATION_CHECKLIST.md`
+- `docs/SPRINT33_PR_SLICING_PLAN.md`
+- `docs/SPRINT33_FRONTEND_SMOKE_CHECKLIST.md`
+- `docs/SPRINT33_PRODUCTION_READINESS_20260410.md`
+- `docs/SPRINT33_STAGING_EXECUTION_CHECKLIST.md`
+- `docs/SPRINT33_RELEASE_NOTES_20260410.md`
+- `docs/SPRINT33_GO_LIVE_COMMAND_SHEET.md`
+- `docs/SPRINT33_LIVE_EVIDENCE_TEMPLATE_20260410.md`
+- `docs/SPRINT33_RELEASE_DAY_TIMELINE_20260410.md`
+- `docs/SPRINT33_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT33_TASKBOARD.csv`
+
+---
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  

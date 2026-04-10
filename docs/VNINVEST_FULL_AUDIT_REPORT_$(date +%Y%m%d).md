@@ -166,3 +166,35 @@ vninvest/ (Current: c:/Mujoco Projects/vninvest)
 	 - User AI config page and Whale Advisory dropdown render labels correctly.
 	 - Admin System AI APIs return 200 for authorized admin users.
 
+## 9. Audit Continuation Notes (2026-04-10)
+
+### User-facing findings prioritized for next implementation pass
+- Login UX needs clearer error messages. Current flow distinguishes backend auth failure reasons, but frontend still falls back to overly generic messaging in several cases.
+- User settings are fragmented across multiple screens. A dedicated UserConfig page should become the single place for persistent user preferences and AI/advisory policy settings.
+- AI Advisory auto-generation should remain configurable by the user instead of being hard-disabled globally.
+
+### AI Advisory policy decision
+- Keep `manual refresh`.
+- Keep `periodic auto-generation` based on the user's configured cadence and quota.
+- Convert `event-based auto advisory` into a user-configurable option instead of removing it from the system.
+
+### Scope of event-based auto advisory
+- In V1, one toggle should cover advisory creation triggered by:
+	- Whale event pipeline.
+	- Dark flow merge pipeline.
+	- Reversal auto-queue.
+- Minimal-change approach: reuse the existing `UserConfig.advisory_whale_signal_enabled` field, but redefine the product meaning as `event-based auto advisory enabled`.
+
+### Recommended implementation direction
+- Backend:
+	- Keep the existing gate in `generate_whale_advisory_task`.
+	- Add early exits before `_accumulate_user_advisory_event(...)` and before reversal queue scheduling so disabled users do not generate unnecessary cache state or Celery tasks.
+- Frontend:
+	- Move AI config and advisory scheduling controls into a dedicated UserConfig page.
+	- Expose a new user-facing toggle label for event-based auto advisory.
+	- Update Whale Advisory copy so it no longer implies event-based generation is always on.
+
+### Documentation anchor for follow-up sessions
+- Continue from: `docs/AUDIT_CONTINUATION_PLAN_20260410.md`
+- Repo memory note updated: `/memories/repo/stock-advisory-session.md`
+

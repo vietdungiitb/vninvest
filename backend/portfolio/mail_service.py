@@ -44,11 +44,45 @@ def _humanize_gmail_error(exc: Exception) -> str:
     return f'Gmail API lỗi HTTP {status_code}: {details}'
 
 
+def _build_env_fallback_email_account() -> SystemEmailAccount | None:
+    if not getattr(settings, 'SYSTEM_EMAIL_FALLBACK_ENABLED', False):
+        return None
+
+    host = str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_HOST', '') or '').strip()
+    from_email = str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_FROM_EMAIL', '') or '').strip()
+    if not host or not from_email:
+        return None
+
+    account = SystemEmailAccount(
+        name='Env fallback mail account',
+        auth_type=SystemEmailAccount.AuthTypeChoices.SMTP_PASSWORD,
+        host=host,
+        port=int(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_PORT', 1025)),
+        username=str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_USERNAME', '') or '').strip(),
+        use_tls=bool(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_USE_TLS', False)),
+        use_ssl=bool(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_USE_SSL', False)),
+        timeout_seconds=int(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS', 20)),
+        from_email=from_email,
+        from_name=str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_FROM_NAME', '') or '').strip(),
+        reply_to_email=str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_REPLY_TO', '') or '').strip(),
+        is_active=True,
+        is_default=True,
+        notes='Derived from environment fallback settings.',
+    )
+    password = str(getattr(settings, 'SYSTEM_EMAIL_FALLBACK_PASSWORD', '') or '')
+    if password:
+        account.set_smtp_password(password)
+    return account
+
+
 def get_active_email_account() -> SystemEmailAccount | None:
     account = SystemEmailAccount.objects.filter(is_active=True, is_default=True).first()
     if account:
         return account
-    return SystemEmailAccount.objects.filter(is_active=True).order_by('name').first()
+    fallback = SystemEmailAccount.objects.filter(is_active=True).order_by('name').first()
+    if fallback:
+        return fallback
+    return _build_env_fallback_email_account()
 
 
 def build_sender_address(account: SystemEmailAccount | None) -> str:

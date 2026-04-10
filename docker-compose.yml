@@ -28,6 +28,14 @@ services:
       timeout: 5s
       retries: 5
 
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: vninvest-mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   backend:
     build:
       context: ./backend
@@ -41,6 +49,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     command: ["/bin/sh", "/app/entrypoint.sh"]
     healthcheck:
       test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
@@ -64,6 +74,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     command: ["celery", "-A", "config", "worker", "-l", "info"]
     healthcheck:
       test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$HOSTNAME | grep -q 'OK'"]
@@ -85,6 +97,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mailpit:
+        condition: service_started
     command: ["celery", "-A", "config", "beat", "-l", "info"]
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]

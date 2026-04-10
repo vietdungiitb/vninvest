@@ -597,6 +597,8 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
                 if user_cfg is None:
                     continue
+                if not bool(user_cfg.advisory_whale_signal_enabled):
+                    continue
                 threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
                 _accumulate_user_advisory_event(
                     user_id=int(tracked_user_id),
@@ -722,7 +724,7 @@ def trim_streams(self) -> dict:
     Trim tất cả Redis Streams về STREAM_MAX_LEN để tiết kiệm bộ nhớ.
     Chạy định kỳ qua Celery Beat.
     """
-    from portfolio.realtime.tick_producer import TickProducer, _get_stream_client
+    from portfolio.realtime.tick_producer import TickProducer
 
     max_len = getattr(settings, "STREAM_MAX_LEN", 50_000)
     symbols = collect_symbols_for_user(user_id=None)
@@ -730,7 +732,7 @@ def trim_streams(self) -> dict:
         return {"status": "ok", "trimmed": 0}
 
     try:
-        client = _get_stream_client()
+        client = TickProducer().client
     except Exception as exc:
         logger.warning("trim_streams: Redis unavailable: %s", exc)
         return {"status": "skipped", "reason": str(exc)}
@@ -1378,6 +1380,8 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                     user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
                     if user_cfg is None:
                         continue
+                    if not bool(user_cfg.advisory_whale_signal_enabled):
+                        continue
                     threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
                     _accumulate_user_advisory_event(
                         user_id=int(tracked_user_id),
@@ -1449,6 +1453,8 @@ def detect_whale_reversal(self, symbol: str | None = None) -> dict:
         for user_id in tracked_user_ids:
             user_cfg = UserConfig.objects.filter(user_id=user_id).first()
             if user_cfg is None:
+                continue
+            if not bool(user_cfg.advisory_whale_signal_enabled):
                 continue
 
             threshold_vnd = float(user_cfg.whale_alert_threshold or 500) * 1_000_000

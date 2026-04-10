@@ -308,6 +308,26 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(result['reason'], 'daily_auto_refresh_limit_exceeded')
         self.assertFalse(WhaleAdvisory.objects.filter(symbol='ACB', user=staff_user).exists())
 
+    def test_task_skips_when_event_based_advisory_disabled_for_user(self):
+        staff_user = self._create_user_config('staff-event-off', api_key='sk-test-event-off')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_whale_signal_enabled = False
+        config.save(update_fields=['advisory_whale_signal_enabled'])
+
+        result = generate_whale_advisory_task(
+            symbol='EVT1',
+            matched_value_vnd=2_000_000_000,
+            side='BUY',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            source=WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+        )
+
+        self.assertEqual(result['status'], 'skipped')
+        self.assertEqual(result['reason'], 'whale_signal_disabled')
+        self.assertFalse(WhaleAdvisory.objects.filter(symbol='EVT1', user=staff_user).exists())
+
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_auto_generate_task_queues_missing_and_stale_tracked_symbols(self, mock_apply_async):
         cache.delete('advisory:auto-generation:job-lock')
@@ -440,6 +460,31 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(kwargs['symbol'], 'REV1')
         self.assertEqual(kwargs['advisory_type'], WhaleAdvisory.AdvisoryTypeChoices.REVERSAL)
         self.assertEqual(kwargs['severity_override'], WhaleAdvisory.SeverityChoices.URGENT)
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_detect_whale_reversal_skips_when_event_based_disabled(self, mock_apply_async):
+        staff_user = self._create_user_config('staff-reversal-off', api_key='sk-test-reversal-off')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_whale_signal_enabled = False
+        config.save(update_fields=['advisory_whale_signal_enabled'])
+        TrackedSymbol.objects.create(user=staff_user, symbol='REV2')
+        cache.delete('reversal_alert_lock:REV2')
+
+        now = timezone.localtime()
+        today = timezone.localdate()
+        base_time = (now - timedelta(minutes=5)).time()
+
+        IntradayTick.objects.create(symbol='REV2', trade_date=today, trade_time=base_time, price=10000, volume=100000, side='BUY')
+        IntradayTick.objects.create(symbol='REV2', trade_date=today, trade_time=(now - timedelta(minutes=4)).time(), price=10010, volume=90000, side='BUY')
+        IntradayTick.objects.create(symbol='REV2', trade_date=today, trade_time=(now - timedelta(minutes=3)).time(), price=10020, volume=95000, side='BUY')
+        IntradayTick.objects.create(symbol='REV2', trade_date=today, trade_time=(now - timedelta(minutes=2)).time(), price=25000, volume=300000, side='SELL')
+
+        result = detect_whale_reversal(symbol='REV2')
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertGreaterEqual(result['processed'], 1)
+        self.assertEqual(result['queued'], 0)
+        mock_apply_async.assert_not_called()
 
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_flush_merged_event_passes_primary_and_sources(self, mock_apply_async):
