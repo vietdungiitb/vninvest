@@ -32,6 +32,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
+$ComposeEnvFile = "compose.dev.env"
 $ProjectName = "vninvest-dev"
 
 function Write-Step($msg) {
@@ -40,7 +41,7 @@ function Write-Step($msg) {
 }
 
 function Invoke-Compose {
-    docker compose -p $ProjectName @ComposeFiles @args
+    docker compose --env-file $ComposeEnvFile -p $ProjectName @ComposeFiles @args
 }
 
 # ── Down mode ─────────────────────────────────────────────────────────────────
@@ -149,8 +150,8 @@ Write-Host "  API        -> http://localhost:8000/api/"
 Write-Host "  Mailpit    -> http://localhost:8026"
 Write-Host ""
 Write-Host "Useful commands:"
-Write-Host "  Xem log backend:   docker compose -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f backend"
-Write-Host "  Xem log celery:    docker compose -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f celery_worker"
+Write-Host "  Xem log backend:   docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f backend"
+Write-Host "  Xem log celery:    docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f celery_worker"
 Write-Host "  Dừng stack:        .\start_dev.ps1 -Down"
 Write-Host "  Smoke test API:    Invoke-RestMethod http://localhost:8000/api/health/"
 Write-Host ""

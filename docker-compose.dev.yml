@@ -15,9 +15,6 @@ services:
 
   mailpit:
     container_name: vninvest-dev-mailpit
-    ports:
-      - "1026:1025"
-      - "8026:8025"
 
   backend:
     container_name: vninvest-dev-backend
