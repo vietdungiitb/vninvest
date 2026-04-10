@@ -24,6 +24,14 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200 border-slate-600/40';
 }
 
+function severityLabel(severity, t) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
+  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
+  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
+  return t('whaleHub.severityLow');
+}
+
 function mergeTickerIntoItem(item, update) {
   if (item.symbol !== update.symbol) {
     return item;
@@ -1005,7 +1013,7 @@ export default function WatchlistPage() {
           <span className="text-gray-400">{latestWhaleAlert.side || 'N/A'}</span>
           {typeof latestWhaleAlert.severity === 'string' && (
             <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${severityTone(latestWhaleAlert.severity.toLowerCase())}`}>
-              {latestWhaleAlert.severity.toLowerCase()}
+              {severityLabel(latestWhaleAlert.severity, t)}
             </span>
           )}
           <span className="text-gray-300 tabular-nums">

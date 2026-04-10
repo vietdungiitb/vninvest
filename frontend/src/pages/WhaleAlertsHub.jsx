@@ -58,9 +58,18 @@ function getSideTone(side, t) {
 }
 
 function getSizeClassLabel(sizeClass, t) {
-  if (sizeClass === 'shark') return t('whaleHub.sizeClassShark');
-  if (sizeClass === 'whale') return t('whaleHub.sizeClassWhale');
+  const normalizedSizeClass = String(sizeClass || '').toLowerCase();
+  if (normalizedSizeClass === 'shark') return t('whaleHub.sizeClassShark');
+  if (normalizedSizeClass === 'whale') return t('whaleHub.sizeClassWhale');
   return t('whaleHub.sizeClassLarge');
+}
+
+function getSeverityLabel(severity, t) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
+  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
+  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
+  return t('whaleHub.severityLow');
 }
 
 function getCampaignTypeLabel(campaignType, t) {
@@ -152,6 +161,38 @@ function buildTrackedSymbolBuckets(trackedSymbols) {
   return unique;
 }
 
+function buildAggregateEventKey(item) {
+  const primaryTime = item?.alert_first_seen_at || item?.alert_at || item?.ts || '';
+  return [
+    item?.symbol,
+    item?.side,
+    primaryTime,
+    item?.matched_value,
+    item?.volume,
+    item?.price,
+    item?.source,
+    item?.threshold,
+    item?.threshold_source,
+  ].join(':');
+}
+
+function isCountableWhaleOrder(item) {
+  const side = String(item?.side || '').toUpperCase();
+  return side === 'BUY' || side === 'SELL';
+}
+
+function mergeUniqueAggregateEvents(existingItems, incomingItems) {
+  const merged = [];
+  const seen = new Set();
+  for (const row of [...(existingItems || []), ...(incomingItems || [])]) {
+    const key = buildAggregateEventKey(row);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(row);
+  }
+  return merged;
+}
+
 function buildSymbolStatsFromFeed(feedItems) {
   const map = {};
   for (const item of feedItems || []) {
@@ -168,14 +209,17 @@ function buildSymbolStatsFromFeed(feedItems) {
       };
     }
     const side = String(item.side || '').toUpperCase();
-    if (side === 'BUY') map[sym].buyCount += 1;
-    else if (side === 'SELL') map[sym].sellCount += 1;
-    map[sym].totalValue += Number(item.matched_value || 0);
-    map[sym].totalVolume += Number(item.volume || 0);
-    map[sym].count += 1;
+    const isOrderSide = isCountableWhaleOrder(item);
+    if (isOrderSide) {
+      if (side === 'BUY') map[sym].buyCount += 1;
+      else map[sym].sellCount += 1;
+      map[sym].totalValue += Number(item.matched_value || 0);
+      map[sym].totalVolume += Number(item.volume || 0);
+      map[sym].count += 1;
+    }
 
     const alertTimeRaw = item.alert_first_seen_at || item.alert_at || item.ts || null;
-    if (alertTimeRaw) {
+    if (isOrderSide && alertTimeRaw) {
       const candidateTime = new Date(alertTimeRaw).getTime();
       const currentTime = map[sym].latestAlertAt ? new Date(map[sym].latestAlertAt).getTime() : NaN;
       if (!Number.isNaN(candidateTime) && (Number.isNaN(currentTime) || candidateTime > currentTime)) {
@@ -349,7 +393,7 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
             {getSizeClassLabel(item.size_class, t)}
           </div>
           <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${severityTone}`}>
-            {item.severity || t('whaleHub.severityLow')}
+            {getSeverityLabel(item.severity, t)}
           </div>
         </div>
       </div>
@@ -681,6 +725,8 @@ export default function WhaleAlertsHub() {
   const [campaignTypeFilter, setCampaignTypeFilter] = useState('all');
   const [campaignMinStrength, setCampaignMinStrength] = useState(0);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [symbolStatsMap, setSymbolStatsMap] = useState({});
+  const [aggregateTotalSignals, setAggregateTotalSignals] = useState(0);
   const [feedSort, setFeedSort] = useState('ts');
   const [feedWindow, setFeedWindow] = useState('session');
   const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
@@ -720,7 +766,9 @@ export default function WhaleAlertsHub() {
     const payload = response.data || {};
     const nextItems = payload.results || [];
 
-    setAggregateFeed((prev) => (append ? [...prev, ...nextItems] : nextItems));
+    setAggregateFeed((prev) => (append
+      ? mergeUniqueAggregateEvents(prev, nextItems)
+      : mergeUniqueAggregateEvents([], nextItems)));
     setAggregateCursor(payload.next_cursor || null);
     setAggregateHasMore(Boolean(payload.has_more));
     setAggregateEntitlements(payload.entitlements || null);
@@ -751,6 +799,60 @@ export default function WhaleAlertsHub() {
     setCampaignCursor(payload.next_cursor || null);
   }, [campaignSort, feedWindow, selectedFeedScope]);
 
+  const loadSymbolStatsMap = useCallback(async ({
+    window = feedWindow,
+    scope = selectedFeedScope,
+  } = {}) => {
+    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
+    const rows = [];
+    const seenEventKeys = new Set();
+    const seenCursors = new Set();
+    let cursor = null;
+    let hasMore = true;
+    let pageCount = 0;
+    const maxPages = 20;
+
+    while (hasMore && pageCount < maxPages) {
+      const response = await getAggregateWhaleFeed({
+        cursor,
+        sort: 'ts',
+        window,
+        limit: 50,
+        watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
+      });
+      const payload = response.data || {};
+      const pageRows = payload.results || [];
+
+      for (const item of pageRows) {
+        const eventKey = item.event_id || [
+          item.id,
+          item.symbol,
+          item.ts,
+          item.side,
+          item.matched_value,
+        ].join(':');
+        if (seenEventKeys.has(eventKey)) continue;
+        seenEventKeys.add(eventKey);
+        rows.push(item);
+      }
+
+      const nextCursor = payload.next_cursor || null;
+      hasMore = Boolean(payload.has_more && nextCursor);
+      if (!hasMore) break;
+      if (seenCursors.has(nextCursor)) break;
+      seenCursors.add(nextCursor);
+      cursor = nextCursor;
+      pageCount += 1;
+    }
+
+    const statsMap = buildSymbolStatsFromFeed(rows);
+    const totalSignals = Object.values(statsMap).reduce((sum, entry) => sum + Number(entry?.count || 0), 0);
+    return {
+      statsMap,
+      totalSignals,
+    };
+  }, [feedWindow, selectedFeedScope]);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -761,22 +863,25 @@ export default function WhaleAlertsHub() {
         getWatchlistGroups(),
         loadAggregateFeed({ cursor: null, append: false, sort: feedSort, window: feedWindow, scope: selectedFeedScope }),
         loadCampaigns({ cursor: null, append: false, window: feedWindow, scope: selectedFeedScope, sort: campaignSort }),
+        loadSymbolStatsMap({ window: feedWindow, scope: selectedFeedScope }),
       ];
 
       if (canReadAdvisory) {
         requests.push(getWhaleAdvisories());
       }
 
-      const [trackedResult, watchlistGroupsResult, _aggregateResult, _campaignResult, advisoryResult] = await Promise.all(requests);
+      const [trackedResult, watchlistGroupsResult, _aggregateResult, _campaignResult, symbolStatsResult, advisoryResult] = await Promise.all(requests);
       setTrackedSymbols(trackedResult.data || []);
       setWatchlistGroups(watchlistGroupsResult.data || []);
+      setSymbolStatsMap(symbolStatsResult?.statsMap || {});
+      setAggregateTotalSignals(Number(symbolStatsResult?.totalSignals || 0));
       setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
     } catch (err) {
       setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
     } finally {
       setLoading(false);
     }
-  }, [canReadAdvisory, campaignSort, feedSort, feedWindow, loadAggregateFeed, loadCampaigns, selectedFeedScope, t]);
+  }, [canReadAdvisory, campaignSort, feedSort, feedWindow, loadAggregateFeed, loadCampaigns, loadSymbolStatsMap, selectedFeedScope, t]);
 
   useEffect(() => {
     fetchData();
@@ -789,7 +894,13 @@ export default function WhaleAlertsHub() {
 
   const symbolShortcuts = useMemo(() => buildTrackedSymbolBuckets(trackedSymbols), [trackedSymbols]);
 
-  const symbolStatsMap = useMemo(() => buildSymbolStatsFromFeed(aggregateFeed), [aggregateFeed]);
+  const aggregateTotalCount = useMemo(() => (
+    Number(aggregateTotalSignals || 0)
+  ), [aggregateTotalSignals]);
+
+  const aggregateDisplayedCount = useMemo(() => (
+    (aggregateFeed || []).filter((item) => isCountableWhaleOrder(item)).length
+  ), [aggregateFeed]);
 
   const handleLoadMore = useCallback(async () => {
     if (!aggregateHasMore || !aggregateCursor) return;
@@ -803,6 +914,14 @@ export default function WhaleAlertsHub() {
       setAggregateLoadingMore(false);
     }
   }, [aggregateCursor, aggregateHasMore, feedSort, feedWindow, loadAggregateFeed, selectedFeedScope, t]);
+
+  const handleHideLess = useCallback(async () => {
+    try {
+      await loadAggregateFeed({ cursor: null, append: false, sort: feedSort, window: feedWindow, scope: selectedFeedScope });
+    } catch (err) {
+      setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
+    }
+  }, [feedSort, feedWindow, loadAggregateFeed, selectedFeedScope, t]);
 
   const handleSortChange = useCallback((nextSort) => {
     if (nextSort === feedSort) return;
@@ -1150,7 +1269,7 @@ export default function WhaleAlertsHub() {
             <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
               {aggregateFeed.map((item) => (
                 <AggregateFeedCard
-                  key={item.event_id}
+                  key={buildAggregateEventKey(item)}
                   item={item}
                   t={t}
                   localeTag={localeTag}
@@ -1160,13 +1279,27 @@ export default function WhaleAlertsHub() {
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="text-xs text-slate-500">
-                {t('whaleHub.showingSignals', { count: aggregateFeed.length, source: aggregateSourceMeta.label.toLowerCase() })}
+                {t('whaleHub.showingSignals', {
+                  count: aggregateDisplayedCount,
+                  totalCount: aggregateTotalCount,
+                  source: aggregateSourceMeta.label.toLowerCase(),
+                })}
+                <span className="ml-2 rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+                  {t('whaleHub.countBasisLargeOrders')}
+                </span>
               </div>
-              {aggregateHasMore && (
-                <button type="button" onClick={handleLoadMore} disabled={aggregateLoadingMore} className="btn-secondary">
-                  {aggregateLoadingMore ? t('whaleHub.loadingMore') : t('whaleHub.loadMore')}
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {aggregateFeed.length > 12 && (
+                  <button type="button" onClick={handleHideLess} className="btn-secondary">
+                    {t('whaleHub.hideLess')}
+                  </button>
+                )}
+                {aggregateHasMore && (
+                  <button type="button" onClick={handleLoadMore} disabled={aggregateLoadingMore} className="btn-secondary">
+                    {aggregateLoadingMore ? t('whaleHub.loadingMore') : t('whaleHub.loadMore')}
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}

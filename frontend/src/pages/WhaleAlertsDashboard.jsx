@@ -84,6 +84,14 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
+function severityLabel(severity, t) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
+  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
+  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
+  return t('whaleHub.severityLow');
+}
+
 function formatFeedTime(value) {
   if (!value) return '—';
   const parsed = new Date(value);
@@ -152,7 +160,7 @@ function AlertFeedCard({ order, animated }) {
           </span>
           {severity && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityClass}`}>
-              {severity}
+              {severityLabel(severity, t)}
             </span>
           )}
         </div>
@@ -464,7 +472,7 @@ export function BubbleOrderChart({ orders, loading }) {
                     <p className="font-semibold text-white">{fmtBil(d.matched_value)}</p>
                     <p className="text-slate-400">{d.time} · {fmtPrice(d.price)} · {t('whaleAlertsDashboard.volumeShort')} {fmtVol(d.volume)}</p>
                     <p style={{ color: sideColor(d.side) }}>{d.side === 'buy' ? `▲ ${t('whaleAlertsDashboard.buy')}` : d.side === 'sell' ? `▼ ${t('whaleAlertsDashboard.sell')}` : '—'} {sizeClassEmoji(d.size_class)}</p>
-                    <p className="text-slate-400">{t('whaleAlertsDashboard.severity')}: {d.severity ?? '—'} · {t('whaleAlertsDashboard.score')}: {d.display_score ?? '—'}</p>
+                    <p className="text-slate-400">{t('whaleAlertsDashboard.severity')}: {d.severity ? severityLabel(d.severity, t) : '—'} · {t('whaleAlertsDashboard.score')}: {d.display_score ?? '—'}</p>
                   </div>
                 );
               }}

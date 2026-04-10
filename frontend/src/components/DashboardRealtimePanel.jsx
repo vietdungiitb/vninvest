@@ -36,6 +36,14 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
+function severityLabel(severity, t) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
+  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
+  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
+  return t('whaleHub.severityLow');
+}
+
 function thresholdSourceLabel(value, t) {
   const normalized = String(value || '').toLowerCase();
   if (normalized === 'symbol_override') {
@@ -505,7 +513,7 @@ export default function DashboardRealtimePanel({
                           </span>
                           {severity && (
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityTone(severity)}`}>
-                              {severity}
+                              {severityLabel(severity, t)}
                             </span>
                           )}
                         </div>
