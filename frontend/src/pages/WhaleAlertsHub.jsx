@@ -289,6 +289,13 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail, t, localeTag, format
 function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
   const tone = getSideTone(item.side, t);
   const severityTone = getSeverityTone(item.severity);
+  
+  // Abnormality score coloring
+  const abnormalityScore = Number(item.abnormality_score ?? 50);
+  let abnormalityTone = 'bg-slate-800 text-slate-200';
+  if (abnormalityScore >= 80) abnormalityTone = 'bg-rose-900/70 text-rose-200';
+  else if (abnormalityScore >= 60) abnormalityTone = 'bg-amber-900/70 text-amber-200';
+  else if (abnormalityScore >= 40) abnormalityTone = 'bg-cyan-900/70 text-cyan-200';
 
   return (
     <Link
@@ -320,6 +327,16 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
           <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value, localeTag)} VND</p>
         </div>
         <div className="text-right text-xs text-slate-400">
+          <div className="flex flex-wrap justify-end gap-1.5 mb-2">
+            <div className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${abnormalityTone}`}>
+              Abnormality: {abnormalityScore.toFixed(0)}
+            </div>
+            {item.session_percentile !== undefined && (
+              <div className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
+                p{Math.round(item.session_percentile || 0)}
+              </div>
+            )}
+          </div>
           <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
           <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
           <p>{t('whaleHub.thresholdSource')}: {getThresholdSourceLabel(item.threshold_source, t)}</p>
