@@ -53,3 +53,8 @@ services:
     ports:
       - "8080:80"
     restart: "no"
+
+volumes:
+  postgres_data:
+    external: true
+    name: vninvest-dev_postgres_data

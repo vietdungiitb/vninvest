@@ -65,6 +65,11 @@ def symbol_investigation_api(request, symbol: str):
         include_whale = request.query_params.get('include_whale', 'true').lower() == 'true'
         include_dark_flow = request.query_params.get('include_dark_flow', 'true').lower() == 'true'
         sort = request.query_params.get('sort', 'created_at')
+        if sort not in ['created_at', 'correlation_strength']:
+            return Response(
+                {'detail': 'Sort không hợp lệ. Sử dụng: created_at, correlation_strength'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         from .coobservation_service import CoObservationService
         service = CoObservationService()

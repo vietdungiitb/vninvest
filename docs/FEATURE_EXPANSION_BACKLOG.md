@@ -254,6 +254,13 @@
 ## 8) Mapping backlog vào sprint (re-baseline)
 
 - Sprint gần nhất đã chốt: tham chiếu `docs/ROADMAP_STATUS.md`.
+- **Sprint 34 (ready to start):**
+  - Dark Money Integrity & Usability Phase 1 (non-AI):
+    - A1 deterministic event identity
+    - A2 pagination contract v2
+    - B1 dark-flow severity remap
+  - Scope conditional theo capacity:
+    - A3 partial threshold policy unification
 - **Sprint 29 (in progress)**:
   - AI advisory chart-context integration va canary gates.
 - **Sprint 31 (ready to execute)**:
@@ -291,4 +298,18 @@ Khi theo doi nhom Whale Alerts professionalization, dung bo tai lieu canonical s
 - `docs/SPRINT31_WHALE_ALERTS_PROFESSIONALIZATION_EXECUTION_PLAN.md`
 - `docs/SPRINT31_ACCEPTANCE_CHECKLIST.md`
 - `docs/SPRINT31_TASKBOARD.csv`
+
+## 11) Dark money integrity canonical tracking set (2026-04-10)
+
+Khi theo doi sprint nang cap dark money flow de tranh phan manh tai lieu, dung bo canonical sau:
+
+- `docs/AUDIT_DARK_MONEY_FLOW_DEEP_20260410.md`
+- `docs/SPRINT34_DETAILED_EXECUTION_PLAN.md`
+- `docs/SPRINT34_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT34_TASKBOARD.csv`
+- `docs/SPRINT34_KPI_BASELINE_TEMPLATE.md`
+- `docs/SPRINT34_DECISION_LOG.md`
+- `docs/SPRINT34_KICKOFF_MINUTES_TEMPLATE.md`
+- `docs/SPRINT34_SIGNOFF_SHEET.md`
+- `ROADMAP_STATUS.md`
 

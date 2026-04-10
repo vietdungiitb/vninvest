@@ -329,6 +329,52 @@ class CoObservationServiceTests(TransactionTestCase):
                 timeline[i]['timestamp'],
                 timeline[i+1]['timestamp']
             )
+
+    def test_apply_sort_created_at_desc(self):
+        campaigns = [
+            {'campaign_id': 'c1', 'created_at': (self.now - timedelta(minutes=5)).isoformat()},
+            {'campaign_id': 'c2', 'created_at': self.now.isoformat()},
+        ]
+        signals = [
+            {'event_id': 's1', 'created_at': (self.now - timedelta(minutes=3)).isoformat()},
+            {'event_id': 's2', 'created_at': (self.now - timedelta(minutes=1)).isoformat()},
+        ]
+
+        sorted_campaigns, sorted_signals = self.service._apply_sort(campaigns, signals, 'created_at')
+
+        self.assertEqual(sorted_campaigns[0]['campaign_id'], 'c2')
+        self.assertEqual(sorted_signals[0]['event_id'], 's2')
+
+    def test_apply_sort_correlation_strength_desc(self):
+        campaigns = [
+            {
+                'campaign_id': 'c_low',
+                'created_at': self.now.isoformat(),
+                'dark_flow_correlations': [{'correlation_confidence': 0.55}],
+            },
+            {
+                'campaign_id': 'c_high',
+                'created_at': (self.now - timedelta(minutes=10)).isoformat(),
+                'dark_flow_correlations': [{'correlation_confidence': 0.90}],
+            },
+        ]
+        signals = [
+            {
+                'event_id': 's_low',
+                'created_at': self.now.isoformat(),
+                'whale_campaign_correlations': [{'correlation_confidence': 0.51}],
+            },
+            {
+                'event_id': 's_high',
+                'created_at': (self.now - timedelta(minutes=10)).isoformat(),
+                'whale_campaign_correlations': [{'correlation_confidence': 0.88}],
+            },
+        ]
+
+        sorted_campaigns, sorted_signals = self.service._apply_sort(campaigns, signals, 'correlation_strength')
+
+        self.assertEqual(sorted_campaigns[0]['campaign_id'], 'c_high')
+        self.assertEqual(sorted_signals[0]['event_id'], 's_high')
     
     def test_api_endpoint_validation(self):
         """Test API endpoint parameter validation"""

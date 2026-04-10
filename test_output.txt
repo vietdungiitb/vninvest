@@ -1,0 +1,10 @@
+﻿Found 8 test(s).
+System check identified no issues (0 silenced).
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.
+[OpenCore] Error creating license for parity-test: DPIPlan matching query does not exist.

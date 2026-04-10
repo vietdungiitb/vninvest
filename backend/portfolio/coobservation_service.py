@@ -149,6 +149,9 @@ class CoObservationService:
             dark_signals = self._get_dark_signals(symbol, start_time, end_time)
         
         correlations = self._correlate_campaigns_and_signals(campaigns, dark_signals)
+        campaigns = self._enrich_campaigns_with_correlations(campaigns, correlations)
+        dark_signals = self._enrich_signals_with_correlations(dark_signals, correlations)
+        campaigns, dark_signals = self._apply_sort(campaigns, dark_signals, sort)
         timeline = self._build_investigation_timeline(campaigns, dark_signals, correlations)
         conviction = self._assess_conviction(campaigns, dark_signals, correlations)
         
@@ -156,11 +159,54 @@ class CoObservationService:
             'symbol': symbol,
             'server_time': server_time.isoformat(),
             'window_params': window_params,
-            'whale_campaigns': self._enrich_campaigns_with_correlations(campaigns, correlations),
-            'dark_flow_signals': self._enrich_signals_with_correlations(dark_signals, correlations),
+            'whale_campaigns': campaigns,
+            'dark_flow_signals': dark_signals,
             'co_observation_summary': conviction,
             'timeline': timeline
         }
+
+    @staticmethod
+    def _to_dt(value):
+        if not value:
+            return datetime.min.replace(tzinfo=pytz.UTC)
+        try:
+            parsed = timezone.datetime.fromisoformat(value)
+            if parsed.tzinfo is None:
+                return timezone.make_aware(parsed, timezone.utc)
+            return parsed
+        except Exception:
+            return datetime.min.replace(tzinfo=pytz.UTC)
+
+    @staticmethod
+    def _max_corr(items: List[Dict], key: str) -> float:
+        values = [float(item.get(key, 0.0) or 0.0) for item in items]
+        return max(values) if values else 0.0
+
+    def _apply_sort(self, campaigns: List[Dict], dark_signals: List[Dict], sort: str) -> Tuple[List[Dict], List[Dict]]:
+        """Sort output collections according to requested strategy."""
+        if sort == 'correlation_strength':
+            campaigns = sorted(
+                campaigns,
+                key=lambda item: (
+                    self._max_corr(item.get('dark_flow_correlations') or [], 'correlation_confidence'),
+                    self._to_dt(item.get('created_at')),
+                ),
+                reverse=True,
+            )
+            dark_signals = sorted(
+                dark_signals,
+                key=lambda item: (
+                    self._max_corr(item.get('whale_campaign_correlations') or [], 'correlation_confidence'),
+                    self._to_dt(item.get('created_at')),
+                ),
+                reverse=True,
+            )
+            return campaigns, dark_signals
+
+        # Default strategy is newest first.
+        campaigns = sorted(campaigns, key=lambda item: self._to_dt(item.get('created_at')), reverse=True)
+        dark_signals = sorted(dark_signals, key=lambda item: self._to_dt(item.get('created_at')), reverse=True)
+        return campaigns, dark_signals
     
     @staticmethod
     def _filter_campaigns_by_time(campaigns: List[Dict], start_time, end_time) -> List[Dict]:
