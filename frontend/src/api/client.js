@@ -12,6 +12,12 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
+
+export function isAuthPublicEndpoint(url) {
+  return AUTH_PUBLIC_ENDPOINT_PATTERN.test(String(url || ''));
+}
+
 // Interceptor request: Bearer token từ localStorage
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token');
@@ -25,7 +31,14 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   async (err) => {
-    const originalRequest = err.config;
+    const originalRequest = err.config || {};
+
+    // Login/register/verify endpoints must return their own errors to UI.
+    // If we auto-redirect here, the login page appears to refresh without message.
+    if (isAuthPublicEndpoint(originalRequest.url)) {
+      return Promise.reject(err);
+    }
+
     if (err.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       const refreshToken = localStorage.getItem('refresh_token');
@@ -46,11 +59,15 @@ apiClient.interceptors.response.use(
           // Refresh fail -> logout
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
-          window.location.href = '/login';
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
           return Promise.reject(refreshErr);
         }
       } else {
-        window.location.href = '/login';
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(err);
@@ -176,7 +193,7 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
-export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', limit = 12, cursor } = {}) => {
+export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {
     params.set('symbols', symbols.join(','));
@@ -187,6 +204,9 @@ export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts',
   if (sort) {
     params.set('sort', sort);
   }
+  if (window) {
+    params.set('window', window);
+  }
   if (limit) {
     params.set('limit', String(limit));
   }
@@ -195,6 +215,40 @@ export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts',
   }
   const queryString = params.toString();
   return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`);
+};
+export const getWhaleCampaigns = ({
+  symbols,
+  watchlistGroupIds,
+  window = 'session',
+  campaignLimit = 24,
+  campaignSort = 'strength',
+  campaignGapMinutes,
+  cursor,
+} = {}) => {
+  const params = new URLSearchParams();
+  if (Array.isArray(symbols) && symbols.length > 0) {
+    params.set('symbols', symbols.join(','));
+  }
+  if (Array.isArray(watchlistGroupIds) && watchlistGroupIds.length > 0) {
+    params.set('watchlist_group_ids', watchlistGroupIds.join(','));
+  }
+  if (window) {
+    params.set('window', window);
+  }
+  if (campaignLimit) {
+    params.set('campaign_limit', String(campaignLimit));
+  }
+  if (campaignSort) {
+    params.set('campaign_sort', campaignSort);
+  }
+  if (Number.isFinite(Number(campaignGapMinutes))) {
+    params.set('campaign_gap_minutes', String(campaignGapMinutes));
+  }
+  if (cursor) {
+    params.set('cursor', cursor);
+  }
+  const queryString = params.toString();
+  return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`);
 };
 export const getWhaleAdvisories = (params = {}) => {
   const query = new URLSearchParams();

@@ -9,7 +9,7 @@ import base64
 import json
 import logging
 import os
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from django.core.cache import cache
 from django.utils import timezone
@@ -26,6 +26,8 @@ from .models import TrackedSymbol, UserConfig, WatchlistGroup
 from .whale_scoring import calculate_display_score, calculate_event_score
 
 logger = logging.getLogger(__name__)
+
+WHALE_AGGREGATE_WINDOW_OPTIONS = {'5m', '15m', '1h', 'session', '5d'}
 
 # ---------------------------------------------------------------------------
 # Cache helpers — silent fallback if Redis is unavailable
@@ -87,15 +89,15 @@ def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
     return len(symbols) <= max_symbols
 
 
-def _get_user_whale_threshold_vnd(user, symbol: str | None = None) -> float:
+def _resolve_user_whale_threshold_vnd(user, symbol: str | None = None) -> tuple[float, str]:
     config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
     base_threshold_vnd = resolve_user_whale_threshold_vnd((config or {}).get('whale_alert_threshold'))
     if not symbol:
-        return base_threshold_vnd
+        return base_threshold_vnd, 'user_default'
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
-        return base_threshold_vnd
+        return base_threshold_vnd, 'user_default'
 
     override = (
         TrackedSymbol.objects
@@ -104,8 +106,13 @@ def _get_user_whale_threshold_vnd(user, symbol: str | None = None) -> float:
         .first()
     )
     if override and override.get('whale_alert_threshold_million') is not None:
-        return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million'))
-    return base_threshold_vnd
+        return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million')), 'symbol_override'
+    return base_threshold_vnd, 'user_default'
+
+
+def _get_user_whale_threshold_vnd(user, symbol: str | None = None) -> float:
+    threshold_vnd, _ = _resolve_user_whale_threshold_vnd(user, symbol=symbol)
+    return threshold_vnd
 
 
 def _get_user_symbol_threshold_overrides_vnd(user, symbols: list[str] | None = None) -> dict[str, float]:
@@ -159,6 +166,70 @@ def _decode_whale_feed_cursor(raw_cursor: str | None) -> dict | None:
         return payload if isinstance(payload, dict) else None
     except (ValueError, TypeError, json.JSONDecodeError):
         return None
+
+
+def _parse_aggregate_window(window_raw: str | None) -> str:
+    normalized = str(window_raw or 'session').strip().lower() or 'session'
+    if normalized not in WHALE_AGGREGATE_WINDOW_OPTIONS:
+        raise ValueError('window_invalid')
+    return normalized
+
+
+def _window_start_datetime(window: str, now=None):
+    resolved_now = now or timezone.now()
+    normalized = str(window or 'session').strip().lower()
+    if normalized == '5m':
+        return resolved_now - timedelta(minutes=5)
+    if normalized == '15m':
+        return resolved_now - timedelta(minutes=15)
+    if normalized == '1h':
+        return resolved_now - timedelta(hours=1)
+    if normalized == '5d':
+        return resolved_now - timedelta(days=5)
+    return None
+
+
+def _is_event_timestamp_in_window(ts_value, window: str, now=None) -> bool:
+    normalized = str(window or 'session').strip().lower()
+    resolved_now = now or timezone.now()
+    if normalized == 'session':
+        # Session scope represents the latest available tape in aggregate mode.
+        # Keep legacy behavior for stream/vnstock fallbacks even when test fixtures use historical timestamps.
+        return True
+
+    if not ts_value:
+        return False
+
+    try:
+        event_dt = datetime.fromisoformat(str(ts_value).replace('Z', '+00:00'))
+    except Exception:
+        return False
+    if timezone.is_naive(event_dt):
+        event_dt = timezone.make_aware(event_dt, timezone.get_current_timezone())
+
+    start_dt = _window_start_datetime(normalized, now=resolved_now)
+    if start_dt is None:
+        return True
+    return event_dt >= start_dt
+
+
+def _is_tick_row_in_window(row, window: str, now=None) -> bool:
+    normalized = str(window or 'session').strip().lower()
+    if normalized == 'session':
+        return bool(getattr(row, 'trade_date', None) == timezone.localdate())
+
+    try:
+        row_dt = timezone.make_aware(
+            datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
+            timezone.get_current_timezone(),
+        )
+    except Exception:
+        return False
+
+    start_dt = _window_start_datetime(normalized, now=now)
+    if start_dt is None:
+        return True
+    return row_dt >= start_dt
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +314,13 @@ def _build_tick_timestamp(row) -> str:
         return row.created_at.isoformat() if getattr(row, 'created_at', None) else timezone.now().isoformat()
 
 
-def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
+def _build_aggregate_event_payload(
+    row,
+    threshold_vnd: float,
+    threshold_source: str = 'user_default',
+    score_config: dict | None = None,
+    now=None,
+) -> dict:
     matched_value = float(getattr(row, 'matched_value', 0) or 0)
     occurred_at = _build_tick_timestamp(row)
     score_result = calculate_event_score(
@@ -275,6 +352,7 @@ def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict
         'matched_value': round(matched_value, 2),
         'volume': int(getattr(row, 'volume', 0) or 0),
         'threshold': threshold_vnd,
+        'threshold_source': str(threshold_source or 'user_default'),
         'size_class': _classify_signal_size(matched_value),
         'ts': occurred_at,
         'source': 'intraday_tick_db',
@@ -291,7 +369,13 @@ def _build_aggregate_event_payload(row, threshold_vnd: float, score_config: dict
     }
 
 
-def _build_aggregate_event_payload_from_record(record: dict, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
+def _build_aggregate_event_payload_from_record(
+    record: dict,
+    threshold_vnd: float,
+    threshold_source: str = 'user_default',
+    score_config: dict | None = None,
+    now=None,
+) -> dict:
     matched_value = float(record.get('matched_value') or 0.0)
     occurred_at = str(record.get('ts') or timezone.now().isoformat())
     side = _normalize_signal_side(record.get('side'))
@@ -328,6 +412,7 @@ def _build_aggregate_event_payload_from_record(record: dict, threshold_vnd: floa
         'matched_value': round(matched_value, 2),
         'volume': int(record.get('volume') or 0),
         'threshold': threshold_vnd,
+        'threshold_source': str(threshold_source or 'user_default'),
         'size_class': record.get('size_class') or _classify_signal_size(matched_value),
         'ts': occurred_at,
         'source': source,
@@ -352,7 +437,8 @@ def _parse_cursor_datetime(cursor_payload: dict) -> tuple[date, time, int] | Non
     if not isinstance(cursor_payload, dict):
         return None
     expected_keys = {'sort', 'trade_date', 'trade_time', 'id'}
-    if set(cursor_payload.keys()) != expected_keys:
+    payload_keys = set(cursor_payload.keys())
+    if payload_keys not in (expected_keys, expected_keys | {'window'}):
         return None
     try:
         trade_date = date.fromisoformat(str(cursor_payload['trade_date']))
@@ -367,7 +453,8 @@ def _parse_cursor_matched_value(cursor_payload: dict) -> tuple[float, int] | Non
     if not isinstance(cursor_payload, dict):
         return None
     expected_keys = {'sort', 'matched_value', 'id'}
-    if set(cursor_payload.keys()) != expected_keys:
+    payload_keys = set(cursor_payload.keys())
+    if payload_keys not in (expected_keys, expected_keys | {'window'}):
         return None
     try:
         matched_value = float(cursor_payload['matched_value'])
@@ -563,6 +650,7 @@ def _build_whale_order_payload(
     side: str,
     size_class: str,
     threshold_vnd: float,
+    threshold_source: str = 'user_default',
     score_config: dict | None = None,
     now=None,
 ) -> dict:
@@ -612,6 +700,8 @@ def _build_whale_order_payload(
         'matched_value': matched_value,
         'side': side,
         'size_class': size_class,
+        'threshold': threshold_vnd,
+        'threshold_source': str(threshold_source or 'user_default'),
         'event_score': score_result['event_score'],
         'display_score': display_result['display_score'],
         'severity': display_result['severity'],

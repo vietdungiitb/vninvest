@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 from decimal import Decimal
+import base64
+import json
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
@@ -3176,8 +3178,10 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['weights_version'], 'weights-v1')
+        self.assertEqual(response.data.get('threshold_source'), 'user_default')
         self.assertEqual(len(response.data['whale_orders']), 1)
         order = response.data['whale_orders'][0]
+        self.assertEqual(order.get('threshold_source'), 'user_default')
         self.assertIn('event_score', order)
         self.assertIn('display_score', order)
         self.assertIn('severity', order)
@@ -3441,6 +3445,137 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['source'], 'vnstock')
         self.assertEqual(len(response.data['results']), 1)
         self.assertEqual(response.data['results'][0]['symbol'], 'FPT')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_whale_campaigns_groups_events_into_campaigns(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='camp-fpt-1',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:20:00', '%H:%M:%S').time(),
+            price=Decimal('101000'),
+            volume=7500,
+            side='BUY',
+            stream_id='camp-fpt-2',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('11:00:00', '%H:%M:%S').time(),
+            price=Decimal('102000'),
+            volume=7600,
+            side='SELL',
+            stream_id='camp-fpt-3',
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=10&campaign_sort=strength')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertGreaterEqual(len(response.data['results']), 2)
+        first_campaign = response.data['results'][0]
+        self.assertIn('campaign_id', first_campaign)
+        self.assertIn('campaign_strength', first_campaign)
+        self.assertIn('events', first_campaign)
+        self.assertGreaterEqual(first_campaign['event_count'], 1)
+        self.assertIn('campaign_sort', response.data['filters'])
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_whale_campaigns_rejects_invalid_campaign_limit(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-campaigns/?campaign_limit=0')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_whale_campaigns_supports_cursor_pagination(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:05:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='camp-page-fpt-1',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:07:00', '%H:%M:%S').time(),
+            price=Decimal('101000'),
+            volume=7200,
+            side='BUY',
+            stream_id='camp-page-fpt-2',
+        )
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:15:00', '%H:%M:%S').time(),
+            price=Decimal('45000'),
+            volume=15000,
+            side='SELL',
+            stream_id='camp-page-hpg-1',
+        )
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:20:00', '%H:%M:%S').time(),
+            price=Decimal('45200'),
+            volume=14000,
+            side='SELL',
+            stream_id='camp-page-hpg-2',
+        )
+
+        self.authenticate()
+
+        first_response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=1&campaign_sort=latest')
+        self.assertEqual(first_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(first_response.data['results']), 1)
+        self.assertTrue(first_response.data['has_more'])
+        self.assertIsNotNone(first_response.data.get('next_cursor'))
+
+        first_campaign_id = first_response.data['results'][0]['campaign_id']
+        next_cursor = first_response.data['next_cursor']
+
+        second_response = self.client.get(
+            '/api/realtime/whale-campaigns/',
+            {
+                'window': 'session',
+                'campaign_limit': 1,
+                'campaign_sort': 'latest',
+                'cursor': next_cursor,
+            },
+        )
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(second_response.data['results']), 1)
+        self.assertNotEqual(second_response.data['results'][0]['campaign_id'], first_campaign_id)
 
     @patch.dict('os.environ', {'WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS': '2'}, clear=False)
     @patch('portfolio.realtime.stream_reader.StreamReader')
@@ -3998,8 +4133,10 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['weights_version'], 'weights-v1')
+        self.assertEqual(response.data.get('threshold_source'), 'user_default')
         self.assertEqual(len(response.data['whale_orders']), 1)
         order = response.data['whale_orders'][0]
+        self.assertEqual(order.get('threshold_source'), 'user_default')
         self.assertIn('event_score', order)
         self.assertIn('display_score', order)
         self.assertIn('severity', order)
@@ -4154,6 +4291,80 @@ class ApiRouteSmokeTests(APITestCase):
         response = self.client.get('/api/realtime/whale-feed/aggregate/?cursor=@@not_base64@@')
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_refactored_whale_feed_aggregate_rejects_invalid_window(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=2h')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_refactored_whale_feed_aggregate_rejects_cursor_window_mismatch(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        self.authenticate()
+
+        cursor_payload = {
+            'sort': 'ts',
+            'trade_date': date.today().isoformat(),
+            'trade_time': '09:30:00',
+            'id': 10,
+            'window': 'session',
+        }
+        cursor = base64.urlsafe_b64encode(json.dumps(cursor_payload).encode('utf-8')).decode('ascii').rstrip('=')
+
+        response = self.client.get(f'/api/realtime/whale-feed/aggregate/?window=5d&cursor={cursor}')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_refactored_whale_feed_aggregate_applies_window_filter(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('10:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='fpt-window-session',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today() - timedelta(days=2),
+            trade_time=datetime.strptime('10:15:00', '%H:%M:%S').time(),
+            price=Decimal('101000'),
+            volume=7000,
+            side='BUY',
+            stream_id='fpt-window-5d',
+        )
+        self.authenticate()
+
+        session_response = self.client.get('/api/realtime/whale-feed/aggregate/?window=session')
+        five_day_response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
+
+        self.assertEqual(session_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(session_response.data['filters']['window'], 'session')
+        self.assertEqual(len(session_response.data['results']), 1)
+
+        self.assertEqual(five_day_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(five_day_response.data['filters']['window'], '5d')
+        self.assertGreaterEqual(len(five_day_response.data['results']), 2)
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_depth_chart')
@@ -4387,8 +4598,44 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         result_symbols = [row['symbol'] for row in response.data['results']]
+        by_symbol = {row['symbol']: row for row in response.data['results']}
         self.assertIn('HPG', result_symbols)
         self.assertNotIn('FPT', result_symbols)
+        self.assertEqual(by_symbol['HPG'].get('threshold_source'), 'user_default')
+
+    def test_whale_feed_aggregate_sets_threshold_source_per_symbol(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT', whale_alert_threshold_million=900)
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=10000,
+            side='BUY',
+            stream_id='fpt-threshold-source-1',
+        )
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:16:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='hpg-threshold-source-1',
+        )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?scope=tracked&sort=matched_value&limit=20')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        by_symbol = {row['symbol']: row for row in response.data['results']}
+        self.assertEqual(by_symbol['FPT'].get('threshold_source'), 'symbol_override')
+        self.assertEqual(by_symbol['HPG'].get('threshold_source'), 'user_default')
 
     def test_tracked_symbol_bulk_threshold_endpoint_updates_multiple_rows(self):
         self.authenticate()

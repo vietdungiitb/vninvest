@@ -1,0 +1,12 @@
+id,story,task,owner,estimate_days,status,dependency,dod
+P1D1-01,Phase1 kickoff lock,Lock owners lanes and acceptance gates for D1,D1 PM,0.5,Done,None,D1 board acknowledged by BE FE QA DevOps
+P1D1-02,Debt hardening wave 1,Fix DEBT-001 threshold_source visibility in refactored response,BE-A,0.5,Done,GateE3 GO decision,Target test passes and payload contract includes threshold_source
+P1D1-03,Debt hardening wave 1,Fix DEBT-002 redis stream preference in refactored aggregate path,BE-A,0.5,Done,P1D1-02,Source preference test passes and source_layer shows redis_stream when available
+P1D1-04,Campaign engine core,Build campaign grouping service symbol+side+time window,BE-B,1.0,Done,B13-5,Service groups deterministic campaign ids and stable strength score
+P1D1-05,Campaign API contract,Expose whale campaigns list endpoint schema v1,BE-B,0.5,Done,P1D1-04,Endpoint /api/realtime/whale-campaigns returns campaigns with events refs and deterministic sorting
+P1D1-06,Whale hub UI shell,Create Live Tape/Campaigns tab scaffold with isolated states,FE-A,0.75,Done,P1D1-05,Tab switch keeps state no runtime error
+P1D1-07,Campaign list v1,Render campaigns cards with basic fields and loading states,FE-A,0.75,Done,P1D1-06,Campaign tab fetches with cursor pagination and renders incremental load without duplicates
+P1D1-08,Abnormality baseline prep,Create baseline cache service skeleton and config hooks,BE-C,0.75,Todo,B13-5,Cache service compiles and exposes baseline fetch interface
+P1D1-09,Regression guardrail,Run targeted debt tests + whale smoke report,QA,0.5,Done,P1D1-03,Whale smoke regression 53/53 pass in SQLite mode with new campaign tests
+P1D1-10,Release governance,Publish D1 close note and D2 handoff priorities,PM,0.25,Done,P1D1-09,D1 close note posted with blockers and next actions
+P1D1-11,Frontend regression guardrail,Add automated tests for Campaigns tab filter modal and cursor load-more,FE-A,0.5,Done,P1D1-07,WhaleAlertsHub campaign test suite passes 3/3 including cursor append and modal lifecycle

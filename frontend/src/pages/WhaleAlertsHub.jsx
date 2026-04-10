@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories } from '../api/client';
+import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories, getWhaleCampaigns } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 
@@ -52,6 +52,29 @@ function getSizeClassLabel(sizeClass, t) {
   return t('whaleHub.sizeClassLarge');
 }
 
+function getCampaignTypeLabel(campaignType, t) {
+  const normalized = String(campaignType || '').toLowerCase();
+  if (normalized === 'accumulation') return t('whaleHub.campaignTypeAccumulation');
+  if (normalized === 'distribution') return t('whaleHub.campaignTypeDistribution');
+  return t('whaleHub.campaignTypeMixed');
+}
+
+function formatDuration(seconds, t) {
+  const raw = Number(seconds || 0);
+  if (!Number.isFinite(raw) || raw <= 0) return t('whaleHub.durationInstant');
+  const minutes = Math.floor(raw / 60);
+  if (minutes < 60) return t('whaleHub.durationMinutes', { value: minutes });
+  const hours = Math.floor(minutes / 60);
+  return t('whaleHub.durationHours', { value: hours });
+}
+
+function getCampaignSideLabel(side, t) {
+  const normalized = String(side || '').toLowerCase();
+  if (normalized === 'buy') return t('whaleHub.bigBuy');
+  if (normalized === 'sell') return t('whaleHub.bigSell');
+  return t('whaleHub.neutral');
+}
+
 function getSeverityTone(severity) {
   const normalizedSeverity = String(severity || '').toLowerCase();
   if (normalizedSeverity === 'extreme') {
@@ -64,6 +87,14 @@ function getSeverityTone(severity) {
     return 'bg-cyan-400 text-slate-950';
   }
   return 'bg-slate-800 text-slate-200';
+}
+
+function getThresholdSourceLabel(value, t) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'symbol_override') {
+    return t('whaleHub.thresholdSourceOverride');
+  }
+  return t('whaleHub.thresholdSourceDefault');
 }
 
 function getAggregateSourceMeta(source, t) {
@@ -291,10 +322,152 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
         <div className="text-right text-xs text-slate-400">
           <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
           <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
+          <p>{t('whaleHub.thresholdSource')}: {getThresholdSourceLabel(item.threshold_source, t)}</p>
           <p className="mt-1">{t('whaleHub.source')}: {item.source || t('whaleHub.sourceRealtime')}</p>
         </div>
       </div>
     </Link>
+  );
+}
+
+function CampaignCard({ item, t, localeTag, formatDateTimeFn, onOpenDetail }) {
+  const sideTone = getSideTone(item.side_bias, t);
+  const sourceKeys = Object.keys(item.source_mix || {});
+  const sourceMixLabel = sourceKeys.length === 0
+    ? t('whaleHub.sourceUnknown')
+    : sourceKeys.join(' + ');
+
+  return (
+    <div className={`rounded-2xl border p-4 ${sideTone.container}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Link to={`/whale-alerts/${item.symbol}`} className="text-lg font-semibold text-slate-100 hover:text-cyan-300">
+              {item.symbol}
+            </Link>
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${sideTone.badge}`}>
+              {getCampaignTypeLabel(item.campaign_type, t)}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">{formatTime(item.last_event_at, formatDateTimeFn)}</p>
+        </div>
+        <div className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-xs font-semibold text-cyan-300">
+          {t('whaleHub.campaignStrength')}: {item.campaign_strength ?? '—'}
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+        <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+          <p className="text-slate-500">{t('whaleHub.eventCount')}</p>
+          <p className="mt-1 font-semibold text-slate-100">{item.event_count ?? 0}</p>
+        </div>
+        <div className="rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2">
+          <p className="text-slate-500">{t('whaleHub.duration')}</p>
+          <p className="mt-1 font-semibold text-slate-100">{formatDuration(item.duration_seconds, t)}</p>
+        </div>
+      </div>
+
+      <div className="mt-3 text-xs text-slate-400">
+        <p>{t('whaleHub.matchedValue')}: <span className="font-semibold text-slate-100">{formatCompactMoney(item.total_matched_value, localeTag)} VND</span></p>
+        <p className="mt-1">{t('whaleHub.feedSource')}: {sourceMixLabel}</p>
+      </div>
+
+      <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">
+        {t('whaleHub.campaignContains', { count: (item.events || []).length || 0 })}
+      </div>
+
+      <div className="mt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => onOpenDetail?.(item)}
+          className="rounded-lg border border-cyan-700/50 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition-colors hover:border-cyan-500 hover:text-cyan-100"
+        >
+          {t('whaleHub.viewCampaignDetail')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CampaignDetailModal({ campaign, onClose, t, localeTag, formatDateTimeFn }) {
+  if (!campaign) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
+        <div className="flex items-start justify-between border-b border-slate-800 px-5 py-4">
+          <div>
+            <p className="text-label">{t('whaleHub.campaignDetailTitle')}</p>
+            <h3 className="mt-2 text-xl font-semibold text-slate-100">
+              {campaign.symbol} · {getCampaignTypeLabel(campaign.campaign_type, t)}
+            </h3>
+            <p className="mt-1 text-xs text-slate-400">
+              {t('whaleHub.campaignStrength')}: {campaign.campaign_strength ?? '—'} · {t('whaleHub.eventCount')}: {campaign.event_count ?? 0}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500"
+          >
+            {t('whaleHub.closeDetail')}
+          </button>
+        </div>
+
+        <div className="grid gap-4 p-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-xs text-slate-300">
+              <p>{t('whaleHub.duration')}: <span className="font-semibold text-slate-100">{formatDuration(campaign.duration_seconds, t)}</span></p>
+              <p className="mt-1">{t('whaleHub.matchedValue')}: <span className="font-semibold text-slate-100">{formatCompactMoney(campaign.total_matched_value, localeTag)} VND</span></p>
+              <p className="mt-1">{t('whaleHub.serverTime')}: <span className="font-semibold text-slate-100">{formatTime(campaign.last_event_at, formatDateTimeFn)}</span></p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t('whaleHub.eventTimeline')}</p>
+              <div className="mt-3 max-h-[44vh] space-y-2 overflow-auto pr-1">
+                {(campaign.events || []).map((event) => (
+                  <div key={event.event_id || `${event.symbol}-${event.ts}`} className="rounded-lg border border-slate-800 bg-slate-950/80 p-2.5 text-xs text-slate-300">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-slate-100">{event.symbol} · {getCampaignSideLabel(event.side, t)}</span>
+                      <span className="text-slate-500">{formatTime(event.ts, formatDateTimeFn)}</span>
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                      <span>{t('whaleHub.matchedValue')}: {formatCompactMoney(event.matched_value, localeTag)} VND</span>
+                      <span>{t('whaleHub.displayScore')}: {event.display_score ?? '—'}</span>
+                      <span>{t('whaleHub.source')}: {event.source || t('whaleHub.sourceUnknown')}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-xs text-slate-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t('whaleHub.confidenceBreakdown')}</p>
+              <p className="mt-2">{t('whaleHub.campaignStrength')}: <span className="font-semibold text-cyan-300">{campaign.campaign_strength ?? '—'}</span></p>
+              <p className="mt-1">{t('whaleHub.avgEventScore')}: <span className="font-semibold text-slate-100">{campaign.avg_event_score ?? '—'}</span></p>
+              <p className="mt-1">{t('whaleHub.eventCount')}: <span className="font-semibold text-slate-100">{campaign.event_count ?? 0}</span></p>
+            </div>
+
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-xs text-slate-300">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">{t('whaleHub.sourceMix')}</p>
+              <div className="mt-2 space-y-1.5">
+                {Object.entries(campaign.source_mix || {}).length === 0 ? (
+                  <p className="text-slate-500">{t('whaleHub.sourceUnknown')}</p>
+                ) : (
+                  Object.entries(campaign.source_mix || {}).map(([sourceKey, count]) => (
+                    <div key={sourceKey} className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 px-2 py-1.5">
+                      <span>{sourceKey}</span>
+                      <span className="font-semibold text-slate-100">{count}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -312,8 +485,19 @@ export default function WhaleAlertsHub() {
   const [aggregateFilters, setAggregateFilters] = useState(null);
   const [aggregateSource, setAggregateSource] = useState('');
   const [aggregateServerTime, setAggregateServerTime] = useState('');
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignHasMore, setCampaignHasMore] = useState(false);
+  const [campaignCursor, setCampaignCursor] = useState(null);
+  const [campaignLoadingMore, setCampaignLoadingMore] = useState(false);
+  const [campaignSort, setCampaignSort] = useState('strength');
+  const [campaignSideFilter, setCampaignSideFilter] = useState('all');
+  const [campaignTypeFilter, setCampaignTypeFilter] = useState('all');
+  const [campaignMinStrength, setCampaignMinStrength] = useState(0);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
   const [feedSort, setFeedSort] = useState('ts');
+  const [feedWindow, setFeedWindow] = useState('session');
   const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
+  const [activeBoardTab, setActiveBoardTab] = useState('tape');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -330,11 +514,18 @@ export default function WhaleAlertsHub() {
     [activeWatchlistGroupId, watchlistGroups]
   );
 
-  const loadAggregateFeed = useCallback(async ({ cursor = null, append = false, sort = feedSort, scope = selectedFeedScope } = {}) => {
+  const loadAggregateFeed = useCallback(async ({
+    cursor = null,
+    append = false,
+    sort = feedSort,
+    window = feedWindow,
+    scope = selectedFeedScope,
+  } = {}) => {
     const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
     const response = await getAggregateWhaleFeed({
       cursor,
       sort,
+      window,
       limit: 12,
       watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
     });
@@ -348,7 +539,29 @@ export default function WhaleAlertsHub() {
     setAggregateFilters(payload.filters || null);
     setAggregateSource(payload.source || '');
     setAggregateServerTime(payload.server_time || '');
-  }, [feedSort, selectedFeedScope]);
+  }, [feedSort, feedWindow, selectedFeedScope]);
+
+  const loadCampaigns = useCallback(async ({
+    cursor = null,
+    append = false,
+    window = feedWindow,
+    scope = selectedFeedScope,
+    sort = campaignSort,
+  } = {}) => {
+    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
+    const response = await getWhaleCampaigns({
+      window,
+      cursor,
+      campaignLimit: 18,
+      campaignSort: sort,
+      watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
+    });
+    const payload = response.data || {};
+    const nextItems = payload.results || [];
+    setCampaigns((prev) => (append ? [...prev, ...nextItems] : nextItems));
+    setCampaignHasMore(Boolean(payload.has_more));
+    setCampaignCursor(payload.next_cursor || null);
+  }, [campaignSort, feedWindow, selectedFeedScope]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -358,14 +571,15 @@ export default function WhaleAlertsHub() {
       const requests = [
         getTrackedSymbols(),
         getWatchlistGroups(),
-        loadAggregateFeed({ cursor: null, append: false, sort: feedSort, scope: selectedFeedScope }),
+        loadAggregateFeed({ cursor: null, append: false, sort: feedSort, window: feedWindow, scope: selectedFeedScope }),
+        loadCampaigns({ cursor: null, append: false, window: feedWindow, scope: selectedFeedScope, sort: campaignSort }),
       ];
 
       if (canReadAdvisory) {
         requests.push(getWhaleAdvisories());
       }
 
-      const [trackedResult, watchlistGroupsResult, _aggregateResult, advisoryResult] = await Promise.all(requests);
+      const [trackedResult, watchlistGroupsResult, _aggregateResult, _campaignResult, advisoryResult] = await Promise.all(requests);
       setTrackedSymbols(trackedResult.data || []);
       setWatchlistGroups(watchlistGroupsResult.data || []);
       setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
@@ -374,11 +588,16 @@ export default function WhaleAlertsHub() {
     } finally {
       setLoading(false);
     }
-  }, [canReadAdvisory, feedSort, loadAggregateFeed, selectedFeedScope, t]);
+  }, [canReadAdvisory, campaignSort, feedSort, feedWindow, loadAggregateFeed, loadCampaigns, selectedFeedScope, t]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    setSelectedCampaign(null);
+    setCampaignCursor(null);
+  }, [campaignSort, feedWindow, selectedFeedScope]);
 
   const symbolShortcuts = useMemo(() => buildTrackedSymbolBuckets(trackedSymbols), [trackedSymbols]);
 
@@ -389,18 +608,37 @@ export default function WhaleAlertsHub() {
 
     setAggregateLoadingMore(true);
     try {
-      await loadAggregateFeed({ cursor: aggregateCursor, append: true, sort: feedSort, scope: selectedFeedScope });
+      await loadAggregateFeed({ cursor: aggregateCursor, append: true, sort: feedSort, window: feedWindow, scope: selectedFeedScope });
     } catch (err) {
       setError(err.response?.data?.detail || t('whaleHub.loadMoreFailed'));
     } finally {
       setAggregateLoadingMore(false);
     }
-  }, [aggregateCursor, aggregateHasMore, feedSort, loadAggregateFeed, selectedFeedScope, t]);
+  }, [aggregateCursor, aggregateHasMore, feedSort, feedWindow, loadAggregateFeed, selectedFeedScope, t]);
 
   const handleSortChange = useCallback((nextSort) => {
     if (nextSort === feedSort) return;
     setFeedSort(nextSort);
   }, [feedSort]);
+
+  const handleLoadMoreCampaigns = useCallback(async () => {
+    if (!campaignHasMore || !campaignCursor) return;
+
+    setCampaignLoadingMore(true);
+    try {
+      await loadCampaigns({
+        cursor: campaignCursor,
+        append: true,
+        window: feedWindow,
+        scope: selectedFeedScope,
+        sort: campaignSort,
+      });
+    } catch (err) {
+      setError(err.response?.data?.detail || t('whaleHub.loadMoreFailed'));
+    } finally {
+      setCampaignLoadingMore(false);
+    }
+  }, [campaignCursor, campaignHasMore, campaignSort, feedWindow, loadCampaigns, selectedFeedScope, t]);
 
   const scopeLabel = useMemo(() => {
     if (aggregateFilters?.scope === 'watchlist' && activeWatchlistGroup) {
@@ -410,6 +648,18 @@ export default function WhaleAlertsHub() {
   }, [activeWatchlistGroup, aggregateFilters?.scope, t]);
 
   const aggregateSourceMeta = useMemo(() => getAggregateSourceMeta(aggregateSource, t), [aggregateSource, t]);
+
+  const filteredCampaigns = useMemo(() => {
+    return (campaigns || []).filter((item) => {
+      const side = String(item.side_bias || '').toLowerCase();
+      const type = String(item.campaign_type || '').toLowerCase();
+      const strength = Number(item.campaign_strength || 0);
+      if (campaignSideFilter !== 'all' && side !== campaignSideFilter) return false;
+      if (campaignTypeFilter !== 'all' && type !== campaignTypeFilter) return false;
+      if (strength < Number(campaignMinStrength || 0)) return false;
+      return true;
+    });
+  }, [campaignMinStrength, campaignSideFilter, campaignTypeFilter, campaigns]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
@@ -443,6 +693,26 @@ export default function WhaleAlertsHub() {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+              <button
+                type="button"
+                onClick={() => setActiveBoardTab('tape')}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeBoardTab === 'tape' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                }`}
+              >
+                {t('whaleHub.tabLiveTape')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveBoardTab('campaigns')}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeBoardTab === 'campaigns' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                }`}
+              >
+                {t('whaleHub.tabCampaigns')}
+              </button>
+            </div>
             <div className="flex items-center gap-2 rounded-2xl border border-cyan-700/60 bg-slate-900 px-3 py-2 shadow-[0_0_0_1px_rgba(8,145,178,0.15)]">
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{t('whaleHub.scope')}</span>
               <select
@@ -460,31 +730,75 @@ export default function WhaleAlertsHub() {
               </select>
             </div>
             <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
-              <button
-                type="button"
-                onClick={() => handleSortChange('ts')}
-                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                  feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
-                }`}
-              >
-                {t('whaleHub.latest')}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSortChange('matched_value')}
-                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                  feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
-                }`}
-              >
-                {t('whaleHub.largestValue')}
-              </button>
+              {[
+                ['5m', t('whaleHub.window5m')],
+                ['15m', t('whaleHub.window15m')],
+                ['1h', t('whaleHub.window1h')],
+                ['session', t('whaleHub.windowSession')],
+                ['5d', t('whaleHub.window5d')],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setFeedWindow(value)}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                    feedWindow === value ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
+            {activeBoardTab === 'tape' ? (
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+                <button
+                  type="button"
+                  onClick={() => handleSortChange('ts')}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                    feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                  }`}
+                >
+                  {t('whaleHub.latest')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSortChange('matched_value')}
+                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                    feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                  }`}
+                >
+                  {t('whaleHub.largestValue')}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+                {[
+                  ['strength', t('whaleHub.campaignSortStrength')],
+                  ['latest', t('whaleHub.campaignSortLatest')],
+                  ['value', t('whaleHub.campaignSortValue')],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setCampaignSort(value)}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                      campaignSort === value ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3 text-xs text-slate-400">
           <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
             {t('whaleHub.scope')}: {loading ? t('common.loading') : scopeLabel}
+          </div>
+          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-3 py-1.5">
+            {t('whaleHub.window')}: {t(`whaleHub.windowLabel.${feedWindow}`)}
           </div>
           <div className={`rounded-full border px-3 py-1.5 ${aggregateSourceMeta.tone}`}>
             {t('whaleHub.feedSource')}: {loading ? t('common.loading') : aggregateSourceMeta.label}
@@ -515,6 +829,84 @@ export default function WhaleAlertsHub() {
               <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-900" />
             ))}
           </div>
+        ) : activeBoardTab === 'campaigns' ? (
+          <>
+            <div className="mt-4 grid gap-3 rounded-2xl border border-slate-800 bg-slate-950/70 p-3 lg:grid-cols-4">
+              <label className="text-xs text-slate-400">
+                {t('whaleHub.filterSide')}
+                <select
+                  value={campaignSideFilter}
+                  onChange={(event) => setCampaignSideFilter(event.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+                >
+                  <option value="all">{t('whaleHub.filterAll')}</option>
+                  <option value="buy">{t('whaleHub.bigBuy')}</option>
+                  <option value="sell">{t('whaleHub.bigSell')}</option>
+                </select>
+              </label>
+              <label className="text-xs text-slate-400">
+                {t('whaleHub.filterType')}
+                <select
+                  value={campaignTypeFilter}
+                  onChange={(event) => setCampaignTypeFilter(event.target.value)}
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+                >
+                  <option value="all">{t('whaleHub.filterAll')}</option>
+                  <option value="accumulation">{t('whaleHub.campaignTypeAccumulation')}</option>
+                  <option value="distribution">{t('whaleHub.campaignTypeDistribution')}</option>
+                  <option value="mixed">{t('whaleHub.campaignTypeMixed')}</option>
+                </select>
+              </label>
+              <label className="text-xs text-slate-400 lg:col-span-2">
+                {t('whaleHub.filterMinStrength')}: {campaignMinStrength}
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={campaignMinStrength}
+                  onChange={(event) => setCampaignMinStrength(Number(event.target.value || 0))}
+                  className="mt-2 w-full"
+                />
+              </label>
+            </div>
+
+            {filteredCampaigns.length === 0 ? (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
+                {t('whaleHub.noCampaigns')}
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                  {filteredCampaigns.map((item) => (
+                    <CampaignCard
+                      key={item.campaign_id}
+                      item={item}
+                      t={t}
+                      localeTag={localeTag}
+                      formatDateTimeFn={formatDateTime}
+                      onOpenDetail={setSelectedCampaign}
+                    />
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center justify-between gap-3 text-xs text-slate-500">
+                  <span>{t('whaleHub.showingCampaigns', { count: filteredCampaigns.length })}</span>
+                  {campaignHasMore ? (
+                    <button
+                      type="button"
+                      onClick={handleLoadMoreCampaigns}
+                      disabled={campaignLoadingMore}
+                      className="btn-secondary"
+                    >
+                      {campaignLoadingMore ? t('whaleHub.loadingMore') : t('whaleHub.loadMoreCampaigns')}
+                    </button>
+                  ) : (
+                    <span>{t('whaleHub.campaignAllLoaded')}</span>
+                  )}
+                </div>
+              </>
+            )}
+          </>
         ) : aggregateFeed.length === 0 ? (
           <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
             {t('whaleHub.noEvents')}
@@ -598,6 +990,14 @@ export default function WhaleAlertsHub() {
           </div>
         </article>
       </section>
+
+      <CampaignDetailModal
+        campaign={selectedCampaign}
+        onClose={() => setSelectedCampaign(null)}
+        t={t}
+        localeTag={localeTag}
+        formatDateTimeFn={formatDateTime}
+      />
 
     </div>
   );

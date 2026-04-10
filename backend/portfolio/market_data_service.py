@@ -1,4 +1,5 @@
 import base64
+import hashlib
 import json
 import logging
 import os
@@ -41,7 +42,11 @@ from .models import (
     WatchlistGroup,
     WatchlistItem,
 )
-from .observability import record_market_external_timeout, record_market_fallback
+from .observability import (
+    record_market_external_timeout,
+    record_market_fallback,
+    record_whale_event_observation,
+)
 from .permissions import resolve_user_entitlements
 from .services import get_price_changes
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
@@ -513,7 +518,7 @@ class MarketDataService:
         import pandas as pd
 
         normalized_symbol = self.normalize_symbol(symbol)
-        threshold_vnd = self._get_user_whale_threshold_vnd(user, symbol=normalized_symbol)
+        threshold_vnd, threshold_source = self._get_user_whale_threshold_with_source_vnd(user, symbol=normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
@@ -604,6 +609,7 @@ class MarketDataService:
                 normalized_symbol,
                 threshold_vnd,
                 data_source,
+                threshold_source=threshold_source,
             )
 
         orders = []
@@ -646,6 +652,7 @@ class MarketDataService:
                         side=side,
                         size_class=size_class,
                         threshold_vnd=threshold_vnd,
+                        threshold_source=threshold_source,
                         score_config=score_config,
                         now=request_now,
                     )
@@ -656,6 +663,7 @@ class MarketDataService:
         result = {
             'symbol': normalized_symbol,
             'threshold': threshold_vnd,
+            'threshold_source': threshold_source,
             'source': data_source,
             'weights_version': score_config['version'],
             'whale_orders': orders[:50],
@@ -672,6 +680,12 @@ class MarketDataService:
             },
             'fetched_at': timezone.now().isoformat(),
         }
+        for order in result.get('whale_orders', []):
+            record_whale_event_observation(
+                source=data_source,
+                ts=order.get('ts'),
+                recovered=bool(order.get('recovered')),
+            )
         self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
         set_cache(cache_key, result, timeout=20)
         return result
@@ -691,6 +705,7 @@ class MarketDataService:
         min_threshold_vnd = min([_resolve_threshold_for_symbol(symbol) for symbol in symbols], default=threshold_vnd)
         limit = self._parse_limit(query_params.get('limit', 20))
         sort = self._parse_sort(query_params.get('sort', 'ts'))
+        window = self._parse_aggregate_window(query_params.get('window', 'session'))
         cursor_payload = self._decode_whale_feed_cursor(query_params.get('cursor'))
 
         if query_params.get('cursor') and cursor_payload is None:
@@ -699,6 +714,9 @@ class MarketDataService:
             cursor_sort = str(cursor_payload.get('sort', '')).strip().lower()
             if cursor_sort and cursor_sort != sort:
                 raise MarketDataValidationException('cursor không hợp lệ cho sort hiện tại.')
+            cursor_window = str(cursor_payload.get('window', 'session')).strip().lower() or 'session'
+            if cursor_window != window:
+                raise MarketDataValidationException('cursor không hợp lệ cho window hiện tại.')
 
         if not symbols:
             if cursor_payload is not None:
@@ -712,6 +730,7 @@ class MarketDataService:
                 symbols=[],
                 watchlist_group_ids=watchlist_group_ids,
                 sort=sort,
+                window=window,
                 limit=limit,
                 source='intraday_tick_db',
             )
@@ -720,7 +739,10 @@ class MarketDataService:
         if stream_records:
             stream_records = [
                 record for record in stream_records
-                if float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+                if (
+                    float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+                    and self._is_event_timestamp_in_window(record.get('ts'), window, now=request_now)
+                )
             ]
         if stream_records:
             normalized_records, ok = self._normalize_aggregate_event_records(
@@ -743,6 +765,7 @@ class MarketDataService:
                 symbols=symbols,
                 watchlist_group_ids=watchlist_group_ids,
                 sort=sort,
+                window=window,
                 limit=limit,
                 score_config=score_config,
                 now=request_now,
@@ -750,10 +773,18 @@ class MarketDataService:
 
         queryset = (
             IntradayTick.objects
-            .filter(trade_date=timezone.localdate(), symbol__in=symbols)
+            .filter(symbol__in=symbols)
             .annotate(matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField()))
             .filter(matched_value__gte=min_threshold_vnd)
         )
+
+        today_local = timezone.localdate()
+        if window == 'session':
+            queryset = queryset.filter(trade_date=today_local)
+        elif window == '5d':
+            queryset = queryset.filter(trade_date__gte=today_local - timedelta(days=4))
+        else:
+            queryset = queryset.filter(trade_date=today_local)
 
         if sort == 'matched_value':
             if cursor_payload is not None:
@@ -781,7 +812,10 @@ class MarketDataService:
 
         rows = [
             row for row in queryset
-            if float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+            if (
+                float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+                and self._is_tick_row_in_window(row, window, now=request_now)
+            )
         ]
         has_more = len(rows) > limit
         page_rows = rows[:limit]
@@ -791,7 +825,10 @@ class MarketDataService:
             if vnstock_records:
                 vnstock_records = [
                     record for record in vnstock_records
-                    if float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+                    if (
+                        float(record.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(record.get('symbol'))
+                        and self._is_event_timestamp_in_window(record.get('ts'), window, now=request_now)
+                    )
                 ]
             normalized_records, ok = self._normalize_aggregate_event_records(
                 vnstock_records,
@@ -817,6 +854,7 @@ class MarketDataService:
                 symbols=symbols,
                 watchlist_group_ids=watchlist_group_ids,
                 sort=sort,
+                window=window,
                 limit=limit,
                 score_config=score_config,
                 now=request_now,
@@ -824,7 +862,7 @@ class MarketDataService:
 
         next_cursor = None
         if has_more and page_rows:
-            next_cursor = self._build_next_cursor_from_db_row(page_rows[-1], sort)
+            next_cursor = self._build_next_cursor_from_db_row(page_rows[-1], sort, window=window)
 
         results = [
             self._build_aggregate_event_payload(
@@ -849,8 +887,308 @@ class MarketDataService:
             symbols=symbols,
             watchlist_group_ids=watchlist_group_ids,
             sort=sort,
+            window=window,
             limit=limit,
         )
+
+    def get_whale_campaigns(self, user, query_params) -> dict:
+        aggregate_query = query_params.copy()
+        aggregate_query.pop('cursor', None)
+        aggregate_query.pop('campaign_limit', None)
+        aggregate_query.pop('campaign_sort', None)
+        aggregate_query.pop('campaign_gap_minutes', None)
+        campaign_limit = self._parse_campaign_limit(query_params.get('campaign_limit', 25))
+        campaign_sort = self._parse_campaign_sort(query_params.get('campaign_sort', 'strength'))
+        campaign_cursor = self._decode_campaign_cursor(query_params.get('cursor'))
+        max_gap_minutes = self._resolve_campaign_gap_minutes(
+            window_raw=query_params.get('window', 'session'),
+            gap_raw=query_params.get('campaign_gap_minutes'),
+        )
+
+        if query_params.get('cursor') and campaign_cursor is None:
+            raise MarketDataValidationException('campaign cursor không hợp lệ.')
+        if campaign_cursor is not None:
+            cursor_sort = str(campaign_cursor.get('campaign_sort', '')).strip().lower()
+            if cursor_sort and cursor_sort != campaign_sort:
+                raise MarketDataValidationException('campaign cursor không hợp lệ cho campaign_sort hiện tại.')
+
+        # Campaign grouping needs a wider event tape than default aggregate limit=20.
+        if not aggregate_query.get('limit'):
+            aggregate_query['limit'] = str(min(max(campaign_limit * 2, 30), 50))
+        aggregate_query['sort'] = 'ts'
+
+        aggregate_payload = self.get_whale_feed_aggregate(user, aggregate_query)
+        events = aggregate_payload.get('results') or []
+        campaigns = self._group_events_into_campaigns(events, max_gap_minutes=max_gap_minutes)
+
+        if campaign_sort == 'latest':
+            campaigns.sort(key=lambda item: item.get('last_event_at') or '', reverse=True)
+        elif campaign_sort == 'value':
+            campaigns.sort(key=lambda item: float(item.get('total_matched_value') or 0.0), reverse=True)
+        else:
+            campaigns.sort(key=lambda item: float(item.get('campaign_strength') or 0.0), reverse=True)
+
+        if campaign_cursor is not None:
+            campaigns = self._apply_campaign_cursor(campaigns, campaign_sort=campaign_sort, cursor_payload=campaign_cursor)
+
+        has_more = len(campaigns) > campaign_limit
+        campaign_rows = campaigns[:campaign_limit]
+        next_cursor = None
+        if has_more and campaign_rows:
+            next_cursor = self._build_campaign_next_cursor(campaign_rows[-1], campaign_sort)
+
+        return {
+            'results': campaign_rows,
+            'next_cursor': next_cursor,
+            'has_more': has_more,
+            'server_time': timezone.now().isoformat(),
+            'source': aggregate_payload.get('source', 'intraday_tick_db'),
+            'weights_version': aggregate_payload.get('weights_version'),
+            'filters': {
+                **(aggregate_payload.get('filters') or {}),
+                'campaign_limit': campaign_limit,
+                'campaign_sort': campaign_sort,
+                'campaign_gap_minutes': max_gap_minutes,
+                'cursor': query_params.get('cursor') or None,
+            },
+            'meta': {
+                'contract_version': '1.0',
+                'campaign_count': len(campaign_rows),
+                'has_more': has_more,
+                'next_cursor': next_cursor,
+            },
+            'entitlements': aggregate_payload.get('entitlements', {}),
+        }
+
+    def _build_campaign_next_cursor(self, campaign_item: dict, campaign_sort: str) -> str:
+        payload = {
+            'campaign_sort': campaign_sort,
+            'campaign_id': str(campaign_item.get('campaign_id') or ''),
+        }
+        if campaign_sort == 'latest':
+            payload['last_event_at'] = str(campaign_item.get('last_event_at') or '')
+        elif campaign_sort == 'value':
+            payload['total_matched_value'] = float(campaign_item.get('total_matched_value') or 0.0)
+        else:
+            payload['campaign_strength'] = float(campaign_item.get('campaign_strength') or 0.0)
+
+        raw = json.dumps(payload, separators=(',', ':')).encode('utf-8')
+        return base64.urlsafe_b64encode(raw).decode('ascii')
+
+    def _decode_campaign_cursor(self, raw_cursor: str | None) -> dict | None:
+        if not raw_cursor:
+            return None
+        try:
+            padded = raw_cursor + '=' * (-len(raw_cursor) % 4)
+            decoded = base64.urlsafe_b64decode(padded.encode('ascii')).decode('utf-8')
+            payload = json.loads(decoded)
+            return payload if isinstance(payload, dict) else None
+        except (ValueError, TypeError, json.JSONDecodeError):
+            return None
+
+    def _apply_campaign_cursor(self, campaigns: list[dict], campaign_sort: str, cursor_payload: dict) -> list[dict]:
+        cursor_campaign_id = str(cursor_payload.get('campaign_id') or '')
+        if not cursor_campaign_id:
+            return []
+
+        if campaign_sort == 'latest':
+            cursor_ts = str(cursor_payload.get('last_event_at') or '')
+            if not cursor_ts:
+                return []
+            return [
+                item for item in campaigns
+                if (
+                    (str(item.get('last_event_at') or '') < cursor_ts)
+                    or (
+                        str(item.get('last_event_at') or '') == cursor_ts
+                        and str(item.get('campaign_id') or '') < cursor_campaign_id
+                    )
+                )
+            ]
+
+        if campaign_sort == 'value':
+            try:
+                cursor_value = float(cursor_payload.get('total_matched_value'))
+            except (TypeError, ValueError):
+                return []
+            return [
+                item for item in campaigns
+                if (
+                    float(item.get('total_matched_value') or 0.0) < cursor_value
+                    or (
+                        float(item.get('total_matched_value') or 0.0) == cursor_value
+                        and str(item.get('campaign_id') or '') < cursor_campaign_id
+                    )
+                )
+            ]
+
+        try:
+            cursor_strength = float(cursor_payload.get('campaign_strength'))
+        except (TypeError, ValueError):
+            return []
+        return [
+            item for item in campaigns
+            if (
+                float(item.get('campaign_strength') or 0.0) < cursor_strength
+                or (
+                    float(item.get('campaign_strength') or 0.0) == cursor_strength
+                    and str(item.get('campaign_id') or '') < cursor_campaign_id
+                )
+            )
+        ]
+
+    def _parse_campaign_limit(self, limit_raw) -> int:
+        try:
+            limit = int(limit_raw)
+        except (TypeError, ValueError):
+            raise MarketDataValidationException('campaign_limit phải là số nguyên trong khoảng [1, 100].')
+        if limit < 1 or limit > 100:
+            raise MarketDataValidationException('campaign_limit phải là số nguyên trong khoảng [1, 100].')
+        return limit
+
+    def _parse_campaign_sort(self, sort_raw) -> str:
+        sort = str(sort_raw or 'strength').strip().lower()
+        if sort not in {'strength', 'latest', 'value'}:
+            raise MarketDataValidationException("campaign_sort không hợp lệ. Chỉ hỗ trợ: 'strength', 'latest', 'value'.")
+        return sort
+
+    def _resolve_campaign_gap_minutes(self, window_raw, gap_raw) -> int:
+        window = self._parse_aggregate_window(window_raw)
+        if gap_raw in (None, ''):
+            default_by_window = {
+                '5m': 3,
+                '15m': 8,
+                '1h': 20,
+                'session': 45,
+                '5d': 180,
+            }
+            return default_by_window.get(window, 45)
+        try:
+            gap = int(gap_raw)
+        except (TypeError, ValueError):
+            raise MarketDataValidationException('campaign_gap_minutes phải là số nguyên trong khoảng [1, 240].')
+        if gap < 1 or gap > 240:
+            raise MarketDataValidationException('campaign_gap_minutes phải là số nguyên trong khoảng [1, 240].')
+        return gap
+
+    def _group_events_into_campaigns(self, events: list[dict], max_gap_minutes: int) -> list[dict]:
+        normalized_events = []
+        for event in events:
+            if not isinstance(event, dict):
+                continue
+            symbol = str(event.get('symbol') or '').strip().upper()
+            side = str(event.get('side') or 'neutral').strip().lower() or 'neutral'
+            ts_raw = event.get('ts')
+            if not symbol or not ts_raw:
+                continue
+            try:
+                ts_value = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+            except Exception:
+                continue
+            if timezone.is_naive(ts_value):
+                ts_value = timezone.make_aware(ts_value, timezone.get_current_timezone())
+            normalized_events.append({
+                'event': event,
+                'symbol': symbol,
+                'side': side,
+                'ts': ts_value,
+            })
+
+        normalized_events.sort(key=lambda item: (item['symbol'], item['side'], item['ts']))
+
+        clusters: list[list[dict]] = []
+        for item in normalized_events:
+            if not clusters:
+                clusters.append([item])
+                continue
+            current_cluster = clusters[-1]
+            last_item = current_cluster[-1]
+            if item['symbol'] != last_item['symbol'] or item['side'] != last_item['side']:
+                clusters.append([item])
+                continue
+            gap_seconds = (item['ts'] - last_item['ts']).total_seconds()
+            if gap_seconds > max_gap_minutes * 60:
+                clusters.append([item])
+            else:
+                current_cluster.append(item)
+
+        campaigns = []
+        for cluster in clusters:
+            if not cluster:
+                continue
+            first_item = cluster[0]
+            last_item = cluster[-1]
+            symbol = first_item['symbol']
+            side = first_item['side']
+            cluster_events = [item['event'] for item in cluster]
+
+            total_value = float(sum(float(event.get('matched_value') or 0.0) for event in cluster_events))
+            avg_event_score = (
+                sum(float(event.get('event_score') or 0.0) for event in cluster_events) / len(cluster_events)
+                if cluster_events else 0.0
+            )
+            duration_seconds = max(int((last_item['ts'] - first_item['ts']).total_seconds()), 0)
+            strength = min(
+                100.0,
+                round((len(cluster_events) * 8.0) + min(total_value / 1_000_000_000.0, 20.0) * 2.5 + avg_event_score * 0.45, 2),
+            )
+
+            campaign_seed = '|'.join([
+                symbol,
+                side,
+                first_item['ts'].isoformat(),
+                last_item['ts'].isoformat(),
+                str(len(cluster_events)),
+                str(round(total_value, 2)),
+            ])
+            campaign_id = f"camp:{hashlib.md5(campaign_seed.encode('utf-8')).hexdigest()[:16]}"
+
+            if side == 'buy':
+                campaign_type = 'accumulation'
+            elif side == 'sell':
+                campaign_type = 'distribution'
+            else:
+                campaign_type = 'mixed'
+
+            events_payload = [
+                {
+                    'event_id': event.get('event_id'),
+                    'symbol': event.get('symbol'),
+                    'side': event.get('side'),
+                    'ts': event.get('ts'),
+                    'matched_value': event.get('matched_value'),
+                    'source': event.get('source'),
+                    'event_score': event.get('event_score'),
+                    'display_score': event.get('display_score'),
+                    'threshold_source': event.get('threshold_source'),
+                    'size_class': event.get('size_class'),
+                }
+                for event in cluster_events
+            ]
+
+            source_mix = {}
+            for event in cluster_events:
+                source = str(event.get('source') or 'unknown')
+                source_mix[source] = int(source_mix.get(source, 0)) + 1
+
+            campaigns.append({
+                'campaign_id': campaign_id,
+                'contract_version': '1.0',
+                'symbol': symbol,
+                'side_bias': side,
+                'campaign_type': campaign_type,
+                'campaign_strength': strength,
+                'event_count': len(cluster_events),
+                'total_matched_value': round(total_value, 2),
+                'avg_event_score': round(avg_event_score, 2),
+                'duration_seconds': duration_seconds,
+                'created_at': first_item['ts'].isoformat(),
+                'last_event_at': last_item['ts'].isoformat(),
+                'source_mix': source_mix,
+                'events': events_payload,
+            })
+
+        return campaigns
 
     def get_depth_chart(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
@@ -1321,6 +1659,26 @@ class MarketDataService:
             return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million'))
         return base_threshold_vnd
 
+    def _get_user_whale_threshold_with_source_vnd(self, user, symbol: str | None = None) -> tuple[float, str]:
+        base_config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
+        base_threshold_vnd = resolve_user_whale_threshold_vnd((base_config or {}).get('whale_alert_threshold'))
+        if not symbol:
+            return base_threshold_vnd, 'user_default'
+
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            return base_threshold_vnd, 'user_default'
+
+        override = (
+            TrackedSymbol.objects
+            .filter(user=user, symbol=normalized_symbol)
+            .values('whale_alert_threshold_million')
+            .first()
+        )
+        if override and override.get('whale_alert_threshold_million') is not None:
+            return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million')), 'symbol_override'
+        return base_threshold_vnd, 'user_default'
+
     def _get_user_symbol_threshold_overrides_vnd(self, user, symbols: list[str] | None = None) -> dict[str, float]:
         queryset = TrackedSymbol.objects.filter(user=user, whale_alert_threshold_million__isnull=False)
         if symbols:
@@ -1355,6 +1713,7 @@ class MarketDataService:
         side: str,
         size_class: str,
         threshold_vnd: float,
+        threshold_source: str = 'user_default',
         score_config: dict | None = None,
         now=None,
     ) -> dict:
@@ -1404,6 +1763,7 @@ class MarketDataService:
             'matched_value': matched_value,
             'side': side,
             'size_class': size_class,
+            'threshold_source': str(threshold_source or 'user_default'),
             'event_score': score_result['event_score'],
             'display_score': display_result['display_score'],
             'severity': display_result['severity'],
@@ -1430,10 +1790,17 @@ class MarketDataService:
                 return True
         return False
 
-    def _build_empty_whale_feed_response(self, symbol: str, threshold_vnd: float, data_source: str) -> dict:
+    def _build_empty_whale_feed_response(
+        self,
+        symbol: str,
+        threshold_vnd: float,
+        data_source: str,
+        threshold_source: str = 'user_default',
+    ) -> dict:
         return {
             'symbol': symbol,
             'threshold': threshold_vnd,
+            'threshold_source': str(threshold_source or 'user_default'),
             'source': data_source,
             'rate_limited': data_source in ('unavailable', 'timeout', 'vnstock_backoff'),
             'whale_orders': [],
@@ -1465,6 +1832,57 @@ class MarketDataService:
         if sort not in ('ts', 'matched_value'):
             raise MarketDataValidationException("sort không hợp lệ. Chỉ hỗ trợ: 'ts' hoặc 'matched_value'.")
         return sort
+
+    def _parse_aggregate_window(self, window_raw) -> str:
+        window = str(window_raw or 'session').strip().lower() or 'session'
+        if window not in {'5m', '15m', '1h', 'session', '5d'}:
+            raise MarketDataValidationException("window không hợp lệ. Chỉ hỗ trợ: '5m', '15m', '1h', 'session', '5d'.")
+        return window
+
+    def _window_start_datetime(self, window: str, now=None):
+        resolved_now = now or timezone.now()
+        if window == '5m':
+            return resolved_now - timedelta(minutes=5)
+        if window == '15m':
+            return resolved_now - timedelta(minutes=15)
+        if window == '1h':
+            return resolved_now - timedelta(hours=1)
+        if window == '5d':
+            return resolved_now - timedelta(days=5)
+        return None
+
+    def _is_event_timestamp_in_window(self, ts_value, window: str, now=None) -> bool:
+        resolved_now = now or timezone.now()
+        if window == 'session':
+            # Keep aggregate session behavior aligned with legacy stream/vnstock fallback semantics.
+            return True
+        if not ts_value:
+            return False
+        try:
+            event_dt = datetime.fromisoformat(str(ts_value).replace('Z', '+00:00'))
+        except Exception:
+            return False
+        if timezone.is_naive(event_dt):
+            event_dt = timezone.make_aware(event_dt, timezone.get_current_timezone())
+        start_dt = self._window_start_datetime(window, now=resolved_now)
+        if start_dt is None:
+            return True
+        return event_dt >= start_dt
+
+    def _is_tick_row_in_window(self, row, window: str, now=None) -> bool:
+        if window == 'session':
+            return bool(getattr(row, 'trade_date', None) == timezone.localdate())
+        try:
+            row_dt = timezone.make_aware(
+                datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
+                timezone.get_current_timezone(),
+            )
+        except Exception:
+            return False
+        start_dt = self._window_start_datetime(window, now=now)
+        if start_dt is None:
+            return True
+        return row_dt >= start_dt
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
         max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
@@ -1788,7 +2206,8 @@ class MarketDataService:
         if not isinstance(cursor_payload, dict):
             return None
         expected_keys = {'sort', 'trade_date', 'trade_time', 'id'}
-        if set(cursor_payload.keys()) != expected_keys:
+        extra_keys = set(cursor_payload.keys()) - expected_keys
+        if extra_keys and extra_keys != {'window'}:
             return None
         try:
             trade_date = date.fromisoformat(str(cursor_payload['trade_date']))
@@ -1802,7 +2221,8 @@ class MarketDataService:
         if not isinstance(cursor_payload, dict):
             return None
         expected_keys = {'sort', 'matched_value', 'id'}
-        if set(cursor_payload.keys()) != expected_keys:
+        extra_keys = set(cursor_payload.keys()) - expected_keys
+        if extra_keys and extra_keys != {'window'}:
             return None
         try:
             matched_value = float(cursor_payload['matched_value'])
@@ -1811,34 +2231,47 @@ class MarketDataService:
             return None
         return matched_value, row_id
 
-    def _build_next_cursor_from_record(self, record: dict, sort: str) -> str:
+    def _build_next_cursor_from_record(self, record: dict, sort: str, window: str | None = None) -> str:
         if sort == 'matched_value':
-            return self._encode_whale_feed_cursor({
+            payload = {
                 'sort': sort,
                 'matched_value': float(record['matched_value']),
                 'id': int(record['id']),
-            })
+            }
+            if window:
+                payload['window'] = str(window)
+            return self._encode_whale_feed_cursor(payload)
+
         last_dt = datetime.fromisoformat(str(record['ts']).replace('Z', '+00:00'))
-        return self._encode_whale_feed_cursor({
+        payload = {
             'sort': sort,
             'trade_date': last_dt.date().isoformat(),
             'trade_time': last_dt.time().isoformat(),
             'id': int(record['id']),
-        })
+        }
+        if window:
+            payload['window'] = str(window)
+        return self._encode_whale_feed_cursor(payload)
 
-    def _build_next_cursor_from_db_row(self, row, sort: str) -> str:
+    def _build_next_cursor_from_db_row(self, row, sort: str, window: str | None = None) -> str:
         if sort == 'matched_value':
-            return self._encode_whale_feed_cursor({
+            payload = {
                 'sort': sort,
                 'matched_value': float(getattr(row, 'matched_value', 0) or 0),
                 'id': row.id,
-            })
-        return self._encode_whale_feed_cursor({
+            }
+            if window:
+                payload['window'] = str(window)
+            return self._encode_whale_feed_cursor(payload)
+        payload = {
             'sort': sort,
             'trade_date': row.trade_date.isoformat(),
             'trade_time': row.trade_time.isoformat(),
             'id': row.id,
-        })
+        }
+        if window:
+            payload['window'] = str(window)
+        return self._encode_whale_feed_cursor(payload)
 
     def _build_aggregate_record_response(
         self,
@@ -1854,13 +2287,14 @@ class MarketDataService:
         symbols: list[str],
         watchlist_group_ids: list[int],
         sort: str,
+        window: str,
         limit: int,
         score_config: dict,
         now,
     ) -> dict:
         has_more = len(normalized_records) > limit
         page_rows = normalized_records[:limit]
-        next_cursor = self._build_next_cursor_from_record(page_rows[-1], sort) if has_more and page_rows else None
+        next_cursor = self._build_next_cursor_from_record(page_rows[-1], sort, window=window) if has_more and page_rows else None
         results = [
             self._build_aggregate_event_payload_from_record(
                 row,
@@ -1883,6 +2317,7 @@ class MarketDataService:
             symbols=symbols,
             watchlist_group_ids=watchlist_group_ids,
             sort=sort,
+            window=window,
             limit=limit,
         )
 
@@ -1897,6 +2332,7 @@ class MarketDataService:
         symbols: list[str],
         watchlist_group_ids: list[int],
         sort: str,
+        window: str,
         limit: int,
         source: str,
     ) -> dict:
@@ -1913,6 +2349,7 @@ class MarketDataService:
             symbols=symbols,
             watchlist_group_ids=watchlist_group_ids,
             sort=sort,
+            window=window,
             limit=limit,
         )
 
@@ -1931,8 +2368,16 @@ class MarketDataService:
         symbols: list[str],
         watchlist_group_ids: list[int],
         sort: str,
+        window: str,
         limit: int,
     ) -> dict:
+        for item in results:
+            if isinstance(item, dict):
+                record_whale_event_observation(
+                    source=item.get('source') or source,
+                    ts=item.get('ts'),
+                    recovered=bool(item.get('recovered')),
+                )
         return {
             'results': results,
             'next_cursor': next_cursor,
@@ -1946,6 +2391,7 @@ class MarketDataService:
                 'symbols': symbols,
                 'watchlist_group_ids': watchlist_group_ids,
                 'sort': sort,
+                'window': window,
                 'limit': limit,
                 'threshold': threshold_vnd,
             },

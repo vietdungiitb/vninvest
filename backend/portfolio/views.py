@@ -146,6 +146,25 @@ def admin_runtime_kpi_advisory_merge_api(request):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_runtime_kpi_whale_pipeline_api(request):
+    """
+    GET /api/admin-ops/runtime-kpi/whale-pipeline/
+    Admin-only: trả về health summary cho whale pipeline observability.
+    """
+    from time import time as _time
+    from portfolio.observability import get_whale_pipeline_health_summary
+
+    return Response(
+        {
+            'sampled_at': _time(),
+            'whale_pipeline': get_whale_pipeline_health_summary(),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAdminUser])
 def admin_system_ai_settings_api(request):
@@ -663,7 +682,8 @@ from .adapters.vnstock_adapter import (
     fetch_listing_symbols_dataframe,
     fetch_price_board_dataframe,
 )
-from .exceptions import ExternalSystemException
+from .exceptions import ExternalSystemException, MarketDataValidationException
+from .market_data_service import market_data_service
 from .stock_workspace_helpers import (
     _build_stock_workspace_overview,
     _compute_ema,
@@ -690,14 +710,18 @@ from .whale_feed_helpers import (
     _decode_whale_feed_cursor,
     _encode_whale_feed_cursor,
     _get_user_whale_threshold_vnd,
+    _is_event_timestamp_in_window,
+    _is_tick_row_in_window,
     _get_user_symbol_threshold_overrides_vnd,
     _is_rate_limited_error,
     _is_vnstock_rate_limited,
     _mark_vnstock_rate_limited,
     _normalize_aggregate_event_records,
     _normalize_signal_side,
+    _parse_aggregate_window,
     _parse_cursor_datetime,
     _parse_cursor_matched_value,
+    _resolve_user_whale_threshold_vnd,
     _resolve_whale_feed_symbols,
     _vnstock_rate_limit_cache_key,
 )
@@ -1268,11 +1292,12 @@ class WhaleFeedView(APIView):
 
     def get(self, request, symbol):
         import pandas as pd
+        from portfolio.observability import record_whale_event_observation
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        threshold_vnd = _get_user_whale_threshold_vnd(request.user, normalized_symbol)
+        threshold_vnd, threshold_source = _resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
@@ -1366,6 +1391,7 @@ class WhaleFeedView(APIView):
         if df is None or df.empty:
             return Response({
                 'symbol': normalized_symbol, 'threshold': threshold_vnd,
+                'threshold_source': threshold_source,
                 'source': locals().get('data_source', 'unknown'),
                 'rate_limited': locals().get('data_source') in ('unavailable', 'timeout', 'vnstock_backoff'),
                 'whale_orders': [], 'summary': {
@@ -1426,6 +1452,7 @@ class WhaleFeedView(APIView):
                         side=side,
                         size_class=size_class,
                         threshold_vnd=threshold_vnd,
+                        threshold_source=threshold_source,
                         score_config=score_config,
                         now=request_now,
                     )
@@ -1437,6 +1464,7 @@ class WhaleFeedView(APIView):
         result = {
             'symbol': normalized_symbol,
             'threshold': threshold_vnd,
+            'threshold_source': threshold_source,
             'source': data_source,
             'weights_version': score_config['version'],
             'whale_orders': orders[:50],
@@ -1453,6 +1481,12 @@ class WhaleFeedView(APIView):
             },
             'fetched_at': timezone.now().isoformat(),
         }
+        for order in result.get('whale_orders', []):
+            record_whale_event_observation(
+                source=data_source,
+                ts=order.get('ts'),
+                recovered=bool(order.get('recovered')),
+            )
         _cache_set(cache_key, result, timeout=20)
         return Response(result)
 
@@ -1553,6 +1587,8 @@ class WhaleFeedAggregateView(APIView):
     throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
+        from portfolio.observability import record_whale_event_observation
+
         threshold_vnd = _get_user_whale_threshold_vnd(request.user)
         entitlements = resolve_user_entitlements(request.user)
         api_quota = consume_quota(
@@ -1565,11 +1601,18 @@ class WhaleFeedAggregateView(APIView):
                 build_quota_exceeded_payload(api_quota, 'Ban da dung het quota API trong ngay.'),
                 status=status.HTTP_429_TOO_MANY_REQUESTS,
             )
+
         symbols, scope, watchlist_group_ids, scope_source = _resolve_whale_feed_symbols(request)
         symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
 
         def _resolve_threshold_for_symbol(resolved_symbol: str) -> float:
             return symbol_threshold_overrides.get(str(resolved_symbol or '').strip().upper(), threshold_vnd)
+
+        def _resolve_threshold_source_for_symbol(resolved_symbol: str) -> str:
+            normalized_symbol = str(resolved_symbol or '').strip().upper()
+            if normalized_symbol and normalized_symbol in symbol_threshold_overrides:
+                return 'symbol_override'
+            return 'user_default'
 
         min_threshold_vnd = min([_resolve_threshold_for_symbol(symbol) for symbol in symbols], default=threshold_vnd)
         score_config = resolve_whale_score_config()
@@ -1587,6 +1630,11 @@ class WhaleFeedAggregateView(APIView):
         if sort not in ('ts', 'matched_value'):
             return Response({'detail': "sort không hợp lệ. Chỉ hỗ trợ: 'ts' hoặc 'matched_value'."}, status=status.HTTP_400_BAD_REQUEST)
 
+        try:
+            window = _parse_aggregate_window(request.query_params.get('window', 'session'))
+        except ValueError:
+            return Response({'detail': "window không hợp lệ. Chỉ hỗ trợ: '5m', '15m', '1h', 'session', '5d'."}, status=status.HTTP_400_BAD_REQUEST)
+
         cursor_payload = _decode_whale_feed_cursor(request.query_params.get('cursor'))
         if request.query_params.get('cursor') and cursor_payload is None:
             return Response({'detail': 'cursor không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1594,6 +1642,9 @@ class WhaleFeedAggregateView(APIView):
             cursor_sort = str(cursor_payload.get('sort', '')).strip().lower()
             if cursor_sort and cursor_sort != sort:
                 return Response({'detail': 'cursor không hợp lệ cho sort hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
+            cursor_window = str(cursor_payload.get('window', 'session')).strip().lower() or 'session'
+            if cursor_window != window:
+                return Response({'detail': 'cursor không hợp lệ cho window hiện tại.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if not symbols:
             if cursor_payload is not None:
@@ -1610,6 +1661,7 @@ class WhaleFeedAggregateView(APIView):
                     'symbols': [],
                     'watchlist_group_ids': watchlist_group_ids,
                     'sort': sort,
+                    'window': window,
                     'limit': limit,
                     'threshold': threshold_vnd,
                 },
@@ -1634,7 +1686,10 @@ class WhaleFeedAggregateView(APIView):
         if stream_records:
             stream_records = [
                 row for row in stream_records
-                if float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+                if (
+                    float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+                    and _is_event_timestamp_in_window(row.get('ts'), window, now=request_now)
+                )
             ]
         if stream_records:
             normalized_records, ok = _normalize_aggregate_event_records(stream_records, sort=sort, cursor_payload=cursor_payload)
@@ -1649,6 +1704,7 @@ class WhaleFeedAggregateView(APIView):
                 if sort == 'matched_value':
                     next_cursor = _encode_whale_feed_cursor({
                         'sort': sort,
+                        'window': window,
                         'matched_value': float(last_row['matched_value']),
                         'id': int(last_row['id']),
                     })
@@ -1656,21 +1712,31 @@ class WhaleFeedAggregateView(APIView):
                     last_dt = datetime.fromisoformat(str(last_row['ts']).replace('Z', '+00:00'))
                     next_cursor = _encode_whale_feed_cursor({
                         'sort': sort,
+                        'window': window,
                         'trade_date': last_dt.date().isoformat(),
                         'trade_time': last_dt.time().isoformat(),
                         'id': int(last_row['id']),
                     })
 
+            results = [
+                _build_aggregate_event_payload_from_record(
+                    row,
+                    _resolve_threshold_for_symbol(row.get('symbol')),
+                    threshold_source=_resolve_threshold_source_for_symbol(row.get('symbol')),
+                    score_config=score_config,
+                    now=request_now,
+                )
+                for row in page_rows
+            ]
+            for item in results:
+                record_whale_event_observation(
+                    source=item.get('source') or 'redis_stream',
+                    ts=item.get('ts'),
+                    recovered=bool(item.get('recovered')),
+                )
+
             return Response({
-                'results': [
-                    _build_aggregate_event_payload_from_record(
-                        row,
-                        _resolve_threshold_for_symbol(row.get('symbol')),
-                        score_config=score_config,
-                        now=request_now,
-                    )
-                    for row in page_rows
-                ],
+                'results': results,
                 'next_cursor': next_cursor,
                 'has_more': has_more,
                 'server_time': timezone.now().isoformat(),
@@ -1682,6 +1748,7 @@ class WhaleFeedAggregateView(APIView):
                     'symbols': symbols,
                     'watchlist_group_ids': watchlist_group_ids,
                     'sort': sort,
+                    'window': window,
                     'limit': limit,
                     'threshold': threshold_vnd,
                 },
@@ -1703,12 +1770,18 @@ class WhaleFeedAggregateView(APIView):
 
         queryset = (
             IntradayTick.objects
-            .filter(trade_date=date.today(), symbol__in=symbols)
-            .annotate(
-                matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField())
-            )
+            .filter(symbol__in=symbols)
+            .annotate(matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField()))
             .filter(matched_value__gte=min_threshold_vnd)
         )
+
+        today_local = timezone.localdate()
+        if window == 'session':
+            queryset = queryset.filter(trade_date=today_local)
+        elif window == '5d':
+            queryset = queryset.filter(trade_date__gte=today_local - timedelta(days=4))
+        else:
+            queryset = queryset.filter(trade_date=today_local)
 
         if sort == 'matched_value':
             if cursor_payload is not None:
@@ -1736,7 +1809,10 @@ class WhaleFeedAggregateView(APIView):
 
         rows = [
             row for row in queryset
-            if float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+            if (
+                float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
+                and _is_tick_row_in_window(row, window, now=request_now)
+            )
         ]
         has_more = len(rows) > limit
         page_rows = rows[:limit]
@@ -1746,7 +1822,10 @@ class WhaleFeedAggregateView(APIView):
             if vnstock_records:
                 vnstock_records = [
                     row for row in vnstock_records
-                    if float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+                    if (
+                        float(row.get('matched_value') or 0.0) >= _resolve_threshold_for_symbol(row.get('symbol'))
+                        and _is_event_timestamp_in_window(row.get('ts'), window, now=request_now)
+                    )
                 ]
             normalized_records, ok = _normalize_aggregate_event_records(vnstock_records, sort=sort, cursor_payload=cursor_payload)
             if not ok:
@@ -1760,6 +1839,7 @@ class WhaleFeedAggregateView(APIView):
                 if sort == 'matched_value':
                     next_cursor = _encode_whale_feed_cursor({
                         'sort': sort,
+                        'window': window,
                         'matched_value': float(last_row['matched_value']),
                         'id': int(last_row['id']),
                     })
@@ -1767,21 +1847,31 @@ class WhaleFeedAggregateView(APIView):
                     last_dt = datetime.fromisoformat(str(last_row['ts']).replace('Z', '+00:00'))
                     next_cursor = _encode_whale_feed_cursor({
                         'sort': sort,
+                        'window': window,
                         'trade_date': last_dt.date().isoformat(),
                         'trade_time': last_dt.time().isoformat(),
                         'id': int(last_row['id']),
                     })
 
+            results = [
+                _build_aggregate_event_payload_from_record(
+                    row,
+                    _resolve_threshold_for_symbol(row.get('symbol')),
+                    threshold_source=_resolve_threshold_source_for_symbol(row.get('symbol')),
+                    score_config=score_config,
+                    now=request_now,
+                )
+                for row in page_rows
+            ]
+            for item in results:
+                record_whale_event_observation(
+                    source=item.get('source') or ('vnstock' if page_rows else 'intraday_tick_db'),
+                    ts=item.get('ts'),
+                    recovered=bool(item.get('recovered')),
+                )
+
             return Response({
-                'results': [
-                    _build_aggregate_event_payload_from_record(
-                        row,
-                        _resolve_threshold_for_symbol(row.get('symbol')),
-                        score_config=score_config,
-                        now=request_now,
-                    )
-                    for row in page_rows
-                ],
+                'results': results,
                 'next_cursor': next_cursor,
                 'has_more': has_more,
                 'server_time': timezone.now().isoformat(),
@@ -1793,6 +1883,7 @@ class WhaleFeedAggregateView(APIView):
                     'symbols': symbols,
                     'watchlist_group_ids': watchlist_group_ids,
                     'sort': sort,
+                    'window': window,
                     'limit': limit,
                     'threshold': threshold_vnd,
                 },
@@ -1818,12 +1909,14 @@ class WhaleFeedAggregateView(APIView):
             if sort == 'matched_value':
                 next_cursor = _encode_whale_feed_cursor({
                     'sort': sort,
+                    'window': window,
                     'matched_value': float(getattr(last_row, 'matched_value', 0) or 0),
                     'id': last_row.id,
                 })
             else:
                 next_cursor = _encode_whale_feed_cursor({
                     'sort': sort,
+                    'window': window,
                     'trade_date': last_row.trade_date.isoformat(),
                     'trade_time': last_row.trade_time.isoformat(),
                     'id': last_row.id,
@@ -1833,11 +1926,19 @@ class WhaleFeedAggregateView(APIView):
             _build_aggregate_event_payload(
                 row,
                 _resolve_threshold_for_symbol(getattr(row, 'symbol', '')),
+                threshold_source=_resolve_threshold_source_for_symbol(getattr(row, 'symbol', '')),
                 score_config=score_config,
                 now=request_now,
             )
             for row in page_rows
         ]
+        for item in results:
+            record_whale_event_observation(
+                source=item.get('source') or 'intraday_tick_db',
+                ts=item.get('ts'),
+                recovered=bool(item.get('recovered')),
+            )
+
         return Response({
             'results': results,
             'next_cursor': next_cursor,
@@ -1851,6 +1952,7 @@ class WhaleFeedAggregateView(APIView):
                 'symbols': symbols,
                 'watchlist_group_ids': watchlist_group_ids,
                 'sort': sort,
+                'window': window,
                 'limit': limit,
                 'threshold': threshold_vnd,
             },
@@ -1869,6 +1971,29 @@ class WhaleFeedAggregateView(APIView):
             },
             'entitlements': entitlements,
         })
+
+
+class WhaleCampaignsView(APIView):
+    """
+    GET /api/realtime/whale-campaigns/
+    Group aggregate whale events thanh campaign clusters theo symbol/side/time-gap.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'realtime_whale_aggregate'
+
+    def get(self, request):
+        try:
+            payload = market_data_service.get_whale_campaigns(request.user, request.query_params)
+            return Response(payload)
+        except MarketDataValidationException as exc:
+            return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
+        except ExternalSystemException as exc:
+            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
+            return Response({'detail': exc.message, **exc.payload}, status=http_status)
+        except Exception:
+            logger.exception('WhaleCampaignsView unexpected error')
+            return Response({'detail': 'Lỗi ngoài dự kiến khi tổng hợp whale campaigns.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class DepthChartView(APIView):
