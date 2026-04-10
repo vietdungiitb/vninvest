@@ -5,19 +5,19 @@ Trang thai: GO - All whale regression gates green
 
 ## Gate A - Threshold and time semantics
 
-- [ ] A1 Threshold override consistency pass tren realtime feed.
-- [ ] A2 Threshold override consistency pass tren aggregate feed.
-- [ ] A3 Threshold override consistency pass tren whale advisory generation.
-- [ ] A4 Order-flow windows 5m/15m/30m/1h theo local market time.
+- [x] A1 Threshold override consistency pass tren realtime feed.
+- [x] A2 Threshold override consistency pass tren aggregate feed.
+- [x] A3 Threshold override consistency pass tren whale advisory generation.
+- [x] A4 Order-flow windows 5m/15m/30m/1h theo local market time.
 
 ## Gate B - Event metadata and UX trust
 
-- [ ] B1 Whale event payload co `source_layer`.
-- [ ] B2 Whale event payload co `threshold_source`.
-- [ ] B3 Whale event payload co `freshness_bucket`.
-- [ ] B4 Whale event payload co `recovered` marker.
-- [ ] B5 FE hien chips live/recovered dung semantics.
-- [ ] B6 FE hien chips threshold source dung semantics.
+- [x] B1 Whale event payload co `source_layer`.
+- [x] B2 Whale event payload co `threshold_source`.
+- [x] B3 Whale event payload co `freshness_bucket`.
+- [x] B4 Whale event payload co `recovered` marker.
+- [x] B5 FE hien chips live/recovered dung semantics.
+- [x] B6 FE hien chips threshold source dung semantics.
 
 ## Gate C - Observability
 
@@ -38,6 +38,12 @@ Trang thai: GO - All whale regression gates green
 - [x] E1 Regression suites whale/order-flow pass (51/51 whale feed tests pass sau hotfix debt lane).
 - [x] E2 Co evidence test + metrics luu duoc trong sprint artifacts (SQLite fast-path test evidence collected).
 - [x] E3 Co closure note GO/NO-GO cho sprint. GO: debt lane da duoc xu ly va dong trong ngay.
+
+## Gate F - Phase 1 D1 Campaign Intelligence
+
+- [x] F1 Campaign grouping engine deterministic va API contract V1 da publish.
+- [x] F2 Whale Hub tab Campaigns co modal/filter/cursor load-more + FE tests pass.
+- [x] F3 Abnormality baseline cache service skeleton da co interface fetch/cache/enrich.
 
 ### Closure note (Gate E3)
 

@@ -3577,6 +3577,89 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(len(second_response.data['results']), 1)
         self.assertNotEqual(second_response.data['results'][0]['campaign_id'], first_campaign_id)
 
+    @override_settings(BASELINE_CACHE_ENABLED=True)
+    @patch('portfolio.baseline_cache_service.enrich_campaign_with_baseline')
+    def test_whale_campaigns_applies_baseline_enrichment_hook(self, mock_enrich):
+        def _inject(campaign):
+            item = dict(campaign)
+            item['baseline_context'] = {'adv_relative': 0.12}
+            return item
+
+        mock_enrich.side_effect = _inject
+
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:10:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=7000,
+            side='BUY',
+            stream_id='camp-baseline-1',
+        )
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:12:00', '%H:%M:%S').time(),
+            price=Decimal('101000'),
+            volume=7200,
+            side='BUY',
+            stream_id='camp-baseline-2',
+        )
+
+        self.authenticate()
+        response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=5')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data['results']), 1)
+        self.assertIn('baseline_context', response.data['results'][0])
+        self.assertTrue(mock_enrich.called)
+
+    def test_build_whale_payload_includes_trust_metadata_fields(self):
+        from portfolio.realtime.compute import WhaleSignal, build_whale_payload
+
+        signal = WhaleSignal(
+            symbol='FPT',
+            matched_value=1_250_000_000,
+            side='BUY',
+            threshold=500_000_000,
+            ts=datetime.now().isoformat(),
+        )
+
+        payload = build_whale_payload(
+            signal=signal,
+            seq=1,
+            source='intraday-engine:active',
+            threshold_source='symbol_override',
+            recovered=False,
+        )
+
+        self.assertIn('source_layer', payload)
+        self.assertIn('freshness_bucket', payload)
+        self.assertIn('recovered', payload)
+        self.assertIn('threshold_source', payload)
+        self.assertEqual(payload['source_layer'], 'live')
+        self.assertEqual(payload['threshold_source'], 'symbol_override')
+        self.assertEqual(payload['recovered'], False)
+
+    def test_baseline_cache_service_exposes_phase1_interface(self):
+        from portfolio.baseline_cache_service import BaselineCacheService
+
+        service = BaselineCacheService()
+        baseline = service.fetch_symbol_baseline('FPT', days=20)
+
+        self.assertIsInstance(baseline, dict)
+        self.assertEqual(baseline['symbol'], 'FPT')
+        self.assertEqual(baseline['days'], 20)
+        self.assertIn('adv_vnd', baseline)
+        self.assertIn('p90_session_vnd', baseline)
+        self.assertIn('computed_at', baseline)
+
     @patch.dict('os.environ', {'WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS': '2'}, clear=False)
     @patch('portfolio.realtime.stream_reader.StreamReader')
     @patch('vnstock.Vnstock')

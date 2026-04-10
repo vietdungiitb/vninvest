@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Iterable
 
+import math
+
 import pandas as pd
 
 from portfolio.domain_constants import (
@@ -44,6 +46,33 @@ def _build_whale_event_id(signal: WhaleSignal, normalized_side: str) -> str:
     threshold = int(round(float(signal.threshold or 0.0)))
     return f"whale:{signal.symbol}:{signal.ts}:{normalized_side}:{matched_value}:{threshold}"
 
+
+def _derive_source_layer(source: str) -> str:
+    """Map source string -> semantic source_layer token."""
+    s = str(source or "").lower()
+    if "vnstock" in s or ":api" in s:
+        return "api"
+    if "db" in s or "intraday_tick" in s:
+        return "db"
+    return "live"
+
+
+def _derive_freshness_bucket(ts_iso: str) -> str:
+    """Classify event timestamp into freshness bucket relative to now."""
+    try:
+        ts = datetime.fromisoformat(str(ts_iso).replace("Z", "+00:00"))
+        age_seconds = (datetime.now(timezone.utc) - ts).total_seconds()
+        if not math.isfinite(age_seconds) or age_seconds < 0:
+            return "live"
+        if age_seconds <= 30:
+            return "live"
+        if age_seconds <= 300:
+            return "recent"
+        if age_seconds <= 900:
+            return "stale"
+        return "cold"
+    except Exception:
+        return "unknown"
 
 def compute_vwap(trades_df: pd.DataFrame) -> float:
     if trades_df.empty:
@@ -132,6 +161,8 @@ def build_whale_payload(
     config_version: str = WHALE_CONFIG_VERSION,
     source: str = "intraday-engine",
     score_config: dict | None = None,
+     threshold_source: str = "user_default",
+     recovered: bool = False,
 ) -> dict:
     score_config = score_config or resolve_whale_score_config()
     normalized_side = _normalize_signal_side(signal.side)
@@ -160,15 +191,19 @@ def build_whale_payload(
         "contract_version": contract_version,
         "config_version": config_version,
         "source": source,
+            "source_layer": _derive_source_layer(source),
         "symbol": signal.symbol,
         "matched_value": signal.matched_value,
         "side": normalized_side,
         "threshold": signal.threshold,
+            "threshold_source": str(threshold_source or "user_default"),
         "size_class": _classify_signal_size(signal.matched_value),
         "event_score": score_result["event_score"],
         "display_score": display_result["display_score"],
         "severity": display_result["severity"],
         "weights_version": score_result["weights_version"],
+            "freshness_bucket": _derive_freshness_bucket(signal.ts),
+            "recovered": recovered,
         "ts": signal.ts,
         "seq": seq,
     }

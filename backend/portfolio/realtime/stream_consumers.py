@@ -249,12 +249,17 @@ class AlertEngineConsumer(TickConsumerBase):
 
         for signal in detect_whale_signals(symbol=symbol, trades_df=df, thresholds=thresholds):
             seq = int(time.time() * 1000) % 2**31
+            threshold_source = (
+                'symbol_override' if runtime_config.get('rollout') else 'global_config'
+            )
             payload = build_whale_payload(
                 signal=signal,
                 seq=seq,
                 config_version=runtime_config['version_code'],
                 source=f"intraday-engine:{runtime_config['mode']}",
                 score_config=runtime_config['score_config'],
+                threshold_source=threshold_source,
+                recovered=False,
             )
             # Dedup: skip if this exact event was already sent within the last 5 minutes.
             # Prevents re-alerting the same trade when collect_and_publish pushes the same

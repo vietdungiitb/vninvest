@@ -6,6 +6,7 @@ import os
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
 from django.utils import timezone
 
@@ -936,6 +937,15 @@ class MarketDataService:
         next_cursor = None
         if has_more and campaign_rows:
             next_cursor = self._build_campaign_next_cursor(campaign_rows[-1], campaign_sort)
+
+        if getattr(settings, 'BASELINE_CACHE_ENABLED', False) and campaign_rows:
+            try:
+                from portfolio.baseline_cache_service import enrich_campaign_with_baseline
+
+                campaign_rows = [enrich_campaign_with_baseline(item) for item in campaign_rows]
+            except Exception:
+                # Baseline enrichment is best-effort and must not break campaign API.
+                pass
 
         return {
             'results': campaign_rows,
