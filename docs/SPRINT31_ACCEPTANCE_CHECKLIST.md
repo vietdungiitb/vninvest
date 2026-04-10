@@ -18,6 +18,7 @@ Trang thai: GO - All whale regression gates green
 - [x] B4 Whale event payload co `recovered` marker.
 - [x] B5 FE hien chips live/recovered dung semantics.
 - [x] B6 FE hien chips threshold source dung semantics.
+- [x] B7 FE locale vi khong lo key i18n tren Whale Alerts Hub (threshold source/abnormality/timestamp labels).
 
 ## Gate C - Observability
 

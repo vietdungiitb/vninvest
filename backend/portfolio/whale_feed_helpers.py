@@ -355,6 +355,8 @@ def _build_aggregate_event_payload(
         'threshold_source': str(threshold_source or 'user_default'),
         'size_class': _classify_signal_size(matched_value),
         'ts': occurred_at,
+        'alert_at': occurred_at,
+        'alert_first_seen_at': occurred_at,
         'source': 'intraday_tick_db',
         'event_score': score_result['event_score'],
         'display_score': display_result['display_score'],
@@ -366,6 +368,7 @@ def _build_aggregate_event_payload(
             'age_seconds': display_result['age_seconds'],
             'decay_factor': display_result['decay_factor'],
         },
+        'alert_age_seconds': display_result['age_seconds'],
     }
 
 
@@ -415,6 +418,8 @@ def _build_aggregate_event_payload_from_record(
         'threshold_source': str(threshold_source or 'user_default'),
         'size_class': record.get('size_class') or _classify_signal_size(matched_value),
         'ts': occurred_at,
+        'alert_at': occurred_at,
+        'alert_first_seen_at': occurred_at,
         'source': source,
         'event_score': score_result['event_score'],
         'display_score': display_result['display_score'],
@@ -426,6 +431,7 @@ def _build_aggregate_event_payload_from_record(
             'age_seconds': display_result['age_seconds'],
             'decay_factor': display_result['decay_factor'],
         },
+        'alert_age_seconds': display_result['age_seconds'],
     }
 
 

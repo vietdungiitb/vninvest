@@ -1,9 +1,9 @@
 id,story,task,owner,estimate_days,status,dependency,dod
 S31-01,Sprint planning lock,Lock plan checklist taskboard canonical,PM,0.5,Done,None,Canonical sprint docs approved
-S31-02,Threshold consistency,Refactor threshold resolver across realtime aggregate advisory,BE,2.0,Todo,S31-01,No mismatch threshold semantics
-S31-03,Market-time normalization,Normalize order-flow windows to local market time,BE,1.5,Todo,S31-01,Window semantics validated in tests
-S31-04,Event metadata contract,Add source_layer threshold_source freshness_bucket recovered,BE,1.5,Todo,S31-02;S31-03,Payload contract stable
-S31-05,Trust chips UX,Render live recovered threshold source freshness chips in FE,FE,1.0,Todo,S31-04,Trust markers visible on key whale surfaces
-S31-06,Observability baseline,Expose freshness dedup recovery source-mix metrics and health summary,BE;DevOps,2.0,Todo,S31-02,Metrics baseline recorded
-S31-07,Window filter v2 kickoff,Implement aggregate window filter and FE selector wiring,BE;FE,2.0,Todo,S31-04,Window filter works with deterministic cursor
-S31-08,QA and release gate,Run regression evidence and draft GO NO-GO note,QA;PM,1.0,Todo,S31-05;S31-06;S31-07,All acceptance gates signed off
+S31-02,Threshold consistency,Refactor threshold resolver across realtime aggregate advisory,BE,2.0,Done,S31-01,No mismatch threshold semantics
+S31-03,Market-time normalization,Normalize order-flow windows to local market time,BE,1.5,Done,S31-01,Window semantics validated in tests
+S31-04,Event metadata contract,Add source_layer threshold_source freshness_bucket recovered,BE,1.5,Done,S31-02;S31-03,Payload contract stable
+S31-05,Trust chips UX,Render live recovered threshold source freshness chips in FE,FE,1.0,Done,S31-04,Trust markers visible on key whale surfaces
+S31-06,Observability baseline,Expose freshness dedup recovery source-mix metrics and health summary,BE;DevOps,2.0,Done,S31-02,Metrics baseline recorded
+S31-07,Window filter v2 kickoff,Implement aggregate window filter and FE selector wiring,BE;FE,2.0,Done,S31-04,Window filter works with deterministic cursor
+S31-08,QA and release gate,Run regression evidence and draft GO NO-GO note,QA;PM,1.0,Done,S31-05;S31-06;S31-07,All acceptance gates signed off

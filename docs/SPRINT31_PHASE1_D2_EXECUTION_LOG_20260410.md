@@ -357,3 +357,32 @@ Files changed: 1 file
 **Session Status**: 🎉 **SUCCESSFUL** - Phase 1 Day 2 objectives 100% complete  
 **Date Recorded**: 2026-04-10  
 **Next Session**: Recommend starting with Week 2 objectives (dark money integration)
+
+---
+
+## Addendum - Post-D2 Hardening (2026-04-10, late session)
+
+### Scope executed
+
+1. Whale Alerts Hub timestamp UX hardening
+- Updated timestamp formatter so event cards always show both date and time when possible.
+
+2. Whale Alerts Hub Vietnamese localization hardening
+- Fixed missing i18n keys causing raw key leakage (example: `whaleHub.thresholdSource*`).
+- Replaced hardcoded `Abnormality` label with i18n-driven label.
+- Localized remaining mixed English labels in `whaleHub` vi block for consistent Vietnamese UI.
+
+### Regression evidence refresh
+
+1. Backend whale regression rerun
+- Command: `DB_ENGINE=sqlite python backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests -k whale --verbosity=1`
+- Result: **56/56 PASS**
+
+2. Frontend Whale Hub suite rerun
+- Command: `npm test -- --watchAll=false --runInBand WhaleAlertsHub.test.jsx`
+- Result: **3/3 PASS**
+
+### Local dev verification
+
+1. Rebuilt frontend container and verified backend/frontend healthy in docker dev stack.
+2. Visual retest target: `/whale-alerts` confirms timestamp with time and Vietnamese labels rendered correctly.

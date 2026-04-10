@@ -20,7 +20,18 @@ function formatCompactMoney(value, localeTag) {
 function formatTime(value, formatDateTimeFn) {
   if (!value) return '—';
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : formatDateTimeFn(parsed);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+
+  const formatted = String(formatDateTimeFn(parsed) || '').trim();
+  const hasClock = /\b\d{1,2}:\d{2}\b/.test(formatted);
+  if (hasClock) return formatted;
+
+  const timePart = parsed.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  return `${formatted} ${timePart}`.trim();
 }
 
 function getSideTone(side, t) {
@@ -146,13 +157,31 @@ function buildSymbolStatsFromFeed(feedItems) {
   for (const item of feedItems || []) {
     const sym = String(item.symbol || '').trim().toUpperCase();
     if (!sym) continue;
-    if (!map[sym]) map[sym] = { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
+    if (!map[sym]) {
+      map[sym] = {
+        buyCount: 0,
+        sellCount: 0,
+        totalValue: 0,
+        totalVolume: 0,
+        count: 0,
+        latestAlertAt: null,
+      };
+    }
     const side = String(item.side || '').toUpperCase();
     if (side === 'BUY') map[sym].buyCount += 1;
     else if (side === 'SELL') map[sym].sellCount += 1;
     map[sym].totalValue += Number(item.matched_value || 0);
     map[sym].totalVolume += Number(item.volume || 0);
     map[sym].count += 1;
+
+    const alertTimeRaw = item.alert_first_seen_at || item.alert_at || item.ts || null;
+    if (alertTimeRaw) {
+      const candidateTime = new Date(alertTimeRaw).getTime();
+      const currentTime = map[sym].latestAlertAt ? new Date(map[sym].latestAlertAt).getTime() : NaN;
+      if (!Number.isNaN(candidateTime) && (Number.isNaN(currentTime) || candidateTime > currentTime)) {
+        map[sym].latestAlertAt = alertTimeRaw;
+      }
+    }
   }
   return map;
 }
@@ -165,8 +194,8 @@ function getFrequencyLabel(totalValue, t) {
   return { label: t('whaleHub.freqLow'), color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
 }
 
-function TrackedSymbolCard({ symbol, stats, t, localeTag }) {
-  const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
+function TrackedSymbolCard({ symbol, stats, t, localeTag, formatDateTimeFn }) {
+  const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0, latestAlertAt: null };
   const avgValue = st.count > 0 ? st.totalValue / st.count : 0;
   const whaleAvgPrice = st.totalVolume > 0 ? st.totalValue / st.totalVolume : 0;
   const totalOrders = st.buyCount + st.sellCount;
@@ -218,6 +247,9 @@ function TrackedSymbolCard({ symbol, stats, t, localeTag }) {
         </p>
       )}
       <p className="mt-0.5 text-xs text-slate-500">{t('whaleHub.totalOrders', { count: st.count })} · {formatCompactMoney(st.totalValue, localeTag)} VND</p>
+      <p className="mt-0.5 text-xs text-slate-500">
+        {t('whaleHub.latestAlertAt')}: {formatTime(st.latestAlertAt, formatDateTimeFn)}
+      </p>
     </Link>
   );
 }
@@ -329,7 +361,7 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
         <div className="text-right text-xs text-slate-400">
           <div className="flex flex-wrap justify-end gap-1.5 mb-2">
             <div className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${abnormalityTone}`}>
-              Abnormality: {abnormalityScore.toFixed(0)}
+              {t('whaleHub.abnormality')}: {abnormalityScore.toFixed(0)}
             </div>
             {item.session_percentile !== undefined && (
               <div className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
@@ -984,7 +1016,14 @@ export default function WhaleAlertsHub() {
               {symbolShortcuts
                 .filter((symbol) => (symbolStatsMap[symbol]?.count ?? 0) > 0)
                 .map((symbol) => (
-                  <TrackedSymbolCard key={symbol} symbol={symbol} stats={symbolStatsMap[symbol]} t={t} localeTag={localeTag} />
+                  <TrackedSymbolCard
+                    key={symbol}
+                    symbol={symbol}
+                    stats={symbolStatsMap[symbol]}
+                    t={t}
+                    localeTag={localeTag}
+                    formatDateTimeFn={formatDateTime}
+                  />
                 ))}
             </div>
           )}
