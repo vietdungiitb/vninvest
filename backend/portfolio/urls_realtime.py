@@ -51,6 +51,7 @@ urlpatterns = [
     path("breadth/<str:symbol>/", _toggle_market_view('SectorBreadthView'), name="sector-breadth"),
     path("whale-feed/aggregate/", _toggle_market_view('WhaleFeedAggregateView'), name="whale-feed-aggregate"),
     path("whale-campaigns/", _toggle_market_view('WhaleCampaignsView'), name="whale-campaigns"),
+    path("symbol-investigation/<str:symbol>/", views.symbol_investigation_api, name="symbol-investigation"),
     path("whale-symbol-summary/<str:symbol>/", views.whale_symbol_summary_api, name="whale-symbol-summary"),
     path("whale-feed/<str:symbol>/", _toggle_market_view('WhaleFeedView'), name="whale-feed"),
     path("rvol/<str:symbol>/", _toggle_market_view('RVOLView'), name="rvol"),
