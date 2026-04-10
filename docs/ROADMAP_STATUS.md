@@ -1,7 +1,7 @@
 # VNInvest — Trạng Thái Dự Án & Roadmap
 
-> **Cập nhật lần cuối**: 2026-04-08  
-> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 CLOSED (CONDITIONAL GO) / Sprint 24 READY TO EXECUTE / Sprint 29 READY TO EXECUTE  
+> **Cập nhật lần cuối**: 2026-04-10  
+> **Phiên bản codebase**: Sprint 17 COMPLETE / Sprint 18 CODE COMPLETE / Sprint 19 CODE COMPLETE FOR INTERNAL TEST / Sprint 23 CLOSED (CONDITIONAL GO) / Sprint 24 READY TO EXECUTE / Sprint 29 IN PROGRESS / Sprint 31 READY TO EXECUTE  
 > **Tác giả**: Tự động tổng hợp từ toàn bộ quá trình phát triển Sprint 7–19
 
 ## Chuẩn hóa thuật ngữ
@@ -131,6 +131,30 @@ Tai lieu implementation companion:
 - `docs/AI_ADVISORY_KLINE_CONTEXT_UPGRADE_PLAN_20260408.md`
 - `docs/AI_ADVISORY_KLINE_CONTEXT_TASKBOARD_20260408.md`
 - `docs/AI_ADVISORY_KLINE_CONTEXT_EXECUTION_TRACKER_20260408.md`
+
+## 0.5 Sprint 31 - READY TO EXECUTE (Whale Alerts Professionalization Phase 0-1)
+
+Focus: chot buoc dau professionalization cho `/whale-alerts` de dong bo trust, semantics va observability truoc khi mo rong campaign intelligence.
+
+Trang thai hien tai: READY TO EXECUTE.
+
+Muc tieu sprint:
+1. Fix threshold override consistency end-to-end tren realtime/aggregate/advisory.
+2. Chuan hoa market-time semantics cho order-flow/dark-flow windows.
+3. Chot metadata trust/event semantics (`source_layer`, `threshold_source`, `freshness_bucket`, `recovered`).
+4. Thiet lap metric baseline freshness/dedup/recovery/source-mix.
+5. Kickoff aggregate window filter v2 va lock API contract v2 draft.
+
+Tai lieu chuan cho sprint nay:
+- `docs/SPRINT31_WHALE_ALERTS_PROFESSIONALIZATION_EXECUTION_PLAN.md`
+- `docs/SPRINT31_CODING_BREAKDOWN_PLAN.md`
+- `docs/SPRINT31_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT31_TASKBOARD.csv`
+
+Tai lieu implementation companion:
+- `docs/WHALE_ALERTS_PHASE0_PHASE1_EXECUTION_PLAN_20260410.md`
+- `docs/WHALE_ALERTS_API_CONTRACT_V2_DRAFT_20260410.md`
+- `docs/WHALE_ALERTS_PROFESSIONALIZATION_ROADMAP_20260410.md`
 
 ---
 

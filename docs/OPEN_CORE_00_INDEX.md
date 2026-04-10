@@ -1,6 +1,6 @@
 # OPEN CORE DOCUMENT INDEX (OC-00)
 
-Ngay cap nhat: 2026-04-07
+Ngay cap nhat: 2026-04-10
 Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra quyet dinh theo tung vong.
 
 ## 1. Quy uoc dat ten
@@ -25,6 +25,7 @@ Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra
 11. OC-10 (vnstock source strategy): OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md
 12. OC-11 (numeric lock sheet): OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
 13. OC-12 (entitlement + quota implementation checklist): OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md
+14. OC-13 (community publish readiness): OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
 
 ## 3. Luong cap nhat tai lieu
 1. Cap nhat OC-01 khi co insight moi.
@@ -37,6 +38,7 @@ Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra
 8. Xac nhan source strategy qua OC-10 cho Community vs Pro.
 9. Khoa tham so so hoc qua OC-11 (pricing/quota/trial/SLO).
 10. Chuyen OC-11 thanh backlog code qua OC-12 (entitlement/quota/trial).
+11. Dung OC-13 de danh gia go/no-go truoc khi public Community repo.
 
 ## 4. Rule quan tri phien ban
 - Voi thay doi lon: tao ban moi, vi du OPEN_CORE_02_DECISION_RECORD_V2.md.
@@ -44,4 +46,4 @@ Muc tieu: Lam chi muc trung tam cho toan bo tai lieu Open Core de tong hop va ra
 - Moi vong quyet dinh phai co ngay hieu luc va owner.
 
 ## 5. Next review checkpoint
-- Checkpoint tiep theo: cho phe duyet OC-02 va lock pham vi Free/Pro V1.
+- Checkpoint tiep theo: review OC-13 de chot publish-readiness cho Community repo.

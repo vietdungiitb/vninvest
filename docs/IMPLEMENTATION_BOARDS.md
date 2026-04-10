@@ -1,7 +1,7 @@
 # Implementation Boards (Canonical + Soft-Archive Aligned)
 
 > **Status**: ACTIVE  
-> **Last aligned**: 2026-04-05  
+> **Last aligned**: 2026-04-10  
 > **Purpose**: Chuẩn hóa board theo trạng thái code hiện tại, đồng thời giữ dấu vết lịch sử ở mức cần thiết.
 
 ---
@@ -178,6 +178,40 @@ Tham chieu sprint moi:
 - `docs/AI_ADVISORY_KLINE_CONTEXT_UPGRADE_PLAN_20260408.md`
 - `docs/AI_ADVISORY_KLINE_CONTEXT_TASKBOARD_20260408.md`
 - `docs/AI_ADVISORY_KLINE_CONTEXT_EXECUTION_TRACKER_20260408.md`
+
+### Epic B13 — Sprint 31 Whale Alerts Professionalization Phase 0-1
+| ID | Story | Task chi tiet | Owner | Estimate | Phu thuoc | DoD | Status |
+|---|---|---|---|---|---|---|---|
+| B13-1 | Sprint 31 planning lock | Chot execution plan + acceptance checklist + taskboard canonical | PM/BE/FE | 0.5d | None | Co bo tai lieu canonical cho team vao sprint ngay | Done |
+| B13-2 | Threshold + market-time consistency | Thuc thi WA-P0-1 va WA-P0-2 (threshold override + local market-time normalization) | BE/QA | 3.5d | B13-1 | Regression tests pass, khong con mismatch semantics tren cac surface | Done |
+| B13-3 | Event trust metadata + FE trust chips | Thuc thi WA-P0-3 va WA-P0-5 (`source_layer`, `threshold_source`, `freshness_bucket`, labels FE) | BE/FE/QA | 2.5d | B13-2 | FE hien trust markers dung contract, UX khong mu mo source/freshness | Done |
+| B13-4 | Realtime observability baseline | Thuc thi WA-P0-4 metrics + health summary + runbook canh bao | BE/DevOps | 2d | B13-2 | Co evidence baseline freshness/dedup/recovery/source-mix | Done |
+| B13-5 | Aggregate window filter v2 kickoff | Thuc thi WA-P1-1 va lock contract adapter cho FE | BE/FE | 2d | B13-4 | Window filter hoat dong on dinh, cursor deterministic | Done |
+
+Tham chieu sprint moi:
+
+### Phase 1 Kickoff: Campaign Intelligence + Professional Workflow (Ready for D1 execution)
+| Id | Story | Estimate | Phu thuoc | Status |
+|---|---|---|---|---|
+| WA-P1-2 | Campaign grouping engine | 2d BE | B13-5 | Backlog |
+| WA-P1-3 | Abnormality scoring layer | 2d BE + 1d FE | B13-5 | Backlog |
+| WA-P1-4 | Whale Hub v2 (Campaigns tab) | 2.5d FE | WA-P1-2 | Backlog |
+| WA-P1-5 | Dark money co-observation | 1d BE | B13-5 | Backlog |
+| WA-P1-6 | Explainability + UI layer | 2d BE+FE | WA-P1-3 | Backlog |
+| WA-P1-7 | Performance + regression suite | 2d QA | All stories | Backlog |
+
+Tham chieu sprint Phase 1:
+- `docs/SPRINT31_PHASE1_PLANNING_20260410.md` (Full backlog breakdown + architecture design)
+- `docs/SPRINT31_PHASE1_D1_TASKBOARD.csv` (D1 owner-level execution board)
+- `docs/SPRINT31_PHASE1_DEBT_TRACKER.md` (Option B debt hardening lane)
+
+Tham chieu sprint Phase 0:
+- `docs/SPRINT31_WHALE_ALERTS_PROFESSIONALIZATION_EXECUTION_PLAN.md`
+- `docs/SPRINT31_CODING_BREAKDOWN_PLAN.md`
+- `docs/SPRINT31_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT31_TASKBOARD.csv`
+- `docs/WHALE_ALERTS_PHASE0_PHASE1_EXECUTION_PLAN_20260410.md`
+- `docs/WHALE_ALERTS_API_CONTRACT_V2_DRAFT_20260410.md`
 
 ---
 

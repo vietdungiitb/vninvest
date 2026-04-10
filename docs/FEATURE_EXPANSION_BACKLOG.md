@@ -254,13 +254,21 @@
 ## 8) Mapping backlog vào sprint (re-baseline)
 
 - Sprint gần nhất đã chốt: tham chiếu `docs/ROADMAP_STATUS.md`.
-- **Sprint 17 (planning hiện tại)**:
-  - P1-9 AI Advisory Component Records + Multi-Tab Summary.
-  - P1-5 Severity Tag (ghep cung domain AI advisory de tranh phan manh).
-- Sprint sau Sprint 17:
-  - P1-6 Timeframe Filter cho Aggregate Feed.
-  - P1-7 Reversal Alert Detection.
-  - P2-4 Whale History Chart (phu thuoc IntradayTick retention du 30+ ngay).
+- **Sprint 29 (in progress)**:
+  - AI advisory chart-context integration va canary gates.
+- **Sprint 31 (ready to execute)**:
+  - WA-P0 hardening pack cho Whale Alerts:
+    - threshold override consistency
+    - market-time normalization
+    - trust metadata + FE trust chips
+    - observability baseline
+  - WA-P1 kickoff:
+    - timeframe/window filter aggregate v2
+    - contract v2 alignment for whale workspace
+- Sprint sau Sprint 31:
+  - P1-7 Reversal Alert Detection (campaign-aware version)
+  - P2-4 Whale History Chart
+  - P2-5 Trading Journal tu dong
 
 ---
 
@@ -272,3 +280,15 @@
 4. Có KPI đo được trên local/staging.
 5. Không phá vỡ API contract hiện tại.
 6. Có cập nhật docs đồng bộ (roadmap + execution log + checklist).
+
+## 10) Whale workspace canonical tracking set (2026-04-10)
+
+Khi theo doi nhom Whale Alerts professionalization, dung bo tai lieu canonical sau de tranh track lech:
+
+- `docs/WHALE_ALERTS_PROFESSIONALIZATION_ROADMAP_20260410.md`
+- `docs/WHALE_ALERTS_PHASE0_PHASE1_EXECUTION_PLAN_20260410.md`
+- `docs/WHALE_ALERTS_API_CONTRACT_V2_DRAFT_20260410.md`
+- `docs/SPRINT31_WHALE_ALERTS_PROFESSIONALIZATION_EXECUTION_PLAN.md`
+- `docs/SPRINT31_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT31_TASKBOARD.csv`
+

@@ -1,9 +1,9 @@
 # OPEN CORE THAO LUAN - Vninvest
 
 Doc ID: OC-01
-Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, LANGUAGE_POLICY_V1.md
+Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md, LANGUAGE_POLICY_V1.md
 
-Ngay cap nhat: 2026-04-07
+Ngay cap nhat: 2026-04-10
 
 ## 1. Muc tieu
 - Open source phan cot loi de thu hut user + developer trai nghiem.
@@ -110,3 +110,28 @@ Ngay cap nhat: 2026-04-07
   - Feature gating hoat dong on dinh tren endpoint uu tien.
   - Co test pass cho free/pro/enterprise.
   - Co runbook local + checklist handoff frontend.
+
+## 14. Community publish readiness checkpoint (2026-04-10)
+- Trang thai: Can them mot pha hardening truoc khi public.
+- Danh gia tam thoi:
+  1. San sang ve huong san pham va Free/Pro baseline.
+  2. Chua san sang ve artifact public va legal bundle.
+  3. Chua nen announce community repo truoc khi don repo hygiene.
+
+- 3 blocker uu tien cao nhat:
+  1. Chua co LICENSE artifact duoc commit o root repo.
+  2. Chua co bo legal/public content public-ready.
+  3. Chua tach ro README/community package voi full commercial scope.
+
+- Huong thao luan phien sau:
+  1. Chot boundary Community repo V1.
+  2. Chot cach giu private premium moat.
+  3. Chot legal package toi thieu de public.
+  4. Chot publish strategy: public source truoc hay public source + image.
+
+- Tai lieu tham chieu truc tiep cho lane nay:
+  - OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+
+## 15. Buoc tiep theo de thao luan
+- Dung OC-13 lam checklist trung tam cho cac phien tiep theo.
+- Chot 5 cau hoi mo trong OC-13 truoc khi tao repo public/community mirror.
