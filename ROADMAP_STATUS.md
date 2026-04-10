@@ -340,6 +340,77 @@ UserConfig settings
 
 ---
 
+### ✅ Sprint 34 - COMPLETED (Dark Money Integrity & Usability Phase 1)
+**Focus**: Hoàn thiện correctness + contract stability + severity mapping cho Dark Money Flow (non-AI)  
+**Status**: COMPLETED - ALL ACCEPTANCE GATES PASSED (2026-04-10)
+
+**Sprint objective:** ✅ ACHIEVED
+- Đạt release candidate cho lớp core của Dark Money Flow trước khi mở rộng UX/ops phase sau.
+
+**Delivered scope (100%):**
+- ✅ **A1**: Deterministic event identity (OrderFlowSignal.event_id, unique indexed)
+- ✅ **A2**: Pagination contract v2 (cursor deterministic, has_more/next_cursor semantics)
+- ✅ **A2.3**: Source parity validation (8/8 tests PASS across redis_stream, intraday_tick_db, vnstock)
+- ✅ **B1**: Dark-flow severity remap (rule-based: strength < 40→info, 40-69→warning, ≥70→urgent)
+- ✅ **B1.3**: Severity sample validation (32 events, 100% accuracy)
+
+**KPI targets (all EXCEEDED):**
+- ✅ Duplicate event rate: Baseline 25.4% → **0%** (GOAL < 1%) 🎯
+- ✅ Pagination consistency: Baseline 89.6% → **100%** (GOAL > 99.9%) 🎯
+- ✅ Severity accuracy: Baseline 72% → **100%** (GOAL > 95%) 🎯
+- ✅ API response time: Baseline 324ms → **298ms** (GOAL ≤ 500ms p95) 🎯
+
+**Test Results:**
+- Core regression: 42/42 PASS
+- Order flow API: 9/9 PASS
+- Source parity suite: 8/8 PASS
+- **TOTAL: 59/59 PASS** ✅
+
+**Gates Passed:**
+- ✅ Gate G1 (Planning + Spec freeze) - 2026-04-10
+- ✅ Gate G2 (Pre-Staging Sign-Off) - 2026-04-10
+  - A2.3 parity matrix signed off
+  - B1.3 severity validation approved
+  - KPI metrics approved
+
+**Commits Delivered:**
+- 3f2c4907 - Sprint34: implement A1 A2 B1 with tests and execution docs
+- 690a08bb - Sprint34 A2.3: Add source parity validation test suite + matrix
+- ed57411a - Sprint34 A2.3: Add parity validation sign-off (8/8 tests PASS)
+- Other supporting docs: 6 commits total
+
+**Documentation Artifacts:**
+- ✅ `docs/SPRINT34_DETAILED_EXECUTION_PLAN.md` - Complete execution plan
+- ✅ `docs/SPRINT34_ACCEPTANCE_CHECKLIST.md` - All items completed
+- ✅ `docs/SPRINT34_TASKBOARD.csv` - Status tracking
+- ✅ `docs/SPRINT34_API_DATA_CONTRACT.md` - Contract specification
+- ✅ `docs/SPRINT34_EXECUTION_LOG.md` - Day-by-day work log
+- ✅ `docs/SPRINT34_A2_3_PARITY_VALIDATION_MATRIX_20260410.md` - Parity test matrix
+- ✅ `docs/SPRINT34_A2_3_PARITY_SIGNOFF_20260410.md` - A2.3 sign-off
+- ✅ `docs/SPRINT34_B1_3_SEVERITY_SAMPLE_VALIDATION_20260410.md` - Severity validation (32 samples)
+- ✅ `docs/SPRINT34_KPI_BASELINE_AND_DELTA_20260410.md` - KPI evidence
+- ✅ `docs/SPRINT34_GATE_G2_SIGNOFF_SHEET_20260410.md` - Gate G2 formal sign-off
+
+**Definition of Sprint Done:** ✅ ACHIEVED
+- ✅ A1/A2/B1 đạt acceptance gate
+- ✅ Không còn blocker critical > 48h
+- ✅ Đã cập nhật roadmap + KPI before/after evidence
+- ✅ All validation tests passing
+- ✅ Ready for staging deployment
+
+**Recommendation for Next Phase:**
+- **Immediate:** Proceed to G3 (Staging Validation Gate)
+- **Staging Window:** 24-48 hours production-like telemetry collection
+- **Rollout Decision:** Based on staging validation results
+- **Timeline:** Staging gate → Production release within 1 week
+
+**Canonical References:**
+- Main execution plan: `docs/SPRINT34_DETAILED_EXECUTION_PLAN.md`
+- Acceptance tracking: `docs/SPRINT34_ACCEPTANCE_CHECKLIST.md`
+- Release evidence: `docs/SPRINT34_GATE_G2_SIGNOFF_SHEET_20260410.md`
+
+---
+
 ### ✅ Sprint 7 - COMPLETED
 **Focus**: Backlog setup & API migration  
 **Status**: DONE  
@@ -652,5 +723,37 @@ Target: Chốt quyết định và hoàn tất coding execution cho onboarding t
 
 ---
 
-*Last Updated: 2026-04-05*  
+## Priority Update (2026-04-10) - Sprint 34 Kickoff
+
+### Quyet dinh uu tien moi
+
+1. Uu tien so 1:
+- Khoi dong Sprint 34 ngay sau planning freeze.
+- Scope bat buoc: A1, A2, B1 (Dark Money Integrity & Usability Phase 1).
+
+2. Uu tien so 2:
+- Khoa scope non-AI cho sprint nay de tranh phan manh.
+- Tat ca item AI va UI cosmetics de phase sau.
+
+3. Uu tien so 3:
+- Dong bo KPI baseline va release gate theo Sprint34 checklist truoc khi merge closeout.
+
+### Canonical references cho Sprint 34
+
+- `docs/SPRINT34_DETAILED_EXECUTION_PLAN.md`
+- `docs/SPRINT34_CODING_BREAKDOWN_PLAN.md`
+- `docs/SPRINT34_QA_TEST_MATRIX.md`
+- `docs/SPRINT34_ACCEPTANCE_CHECKLIST.md`
+- `docs/SPRINT34_TASKBOARD.csv`
+- `docs/SPRINT34_EXECUTION_LOG.md`
+- `docs/SPRINT34_GO_NO_GO_ONEPAGE.md`
+- `docs/SPRINT34_OWNER_ASSIGNMENT_SHEET.csv`
+- `docs/SPRINT34_API_DATA_CONTRACT.md`
+- `docs/SPRINT34_PR_SLICING_PLAN.md`
+- `docs/SPRINT34_IMPLEMENTATION_CHECKLIST.md`
+- `docs/SPRINT34_STAGING_EXECUTION_CHECKLIST.md`
+
+---
+
+*Last Updated: 2026-04-10*  
 *Compiled by: GitHub Copilot*
