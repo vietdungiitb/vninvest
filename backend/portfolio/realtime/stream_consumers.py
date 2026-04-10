@@ -256,5 +256,15 @@ class AlertEngineConsumer(TickConsumerBase):
                 source=f"intraday-engine:{runtime_config['mode']}",
                 score_config=runtime_config['score_config'],
             )
+            # Dedup: skip if this exact event was already sent within the last 5 minutes.
+            # Prevents re-alerting the same trade when collect_and_publish pushes the same
+            # 100-tick snapshot to the stream every 5 seconds.
+            event_id = payload.get("event_id", "")
+            if event_id:
+                dedup_key = f"whale:dedup:{event_id}"
+                already_sent = self.client.set(dedup_key, "1", nx=True, ex=300)
+                if not already_sent:
+                    continue
+
             channel = f"whale:{symbol.upper()}"
             publisher.publish(channel, payload)

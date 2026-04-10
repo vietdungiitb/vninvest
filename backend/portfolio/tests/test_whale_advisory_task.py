@@ -10,6 +10,7 @@ from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, User
 from portfolio.observability import get_market_observability_snapshot, reset_market_observability
 from portfolio.tasks import _accumulate_user_advisory_event, auto_generate_advisories_for_all_tracked, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
 from portfolio.tasks import _compute_advisory_severity
+from portfolio.tasks import _resolve_advisory_threshold_vnd
 
 
 @override_settings(WHALE_ADVISORY_COOLDOWN_SECONDS=900)
@@ -80,10 +81,12 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(group_name, f'user_{staff_user.id}_alerts')
         self.assertEqual(event['type'], 'whale_advisory')
         self.assertEqual(event['payload']['threshold'], 5_000_000_000)
+        self.assertEqual(event['payload']['threshold_source'], 'user_default')
         self.assertEqual(event['payload']['matched_value'], 8_200_000_000)
         self.assertIn('ai_provider', event['payload'])
         self.assertIn('ai_model', event['payload'])
         self.assertIn('ts', event['payload'])
+        self.assertEqual(result['threshold_source'], 'user_default')
 
     @patch('portfolio.ai_service.generate_whale_text')
     def test_auto_generation_skips_if_existing_advisory(self, mock_generate_text):
@@ -393,6 +396,31 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(_compute_advisory_severity(5_500_000_000, 5_000_000_000), 'info')
         self.assertEqual(_compute_advisory_severity(5_000_000_000, 0), 'info')
 
+    def test_resolve_advisory_threshold_prefers_tracked_symbol_override(self):
+        user = self._create_user_config('staff-threshold-override', api_key='sk-test-threshold-override')
+        cfg = UserConfig.objects.get(user=user)
+        cfg.whale_alert_threshold = 1200
+        cfg.save(update_fields=['whale_alert_threshold'])
+        tracked = TrackedSymbol.objects.create(
+            user=user,
+            symbol='FPT',
+            whale_alert_threshold_million=850,
+        )
+
+        threshold_vnd = _resolve_advisory_threshold_vnd(cfg, tracked_symbol=tracked)
+
+        self.assertEqual(threshold_vnd, 850_000_000)
+
+    def test_resolve_advisory_threshold_uses_explicit_tracked_threshold_value(self):
+        user = self._create_user_config('staff-threshold-explicit', api_key='sk-test-threshold-explicit')
+        cfg = UserConfig.objects.get(user=user)
+        cfg.whale_alert_threshold = 900
+        cfg.save(update_fields=['whale_alert_threshold'])
+
+        threshold_vnd = _resolve_advisory_threshold_vnd(cfg, tracked_threshold_million=640)
+
+        self.assertEqual(threshold_vnd, 640_000_000)
+
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
     @patch('portfolio.ai_service.generate_whale_text')
@@ -512,9 +540,11 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(result['status'], 'queued')
         self.assertEqual(result['resolved_side'], 'BUY')
         self.assertEqual(result['primary_source'], 'whale_alert')
+        self.assertEqual(result['threshold_source'], 'user_default')
         queued_kwargs = mock_apply_async.call_args.kwargs['kwargs']
         self.assertEqual(queued_kwargs['primary_source'], 'whale_alert')
         self.assertEqual(sorted(queued_kwargs['merged_sources']), ['dark_flow', 'whale_alert'])
+        self.assertEqual(queued_kwargs['threshold_source'], 'user_default')
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
@@ -540,6 +570,7 @@ class WhaleAdvisoryTaskTests(TestCase):
             matched_value_vnd=3_000_000_000,
             side='BUY',
             threshold=1_000_000_000,
+            threshold_source='symbol_override',
             force_refresh=True,
             user_id=staff_user.id,
             merged_sources=['dark_flow', 'whale_alert'],
@@ -547,6 +578,7 @@ class WhaleAdvisoryTaskTests(TestCase):
         )
 
         self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['threshold_source'], 'symbol_override')
         self.assertEqual(sorted(result['merged_sources']), ['dark_flow', 'whale_alert'])
         self.assertEqual(result['primary_source'], 'whale_alert')
         advisory = WhaleAdvisory.objects.get(id=result['advisory_id'])

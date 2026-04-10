@@ -7,7 +7,12 @@ from rest_framework.test import APITestCase
 
 from portfolio.exceptions import ExternalSystemException
 from portfolio.models import UserConfig
-from portfolio.observability import get_market_observability_snapshot, reset_market_observability
+from portfolio.observability import (
+    get_market_observability_snapshot,
+    record_whale_dedup_observation,
+    record_whale_event_observation,
+    reset_market_observability,
+)
 
 
 @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
@@ -128,6 +133,10 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     def test_admin_runtime_kpi_returns_snapshot_structure(self):
+        record_whale_dedup_observation(hit=False)
+        record_whale_dedup_observation(hit=True)
+        record_whale_event_observation(source='redis_stream', ts='2026-04-10T09:15:00+07:00', recovered=False)
+
         self._authenticate(self.admin_user)
         response = self.client.get('/api/admin-ops/runtime-kpi/')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -142,6 +151,10 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('ai_chart_context', obs)
         self.assertIn('present', obs['ai_chart_context'])
         self.assertIn('used', obs['ai_chart_context'])
+        self.assertIn('whale_pipeline', obs)
+        self.assertIn('freshness', obs['whale_pipeline'])
+        self.assertIn('dedup', obs['whale_pipeline'])
+        self.assertIn('source_mix', obs['whale_pipeline'])
         self.assertIn('alive', data['celery'])
 
     def test_admin_runtime_kpi_advisory_merge_requires_staff(self):
@@ -161,4 +174,30 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('merged', merge)
         self.assertIn('flushed', merge)
         self.assertIn('skipped', merge)
+
+    def test_admin_runtime_kpi_whale_pipeline_requires_staff(self):
+        self._authenticate(self.regular_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-pipeline/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_runtime_kpi_whale_pipeline_returns_structure(self):
+        record_whale_dedup_observation(hit=False)
+        record_whale_dedup_observation(hit=True)
+        record_whale_event_observation(source='redis_stream', ts='2026-04-10T09:15:00+07:00', recovered=False)
+        record_whale_event_observation(source='intraday_tick_db', ts='2026-04-10T09:16:00+07:00', recovered=True)
+
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-pipeline/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('sampled_at', data)
+        self.assertIn('whale_pipeline', data)
+        whale = data['whale_pipeline']
+        self.assertIn('healthy', whale)
+        self.assertIn('freshness', whale)
+        self.assertIn('dedup', whale)
+        self.assertIn('snapshot_recovery', whale)
+        self.assertIn('source_mix', whale)
+        self.assertEqual(whale['dedup']['total'], 2)
+        self.assertEqual(whale['dedup']['hits'], 1)
 

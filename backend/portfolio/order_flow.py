@@ -14,6 +14,7 @@ from typing import Sequence
 
 from django.core.cache import cache
 from django.db.models import QuerySet
+from django.utils import timezone as django_timezone
 
 from .domain_constants import (
     ORDER_FLOW_BUCKET_LT_200M_MAX_VND,
@@ -41,11 +42,11 @@ TICK_RATE_CACHE_TTL = 10                # giây
 # ---------------------------------------------------------------------------
 
 def _today() -> date:
-    return datetime.now(timezone.utc).date()
+    return django_timezone.localdate()
 
 
 def _now_time() -> time:
-    return datetime.now(timezone.utc).time()
+    return django_timezone.localtime().time()
 
 
 def _time_to_seconds(t: time) -> int:

@@ -43,8 +43,13 @@ from portfolio.services import (
     sync_watchlist_prices,
 )
 from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
+from portfolio.domain_constants import resolve_user_whale_threshold_vnd
 from portfolio.onboarding_trial_service import process_expired_onboarding_trials
-from portfolio.observability import record_advisory_merge_observation
+from portfolio.observability import (
+    record_advisory_merge_observation,
+    record_whale_dedup_observation,
+    record_whale_event_observation,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +120,7 @@ def _accumulate_user_advisory_event(
     source: str,
     payload: dict,
     threshold_vnd: float,
+    threshold_source: str = 'user_default',
 ) -> dict:
     normalized_symbol = _normalize_symbol(symbol)
     if not normalized_symbol:
@@ -135,6 +141,7 @@ def _accumulate_user_advisory_event(
             'user_id': int(user_id),
             'symbol': normalized_symbol,
             'threshold_vnd': float(threshold_vnd),
+            'threshold_source': str(threshold_source or 'user_default'),
             'matched_value_vnd': float(max(matched_value_candidate, threshold_vnd)),
             'score_sum': float(event_side_score),
             'sources': [str(source)],
@@ -158,6 +165,10 @@ def _accumulate_user_advisory_event(
     source_scores[str(source)] = float(current_source_score + event_side_score)
 
     existing['threshold_vnd'] = float(max(_safe_float(existing.get('threshold_vnd'), threshold_vnd), threshold_vnd))
+    if str(threshold_source or '').strip().lower() == 'symbol_override':
+        existing['threshold_source'] = 'symbol_override'
+    else:
+        existing['threshold_source'] = str(existing.get('threshold_source') or 'user_default')
     existing['matched_value_vnd'] = float(max(_safe_float(existing.get('matched_value_vnd'), threshold_vnd), matched_value_candidate, threshold_vnd))
     existing['score_sum'] = float(_safe_float(existing.get('score_sum'), 0.0) + event_side_score)
     existing['sources'] = sorted(source_set)
@@ -178,6 +189,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
         return {'status': 'skipped', 'reason': 'no_merged_state', 'user_id': int(user_id), 'symbol': normalized_symbol}
 
     threshold_vnd = _safe_float(state.get('threshold_vnd'), 0.0)
+    threshold_source = str(state.get('threshold_source') or 'user_default')
     matched_value_vnd = _safe_float(state.get('matched_value_vnd'), threshold_vnd)
     score_sum = _safe_float(state.get('score_sum'), 0.0)
     side = _resolve_side_by_dynamic_score(score_sum)
@@ -196,6 +208,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
             'matched_value_vnd': max(matched_value_vnd, threshold_vnd),
             'side': side,
             'threshold': threshold_vnd,
+            'threshold_source': threshold_source,
             'force_refresh': True,
             'user_id': int(user_id),
             'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
@@ -214,6 +227,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
         'task_id': task.id,
         'score_sum': score_sum,
         'resolved_side': side,
+        'threshold_source': threshold_source,
         'sources': merged_sources,
         'primary_source': primary_source,
     }
@@ -273,10 +287,16 @@ def _resolve_next_refresh_at(user_config: UserConfig | None) -> timezone.datetim
     return timezone.now() + timedelta(hours=refresh_hours)
 
 
-def _resolve_advisory_threshold_vnd(user_config: UserConfig, tracked_symbol: TrackedSymbol | None = None) -> float:
+def _resolve_advisory_threshold_vnd(
+    user_config: UserConfig,
+    tracked_symbol: TrackedSymbol | None = None,
+    tracked_threshold_million: float | None = None,
+) -> float:
+    if tracked_threshold_million is not None:
+        return resolve_user_whale_threshold_vnd(tracked_threshold_million)
     if tracked_symbol is not None and tracked_symbol.whale_alert_threshold_million is not None:
-        return float(tracked_symbol.whale_alert_threshold_million) * 1_000_000
-    return float(user_config.whale_alert_threshold or 500) * 1_000_000
+        return resolve_user_whale_threshold_vnd(tracked_symbol.whale_alert_threshold_million)
+    return resolve_user_whale_threshold_vnd(user_config.whale_alert_threshold)
 
 
 def _should_use_concise_advisory(source: str, remaining_budget: int | None) -> bool:
@@ -582,24 +602,48 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 source=f"collect-and-publish:{runtime_config['mode']}",
                 score_config=runtime_config['score_config'],
             )
+            # Dedup: same whale trade can appear in 100-tick snapshot on every 5s poll.
+            # Use Django cache with 5-minute TTL to suppress duplicate WS publishes.
+            event_id = whale_payload.get("event_id", "")
+            if event_id:
+                dedup_cache_key = f"whale:dedup:{event_id}"
+                if cache.get(dedup_cache_key):
+                    record_whale_dedup_observation(hit=True)
+                    continue
+                cache.set(dedup_cache_key, 1, timeout=300)
+                record_whale_dedup_observation(hit=False)
+
             if publisher.publish(whale_channel, whale_payload):
                 published += 1
+                record_whale_event_observation(
+                    source=str(whale_payload.get('source') or 'intraday-engine'),
+                    ts=whale_payload.get('ts'),
+                    recovered=bool(whale_payload.get('recovered')),
+                )
             if user_id is not None:
                 user_channel = f"user:{user_id}:alerts"
                 user_seq = publisher.next_seq(user_channel)
                 user_payload = {**whale_payload, "seq": user_seq}
                 if publisher.publish(user_channel, user_payload):
                     published += 1
-            tracked_user_ids = list(
-                TrackedSymbol.objects.filter(symbol=signal.symbol).values_list('user_id', flat=True).distinct()
+            tracked_rows = list(
+                TrackedSymbol.objects.filter(symbol=signal.symbol)
+                .values('user_id', 'whale_alert_threshold_million')
             )
-            for tracked_user_id in tracked_user_ids:
+            for tracked_row in tracked_rows:
+                tracked_user_id = int(tracked_row.get('user_id') or 0)
+                if not tracked_user_id:
+                    continue
                 user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
                 if user_cfg is None:
                     continue
                 if not bool(user_cfg.advisory_whale_signal_enabled):
                     continue
-                threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
+                threshold_vnd = _resolve_advisory_threshold_vnd(
+                    user_cfg,
+                    tracked_threshold_million=tracked_row.get('whale_alert_threshold_million'),
+                )
+                threshold_source = 'symbol_override' if tracked_row.get('whale_alert_threshold_million') is not None else 'user_default'
                 _accumulate_user_advisory_event(
                     user_id=int(tracked_user_id),
                     symbol=signal.symbol,
@@ -610,6 +654,7 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                         'matched_value': signal.matched_value,
                     },
                     threshold_vnd=threshold_vnd,
+                    threshold_source=threshold_source,
                 )
 
     if user_id is not None:
@@ -766,6 +811,7 @@ def generate_whale_advisory_task(
     primary_source: str | None = None,
     advisory_type: str = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
     severity_override: str | None = None,
+    threshold_source: str = 'user_default',
 ) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
@@ -908,6 +954,9 @@ def generate_whale_advisory_task(
 
     normalized_merged_sources = sorted({str(item).strip().lower() for item in (merged_sources or []) if str(item).strip()})
     normalized_primary_source = str(primary_source or '').strip().lower()
+    normalized_threshold_source = str(threshold_source or 'user_default').strip().lower() or 'user_default'
+    if normalized_threshold_source not in {'user_default', 'symbol_override'}:
+        normalized_threshold_source = 'user_default'
     if not normalized_primary_source and normalized_merged_sources:
         normalized_primary_source = normalized_merged_sources[0]
 
@@ -960,6 +1009,7 @@ def generate_whale_advisory_task(
                     'side': side,
                     'matched_value': int(matched_value_vnd),
                     'threshold': float(threshold or 0),
+                    'threshold_source': normalized_threshold_source,
                     'ai_summary': advisory.ai_summary,
                     'ai_detail': advisory.ai_detail,
                     'ai_provider': advisory.ai_provider,
@@ -984,6 +1034,7 @@ def generate_whale_advisory_task(
         'force_refresh': bool(force_refresh),
         'user_id': user_id,
         'source': source_key,
+        'threshold_source': normalized_threshold_source,
         'merged_sources': normalized_merged_sources,
         'primary_source': normalized_primary_source,
         'used_concise': use_concise,
@@ -1090,6 +1141,7 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
                         'matched_value_vnd': matched_value_vnd,
                         'side': advisory_side,
                         'threshold': advisory_threshold,
+                        'threshold_source': 'symbol_override' if tracked_symbol.whale_alert_threshold_million is not None else 'user_default',
                         'force_refresh': force_refresh,
                         'user_id': user_config.user_id,
                         'source': WhaleAdvisory.SourceChoices.PERIODIC_JOB,
@@ -1373,16 +1425,24 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                 )
                 alerted += 1
 
-                tracked_user_ids = list(
-                    TrackedSymbol.objects.filter(symbol=sym).values_list('user_id', flat=True).distinct()
+                tracked_rows = list(
+                    TrackedSymbol.objects.filter(symbol=sym)
+                    .values('user_id', 'whale_alert_threshold_million')
                 )
-                for tracked_user_id in tracked_user_ids:
+                for tracked_row in tracked_rows:
+                    tracked_user_id = int(tracked_row.get('user_id') or 0)
+                    if not tracked_user_id:
+                        continue
                     user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
                     if user_cfg is None:
                         continue
                     if not bool(user_cfg.advisory_whale_signal_enabled):
                         continue
-                    threshold_vnd = _resolve_advisory_threshold_vnd(user_cfg)
+                    threshold_vnd = _resolve_advisory_threshold_vnd(
+                        user_cfg,
+                        tracked_threshold_million=tracked_row.get('whale_alert_threshold_million'),
+                    )
+                    threshold_source = 'symbol_override' if tracked_row.get('whale_alert_threshold_million') is not None else 'user_default'
                     _accumulate_user_advisory_event(
                         user_id=int(tracked_user_id),
                         symbol=sym,
@@ -1394,6 +1454,7 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                             'matched_value_vnd': threshold_vnd,
                         },
                         threshold_vnd=threshold_vnd,
+                        threshold_source=threshold_source,
                     )
             except Exception as exc:
                 logger.warning('dark_flow_alert WS push failed for %s: %s', sym, exc)

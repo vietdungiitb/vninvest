@@ -63,6 +63,14 @@ function getRealtimeStatusByFreshness(secondsAgo) {
   return 'idle';
 }
 
+function getThresholdSourceLabel(value, t) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'symbol_override') {
+    return t('watchlist.thresholdSourceSymbol');
+  }
+  return t('watchlist.thresholdSourceUser');
+}
+
 // ─── Thống kê mỗi mã ────────────────────────────────────────────
 function buildSymbolStats(items) {
   const map = {};
@@ -194,6 +202,11 @@ function AdvisoryCell({ item, symbol, onRefresh, onDeleteCurrent, refreshing, de
             }`}>
               {advisory.source === 'periodic_job' ? 'Auto' : advisory.source === 'user_refresh' ? 'Manual' : advisory.source}
               {advisory.refresh_count > 0 && ` ×${advisory.refresh_count}`}
+            </span>
+          )}
+          {advisory.threshold_source && (
+            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
+              {t('watchlist.thresholdSourceColumn')}: {getThresholdSourceLabel(advisory.threshold_source, t)}
             </span>
           )}
           {Array.isArray(advisory.merged_sources) && advisory.merged_sources.length > 1 ? (

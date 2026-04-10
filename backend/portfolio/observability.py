@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+from datetime import datetime
 from threading import Lock
 from time import time
 
 from django.conf import settings
+from django.utils import timezone
 
 
 _LOCK = Lock()
@@ -24,6 +26,14 @@ _ADVISORY_MERGE_STATS: dict[str, float] = {
     'merged': 0,
     'flushed': 0,
     'skipped': 0,
+}
+_WHALE_PIPELINE_STATS: dict[str, object] = {
+    'freshness_seconds': deque(maxlen=300),
+    'dedup_hits': 0,
+    'dedup_total': 0,
+    'recovered_events': 0,
+    'events_total': 0,
+    'source_counts': defaultdict(int),
 }
 _STARTED_AT_EPOCH = time()
 
@@ -87,7 +97,27 @@ def reset_market_observability() -> None:
                 'skipped': 0,
             }
         )
+        _WHALE_PIPELINE_STATS['freshness_seconds'] = deque(maxlen=_latency_window_size())
+        _WHALE_PIPELINE_STATS['dedup_hits'] = 0
+        _WHALE_PIPELINE_STATS['dedup_total'] = 0
+        _WHALE_PIPELINE_STATS['recovered_events'] = 0
+        _WHALE_PIPELINE_STATS['events_total'] = 0
+        _WHALE_PIPELINE_STATS['source_counts'] = defaultdict(int)
         _STARTED_AT_EPOCH = time()
+
+
+def _coerce_freshness_seconds(event_ts) -> int | None:
+    if not event_ts:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(event_ts).replace('Z', '+00:00'))
+    except Exception:
+        return None
+
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    age_seconds = int((timezone.now() - parsed).total_seconds())
+    return max(age_seconds, 0)
 
 
 def record_market_http_observation(endpoint: str, status_code: int, latency_ms: float) -> None:
@@ -165,6 +195,135 @@ def record_advisory_merge_observation(status: str) -> None:
         _ADVISORY_MERGE_STATS[status_key] += 1
 
 
+def record_whale_dedup_observation(hit: bool) -> None:
+    if not _metrics_enabled():
+        return
+
+    with _LOCK:
+        _WHALE_PIPELINE_STATS['dedup_total'] = int(_WHALE_PIPELINE_STATS.get('dedup_total', 0)) + 1
+        if bool(hit):
+            _WHALE_PIPELINE_STATS['dedup_hits'] = int(_WHALE_PIPELINE_STATS.get('dedup_hits', 0)) + 1
+
+
+def record_whale_event_observation(*, source: str, ts=None, recovered: bool = False) -> None:
+    if not _metrics_enabled():
+        return
+
+    source_key = str(source or 'unknown').strip() or 'unknown'
+    freshness_seconds = _coerce_freshness_seconds(ts)
+    with _LOCK:
+        _WHALE_PIPELINE_STATS['events_total'] = int(_WHALE_PIPELINE_STATS.get('events_total', 0)) + 1
+        if bool(recovered):
+            _WHALE_PIPELINE_STATS['recovered_events'] = int(_WHALE_PIPELINE_STATS.get('recovered_events', 0)) + 1
+        source_counts = _WHALE_PIPELINE_STATS.get('source_counts')
+        if isinstance(source_counts, dict):
+            source_counts[source_key] = int(source_counts.get(source_key, 0)) + 1
+        if freshness_seconds is not None:
+            freshness_window = _WHALE_PIPELINE_STATS.get('freshness_seconds')
+            if isinstance(freshness_window, deque):
+                freshness_window.append(float(freshness_seconds))
+
+
+def get_whale_pipeline_health_summary() -> dict:
+    with _LOCK:
+        freshness_samples = list(_WHALE_PIPELINE_STATS.get('freshness_seconds') or [])
+        events_total = int(_WHALE_PIPELINE_STATS.get('events_total', 0))
+        recovered_events = int(_WHALE_PIPELINE_STATS.get('recovered_events', 0))
+        dedup_total = int(_WHALE_PIPELINE_STATS.get('dedup_total', 0))
+        dedup_hits = int(_WHALE_PIPELINE_STATS.get('dedup_hits', 0))
+        source_counts = dict(_WHALE_PIPELINE_STATS.get('source_counts') or {})
+
+    source_mix_ratio = {
+        key: round((int(value) / events_total) * 100, 2) if events_total else 0.0
+        for key, value in source_counts.items()
+    }
+    freshness_p95 = round(_percentile(freshness_samples, 0.95), 2)
+    freshness_median = round(_percentile(freshness_samples, 0.50), 2)
+    dedup_hit_ratio_pct = round((dedup_hits / dedup_total) * 100, 2) if dedup_total else 0.0
+    snapshot_recovery_ratio_pct = round((recovered_events / events_total) * 100, 2) if events_total else 0.0
+
+    try:
+        freshness_warn_seconds = int(getattr(settings, 'WHALE_PIPELINE_FRESHNESS_P95_WARN_SECONDS', 120))
+    except (TypeError, ValueError):
+        freshness_warn_seconds = 120
+
+    healthy = freshness_p95 <= max(freshness_warn_seconds, 30)
+
+    return {
+        'healthy': healthy,
+        'freshness': {
+            'sample_size': len(freshness_samples),
+            'median_seconds': freshness_median,
+            'p95_seconds': freshness_p95,
+            'warn_threshold_seconds': max(freshness_warn_seconds, 30),
+        },
+        'dedup': {
+            'total': dedup_total,
+            'hits': dedup_hits,
+            'hit_ratio_pct': dedup_hit_ratio_pct,
+        },
+        'snapshot_recovery': {
+            'events_total': events_total,
+            'recovered_events': recovered_events,
+            'ratio_pct': snapshot_recovery_ratio_pct,
+        },
+        'source_mix': {
+            'counts': source_counts,
+            'ratio_pct': source_mix_ratio,
+        },
+    }
+
+
+def _build_whale_pipeline_health_summary_from_counters(
+    *,
+    freshness_samples: list[float],
+    events_total: int,
+    recovered_events: int,
+    dedup_total: int,
+    dedup_hits: int,
+    source_counts: dict,
+) -> dict:
+    source_mix_ratio = {
+        key: round((int(value) / events_total) * 100, 2) if events_total else 0.0
+        for key, value in source_counts.items()
+    }
+    freshness_p95 = round(_percentile(freshness_samples, 0.95), 2)
+    freshness_median = round(_percentile(freshness_samples, 0.50), 2)
+    dedup_hit_ratio_pct = round((dedup_hits / dedup_total) * 100, 2) if dedup_total else 0.0
+    snapshot_recovery_ratio_pct = round((recovered_events / events_total) * 100, 2) if events_total else 0.0
+
+    try:
+        freshness_warn_seconds = int(getattr(settings, 'WHALE_PIPELINE_FRESHNESS_P95_WARN_SECONDS', 120))
+    except (TypeError, ValueError):
+        freshness_warn_seconds = 120
+
+    healthy = freshness_p95 <= max(freshness_warn_seconds, 30)
+
+    return {
+        'healthy': healthy,
+        'freshness': {
+            'sample_size': len(freshness_samples),
+            'median_seconds': freshness_median,
+            'p95_seconds': freshness_p95,
+            'warn_threshold_seconds': max(freshness_warn_seconds, 30),
+        },
+        'dedup': {
+            'total': dedup_total,
+            'hits': dedup_hits,
+            'hit_ratio_pct': dedup_hit_ratio_pct,
+        },
+        'snapshot_recovery': {
+            'events_total': events_total,
+            'recovered_events': recovered_events,
+            'ratio_pct': snapshot_recovery_ratio_pct,
+        },
+        'source_mix': {
+            'counts': source_counts,
+            'ratio_pct': source_mix_ratio,
+        },
+    }
+
+
 def get_market_observability_snapshot() -> dict:
     with _LOCK:
         endpoints = {}
@@ -211,6 +370,21 @@ def get_market_observability_snapshot() -> dict:
         advisory_merge_merged = int(_ADVISORY_MERGE_STATS.get('merged', 0))
         advisory_merge_flushed = int(_ADVISORY_MERGE_STATS.get('flushed', 0))
         advisory_merge_skipped = int(_ADVISORY_MERGE_STATS.get('skipped', 0))
+        whale_freshness_samples = list(_WHALE_PIPELINE_STATS.get('freshness_seconds') or [])
+        whale_events_total = int(_WHALE_PIPELINE_STATS.get('events_total', 0))
+        whale_recovered_events = int(_WHALE_PIPELINE_STATS.get('recovered_events', 0))
+        whale_dedup_total = int(_WHALE_PIPELINE_STATS.get('dedup_total', 0))
+        whale_dedup_hits = int(_WHALE_PIPELINE_STATS.get('dedup_hits', 0))
+        whale_source_counts = dict(_WHALE_PIPELINE_STATS.get('source_counts') or {})
+
+        whale_pipeline_summary = _build_whale_pipeline_health_summary_from_counters(
+            freshness_samples=whale_freshness_samples,
+            events_total=whale_events_total,
+            recovered_events=whale_recovered_events,
+            dedup_total=whale_dedup_total,
+            dedup_hits=whale_dedup_hits,
+            source_counts=whale_source_counts,
+        )
 
         return {
             'enabled': _metrics_enabled(),
@@ -241,6 +415,7 @@ def get_market_observability_snapshot() -> dict:
                 'flushed': advisory_merge_flushed,
                 'skipped': advisory_merge_skipped,
             },
+            'whale_pipeline': whale_pipeline_summary,
             'endpoints': endpoints,
             'fallback_breakdown': fallback_breakdown,
             'external_timeout_breakdown': timeout_breakdown,

@@ -20,6 +20,7 @@ from unittest.mock import patch, MagicMock
 from django.contrib.auth import get_user_model
 from django.test import TestCase, SimpleTestCase
 from django.core.cache import cache
+from django.utils import timezone as django_timezone
 from rest_framework.test import APIClient
 
 from portfolio.order_flow import (
@@ -375,7 +376,7 @@ class TestComputeCVDSeriesDB(TestCase):
 
     def setUp(self):
         from portfolio.models import IntradayTick
-        today = datetime.now(timezone.utc).date()
+        today = django_timezone.localdate()
         # Tạo 3 tick: 2 BUY + 1 SELL trong 60 phút gần nhất
         # Giả lập giờ hiện tại ~ 10:00 → tick tại 9:30, 9:31, 9:32
         IntradayTick.objects.create(
@@ -444,10 +445,10 @@ class TestComputeTickRateDB(TestCase):
     def setUp(self):
         cache.clear()
         from portfolio.models import IntradayTick
-        today = datetime.now(timezone.utc).date()
+        today = django_timezone.localdate()
         # 5 tick nhỏ + 2 tick lớn trong 5 phút gần nhất
         # Dùng trade_time gần midnight để đảm bảo nằm trong window
-        now_t = datetime.now(timezone.utc).time()
+        now_t = django_timezone.localtime().time()
         h, m = now_t.hour, now_t.minute
 
         for i in range(5):

@@ -36,6 +36,14 @@ function severityTone(severity) {
   return 'bg-slate-800 text-slate-200';
 }
 
+function thresholdSourceLabel(value, t) {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'symbol_override') {
+    return t('dashboardRealtime.thresholdSourceSymbol');
+  }
+  return t('dashboardRealtime.thresholdSourceUser');
+}
+
 export default function DashboardRealtimePanel({
   holdings,
   quotesBySymbol = {},
@@ -508,6 +516,9 @@ export default function DashboardRealtimePanel({
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
                         {t('dashboardRealtime.threshold')}: {fmtBil(alert.threshold, formatNumber)}
+                      </div>
+                      <div className="mt-0.5 text-[11px] text-slate-500">
+                        {t('dashboardRealtime.thresholdSource')}: {thresholdSourceLabel(alert.threshold_source, t)}
                       </div>
                       <div className="mt-0.5 text-[11px] text-slate-500">
                         {t('dashboardRealtime.source')}: {alert.source || 'realtime'}

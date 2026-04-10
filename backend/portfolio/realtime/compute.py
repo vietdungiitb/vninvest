@@ -92,28 +92,36 @@ def detect_whale_signals(
     frame["price"] = pd.to_numeric(frame["price"], errors="coerce").fillna(0.0)
     frame["volume"] = pd.to_numeric(frame["volume"], errors="coerce").fillna(0.0)
     frame["matched_value"] = frame["price"] * frame["volume"]
-    side_series = frame.get("side")
+
+    sorted_thresholds = sorted(set(float(t) for t in thresholds if float(t) > 0))
+    if not sorted_thresholds:
+        return []
+
+    min_threshold = sorted_thresholds[0]
+    qualifying = frame[frame["matched_value"] >= min_threshold]
+    if qualifying.empty:
+        return []
 
     signals: list[WhaleSignal] = []
-    max_matched = float(frame["matched_value"].max()) if not frame.empty else 0.0
-    if max_matched <= 0:
-        return signals
+    for _, row in qualifying.iterrows():
+        mv = float(row["matched_value"])
+        # BUG FIX: use this row's own side instead of side_series.iloc[-1] (last tick)
+        trade_side = str(row.get("side") or "UNKNOWN").upper()
+        # BUG FIX: use actual trade timestamp instead of _iso_now()
+        raw_ts = row.get("ts")
+        trade_ts = str(raw_ts) if (raw_ts is not None and str(raw_ts).strip()) else _iso_now()
 
-    last_side = "UNKNOWN"
-    if side_series is not None and len(side_series) > 0:
-        last_side = str(side_series.iloc[-1]).upper()
-
-    for threshold in sorted(set(float(t) for t in thresholds if float(t) > 0)):
-        if max_matched >= threshold:
-            signals.append(
-                WhaleSignal(
-                    symbol=symbol.upper(),
-                    matched_value=max_matched,
-                    side=last_side,
-                    threshold=threshold,
-                    ts=_iso_now(),
+        for threshold in sorted_thresholds:
+            if mv >= threshold:
+                signals.append(
+                    WhaleSignal(
+                        symbol=symbol.upper(),
+                        matched_value=mv,
+                        side=trade_side,
+                        threshold=threshold,
+                        ts=trade_ts,
+                    )
                 )
-            )
     return signals
 
 
