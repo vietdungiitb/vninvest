@@ -1559,6 +1559,11 @@ class OrderFlowSignal(models.Model):
         TWAP_BOT   = 'twap_bot',    'TWAP Bot'
         MIXED      = 'mixed',       'Kết hợp nhiều dấu hiệu'
 
+    class SeverityChoices(models.TextChoices):
+        INFO     = 'info',     'Thông tin'
+        WARNING  = 'warning',  'Cảnh báo'
+        URGENT   = 'urgent',   'Khẩn cấp'
+
     symbol            = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
     signal_type       = models.CharField(
         max_length=20, choices=SignalType.choices, default=SignalType.NONE,
@@ -1572,13 +1577,19 @@ class OrderFlowSignal(models.Model):
     price_at_signal   = models.FloatField(default=0, verbose_name='Giá tại lúc phát tín hiệu')
     window_seconds    = models.PositiveIntegerField(default=300, verbose_name='Cửa sổ phân tích (s)')
     components_json   = models.JSONField(default=dict, verbose_name='Chi tiết các thành phần')
+    event_id          = models.TextField(null=True, blank=True, db_index=True, unique=True, verbose_name='Event ID (deterministic)')
+    severity          = models.CharField(max_length=10, choices=SeverityChoices.choices, default=SeverityChoices.INFO, verbose_name='Mức độ nghiêm trọng')
     created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm ghi')
 
     class Meta:
         verbose_name = 'Order Flow Signal'
         verbose_name_plural = 'Order Flow Signals'
         ordering = ['-created_at']
-        indexes = [models.Index(fields=['symbol', 'created_at'])]
+        indexes = [
+            models.Index(fields=['symbol', 'created_at']),
+            models.Index(fields=['symbol', 'created_at', 'id']),  # For pagination tiebreaker
+            models.Index(fields=['event_id']),  # For uniqueness lookups
+        ]
 
     def __str__(self):
         return f'{self.symbol} | {self.signal_type} | strength={self.strength:.1f} | {self.created_at}'

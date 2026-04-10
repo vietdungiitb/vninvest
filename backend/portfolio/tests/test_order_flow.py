@@ -528,6 +528,39 @@ class TestOrderFlowSignalTask(TestCase):
         self.assertEqual(result["stored"], 1)
         self.assertEqual(OrderFlowSignal.objects.filter(symbol="VNM").count(), 1)
 
+        row = OrderFlowSignal.objects.get(symbol="VNM")
+        self.assertEqual(row.event_id, "dark_flow:VNM:2026-04-04T06:00:00+00:00:iceberg")
+        self.assertEqual(row.severity, "warning")
+
+    @patch("portfolio.order_flow.detect_dark_flow")
+    def test_task_deduplicates_same_event_id(self, mock_detect):
+        from django.contrib.auth import get_user_model
+        from portfolio.models import OrderFlowSignal, TrackedSymbol
+        from portfolio.tasks import detect_and_store_order_flow
+
+        user = get_user_model().objects.create_user(username="of_user_dedup", password="Test@123456")
+        TrackedSymbol.objects.create(user=user, symbol="VNM")
+        payload = {
+            "signal_type": "iceberg",
+            "strength": 72.0,
+            "confidence": "high",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 12.5},
+                "size_distribution": {"small_ratio": 0.8},
+                "absorption": {"cvd_change": 123456789},
+            },
+            "triggered_at": "2026-04-04T06:00:00+00:00",
+        }
+        mock_detect.return_value = payload
+
+        first = detect_and_store_order_flow.run(symbol="VNM")
+        cache.delete("order_flow_lock:VNM")
+        second = detect_and_store_order_flow.run(symbol="VNM")
+
+        self.assertEqual(first["stored"], 1)
+        self.assertEqual(second["stored"], 0)
+        self.assertEqual(OrderFlowSignal.objects.filter(symbol="VNM").count(), 1)
+
     @patch("portfolio.order_flow.detect_dark_flow")
     def test_task_skips_when_disabled(self, mock_detect):
         from django.test import override_settings
@@ -592,6 +625,155 @@ class TestOrderFlowApi(TestCase):
         self.assertEqual(response.data["symbol"], "FPT")
         self.assertEqual(response.data["latest_signal"]["signal_type"], "iceberg")
         self.assertEqual(len(response.data["cvd_series"]), 1)
+        self.assertIn("pagination", response.data)
+        self.assertIn("has_more", response.data["pagination"])
+
+    @patch("portfolio.order_flow.detect_dark_flow")
+    @patch("portfolio.order_flow.compute_cvd_series")
+    def test_order_flow_endpoint_supports_cursor_pagination(self, mock_cvd, mock_detect):
+        from portfolio.models import OrderFlowSignal
+
+        for idx in range(10):
+            OrderFlowSignal.objects.create(
+                symbol="FPT",
+                signal_type="iceberg",
+                strength=60 + idx,
+                confidence="high",
+                tick_rate=10 + idx,
+                small_order_ratio=0.6,
+                cvd_at_signal=1000 + idx,
+                price_at_signal=101000,
+                window_seconds=300,
+                components_json={"iceberg": {"repeat_count": 7}},
+                event_id=f"dark_flow:FPT:2026-04-04T09:3{idx % 10}:00+00:00:iceberg:{idx}",
+                severity="warning",
+            )
+
+        mock_cvd.return_value = []
+        mock_detect.return_value = {
+            "signal_type": "iceberg",
+            "strength": 61.5,
+            "confidence": "high",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 12.3},
+                "size_distribution": {"small_ratio": 0.77},
+            },
+            "triggered_at": "2026-04-04T09:30:00Z",
+        }
+
+        first = self.client.get("/api/stock-management/stocks/FPT/order-flow/?limit=5")
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(len(first.data["signals"]), 5)
+        self.assertTrue(first.data["pagination"]["has_more"])
+        self.assertIsNotNone(first.data["pagination"]["next_cursor"])
+
+        cursor = first.data["pagination"]["next_cursor"]
+        second = self.client.get(f"/api/stock-management/stocks/FPT/order-flow/?limit=5&cursor={cursor}")
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(len(second.data["signals"]), 5)
+        self.assertFalse(second.data["pagination"]["has_more"])
+
+    @patch("portfolio.order_flow.detect_dark_flow")
+    @patch("portfolio.order_flow.compute_cvd_series")
+    def test_order_flow_endpoint_five_page_traversal_no_duplicate_missing(self, mock_cvd, mock_detect):
+        from portfolio.models import OrderFlowSignal
+
+        total_rows = 23
+        for idx in range(total_rows):
+            OrderFlowSignal.objects.create(
+                symbol="FPT",
+                signal_type="iceberg",
+                strength=50 + idx,
+                confidence="high",
+                tick_rate=10 + idx,
+                small_order_ratio=0.5,
+                cvd_at_signal=1000 + idx,
+                price_at_signal=101000,
+                window_seconds=300,
+                components_json={"iceberg": {"repeat_count": 6}},
+                event_id=f"dark_flow:FPT:2026-04-04T09:30:{idx:02d}+00:00:iceberg:{idx}",
+                severity="warning",
+            )
+
+        mock_cvd.return_value = []
+        mock_detect.return_value = {
+            "signal_type": "iceberg",
+            "strength": 61.5,
+            "confidence": "high",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 12.3},
+                "size_distribution": {"small_ratio": 0.77},
+            },
+            "triggered_at": "2026-04-04T09:30:00Z",
+        }
+
+        seen_ids = []
+        cursor = None
+        pages = 0
+        while True:
+            url = "/api/stock-management/stocks/FPT/order-flow/?limit=5"
+            if cursor:
+                url += f"&cursor={cursor}"
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            pages += 1
+
+            page_ids = [row["id"] for row in response.data["signals"]]
+            seen_ids.extend(page_ids)
+            cursor = response.data["pagination"].get("next_cursor")
+            if not response.data["pagination"].get("has_more"):
+                break
+
+        self.assertEqual(pages, 5)
+        self.assertEqual(len(seen_ids), total_rows)
+        self.assertEqual(len(seen_ids), len(set(seen_ids)))
+
+    @patch("portfolio.order_flow.detect_dark_flow")
+    @patch("portfolio.order_flow.compute_cvd_series")
+    def test_order_flow_endpoint_cursor_replay_consistent(self, mock_cvd, mock_detect):
+        from portfolio.models import OrderFlowSignal
+
+        for idx in range(12):
+            OrderFlowSignal.objects.create(
+                symbol="FPT",
+                signal_type="iceberg",
+                strength=40 + idx,
+                confidence="medium",
+                tick_rate=8 + idx,
+                small_order_ratio=0.6,
+                cvd_at_signal=900 + idx,
+                price_at_signal=101000,
+                window_seconds=300,
+                components_json={"iceberg": {"repeat_count": 5}},
+                event_id=f"dark_flow:FPT:2026-04-04T09:45:{idx:02d}+00:00:iceberg:{idx}",
+                severity="warning",
+            )
+
+        mock_cvd.return_value = []
+        mock_detect.return_value = {
+            "signal_type": "none",
+            "strength": 0,
+            "confidence": "low",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 2.0},
+                "size_distribution": {"small_ratio": 0.4},
+            },
+            "triggered_at": "2026-04-04T09:45:00Z",
+        }
+
+        first = self.client.get("/api/stock-management/stocks/FPT/order-flow/?limit=5")
+        self.assertEqual(first.status_code, 200)
+        cursor = first.data["pagination"]["next_cursor"]
+        self.assertIsNotNone(cursor)
+
+        replay1 = self.client.get(f"/api/stock-management/stocks/FPT/order-flow/?limit=5&cursor={cursor}")
+        replay2 = self.client.get(f"/api/stock-management/stocks/FPT/order-flow/?limit=5&cursor={cursor}")
+        self.assertEqual(replay1.status_code, 200)
+        self.assertEqual(replay2.status_code, 200)
+
+        ids1 = [row["id"] for row in replay1.data["signals"]]
+        ids2 = [row["id"] for row in replay2.data["signals"]]
+        self.assertEqual(ids1, ids2)
 
     def test_order_flow_endpoint_requires_authentication(self):
         self.client.force_authenticate(user=None)

@@ -4017,14 +4017,69 @@ def stock_order_flow_api(request, symbol: str):
 
     dark_flow = detect_dark_flow(normalized_symbol)
     cvd_series = compute_cvd_series(normalized_symbol, window_minutes=window_minutes, bucket_seconds=60)
-    recent_signals = list(
-        OrderFlowSignal.objects.filter(symbol=normalized_symbol)
-        .order_by('-created_at')
-        .values(
-            'id', 'symbol', 'signal_type', 'strength', 'confidence', 'tick_rate',
-            'small_order_ratio', 'cvd_at_signal', 'price_at_signal', 'created_at'
-        )[:8]
-    )
+    # Sprint 34 A2: Implement cursor-based pagination with has_more semantics
+    import base64
+
+    try:
+        offset = int(request.query_params.get('offset', 0) or 0)
+    except (TypeError, ValueError):
+        offset = 0
+    offset = max(0, min(offset, 10000))  # Prevent crazy values
+
+    try:
+        limit = int(request.query_params.get('limit', 8) or 8)
+    except (TypeError, ValueError):
+        limit = 8
+    limit = max(1, min(limit, 50))  # 1-50 records per page
+    cursor = str(request.query_params.get('cursor', '')).strip()
+    
+    # Parse cursor if provided (format: base64(timestamp:id))
+    cursor_timestamp = None
+    cursor_id = None
+    if cursor:
+        try:
+            decoded = base64.b64decode(cursor).decode('utf-8')
+            cursor_timestamp, cursor_id_raw = decoded.rsplit(':', 1)
+            cursor_id = int(cursor_id_raw)
+        except Exception:
+            pass  # Invalid cursor, start from beginning
+    
+    # Query with pagination: order by -created_at, -id for deterministic tiebreaker
+    queryset = OrderFlowSignal.objects.filter(symbol=normalized_symbol).order_by('-created_at', '-id')
+    
+    # Apply cursor offset if provided
+    if cursor_timestamp and cursor_id is not None:
+        from datetime import datetime
+        from django.db.models import Q
+        try:
+            cursor_dt = datetime.fromisoformat(cursor_timestamp.replace('Z', '+00:00'))
+            queryset = queryset.filter(
+                Q(created_at__lt=cursor_dt) |
+                Q(created_at=cursor_dt, id__lt=cursor_id)
+            )
+        except Exception:
+            pass
+    
+    # Get total count before offset
+    total_count = queryset.count()
+    
+    # Apply offset + fetch limit+1 to detect has_more
+    signals_with_extra = list(queryset[offset:offset + limit + 1].values(
+        'id', 'symbol', 'signal_type', 'strength', 'confidence', 'tick_rate',
+        'small_order_ratio', 'cvd_at_signal', 'price_at_signal', 'created_at',
+        'event_id', 'severity'
+    ))
+    
+    has_more = len(signals_with_extra) > limit
+    recent_signals = signals_with_extra[:limit]
+    
+    # Generate next_cursor if has_more
+    next_cursor = None
+    if has_more and recent_signals:
+        last_signal = recent_signals[-1]
+        cursor_payload = f"{last_signal['created_at'].isoformat()}:{last_signal['id']}"
+        next_cursor = base64.b64encode(cursor_payload.encode('utf-8')).decode('utf-8')
+    
     latest_signal = recent_signals[0] if recent_signals else None
 
     _track_opencore_stock_endpoint_usage(request, 'stock_order_flow_api', status.HTTP_200_OK)
@@ -4040,6 +4095,13 @@ def stock_order_flow_api(request, symbol: str):
             'dark_flow': dark_flow,
             'tick_rate': (dark_flow.get('components') or {}).get('tick_rate') or {},
             'size_distribution': (dark_flow.get('components') or {}).get('size_distribution') or {},
+            'pagination': {
+                'offset': offset,
+                'limit': limit,
+                'total_count': total_count,
+                'has_more': has_more,
+                'next_cursor': next_cursor,
+            }
         },
         status=status.HTTP_200_OK,
     )

@@ -1371,20 +1371,35 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
         size_dist = comps.get('size_distribution', {}) or {}
         cvd_change = comps.get('absorption', {}).get('cvd_change', 0)
 
+        # Sprint 34 A1: Calculate severity (B1) and deterministic event_id (A1)
+        if strength < 40:
+            severity = OrderFlowSignal.SeverityChoices.INFO
+        elif strength < 70:
+            severity = OrderFlowSignal.SeverityChoices.WARNING
+        else:
+            severity = OrderFlowSignal.SeverityChoices.URGENT
+        triggered_at_iso = result.get('triggered_at', timezone.now().isoformat())
+        event_id = f"dark_flow:{sym}:{triggered_at_iso}:{signal_type}"
+
         if signal_type != 'none' or strength > 20:
-            OrderFlowSignal.objects.create(
-                symbol=sym,
-                signal_type=signal_type,
-                strength=strength,
-                confidence=result.get('confidence', 'low'),
-                tick_rate=tick_rate_info.get('tick_rate_per_min', 0),
-                small_order_ratio=size_dist.get('small_ratio', 0),
-                cvd_at_signal=cvd_change,
-                price_at_signal=0,
-                window_seconds=300,
-                components_json=comps,
+            _, created = OrderFlowSignal.objects.update_or_create(
+                event_id=event_id,
+                defaults={
+                    'symbol': sym,
+                    'signal_type': signal_type,
+                    'strength': strength,
+                    'confidence': result.get('confidence', 'low'),
+                    'tick_rate': tick_rate_info.get('tick_rate_per_min', 0),
+                    'small_order_ratio': size_dist.get('small_ratio', 0),
+                    'cvd_at_signal': cvd_change,
+                    'price_at_signal': 0,
+                    'window_seconds': 300,
+                    'components_json': comps,
+                    'severity': severity,
+                },
             )
-            stored += 1
+            if created:
+                stored += 1
             cache.set(lock_key, True, timeout=ORDER_FLOW_COOLDOWN_SECONDS)
 
         if strength > 50:
@@ -1402,7 +1417,6 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                 else:
                     description = f"Tin hieu {signal_type} strength={strength:.0f}"
 
-                event_id = f"dark_flow:{sym}:{result.get('triggered_at', timezone.now().isoformat())}:{signal_type}"
                 async_to_sync(channel_layer.group_send)(
                     f'whale_{sym}',
                     {
@@ -1420,6 +1434,7 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                             'description': description,
                             'event_id': event_id,
                             'ts': result.get('triggered_at', timezone.now().isoformat()),
+                            'severity': severity,
                         },
                     },
                 )
