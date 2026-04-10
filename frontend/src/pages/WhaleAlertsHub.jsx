@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories, getWhaleCampaigns } from '../api/client';
+import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories, getWhaleCampaigns, getSymbolInvestigation } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 
@@ -520,6 +520,144 @@ function CampaignDetailModal({ campaign, onClose, t, localeTag, formatDateTimeFn
   );
 }
 
+function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, formatDateTimeFn }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [sort, setSort] = useState('created_at');
+  const [window, setWindow] = useState('5d');
+
+  const loadData = useCallback(async () => {
+    if (!selectedSymbol) return;
+    setLoading(true);
+    setError('');
+    try {
+      const response = await getSymbolInvestigation(selectedSymbol, { window, sort });
+      setData(response.data || {});
+    } catch (err) {
+      setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedSymbol, window, sort, t]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  if (!selectedSymbol) return null;
+
+  const investigation = data || {};
+  const campaigns = investigation.correlated_campaigns || [];
+  const signals = investigation.correlated_signals || [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between gap-2 mb-4">
+        <div>
+          <p className="text-label">{t('whaleHub.symbolInvestigation')}</p>
+          <h3 className="mt-1 text-lg font-semibold text-slate-100">{selectedSymbol}</h3>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-slate-500"
+        >
+          {t('whaleHub.closeDetail')}
+        </button>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">{t('whaleHub.window')}</label>
+          <select
+            value={window}
+            onChange={(e) => setWindow(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+          >
+            <option value="5d">5 Days</option>
+            <option value="1h">1 Hour</option>
+            <option value="session">Session</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs text-slate-400 block mb-1">{t('whaleHub.sort')}</label>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-sm text-slate-100"
+          >
+            <option value="created_at">{t('whaleHub.latest')}</option>
+            <option value="correlation_strength">{t('whaleHub.strength')}</option>
+          </select>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="py-4 text-center text-slate-400">{t('common.loading')}</div>
+      ) : error ? (
+        <div className="rounded-2xl border border-rose-800/60 bg-rose-950/20 px-4 py-3 text-sm text-rose-200">{error}</div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+              {t('whaleHub.campaigns')} ({campaigns.length})
+            </p>
+            <div className="space-y-2">
+              {campaigns.length === 0 ? (
+                <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
+              ) : (
+                campaigns.map((item) => (
+                  <div key={item.event_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-semibold text-slate-100">{item.symbol}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                        item.side === 'BUY' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
+                      }`}>
+                        {item.side}
+                      </span>
+                    </div>
+                    <p className="text-slate-400">
+                      {t('whaleHub.matchedValue')}: {formatCompactMoney(item.matched_value, localeTag)} VND
+                    </p>
+                    <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+              {t('whaleHub.darkFlowSignals')} ({signals.length})
+            </p>
+            <div className="space-y-2">
+              {signals.length === 0 ? (
+                <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
+              ) : (
+                signals.map((item) => (
+                  <div key={item.signal_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
+                    <div className="flex items-center justify-between gap-2 mb-1">
+                      <span className="font-semibold text-slate-100">{item.signal_type}</span>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-900/60 text-cyan-300`}>
+                        {(item.strength || 0).toFixed(0)}
+                      </span>
+                    </div>
+                    <p className="text-slate-400">
+                      {t('whaleHub.confidence')}: {item.confidence}
+                    </p>
+                    <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WhaleAlertsHub() {
   const { ability, userPlan } = usePortfolio();
   const { t, localeTag, formatDateTime } = useI18n();
@@ -547,6 +685,7 @@ export default function WhaleAlertsHub() {
   const [feedWindow, setFeedWindow] = useState('session');
   const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
   const [activeBoardTab, setActiveBoardTab] = useState('tape');
+  const [selectedSymbolInvestigation, setSelectedSymbolInvestigation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -761,6 +900,21 @@ export default function WhaleAlertsHub() {
               >
                 {t('whaleHub.tabCampaigns')}
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveBoardTab('investigation');
+                  // Pre-select first symbol if available
+                  if (trackedSymbols.length > 0 && !selectedSymbolInvestigation) {
+                    setSelectedSymbolInvestigation(trackedSymbols[0].symbol);
+                  }
+                }}
+                className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                  activeBoardTab === 'investigation' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                }`}
+              >
+                {t('whaleHub.tabSymbolInvestigation')}
+              </button>
             </div>
             <div className="flex items-center gap-2 rounded-2xl border border-cyan-700/60 bg-slate-900 px-3 py-2 shadow-[0_0_0_1px_rgba(8,145,178,0.15)]">
               <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200">{t('whaleHub.scope')}</span>
@@ -877,6 +1031,37 @@ export default function WhaleAlertsHub() {
             {[...Array(6)].map((_, index) => (
               <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-900" />
             ))}
+          </div>
+        ) : activeBoardTab === 'investigation' ? (
+          <div className="mt-4">
+            <div className="mb-4">
+              <label className="text-xs text-slate-400 block mb-2">{t('whaleHub.selectSymbol')}</label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
+                {buildTrackedSymbolBuckets(trackedSymbols).map((symbol) => (
+                  <button
+                    key={symbol}
+                    type="button"
+                    onClick={() => setSelectedSymbolInvestigation(symbol)}
+                    className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
+                      selectedSymbolInvestigation === symbol
+                        ? 'border-cyan-500 bg-cyan-900/60 text-cyan-100'
+                        : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    {symbol}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {selectedSymbolInvestigation && (
+              <SymbolInvestigationPanel
+                selectedSymbol={selectedSymbolInvestigation}
+                onClose={() => setSelectedSymbolInvestigation(null)}
+                t={t}
+                localeTag={localeTag}
+                formatDateTimeFn={formatDateTime}
+              />
+            )}
           </div>
         ) : activeBoardTab === 'campaigns' ? (
           <>

@@ -250,6 +250,34 @@ export const getWhaleCampaigns = ({
   const queryString = params.toString();
   return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`);
 };
+
+/**
+ * Get symbol co-observation data (dark money + whale campaigns correlation)
+ * @param {string} symbol - Stock symbol (e.g. 'VNM')
+ * @param {object} options - Query parameters
+ * @param {string} options.window - Time window: '5d', '30m', etc.
+ * @param {string} options.sort - Sort key: 'created_at' or 'correlation_strength'
+ * @param {boolean} options.include_campaigns - Include whale campaigns
+ * @param {boolean} options.include_signals - Include dark flow signals
+ * @returns {Promise} API response with co-observation data
+ */
+export const getSymbolInvestigation = (symbol, {
+  window = '5d',
+  sort = 'created_at',
+  include_campaigns = true,
+  include_signals = true,
+} = {}) => {
+  const params = new URLSearchParams();
+  if (window) params.set('window', window);
+  if (sort) params.set('sort', sort);
+  params.set('include_campaigns', String(include_campaigns));
+  params.set('include_signals', String(include_signals));
+  const queryString = params.toString();
+  return apiClient.get(
+    `/realtime/symbol-investigation/${encodeURIComponent(symbol)}/${queryString ? `?${queryString}` : ''}`
+  );
+};
+
 export const getWhaleAdvisories = (params = {}) => {
   const query = new URLSearchParams();
   Object.entries(params || {}).forEach(([key, value]) => {
