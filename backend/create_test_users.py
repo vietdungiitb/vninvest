@@ -13,6 +13,8 @@ from portfolio.opencore_dpi import DPIPlan, DPILicense
 from django.utils import timezone
 from datetime import timedelta
 
+TEST_PASSWORD = 'test@123456'
+
 # Clean up old test users
 User.objects.filter(username__in=['testfree', 'testpro', 'testpremium']).delete()
 
@@ -27,7 +29,7 @@ pro_plan, _ = DPIPlan.objects.get_or_create(
 )
 
 # 1. FREE USER (should get 403 on premium endpoints)
-user_free = User.objects.create_user('testfree', 'free@test.local', 'test123')
+user_free = User.objects.create_user('testfree', 'free@test.local', TEST_PASSWORD)
 UserConfig.objects.create(user=user_free, plan='free', email_verified=True)
 # License auto-created via signal, just update it
 license_free = user_free.dpi_license
@@ -35,10 +37,10 @@ license_free.status = 'active'
 license_free.expiry_date = timezone.now() + timedelta(days=30)
 license_free.start_date = timezone.now()
 license_free.save()
-print(f"✅ Created free user: testfree / test123")
+print(f"✅ Created free user: testfree / {TEST_PASSWORD}")
 
 # 2. PRO USER (should get 200 on premium endpoints, track quota)
-user_pro = User.objects.create_user('testpro', 'pro@test.local', 'test123')
+user_pro = User.objects.create_user('testpro', 'pro@test.local', TEST_PASSWORD)
 config_pro = UserConfig.objects.create(user=user_pro, plan='pro', email_verified=True)
 # License auto-created via signal, update it to pro
 license_pro = user_pro.dpi_license
@@ -53,7 +55,7 @@ lifecycle_pro = UserPlanLifecycle.objects.create(
     trial_starts_at=timezone.now() - timedelta(days=2),
     trial_ends_at=timezone.now() + timedelta(days=5),  # Still in trial
 )
-print(f"✅ Created pro user (trial): testpro / test123")
+print(f"✅ Created pro user (trial): testpro / {TEST_PASSWORD}")
 print(f"   Trial ends in 5 days: {lifecycle_pro.trial_ends_at}")
 
 # 3. TEST FEATURE GATES
@@ -74,5 +76,5 @@ print(f"   Pro: plan={ent_pro['plan']}, trial_state={ent_pro['trial_state']}")
 print(f"   Pro trial_ends_at: {ent_pro['trial_ends_at']}")
 
 print(f"\n🎉 All test users ready! Login to frontend:")
-print(f"   testfree / test123  (gets 403 on premium endpoints)")
-print(f"   testpro / test123   (gets 200 + tracking)")
+print(f"   testfree / {TEST_PASSWORD}  (gets 403 on premium endpoints)")
+print(f"   testpro / {TEST_PASSWORD}   (gets 200 + tracking)")

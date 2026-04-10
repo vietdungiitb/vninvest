@@ -10,7 +10,7 @@
       3. Seed demo data (testuser / test123) để test trực quan ngay lập tức
 
     Truy cập sau khi chạy:
-      - App:       http://localhost       (username: testuser   / password: test123)
+    - App:       http://localhost       (username: testuser   / password: Test@123456)
       - Admin:     http://localhost/admin (username: admin      / password: admin123)
       - API:       http://localhost:8000/api/
       - Mailpit:   http://localhost:8025
@@ -117,11 +117,18 @@ if (-not $SkipSeed) {
     Write-Host "  Tạo superuser admin..."
     docker exec $backendContainer python manage.py shell -c @"
 from django.contrib.auth.models import User
-if not User.objects.filter(username='admin').exists():
-    User.objects.create_superuser('admin', 'admin@local.dev', 'admin123')
-    print('Created admin / admin123')
-else:
-    print('admin already exists')
+password = 'test@123456'
+user, created = User.objects.get_or_create(username='admin', defaults={
+    'email': 'admin@local.dev',
+    'is_staff': True,
+    'is_superuser': True,
+})
+user.email = 'admin@local.dev'
+user.is_staff = True
+user.is_superuser = True
+user.set_password(password)
+user.save()
+print('Created admin / test@123456' if created else 'Updated admin password -> test@123456')
 "@
 
     # Seed demo data (testuser / test123 + mock intraday data)
@@ -134,8 +141,8 @@ else:
 
     Write-Host ""
     Write-Host "  Demo accounts:" -ForegroundColor Green
-    Write-Host "    testuser  / test123  (user thường, portfolio đầy đủ)" -ForegroundColor Green
-    Write-Host "    admin     / admin123 (superuser, vào /admin)" -ForegroundColor Green
+    Write-Host "    testuser  / Test@123456  (user thường, portfolio đầy đủ)" -ForegroundColor Green
+    Write-Host "    admin     / test@123456 (superuser, vào /admin)" -ForegroundColor Green
 }
 
 # ── Done ─────────────────────────────────────────────────────────────────────
@@ -145,7 +152,7 @@ Write-Host " Stack đã sẵn sàng!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  App        -> http://localhost:8080"
-Write-Host "  Admin      -> http://localhost:8080/admin   (admin / admin123)"
+Write-Host "  Admin      -> http://localhost:8080/admin   (admin / test@123456)"
 Write-Host "  API        -> http://localhost:8000/api/"
 Write-Host "  Mailpit    -> http://localhost:8026"
 Write-Host ""
