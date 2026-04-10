@@ -302,6 +302,9 @@ def check_feature_access(user: User, feature_key: str) -> Tuple[bool, Optional[s
     Helper to check if user can access feature.
     Returns (can_access, reason_if_denied)
     """
+    if bool(getattr(user, 'is_superuser', False) or getattr(user, 'is_staff', False)):
+        return True, None
+
     try:
         license = user.dpi_license
     except DPILicense.DoesNotExist:

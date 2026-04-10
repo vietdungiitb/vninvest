@@ -1457,6 +1457,85 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['code'], 'feature_locked')
         self.assertEqual(response.data['feature_key'], 'sentiment_score')
 
+    def test_check_feature_access_allows_staff_admin_without_dpi_feature(self):
+        from portfolio.opencore_dpi import check_feature_access
+
+        admin_user = User.objects.create_superuser(
+            username='route-admin',
+            email='route-admin@example.com',
+            password='Test@123456',
+        )
+        can_access, reason = check_feature_access(admin_user, 'sentiment_score')
+
+        self.assertTrue(can_access)
+        self.assertIsNone(reason)
+
+    def test_stock_ai_advisory_components_generate_allows_admin_even_without_pro_feature_license(self):
+        from portfolio.opencore_dpi import DPIPlan, DPILicense
+
+        admin_user = User.objects.create_superuser(
+            username='stock-admin',
+            email='stock-admin@example.com',
+            password='Test@123456',
+        )
+        UserConfig.objects.update_or_create(
+            user=admin_user,
+            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
+        admin_cfg = UserConfig.objects.get(user=admin_user)
+        admin_cfg.set_ai_api_key('sk-admin-route')
+        admin_cfg.save(update_fields=['ai_api_key'])
+
+        free_plan, _ = DPIPlan.objects.get_or_create(
+            name='free',
+            defaults={
+                'display_name': 'Community',
+                'annual_price_usd': 0,
+                'monthly_price_usd': 0,
+                'features': {'sentiment_score': False, 'whale_momentum': False},
+            },
+        )
+        DPILicense.objects.update_or_create(
+            user=admin_user,
+            defaults={
+                'plan': free_plan,
+                'status': 'active',
+                'expiry_date': timezone.now() + timedelta(days=30),
+            },
+        )
+
+        WhaleAdvisory.objects.create(
+            user=admin_user,
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Admin workspace summary',
+            ai_detail='Admin workspace detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+        )
+
+        token_response = self.client.post(
+            '/api/auth/token/',
+            {'username': 'stock-admin', 'password': 'Test@123456'},
+            format='json',
+        )
+        self.assertEqual(token_response.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {token_response.data['access']}")
+
+        with patch('portfolio.views._get_ai_runtime_config_status', return_value={'ready': True, 'message': '', 'reason': None}):
+            with patch('portfolio.order_flow.detect_dark_flow', return_value={}):
+                with patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[]):
+                    with patch('portfolio.views._sprint17_build_component_templates', return_value=[]):
+                        response = self.client.post(
+                            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+                            {'timeframe': '15m'},
+                            format='json',
+                        )
+
+        self.assertNotEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_stock_workspace_p0_role_matrix_blocks_free_dpi_license(self):
         self._attach_dpi_license(
             'free',
