@@ -148,6 +148,9 @@ def _accumulate_user_advisory_event(
             'source_scores': {str(source): float(event_side_score)},
             'first_event_at': now.isoformat(),
             'updated_at': now.isoformat(),
+            # F1: Store dark_flow specific fields
+            'dark_flow_strength': float(payload.get('strength', 0) or 0) if source == 'dark_flow' else None,
+            'dark_flow_confidence': str(payload.get('confidence', 'low')) if source == 'dark_flow' else None,
         }
         cache.set(cache_key, state, timeout=cache_ttl)
         flush_merged_advisory_event.apply_async(
@@ -174,6 +177,10 @@ def _accumulate_user_advisory_event(
     existing['sources'] = sorted(source_set)
     existing['source_scores'] = source_scores
     existing['updated_at'] = now.isoformat()
+    # F1: Update dark_flow fields when dark_flow signal arrives
+    if source == 'dark_flow':
+        existing['dark_flow_strength'] = max(float(existing.get('dark_flow_strength', 0) or 0), float(payload.get('strength', 0) or 0))
+        existing['dark_flow_confidence'] = str(payload.get('confidence') or existing.get('dark_flow_confidence', 'low'))
     cache.set(cache_key, existing, timeout=cache_ttl)
     record_advisory_merge_observation('merged')
     return {'status': 'merged', 'cache_key': cache_key, 'window_seconds': merge_window_seconds}
@@ -202,6 +209,10 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     elif merged_sources:
         primary_source = merged_sources[0]
 
+    # F1: Extract dark flow fields for severity computation
+    dark_flow_strength = state.get('dark_flow_strength')
+    dark_flow_confidence = state.get('dark_flow_confidence')
+
     task = generate_whale_advisory_task.apply_async(
         kwargs={
             'symbol': normalized_symbol,
@@ -214,6 +225,8 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
             'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
             'merged_sources': merged_sources,
             'primary_source': primary_source,
+            'dark_flow_strength': dark_flow_strength,
+            'dark_flow_confidence': dark_flow_confidence,
         },
         countdown=0,
     )
@@ -319,6 +332,46 @@ def _compute_advisory_severity(matched_value_vnd: float, threshold: float) -> st
             return WhaleAdvisory.SeverityChoices.URGENT
         if ratio >= 2.0:
             return WhaleAdvisory.SeverityChoices.WARNING
+    return WhaleAdvisory.SeverityChoices.INFO
+
+
+def _compute_dark_flow_severity(
+    strength: float,
+    confidence: str = 'low',
+    cvd_change: float = 0.0,
+) -> str:
+    """
+    F1 Fix: Tính severity riêng cho dark_flow dựa trên strength + confidence + cvd_change.
+    Không dùng matched_value/threshold (vì dark flow không có concept "matched_value").
+
+    Quy tắc:
+    - URGENT: strength >= 80 AND confidence in [high, high_confidence]
+    - WARNING: (strength >= 60) OR (strength >= 40 AND confidence in [medium, high, high_confidence])
+    - INFO: else
+
+    Tham số:
+    - strength: 0-100, độ mạnh của dark flow signal (từ order flow analysis)
+    - confidence: low/medium/high/high_confidence
+    - cvd_change: cumulative volume delta direction (dùng cho context nhưng không là chỉ tiêu chính)
+    """
+    strength_val = float(strength or 0)
+    confidence_str = str(confidence or 'low').strip().lower()
+
+    # Normalize confidence levels
+    is_high_confidence = confidence_str in {'high', 'high_confidence', 'very_high'}
+    is_medium_confidence = confidence_str in {'medium', 'medium_confidence'}
+
+    # Urgent: very strong + high confidence
+    if strength_val >= 80 and is_high_confidence:
+        return WhaleAdvisory.SeverityChoices.URGENT
+
+    # Warning: either very strong, or strong + good confidence
+    if strength_val >= 60:
+        return WhaleAdvisory.SeverityChoices.WARNING
+    if strength_val >= 40 and (is_high_confidence or is_medium_confidence):
+        return WhaleAdvisory.SeverityChoices.WARNING
+
+    # Info: everything else
     return WhaleAdvisory.SeverityChoices.INFO
 
 
@@ -812,6 +865,8 @@ def generate_whale_advisory_task(
     advisory_type: str = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
     severity_override: str | None = None,
     threshold_source: str = 'user_default',
+    dark_flow_strength: float | None = None,
+    dark_flow_confidence: str | None = None,
 ) -> dict:
     """
     1. Kiểm tra Redis cooldown — bỏ qua nếu đã gọi trong 15 phút.
@@ -937,7 +992,19 @@ def generate_whale_advisory_task(
         raise  # Celery retry
 
     refresh_count = (latest_existing_advisory.refresh_count + 1) if (force_refresh and latest_existing_advisory is not None) else 0
-    resolved_severity = str(severity_override or '').strip().lower() or _compute_advisory_severity(matched_value_vnd, float(threshold or 0))
+    
+    # F1 Fix: Use dark_flow severity mapper for dark flow sources
+    if severity_override:
+        resolved_severity = str(severity_override).strip().lower()
+    elif source == 'dark_flow' and dark_flow_strength is not None:
+        resolved_severity = _compute_dark_flow_severity(
+            strength=dark_flow_strength,
+            confidence=dark_flow_confidence or 'low',
+            cvd_change=0.0,
+        )
+    else:
+        resolved_severity = _compute_advisory_severity(matched_value_vnd, float(threshold or 0))
+    
     if resolved_severity not in {
         WhaleAdvisory.SeverityChoices.URGENT,
         WhaleAdvisory.SeverityChoices.WARNING,
@@ -1466,6 +1533,7 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
                             'strength': strength,
                             'signal_type': signal_type,
                             'cvd_change': cvd_change,
+                            'confidence': result.get('confidence', 'low'),
                             'matched_value_vnd': threshold_vnd,
                         },
                         threshold_vnd=threshold_vnd,
