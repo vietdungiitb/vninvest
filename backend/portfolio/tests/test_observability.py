@@ -8,6 +8,7 @@ from rest_framework.test import APITestCase
 from portfolio.exceptions import ExternalSystemException
 from portfolio.models import UserConfig
 from portfolio.observability import (
+    get_whale_pipeline_health_summary,
     get_market_observability_snapshot,
     record_whale_dedup_observation,
     record_whale_event_observation,
@@ -86,6 +87,42 @@ class MarketObservabilityTests(APITestCase):
         self.assertGreaterEqual(snapshot['overall']['fallback_hits'], 1)
         self.assertEqual(snapshot['fallback_breakdown']['whale-feed']['timeout'], 1)
         self.assertEqual(snapshot['external_timeout_breakdown']['whale-feed']['vnstock'], 1)
+
+    @patch('portfolio.market_views.market_data_service.get_whale_feed_aggregate')
+    def test_whale_aggregate_read_does_not_pollute_whale_pipeline_freshness(self, mock_get_whale_feed_aggregate):
+        self.authenticate()
+        mock_get_whale_feed_aggregate.return_value = {
+            'results': [
+                {
+                    'event_id': 'tick:1',
+                    'symbol': 'FPT',
+                    'source': 'intraday_tick_db',
+                    'ts': '2026-04-10T09:15:00+07:00',
+                    'recovered': False,
+                }
+            ],
+            'next_cursor': None,
+            'has_more': False,
+            'server_time': '2026-04-10T09:20:00+07:00',
+            'source': 'intraday_tick_db',
+            'filters': {'window': 'session'},
+            'entitlements': {},
+            'weights_version': 'weights-v1',
+            'scope': 'tracked',
+            'scope_source': 'tracked_symbols',
+            'symbols': ['FPT'],
+            'watchlist_group_ids': [],
+            'sort': 'ts',
+            'window': 'session',
+            'limit': 20,
+        }
+
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=session')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        summary = get_whale_pipeline_health_summary()
+        self.assertEqual(summary['freshness']['sample_size'], 0)
+        self.assertEqual(summary['snapshot_recovery']['events_total'], 0)
 
 
 class AdminRuntimeKPITests(APITestCase):

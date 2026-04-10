@@ -1292,7 +1292,6 @@ class WhaleFeedView(APIView):
 
     def get(self, request, symbol):
         import pandas as pd
-        from portfolio.observability import record_whale_event_observation
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -1481,12 +1480,6 @@ class WhaleFeedView(APIView):
             },
             'fetched_at': timezone.now().isoformat(),
         }
-        for order in result.get('whale_orders', []):
-            record_whale_event_observation(
-                source=data_source,
-                ts=order.get('ts'),
-                recovered=bool(order.get('recovered')),
-            )
         _cache_set(cache_key, result, timeout=20)
         return Response(result)
 
@@ -1587,8 +1580,6 @@ class WhaleFeedAggregateView(APIView):
     throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
-        from portfolio.observability import record_whale_event_observation
-
         threshold_vnd = _get_user_whale_threshold_vnd(request.user)
         entitlements = resolve_user_entitlements(request.user)
         api_quota = consume_quota(
@@ -1728,13 +1719,6 @@ class WhaleFeedAggregateView(APIView):
                 )
                 for row in page_rows
             ]
-            for item in results:
-                record_whale_event_observation(
-                    source=item.get('source') or 'redis_stream',
-                    ts=item.get('ts'),
-                    recovered=bool(item.get('recovered')),
-                )
-
             return Response({
                 'results': results,
                 'next_cursor': next_cursor,
@@ -1863,13 +1847,6 @@ class WhaleFeedAggregateView(APIView):
                 )
                 for row in page_rows
             ]
-            for item in results:
-                record_whale_event_observation(
-                    source=item.get('source') or ('vnstock' if page_rows else 'intraday_tick_db'),
-                    ts=item.get('ts'),
-                    recovered=bool(item.get('recovered')),
-                )
-
             return Response({
                 'results': results,
                 'next_cursor': next_cursor,
@@ -1932,13 +1909,6 @@ class WhaleFeedAggregateView(APIView):
             )
             for row in page_rows
         ]
-        for item in results:
-            record_whale_event_observation(
-                source=item.get('source') or 'intraday_tick_db',
-                ts=item.get('ts'),
-                recovered=bool(item.get('recovered')),
-            )
-
         return Response({
             'results': results,
             'next_cursor': next_cursor,
@@ -1994,6 +1964,40 @@ class WhaleCampaignsView(APIView):
         except Exception:
             logger.exception('WhaleCampaignsView unexpected error')
             return Response({'detail': 'Lỗi ngoài dự kiến khi tổng hợp whale campaigns.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def whale_symbol_summary_api(request, symbol: str):
+    """
+    GET /api/realtime/whale-symbol-summary/<symbol>/
+    
+    Get comprehensive whale event summary for a symbol including:
+    - Latest campaign info
+    - Today's buy/sell bias
+    - Net value flow
+    - Abnormality context
+    - Baseline metrics
+    """
+    try:
+        normalized_symbol = (symbol or '').strip().upper()
+        if not normalized_symbol or len(normalized_symbol) > 10:
+            return Response(
+                {'detail': 'Thiếu mã chứng khoán.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from .baseline_service import BaselineService
+        baseline_svc = BaselineService()
+        summary = baseline_svc.get_whale_symbol_summary(normalized_symbol, window='session')
+        
+        return Response(summary)
+    except Exception:
+        logger.exception(f'whale_symbol_summary_api error for {symbol}')
+        return Response(
+            {'detail': 'Lỗi khi lấy thông tin tóm tắt whale.'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 class DepthChartView(APIView):

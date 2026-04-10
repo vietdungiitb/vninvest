@@ -25,6 +25,7 @@ from .adapters.vnstock_adapter import (
     fetch_price_board_dataframe,
     read_stream_intraday_ticks,
 )
+from .baseline_service import BaselineService
 from .domain_constants import (
     WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT,
     WHALE_CONFIG_VERSION,
@@ -46,7 +47,6 @@ from .models import (
 from .observability import (
     record_market_external_timeout,
     record_market_fallback,
-    record_whale_event_observation,
 )
 from .permissions import resolve_user_entitlements
 from .services import get_price_changes
@@ -681,12 +681,6 @@ class MarketDataService:
             },
             'fetched_at': timezone.now().isoformat(),
         }
-        for order in result.get('whale_orders', []):
-            record_whale_event_observation(
-                source=data_source,
-                ts=order.get('ts'),
-                recovered=bool(order.get('recovered')),
-            )
         self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
         set_cache(cache_key, result, timeout=20)
         return result
@@ -1968,6 +1962,8 @@ class MarketDataService:
     def _build_aggregate_event_payload(self, row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
         matched_value = float(getattr(row, 'matched_value', 0) or 0)
         occurred_at = self._build_tick_timestamp(row)
+        symbol = row.symbol.upper()
+        
         score_result = calculate_event_score(
             trade={'matched_value': matched_value, 'threshold': threshold_vnd, 'side': getattr(row, 'side', '')},
             context={'threshold_vnd': threshold_vnd, 'side': getattr(row, 'side', '')},
@@ -1979,13 +1975,35 @@ class MarketDataService:
             now=now,
             config=score_config,
         )
+        
+        # Calculate abnormality scoring
+        baseline_svc = BaselineService()
+        try:
+            baseline = baseline_svc.get_symbol_baseline(symbol)
+            session_percentile = baseline_svc.get_session_percentile(symbol, matched_value, window='session')
+            abnormality_data = baseline_svc.calculate_abnormality_score(
+                symbol,
+                matched_value,
+                baseline=baseline,
+                session_percentile=session_percentile,
+            )
+        except Exception as e:
+            logger.warning(f'Failed to calculate abnormality score for {symbol}: {e}')
+            abnormality_data = {
+                'abnormality_score': 50.0,
+                'adv_multiple': 0.0,
+                'percentile_rank': 50.0,
+                'liquidity_stress': 'low',
+                'triggers': [],
+            }
+        
         return {
             'id': row.id,
             'event_id': f'tick:{row.id}',
             'contract_version': '1.0',
             'config_version': WHALE_CONFIG_VERSION,
             'weights_version': score_result['weights_version'],
-            'symbol': row.symbol.upper(),
+            'symbol': symbol,
             'side': self._normalize_side(getattr(row, 'side', '')),
             'matched_value': round(matched_value, 2),
             'volume': int(getattr(row, 'volume', 0) or 0),
@@ -2002,6 +2020,13 @@ class MarketDataService:
             'score_decay': {
                 'age_seconds': display_result['age_seconds'],
                 'decay_factor': display_result['decay_factor'],
+            },
+            'abnormality_score': abnormality_data['abnormality_score'],
+            'session_percentile': abnormality_data['percentile_rank'],
+            'baseline_context': {
+                'adv_multiple': abnormality_data['adv_multiple'],
+                'liquidity_tier': abnormality_data['liquidity_stress'],
+                'triggers': abnormality_data['triggers'],
             },
         }
 
@@ -2034,6 +2059,27 @@ class MarketDataService:
             config=score_config,
         )
 
+        # Calculate abnormality scoring
+        baseline_svc = BaselineService()
+        try:
+            baseline = baseline_svc.get_symbol_baseline(symbol)
+            session_percentile = baseline_svc.get_session_percentile(symbol, matched_value, window='session')
+            abnormality_data = baseline_svc.calculate_abnormality_score(
+                symbol,
+                matched_value,
+                baseline=baseline,
+                session_percentile=session_percentile,
+            )
+        except Exception as e:
+            logger.warning(f'Failed to calculate abnormality score for {symbol}: {e}')
+            abnormality_data = {
+                'abnormality_score': 50.0,
+                'adv_multiple': 0.0,
+                'percentile_rank': 50.0,
+                'liquidity_stress': 'low',
+                'triggers': [],
+            }
+
         return {
             'id': record.get('id'),
             'event_id': record.get('event_id') or f'{source}:{symbol}:{record.get("id") or occurred_at}',
@@ -2057,6 +2103,13 @@ class MarketDataService:
             'score_decay': {
                 'age_seconds': display_result['age_seconds'],
                 'decay_factor': display_result['decay_factor'],
+            },
+            'abnormality_score': abnormality_data['abnormality_score'],
+            'session_percentile': abnormality_data['percentile_rank'],
+            'baseline_context': {
+                'adv_multiple': abnormality_data['adv_multiple'],
+                'liquidity_tier': abnormality_data['liquidity_stress'],
+                'triggers': abnormality_data['triggers'],
             },
         }
 
@@ -2381,13 +2434,6 @@ class MarketDataService:
         window: str,
         limit: int,
     ) -> dict:
-        for item in results:
-            if isinstance(item, dict):
-                record_whale_event_observation(
-                    source=item.get('source') or source,
-                    ts=item.get('ts'),
-                    recovered=bool(item.get('recovered')),
-                )
         return {
             'results': results,
             'next_cursor': next_cursor,
