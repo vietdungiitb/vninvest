@@ -49,6 +49,7 @@ services:
       dockerfile: Dockerfile
       args:
         REACT_APP_API_BASE_URL: /api
+        REACT_APP_AI_ADVISORY_PATH: /ai-advisory
     ports:
       - "8080:80"
     restart: "no"

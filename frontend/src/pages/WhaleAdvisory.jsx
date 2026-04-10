@@ -7,6 +7,10 @@ import {
   deleteCurrentWhaleAdvisory,
   getWhaleAdvisories,
   getAdvisoryAutoRefreshInfo,
+  getAIOptions,
+  testAIConnection,
+  updateUserConfig,
+  getWhaleAdvisorySymbolStats,
 } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
 import Can from '../components/Can';
@@ -386,6 +390,27 @@ export default function WhaleAdvisory() {
     // Advisory list filters
     const [watchlistOnly, setWatchlistOnly] = useState(false);
 
+  // State for whale symbol statistics (from IntradayTick source)
+  const [symbolStats, setSymbolStats] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+  
+  const fetchWhaleStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const resp = await getWhaleAdvisorySymbolStats({
+        window: 'session',
+      });
+      if (resp.data?.stats) {
+        setSymbolStats(resp.data.stats);
+      }
+    } catch (err) {
+      console.error('Failed to fetch whale stats:', err);
+      setSymbolStats([]);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+  
   const fetchDataSnapshot = useCallback(async () => {
     const [advisoryResp, trackedResp] = await Promise.all([
       getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true' } : {}),
@@ -413,6 +438,15 @@ export default function WhaleAdvisory() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+  
+  useEffect(() => {
+    fetchWhaleStats();
+    // Refresh stats every 30 seconds to stay current with whale alerts
+    const interval = setInterval(() => {
+      fetchWhaleStats();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchWhaleStats]);
 
   const ensureAiConfigured = useCallback(async (symbol) => {
     try {
@@ -560,10 +594,31 @@ export default function WhaleAdvisory() {
     return symbols;
   }, [trackedSymbols]);
 
+  // Use fetched whale stats from IntradayTick source (consistent with Whale Alerts)
+  // Fall back to advisory aggregation if stats endpoint fails
   const symbolStatsMap = useMemo(() => {
+    if (symbolStats && symbolStats.length > 0) {
+      // Map fetched stats by symbol for consistent data with Whale Alerts Hub
+      return Object.fromEntries(
+        (symbolStats || []).map((row) => {
+          const mapped = {
+            symbol: row.symbol,
+            buyCount: row.buyCount || 0,
+            sellCount: row.sellCount || 0,
+            totalValue: row.totalValue || 0,
+            totalVolume: row.totalVolume || 0,
+            count: row.count || 0,
+            avgOrderValue: row.avgOrderValue || 0,
+            buyRatio: row.buyRatio || 0,
+          };
+          return [row.symbol, mapped];
+        })
+      );
+    }
+    // Fallback: compute from advisory items (old behavior)
     const stats = buildSymbolStats(filteredItems);
     return Object.fromEntries((stats || []).map((row) => [row.symbol, row]));
-  }, [filteredItems]);
+  }, [symbolStats, filteredItems]);
 
   const latestBySymbol = useMemo(() => {
     const sorted = [...filteredItems].sort((a, b) => {
@@ -702,6 +757,12 @@ export default function WhaleAdvisory() {
               {t('whaleAdvisory.description')}{' '}
               <span className="font-semibold text-cyan-300">{userPlan || 'free'}</span>.
             </p>
+            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-800/60 bg-cyan-950/20 px-3 py-1 text-[11px] text-cyan-200">
+              <span className={`inline-block h-1.5 w-1.5 rounded-full ${statsLoading ? 'bg-amber-300 animate-pulse' : 'bg-cyan-300'}`} />
+              <span>Nguồn thống kê: Realtime IntradayTick</span>
+              <span className="text-cyan-400/80">|</span>
+              <span>{statsLoading ? 'Đang đồng bộ...' : 'Đồng bộ với Whale Alerts'}</span>
+            </div>
           </div>
           <button type="button" onClick={fetchData} className="btn-primary">
             {t('whaleAdvisory.refresh')}

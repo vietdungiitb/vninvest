@@ -257,15 +257,26 @@ export const getWhaleAdvisories = (params = {}) => {
     query.set(key, String(value));
   });
   const suffix = query.toString() ? `?${query.toString()}` : '';
-  return apiClient.get(`/portfolio/whale-advisory/${suffix}`);
+  return apiClient.get(`/portfolio/ai-advisory/${suffix}`);
 };
 export const refreshWhaleAdvisory = (symbol) =>
-  apiClient.post(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/refresh/`);
+  apiClient.post(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/refresh/`);
 export const deleteCurrentWhaleAdvisory = (symbol) =>
-  apiClient.delete(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/current/`);
+  apiClient.delete(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/current/`);
 export const getAdvisoryAutoRefreshInfo = (symbol) =>
-  apiClient.get(`/portfolio/whale-advisory/${encodeURIComponent(symbol)}/auto-refresh-info/`);
+  apiClient.get(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/auto-refresh-info/`);
 export const getPortfolioUserConfig = () => apiClient.get('/portfolio/userconfig/');
+export const getWhaleAdvisorySymbolStats = (params = {}) => {
+  const query = new URLSearchParams();
+  if (params.symbols && Array.isArray(params.symbols)) {
+    query.set('symbols', params.symbols.join(','));
+  }
+  if (params.window) {
+    query.set('window', params.window);
+  }
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient.get(`/portfolio/ai-advisory-symbol-stats/${suffix}`);
+};
 export const updatePortfolioUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);
 export const getAIConfig = () => apiClient.get('/ai-config/');
 export const updateAIConfig = (data) => apiClient.put('/ai-config/', data);

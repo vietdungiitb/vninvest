@@ -3771,6 +3771,88 @@ def delete_current_whale_advisory_api(request, symbol: str):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsProPlan])
+def whale_advisory_symbol_stats_api(request):
+    """
+    GET /api/portfolio/whale-advisory-symbol-stats/
+    Thống kê BUY/SELL whale theo cùng nguồn IntradayTick như Whale Alerts,
+    giúp đồng nhất số liệu hiển thị giữa Whale Alerts và Whale Advisory.
+    """
+    from django.db.models import ExpressionWrapper, F, FloatField, Sum
+
+    symbols_param = str(request.query_params.get('symbols') or '').strip()
+    window = str(request.query_params.get('window') or 'session').strip().lower() or 'session'
+
+    if symbols_param:
+        symbols = [s.strip().upper() for s in symbols_param.split(',') if s.strip()]
+    else:
+        symbols = list(
+            TrackedSymbol.objects.filter(user=request.user).values_list('symbol', flat=True)
+        )
+
+    if not symbols:
+        return Response(
+            {
+                'ok': True,
+                'stats': [],
+                'window': window,
+                'source': 'intraday_tick_db',
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    today_local = timezone.localdate()
+    queryset = IntradayTick.objects.filter(symbol__in=symbols).annotate(
+        matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField())
+    )
+
+    if window == '5d':
+        queryset = queryset.filter(trade_date__gte=today_local - timedelta(days=4))
+    else:
+        queryset = queryset.filter(trade_date=today_local)
+
+    stats_list = []
+    for symbol in symbols:
+        symbol_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, symbol)
+        symbol_ticks = queryset.filter(symbol=symbol, matched_value__gte=symbol_threshold_vnd)
+
+        buy_count = symbol_ticks.filter(side__iexact='BUY').count()
+        sell_count = symbol_ticks.filter(side__iexact='SELL').count()
+        total_count = buy_count + sell_count
+        if total_count <= 0:
+            continue
+
+        total_value = float(symbol_ticks.aggregate(total=Sum('matched_value')).get('total') or 0.0)
+        total_volume = int(symbol_ticks.aggregate(total=Sum('volume')).get('total') or 0)
+        avg_order_value = total_value / total_count
+
+        stats_list.append(
+            {
+                'symbol': symbol,
+                'buyCount': buy_count,
+                'sellCount': sell_count,
+                'totalValue': total_value,
+                'totalVolume': total_volume,
+                'count': total_count,
+                'avgOrderValue': avg_order_value,
+            }
+        )
+
+    stats_list.sort(key=lambda item: item['totalValue'], reverse=True)
+    return Response(
+        {
+            'ok': True,
+            'stats': stats_list,
+            'window': window,
+            'source': 'intraday_tick_db',
+            'symbols_count': len(symbols),
+            'stats_count': len(stats_list),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_order_flow_api': 'dark_pool_flow',
     'stock_ai_advisory_session_api': 'whale_momentum',

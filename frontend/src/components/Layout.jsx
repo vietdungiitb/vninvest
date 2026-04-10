@@ -58,7 +58,7 @@ export default function Layout() {
   ];
   const toolItemsSeed = [{ to: '/admin-ops', label: t('layout.nav.adminOps') }];
   const stockManagementItems = ability.can('read', 'WhaleAdvisory')
-    ? [...stockMgmtItems, { to: '/whale-advisory', label: t('layout.nav.aiAdvisory') }]
+    ? [...stockMgmtItems, { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') }]
     : stockMgmtItems;
   const toolItems = ability.can('manage', 'all') ? toolItemsSeed : [];
   const currentPlanLabel = t(`plans.${userPlan || 'free'}`);

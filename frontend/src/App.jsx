@@ -56,13 +56,14 @@ export default function App() {
                 <Route path="upgrade" element={<Upgrade />} />
                 <Route path="stocks/:symbol" element={<StockDetail />} />
                 <Route
-                  path="whale-advisory"
+                  path="ai-advisory"
                   element={(
                     <ProtectedRoute action="read" subject="WhaleAdvisory">
                       <WhaleAdvisory />
                     </ProtectedRoute>
                   )}
                 />
+                <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
                 <Route path="whale-alerts" element={<WhaleAlertsHub />} />
                 <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
                 <Route path="transactions" element={<Transactions />} />

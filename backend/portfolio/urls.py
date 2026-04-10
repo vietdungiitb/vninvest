@@ -65,6 +65,14 @@ urlpatterns = [
     path('whale-advisory/<str:symbol>/auto-refresh-info/', views.whale_advisory_auto_refresh_info_api, name='whale-advisory-auto-refresh-info'),
     path('whale-advisory/<str:symbol>/refresh/', views.refresh_whale_advisory_api, name='whale-advisory-refresh'),
     path('whale-advisory/<str:symbol>/current/', views.delete_current_whale_advisory_api, name='whale-advisory-current-delete'),
+    path('whale-advisory-symbol-stats/', views.whale_advisory_symbol_stats_api, name='whale-advisory-symbol-stats'),
+
+    # --- AI Advisory aliases (new naming, backward compatible) ---
+    path('ai-advisory/', views.WhaleAdvisoryListView.as_view(), name='ai-advisory-list'),
+    path('ai-advisory/<str:symbol>/auto-refresh-info/', views.whale_advisory_auto_refresh_info_api, name='ai-advisory-auto-refresh-info'),
+    path('ai-advisory/<str:symbol>/refresh/', views.refresh_whale_advisory_api, name='ai-advisory-refresh'),
+    path('ai-advisory/<str:symbol>/current/', views.delete_current_whale_advisory_api, name='ai-advisory-current-delete'),
+    path('ai-advisory-symbol-stats/', views.whale_advisory_symbol_stats_api, name='ai-advisory-symbol-stats'),
 ]
 
 # ============================================================================
