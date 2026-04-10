@@ -1,0 +1,57 @@
+﻿# docker-compose.dev.yml
+# Override file cho local dev testing.
+# Setup: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+
+services:
+  db:
+    container_name: vninvest-dev-db
+    environment:
+      POSTGRES_DB: vninvest
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: devpassword
+
+  redis:
+    container_name: vninvest-dev-redis
+
+  mailpit:
+    container_name: vninvest-dev-mailpit
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+
+  backend:
+    container_name: vninvest-dev-backend
+    env_file:
+      - ./backend/.env.dev
+    ports:
+      - "8000:8000"
+    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  celery_worker:
+    container_name: vninvest-dev-celery-worker
+    env_file:
+      - ./backend/.env.dev
+    restart: "no"
+
+  celery_beat:
+    container_name: vninvest-dev-celery-beat
+    env_file:
+      - ./backend/.env.dev
+    restart: "no"
+
+  frontend:
+    container_name: vninvest-dev-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: /api
+    ports:
+      - "8080:80"
+    restart: "no"

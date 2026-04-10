@@ -27,7 +27,10 @@ backend/*.log
 
 # ── Environment / Secrets ────────────────────────────────────────────────────
 backend/.env
+backend/.env.dev
 backend/.env.local
+backend/.env.staging
+backend/.env.production
 frontend/.env.local
 frontend/.env.*.local
 .env
