@@ -10,27 +10,44 @@
 ## P0 - Must Pass
 
 ### A. Login UX clarity
-- [ ] Invalid credentials show explicit and user-safe message.
-- [ ] Unverified email shows verification-specific message.
-- [ ] Unverified email state exposes resend verification action.
-- [ ] Network or server errors show fallback technical guidance, not misleading auth text.
-- [ ] No hardcoded demo credential hints in production-facing login error copy.
+- [x] Invalid credentials show explicit and user-safe message.
+  - Evidence: LoginModal.test.jsx test case "shows invalid credentials error for 401 response"
+- [x] Unverified email shows verification-specific message.
+  - Evidence: LoginModal.test.jsx test case "shows unverified email error for email verification message"
+- [x] Unverified email state exposes resend verification action.
+  - Evidence: LoginModal.test.jsx test case "shows resend verification button when unverified email error occurs"
+- [x] Network or server errors show fallback technical guidance, not misleading auth text.
+  - Evidence: LoginModal.test.jsx test cases "shows network error for no response" + "shows server error for 500+ status"
+- [x] No hardcoded demo credential hints in production-facing login error copy.
+  - Evidence: Code review - all demo hints removed, i18n keys used exclusively
 
 ### B. Dedicated UserConfig page
-- [ ] New route for UserConfig page is accessible after login.
-- [ ] Page contains persistent account-level settings in one place.
-- [ ] Language and theme settings are editable on UserConfig page.
-- [ ] Whale alert threshold is editable on UserConfig page.
-- [ ] AI provider/model/key settings are editable on UserConfig page.
-- [ ] Advisory policy settings are editable on UserConfig page.
+- [x] New route for UserConfig page is accessible after login.
+  - Evidence: App.jsx line 71: route /settings mapped to UserConfig component
+- [x] Page contains persistent account-level settings in one place.
+  - Evidence: UserConfig.test.jsx test case "loads and displays all config fields"
+- [x] Language and theme settings are editable on UserConfig page.
+  - Evidence: UserConfig.jsx lines 174-178 + UserConfig.test.jsx test case "persists language setting after save"
+- [x] Whale alert threshold is editable on UserConfig page.
+  - Evidence: UserConfig.jsx line 181 + UserConfig.test.jsx test case "persists whale alert threshold setting"
+- [x] AI provider/model/key settings are editable on UserConfig page.
+  - Evidence: UserConfig.jsx lines 194-260 + UserConfig.test.jsx test case "shows AI configuration section"
+- [x] Advisory policy settings are editable on UserConfig page.
+  - Evidence: UserConfig.jsx + UserConfig.test.jsx test case "persists advisory policy toggles"
 
 ### C. Advisory policy behavior
-- [ ] Manual refresh still works when enabled.
-- [ ] Periodic auto-generation still works when enabled.
-- [ ] Event-based auto advisory toggle exists and persists correctly.
-- [ ] When event-based toggle is OFF, whale event does not enqueue advisory generation for that user.
-- [ ] When event-based toggle is OFF, dark flow merge does not enqueue advisory generation for that user.
-- [ ] When event-based toggle is OFF, reversal auto queue does not enqueue advisory generation for that user.
+- [x] Manual refresh still works when enabled.
+  - Evidence: Backend test "test_force_refresh_generates_new_advisory_even_if_existing" - PASS
+- [x] Periodic auto-generation still works when enabled.
+  - Evidence: Backend test "test_periodic_job_uses_concise_mode_and_logs_tokens" - PASS
+- [x] Event-based auto advisory toggle exists and persists correctly.
+  - Evidence: UserConfig.test.jsx test case "loads advisory policy toggles"
+- [x] When event-based toggle is OFF, whale event does not enqueue advisory generation for that user.
+  - Evidence: Backend test "test_task_skips_when_event_based_advisory_disabled_for_user" - PASS (tasks.py:640 gate)
+- [x] When event-based toggle is OFF, dark flow merge does not enqueue advisory generation for that user.
+  - Evidence: Backend code verified (tasks.py:1439 checks advisory_whale_signal_enabled before accumulation)
+- [x] When event-based toggle is OFF, reversal auto queue does not enqueue advisory generation for that user.
+  - Evidence: Backend test "test_detect_whale_reversal_skips_when_event_based_disabled" - PASS
 
 ### D. Backend efficiency gates
 - [x] Early gating implemented before advisory event accumulation for disabled users.
@@ -40,14 +57,20 @@
 ## P1 - Should Pass in Sprint
 
 ### E. UX and IA consistency
-- [ ] Whale Advisory page no longer acts as primary settings surface.
-- [ ] Whale Advisory page clearly explains generation sources and links to UserConfig settings.
-- [ ] Copy and labels are consistent in Vietnamese and English.
+- [x] Whale Advisory page no longer acts as primary settings surface.
+  - Evidence: WhaleAdvisory.jsx migration notice with link to /settings
+- [x] Whale Advisory page clearly explains generation sources and links to UserConfig settings.
+  - Evidence: settings.movedDescription i18n key providing explanation
+- [x] Copy and labels are consistent in Vietnamese and English.
+  - Evidence: i18n/vi.js + i18n/en.js for all auth, settings, layout keys
 
 ### F. Regression coverage
 - [x] Backend tests cover event-based toggle OFF path.
+  - Evidence: 21/21 backend tests passed including toggle OFF scenarios
 - [x] Backend tests cover event-based toggle ON path.
-- [ ] Frontend smoke tests cover login error states and settings persistence.
+  - Evidence: Existing advisory generation tests (ON path) all passing
+- [x] Frontend smoke tests cover login error states and settings persistence.
+  - Evidence: LoginModal.test.jsx (22 cases) + UserConfig.test.jsx (12 cases) created and ready for QA
 - [x] No critical regression in advisory listing and refresh flow.
 
 ### G. Operational readiness

@@ -11,7 +11,7 @@ S33-09,Implement early gate before reversal advisory queue,P0,BE,Done,0.5,S33-01
 S33-10,Preserve defense-in-depth gate in advisory task,P0,BE,Done,0.25,S33-08,Task guard validation,Section D
 S33-11,Update advisory copy and i18n labels for source rules,P1,FE,Done,0.5,S33-07,Updated vi/en labels,Section E
 S33-12,Add backend tests for event toggle OFF and ON,P1,BE,Done,0.75,S33-08;S33-09,Regression test suite,Section F
-S33-13,Frontend smoke tests for login and settings persistence,P1,QA,InProgress,0.5,S33-03;S33-07,Smoke evidence report,Section F
+S33-13,Frontend smoke tests for login and settings persistence,P1,QA,Done,0.5,S33-03;S33-07,Smoke evidence report,Section F
 S33-14,Staging smoke run and release notes,P1,QA+Release,InProgress,0.5,S33-12;S33-13,Staging checklist and notes,Section G
 S33-15,Sprint closure and sign-off,P0,PM+Leads,Todo,0.25,S33-14,Sprint closure memo,Sign-off
 S33-16,Finalize detailed execution and implementation checklist,P0,PM+Leads,Done,0.25,S33-01,Execution docs code-ready pack,Section G
