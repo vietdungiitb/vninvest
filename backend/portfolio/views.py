@@ -4846,6 +4846,13 @@ def stock_ai_advisory_session_api(request, symbol: str):
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
     threshold_vnd = threshold_m * 1_000_000
     session_v2_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_SESSION_V2_ENABLED', False))
+    contract_raw = str(request.query_params.get('contract') or '').strip().lower()
+    if contract_raw and contract_raw not in {'v1', 'v2'}:
+        return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
+    if contract_raw == 'v1':
+        session_v2_enabled = False
+    elif contract_raw == 'v2':
+        session_v2_enabled = True
 
     def _should_use_sync_fallback() -> bool:
         return bool(getattr(settings, 'STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))

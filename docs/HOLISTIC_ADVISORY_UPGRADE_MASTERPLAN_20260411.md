@@ -276,6 +276,12 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
 - H2-step-6 hoan tat: bo sung khung Session API v2 sau feature flag `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`.
   - `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/` giu backward compatibility va them `contract_version=v2` + `aggregate` provenance fields khi bat flag.
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
+- H2-step-7 hoan tat: bo sung request-level contract selector cho Session API.
+  - Ho tro query: `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/?contract=v1|v2`
+  - `contract=v2` cho phep bat payload v2 theo client rollout ma khong can bat global flag.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_accepts_contract_v2_query_override`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_400_for_invalid_contract_query`
 
 Work items:
 

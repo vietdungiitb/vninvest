@@ -1435,6 +1435,52 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['aggregate']['last_audit_reason'], AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT)
         self.assertEqual(response.data['aggregate']['last_audit_actor'], AdvisoryAggregateAuditLog.ActorChoices.SYSTEM)
 
+    def test_stock_ai_advisory_session_get_accepts_contract_v2_query_override(self):
+        self.authenticate()
+        snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=8,
+            state_json={'seq': 8},
+        )
+        advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+            aggregate_snapshot=snapshot,
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory.id - 1, 'snapshot_id': snapshot.id - 1},
+            after_state_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='route-smoke-system',
+            metadata_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['contract_version'], 'v2')
+        self.assertEqual(response.data['aggregate']['snapshot_seq'], 8)
+
+    def test_stock_ai_advisory_session_get_returns_400_for_invalid_contract_query(self):
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=beta')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['ok'])
+        self.assertIn('contract', response.data['message'])
+
     def test_stock_order_flow_returns_403_when_feature_locked_for_free_dpi_license(self):
         self._attach_dpi_license('free', {'dark_pool_flow': False})
         self.authenticate()
