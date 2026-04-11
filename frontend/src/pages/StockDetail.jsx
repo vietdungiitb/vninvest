@@ -3400,15 +3400,14 @@ export default function StockDetail() {
           </section>
 
         </div>
-        {/* Cột phải: Cảnh báo dòng tiền lớn + Tỷ trọng dòng tiền phiên */}
+        {/* Cột phải 1/3: Depth + dòng tiền + phân bổ lệnh lớn */}
         <div className="flex flex-col gap-3 md:gap-4 xl:gap-5 xl:min-h-0 xl:h-full">
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           {/* Tỷ trọng dòng tiền phiên */}
           <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
+          <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         </div>
-        {/* Hàng căn đáy: Order Flow Radar (2 cột) || Phân bổ lệnh lớn (1 cột) */}
-        <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         {/* Cảnh báo giá - toàn chiều rộng */}
         {symbolAlerts.length > 0 && (
           <div className="xl:col-span-3">
