@@ -436,6 +436,11 @@ def may_fail():
 - [x] **Sprint H1**: Generate formal baseline report (`docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_ADMIN_ALL_20260411.json`)
 - [ ] **Sprint H1**: Deploy to production + monitor
 
+Production rollout preparation pack:
+- `docs/HOLISTIC_ADVISORY_H1_PROD_DEPLOY_CHECKLIST_20260411.md`
+- `docs/HOLISTIC_ADVISORY_H1_MONITORING_QUERIES_20260411.md`
+- `docs/HOLISTIC_ADVISORY_H1_GO_NO_GO_MINI_GATE_20260411.md`
+
 ### H1 Update (2026-04-11)
 
 - Component-level baseline scope da dat 130 samples tren API path thuc te (admin account), operation filter=`component_generation`.
