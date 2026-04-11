@@ -471,6 +471,45 @@ Acceptance:
 - Actionability metric tang ro net theo KPI da dat.
 - User feedback negative rate giam theo muc tieu.
 
+## Sprint H4 (Rollout governance + cohort controls)
+
+Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang governance theo cohort de giam rui ro release.
+
+### H4 progress update (2026-04-11)
+
+- H4-step-1 hoan tat (global rollout gate cho Holistic V1):
+  - bo sung gate runtime cho Session API v2 va Observability endpoint.
+  - khi gate tat, API tra `403` + reason `holistic_disabled` de FE xu ly nhat quan.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_session_v2_contract_returns_403_when_holistic_gate_disabled`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_403_when_holistic_gate_disabled`
+- H4-step-2 hoan tat (cohort-aware gate: `all`/`staff`/`allowlist`):
+  - them settings:
+    - `HOLISTIC_ADVISORY_V1_COHORT_MODE`
+    - `HOLISTIC_ADVISORY_V1_COHORT_USERNAMES`
+  - them helper gate theo user va ap dung cho ca session + observability APIs.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_session_v2_contract_returns_403_when_user_not_in_holistic_allowlist`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_403_when_user_not_in_holistic_allowlist`
+
+Work items:
+
+1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
+2. Mo rong observability cho rollout governance (log cohort mode, deny reason trend).
+3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
+
+Deliverables:
+
+- Cohort-aware gate da active cho Holistic v1 APIs.
+- Regression tests cho deny-path theo cohort.
+- Masterplan + runbook duoc cap nhat theo governance model moi.
+
+Acceptance:
+
+- Gate check thong nhat giua session va observability APIs.
+- Deny-path tra contract loi on dinh (`403`, `reason=holistic_disabled`) cho FE.
+- Co the rollout theo allowlist ma khong anh huong user ngoai cohort.
+
 ## Sprint H0.5 (48h kickoff execution)
 
 Muc tieu: Chot thiet ke + dong correctness high-risk truoc khi vao implementation lon.
