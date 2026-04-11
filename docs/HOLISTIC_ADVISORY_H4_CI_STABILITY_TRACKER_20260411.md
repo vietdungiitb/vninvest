@@ -21,7 +21,7 @@ Theo doi 3-5 lan chay CI dau tien tren `deploy/main` de xac nhan do on dinh, pha
 
 | # | Timestamp (UTC+7) | Branch | Trigger | Commit | Result | Duration | Notes |
 |---|-------------------|--------|---------|--------|--------|----------|-------|
-| 1 | TODO | deploy/main | push/PR/manual | TODO | TODO | TODO | |
+| 1 | 2026-04-11 14:43 (+07) | deploy | push | 6a56371c | PENDING_UI_VERIFY | TODO | Workflow duoc trigger sau push deploy; can xac nhan ket qua tren GitHub Actions UI |
 | 2 | TODO | deploy/main | push/PR/manual | TODO | TODO | TODO | |
 | 3 | TODO | deploy/main | push/PR/manual | TODO | TODO | TODO | |
 | 4 | TODO | deploy/main | push/PR/manual | TODO | TODO | TODO | optional |
@@ -29,14 +29,14 @@ Theo doi 3-5 lan chay CI dau tien tren `deploy/main` de xac nhan do on dinh, pha
 
 ## 4) Danh gia on dinh
 
-- Pass rate: TODO
+- Pass rate: TBD (cho du lieu run #1..#3)
 - Co flaky? TODO
 - Failure pattern: TODO
 - False-positive pattern: TODO
 
 ## 5) Action items
 
-1. TODO
+1. Xac nhan run #1 (commit 6a56371c) tren Actions UI va cap nhat `Result` + `Duration`.
 2. TODO
 3. TODO
 

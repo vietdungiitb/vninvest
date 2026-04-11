@@ -595,6 +595,11 @@ Work items:
 2. Dien du lieu that cho 3-5 lan chay CI dau tien vao `HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md`.
 3. Chot ket qua theo doi CI vao artifact GO/NO-GO tiep theo (ty le pass, flaky signals, action items neu co).
 
+Ghi chu tracker hien tai:
+
+- Da prefill run #1 theo local push trigger (`6a56371c`, 2026-04-11 14:43 +07).
+- Can xac nhan `Result` + `Duration` tu GitHub Actions UI (repo private, khong the fetch anonymized qua REST trong moi truong local hien tai).
+
 Deliverables:
 
 - Cohort-aware gate da active cho Holistic v1 APIs.
