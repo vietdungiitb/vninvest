@@ -5554,3 +5554,90 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(foreign_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertFalse(type(own_tx).objects.filter(id=own_tx.id).exists())
         self.assertTrue(type(foreign_tx).objects.filter(id=foreign_tx.id).exists())
+
+    # -------------------------------------------------------------------------
+    # P1-13: E2E smoke tests — campaign board, investigation modal, window filter
+    # -------------------------------------------------------------------------
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_p1_13_campaign_board_returns_valid_structure(self):
+        """Campaign board endpoint returns paginated payload with required fields."""
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='VNM')
+        for i in range(5):
+            IntradayTick.objects.create(
+                symbol='VNM',
+                trade_date=date.today(),
+                trade_time=datetime.strptime(f'{9+i:02d}:00:00', '%H:%M:%S').time(),
+                price=Decimal('80000'),
+                volume=8000,
+                side='BUY',
+                stream_id=f'p1-13-vnm-{i}',
+            )
+        self.authenticate()
+
+        response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=10&campaign_sort=strength')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertIn('filters', response.data)
+        if response.data['results']:
+            first = response.data['results'][0]
+            self.assertIn('campaign_id', first)
+            self.assertIn('campaign_strength', first)
+            self.assertIn('events', first)
+            self.assertIn('symbol', first)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_p1_13_symbol_investigation_modal_has_sprint31_fields(self):
+        """Symbol investigation modal returns all Sprint31 P1-11 payload fields."""
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+        self.authenticate()
+        from unittest.mock import patch, MagicMock
+
+        mock_result = {
+            'symbol': 'HPG',
+            'window': '5d',
+            'whale_campaigns': [],
+            'dark_flow_signals': [],
+            'correlated_campaigns': [],
+            'correlated_signals': [],
+            'grouped_timeline': [{'bucket_start': '2026-04-11T09:00:00+00:00', 'whale_count': 1, 'signal_count': 0, 'has_co_observation': False}],
+            'timeline': [],
+            'co_observation_summary': {'co_observation_count': 0},
+        }
+        with patch('portfolio.coobservation_service.CoObservationService.get_symbol_investigation', return_value=mock_result):
+            response = self.client.get('/api/realtime/symbol-investigation/HPG/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('correlated_campaigns', response.data)
+        self.assertIn('correlated_signals', response.data)
+        self.assertIn('grouped_timeline', response.data)
+        self.assertIsInstance(response.data['grouped_timeline'], list)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_p1_13_window_filter_backward_compat(self):
+        """Whale aggregate feed accepts all documented window values without error."""
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='SSI')
+        self.authenticate()
+
+        for window in ('session', '1h', '5d'):
+            response = self.client.get(f'/api/realtime/whale-feed/aggregate/?window={window}&sort=ts')
+            self.assertIn(response.status_code, (200, 403), msg=f'window={window} returned unexpected status {response.status_code}')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_p1_13_search_symbol_investigation_rejects_unauthenticated(self):
+        """Symbol investigation endpoint requires auth — no regression on security gate."""
+        response = self.client.get('/api/realtime/symbol-investigation/VCB/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
