@@ -1440,6 +1440,9 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['aggregate']['decision']['risk'], 'medium')
         self.assertEqual(response.data['aggregate']['decision']['score_band'], 'high')
         self.assertEqual(response.data['aggregate']['decision']['score'], 0.82)
+        self.assertIn('observability', response.data['aggregate'])
+        self.assertIn('severity_drift_24h', response.data['aggregate']['observability'])
+        self.assertIn('aggregate_quality', response.data['aggregate']['observability'])
 
     def test_stock_ai_advisory_session_get_accepts_contract_v2_query_override(self):
         self.authenticate()
@@ -2671,6 +2674,8 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['session']['contract_version'], 'v2')
         self.assertEqual(response.data['session']['aggregate']['advisory_id'], advisory.id)
         self.assertEqual(response.data['session']['aggregate']['decision']['score_band'], 'medium')
+        self.assertIn('observability', response.data['session']['aggregate'])
+        self.assertIn('label', response.data['session']['aggregate']['observability']['aggregate_quality'])
         self.assertEqual(response.data['trace']['trace']['advisory_id'], advisory.id)
         self.assertGreaterEqual(len(response.data['history']['items']), 1)
 

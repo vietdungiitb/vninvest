@@ -4975,6 +4975,69 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
     }
 
 
+def _build_session_v2_observability(user, symbol: str, advisory_obj, snapshot_obj) -> dict:
+    normalized_symbol = str(symbol or '').strip().upper()
+    severity_rank = {
+        WhaleAdvisory.SeverityChoices.INFO: 1.0,
+        WhaleAdvisory.SeverityChoices.WARNING: 2.0,
+        WhaleAdvisory.SeverityChoices.URGENT: 3.0,
+    }
+
+    current_severity = str(getattr(advisory_obj, 'severity', WhaleAdvisory.SeverityChoices.INFO) or WhaleAdvisory.SeverityChoices.INFO)
+    current_score = severity_rank.get(current_severity, 1.0)
+
+    since_at = timezone.now() - timedelta(hours=24)
+    recent_advisories = list(
+        WhaleAdvisory.objects.filter(user=user, symbol=normalized_symbol, created_at__gte=since_at)
+        .order_by('-created_at')[:40]
+    )
+    recent_scores = [severity_rank.get(str(item.severity or ''), 1.0) for item in recent_advisories]
+    baseline_score = round(sum(recent_scores) / len(recent_scores), 2) if recent_scores else round(current_score, 2)
+    severity_delta = round(current_score - baseline_score, 2)
+    abs_delta = abs(severity_delta)
+    if abs_delta >= 1.2:
+        drift_label = 'high_drift'
+    elif abs_delta >= 0.6:
+        drift_label = 'moderate_drift'
+    else:
+        drift_label = 'stable'
+
+    state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
+    quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
+    actionability = quality.get('actionability')
+    if actionability is None:
+        actionability = _build_session_v2_decision_digest(advisory_obj, snapshot_obj).get('score', 0.0)
+    actionability = max(0.0, min(float(actionability or 0.0), 1.0))
+
+    noise_ratio = max(0.0, min(float(quality.get('noise_ratio', 0.5) or 0.5), 1.0))
+    consistency = max(0.0, min(float(quality.get('consistency', 0.5) or 0.5), 1.0))
+    quality_score = round(((actionability * 0.45) + ((1.0 - noise_ratio) * 0.25) + (consistency * 0.30)) * 100.0, 1)
+    if quality_score >= 75:
+        quality_label = 'high'
+    elif quality_score >= 55:
+        quality_label = 'medium'
+    else:
+        quality_label = 'low'
+
+    return {
+        'severity_drift_24h': {
+            'current': current_severity,
+            'current_score': current_score,
+            'baseline_score': baseline_score,
+            'delta': severity_delta,
+            'label': drift_label,
+            'sample_size': len(recent_scores),
+        },
+        'aggregate_quality': {
+            'score': quality_score,
+            'label': quality_label,
+            'actionability': round(actionability, 4),
+            'noise_ratio': round(noise_ratio, 4),
+            'consistency': round(consistency, 4),
+        },
+    }
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_session_api(request, symbol: str):
@@ -5084,6 +5147,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 'last_audit_actor': latest_log.get('actor') if latest_log else None,
                 'last_audit_at': latest_log.get('created_at') if latest_log else None,
                 'decision': decision_digest,
+                'observability': _build_session_v2_observability(request.user, normalized_symbol, latest_advisory, snapshot_obj),
             }
             if benchmark_enrichment_enabled or include_benchmarks:
                 payload['aggregate']['benchmarks'] = _build_session_v2_benchmark_enrichment(normalized_symbol)
@@ -5723,6 +5787,7 @@ def stock_ai_advisory_trace_export_api(request, symbol: str):
             'last_audit_actor': latest_log.get('actor') if latest_log else None,
             'last_audit_at': latest_log.get('created_at') if latest_log else None,
             'decision': _build_session_v2_decision_digest(advisory_obj, snapshot_obj),
+            'observability': _build_session_v2_observability(request.user, normalized_symbol, advisory_obj, snapshot_obj),
         }
 
     history_qs = (

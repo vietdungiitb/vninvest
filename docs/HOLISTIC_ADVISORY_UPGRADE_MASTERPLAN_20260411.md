@@ -340,6 +340,14 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - enforce bat buoc 2 section trong `synthesis_text`: `Evidence bullets:` va `Invalidating conditions:`.
   - ap dung cho ca fallback summary va AI-generated summary de tranh output thieu policy.
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis`
+- H3-step-3 hoan tat (observability payload cho session/export v2):
+  - them `aggregate.observability` gom `severity_drift_24h` va `aggregate_quality`.
+  - `severity_drift_24h`: so sanh severity hien tai voi baseline 24h theo score map (info/warning/urgent).
+  - `aggregate_quality`: score tong hop tu `actionability`, `noise_ratio`, `consistency` de feed dashboard.
+  - ap dung cho ca Session API v2 va trace export API contract v2.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_trace_export_returns_audit_artifact_bundle`
 
 Work items:
 
