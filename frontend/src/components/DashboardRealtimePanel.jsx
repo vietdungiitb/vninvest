@@ -73,6 +73,7 @@ export default function DashboardRealtimePanel({
   monitoredSymbols = [],
   enableSnapshot = true,
   onSyncRequest = null,
+  showSummaryMetrics = true,
 }) {
   const { t, formatNumber, formatTime, formatQuotePrice, formatQuoteInteger } = useI18n();
   const [realtimeHealth, setRealtimeHealth] = useState(null);
@@ -785,7 +786,7 @@ export default function DashboardRealtimePanel({
         </div>
       </div>
 
-      {compact && (
+      {showSummaryMetrics && compact && (
         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 py-1">
           <span>
             <span className="text-blue-300 font-semibold">{formatQuoteInteger(realtimePortfolioStats.totalMarketValue)}</span>
@@ -805,7 +806,7 @@ export default function DashboardRealtimePanel({
         </div>
       )}
 
-      {!compact && (
+      {showSummaryMetrics && !compact && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
             <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
@@ -884,8 +885,8 @@ export default function DashboardRealtimePanel({
 
       {activeWorkspaceTab === 'alerts' ? (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 xl:grid-cols-[0.92fr_1.08fr] gap-4 items-start">
-            <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
+            <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4 min-h-[460px] h-full flex flex-col">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-100">{t('dashboardRealtime.unifiedAlertStripTitle')}</h3>
@@ -895,7 +896,7 @@ export default function DashboardRealtimePanel({
                   {t('dashboardRealtime.unifiedTotal', { count: filteredUnifiedAlerts.length })}
                 </span>
               </div>
-              <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border border-rose-700/60 bg-rose-950/35 px-3 py-2">
                   <p className="text-[11px] uppercase tracking-wider text-rose-300">Critical</p>
                   <p className="text-lg font-bold text-rose-100 mt-1">{formatNumber(alertSummary.critical)}</p>
@@ -913,23 +914,43 @@ export default function DashboardRealtimePanel({
                   <p className="text-lg font-bold text-slate-100 mt-1">{formatNumber(alertSummary.low)}</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-gray-800 bg-gray-950/80 p-3">
+              <div className="rounded-xl border border-amber-700/30 bg-gradient-to-br from-amber-950/45 via-rose-950/20 to-gray-950/90 p-4 flex-1">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('dashboardRealtime.hotSymbols')}</span>
+                  <div>
+                    <span className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t('dashboardRealtime.hotSymbols')}</span>
+                    <p className="mt-1 text-[11px] text-amber-100/70">{t('dashboardRealtime.hotSymbolsHint')}</p>
+                  </div>
                   <span className="text-xs text-amber-300">{t('dashboardRealtime.unreadAlerts', { count: unreadCount })}</span>
                 </div>
                 {hotSymbols.length > 0 ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {hotSymbols.map((item) => (
                       <Link
                         key={item.symbol}
                         to={`/stocks/${item.symbol}`}
-                        className="inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-300 hover:border-brand-600 hover:text-brand-300 transition-colors"
+                        className={`group rounded-2xl border px-4 py-3 transition-all hover:-translate-y-0.5 hover:shadow-lg ${item.critical > 0
+                          ? 'border-rose-500/60 bg-gradient-to-br from-rose-950/80 to-amber-950/40 text-rose-50 shadow-rose-950/30'
+                          : item.high > 0
+                            ? 'border-amber-500/60 bg-gradient-to-br from-amber-950/80 to-gray-950 text-amber-50 shadow-amber-950/30'
+                            : 'border-cyan-700/40 bg-gradient-to-br from-cyan-950/40 to-gray-950 text-cyan-50 shadow-cyan-950/20'
+                        }`}
                       >
-                        <span className="font-semibold">{item.symbol}</span>
-                        <span className="text-gray-500">{item.total}</span>
-                        {item.critical > 0 && <span className="text-rose-300">C{item.critical}</span>}
-                        {item.high > 0 && <span className="text-amber-300">H{item.high}</span>}
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-lg font-black tracking-wide group-hover:text-white">{item.symbol}</div>
+                            <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/60">
+                              {t('dashboardRealtime.hotSymbolsTotalAlerts', { count: item.total })}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 text-[11px] font-bold uppercase">
+                            {item.critical > 0 && (
+                              <span className="rounded-full border border-rose-300/30 bg-rose-200/10 px-2 py-0.5 text-rose-100">C{item.critical}</span>
+                            )}
+                            {item.high > 0 && (
+                              <span className="rounded-full border border-amber-300/30 bg-amber-200/10 px-2 py-0.5 text-amber-100">H{item.high}</span>
+                            )}
+                          </div>
+                        </div>
                       </Link>
                     ))}
                   </div>
@@ -939,7 +960,7 @@ export default function DashboardRealtimePanel({
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-800 overflow-hidden">
+            <div className="rounded-xl border border-gray-800 overflow-hidden min-h-[460px] h-full flex flex-col">
               <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.unifiedCenterTitle')}</h3>
@@ -953,11 +974,11 @@ export default function DashboardRealtimePanel({
                 </Link>
               </div>
               {filteredUnifiedAlerts.length === 0 ? (
-                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                <div className="px-4 py-8 text-sm text-gray-500 text-center flex-1 flex items-center justify-center">
                   {t('dashboardRealtime.noUnifiedAlerts')}
                 </div>
               ) : (
-                <div className="max-h-[460px] overflow-y-auto px-3 py-3 flex flex-col gap-2">
+                <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 flex flex-col gap-2">
                   {filteredUnifiedAlerts.map((alert, index) => {
                     const severity = normalizeUnifiedSeverity(alert.severity, 'medium');
                     const isUnread = !readAlertIds.has(alert.id);

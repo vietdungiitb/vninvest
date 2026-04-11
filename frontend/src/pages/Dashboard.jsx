@@ -44,6 +44,10 @@ export default function Dashboard() {
     () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
     [holdingSymbols, trackedSymbolNames],
   );
+  const monitoredQuotes = useMemo(
+    () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
+    [monitoredSymbols, quotesBySymbol],
+  );
 
   const {
     quotesBySymbol,
@@ -56,6 +60,33 @@ export default function Dashboard() {
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
   const liveSummary = buildLiveSummaryFromHoldings(liveHoldings);
+  const snapshotMarketValue = useMemo(
+    () => holdings.reduce((total, item) => total + Number(item?.market_value || 0), 0),
+    [holdings],
+  );
+  const realtimeStalePositions = useMemo(
+    () => liveHoldings.reduce((total, item) => {
+      const quote = quotesBySymbol[item.symbol] || {};
+      return total + ((item.live_is_stale || quote.stale) ? 1 : 0);
+    }, 0),
+    [liveHoldings, quotesBySymbol],
+  );
+  const realtimeDeltaVsSnapshot = useMemo(
+    () => Number(liveSummary.totalMarketValue || 0) - snapshotMarketValue,
+    [liveSummary.totalMarketValue, snapshotMarketValue],
+  );
+  const realtimeMarketBreadth = useMemo(() => {
+    return monitoredQuotes.reduce((acc, item) => {
+      if ((item.change_pct ?? 0) > 0) {
+        acc.up += 1;
+      } else if ((item.change_pct ?? 0) < 0) {
+        acc.down += 1;
+      } else {
+        acc.flat += 1;
+      }
+      return acc;
+    }, { up: 0, down: 0, flat: 0 });
+  }, [monitoredQuotes]);
 
   const marketValue = liveHoldings.length > 0
     ? liveSummary.totalMarketValue
@@ -196,20 +227,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DashboardRealtimePanel
-        holdings={liveHoldings}
-        trackedSymbolNames={trackedSymbolNames}
-        quotesBySymbol={quotesBySymbol}
-        realtimeStatus={realtimeStatus}
-        lastEventAt={lastEventAt}
-        alerts={alerts}
-        darkFlowAlerts={darkFlowAlerts}
-        metrics={metrics}
-        monitoredSymbols={monitoredSymbols}
-        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
-        onSyncRequest={handleSync}
-      />
-
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -243,12 +260,68 @@ export default function Dashboard() {
         />
       </div>
 
+      <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr_0.8fr_1fr_0.8fr_1fr] gap-3">
+        <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
+          <p className="text-xl font-bold text-gray-100 mt-1">{Math.round(Number(liveSummary.totalMarketValue || 0)).toLocaleString('vi-VN')}</p>
+          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
+          <p className={`text-xl font-bold mt-1 ${Number(liveSummary.totalUnrealizedPL || 0) > 0 ? 'text-emerald-300' : Number(liveSummary.totalUnrealizedPL || 0) < 0 ? 'text-red-300' : 'text-gray-100'}`}>
+            {Math.round(Number(liveSummary.totalUnrealizedPL || 0)).toLocaleString('vi-VN')}
+          </p>
+          <p className={`text-[11px] mt-1 ${Number(liveSummary.totalUnrealizedPL || 0) > 0 ? 'text-emerald-300' : Number(liveSummary.totalUnrealizedPL || 0) < 0 ? 'text-red-300' : 'text-gray-500'}`}>
+            {Number(liveSummary.totalUnrealizedPLPct || 0) > 0 ? '+' : ''}{Number(liveSummary.totalUnrealizedPLPct || 0).toFixed(2)}%
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+          <p className="text-xl font-bold text-gray-100 mt-1">{monitoredSymbols.length}</p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+          <p className={`text-xl font-bold mt-1 ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-red-300' : 'text-gray-100'}`}>
+            {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
+          </p>
+          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
+          <p className={`text-xl font-bold mt-1 ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
+            {realtimeStalePositions}
+          </p>
+          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
+        </div>
+        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
+          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
+          <p className="text-lg font-bold text-gray-100 mt-1">
+            {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
+          </p>
+        </div>
+      </div>
+
+      <DashboardRealtimePanel
+        holdings={liveHoldings}
+        trackedSymbolNames={trackedSymbolNames}
+        quotesBySymbol={quotesBySymbol}
+        realtimeStatus={realtimeStatus}
+        lastEventAt={lastEventAt}
+        alerts={alerts}
+        darkFlowAlerts={darkFlowAlerts}
+        metrics={metrics}
+        monitoredSymbols={monitoredSymbols}
+        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
+        onSyncRequest={handleSync}
+        showSummaryMetrics={false}
+      />
+
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+      <div className="space-y-4">
+        <div>
           <EquityVsBenchmarkChart portfolioId={activePortfolioId} />
         </div>
-        <div className="lg:col-span-1">
+        <div>
           <AllocationPieChart portfolioId={activePortfolioId} />
         </div>
       </div>

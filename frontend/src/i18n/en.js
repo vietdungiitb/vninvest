@@ -205,6 +205,8 @@ const en = {
     unifiedAlertStripHint: 'Priority summary block so users see risk intensity and hot symbols immediately.',
     unifiedTotal: '{count} alerts in focus',
     hotSymbols: 'Hot symbols:',
+    hotSymbolsHint: 'Symbols that should be scanned first because they carry the densest alert activity.',
+    hotSymbolsTotalAlerts: '{count} alerts',
     noHotSymbols: 'No hot symbols are standing out in the current window.',
     unifiedCenterTitle: 'Unified Alert Center',
     unifiedCenterHint: 'Action-oriented stream combining whale, dark flow, and price anomalies in one place.',

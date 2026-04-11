@@ -38,7 +38,7 @@ function CustomTooltip({ active, payload, mode }) {
       <p className="text-sm font-bold text-gray-100 mb-1">
         {mode === 'sector' ? d.sector : d.symbol}
       </p>
-      <p className="text-xs text-gray-400">{formatVND(d.value, formatNumberFn, localeTag)}</p>
+      <p className="text-xs text-gray-400">{formatVND(d.value)}</p>
       <p className="text-xs font-medium text-brand-400">{d.percentage.toFixed(2)}%</p>
     </div>
   );
@@ -125,55 +125,58 @@ export default function AllocationPieChart({ portfolioId }) {
       </div>
 
       {loading ? (
-        <div className="h-48 bg-gray-800 rounded-lg animate-pulse" />
+        <div className="h-40 bg-gray-800 rounded-lg animate-pulse" />
       ) : data.length === 0 ? (
-        <div className="h-48 flex items-center justify-center text-gray-500 text-sm">
+        <div className="h-40 flex items-center justify-center text-gray-500 text-sm">
           {t('allocation.empty')}
         </div>
       ) : (
-        <div className="flex flex-col items-center">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={3}
-                dataKey="value"
-                nameKey={nameKey}
-              >
-                {data.map((entry, index) => (
-                  <Cell
-                    key={`${mode === 'sector' ? entry.sector : entry.symbol}-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                    stroke="transparent"
-                  />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip mode={mode} />} />
-            </PieChart>
-          </ResponsiveContainer>
-          {/* HHI badge — chỉ hiện khi theo ngành */}
-          {mode === 'sector' && hhi !== null && (
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-gray-500">{t('allocation.hhi')}</span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                hhi < 1500 ? 'bg-green-900 text-green-300'
-                : hhi < 2500 ? 'bg-yellow-900 text-yellow-300'
-                : 'bg-red-900 text-red-300'
-              }`}>
-                {hhi.toFixed(0)}
-              </span>
-              <span className="text-xs text-gray-600">
-                {hhi < 1500 ? t('allocation.hhiDiversified') : hhi < 2500 ? t('allocation.hhiMedium') : t('allocation.hhiConcentrated')}
-              </span>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+          <div className="min-h-[180px]">
+            <ResponsiveContainer width="100%" height={180}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={44}
+                  outerRadius={72}
+                  paddingAngle={3}
+                  dataKey="value"
+                  nameKey={nameKey}
+                >
+                  {data.map((entry, index) => (
+                    <Cell
+                      key={`${mode === 'sector' ? entry.sector : entry.symbol}-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                      stroke="transparent"
+                    />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip mode={mode} />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="min-h-[180px] flex flex-col">
+            {mode === 'sector' && hhi !== null && (
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-500">{t('allocation.hhi')}</span>
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                  hhi < 1500 ? 'bg-green-900 text-green-300'
+                  : hhi < 2500 ? 'bg-yellow-900 text-yellow-300'
+                  : 'bg-red-900 text-red-300'
+                }`}>
+                  {hhi.toFixed(0)}
+                </span>
+                <span className="text-xs text-gray-600">
+                  {hhi < 1500 ? t('allocation.hhiDiversified') : hhi < 2500 ? t('allocation.hhiMedium') : t('allocation.hhiConcentrated')}
+                </span>
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto pr-1 max-h-[180px]">
+              <CustomLegend data={data} mode={mode} />
             </div>
-          )}
-          {/* Legend */}
-          <div className="w-full mt-1">
-            <CustomLegend data={data} mode={mode} />
           </div>
         </div>
       )}

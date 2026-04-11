@@ -205,6 +205,8 @@ const vi = {
     unifiedAlertStripHint: 'Khối tóm tắt ưu tiên để người dùng thấy ngay mức độ nóng theo mã và mức độ rủi ro.',
     unifiedTotal: '{count} cảnh báo đang nổi bật',
     hotSymbols: 'Mã nóng:',
+    hotSymbolsHint: 'Nhóm mã cần nhìn đầu tiên vì đang có mật độ cảnh báo cao nhất.',
+    hotSymbolsTotalAlerts: '{count} cảnh báo',
     noHotSymbols: 'Chưa có mã nóng nào nổi bật trong cửa sổ hiện tại.',
     unifiedCenterTitle: 'Trung tâm cảnh báo hợp nhất',
     unifiedCenterHint: 'Danh sách hành động ưu tiên gộp whale, dark flow và biến động giá trong cùng một luồng.',
