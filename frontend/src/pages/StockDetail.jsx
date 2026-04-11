@@ -144,6 +144,23 @@ function advisoryRetryOutcomeLabel(outcome, t) {
   return map[String(outcome || '').toLowerCase()] || t('stockDetail.retryOutcomeIdle');
 }
 
+function advisoryRetryOutcomeBadgeClass(outcome) {
+  const key = String(outcome || '').toLowerCase();
+  if (key === 'recovered') {
+    return 'border-emerald-700/60 bg-emerald-500/10 text-emerald-300';
+  }
+  if (key === 'scheduled') {
+    return 'border-cyan-700/60 bg-cyan-500/10 text-cyan-300';
+  }
+  if (key === 'exhausted' || key === 'request_error') {
+    return 'border-rose-700/60 bg-rose-500/10 text-rose-300';
+  }
+  if (key === 'skipped_config') {
+    return 'border-amber-700/60 bg-amber-500/10 text-amber-300';
+  }
+  return 'border-slate-700 bg-slate-900/60 text-slate-300';
+}
+
 function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
@@ -2712,7 +2729,7 @@ export default function StockDetail() {
                           {filteredPersistedRetryEvents.slice(0, 5).map((event) => (
                             <span
                               key={`retry-${event.log_id}`}
-                              className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300"
+                              className={`rounded-full border px-2 py-0.5 text-[11px] ${advisoryRetryOutcomeBadgeClass(event.outcome)}`}
                             >
                               {advisoryRetryOutcomeLabel(event.outcome, t)} r={event.reason || 'n/a'} s={event.scheduled_count} ok={event.recovered_count} f={event.failed_count}
                             </span>
