@@ -369,6 +369,9 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - chot checklist rollout theo cohort cho observability layer (Session v2 + benchmark + observability panel).
   - bo sung rollback checklist theo thu tu thao tac de quay ve mode an toan trong <15 phut.
   - bo sung smoke command set (backend API + frontend build/test + docker stack health) de QA/ops verify nhanh.
+- H3-step-9 hoan tat (smoke artifact execution cho release gate):
+  - da run lai bo smoke command set va luu artifact tai `docs/HOLISTIC_ADVISORY_H3_RELEASE_SMOKE_20260411.md`.
+  - ket qua: docker stack healthy, frontend build pass, frontend investigation smoke tests pass (4/4), API protected endpoints tra 401 khi chua auth (expected behavior).
 
 ### H3-step-8 release/rollback checklist (operational)
 
