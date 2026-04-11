@@ -544,11 +544,19 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - them duong baseline trung binh 8 buckets (dashed) tren sparkline governance.
   - hien chi so `baseline` va `delta vs baseline` de nhan dien bat thuong nhanh.
   - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-13 hoan tat (incident colorization theo nguong delta):
+  - bo sung severity badge cho `delta vs baseline` voi nguong:
+    - `>= +4`: critical
+    - `>= +2`: warning
+    - `<= -2`: cooldown
+    - con lai: normal
+  - su dung mau canh bao tuong ung de QA/Ops phat hien incident ngay trong panel.
+  - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung canh bao mau theo nguong delta (vd. > +2) de bat incident sớm ngay tren panel.
+2. Bo sung nguong delta tuy chinh qua UserConfig/feature flags de doi ops co the tune theo moi phase rollout.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

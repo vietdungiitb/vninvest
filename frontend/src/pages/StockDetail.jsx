@@ -179,6 +179,30 @@ function advisoryGovernanceReasonLabel(reason, t) {
   return map[String(reason || '').toLowerCase()] || reason || t('common.notAvailable');
 }
 
+function governanceDeltaSeverity(delta) {
+  if (delta >= 4) return 'critical';
+  if (delta >= 2) return 'warning';
+  if (delta <= -2) return 'cooldown';
+  return 'normal';
+}
+
+function governanceDeltaSeverityLabel(level, t) {
+  const map = {
+    critical: t('stockDetail.governanceSeverityCritical'),
+    warning: t('stockDetail.governanceSeverityWarning'),
+    cooldown: t('stockDetail.governanceSeverityCooldown'),
+    normal: t('stockDetail.governanceSeverityNormal'),
+  };
+  return map[level] || map.normal;
+}
+
+function governanceDeltaSeverityClass(level) {
+  if (level === 'critical') return 'border-rose-700/70 bg-rose-500/10 text-rose-300';
+  if (level === 'warning') return 'border-amber-700/70 bg-amber-500/10 text-amber-300';
+  if (level === 'cooldown') return 'border-emerald-700/70 bg-emerald-500/10 text-emerald-300';
+  return 'border-slate-700 bg-slate-900/60 text-slate-300';
+}
+
 function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
@@ -1479,6 +1503,7 @@ export default function StockDetail() {
     const latest = values[values.length - 1] || 0;
     const previous = values.length > 1 ? values[values.length - 2] : latest;
     const latestDeltaVsBaseline = latest - baseline;
+    const deltaSeverity = governanceDeltaSeverity(latestDeltaVsBaseline);
     return {
       pointItems,
       polylinePoints,
@@ -1491,6 +1516,7 @@ export default function StockDetail() {
       latest,
       previous,
       latestDeltaVsBaseline,
+      deltaSeverity,
       maxPoint,
     };
   }, [governanceTrendRows]);
@@ -2909,6 +2935,11 @@ export default function StockDetail() {
                               {' | '}
                               {t('stockDetail.governanceSparklineDeviation')}: {governanceSparkline.latestDeltaVsBaseline > 0 ? '+' : ''}{governanceSparkline.latestDeltaVsBaseline.toFixed(2)}
                             </p>
+                            <div className="mt-1">
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${governanceDeltaSeverityClass(governanceSparkline.deltaSeverity)}`}>
+                                {t('stockDetail.governanceDeltaThreshold')}: {governanceDeltaSeverityLabel(governanceSparkline.deltaSeverity, t)}
+                              </span>
+                            </div>
                             {governanceSparkline.maxPoint ? (
                               <p className="mt-1 text-[10px] text-slate-500">
                                 {t('stockDetail.governanceSparklinePeak')}: {governanceSparkline.maxPoint.bucket} ({governanceSparkline.maxPoint.value})
