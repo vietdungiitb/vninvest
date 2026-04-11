@@ -1487,6 +1487,81 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(response.data['ok'])
         self.assertIn('contract', response.data['message'])
 
+    @override_settings(STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True, STOCK_AI_ADVISORY_BENCHMARKS_ENABLED=True)
+    def test_stock_ai_advisory_session_v2_includes_benchmark_enrichment(self):
+        self.authenticate()
+
+        snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=10,
+            state_json={'seq': 10, 'quality': {'actionability': 0.66}},
+        )
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_800_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='benchmark summary',
+            ai_detail='benchmark detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+            aggregate_snapshot=snapshot,
+            severity=WhaleAdvisory.SeverityChoices.WARNING,
+        )
+
+        base_date = date(2026, 3, 1)
+        for idx in range(25):
+            DailyPrice.objects.create(
+                symbol='BCM',
+                date=base_date + timedelta(days=idx),
+                open_price=100 + idx,
+                high_price=101 + idx,
+                low_price=99 + idx,
+                close_price=100 + idx,
+                volume=1_000_000 + (idx * 10_000),
+            )
+            DailyPrice.objects.create(
+                symbol='VNINDEX',
+                date=base_date + timedelta(days=idx),
+                open_price=1200 + idx,
+                high_price=1205 + idx,
+                low_price=1195 + idx,
+                close_price=1200 + idx,
+                volume=50_000_000,
+            )
+
+        trade_day = date(2026, 3, 30)
+        IntradayTick.objects.create(
+            symbol='BCM',
+            trade_date=trade_day,
+            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            price=120,
+            volume=1000,
+            side=IntradayTick.Side.BUY,
+        )
+        IntradayTick.objects.create(
+            symbol='BCM',
+            trade_date=trade_day,
+            trade_time=datetime.strptime('09:30:00', '%H:%M:%S').time(),
+            price=123,
+            volume=2000,
+            side=IntradayTick.Side.BUY,
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['contract_version'], 'v2')
+        self.assertIn('benchmarks', response.data['aggregate'])
+        benchmarks = response.data['aggregate']['benchmarks']
+        self.assertIsNotNone(benchmarks['rvol'])
+        self.assertIn(benchmarks['rvol_regime'], {'spike', 'elevated', 'normal', 'dry', 'unknown'})
+        self.assertIsNotNone(benchmarks['relative_strength_20d_pct'])
+        self.assertIn('vwap_deviation_pct', benchmarks)
+        self.assertIn('mtf_confirmation_score', benchmarks)
+
     def test_stock_order_flow_returns_403_when_feature_locked_for_free_dpi_license(self):
         self._attach_dpi_license('free', {'dark_pool_flow': False})
         self.authenticate()

@@ -329,6 +329,14 @@ Acceptance:
 
 Muc tieu: Hoan tat workflow trang moi + benchmark layer.
 
+### H3 progress update (2026-04-11)
+
+- H3-step-1 hoan tat (backend benchmark enrichment cho Session API v2):
+  - them `aggregate.benchmarks` trong `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/?contract=v2`
+  - bo benchmark gom: `vwap_deviation_pct`, `rvol`, `rvol_regime`, `relative_strength_20d_pct`, `mtf_confirmation_score`, `mtf_confirmation_label`, `freshness`.
+  - rollout qua flag `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED` (co the override bang query `include_benchmarks=1`).
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_v2_includes_benchmark_enrichment`
+
 Work items:
 
 1. Frontend AI advisory session redesign (3-panel model).
