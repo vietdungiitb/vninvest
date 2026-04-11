@@ -376,6 +376,12 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - da run authenticated smoke bang test user seeded (`testuser`) va luu artifact tai `docs/HOLISTIC_ADVISORY_H3_AUTHENTICATED_SMOKE_20260411.md`.
   - ket qua: auth endpoint 200 (JWT issued), observability endpoint 200; session v2 endpoint dang tra 409 conflict tren nhom symbol seeded (HPG/FPT/VCB/VNM).
   - follow-up cho step tiep theo: triage root-cause 409 va bo sung fallback/retry policy cho UI.
+- H3-step-11 hoan tat (triage + fix conflict 409 cho seeded-symbol session v2):
+  - cap nhat `seed_demo_data` de bootstrap `SystemAISettings` active mac dinh cho local smoke flow.
+  - cap nhat advisory seed de gan `WhaleAdvisory.user=testuser`, dam bao session endpoint lay duoc advisory theo user context.
+  - Test evidence:
+    - `python manage.py test portfolio.tests.test_seed_demo_data_whale_frontend -v 2` (sqlite): pass.
+    - Sau khi rebuild backend images + reseed, probe `GET /api/stock-management/stocks/HPG/ai-advisory-session/?contract=v2&include_benchmarks=1` tra `200` (truoc do `409`).
 
 ### H3-step-8 release/rollback checklist (operational)
 

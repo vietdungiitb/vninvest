@@ -15,6 +15,7 @@ from portfolio.models import (
     SecuritiesItem,
     StockProfile,
     SubAccount,
+    SystemAISettings,
     TrackedSymbol,
     Transaction,
     UserConfig,
@@ -73,6 +74,19 @@ class Command(BaseCommand):
                 'plan_expires_at': timezone.now() + timedelta(days=365),
                 'email_verified': True,
                 'email_verified_at': timezone.now(),
+            },
+        )
+
+        # Bootstrap System AI settings for local demo so advisory session can run without
+        # manual admin setup right after start_dev.
+        SystemAISettings.objects.update_or_create(
+            name='default',
+            defaults={
+                'is_active': True,
+                'ai_provider': 'openclaw',
+                'ai_model': '',
+                'allow_env_fallback': True,
+                'notes': 'Auto-created by seed_demo_data for dev smoke flows.',
             },
         )
 
@@ -373,6 +387,7 @@ class Command(BaseCommand):
         ]
         for spec in advisory_specs:
             advisory, _ = WhaleAdvisory.objects.update_or_create(
+                user=user,
                 ai_provider='seed_demo_data',
                 symbol=spec['symbol'],
                 side=spec['side'],
