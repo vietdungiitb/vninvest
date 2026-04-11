@@ -164,8 +164,10 @@ export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stoc
 export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
 export const getStockPriceChart = (symbol, days = 180) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/?days=${days}`);
 export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
-export const getStockAIAdvisorySession = (symbol) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
+export const getStockAIAdvisorySession = (symbol, params = {}) =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });
+export const getStockAIAdvisoryObservability = (symbol, params = {}) =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, { params });
 export const refreshStockAIAdvisorySession = (symbol) =>
   apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
 export const generateStockAIAdvisoryComponents = (symbol, payload = {}) =>

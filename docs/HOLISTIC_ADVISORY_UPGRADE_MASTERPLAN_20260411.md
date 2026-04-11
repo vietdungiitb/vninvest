@@ -352,6 +352,10 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - them endpoint: `GET /api/stock-management/stocks/<symbol>/ai-advisory-observability/?window_hours=<n>&limit=<n>`
   - response gom `summary` (severity drift + avg aggregate quality) va `timeline` theo advisory.
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_summary_and_timeline`
+- H3-step-5 hoan tat (frontend tich hop observability panel trong Stock Workspace):
+  - FE doi sang goi session v2 (`contract=v2`) va render `aggregate` block (decision/benchmarks/observability).
+  - FE goi endpoint `ai-advisory-observability` va hien thi timeline mini trong panel AI Advisory.
+  - Files: `frontend/src/api/client.js`, `frontend/src/pages/StockDetail.jsx`.
 
 Work items:
 

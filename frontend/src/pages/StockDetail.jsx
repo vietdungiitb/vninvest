@@ -21,6 +21,7 @@ import {
   getSectorBreadth,
   getStockFinancials,
   getStockAIAdvisorySession,
+  getStockAIAdvisoryObservability,
   refreshStockAIAdvisorySession,
   generateStockAIAdvisoryComponents,
   getStockOrderFlow,
@@ -1296,6 +1297,9 @@ export default function StockDetail() {
   const [advisoryDeletingSummary, setAdvisoryDeletingSummary] = useState(false);
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
+  const [advisoryAggregate, setAdvisoryAggregate] = useState(null);
+  const [advisoryObservability, setAdvisoryObservability] = useState(null);
+  const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
@@ -1329,9 +1333,10 @@ export default function StockDetail() {
       setAdvisoryLoading(true);
     }
     try {
-      const response = await getStockAIAdvisorySession(normalizedSymbol);
+      const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
       const payload = response?.data || {};
       setAdvisorySession(payload.advisory || null);
+      setAdvisoryAggregate(payload.aggregate || null);
       setAdvisoryUserProvider(payload.user_ai_provider || null);
       const nextComponents = Array.isArray(payload.components) ? payload.components : [];
       const nextDeletedComponents = Array.isArray(payload.deleted_components) ? payload.deleted_components : [];
@@ -1354,6 +1359,25 @@ export default function StockDetail() {
     } finally {
       if (!silent) {
         setAdvisoryLoading(false);
+      }
+    }
+  }, [normalizedSymbol]);
+
+  const fetchAdvisoryObservability = useCallback(async ({ silent = false } = {}) => {
+    if (!normalizedSymbol) return;
+    if (!silent) {
+      setAdvisoryObservabilityLoading(true);
+    }
+    try {
+      const response = await getStockAIAdvisoryObservability(normalizedSymbol, { window_hours: 48, limit: 12 });
+      setAdvisoryObservability(response?.data || null);
+    } catch (_) {
+      if (!silent) {
+        setAdvisoryObservability(null);
+      }
+    } finally {
+      if (!silent) {
+        setAdvisoryObservabilityLoading(false);
       }
     }
   }, [normalizedSymbol]);
@@ -1509,6 +1533,28 @@ export default function StockDetail() {
       clearInterval(interval);
     };
   }, [fetchAdvisorySession, normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      return;
+    }
+    let cancelled = false;
+
+    const run = async (silent = false) => {
+      if (cancelled) return;
+      await fetchAdvisoryObservability({ silent });
+    };
+
+    run(false);
+    const interval = setInterval(() => {
+      run(true);
+    }, 30000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [fetchAdvisoryObservability, normalizedSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -2296,6 +2342,65 @@ export default function StockDetail() {
                     </span>
                     <span className="text-slate-600">• {t('stockDetail.tabsCount', { count: advisoryComponents.length })}</span>
                     <span className="text-slate-600">• {t('stockDetail.tabsUsedCount', { count: (advisoryComponents.filter((item) => item.include_in_summary)).length })}</span>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">H3 observability</p>
+                      {advisoryObservabilityLoading ? (
+                        <span className="text-[11px] text-slate-500">Refreshing...</span>
+                      ) : null}
+                    </div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Severity drift</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">
+                          {advisoryAggregate?.observability?.severity_drift_24h?.label || advisoryObservability?.summary?.severity_drift_label || 'stable'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Delta: {advisoryAggregate?.observability?.severity_drift_24h?.delta ?? advisoryObservability?.summary?.severity_delta ?? 0}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Aggregate quality</p>
+                        <p className="mt-1 text-sm font-semibold text-cyan-300">
+                          {advisoryAggregate?.observability?.aggregate_quality?.score ?? advisoryObservability?.summary?.avg_aggregate_quality_score ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {advisoryAggregate?.observability?.aggregate_quality?.label || 'n/a'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Decision score</p>
+                        <p className="mt-1 text-sm font-semibold text-amber-300">
+                          {advisoryAggregate?.decision?.score ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {advisoryAggregate?.decision?.score_band || 'n/a'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Benchmarks</p>
+                        <p className="mt-1 text-sm font-semibold text-emerald-300">
+                          RVOL {advisoryAggregate?.benchmarks?.rvol ?? '—'}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {advisoryAggregate?.benchmarks?.rvol_regime || 'unknown'}
+                        </p>
+                      </div>
+                    </div>
+                    {Array.isArray(advisoryObservability?.timeline) && advisoryObservability.timeline.length > 0 ? (
+                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Timeline (latest)</p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {advisoryObservability.timeline.slice(0, 5).map((row) => (
+                            <span key={row.advisory_id} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300">
+                              #{row.advisory_id} {row.severity} q={row.aggregate_quality?.score}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   {advisoryDeletedComponents.length > 0 ? (
