@@ -1452,6 +1452,31 @@ export default function StockDetail() {
       .sort((a, b) => b.count - a.count);
   }, [advisoryObservability?.governance?.rollout_gate_deny_by_reason]);
 
+  const governanceSparkline = useMemo(() => {
+    if (!governanceTrendRows.length) {
+      return null;
+    }
+    const values = governanceTrendRows.map((row) => Number(row.denyTotal || 0));
+    const max = Math.max(1, ...values);
+    const min = Math.min(...values);
+    const width = 220;
+    const height = 44;
+    const points = values.map((value, idx) => {
+      const x = values.length === 1 ? 0 : Math.round((idx / (values.length - 1)) * width);
+      const y = Math.round(height - ((value / max) * height));
+      return `${x},${y}`;
+    }).join(' ');
+    return {
+      points,
+      width,
+      height,
+      min,
+      max,
+      latest: values[values.length - 1] || 0,
+      previous: values.length > 1 ? values[values.length - 2] : values[values.length - 1] || 0,
+    };
+  }, [governanceTrendRows]);
+
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
     try {
@@ -2796,6 +2821,41 @@ export default function StockDetail() {
                             {t('stockDetail.governanceDenyTotal')}: {advisoryObservability?.governance?.rollout_gate_deny_total ?? 0}
                           </div>
                         </div>
+                        {governanceSparkline ? (
+                          <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2">
+                            <div className="flex items-center justify-between text-[10px] text-slate-500">
+                              <span>{t('stockDetail.governanceSparklineTitle')}</span>
+                              <span>
+                                {t('stockDetail.governanceSparklineLatest')}: {governanceSparkline.latest}
+                                {' | '}
+                                {t('stockDetail.governanceSparklineRange', {
+                                  min: governanceSparkline.min,
+                                  max: governanceSparkline.max,
+                                })}
+                              </span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <svg
+                                width={governanceSparkline.width}
+                                height={governanceSparkline.height}
+                                viewBox={`0 0 ${governanceSparkline.width} ${governanceSparkline.height}`}
+                                className="overflow-visible"
+                                role="img"
+                                aria-label={t('stockDetail.governanceSparklineTitle')}
+                              >
+                                <polyline
+                                  fill="none"
+                                  stroke="rgba(248, 113, 113, 0.95)"
+                                  strokeWidth="2"
+                                  points={governanceSparkline.points}
+                                />
+                              </svg>
+                              <span className={`text-[11px] font-semibold ${governanceSparkline.latest > governanceSparkline.previous ? 'text-rose-300' : 'text-emerald-300'}`}>
+                                {governanceSparkline.latest > governanceSparkline.previous ? '▲' : '▼'}
+                              </span>
+                            </div>
+                          </div>
+                        ) : null}
                         {governanceEndpointBreakdown.length > 0 ? (
                           <div className="mt-2">
                             <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceBreakdownEndpoint')}</p>

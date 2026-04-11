@@ -532,11 +532,15 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - Test/build evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_supports_governance_day_bucket`
     - `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-10 hoan tat (compact sparkline cho deny drift):
+  - frontend bo sung sparkline mini cho 8 bucket gan nhat theo filter hien tai.
+  - hien thong tin `latest` + `range min/max` de QA/Ops danh gia drift nhanh.
+  - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung compact sparkline mini (endpoint-filtered) de nhin drift deny nhanh theo 8 bucket gan nhat.
+2. Bo sung marker highlight bucket co deny cao nhat va tooltip timestamp de quan sat incident nhanh hon.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:
