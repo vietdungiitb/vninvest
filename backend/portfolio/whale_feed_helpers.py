@@ -178,6 +178,17 @@ def _parse_aggregate_window(window_raw: str | None) -> str:
 def _window_start_datetime(window: str, now=None):
     resolved_now = now or timezone.now()
     normalized = str(window or 'session').strip().lower()
+    local_now = timezone.localtime(resolved_now)
+    market_open_time = time(
+        hour=int(os.getenv('WHALE_MARKET_OPEN_HOUR', '9')),
+        minute=int(os.getenv('WHALE_MARKET_OPEN_MINUTE', '0')),
+    )
+    today_session_start = timezone.make_aware(
+        datetime.combine(local_now.date(), market_open_time),
+        timezone.get_current_timezone(),
+    )
+    if normalized == 'session':
+        return today_session_start
     if normalized == '5m':
         return resolved_now - timedelta(minutes=5)
     if normalized == '15m':
@@ -185,17 +196,17 @@ def _window_start_datetime(window: str, now=None):
     if normalized == '1h':
         return resolved_now - timedelta(hours=1)
     if normalized == '5d':
-        return resolved_now - timedelta(days=5)
+        anchor_date = local_now.date() - timedelta(days=4)
+        return timezone.make_aware(
+            datetime.combine(anchor_date, market_open_time),
+            timezone.get_current_timezone(),
+        )
     return None
 
 
 def _is_event_timestamp_in_window(ts_value, window: str, now=None) -> bool:
     normalized = str(window or 'session').strip().lower()
     resolved_now = now or timezone.now()
-    if normalized == 'session':
-        # Session scope represents the latest available tape in aggregate mode.
-        # Keep legacy behavior for stream/vnstock fallbacks even when test fixtures use historical timestamps.
-        return True
 
     if not ts_value:
         return False
@@ -210,13 +221,12 @@ def _is_event_timestamp_in_window(ts_value, window: str, now=None) -> bool:
     start_dt = _window_start_datetime(normalized, now=resolved_now)
     if start_dt is None:
         return True
-    return event_dt >= start_dt
+    return start_dt <= event_dt <= resolved_now
 
 
 def _is_tick_row_in_window(row, window: str, now=None) -> bool:
     normalized = str(window or 'session').strip().lower()
-    if normalized == 'session':
-        return bool(getattr(row, 'trade_date', None) == timezone.localdate())
+    resolved_now = now or timezone.now()
 
     try:
         row_dt = timezone.make_aware(
@@ -226,10 +236,10 @@ def _is_tick_row_in_window(row, window: str, now=None) -> bool:
     except Exception:
         return False
 
-    start_dt = _window_start_datetime(normalized, now=now)
+    start_dt = _window_start_datetime(normalized, now=resolved_now)
     if start_dt is None:
         return True
-    return row_dt >= start_dt
+    return start_dt <= row_dt <= resolved_now
 
 
 # ---------------------------------------------------------------------------

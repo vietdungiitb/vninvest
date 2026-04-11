@@ -1854,7 +1854,10 @@ class WhaleFeedAggregateView(APIView):
         page_rows = rows[:limit]
 
         if not page_rows:
-            vnstock_records = _build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            try:
+                vnstock_records = _build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            except ExternalSystemException:
+                vnstock_records = []
             if vnstock_records:
                 vnstock_records = [
                     row for row in vnstock_records

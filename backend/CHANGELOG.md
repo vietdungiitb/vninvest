@@ -1,3 +1,13 @@
+## Ghi chú thay đổi ngày 11/04/2026
+
+- Cập nhật logic window cho whale aggregate để `session` bắt đầu từ giờ mở cửa thị trường đến thời điểm hiện tại, còn `5d` neo từ market-open của 4 ngày trước.
+- Chuẩn hóa bộ lọc thời gian cho cả stream event và intraday tick theo điều kiện `start <= ts <= now`, tránh việc các window ngắn trả kết quả gần như giống nhau.
+- Bổ sung graceful fallback cho aggregate endpoint: nếu DB page rỗng và provider vnstock lỗi, endpoint không còn trả `502` ngoài ý muốn mà degrade về aggregate response an toàn.
+- Đồng bộ logic trên cả refactored service path và helper/view path cũ để tránh lệch hành vi giữa hai luồng.
+- Ổn định regression test `test_refactored_whale_feed_aggregate_applies_window_filter` bằng local date/time thay cho mốc `10:15:00` hardcode, đồng thời pin env market-open trong test.
+
+---
+
 ## Ghi chú thay đổi ngày 04/04/2026
 
 - Thay thư viện `vnstock3>=0.3.0.9` bằng fork tùy chỉnh `vnstock @ git+https://github.com/vietdung-edusuccess/vnstock.git@main` trong `backend/requirements.txt`.

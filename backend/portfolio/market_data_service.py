@@ -816,7 +816,10 @@ class MarketDataService:
         page_rows = rows[:limit]
 
         if not page_rows:
-            vnstock_records = self._build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            try:
+                vnstock_records = self._build_vnstock_aggregate_records(symbols, min_threshold_vnd)
+            except ExternalSystemException:
+                vnstock_records = []
             if vnstock_records:
                 vnstock_records = [
                     record for record in vnstock_records
@@ -1845,6 +1848,17 @@ class MarketDataService:
 
     def _window_start_datetime(self, window: str, now=None):
         resolved_now = now or timezone.now()
+        local_now = timezone.localtime(resolved_now)
+        market_open_time = time(
+            hour=int(os.getenv('WHALE_MARKET_OPEN_HOUR', '9')),
+            minute=int(os.getenv('WHALE_MARKET_OPEN_MINUTE', '0')),
+        )
+        today_session_start = timezone.make_aware(
+            datetime.combine(local_now.date(), market_open_time),
+            timezone.get_current_timezone(),
+        )
+        if window == 'session':
+            return today_session_start
         if window == '5m':
             return resolved_now - timedelta(minutes=5)
         if window == '15m':
@@ -1852,14 +1866,15 @@ class MarketDataService:
         if window == '1h':
             return resolved_now - timedelta(hours=1)
         if window == '5d':
-            return resolved_now - timedelta(days=5)
+            anchor_date = local_now.date() - timedelta(days=4)
+            return timezone.make_aware(
+                datetime.combine(anchor_date, market_open_time),
+                timezone.get_current_timezone(),
+            )
         return None
 
     def _is_event_timestamp_in_window(self, ts_value, window: str, now=None) -> bool:
         resolved_now = now or timezone.now()
-        if window == 'session':
-            # Keep aggregate session behavior aligned with legacy stream/vnstock fallback semantics.
-            return True
         if not ts_value:
             return False
         try:
@@ -1871,11 +1886,10 @@ class MarketDataService:
         start_dt = self._window_start_datetime(window, now=resolved_now)
         if start_dt is None:
             return True
-        return event_dt >= start_dt
+        return start_dt <= event_dt <= resolved_now
 
     def _is_tick_row_in_window(self, row, window: str, now=None) -> bool:
-        if window == 'session':
-            return bool(getattr(row, 'trade_date', None) == timezone.localdate())
+        resolved_now = now or timezone.now()
         try:
             row_dt = timezone.make_aware(
                 datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
@@ -1886,7 +1900,7 @@ class MarketDataService:
         start_dt = self._window_start_datetime(window, now=now)
         if start_dt is None:
             return True
-        return row_dt >= start_dt
+        return start_dt <= row_dt <= resolved_now
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
         max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)

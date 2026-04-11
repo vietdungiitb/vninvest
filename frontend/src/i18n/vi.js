@@ -1126,7 +1126,7 @@ const vi = {
     loadingMore: 'Đang tải thêm...',
     loadMore: 'Tải thêm',
     hideLess: 'Ẩn bớt',
-    shortcutBySymbol: 'Đi tắt theo mã',
+    shortcutBySymbol: 'Thống kê theo mã',
     trackedSymbolsTitle: 'Các mã đang theo dõi',
     trackedSymbolsDesc: 'Mỗi nút mở WhaleAlertsDashboard cho đúng mã, nơi hiển thị feed lệnh lớn, money flow, RVOL và depth chart.',
     noTrackedShortcuts: 'Chưa có mã tracked riêng. Có thể thêm mã trong Radar thị trường rồi quay lại đây để mở nhanh Whale Alerts dashboard.',

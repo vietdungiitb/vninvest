@@ -182,6 +182,64 @@ Result: Ran 2 tests in 6.231s - OK
 - ✅ Import validation: all imports resolvable
 - ✅ No breaking changes to existing whale feed tests
 
+### 2026-04-11 Continuation: Whale Aggregate Window Logic
+
+- Updated whale aggregate window filtering so `session` is bounded from market open to current time and `5d` is anchored from the market-open timestamp 4 days back.
+- Added graceful degradation for aggregate vnstock fallback: when external provider fetch fails after DB page is empty, endpoint now returns a normal aggregate response instead of bubbling a 502.
+- Stabilized the window-filter regression test to use local date/time instead of hardcoded wall-clock values.
+
+#### Files Updated In This Follow-up
+
+- `backend/portfolio/market_data_service.py`
+   - Added market-open aware `_window_start_datetime()` handling for `session` and `5d`.
+   - Tightened `_is_event_timestamp_in_window()` and `_is_tick_row_in_window()` to enforce `start <= ts <= now`.
+   - Wrapped aggregate vnstock fallback with graceful handling of `ExternalSystemException`.
+- `backend/portfolio/whale_feed_helpers.py`
+   - Mirrored the same bounded window logic used by the refactored service path.
+- `backend/portfolio/views.py`
+   - Mirrored the graceful vnstock fallback handling in the legacy aggregate view path so both code paths degrade consistently.
+- `backend/portfolio/tests/test_api_routes.py`
+   - Replaced hardcoded `10:15:00` fixtures with `timezone.localtime()` / `timezone.localdate()` derived values.
+   - Added `patch.dict(os.environ, ...)` to pin market-open inputs during the test.
+   - Relaxed result-count assertions to verify window relationship semantics instead of brittle wall-clock exact counts.
+- `frontend/src/i18n/vi.js`
+   - Renamed `shortcutBySymbol` label from `Đi tắt theo mã` to `Thống kê theo mã`.
+
+#### Why These Changes Were Needed
+
+- Short windows (`5m`, `15m`, `1h`, `session`) were previously producing nearly identical results because historical ticks were only compared against a lower bound, not against the current request timestamp.
+- The aggregate route could return `502` even when local DB data path was otherwise valid, because an empty DB page triggered vnstock fallback and provider errors escaped too aggressively.
+- The original regression test depended on a specific wall-clock fixture (`10:15`) that became invalid once session windows were made realistic.
+
+#### Environment Findings During Verification
+
+- Direct `docker compose exec` verification became misleading because both the base stack and the dev override stack were present under the same compose project name.
+- This created backend container drift where one runtime was reading `.env.production` while the intended dev path used `.env.dev`.
+- To isolate code correctness from infrastructure noise, final verification was run locally through the repository `.venv` with `DB_ENGINE=sqlite` and `--noinput`.
+- Added `scripts/ops/dev_compose.ps1` so dev commands always run with both compose files (`docker-compose.yml` + `docker-compose.dev.yml`) and reduce stack-mix mistakes.
+
+#### Validation Commands
+
+Local verification was completed with SQLite to avoid compose/runtime credential drift:
+
+```powershell
+$env:DB_ENGINE='sqlite'
+Remove-Item Env:POSTGRES_DB -ErrorAction SilentlyContinue
+Remove-Item Env:POSTGRES_USER -ErrorAction SilentlyContinue
+Remove-Item Env:POSTGRES_PASSWORD -ErrorAction SilentlyContinue
+Remove-Item Env:POSTGRES_HOST -ErrorAction SilentlyContinue
+Remove-Item Env:POSTGRES_PORT -ErrorAction SilentlyContinue
+& 'c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe' backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_refactored_whale_feed_aggregate_applies_window_filter --noinput -v 2
+& 'c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe' backend/manage.py test portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_refactored_whale_feed_aggregate_rejects_invalid_window portfolio.tests.test_api_routes.ApiRouteSmokeTests.test_refactored_whale_feed_aggregate_rejects_cursor_window_mismatch --noinput -v 1
+```
+
+#### Validation Result
+
+- ✅ `test_refactored_whale_feed_aggregate_applies_window_filter`
+- ✅ `test_refactored_whale_feed_aggregate_rejects_invalid_window`
+- ✅ `test_refactored_whale_feed_aggregate_rejects_cursor_window_mismatch`
+- Note: compose-based test execution was temporarily noisy because base and dev stacks were both present under the same project name, causing backend container/env drift during direct `docker compose exec` usage.
+
 ---
 
 ## 🔧 Technical Implementation Details
