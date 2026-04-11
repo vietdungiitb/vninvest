@@ -258,6 +258,9 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
 - Test evidence:
   - `test_task_persists_metrics_into_aggregate_audit_log`
   - `test_task_persists_snapshot_with_monotonic_sequence`
+- H2-step-2 hoan tat: bo sung command replay trace theo `advisory_id`/`snapshot_id`:
+  - `python backend/manage.py replay_advisory_trace --advisory-id <id> --max-logs 30`
+  - Smoke artifact: `docs/HOLISTIC_ADVISORY_H2_REPLAY_SMOKE_20260411.json`
 
 Work items:
 
