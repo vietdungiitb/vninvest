@@ -782,6 +782,7 @@ from .whale_feed_helpers import (
 from .ai_advisory_helpers import (
     _sprint17_build_component_templates,
     _sprint17_compute_summary_from_components,
+    _sprint17_enforce_summary_narrative_policy,
     _sprint17_extract_json_block,
     _sprint17_generate_component_templates_with_ai,
     _sprint17_generate_executive_synthesis_with_ai,
@@ -4774,6 +4775,7 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     )
     if ai_synthesis_text:
         summary_payload['synthesis_text'] = ai_synthesis_text
+    summary_payload = _sprint17_enforce_summary_narrative_policy(summary_payload, components)
     summary = AIAdvisoryExecutiveSummary.objects.create(
         user=request.user,
         symbol=normalized_symbol,

@@ -336,6 +336,10 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - bo benchmark gom: `vwap_deviation_pct`, `rvol`, `rvol_regime`, `relative_strength_20d_pct`, `mtf_confirmation_score`, `mtf_confirmation_label`, `freshness`.
   - rollout qua flag `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED` (co the override bang query `include_benchmarks=1`).
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_v2_includes_benchmark_enrichment`
+- H3-step-2 hoan tat (narrative policy hardening cho executive summary):
+  - enforce bat buoc 2 section trong `synthesis_text`: `Evidence bullets:` va `Invalidating conditions:`.
+  - ap dung cho ca fallback summary va AI-generated summary de tranh output thieu policy.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_summary_regenerate_prefers_ai_detailed_synthesis`
 
 Work items:
 

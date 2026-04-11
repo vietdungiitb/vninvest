@@ -431,6 +431,43 @@ def _sprint17_compute_summary_from_components(components: list[AIAdvisoryCompone
     }
 
 
+def _sprint17_enforce_summary_narrative_policy(summary_payload: dict, components: list[AIAdvisoryComponentRecord]) -> dict:
+    payload = dict(summary_payload or {})
+    raw_text = str(payload.get('synthesis_text') or '').strip()
+
+    lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+    if not lines:
+        lines = ['- Tong hop thong tin tu advisory components.']
+    normalized_lines = [line if line.startswith('- ') else f'- {line.lstrip("- ").strip()}' for line in lines]
+
+    text_blob = '\n'.join(normalized_lines).lower()
+    has_evidence = 'evidence bullets:' in text_blob
+    has_invalidating = 'invalidating conditions:' in text_blob
+
+    if not has_evidence:
+        normalized_lines.append('- Evidence bullets:')
+        for item in sorted(components, key=lambda comp: int(comp.confidence_score or 0), reverse=True)[:3]:
+            normalized_lines.append(
+                f"- {item.indicator_name}: status={item.status}, confidence={int(item.confidence_score or 0)}/10, action={item.suggested_action}."
+            )
+
+    if not has_invalidating:
+        action = str(payload.get('strategy_action') or '').upper()
+        normalized_lines.append('- Invalidating conditions:')
+        if action == AIAdvisoryExecutiveSummary.StrategyAction.BUY:
+            normalized_lines.append('- Gia dong cua roi duoi vung ho tro gan nhat voi khoi luong tang dot bien.')
+            normalized_lines.append('- RVOL suy yeu lien tiep trong khi dong tien lon chuyen sang ban chu dong.')
+        elif action == AIAdvisoryExecutiveSummary.StrategyAction.SELL:
+            normalized_lines.append('- Gia dong cua vuot lai vung khang cu quan trong voi dong tien xac nhan.')
+            normalized_lines.append('- Luc ban giam nhanh va cac tin hieu momentum dao chieu sang tich cuc.')
+        else:
+            normalized_lines.append('- Xuat hien breakout/breakdown ro rang duoc xac nhan boi volume va order-flow.')
+            normalized_lines.append('- Bien dong rui ro vuot nguong chap nhan theo ke hoach quan tri vi the.')
+
+    payload['synthesis_text'] = '\n'.join(normalized_lines)
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Executive synthesis (AI)
 # ---------------------------------------------------------------------------

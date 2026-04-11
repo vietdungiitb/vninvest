@@ -3488,6 +3488,8 @@ class ApiRouteSmokeTests(APITestCase):
         summary = AIAdvisoryExecutiveSummary.objects.filter(user=self.user, symbol='BCM').latest('created_at')
         self.assertIn('- Dong 1', summary.synthesis_text)
         self.assertIn('- Dong 2', summary.synthesis_text)
+        self.assertIn('Evidence bullets:', summary.synthesis_text)
+        self.assertIn('Invalidating conditions:', summary.synthesis_text)
 
     @patch('portfolio.views._cache_get', return_value=None)
     @patch('portfolio.views._sprint17_generate_executive_synthesis_with_ai', return_value='- Chi tiet')
