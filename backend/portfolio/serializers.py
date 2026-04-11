@@ -474,6 +474,8 @@ class StockWorkspaceChartPointSerializer(serializers.Serializer):
 class StockWorkspaceChartResponseSerializer(serializers.Serializer):
     symbol = serializers.CharField()
     days = serializers.IntegerField()
+    timeframe = serializers.CharField(required=False)
+    interval = serializers.CharField(required=False)
     start_date = serializers.CharField()
     end_date = serializers.CharField()
     points = StockWorkspaceChartPointSerializer(many=True)
@@ -495,7 +497,12 @@ class MarketIntradayQuerySerializer(serializers.Serializer):
 
 
 class MarketStockChartQuerySerializer(serializers.Serializer):
-    days = serializers.IntegerField(required=False, default=180, min_value=30, max_value=365)
+    days = serializers.IntegerField(required=False, default=180, min_value=1, max_value=3650)
+    timeframe = serializers.ChoiceField(
+        required=False,
+        default='1H',
+        choices=['1m', '5m', '15m', '1H', '2H', '4H', 'D', 'W', 'M', 'Y'],
+    )
 
 
 class TradingSubAccountCreateRequestSerializer(serializers.Serializer):

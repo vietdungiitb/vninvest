@@ -58,6 +58,50 @@ logger = logging.getLogger(__name__)
 
 
 class MarketDataService:
+    _CHART_TIMEFRAME_TO_INTERVAL = {
+        '1m': '1m',
+        '5m': '5m',
+        '15m': '15m',
+        '1H': '1H',
+        '2H': '2H',
+        '4H': '4H',
+        'D': '1D',
+        'W': '1W',
+        'M': '1M',
+        # Provider does not guarantee 1Y candles; fallback to monthly to keep long-range behavior.
+        'Y': '1M',
+    }
+
+    def _normalize_chart_timeframe(self, timeframe) -> str:
+        value = str(timeframe or '1H').strip()
+        value_lower = value.lower()
+        minute_frames = {'1m': '1m', '5m': '5m', '15m': '15m'}
+        if value_lower in minute_frames:
+            return minute_frames[value_lower]
+        upper_value = value.upper()
+        if upper_value in self._CHART_TIMEFRAME_TO_INTERVAL:
+            return upper_value
+        return '1H'
+
+    def _normalize_chart_timestamp(self, raw_value):
+        if raw_value is None:
+            return None
+        if isinstance(raw_value, datetime):
+            return raw_value
+        if isinstance(raw_value, date):
+            return datetime.combine(raw_value, time.min)
+        text_value = str(raw_value).strip()
+        if not text_value:
+            return None
+        try:
+            # Accept both date-only and datetime-like strings.
+            return datetime.fromisoformat(text_value.replace('Z', '+00:00'))
+        except ValueError:
+            try:
+                return datetime.fromisoformat(text_value[:10])
+            except ValueError:
+                return None
+
     def normalize_symbol(self, symbol: str) -> str:
         normalized_symbol = str(symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
@@ -1473,18 +1517,20 @@ class MarketDataService:
         set_cache(cache_key, serialized, timeout=12)
         return serialized
 
-    def get_stock_workspace_chart(self, user, symbol: str, days_raw) -> dict:
+    def get_stock_workspace_chart(self, user, symbol: str, days_raw, timeframe_raw=None) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
         try:
             days = int(days_raw or 180)
         except (TypeError, ValueError):
             days = 180
-        days = min(max(days, 30), 365)
+        days = min(max(days, 1), 3650)
+        timeframe = self._normalize_chart_timeframe(timeframe_raw)
+        interval = self._CHART_TIMEFRAME_TO_INTERVAL[timeframe]
 
         end_date = timezone.localdate()
         start_date = end_date - timedelta(days=days)
 
-        cache_key = f'chart:{normalized_symbol}:{days}'
+        cache_key = f'chart:{normalized_symbol}:{timeframe}:{days}'
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
@@ -1507,7 +1553,7 @@ class MarketDataService:
                 normalized_symbol,
                 start=str(start_date),
                 end=str(end_date),
-                interval='1D',
+                interval=interval,
                 source='KBS',
             )
             if df is not None and not df.empty:
@@ -1515,10 +1561,12 @@ class MarketDataService:
                 for _, row in df.iterrows():
                     try:
                         raw_time = row.get('time', row.get('date', ''))
-                        point_date = raw_time.date() if hasattr(raw_time, 'date') else date.fromisoformat(str(raw_time)[:10])
+                        point_dt = self._normalize_chart_timestamp(raw_time)
+                        if point_dt is None:
+                            continue
                         series.append(
                             {
-                                'date': str(point_date),
+                                'date': point_dt.isoformat(),
                                 'open': float(row['open']) if row.get('open') is not None else None,
                                 'high': float(row['high']) if row.get('high') is not None else None,
                                 'low': float(row['low']) if row.get('low') is not None else None,
@@ -1541,7 +1589,7 @@ class MarketDataService:
             )
             series = [
                 {
-                    'date': str(row['date']),
+                    'date': datetime.combine(row['date'], time.min).isoformat(),
                     'open': self._to_float(row['open_price']),
                     'high': self._to_float(row['high_price']),
                     'low': self._to_float(row['low_price']),
@@ -1556,6 +1604,8 @@ class MarketDataService:
         payload = {
             'symbol': normalized_symbol,
             'days': days,
+            'timeframe': timeframe,
+            'interval': interval,
             'start_date': str(start_date),
             'end_date': str(end_date),
             'points': StockWorkspaceChartPointSerializer(series, many=True).data,

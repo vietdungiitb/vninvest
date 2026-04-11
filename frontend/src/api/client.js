@@ -162,7 +162,10 @@ export const seedSecurities = () => apiClient.post('/stock-management/seed/');
 export const syncSecuritiesPrices = (days = 5) => apiClient.post('/stock-management/sync/', { days });
 export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stocks/${symbol}/`);
 export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
-export const getStockPriceChart = (symbol, days = 180) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/?days=${days}`);
+export const getStockPriceChart = (symbol, days = 180, timeframe = '1H') =>
+  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`, {
+    params: { days, timeframe },
+  });
 export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
 export const getStockAIAdvisorySession = (symbol, params = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });

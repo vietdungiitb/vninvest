@@ -173,6 +173,7 @@ class StockWorkspaceChartView(BaseMarketDataView):
                 request.user,
                 symbol,
                 query_data['days'],
+                query_data.get('timeframe'),
             )
         except Exception as exc:
             return self.handle_exception_response(exc)

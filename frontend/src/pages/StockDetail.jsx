@@ -219,7 +219,7 @@ function governanceDeltaSeverityClass(level) {
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
 
-function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
+function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -258,7 +258,10 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRang
     { id: 'Y',   days: 3650 },
   ];
   const [activeTimeframe, setActiveTimeframe] = useState(() => {
-    const match = TIMEFRAMES.find(tf => tf.days === activePeriod);
+    if (activeTimeframeProp && TIMEFRAMES.some((tf) => tf.id === activeTimeframeProp)) {
+      return activeTimeframeProp;
+    }
+    const match = TIMEFRAMES.find((tf) => tf.days === activePeriod);
     return match ? match.id : '1H';
   });
 
@@ -378,6 +381,7 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRang
 
   const handleTimeframe = (tf) => {
     setActiveTimeframe(tf.id);
+    onTimeframeChange?.({ timeframe: tf.id, days: tf.days });
     onPeriodChange?.(tf.days);
   };
 
@@ -579,11 +583,15 @@ function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRang
   }, []);
 
   useEffect(() => {
+    if (activeTimeframeProp && TIMEFRAMES.some((tf) => tf.id === activeTimeframeProp)) {
+      setActiveTimeframe(activeTimeframeProp);
+      return;
+    }
     const match = TIMEFRAMES.find((tf) => tf.days === activePeriod);
     if (match) {
       setActiveTimeframe(match.id);
     }
-  }, [activePeriod]);
+  }, [activePeriod, activeTimeframeProp]);
 
   useEffect(() => {
     onActiveIndicatorsChange?.(activeIndicators);
@@ -1369,6 +1377,7 @@ export default function StockDetail() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingChart, setLoadingChart] = useState(true);
   const [activePeriod, setActivePeriod] = useState(180);
+  const [activeTimeframe, setActiveTimeframe] = useState('1H');
   const [error, setError] = useState('');
   const [whaleFeedData, setWhaleFeedData] = useState(null);
   const [whaleFeedLoading, setWhaleFeedLoading] = useState(true);
@@ -1893,7 +1902,7 @@ export default function StockDetail() {
     const fetchChart = async () => {
       setLoadingChart(true);
       try {
-        const response = await getStockPriceChart(normalizedSymbol, activePeriod);
+        const response = await getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe);
         if (!cancelled) {
           setChartData(response.data.points || []);
           setTechnical(response.data.technical || null);
@@ -1916,7 +1925,7 @@ export default function StockDetail() {
     return () => {
       cancelled = true;
     };
-  }, [normalizedSymbol, activePeriod]);
+  }, [normalizedSymbol, activePeriod, activeTimeframe]);
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -2087,7 +2096,7 @@ export default function StockDetail() {
   const refreshWorkspace = async () => {
     const [overviewResponse, chartResponse] = await Promise.all([
       getStockWorkspaceOverview(normalizedSymbol),
-      getStockPriceChart(normalizedSymbol, activePeriod),
+      getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe),
     ]);
     setOverview(overviewResponse.data);
     setChartData(chartResponse.data.points || []);
@@ -2744,7 +2753,14 @@ export default function StockDetail() {
                 <KLineChartComponent
                   data={chartData}
                   activePeriod={activePeriod}
+                  activeTimeframe={activeTimeframe}
                   onPeriodChange={setActivePeriod}
+                  onTimeframeChange={({ timeframe, days }) => {
+                    setActiveTimeframe(timeframe);
+                    if (Number.isFinite(days)) {
+                      setActivePeriod(days);
+                    }
+                  }}
                   onVisibleRangeChange={setChartVisibleRange}
                   onActiveIndicatorsChange={setChartActiveIndicators}
                 />
