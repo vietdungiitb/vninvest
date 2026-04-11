@@ -572,13 +572,14 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
     - `SystemAIAdminApiTests.test_put_updates_governance_delta_thresholds` => `OK` (sqlite override local)
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds` => `OK` (sqlite override local)
     - Postgres profile parity: `OK` cho ca 2 tests khi chay voi `DB_ENGINE=postgres`, `POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`.
+    - Expanded postgres regression: `OK` cho `portfolio.tests.test_system_ai_admin_api` + 4 governance observability smoke tests (tong 18 tests).
     - `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
 2. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
-3. Mo rong regression matrix tu 2 test muc tieu len full nhom `test_system_ai_admin_api` + governance subset trong `test_api_routes` tren profile postgres.
+3. Chuan hoa script test nhanh cho governance admin + observability (postgres profile) de QA chay lai on-demand.
 
 Deliverables:
 
