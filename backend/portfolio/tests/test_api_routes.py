@@ -2974,6 +2974,49 @@ class ApiRouteSmokeTests(APITestCase):
         )
         self.assertIn('allowlist', response.data['governance']['cohort_modes_seen'])
 
+    def test_stock_ai_advisory_observability_get_supports_governance_day_bucket(self):
+        self.authenticate()
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'holistic_rollout_gate', 'outcome': 'denied'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.HOLISTIC_ROLLOUT_DENY,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='holistic_rollout_gate',
+            metadata_json={
+                'event_type': 'rollout_gate_deny',
+                'endpoint': 'stock_ai_advisory_observability_api',
+                'deny_reason': 'global_disabled',
+                'cohort_mode': 'all',
+            },
+        )
+
+        response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5&governance_bucket=day'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['governance']['trend_bucket'], 'day')
+        self.assertGreaterEqual(len(response.data['governance']['rollout_gate_deny_trend']), 1)
+        first_bucket = response.data['governance']['rollout_gate_deny_trend'][0]
+        self.assertIn('bucket', first_bucket)
+        self.assertGreaterEqual(first_bucket['deny_total'], 1)
+        self.assertGreaterEqual(first_bucket['deny_by_reason'].get('global_disabled', 0), 1)
+        self.assertGreaterEqual(first_bucket['deny_by_cohort_mode'].get('all', 0), 1)
+
+    def test_stock_ai_advisory_observability_get_returns_400_for_invalid_governance_bucket(self):
+        self.authenticate()
+
+        response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5&governance_bucket=week'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['ok'])
+
     @patch.dict(
         'os.environ',
         {

@@ -6061,9 +6061,12 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     retry_outcome_filter = str(request.query_params.get('retry_outcome') or '').strip().lower()
     retry_reason_filter = str(request.query_params.get('retry_reason') or '').strip().lower()
     retry_sort = str(request.query_params.get('retry_sort') or 'newest').strip().lower()
+    governance_bucket = str(request.query_params.get('governance_bucket') or 'hour').strip().lower()
     valid_retry_sort_values = {'newest', 'oldest', 'most_failed'}
     if retry_sort not in valid_retry_sort_values:
         return Response({'ok': False, 'message': 'retry_sort khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+    if governance_bucket not in {'hour', 'day'}:
+        return Response({'ok': False, 'message': 'governance_bucket khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
     def _safe_int(value, default=0):
         try:
@@ -6128,6 +6131,7 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     rollout_deny_by_endpoint = {}
     rollout_deny_by_reason = {}
     rollout_gate_cohort_modes = set()
+    rollout_deny_trend = {}
     for log_item in audit_logs:
         metadata = log_item.metadata_json or {}
         event_type = str(metadata.get('event_type') or '').strip().lower()
@@ -6142,6 +6146,29 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 rollout_deny_by_reason[deny_reason] = rollout_deny_by_reason.get(deny_reason, 0) + 1
             if cohort_mode:
                 rollout_gate_cohort_modes.add(cohort_mode)
+
+            created_at = log_item.created_at
+            if created_at is not None:
+                local_dt = timezone.localtime(created_at)
+                if governance_bucket == 'day':
+                    bucket_key = local_dt.strftime('%Y-%m-%d')
+                else:
+                    bucket_key = local_dt.strftime('%Y-%m-%d %H:00')
+
+                bucket_payload = rollout_deny_trend.setdefault(
+                    bucket_key,
+                    {
+                        'bucket': bucket_key,
+                        'deny_total': 0,
+                        'deny_by_reason': {},
+                        'deny_by_cohort_mode': {},
+                    },
+                )
+                bucket_payload['deny_total'] += 1
+                if deny_reason:
+                    bucket_payload['deny_by_reason'][deny_reason] = bucket_payload['deny_by_reason'].get(deny_reason, 0) + 1
+                if cohort_mode:
+                    bucket_payload['deny_by_cohort_mode'][cohort_mode] = bucket_payload['deny_by_cohort_mode'].get(cohort_mode, 0) + 1
 
         if str(metadata.get('event_type') or '') != 'frontend_retry_telemetry':
             continue
@@ -6212,6 +6239,11 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 'rollout_gate_deny_by_endpoint': rollout_deny_by_endpoint,
                 'rollout_gate_deny_by_reason': rollout_deny_by_reason,
                 'cohort_modes_seen': sorted(rollout_gate_cohort_modes),
+                'trend_bucket': governance_bucket,
+                'rollout_gate_deny_trend': [
+                    rollout_deny_trend[key]
+                    for key in sorted(rollout_deny_trend.keys())
+                ],
             },
             'timeline': timeline,
             'retry_events': retry_events,
