@@ -315,15 +315,13 @@ export default function Dashboard() {
         enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
         onSyncRequest={handleSync}
         showSummaryMetrics={false}
+        portfolioId={activePortfolioId}
       />
 
       {/* Charts */}
       <div className="space-y-4">
         <div>
           <EquityVsBenchmarkChart portfolioId={activePortfolioId} />
-        </div>
-        <div>
-          <AllocationPieChart portfolioId={activePortfolioId} />
         </div>
       </div>
 
