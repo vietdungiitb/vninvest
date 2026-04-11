@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import json
+import os
+
 ADVISORY_CAPABILITY = 'text_advisory'
 
 
@@ -44,6 +47,49 @@ DEFAULT_MODELS = {
     'copilot': 'openai/gpt-4.1-mini',
     'openclaw': 'default',
 }
+
+
+ADVISORY_PROVIDER_FAILOVER_CHAIN_DEFAULTS: dict[str, list[str]] = {
+    'openclaw': ['openai', 'claude', 'gemini'],
+    'openai': ['claude', 'gemini', 'openclaw'],
+    'claude': ['gemini', 'openai', 'openclaw'],
+    'gemini': ['openai', 'claude', 'openclaw'],
+    'copilot': ['openai', 'claude', 'gemini'],
+}
+
+
+def get_advisory_provider_failover_chain() -> dict[str, list[str]]:
+    """Return advisory provider failover chain with optional env override.
+
+    Override format:
+    ADVISORY_PROVIDER_FAILOVER_CHAIN_JSON='{"openai": ["claude", "gemini"]}'
+    """
+    chain = {k: list(v) for k, v in ADVISORY_PROVIDER_FAILOVER_CHAIN_DEFAULTS.items()}
+    raw = str(os.getenv('ADVISORY_PROVIDER_FAILOVER_CHAIN_JSON', '') or '').strip()
+    if not raw:
+        return chain
+
+    try:
+        payload = json.loads(raw)
+    except Exception:
+        return chain
+
+    if not isinstance(payload, dict):
+        return chain
+
+    known_providers = set(MODEL_CATALOG.keys())
+    for provider, fallbacks in payload.items():
+        provider_key = str(provider or '').strip().lower()
+        if provider_key not in known_providers or not isinstance(fallbacks, list):
+            continue
+        normalized: list[str] = []
+        for item in fallbacks:
+            fallback_key = str(item or '').strip().lower()
+            if fallback_key in known_providers and fallback_key != provider_key and fallback_key not in normalized:
+                normalized.append(fallback_key)
+        chain[provider_key] = normalized
+
+    return chain
 
 
 def _entry_supports(entry: dict, capability: str | None, validated_only: bool) -> bool:

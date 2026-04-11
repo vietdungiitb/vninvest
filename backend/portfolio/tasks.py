@@ -12,6 +12,8 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from portfolio.ai_options import get_advisory_provider_failover_chain, get_default_model
+
 from portfolio.models import (
     AdvisoryTokenLog,
     AdvisoryAggregateSnapshot,
@@ -616,6 +618,74 @@ def _resolve_model_for_budget(
     except Exception:
         pass
     return cheap_model
+
+
+def _increment_daily_counter(key: str, timeout_seconds: int = 90_000) -> None:
+    try:
+        cache.incr(key)
+    except ValueError:
+        cache.set(key, 1, timeout=timeout_seconds)
+    except Exception:
+        pass
+
+
+def _classify_provider_failure(exc: Exception) -> str:
+    exc_str = str(exc or '').lower()
+    if '429' in exc_str or 'too many requests' in exc_str:
+        return 'rate_limited'
+    if '401' in exc_str or 'unauthorized' in exc_str or 'forbidden' in exc_str:
+        return 'auth_failed'
+    if '503' in exc_str or 'service unavailable' in exc_str:
+        return 'service_down'
+    if '408' in exc_str or 'timeout' in exc_str or 'timed out' in exc_str:
+        return 'timeout'
+    return 'unknown'
+
+
+def _is_failover_eligible_failure(failure_type: str) -> bool:
+    return failure_type in {'rate_limited', 'service_down', 'timeout'}
+
+
+def _mark_provider_ratelimit(provider: str) -> None:
+    provider_key = str(provider or '').strip().lower()
+    if not provider_key:
+        return
+    _rl_key = f'advisory:provider-ratelimit:{provider_key}'
+    _rl_seconds = int(os.getenv('AI_PROVIDER_RATELIMIT_PAUSE_SECONDS', '120'))
+    cache.set(_rl_key, 1, timeout=_rl_seconds)
+    _429_counter_key = f'advisory:429-count:{provider_key}:{timezone.localdate().isoformat()}'
+    _increment_daily_counter(_429_counter_key)
+
+
+def _record_provider_attempt(provider: str, success: bool, failure_type: str = '') -> None:
+    provider_key = str(provider or '').strip().lower()
+    if not provider_key:
+        return
+    today_iso = timezone.localdate().isoformat()
+    _increment_daily_counter(f'advisory:provider-attempts:{provider_key}:{today_iso}')
+    if success:
+        _increment_daily_counter(f'advisory:provider-success:{provider_key}:{today_iso}')
+        return
+    if failure_type:
+        cache.set(
+            f'advisory:provider-last-failure:{provider_key}',
+            {'failure_type': failure_type, 'at': timezone.now().isoformat()},
+            timeout=90_000,
+        )
+
+
+def _record_failover_event(source_provider: str, target_provider: str, failure_type: str, success: bool) -> None:
+    source_key = str(source_provider or '').strip().lower()
+    target_key = str(target_provider or '').strip().lower()
+    reason_key = str(failure_type or 'unknown').strip().lower() or 'unknown'
+    today_iso = timezone.localdate().isoformat()
+    _increment_daily_counter(f'advisory:failover-attempt-count:{today_iso}')
+    _increment_daily_counter(f'advisory:failover-count:{source_key}:{today_iso}')
+    _increment_daily_counter(f'advisory:failover-target:{source_key}:{target_key}:{today_iso}')
+    _increment_daily_counter(f'advisory:failover-reason:{source_key}:{reason_key}:{today_iso}')
+    if success:
+        _increment_daily_counter(f'advisory:failover-success-count:{today_iso}')
+        _increment_daily_counter(f'advisory:failover-success:{source_key}:{today_iso}')
 
 
 def _compute_advisory_severity(matched_value_vnd: float, threshold: float) -> str:
@@ -1241,7 +1311,7 @@ def generate_whale_advisory_task(
     from asgiref.sync import async_to_sync
     from channels.layers import get_channel_layer
     from portfolio.ai_runtime_config import resolve_ai_runtime_config
-    from portfolio.ai_service import generate_advisory_concise, generate_whale_text
+    from portfolio.ai_service import _resolve_provider_api_key, generate_advisory_concise, generate_whale_text
 
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
     cache_key = f'whale_advisory_lock:{user_id}:{symbol}' if user_id is not None else f'whale_advisory_lock:{symbol}'
@@ -1325,6 +1395,8 @@ def generate_whale_advisory_task(
 
     provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
     model = str(runtime_cfg.get('model') or '').strip()
+    primary_provider = provider
+    primary_model = model
     # Pop api_key immediately so the full config dict is safe to log without exposing the key.
     api_key = str(runtime_cfg.pop('api_key', '') or '').strip()
     ai_source = str(runtime_cfg.get('source') or 'unknown')
@@ -1344,74 +1416,117 @@ def generate_whale_advisory_task(
     # P2: Route to cheaper model when remaining budget is below threshold percentage.
     _total_budget = int(user_cfg.advisory_max_tokens_per_day or 0) if user_cfg is not None else None
     model = _resolve_model_for_budget(provider, model, remaining_budget, _total_budget)
+    primary_model = model
+
+    failover_chain = get_advisory_provider_failover_chain().get(primary_provider, [])
+    providers_to_try = [primary_provider] + [p for p in failover_chain if p != primary_provider]
+    failover_occurred = False
+    failover_reason = ''
+    failover_chain_attempted: list[str] = []
+    failover_attempt_count = 0
 
     start_advisory_session()
+    start_advisory_phase('provider_generation')
+    summary_resp = None
+    deep_resp = None
+    last_exc: Exception | None = None
 
-    try:
-        start_advisory_phase('provider_generation')
-        if use_concise:
-            summary_resp = generate_advisory_concise(
-                provider=provider,
-                model=model,
-                api_key=api_key,
-                symbol=symbol,
-                matched_value_vnd=matched_value_vnd,
-                side=side,
-                user=target_user,
-            )
-            deep_resp = {'text': '', 'prompt_tokens': 0, 'completion_tokens': 0}
-        else:
-            summary_resp = generate_whale_text(
-                provider=provider,
-                model=model,
-                api_key=api_key,
-                symbol=symbol,
-                matched_value_vnd=matched_value_vnd,
-                side=side,
-                deep=False,
-                user=target_user,
-            )
-            deep_resp = generate_whale_text(
-                provider=provider,
-                model=model,
-                api_key=api_key,
-                symbol=symbol,
-                matched_value_vnd=matched_value_vnd,
-                side=side,
-                deep=True,
-                user=target_user,
-            )
-        end_advisory_phase('provider_generation')
-    except Exception as exc:
-        end_advisory_phase('provider_generation')
-        record_advisory_error_recovery(type(exc).__name__, 'provider_generation_failed', success=False)
-        end_advisory_session()
-        # If the provider returned 429, set a per-provider cooldown key so other queued
-        # tasks see it immediately and skip rather than hammering the rate-limited endpoint.
-        exc_str = str(exc or '')
-        if '429' in exc_str or 'Too Many Requests' in exc_str:
-            _rl_key = f'advisory:provider-ratelimit:{provider}'
-            _rl_seconds = int(os.getenv('AI_PROVIDER_RATELIMIT_PAUSE_SECONDS', '120'))
-            try:
-                cache.set(_rl_key, 1, timeout=_rl_seconds)
-                # Increment daily 429 counter for monitoring metrics endpoint.
-                _429_counter_key = f'advisory:429-count:{provider}:{timezone.localdate().isoformat()}'
-                try:
-                    cache.incr(_429_counter_key)
-                except ValueError:
-                    cache.set(_429_counter_key, 1, timeout=90_000)  # ~25h
-            except Exception:
-                pass
-            logger.warning(
-                'AI provider 429 rate limit for %s/%s — advisory cooldown %ds symbol=%s',
-                provider,
-                model,
-                _rl_seconds,
+    for idx, attempt_provider in enumerate(providers_to_try):
+        failover_chain_attempted.append(attempt_provider)
+        attempt_model = model if attempt_provider == primary_provider else get_default_model(attempt_provider)
+        attempt_model = _resolve_model_for_budget(attempt_provider, attempt_model, remaining_budget, _total_budget)
+        attempt_api_key = api_key if attempt_provider == primary_provider else _resolve_provider_api_key(attempt_provider, '')
+
+        if not attempt_api_key:
+            _record_provider_attempt(attempt_provider, success=False, failure_type='missing_api_key')
+            if idx + 1 < len(providers_to_try):
+                failover_attempt_count += 1
+                _record_failover_event(attempt_provider, providers_to_try[idx + 1], 'missing_api_key', success=False)
+            continue
+
+        try:
+            if use_concise:
+                summary_resp = generate_advisory_concise(
+                    provider=attempt_provider,
+                    model=attempt_model,
+                    api_key=attempt_api_key,
+                    symbol=symbol,
+                    matched_value_vnd=matched_value_vnd,
+                    side=side,
+                    user=target_user,
+                )
+                deep_resp = {'text': '', 'prompt_tokens': 0, 'completion_tokens': 0}
+            else:
+                summary_resp = generate_whale_text(
+                    provider=attempt_provider,
+                    model=attempt_model,
+                    api_key=attempt_api_key,
+                    symbol=symbol,
+                    matched_value_vnd=matched_value_vnd,
+                    side=side,
+                    deep=False,
+                    user=target_user,
+                )
+                deep_resp = generate_whale_text(
+                    provider=attempt_provider,
+                    model=attempt_model,
+                    api_key=attempt_api_key,
+                    symbol=symbol,
+                    matched_value_vnd=matched_value_vnd,
+                    side=side,
+                    deep=True,
+                    user=target_user,
+                )
+
+            _record_provider_attempt(attempt_provider, success=True)
+            if attempt_provider != primary_provider:
+                failover_occurred = True
+                _record_failover_event(primary_provider, attempt_provider, failover_reason or 'unknown', success=True)
+            provider = attempt_provider
+            model = attempt_model
+            break
+        except Exception as exc:
+            failure_type = _classify_provider_failure(exc)
+            last_exc = exc
+            _record_provider_attempt(attempt_provider, success=False, failure_type=failure_type)
+
+            if failure_type == 'rate_limited':
+                _mark_provider_ratelimit(attempt_provider)
+
+            can_failover = _is_failover_eligible_failure(failure_type)
+            has_next_provider = idx + 1 < len(providers_to_try)
+
+            if can_failover and has_next_provider:
+                failover_attempt_count += 1
+                if not failover_reason:
+                    failover_reason = failure_type
+                next_provider = providers_to_try[idx + 1]
+                _record_failover_event(attempt_provider, next_provider, failure_type, success=False)
+                logger.warning(
+                    'Advisory provider failover: %s/%s failed (%s) symbol=%s -> next=%s',
+                    attempt_provider,
+                    attempt_model,
+                    failure_type,
+                    symbol,
+                    next_provider,
+                )
+                continue
+
+            logger.error(
+                'AI provider error for %s via %s/%s (%s): %s',
                 symbol,
+                attempt_provider,
+                attempt_model,
+                failure_type,
+                exc,
             )
-        else:
-            logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
-        raise  # Celery retry
+            break
+
+    end_advisory_phase('provider_generation')
+    if summary_resp is None or deep_resp is None:
+        record_advisory_error_recovery(type(last_exc).__name__ if last_exc else 'RuntimeError', 'provider_generation_failed', success=False)
+        end_advisory_session()
+        raise (last_exc or RuntimeError('All advisory providers failed'))
 
     record_advisory_token_usage(
         int(summary_resp.get('prompt_tokens', 0) or 0) + int(summary_resp.get('completion_tokens', 0) or 0),
@@ -1574,7 +1689,13 @@ def generate_whale_advisory_task(
                 'advisory_id': advisory.id,
                 'ai_provider': provider,
                 'ai_model': model,
+                'ai_provider_primary': primary_provider,
+                'ai_model_primary': primary_model,
                 'ai_source': ai_source,
+                'failover_occurred': failover_occurred,
+                'failover_reason': failover_reason,
+                'failover_chain_attempted': failover_chain_attempted,
+                'failover_attempt_count': failover_attempt_count,
                 'threshold_source': normalized_threshold_source,
                 'source': source_key,
                 'merged_sources': normalized_merged_sources,
@@ -1603,7 +1724,13 @@ def generate_whale_advisory_task(
         'symbol': symbol,
         'ai_provider': provider,
         'ai_model': model,
+        'ai_provider_primary': primary_provider,
+        'ai_model_primary': primary_model,
         'ai_source': ai_source,
+        'failover_occurred': failover_occurred,
+        'failover_reason': failover_reason,
+        'failover_chain_attempted': failover_chain_attempted,
+        'failover_attempt_count': failover_attempt_count,
         'force_refresh': bool(force_refresh),
         'user_id': user_id,
         'source': source_key,

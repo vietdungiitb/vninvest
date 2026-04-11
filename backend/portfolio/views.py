@@ -318,6 +318,55 @@ def admin_runtime_kpi_advisory_metrics_api(request):
     }
     budget_downgrade_count_today = int(cache.get(f'advisory:budget-downgrade-count:{today_iso}') or 0)
 
+    # ── 4b. Failover tracking + provider health (today) ─────────────────────
+    failover_attempt_count_today = int(cache.get(f'advisory:failover-attempt-count:{today_iso}') or 0)
+    failover_success_count_today = int(cache.get(f'advisory:failover-success-count:{today_iso}') or 0)
+    failover_success_rate = (
+        round(failover_success_count_today / failover_attempt_count_today, 4)
+        if failover_attempt_count_today > 0
+        else None
+    )
+
+    failover_by_source: dict[str, dict] = {}
+    provider_health: dict[str, dict] = {}
+    for prov in known_providers:
+        failover_count = int(cache.get(f'advisory:failover-count:{prov}:{today_iso}') or 0)
+        failover_success_for_source = int(cache.get(f'advisory:failover-success:{prov}:{today_iso}') or 0)
+
+        primary_failures = {
+            'rate_limited': int(cache.get(f'advisory:failover-reason:{prov}:rate_limited:{today_iso}') or 0),
+            'service_down': int(cache.get(f'advisory:failover-reason:{prov}:service_down:{today_iso}') or 0),
+            'timeout': int(cache.get(f'advisory:failover-reason:{prov}:timeout:{today_iso}') or 0),
+            'missing_api_key': int(cache.get(f'advisory:failover-reason:{prov}:missing_api_key:{today_iso}') or 0),
+            'unknown': int(cache.get(f'advisory:failover-reason:{prov}:unknown:{today_iso}') or 0),
+        }
+
+        fallback_targets_used = {
+            target: int(cache.get(f'advisory:failover-target:{prov}:{target}:{today_iso}') or 0)
+            for target in known_providers
+            if target != prov
+        }
+        fallback_targets_used = {k: v for k, v in fallback_targets_used.items() if v > 0}
+
+        failover_by_source[prov] = {
+            'failover_count': failover_count,
+            'success_after_failover_count': failover_success_for_source,
+            'primary_failures': primary_failures,
+            'fallback_targets_used': fallback_targets_used,
+        }
+
+        attempts_today = int(cache.get(f'advisory:provider-attempts:{prov}:{today_iso}') or 0)
+        successful_attempts_today = int(cache.get(f'advisory:provider-success:{prov}:{today_iso}') or 0)
+        success_rate_pct = round((successful_attempts_today / attempts_today) * 100.0, 2) if attempts_today else None
+        last_failure = cache.get(f'advisory:provider-last-failure:{prov}')
+        provider_health[prov] = {
+            'success_rate_pct': success_rate_pct,
+            'last_failure': last_failure.get('at') if isinstance(last_failure, dict) else None,
+            'failure_type': last_failure.get('failure_type') if isinstance(last_failure, dict) else None,
+            'attempts_today': attempts_today,
+            'successful_attempts': successful_attempts_today,
+        }
+
     # ── 5. Generation counts today by source ─────────────────────────────────
     source_counts: dict[str, int] = {}
     for entry in (
@@ -351,6 +400,12 @@ def admin_runtime_kpi_advisory_metrics_api(request):
             'ratelimit_cooldowns_active': ratelimit_cooldowns,
             'ratelimit_429_counts_today': ratelimit_429_counts_today,
             'budget_downgrade_count_today': budget_downgrade_count_today,
+            'failover_tracking': {
+                'failovers_today': failover_attempt_count_today,
+                'by_source_provider': failover_by_source,
+                'failover_success_rate': failover_success_rate,
+            },
+            'provider_health': provider_health,
             'advisory_counts_today': {
                 'total': advisory_count_today,
                 'by_source_tokens': source_counts,
