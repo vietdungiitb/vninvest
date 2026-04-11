@@ -571,6 +571,8 @@ const vi = {
     governanceSparklineTitle: 'Deny trend nhanh (8 buckets)',
     governanceSparklineLatest: 'Giá trị mới nhất',
     governanceSparklineRange: 'Range {min} - {max}',
+    governanceSparklineBaseline: 'Baseline TB',
+    governanceSparklineDeviation: 'Lệch vs baseline',
     governanceSparklinePeak: 'Đỉnh deny',
     governanceEndpointSessionApi: 'Session API',
     governanceEndpointObservabilityApi: 'Observability API',

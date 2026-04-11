@@ -540,11 +540,15 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - danh dau bucket co deny cao nhat bang marker mau noi bat tren sparkline.
   - bo sung nhan peak bucket (`bucket + value`) va tooltip marker de triage incident nhanh.
   - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-12 hoan tat (baseline overlay cho sparkline):
+  - them duong baseline trung binh 8 buckets (dashed) tren sparkline governance.
+  - hien chi so `baseline` va `delta vs baseline` de nhan dien bat thuong nhanh.
+  - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Mo rong sparkline voi overlay baseline trung binh 8 bucket de nhan dien bat thuong ro hon.
+2. Bo sung canh bao mau theo nguong delta (vd. > +2) de bat incident sớm ngay tren panel.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

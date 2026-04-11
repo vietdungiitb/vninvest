@@ -568,6 +568,8 @@ const en = {
     governanceSparklineTitle: 'Quick deny trend (8 buckets)',
     governanceSparklineLatest: 'Latest value',
     governanceSparklineRange: 'Range {min} - {max}',
+    governanceSparklineBaseline: 'Avg baseline',
+    governanceSparklineDeviation: 'Delta vs baseline',
     governanceSparklinePeak: 'Peak deny',
     governanceEndpointSessionApi: 'Session API',
     governanceEndpointObservabilityApi: 'Observability API',

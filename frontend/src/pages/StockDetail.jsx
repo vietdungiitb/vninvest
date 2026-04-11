@@ -1474,6 +1474,11 @@ export default function StockDetail() {
     const polylinePoints = pointItems.map((point) => `${point.x},${point.y}`).join(' ');
     const maxValue = Math.max(...values);
     const maxPoint = pointItems.find((point) => point.value === maxValue) || null;
+    const baseline = values.reduce((sum, value) => sum + value, 0) / values.length;
+    const baselineY = Math.round(height - ((baseline / max) * height));
+    const latest = values[values.length - 1] || 0;
+    const previous = values.length > 1 ? values[values.length - 2] : latest;
+    const latestDeltaVsBaseline = latest - baseline;
     return {
       pointItems,
       polylinePoints,
@@ -1481,8 +1486,11 @@ export default function StockDetail() {
       height,
       min,
       max,
-      latest: values[values.length - 1] || 0,
-      previous: values.length > 1 ? values[values.length - 2] : values[values.length - 1] || 0,
+      baseline,
+      baselineY,
+      latest,
+      previous,
+      latestDeltaVsBaseline,
       maxPoint,
     };
   }, [governanceTrendRows]);
@@ -2859,6 +2867,15 @@ export default function StockDetail() {
                                   strokeWidth="2"
                                   points={governanceSparkline.polylinePoints}
                                 />
+                                <line
+                                  x1="0"
+                                  y1={governanceSparkline.baselineY}
+                                  x2={governanceSparkline.width}
+                                  y2={governanceSparkline.baselineY}
+                                  stroke="rgba(56, 189, 248, 0.85)"
+                                  strokeWidth="1"
+                                  strokeDasharray="4 3"
+                                />
                                 {governanceSparkline.pointItems.map((point) => (
                                   <circle
                                     key={`spark-point-${point.bucket}`}
@@ -2887,6 +2904,11 @@ export default function StockDetail() {
                                 {governanceSparkline.latest > governanceSparkline.previous ? '▲' : '▼'}
                               </span>
                             </div>
+                            <p className="mt-1 text-[10px] text-slate-500">
+                              {t('stockDetail.governanceSparklineBaseline')}: {governanceSparkline.baseline.toFixed(2)}
+                              {' | '}
+                              {t('stockDetail.governanceSparklineDeviation')}: {governanceSparkline.latestDeltaVsBaseline > 0 ? '+' : ''}{governanceSparkline.latestDeltaVsBaseline.toFixed(2)}
+                            </p>
                             {governanceSparkline.maxPoint ? (
                               <p className="mt-1 text-[10px] text-slate-500">
                                 {t('stockDetail.governanceSparklinePeak')}: {governanceSparkline.maxPoint.bucket} ({governanceSparkline.maxPoint.value})
