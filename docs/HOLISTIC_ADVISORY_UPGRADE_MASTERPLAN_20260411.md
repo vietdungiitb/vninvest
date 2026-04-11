@@ -597,11 +597,14 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
 - H4-step-20 hoan tat (automation cap nhat tracker rows):
   - tao script `scripts/ops/sprint31_update_ci_tracker_row.ps1` de cap nhat row #1..#5 trong CI tracker bang 1 lenh.
   - script support cac field chuan: timestamp, trigger, commit, result, duration, run URL, notes.
+- H4-step-21 hoan tat (auto-refresh GO/NO-GO tu tracker):
+  - tao script `scripts/ops/sprint31_refresh_go_no_go_from_tracker.ps1`.
+  - script doc run #1..#3 trong tracker, tinh pass-rate summary va dong bo lai trang thai `CI stability` + ket luan tam thoi trong GO/NO-GO artifact.
 
 Work items:
 
 1. Dien du lieu that cho run #1..#3 trong tracker (co the dung script `sprint31_update_ci_tracker_row.ps1`).
-2. Cap nhat lai `HOLISTIC_ADVISORY_H4_GO_NO_GO_GATE_20260411.md` tu `NO-GO tam thoi` sang `GO` khi du dieu kien.
+2. Chay `sprint31_refresh_go_no_go_from_tracker.ps1` sau moi lan cap nhat tracker de dong bo ket luan gate.
 3. Khi server deploy san sang, bo sung production smoke evidence vao GO/NO-GO artifact.
 
 Ghi chu tracker hien tai:

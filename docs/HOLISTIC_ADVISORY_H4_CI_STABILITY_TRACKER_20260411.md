@@ -76,12 +76,27 @@ Vi du:
 	-Notes "known noise only"
 ```
 
+## 3.3 Script dong bo summary + GO/NO-GO
+
+Sau khi dien row #1..#3, chay script sau de tu dong:
+
+1. Refresh `Pass rate / flaky / failure pattern` trong tracker.
+2. Dong bo trang thai CI stability trong GO/NO-GO artifact.
+
+`scripts/ops/sprint31_refresh_go_no_go_from_tracker.ps1`
+
+Lenh:
+
+```powershell
+.\scripts\ops\sprint31_refresh_go_no_go_from_tracker.ps1
+```
+
 ## 4) Danh gia on dinh
 
-- Pass rate: TBD (cho du lieu run #1..#3)
-- Co flaky? TODO
-- Failure pattern: TODO
-- False-positive pattern: TODO
+- Pass rate: TBD (chua co run nao duoc xac nhan)
+- Co flaky? TODO (chua du du lieu #1..#3)
+- Failure pattern: Chua co pattern ro rang (du lieu chua day du)
+- False-positive pattern: Dang theo doi (chua du du lieu #1..#3)
 
 ## 5) Action items
 

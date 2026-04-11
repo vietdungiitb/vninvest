@@ -1,4 +1,4 @@
-# Holistic Advisory H4 GO/NO-GO Gate (Draft)
+﻿# Holistic Advisory H4 GO/NO-GO Gate (Draft)
 
 Status: DRAFT - WAITING CI STABILITY DATA
 Date: 2026-04-11
