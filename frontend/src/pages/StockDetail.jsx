@@ -246,12 +246,12 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
   ];
 
   const TIMEFRAMES = [
-    { id: '1m',  days: 30 },
-    { id: '5m',  days: 90 },
-    { id: '15m', days: 180 },
-    { id: '1H',  days: 365 },
-    { id: '2H',  days: 730 },
-    { id: '4H',  days: 1460 },
+    { id: '1m',  days: 5 },
+    { id: '5m',  days: 20 },
+    { id: '15m', days: 60 },
+    { id: '1H',  days: 180 },
+    { id: '2H',  days: 365 },
+    { id: '4H',  days: 730 },
     { id: 'D',   days: 365 },
     { id: 'W',   days: 1095 },
     { id: 'M',   days: 1825 },

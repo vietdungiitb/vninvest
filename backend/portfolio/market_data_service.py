@@ -72,6 +72,15 @@ class MarketDataService:
         'Y': '1M',
     }
 
+    _INTRADAY_LOOKBACK_DAYS_CAP = {
+        '1m': 5,
+        '5m': 20,
+        '15m': 60,
+        '1H': 180,
+        '2H': 365,
+        '4H': 730,
+    }
+
     def _normalize_chart_timeframe(self, timeframe) -> str:
         value = str(timeframe or '1H').strip()
         value_lower = value.lower()
@@ -101,6 +110,12 @@ class MarketDataService:
                 return datetime.fromisoformat(text_value[:10])
             except ValueError:
                 return None
+
+    def _resolve_chart_lookback_days(self, timeframe: str, requested_days: int) -> int:
+        cap = self._INTRADAY_LOOKBACK_DAYS_CAP.get(timeframe)
+        if cap is None:
+            return requested_days
+        return min(requested_days, cap)
 
     def normalize_symbol(self, symbol: str) -> str:
         normalized_symbol = str(symbol or '').strip().upper()
@@ -1526,11 +1541,12 @@ class MarketDataService:
         days = min(max(days, 1), 3650)
         timeframe = self._normalize_chart_timeframe(timeframe_raw)
         interval = self._CHART_TIMEFRAME_TO_INTERVAL[timeframe]
+        effective_days = self._resolve_chart_lookback_days(timeframe, days)
 
         end_date = timezone.localdate()
-        start_date = end_date - timedelta(days=days)
+        start_date = end_date - timedelta(days=effective_days)
 
-        cache_key = f'chart:{normalized_symbol}:{timeframe}:{days}'
+        cache_key = f'chart:{normalized_symbol}:{timeframe}:{effective_days}'
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
@@ -1580,7 +1596,9 @@ class MarketDataService:
         except ExternalSystemException as exc:
             logger.warning('StockWorkspaceChart refactor vnstock lỗi %s: %s', normalized_symbol, exc)
 
-        if not series:
+        is_intraday_frame = timeframe in self._INTRADAY_LOOKBACK_DAYS_CAP
+
+        if not series and not is_intraday_frame:
             db_rows = list(
                 DailyPrice.objects
                 .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
@@ -1603,7 +1621,7 @@ class MarketDataService:
         overview = self._build_stock_workspace_overview_base(normalized_symbol, user)
         payload = {
             'symbol': normalized_symbol,
-            'days': days,
+            'days': effective_days,
             'timeframe': timeframe,
             'interval': interval,
             'start_date': str(start_date),
@@ -1613,6 +1631,19 @@ class MarketDataService:
                 self._compute_stock_workspace_technical(technical_rows or [], overview)
             ).data,
         }
+
+        # Do not silently return daily DB candles for intraday frames.
+        # If provider fails or returns empty for intraday, keep points empty instead of misleading 1D candles.
+        if is_intraday_frame and not payload['points']:
+            payload['technical'] = StockWorkspaceTechnicalSerializer({
+                'change_percent': None,
+                'rsi_14': None,
+                'macd': None,
+                'macd_signal': None,
+                'atr_14': None,
+                'volatility_20': None,
+                'volume_ratio': None,
+            }).data
 
         result = StockWorkspaceChartResponseSerializer(payload).data
         set_cache(cache_key, result, timeout=3600)
