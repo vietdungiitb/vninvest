@@ -1,6 +1,7 @@
 name: Governance Release Gate
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - deploy
