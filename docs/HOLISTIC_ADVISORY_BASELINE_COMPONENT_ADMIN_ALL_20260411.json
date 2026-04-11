@@ -1,0 +1,61 @@
+{
+  "baseline_timestamp": "2026-04-11T03:53:02.051854",
+  "user": "phamvietdung",
+  "symbol": "ALL",
+  "sample_count": 130,
+  "collection_period": "130 advisory generations",
+  "latency_metrics": {
+    "p50_ms": 11.200428009033203,
+    "p95_ms": 13.509988784790039,
+    "p99_ms": 16.60776138305664,
+    "min_ms": 9.749889373779297,
+    "max_ms": 31.715869903564453,
+    "avg_ms": 11.608675810006948
+  },
+  "token_metrics": {
+    "p50": 0.0,
+    "p95": 0.0,
+    "p99": 0.0,
+    "min": 0,
+    "max": 0,
+    "avg": 0.0,
+    "total": 0
+  },
+  "quality_metrics": {
+    "actionability_avg": 0.5012820512820512,
+    "actionability_p50": 0.44999999999999996,
+    "actionability_p95": 0.5833333333333333,
+    "confidence_avg": 0.48000000000000004,
+    "confidence_p50": 0.48000000000000004
+  },
+  "component_participation": {
+    "dark_flow_detection": "100.0%",
+    "template_generation_fallback": "100.0%",
+    "component_record_persistence": "100.0%",
+    "price_action:PRICE ACTION": "100.0%",
+    "indicator:RSI + BOLLINGER BANDS": "100.0%",
+    "volume_orderflow:VOLUME / ORDER FLOW": "100.0%",
+    "component_response_serialization": "100.0%"
+  },
+  "error_metrics": {
+    "total_errors": 0,
+    "fallback_count": 0
+  },
+  "source": {
+    "username": "phamvietdung",
+    "symbol_filter": null,
+    "operation_filter": "component_generation",
+    "days": 30,
+    "limit": 1000,
+    "sampled_symbols": [
+      "FPT",
+      "MBS",
+      "TPB"
+    ],
+    "sampled_operations": [
+      "component_generation"
+    ],
+    "audit_log_rows_scanned": 132,
+    "metrics_samples_used": 130
+  }
+}

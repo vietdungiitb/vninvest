@@ -432,9 +432,19 @@ def may_fail():
 - [x] **PR-5c**: Test suite (28 tests, all syntax validated)
 - [x] **PR-5d**: This documentation
 - [x] **Sprint H1**: Integrate instrumentation into advisory tasks
-- [ ] **Sprint H1**: Collect 100+ real advisory metrics samples
-- [ ] **Sprint H1**: Generate formal baseline report
+- [x] **Sprint H1**: Collect 100+ real advisory metrics samples (130 samples, component_generation, user=phamvietdung, symbols=FPT/MBS/TPB)
+- [x] **Sprint H1**: Generate formal baseline report (`docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_ADMIN_ALL_20260411.json`)
 - [ ] **Sprint H1**: Deploy to production + monitor
+
+### H1 Update (2026-04-11)
+
+- Component-level baseline scope da dat 130 samples tren API path thuc te (admin account), operation filter=`component_generation`.
+- Formal aggregate baseline report (ALL symbols) da duoc tao: `docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_ADMIN_ALL_20260411.json`.
+- Cross-symbol reports da co cho FPT/MBS/TPB:
+    - `docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_FPT_20260411.json`
+    - `docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_MBS_20260411.json`
+    - `docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_TPB_20260411.json`
+    - `docs/HOLISTIC_ADVISORY_BASELINE_COMPONENT_CROSS_SYMBOL_20260411.md`
 
 ---
 
