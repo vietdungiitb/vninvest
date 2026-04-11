@@ -2725,6 +2725,24 @@ export default function StockDetail() {
                             </select>
                           </div>
                         </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                          <span>{t('stockDetail.retryLegend')}</span>
+                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('scheduled')}`}>
+                            {advisoryRetryOutcomeLabel('scheduled', t)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('recovered')}`}>
+                            {advisoryRetryOutcomeLabel('recovered', t)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('exhausted')}`}>
+                            {advisoryRetryOutcomeLabel('exhausted', t)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('skipped_config')}`}>
+                            {advisoryRetryOutcomeLabel('skipped_config', t)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('request_error')}`}>
+                            {advisoryRetryOutcomeLabel('request_error', t)}
+                          </span>
+                        </div>
                         <div className="mt-1 flex flex-wrap gap-2">
                           {filteredPersistedRetryEvents.slice(0, 5).map((event) => (
                             <span

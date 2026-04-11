@@ -552,6 +552,7 @@ const vi = {
     retrySortNewest: 'Mới nhất',
     retrySortOldest: 'Cũ nhất',
     retrySortMostFailed: 'Nhiều lỗi nhất',
+    retryLegend: 'Màu trạng thái',
     retryFilterAll: 'Tất cả',
     retryNoEventsForFilter: 'Không có retry event phù hợp bộ lọc.',
     loadSymbolDataFailed: 'Không tải được dữ liệu cho {symbol}.',

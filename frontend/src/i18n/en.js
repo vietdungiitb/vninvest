@@ -549,6 +549,7 @@ const en = {
     retrySortNewest: 'Newest',
     retrySortOldest: 'Oldest',
     retrySortMostFailed: 'Most failed',
+    retryLegend: 'Outcome legend',
     retryFilterAll: 'All',
     retryNoEventsForFilter: 'No retry events match this filter.',
     loadSymbolDataFailed: 'Unable to load data for {symbol}.',
