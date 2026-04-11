@@ -575,6 +575,7 @@ const vi = {
     governanceSparklineDeviation: 'Lệch vs baseline',
     governanceSparklinePeak: 'Đỉnh deny',
     governanceDeltaThreshold: 'Ngưỡng delta',
+    governanceThresholdApplied: 'Ngưỡng áp dụng',
     governanceSeverityNormal: 'Bình thường',
     governanceSeverityWarning: 'Cảnh báo',
     governanceSeverityCritical: 'Khẩn cấp',

@@ -6070,6 +6070,10 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     if governance_bucket not in {'hour', 'day'}:
         return Response({'ok': False, 'message': 'governance_bucket khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    warning_threshold = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD', 2.0) or 2.0))
+    critical_threshold = max(warning_threshold, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD', 4.0) or 4.0))
+    cooldown_threshold = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD', 2.0) or 2.0))
+
     def _safe_int(value, default=0):
         try:
             return int(value)
@@ -6253,6 +6257,11 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 'filters': {
                     'endpoint': governance_endpoint_filter or None,
                     'reason': governance_reason_filter or None,
+                },
+                'delta_thresholds': {
+                    'warning': warning_threshold,
+                    'critical': critical_threshold,
+                    'cooldown': cooldown_threshold,
                 },
                 'trend_bucket': governance_bucket,
                 'rollout_gate_deny_trend': [

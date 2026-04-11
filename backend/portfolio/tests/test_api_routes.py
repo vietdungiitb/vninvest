@@ -3070,6 +3070,22 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['governance']['filters']['endpoint'], 'stock_ai_advisory_session_api')
         self.assertEqual(response.data['governance']['filters']['reason'], 'allowlist_blocked')
 
+    @override_settings(
+        HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD=1.5,
+        HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD=3.5,
+        HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD=1.2,
+    )
+    def test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds(self):
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['governance']['delta_thresholds']['warning'], 1.5)
+        self.assertEqual(response.data['governance']['delta_thresholds']['critical'], 3.5)
+        self.assertEqual(response.data['governance']['delta_thresholds']['cooldown'], 1.2)
+
     @patch.dict(
         'os.environ',
         {

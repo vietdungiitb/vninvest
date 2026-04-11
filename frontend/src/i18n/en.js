@@ -572,6 +572,7 @@ const en = {
     governanceSparklineDeviation: 'Delta vs baseline',
     governanceSparklinePeak: 'Peak deny',
     governanceDeltaThreshold: 'Delta threshold',
+    governanceThresholdApplied: 'Applied thresholds',
     governanceSeverityNormal: 'Normal',
     governanceSeverityWarning: 'Warning',
     governanceSeverityCritical: 'Critical',

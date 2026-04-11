@@ -179,10 +179,13 @@ function advisoryGovernanceReasonLabel(reason, t) {
   return map[String(reason || '').toLowerCase()] || reason || t('common.notAvailable');
 }
 
-function governanceDeltaSeverity(delta) {
-  if (delta >= 4) return 'critical';
-  if (delta >= 2) return 'warning';
-  if (delta <= -2) return 'cooldown';
+function governanceDeltaSeverity(delta, thresholds = {}) {
+  const warning = Math.max(0, Number(thresholds.warning ?? 2));
+  const critical = Math.max(warning, Number(thresholds.critical ?? 4));
+  const cooldown = Math.max(0, Number(thresholds.cooldown ?? 2));
+  if (delta >= critical) return 'critical';
+  if (delta >= warning) return 'warning';
+  if (delta <= -cooldown) return 'cooldown';
   return 'normal';
 }
 
@@ -1503,7 +1506,12 @@ export default function StockDetail() {
     const latest = values[values.length - 1] || 0;
     const previous = values.length > 1 ? values[values.length - 2] : latest;
     const latestDeltaVsBaseline = latest - baseline;
-    const deltaSeverity = governanceDeltaSeverity(latestDeltaVsBaseline);
+    const thresholds = {
+      warning: Number(advisoryObservability?.governance?.delta_thresholds?.warning ?? 2),
+      critical: Number(advisoryObservability?.governance?.delta_thresholds?.critical ?? 4),
+      cooldown: Number(advisoryObservability?.governance?.delta_thresholds?.cooldown ?? 2),
+    };
+    const deltaSeverity = governanceDeltaSeverity(latestDeltaVsBaseline, thresholds);
     return {
       pointItems,
       polylinePoints,
@@ -1516,10 +1524,11 @@ export default function StockDetail() {
       latest,
       previous,
       latestDeltaVsBaseline,
+      thresholds,
       deltaSeverity,
       maxPoint,
     };
-  }, [governanceTrendRows]);
+  }, [advisoryObservability?.governance?.delta_thresholds, governanceTrendRows]);
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -2938,6 +2947,9 @@ export default function StockDetail() {
                             <div className="mt-1">
                               <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${governanceDeltaSeverityClass(governanceSparkline.deltaSeverity)}`}>
                                 {t('stockDetail.governanceDeltaThreshold')}: {governanceDeltaSeverityLabel(governanceSparkline.deltaSeverity, t)}
+                              </span>
+                              <span className="ml-2 text-[10px] text-slate-500">
+                                {t('stockDetail.governanceThresholdApplied')}: w={governanceSparkline.thresholds.warning} c={governanceSparkline.thresholds.critical} cd={governanceSparkline.thresholds.cooldown}
                               </span>
                             </div>
                             {governanceSparkline.maxPoint ? (

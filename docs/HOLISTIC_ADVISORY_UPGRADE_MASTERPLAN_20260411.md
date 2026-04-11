@@ -552,11 +552,21 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
     - con lai: normal
   - su dung mau canh bao tuong ung de QA/Ops phat hien incident ngay trong panel.
   - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-14 hoan tat (runtime-configurable delta thresholds):
+  - backend bo sung env/settings:
+    - `HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD`
+    - `HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD`
+    - `HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD`
+  - observability API tra `governance.delta_thresholds` de frontend dung nguong runtime thay vi hardcode.
+  - frontend severity badge doc nguong tu payload runtime va hien nguong ap dung tren UI.
+  - Test/build evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds`
+    - `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung nguong delta tuy chinh qua UserConfig/feature flags de doi ops co the tune theo moi phase rollout.
+2. Bo sung admin UI/rulebook de cap nhat cac nguong delta runtime ma khong can sua env thu cong.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:
