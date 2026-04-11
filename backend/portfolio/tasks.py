@@ -213,6 +213,11 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     dark_flow_strength = state.get('dark_flow_strength')
     dark_flow_confidence = state.get('dark_flow_confidence')
 
+    # F1 Fix: Determine source semantically - use dark_flow if present & has strength, else whale_signal
+    advisory_source = WhaleAdvisory.SourceChoices.WHALE_SIGNAL
+    if 'dark_flow' in merged_sources and dark_flow_strength is not None:
+        advisory_source = 'dark_flow'
+
     task = generate_whale_advisory_task.apply_async(
         kwargs={
             'symbol': normalized_symbol,
@@ -222,7 +227,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
             'threshold_source': threshold_source,
             'force_refresh': True,
             'user_id': int(user_id),
-            'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+            'source': advisory_source,
             'merged_sources': merged_sources,
             'primary_source': primary_source,
             'dark_flow_strength': dark_flow_strength,

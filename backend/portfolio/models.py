@@ -1802,3 +1802,156 @@ class AdvisoryTokenLog(models.Model):
     
     def __str__(self):
         return f'{self.user.username} | {self.symbol} | {self.get_source_display()} | {self.tokens_used} tokens'
+
+
+# ---------------------------------------------------------------------------
+# F4 Models: Advisory Aggregate State (Holistic Advisory foundation)
+# ---------------------------------------------------------------------------
+class AdvisoryAggregateSnapshot(models.Model):
+    """
+    F4 Model: Snapshot of 24h aggregate advisory state.
+    
+    Stores immutable snapshots of the aggregate decision tree for replay capability.
+    Each advisory generation can reference its source snapshot_id for audit trail.
+    
+    Snapshot contract (stored in state_json):
+    {
+        "whale": {"signal_count": int, "max_value": float, "max_threshold": float},
+        "dark_flow": {"detection_count": int, "max_strength": float, "max_confidence": str},
+        "order_flow": {"event_count": int, "latest_severity": str},
+        "market": {"context": str, "benchmark": dict},
+        "history": [{"timestamp": str, "event": str}],
+        "quality": {"actionability": float, "noise_ratio": float, "consistency": float},
+        "updated_at": str,
+        "seq": int
+    }
+    """
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='advisory_aggregate_snapshots',
+        verbose_name='Người dùng',
+    )
+    symbol = models.CharField(
+        max_length=10,
+        db_index=True,
+        verbose_name='Mã chứng khoán',
+    )
+    snapshot_seq = models.PositiveIntegerField(
+        verbose_name='Sequence number for ordering',
+        db_index=True,
+    )
+    state_json = models.JSONField(
+        default=dict,
+        verbose_name='Aggregate state snapshot (immutable)',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Thời điểm snapshot',
+    )
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name='TTL expiry (30d retention policy)',
+    )
+    
+    class Meta:
+        verbose_name = 'Advisory Aggregate Snapshot'
+        verbose_name_plural = 'Advisory Aggregate Snapshots'
+        ordering = ['-created_at']
+        unique_together = [('user', 'symbol', 'snapshot_seq')]
+        indexes = [
+            models.Index(fields=['user', 'symbol', '-created_at'], name='idx_snap_user_symbol_date'),
+            models.Index(fields=['user', 'expires_at'], name='idx_snap_user_expires'),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username}:{self.symbol} snap#{self.snapshot_seq}'
+
+
+class AdvisoryAggregateAuditLog(models.Model):
+    """
+    F4 Model: Audit trail for aggregate state transitions.
+    
+    Records every decision made by Holistic Advisory engine:
+    - State transition: before_state_json → after_state_json
+    - Reason: why decision was made (enum: "new_whale", "dark_flow_detected", "threshold_updated", etc.)
+    - Actor: who/what triggered it (enum: "system", "user", "scheduler")
+    - Metadata: additional context (e.g., token cost, latency_ms)
+    
+    For compliance + decision replay capability.
+    """
+    class ReasonChoices(models.TextChoices):
+        NEW_WHALE_EVENT = 'new_whale_event', 'New whale signal'
+        DARK_FLOW_DETECTED = 'dark_flow_detected', 'Dark flow detection'
+        THRESHOLD_UPDATED = 'threshold_updated', 'Threshold override changed'
+        MANUAL_REFRESH = 'manual_refresh', 'User requested refresh'
+        AUTO_GENERATION = 'auto_generation', 'Automatic generation'
+        STATE_COMPACTION = 'state_compaction', 'State cleanup/compaction'
+    
+    class ActorChoices(models.TextChoices):
+        SYSTEM = 'system', 'Automated system'
+        USER = 'user', 'User action'
+        SCHEDULER = 'scheduler', 'Periodic job'
+    
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='advisory_audit_logs',
+        verbose_name='Người dùng',
+    )
+    symbol = models.CharField(
+        max_length=10,
+        db_index=True,
+        verbose_name='Mã chứng khoán',
+    )
+    before_state_json = models.JSONField(
+        default=dict,
+        verbose_name='Trạng thái trước',
+    )
+    after_state_json = models.JSONField(
+        default=dict,
+        verbose_name='Trạng thái sau',
+    )
+    reason = models.CharField(
+        max_length=30,
+        choices=ReasonChoices.choices,
+        verbose_name='Lý do thay đổi',
+        db_index=True,
+    )
+    actor = models.CharField(
+        max_length=20,
+        choices=ActorChoices.choices,
+        default=ActorChoices.SYSTEM,
+        verbose_name='Người/hệ thống thực hiện',
+    )
+    actor_id = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Actor identifier (user_id, job_id, etc.)',
+    )
+    metadata_json = models.JSONField(
+        default=dict,
+        verbose_name='Additional context (token_cost, latency_ms, etc.)',
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        db_index=True,
+        verbose_name='Thời điểm audit',
+    )
+    
+    class Meta:
+        verbose_name = 'Advisory Aggregate Audit Log'
+        verbose_name_plural = 'Advisory Aggregate Audit Logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'symbol', '-created_at'], name='idx_audit_user_symbol_date'),
+            models.Index(fields=['reason', 'created_at'], name='idx_audit_reason_date'),
+            models.Index(fields=['user', '-created_at'], name='idx_audit_user_created'),
+        ]
+    
+    def __str__(self):
+        return f'{self.user.username}:{self.symbol} {self.reason} by {self.actor}'

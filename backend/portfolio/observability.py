@@ -1,5 +1,356 @@
-from __future__ import annotations
 
+# ============================================================================
+# PR-5: Holistic Advisory Baseline Metrics Instrumentation
+# ============================================================================
+# Purpose: Capture token usage, latency, actionability for Sprint H0 baseline
+
+import functools
+import logging
+from typing import Any, Dict, List, Optional
+from django.contrib.auth.models import User
+
+_advisory_logger = logging.getLogger('portfolio.advisory.metrics')
+
+# Session-level metrics for current advisory generation
+_ADVISORY_SESSION_METRICS: Dict[str, Any] = {
+    'active': False,
+    'token_cost': 0,
+    'latency_ms': 0,
+    'actionability_score': 0.0,
+    'components_used': [],
+    'confidence': 0.0,
+    'phase_timings': {},
+    'error_recovery': {
+        'retry_count': 0,
+        'fallback_components': [],
+        'error_messages': []
+    },
+    'phase_start_times': {},
+    'session_start_time': None,
+}
+
+
+def reset_advisory_session() -> None:
+    """Reset session metrics for new advisory generation"""
+    global _ADVISORY_SESSION_METRICS
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS = {
+            'active': False,
+            'token_cost': 0,
+            'latency_ms': 0,
+            'actionability_score': 0.0,
+            'components_used': [],
+            'confidence': 0.0,
+            'phase_timings': {},
+            'error_recovery': {
+                'retry_count': 0,
+                'fallback_components': [],
+                'error_messages': []
+            },
+            'phase_start_times': {},
+            'session_start_time': time(),
+        }
+
+
+def start_advisory_session() -> None:
+    """Begin new advisory generation session"""
+    reset_advisory_session()
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS['active'] = True
+
+
+def end_advisory_session() -> Dict[str, Any]:
+    """Finalize current session and return complete metrics"""
+    if not _metrics_enabled():
+        return {}
+    
+    with _LOCK:
+        if _ADVISORY_SESSION_METRICS['session_start_time']:
+            total_latency_ms = (time() - _ADVISORY_SESSION_METRICS['session_start_time']) * 1000
+            _ADVISORY_SESSION_METRICS['latency_ms'] = total_latency_ms
+        
+        _ADVISORY_SESSION_METRICS['active'] = False
+        metrics_copy = {k: v for k, v in _ADVISORY_SESSION_METRICS.items() if k != 'phase_start_times'}
+        
+        _advisory_logger.info(
+            f"Advisory session complete: {metrics_copy['latency_ms']:.2f}ms, "
+            f"{metrics_copy['token_cost']} tokens, "
+            f"actionability={metrics_copy['actionability_score']:.2f}"
+        )
+        return metrics_copy
+
+
+def record_advisory_token_usage(tokens: int, source: str = 'unknown') -> None:
+    """
+    Record token consumption from AI component or API call.
+    
+    Args:
+        tokens: Number of tokens consumed
+        source: Source identifier (component name, API call type, etc.)
+    """
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS['token_cost'] += tokens
+        if 'token_breakdown' not in _ADVISORY_SESSION_METRICS:
+            _ADVISORY_SESSION_METRICS['token_breakdown'] = {}
+        
+        if source not in _ADVISORY_SESSION_METRICS['token_breakdown']:
+            _ADVISORY_SESSION_METRICS['token_breakdown'][source] = 0
+        _ADVISORY_SESSION_METRICS['token_breakdown'][source] += tokens
+        
+        _advisory_logger.debug(f"Recorded {tokens} tokens from {source}")
+
+
+def record_advisory_component(component: str, latency_ms: float, 
+                              success: bool = True, error: Optional[str] = None) -> None:
+    """
+    Record component (volatility, momentum, volume, etc.) execution.
+    
+    Args:
+        component: Component name
+        latency_ms: Execution time in milliseconds
+        success: Whether component succeeded
+        error: Error message if failed
+    """
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        if component not in _ADVISORY_SESSION_METRICS['components_used']:
+            _ADVISORY_SESSION_METRICS['components_used'].append(component)
+        
+        if 'component_timings' not in _ADVISORY_SESSION_METRICS:
+            _ADVISORY_SESSION_METRICS['component_timings'] = {}
+        
+        _ADVISORY_SESSION_METRICS['component_timings'][component] = latency_ms
+        
+        if not success and error:
+            _ADVISORY_SESSION_METRICS['error_recovery']['fallback_components'].append({
+                'component': component,
+                'error': error,
+                'fallback_used': True
+            })
+
+
+def record_advisory_actionability(score: float, factors: Optional[Dict[str, float]] = None) -> None:
+    """
+    Record actionability quality score (0-1 range).
+    
+    Args:
+        score: Actionability score (0.0-1.0)
+        factors: Component scoring breakdown (optional)
+    """
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS['actionability_score'] = max(0.0, min(1.0, score))
+        if factors:
+            _ADVISORY_SESSION_METRICS['actionability_factors'] = factors
+        _advisory_logger.debug(f"Actionability score: {score:.2f}")
+
+
+def record_advisory_confidence(confidence: float, source: str = 'aggregate') -> None:
+    """
+    Record aggregate confidence level across all signals.
+    
+    Args:
+        confidence: Confidence score (0.0-1.0)
+        source: Confidence calculation source
+    """
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS['confidence'] = max(0.0, min(1.0, confidence))
+        _ADVISORY_SESSION_METRICS['confidence_source'] = source
+        _advisory_logger.debug(f"Confidence: {confidence:.2f} (source: {source})")
+
+
+def start_advisory_phase(phase_name: str) -> None:
+    """Start timing a specific phase of advisory generation"""
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        if 'phase_start_times' not in _ADVISORY_SESSION_METRICS:
+            _ADVISORY_SESSION_METRICS['phase_start_times'] = {}
+        _ADVISORY_SESSION_METRICS['phase_start_times'][phase_name] = time()
+
+
+def end_advisory_phase(phase_name: str) -> None:
+    """End timing a phase and record duration"""
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        start = _ADVISORY_SESSION_METRICS.get('phase_start_times', {}).get(phase_name)
+        if start is None:
+            return
+        
+        duration_ms = (time() - start) * 1000
+        _ADVISORY_SESSION_METRICS['phase_timings'][phase_name] = duration_ms
+        if phase_name in _ADVISORY_SESSION_METRICS.get('phase_start_times', {}):
+            del _ADVISORY_SESSION_METRICS['phase_start_times'][phase_name]
+        
+        _advisory_logger.debug(f"Phase '{phase_name}' completed in {duration_ms:.2f}ms")
+
+
+def record_advisory_error_recovery(error_type: str, fallback_strategy: str, 
+                                  success: bool = True) -> None:
+    """
+    Record error detection + recovery information.
+    
+    Args:
+        error_type: Type of error encountered
+        fallback_strategy: Recovery strategy used
+        success: Whether recovery succeeded
+    """
+    if not _metrics_enabled():
+        return
+    
+    with _LOCK:
+        _ADVISORY_SESSION_METRICS['error_recovery']['retry_count'] += 1
+        _ADVISORY_SESSION_METRICS['error_recovery']['error_messages'].append({
+            'error_type': error_type,
+            'fallback_strategy': fallback_strategy,
+            'success': success
+        })
+
+
+def advisory_phase_timer(phase_name: str):
+    """
+    Decorator to automatically record metrics for a function/phase execution.
+    
+    Args:
+        phase_name: Name of phase (defaults to function name if None)
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            actual_phase = phase_name or func.__name__
+            start_advisory_phase(actual_phase)
+            try:
+                result = func(*args, **kwargs)
+                end_advisory_phase(actual_phase)
+                return result
+            except Exception as e:
+                end_advisory_phase(actual_phase)
+                record_advisory_error_recovery(
+                    error_type=type(e).__name__,
+                    fallback_strategy='exception_caught',
+                    success=False
+                )
+                _advisory_logger.error(f"Error in {actual_phase}: {str(e)}")
+                raise
+        
+        return wrapper
+    return decorator
+
+
+def generate_advisory_baseline_report(user: User, symbol: str, 
+                                     metrics_samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Generate baseline metrics report from collection of metric samples.
+    
+    Args:
+        user: User for which baseline is being established
+        symbol: Stock symbol being analyzed
+        metrics_samples: List of metrics dictionaries from multiple generations
+    
+    Returns:
+        Dictionary with baseline report including p50/p95/p99 latency,
+        average token usage, actionability distribution, etc.
+    """
+    if not metrics_samples:
+        _advisory_logger.warning("No metrics samples provided for baseline report")
+        return {}
+    
+    # Extract latencies, tokens, actionability scores
+    latencies = [m.get('latency_ms', 0) for m in metrics_samples]
+    tokens = [m.get('token_cost', 0) for m in metrics_samples]
+    actionability = [m.get('actionability_score', 0) for m in metrics_samples]
+    confidences = [m.get('confidence', 0) for m in metrics_samples]
+    
+    # Sort for percentile calculation
+    latencies_sorted = sorted(latencies)
+    tokens_sorted = sorted(tokens)
+    actionability_sorted = sorted(actionability)
+    confidences_sorted = sorted(confidences)
+    
+    count = len(metrics_samples)
+    
+    def percentile(data: List[float], p: int) -> float:
+        """Calculate percentile from sorted data"""
+        if not data:
+            return 0
+        idx = int(len(data) * p / 100)
+        return float(data[min(idx, len(data) - 1)])
+    
+    # Collect component usage stats
+    components_used = {}
+    for m in metrics_samples:
+        for comp in m.get('components_used', []):
+            components_used[comp] = components_used.get(comp, 0) + 1
+    
+    component_participation = {
+        comp: f"{count_comp / count * 100:.1f}%" 
+        for comp, count_comp in components_used.items()
+    }
+    
+    report = {
+        'baseline_timestamp': datetime.utcnow().isoformat(),
+        'user': user.username,
+        'symbol': symbol,
+        'sample_count': count,
+        'collection_period': f"{count} advisory generations",
+        
+        # Latency profile
+        'latency_metrics': {
+            'p50_ms': percentile(latencies_sorted, 50),
+            'p95_ms': percentile(latencies_sorted, 95),
+            'p99_ms': percentile(latencies_sorted, 99),
+            'min_ms': min(latencies) if latencies else 0,
+            'max_ms': max(latencies) if latencies else 0,
+            'avg_ms': sum(latencies) / count if latencies else 0,
+        },
+        
+        # Token usage
+        'token_metrics': {
+            'p50': percentile(tokens_sorted, 50),
+            'p95': percentile(tokens_sorted, 95),
+            'p99': percentile(tokens_sorted, 99),
+            'min': min(tokens) if tokens else 0,
+            'max': max(tokens) if tokens else 0,
+            'avg': sum(tokens) / count if tokens else 0,
+            'total': sum(tokens),
+        },
+        
+        # Quality metrics
+        'quality_metrics': {
+            'actionability_avg': sum(actionability) / count if actionability else 0,
+            'actionability_p50': percentile(actionability_sorted, 50),
+            'actionability_p95': percentile(actionability_sorted, 95),
+            'confidence_avg': sum(confidences) / count if confidences else 0,
+            'confidence_p50': percentile(confidences_sorted, 50),
+        },
+        
+        # Component usage
+        'component_participation': component_participation,
+        
+        # Error recovery stats
+        'error_metrics': {
+            'total_errors': sum(len(m.get('error_recovery', {}).get('error_messages', [])) 
+                               for m in metrics_samples),
+            'fallback_count': sum(len(m.get('error_recovery', {}).get('fallback_components', [])) 
+                                 for m in metrics_samples),
+        }
+    }
+    
+    _advisory_logger.info(f"Generated baseline report for {user.username}:{symbol}")
+    return report
 from collections import defaultdict, deque
 from datetime import datetime
 from threading import Lock

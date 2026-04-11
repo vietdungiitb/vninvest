@@ -4045,6 +4045,59 @@ def _track_opencore_stock_endpoint_usage(request, endpoint_name: str, response_s
         logger.debug('OpenCore stock endpoint usage tracking failed for %s: %s', endpoint_name, exc)
 
 
+def _timeframe_to_minutes(timeframe: str) -> int:
+    """
+    F2 Helper: Convert timeframe string (30m, 1h, 4h, 1d) to minutes
+    for detect_dark_flow window_minutes parameter.
+    Defaults to 30 minutes if format unrecognized.
+    """
+    timeframe_lower = str(timeframe or '').strip().lower()
+    
+    if timeframe_lower.endswith('m'):
+        try:
+            return max(int(timeframe_lower.rstrip('m')), 1)
+        except (ValueError, TypeError):
+            return 30
+    elif timeframe_lower.endswith('h'):
+        try:
+            hours = int(timeframe_lower.rstrip('h'))
+            return max(hours * 60, 1)
+        except (ValueError, TypeError):
+            return 30
+    elif timeframe_lower.endswith('d'):
+        try:
+            days = int(timeframe_lower.rstrip('d'))
+            return max(days * 24 * 60, 1)
+        except (ValueError, TypeError):
+            return 30
+    
+    return 30  # Default: 30 minutes
+
+
+def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshold_vnd: float) -> tuple[float, str]:
+    """
+    F3 Helper: Resolve threshold for first advisory creation.
+    Returns (threshold_vnd, threshold_source) tuple.
+    
+    Order of precedence:
+    1. Symbol-specific override (TrackedSymbol.whale_alert_threshold_million)
+    2. User default threshold (UserConfig.whale_alert_threshold)
+    
+    Returns tuple of (threshold_vnd, source) where source is 'symbol_override' or 'user_default'
+    """
+    from portfolio.models import TrackedSymbol
+    
+    try:
+        tracked_symbol = TrackedSymbol.objects.get(user=user, symbol=symbol.upper())
+        if tracked_symbol.whale_alert_threshold_million:
+            resolved_threshold = float(tracked_symbol.whale_alert_threshold_million) * 1_000_000
+            return (resolved_threshold, 'symbol_override')
+    except TrackedSymbol.DoesNotExist:
+        pass
+    
+    return (user_default_threshold_vnd, 'user_default')
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_order_flow_api(request, symbol: str):
@@ -4243,7 +4296,9 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         payload_bytes=chart_context_payload_bytes,
     )
 
-    dark_flow = detect_dark_flow(normalized_symbol)
+    # F2 Fix: Pass window_minutes to detect_dark_flow based on user-requested timeframe
+    window_minutes = _timeframe_to_minutes(timeframe)
+    dark_flow = detect_dark_flow(normalized_symbol, window_minutes=window_minutes)
     templates = _sprint17_generate_component_templates_with_ai(
         user=request.user,
         symbol=normalized_symbol,
@@ -4696,11 +4751,19 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 status.HTTP_202_ACCEPTED,
             )
 
+        # F3 Fix: Resolve symbol-specific threshold override for first-create session
+        resolved_threshold_vnd, threshold_source = _resolve_first_create_threshold_vnd(
+            request.user,
+            normalized_symbol,
+            threshold_vnd
+        )
+
         payload_kwargs = {
             'symbol': normalized_symbol,
-            'matched_value_vnd': threshold_vnd,
+            'matched_value_vnd': resolved_threshold_vnd,
             'side': 'UNKNOWN',
-            'threshold': threshold_vnd,
+            'threshold': resolved_threshold_vnd,
+            'threshold_source': threshold_source,
             'force_refresh': False,
             'user_id': request.user.id,
         }
