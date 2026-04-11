@@ -4072,7 +4072,7 @@ def stock_order_flow_api(request, symbol: str):
     window_param = str(request.query_params.get('window', '30m')).strip().lower()
     window_minutes = _window_map.get(window_param, 30)
 
-    dark_flow = detect_dark_flow(normalized_symbol)
+    dark_flow = detect_dark_flow(normalized_symbol, window_minutes=window_minutes)
     cvd_series = compute_cvd_series(normalized_symbol, window_minutes=window_minutes, bucket_seconds=60)
     # Sprint 34 A2: Implement cursor-based pagination with has_more semantics
     import base64

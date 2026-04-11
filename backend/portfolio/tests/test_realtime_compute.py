@@ -30,10 +30,25 @@ class RealtimeComputeTests(SimpleTestCase):
 
         signals = detect_whale_signals("HPG", frame, thresholds=[100000000, 500000000, 2000000000])
 
-        self.assertEqual(len(signals), 2)
+        self.assertEqual(len(signals), 1)
         self.assertEqual(signals[0].symbol, "HPG")
         self.assertEqual(signals[0].side, "BUY")
         self.assertGreaterEqual(signals[0].matched_value, 1000000000.0)
+        self.assertEqual(signals[0].threshold, 500000000.0)
+
+    def test_detect_whale_signals_selects_highest_matched_threshold_only(self):
+        frame = pd.DataFrame(
+            [
+                {"price": 10000, "volume": 600000, "side": "SELL"},
+            ]
+        )
+
+        signals = detect_whale_signals("VNM", frame, thresholds=[100000000, 1000000000, 5000000000])
+
+        self.assertEqual(len(signals), 1)
+        self.assertEqual(signals[0].symbol, "VNM")
+        self.assertEqual(signals[0].side, "SELL")
+        self.assertEqual(signals[0].threshold, 5000000000.0)
 
     def test_build_whale_payload_includes_explainability_fields(self):
         signal = WhaleSignal(

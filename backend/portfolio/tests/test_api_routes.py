@@ -1416,10 +1416,11 @@ class ApiRouteSmokeTests(APITestCase):
             'components': {},
         }
 
-        response = self.client.get('/api/stock-management/stocks/FPT/order-flow/')
+        response = self.client.get('/api/stock-management/stocks/FPT/order-flow/?window=15m')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['ok'])
+        mock_detect_dark_flow.assert_called_once_with('FPT', window_minutes=15)
 
     @override_settings(
         OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True,

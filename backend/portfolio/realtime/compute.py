@@ -140,17 +140,21 @@ def detect_whale_signals(
         raw_ts = row.get("ts")
         trade_ts = str(raw_ts) if (raw_ts is not None and str(raw_ts).strip()) else _iso_now()
 
-        for threshold in sorted_thresholds:
-            if mv >= threshold:
-                signals.append(
-                    WhaleSignal(
-                        symbol=symbol.upper(),
-                        matched_value=mv,
-                        side=trade_side,
-                        threshold=threshold,
-                        ts=trade_ts,
-                    )
-                )
+        hit_thresholds = [threshold for threshold in sorted_thresholds if mv >= threshold]
+        if not hit_thresholds:
+            continue
+
+        # Emit a single signal per trade at the highest threshold reached.
+        selected_threshold = hit_thresholds[-1]
+        signals.append(
+            WhaleSignal(
+                symbol=symbol.upper(),
+                matched_value=mv,
+                side=trade_side,
+                threshold=selected_threshold,
+                ts=trade_ts,
+            )
+        )
     return signals
 
 

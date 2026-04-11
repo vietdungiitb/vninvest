@@ -424,6 +424,7 @@ def detect_iceberg_clustering(
 def detect_dark_flow(
     symbol: str,
     avg_tick_rate_baseline: float | None = None,
+    window_minutes: int = 5,
 ) -> dict:
     """
     Gọi tất cả compute functions, aggregate thành signal tổng hợp.
@@ -431,9 +432,12 @@ def detect_dark_flow(
     signal_type: 'none' | 'absorption' | 'iceberg' | 'twap_bot' | 'mixed'
     """
     # --- Lấy dữ liệu ---
-    ticks = _fetch_ticks(symbol, window_minutes=5)  # 5 phút gần nhất
-    cvd_series = compute_cvd_series(symbol, window_minutes=5, bucket_seconds=30)
-    tick_info = compute_tick_rate(symbol, window_seconds=300)
+    resolved_window_minutes = max(int(window_minutes or 5), 1)
+    window_seconds = resolved_window_minutes * 60
+
+    ticks = _fetch_ticks(symbol, window_minutes=resolved_window_minutes)
+    cvd_series = compute_cvd_series(symbol, window_minutes=resolved_window_minutes, bucket_seconds=30)
+    tick_info = compute_tick_rate(symbol, window_seconds=window_seconds)
     size_dist = compute_size_distribution(symbol, ticks)
 
     # price_series từ cvd_series: dùng buy+sell tổng để ước lượng hoạt động giá
@@ -452,7 +456,7 @@ def detect_dark_flow(
             price_series = [bucket_prices[b] for b in sorted(bucket_prices.keys())]
 
     absorption = detect_absorption(symbol, cvd_series, price_series, min_buckets=3)
-    iceberg = detect_iceberg_clustering(ticks, min_repeat=5, window_seconds=300)
+    iceberg = detect_iceberg_clustering(ticks, min_repeat=5, window_seconds=window_seconds)
 
     tick_rate = tick_info["tick_rate_per_min"]
     small_ratio = size_dist["small_ratio"]
@@ -513,6 +517,7 @@ def detect_dark_flow(
         "signal_type": signal_type,
         "strength": round(strength, 2),
         "confidence": confidence,
+        "window_minutes": resolved_window_minutes,
         "components": {
             "absorption": absorption,
             "iceberg": iceberg,

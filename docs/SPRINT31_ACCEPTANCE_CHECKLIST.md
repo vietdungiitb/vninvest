@@ -70,6 +70,26 @@ Trang thai: GO - All whale regression gates green
 	- `test_whale_feed_aggregate_falls_back_to_vnstock_after_stream_and_db_miss` -> PASS
 - Regression evidence moi: bo whale scope `ApiRouteSmokeTests -k whale` dat 51/51 PASS (SQLite mode).
 
+## Gate H - Re-audit remediation closure (2026-04-11)
+
+- [x] H1 P0 resolved: realtime publish path honor per-symbol threshold override with fallback to user threshold.
+- [x] H2 P1-A resolved: stock order-flow API propagate selected window to dark-flow detector internals.
+- [x] H3 P1-B resolved: duplicate whale events collapsed to one signal per trade using highest matched threshold.
+- [x] H4 Full whale gate rerun green after remediation:
+	- `ApiRouteSmokeTests -k whale` = 56/56 PASS (SQLite mode)
+	- Regression block (`test_whale_advisory_task`, `test_order_flow`, `test_realtime_compute`) = 71 PASS
+
+### Gate H evidence (code + tests)
+
+- `backend/portfolio/tasks.py`: per-symbol threshold override map in `collect_and_publish_realtime`.
+- `backend/portfolio/order_flow.py`: `detect_dark_flow(..., window_minutes=...)` and internal propagation.
+- `backend/portfolio/views.py`: `stock_order_flow_api` passes parsed `window_minutes` to detector.
+- `backend/portfolio/realtime/compute.py`: highest-threshold-only duplicate policy.
+- `backend/portfolio/tests/test_whale_advisory_task.py`: realtime threshold override/fallback coverage.
+- `backend/portfolio/tests/test_order_flow.py`: window propagation assertion coverage.
+- `backend/portfolio/tests/test_api_routes.py`: API->detector window argument assertion.
+- `backend/portfolio/tests/test_realtime_compute.py`: duplicate policy expectation and highest-threshold test.
+
 ## Sign-off
 
 - [x] BE Lead

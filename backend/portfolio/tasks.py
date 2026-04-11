@@ -619,14 +619,36 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
     publisher = RealtimePublisher()
     worker_name = getattr(self.request, 'hostname', '') or 'collect-and-publish'
 
+    user_thresholds = _whale_thresholds_for_user(user_id)
+    symbol_threshold_overrides: dict[str, float] = {}
+    if user_id is not None and symbols:
+        override_rows = TrackedSymbol.objects.filter(
+            user_id=user_id,
+            symbol__in=symbols,
+            whale_alert_threshold_million__isnull=False,
+        ).values('symbol', 'whale_alert_threshold_million')
+        for row in override_rows:
+            normalized_symbol = _normalize_symbol(row.get('symbol'))
+            if not normalized_symbol:
+                continue
+            symbol_threshold_overrides[normalized_symbol] = resolve_user_whale_threshold_vnd(
+                row.get('whale_alert_threshold_million')
+            )
+
     published = 0
     for symbol in symbols:
+        normalized_symbol = _normalize_symbol(symbol)
         runtime_config = resolve_whale_runtime_config(
             symbol=symbol,
             worker_name=worker_name,
             source='collect_and_publish',
         )
-        thresholds = _whale_thresholds_for_user(user_id) if user_id is not None else (runtime_config['thresholds_vnd'] or _whale_thresholds_for_user(user_id))
+        if user_id is not None:
+            thresholds = [
+                symbol_threshold_overrides.get(normalized_symbol, user_thresholds[0])
+            ]
+        else:
+            thresholds = runtime_config['thresholds_vnd'] or user_thresholds
 
         # Thu thập frame một lần, tái dùng cho cả Stream push lẫn WebSocket publish
         frame = collect_intraday_frame(symbol)

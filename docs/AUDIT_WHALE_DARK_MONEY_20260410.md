@@ -268,6 +268,38 @@ Story D - UI semantics cho order-flow window
 - Truyen window xuong detect_dark_flow hoac doi nhan UI
 - Them test API + frontend expectation
 
+## 7.1 Re-audit delta 2026-04-11 (sau khi sua code)
+
+Trang thai cap nhat:
+
+- F1 (timezone order_flow): Da fix. `_today()` va `_now_time()` dung local timezone VN.
+- F2 (per-symbol threshold propagation): Da fix cho realtime publish path.
+	- `collect_and_publish_realtime` da resolve threshold theo symbol override cua user neu co.
+	- Advisory fan-out path tiep tuc giu threshold override theo tracked symbol.
+- F3 (dark_flow severity phang hoa): Da fix tu truoc trong `generate_whale_advisory_task` qua `_compute_dark_flow_severity`.
+- F4 (window semantics tren stock order-flow): Da fix.
+	- `stock_order_flow_api` truyen `window_minutes` vao `detect_dark_flow`.
+	- `detect_dark_flow` da nhan va propagate window vao `_fetch_ticks`, `compute_cvd_series`, `compute_tick_rate`, `detect_iceberg_clustering`.
+- F5 (duplicate multi-threshold whale events): Da fix theo policy 1-trade-1-signal.
+	- `detect_whale_signals` chi emit 1 signal voi threshold cao nhat ma trade dat duoc.
+
+Test evidence moi:
+
+- P0 threshold propagation tests (moi):
+	- `WhaleAdvisoryTaskTests.test_collect_realtime_prefers_symbol_override_threshold`
+	- `WhaleAdvisoryTaskTests.test_collect_realtime_uses_user_threshold_when_symbol_override_missing`
+- P1-A window propagation tests:
+	- `TestDetectDarkFlow.test_detect_dark_flow_propagates_window_minutes`
+	- `ApiRouteSmokeTests.test_stock_order_flow_returns_200_when_feature_enabled_for_pro_dpi_license` (assert detector call arg)
+- P1-B duplicate policy tests:
+	- `RealtimeComputeTests.test_detect_whale_signals_emits_threshold_hits`
+	- `RealtimeComputeTests.test_detect_whale_signals_selects_highest_matched_threshold_only`
+
+Gate run 2026-04-11:
+
+- Whale full smoke: `ApiRouteSmokeTests -k whale` = 56/56 PASS (sqlite mode).
+- Regression block lien quan: `test_whale_advisory_task` + `test_order_flow` + `test_realtime_compute` = 71 tests PASS (sqlite mode).
+
 ## 8. Ket luan
 
 Whale alerts hien dang o trang thai tot hon dark money ve tinh toan ven cua pipeline. Dark money co gia tri phan tich cao, nhung dang bi han che boi mot loi timezone nghiem trong va mot cach quy doi severity chua phu hop. Neu can uu tien sua theo ty le loi/anh huong, nen bat dau tu F1 va F2 truoc khi nang cap them logic AI hay mo rong dashboard.

@@ -367,6 +367,48 @@ class TestDetectDarkFlow(SimpleTestCase):
         for key in ("absorption", "iceberg", "tick_rate", "size_distribution"):
             self.assertIn(key, comps)
 
+    @patch("portfolio.order_flow.detect_iceberg_clustering")
+    @patch("portfolio.order_flow.detect_absorption")
+    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.order_flow.compute_tick_rate")
+    @patch("portfolio.order_flow._fetch_ticks")
+    def test_detect_dark_flow_propagates_window_minutes(
+        self,
+        mock_fetch,
+        mock_tick_rate,
+        mock_cvd_series,
+        mock_absorption,
+        mock_iceberg,
+    ):
+        mock_fetch.return_value = []
+        mock_cvd_series.return_value = []
+        mock_tick_rate.return_value = {
+            "tick_rate_per_min": 0.0,
+            "small_order_count": 0,
+            "total_count": 0,
+            "small_order_ratio": 0.0,
+            "window_seconds": 900,
+        }
+        mock_absorption.return_value = {
+            "detected": False,
+            "price_locked": False,
+            "cvd_change": 0.0,
+            "strength": 0.0,
+        }
+        mock_iceberg.return_value = {
+            "detected": False,
+            "repeat_count": 0,
+            "level": None,
+            "confidence": "low",
+        }
+
+        result = detect_dark_flow("VNM", window_minutes=15)
+
+        self.assertEqual(result["window_minutes"], 15)
+        mock_fetch.assert_called_once_with("VNM", window_minutes=15)
+        mock_cvd_series.assert_called_once_with("VNM", window_minutes=15, bucket_seconds=30)
+        mock_tick_rate.assert_called_once_with("VNM", window_seconds=900)
+
 
 # ---------------------------------------------------------------------------
 # compute_cvd_series + compute_tick_rate (TestCase — dùng DB)

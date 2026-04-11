@@ -1,6 +1,8 @@
 from datetime import timedelta
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
+
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -8,7 +10,7 @@ from django.utils import timezone
 
 from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
 from portfolio.observability import get_market_observability_snapshot, reset_market_observability
-from portfolio.tasks import _accumulate_user_advisory_event, auto_generate_advisories_for_all_tracked, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
+from portfolio.tasks import _accumulate_user_advisory_event, auto_generate_advisories_for_all_tracked, collect_and_publish_realtime, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
 from portfolio.tasks import _compute_advisory_severity
 from portfolio.tasks import _resolve_advisory_threshold_vnd
 
@@ -420,6 +422,94 @@ class WhaleAdvisoryTaskTests(TestCase):
         threshold_vnd = _resolve_advisory_threshold_vnd(cfg, tracked_threshold_million=640)
 
         self.assertEqual(threshold_vnd, 640_000_000)
+
+    @patch('portfolio.tasks.RealtimePublisher')
+    @patch('portfolio.tasks.detect_whale_signals')
+    @patch('portfolio.tasks.collect_intraday_frame')
+    @patch('portfolio.tasks.collect_symbols_for_user')
+    @patch('portfolio.tasks.resolve_whale_runtime_config')
+    def test_collect_realtime_prefers_symbol_override_threshold(
+        self,
+        mock_resolve_runtime_config,
+        mock_collect_symbols,
+        mock_collect_intraday_frame,
+        mock_detect_whale_signals,
+        mock_realtime_publisher,
+    ):
+        user = self._create_user_config('staff-realtime-threshold-override', api_key='sk-test-realtime-threshold')
+        cfg = UserConfig.objects.get(user=user)
+        cfg.whale_alert_threshold = 500
+        cfg.save(update_fields=['whale_alert_threshold'])
+        TrackedSymbol.objects.create(user=user, symbol='FPT', whale_alert_threshold_million=850)
+
+        mock_collect_symbols.return_value = ['FPT']
+        mock_collect_intraday_frame.return_value = pd.DataFrame([
+            {'price': 100000, 'volume': 10000, 'side': 'BUY', 'ts': timezone.now().isoformat()},
+        ])
+        mock_detect_whale_signals.return_value = []
+        mock_resolve_runtime_config.return_value = {
+            'version_code': 'test-v1',
+            'mode': 'active',
+            'score_config': {},
+            'thresholds_vnd': [500_000_000],
+        }
+
+        publisher = MagicMock()
+        publisher.next_seq.return_value = 1
+        publisher.publish.return_value = False
+        mock_realtime_publisher.return_value = publisher
+
+        result = collect_and_publish_realtime.run(user_id=user.id)
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(mock_detect_whale_signals.call_count, 1)
+        kwargs = mock_detect_whale_signals.call_args.kwargs
+        self.assertEqual(kwargs['symbol'], 'FPT')
+        self.assertEqual(kwargs['thresholds'], [850_000_000])
+
+    @patch('portfolio.tasks.RealtimePublisher')
+    @patch('portfolio.tasks.detect_whale_signals')
+    @patch('portfolio.tasks.collect_intraday_frame')
+    @patch('portfolio.tasks.collect_symbols_for_user')
+    @patch('portfolio.tasks.resolve_whale_runtime_config')
+    def test_collect_realtime_uses_user_threshold_when_symbol_override_missing(
+        self,
+        mock_resolve_runtime_config,
+        mock_collect_symbols,
+        mock_collect_intraday_frame,
+        mock_detect_whale_signals,
+        mock_realtime_publisher,
+    ):
+        user = self._create_user_config('staff-realtime-threshold-default', api_key='sk-test-realtime-default')
+        cfg = UserConfig.objects.get(user=user)
+        cfg.whale_alert_threshold = 620
+        cfg.save(update_fields=['whale_alert_threshold'])
+        TrackedSymbol.objects.create(user=user, symbol='HPG', whale_alert_threshold_million=None)
+
+        mock_collect_symbols.return_value = ['HPG']
+        mock_collect_intraday_frame.return_value = pd.DataFrame([
+            {'price': 100000, 'volume': 10000, 'side': 'BUY', 'ts': timezone.now().isoformat()},
+        ])
+        mock_detect_whale_signals.return_value = []
+        mock_resolve_runtime_config.return_value = {
+            'version_code': 'test-v1',
+            'mode': 'active',
+            'score_config': {},
+            'thresholds_vnd': [500_000_000],
+        }
+
+        publisher = MagicMock()
+        publisher.next_seq.return_value = 1
+        publisher.publish.return_value = False
+        mock_realtime_publisher.return_value = publisher
+
+        result = collect_and_publish_realtime.run(user_id=user.id)
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(mock_detect_whale_signals.call_count, 1)
+        kwargs = mock_detect_whale_signals.call_args.kwargs
+        self.assertEqual(kwargs['symbol'], 'HPG')
+        self.assertEqual(kwargs['thresholds'], [620_000_000])
 
     @patch('asgiref.sync.async_to_sync')
     @patch('channels.layers.get_channel_layer')
