@@ -131,6 +131,18 @@ function advisorySynthesisPreferenceLabel(preference, t) {
   return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
+function advisoryRetryOutcomeLabel(outcome, t) {
+  const map = {
+    idle: t('stockDetail.retryOutcomeIdle'),
+    scheduled: t('stockDetail.retryOutcomeScheduled'),
+    recovered: t('stockDetail.retryOutcomeRecovered'),
+    exhausted: t('stockDetail.retryOutcomeExhausted'),
+    skipped_config: t('stockDetail.retryOutcomeSkippedConfig'),
+    request_error: t('stockDetail.retryOutcomeRequestError'),
+  };
+  return map[String(outcome || '').toLowerCase()] || t('stockDetail.retryOutcomeIdle');
+}
+
 function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
@@ -1303,6 +1315,14 @@ export default function StockDetail() {
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
   const [advisorySessionConflict, setAdvisorySessionConflict] = useState(false);
+  const [advisoryRetryTelemetry, setAdvisoryRetryTelemetry] = useState({
+    scheduledCount: 0,
+    recoveredCount: 0,
+    failedCount: 0,
+    lastReason: '',
+    lastOutcome: 'idle',
+    lastEventAt: null,
+  });
   const [advisoryAggregate, setAdvisoryAggregate] = useState(null);
   const [advisoryObservability, setAdvisoryObservability] = useState(null);
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
@@ -1341,6 +1361,7 @@ export default function StockDetail() {
       setAdvisoryLoading(true);
     }
     try {
+      const retryAttemptsUsed = advisoryConflictRetryCountRef.current;
       const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
       const payload = response?.data || {};
       if (advisoryConflictRetryTimeoutRef.current) {
@@ -1348,6 +1369,15 @@ export default function StockDetail() {
         advisoryConflictRetryTimeoutRef.current = null;
       }
       advisoryConflictRetryCountRef.current = 0;
+      if (retryAttemptsUsed > 0) {
+        setAdvisoryRetryTelemetry((prev) => ({
+          ...prev,
+          recoveredCount: prev.recoveredCount + 1,
+          lastReason: '',
+          lastOutcome: 'recovered',
+          lastEventAt: new Date().toISOString(),
+        }));
+      }
       setAdvisorySessionConflict(false);
       setAdvisorySession(payload.advisory || null);
       setAdvisoryAggregate(payload.aggregate || null);
@@ -1391,6 +1421,13 @@ export default function StockDetail() {
         if (canAutoRetry && attempt <= maxRetryAttempts) {
           const retryDelayMs = getAdvisoryConflictRetryDelayMs(attempt);
           advisoryConflictRetryCountRef.current = attempt;
+          setAdvisoryRetryTelemetry((prev) => ({
+            ...prev,
+            scheduledCount: prev.scheduledCount + 1,
+            lastReason: conflictState.reason || 'conflict',
+            lastOutcome: 'scheduled',
+            lastEventAt: new Date().toISOString(),
+          }));
 
           if (advisoryConflictRetryTimeoutRef.current) {
             clearTimeout(advisoryConflictRetryTimeoutRef.current);
@@ -1404,6 +1441,22 @@ export default function StockDetail() {
           const retrySeconds = Math.max(1, Math.ceil(retryDelayMs / 1000));
           setAdvisoryMessage(`${conflictState.message} ${t('stockDetail.aiAdvisoryAutoRetryInSeconds', { seconds: retrySeconds })}`);
         } else {
+          if (canAutoRetry && attempt > maxRetryAttempts) {
+            setAdvisoryRetryTelemetry((prev) => ({
+              ...prev,
+              failedCount: prev.failedCount + 1,
+              lastReason: conflictState.reason || 'conflict',
+              lastOutcome: 'exhausted',
+              lastEventAt: new Date().toISOString(),
+            }));
+          } else {
+            setAdvisoryRetryTelemetry((prev) => ({
+              ...prev,
+              lastReason: conflictState.reason || 'ai_not_configured',
+              lastOutcome: 'skipped_config',
+              lastEventAt: new Date().toISOString(),
+            }));
+          }
           setAdvisoryMessage(conflictState.message);
         }
         setAdvisorySessionConflict(true);
@@ -1412,6 +1465,15 @@ export default function StockDetail() {
       if (advisoryConflictRetryTimeoutRef.current) {
         clearTimeout(advisoryConflictRetryTimeoutRef.current);
         advisoryConflictRetryTimeoutRef.current = null;
+      }
+      if (advisoryConflictRetryCountRef.current > 0) {
+        setAdvisoryRetryTelemetry((prev) => ({
+          ...prev,
+          failedCount: prev.failedCount + 1,
+          lastReason: 'request_error',
+          lastOutcome: 'request_error',
+          lastEventAt: new Date().toISOString(),
+        }));
       }
       advisoryConflictRetryCountRef.current = 0;
       setAdvisorySessionConflict(false);
@@ -1436,6 +1498,14 @@ export default function StockDetail() {
       clearTimeout(advisoryConflictRetryTimeoutRef.current);
       advisoryConflictRetryTimeoutRef.current = null;
     }
+    setAdvisoryRetryTelemetry({
+      scheduledCount: 0,
+      recoveredCount: 0,
+      failedCount: 0,
+      lastReason: '',
+      lastOutcome: 'idle',
+      lastEventAt: null,
+    });
   }, [normalizedSymbol]);
 
   const fetchAdvisoryObservability = useCallback(async ({ silent = false } = {}) => {
@@ -2426,7 +2496,7 @@ export default function StockDetail() {
                         <span className="text-[11px] text-slate-500">Refreshing...</span>
                       ) : null}
                     </div>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
                         <p className="text-[10px] uppercase tracking-wide text-slate-500">Severity drift</p>
                         <p className="mt-1 text-sm font-semibold text-slate-100">
@@ -2461,6 +2531,24 @@ export default function StockDetail() {
                         </p>
                         <p className="text-[11px] text-slate-500">
                           {advisoryAggregate?.benchmarks?.rvol_regime || 'unknown'}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.advisoryRetryTelemetry')}</p>
+                        <p className="mt-1 text-sm font-semibold text-violet-300">
+                          {t('stockDetail.retryScheduledCount')}: {advisoryRetryTelemetry.scheduledCount}
+                        </p>
+                        <p className="text-[11px] text-emerald-300">
+                          {t('stockDetail.retryRecoveredCount')}: {advisoryRetryTelemetry.recoveredCount}
+                        </p>
+                        <p className="text-[11px] text-rose-300">
+                          {t('stockDetail.retryFailedCount')}: {advisoryRetryTelemetry.failedCount}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          {t('stockDetail.retryLast')}: {advisoryRetryOutcomeLabel(advisoryRetryTelemetry.lastOutcome, t)}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {t('stockDetail.retryReason')}: {advisoryRetryTelemetry.lastReason || 'n/a'}
                         </p>
                       </div>
                     </div>
