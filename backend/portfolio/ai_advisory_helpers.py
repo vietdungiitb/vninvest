@@ -5,11 +5,13 @@ S23-04 views decomposition — extracted from views.py.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
 import re
 
+from django.core.cache import cache
 from django.utils import timezone
 
 from .ai_runtime_config import resolve_ai_runtime_config
@@ -161,6 +163,24 @@ def _sprint17_normalize_ai_component_payload(raw_item: dict, symbol: str, timefr
     }
 
 
+_SAFE_SYMBOL_RE = re.compile(r'[^A-Za-z0-9\-\.]')
+_SAFE_TIMEFRAME_RE = re.compile(r'[^A-Za-z0-9]')
+_SAFE_INDICATOR_RE = re.compile(r'[^A-Za-z0-9_\-]')
+_PROMPT_INJECT_PATTERNS = re.compile(
+    r'ignore\s+previous|disregard\s+above|system\s+prompt|<\|im_end\|>|<\|im_start\|>',
+    re.IGNORECASE,
+)
+
+
+def _sanitize_for_prompt(value: str, max_len: int, allow_re: re.Pattern) -> str:
+    """Strip injection-unsafe content and limit length for strings embedded in AI prompts."""
+    raw = str(value or '')
+    # Check for injection patterns on raw value first (before character stripping).
+    if _PROMPT_INJECT_PATTERNS.search(raw):
+        return ''
+    return allow_re.sub('', raw[:max_len * 2]).strip()[:max_len]
+
+
 def _sprint29_render_chart_context_block(chart_context: dict | None) -> str:
     if not isinstance(chart_context, dict) or not chart_context:
         return ''
@@ -169,7 +189,12 @@ def _sprint29_render_chart_context_block(chart_context: dict | None) -> str:
     from_ts = visible_range.get('from_ts')
     to_ts = visible_range.get('to_ts')
     active_indicators = chart_context.get('active_indicators') or {}
-    enabled_indicators = [name for name, enabled in active_indicators.items() if bool(enabled)]
+    enabled_indicators = [
+        _sanitize_for_prompt(name, 20, _SAFE_INDICATOR_RE)
+        for name, enabled in active_indicators.items()
+        if bool(enabled)
+    ]
+    enabled_indicators = [ind for ind in enabled_indicators if ind]
 
     ohlcv_rows = chart_context.get('ohlcv') or []
     sampled_rows = ohlcv_rows[-20:] if len(ohlcv_rows) > 20 else ohlcv_rows
@@ -194,9 +219,13 @@ def _sprint29_render_chart_context_block(chart_context: dict | None) -> str:
         'atr_estimate': metrics.get('atr_estimate'),
     }
 
+    # Sanitize user-controlled string fields before embedding in AI prompt.
+    safe_symbol = _sanitize_for_prompt(chart_context.get('symbol') or '', 20, _SAFE_SYMBOL_RE)
+    safe_timeframe = _sanitize_for_prompt(chart_context.get('chart_timeframe') or '', 10, _SAFE_TIMEFRAME_RE)
+
     compact_payload = {
-        'symbol': chart_context.get('symbol'),
-        'chart_timeframe': chart_context.get('chart_timeframe'),
+        'symbol': safe_symbol,
+        'chart_timeframe': safe_timeframe,
         'visible_range': {'from_ts': from_ts, 'to_ts': to_ts},
         'enabled_indicators': enabled_indicators,
         'sampled_ohlcv': sampled_rows,
@@ -213,7 +242,7 @@ def _sprint29_get_enabled_indicators(chart_context: dict | None) -> list[str]:
         return []
     enabled = []
     for key, value in active_indicators.items():
-        indicator_key = str(key or '').strip().upper()
+        indicator_key = _sanitize_for_prompt(key, 20, _SAFE_INDICATOR_RE).upper()
         if indicator_key and bool(value):
             enabled.append(indicator_key)
     return enabled
@@ -249,7 +278,8 @@ def _sprint17_generate_component_templates_with_ai(
         return []
     provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
     model = str(runtime_cfg.get('model') or '').strip()
-    api_key = str(runtime_cfg.get('api_key') or '').strip()
+    # Pop api_key immediately; prevents key exposure if runtime_cfg is ever logged downstream.
+    api_key = str(runtime_cfg.pop('api_key', '') or '').strip()
 
     side = str((getattr(latest_advisory, 'side', '') or 'UNKNOWN')).upper()
     signal_type = str((dark_flow or {}).get('signal_type') or 'none').lower()
@@ -287,6 +317,14 @@ def _sprint17_generate_component_templates_with_ai(
 
     if provider != 'openclaw' and not api_key:
         return []
+
+    # Prompt caching: identical prompts within 15 min hit cache instead of calling the AI provider.
+    _prompt_cache_key = 'advisory:prompt-cache:components:' + hashlib.md5(prompt.encode('utf-8')).hexdigest()
+    _PROMPT_CACHE_TTL = int(os.getenv('ADVISORY_PROMPT_CACHE_TTL_SECONDS', '900'))  # 15 min default
+    _cached_templates = cache.get(_prompt_cache_key) if _PROMPT_CACHE_TTL > 0 else None
+    if _cached_templates is not None:
+        logger.debug('Sprint17 AI component generation: prompt cache hit symbol=%s', symbol)
+        return _cached_templates
 
     try:
         if provider == 'openclaw':
@@ -354,6 +392,8 @@ def _sprint17_generate_component_templates_with_ai(
             templates.append(normalized)
             if len(templates) >= 4:
                 break
+        if templates and _PROMPT_CACHE_TTL > 0:
+            cache.set(_prompt_cache_key, templates, timeout=_PROMPT_CACHE_TTL)
         return templates
     except Exception as exc:
         logger.warning('Sprint17 AI component generation fallback to template symbol=%s err=%s', symbol, exc)

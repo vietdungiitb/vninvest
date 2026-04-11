@@ -4471,16 +4471,21 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
             chart_context_payload_bytes = len(json.dumps(raw_chart_context, ensure_ascii=False).encode('utf-8'))
         except Exception:
             chart_context_payload_bytes = 0
-        context_serializer = StockAIChartContextSerializer(
-            data=raw_chart_context,
-            context={'symbol': normalized_symbol, 'max_ohlcv_points': 300},
-        )
-        if context_serializer.is_valid():
-            chart_context = dict(context_serializer.validated_data)
-            chart_context_used = True
-            chart_context_ohlcv_points = len(chart_context.get('ohlcv') or [])
+        _max_chart_context_bytes = int(os.getenv('MAX_CHART_CONTEXT_BYTES', '65536'))
+        if chart_context_payload_bytes > _max_chart_context_bytes:
+            chart_context_warnings.append('chart_context_too_large')
+            # Do not use oversized context — discard to prevent prompt explosion.
         else:
-            chart_context_warnings.append('chart_context_invalid')
+            context_serializer = StockAIChartContextSerializer(
+                data=raw_chart_context,
+                context={'symbol': normalized_symbol, 'max_ohlcv_points': 300},
+            )
+            if context_serializer.is_valid():
+                chart_context = dict(context_serializer.validated_data)
+                chart_context_used = True
+                chart_context_ohlcv_points = len(chart_context.get('ohlcv') or [])
+            else:
+                chart_context_warnings.append('chart_context_invalid')
 
     logger.info(
         'stock_ai_advisory_components_generate telemetry symbol=%s chart_context_present=%s chart_context_used=%s chart_context_ohlcv_points=%s chart_context_payload_bytes=%s chart_context_warning_count=%s',

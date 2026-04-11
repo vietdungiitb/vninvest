@@ -735,6 +735,9 @@ def _prefetch_retry_countdown(retries: int) -> int:
     return min(max_seconds, base * (2 ** max(retries, 0)))
 
 
+VNSTOCK_TIMEOUT_COUNTER_KEY = 'vnstock:timeout-counter:price_board'
+
+
 def _mark_price_board_rate_limited(exc: Exception) -> None:
     cooldown_seconds = max(int(os.getenv('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', '20')), 5)
     try:
@@ -748,6 +751,45 @@ def _mark_price_board_rate_limited(exc: Exception) -> None:
         )
     except Exception:
         pass
+
+
+def _record_vnstock_timeout(exc: Exception) -> bool:
+    """Track consecutive timeout/connection errors.
+
+    Returns True and activates 30-minute circuit-breaker lock once the threshold
+    (default 3 consecutive timeouts within 5 minutes) is reached.
+    Separate from rate-limit cooldown — this protects against sustained outages.
+    """
+    if not isinstance(exc, (TimeoutError, ConnectionError, OSError)):
+        return False
+    try:
+        _counter_window = int(os.getenv('VNSTOCK_CIRCUIT_WINDOW_SECONDS', '300'))
+        _threshold = int(os.getenv('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', '3'))
+        _circuit_cooldown = int(os.getenv('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', '1800'))
+
+        current = cache.get(VNSTOCK_TIMEOUT_COUNTER_KEY) or 0
+        new_count = current + 1
+        cache.set(VNSTOCK_TIMEOUT_COUNTER_KEY, new_count, timeout=_counter_window)
+
+        if new_count >= _threshold:
+            logger.warning(
+                'vnstock circuit breaker triggered after %d consecutive timeouts — pausing %ds',
+                new_count,
+                _circuit_cooldown,
+            )
+            cache.set(
+                VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY,
+                {
+                    'triggered_at': timezone.now().isoformat(),
+                    'reason': f'circuit_breaker_timeout_threshold_exceeded count={new_count}',
+                },
+                timeout=_circuit_cooldown,
+            )
+            cache.delete(VNSTOCK_TIMEOUT_COUNTER_KEY)
+            return True
+    except Exception:
+        pass
+    return False
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
@@ -1174,25 +1216,37 @@ def generate_whale_advisory_task(
         if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH and not user_cfg.advisory_manual_refresh_enabled:
             return {'status': 'skipped', 'symbol': symbol, 'reason': 'manual_refresh_disabled', 'user_id': user_id}
 
-        remaining_budget = _get_remaining_advisory_budget(user_cfg)
-        if remaining_budget <= 0:
-            logger.info('Whale advisory budget exhausted for user=%s symbol=%s source=%s', user_id, symbol, source_key)
-            return {
-                'status': 'skipped',
-                'symbol': symbol,
-                'reason': 'daily_budget_exceeded',
-                'user_id': user_id,
-                'source': source_key,
-            }
-        if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and _get_remaining_auto_refreshes(user_cfg) <= 0:
-            logger.info('Whale advisory auto-refresh count exhausted for user=%s symbol=%s', user_id, symbol)
-            return {
-                'status': 'skipped',
-                'symbol': symbol,
-                'reason': 'daily_auto_refresh_limit_exceeded',
-                'user_id': user_id,
-                'source': source_key,
-            }
+        # Fix race condition: acquire per-user generation lock before budget check so two concurrent
+        # Celery tasks cannot both pass the budget gate and overrun the daily limit together.
+        _gen_lock_key = f'advisory:gen-lock:{user_id}'
+        _lock_acquired = cache.add(_gen_lock_key, 1, timeout=90)
+        if not _lock_acquired:
+            logger.info('Whale advisory generation locked (concurrent task) for user=%s symbol=%s', user_id, symbol)
+            return {'status': 'skipped', 'symbol': symbol, 'reason': 'concurrent_generation_active', 'user_id': user_id}
+
+        try:
+            remaining_budget = _get_remaining_advisory_budget(user_cfg)
+            if remaining_budget <= 0:
+                logger.info('Whale advisory budget exhausted for user=%s symbol=%s source=%s', user_id, symbol, source_key)
+                return {
+                    'status': 'skipped',
+                    'symbol': symbol,
+                    'reason': 'daily_budget_exceeded',
+                    'user_id': user_id,
+                    'source': source_key,
+                }
+            if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and _get_remaining_auto_refreshes(user_cfg) <= 0:
+                logger.info('Whale advisory auto-refresh count exhausted for user=%s symbol=%s', user_id, symbol)
+                return {
+                    'status': 'skipped',
+                    'symbol': symbol,
+                    'reason': 'daily_auto_refresh_limit_exceeded',
+                    'user_id': user_id,
+                    'source': source_key,
+                }
+        finally:
+            # Release lock — generation itself continues; lock only protected the budget-check window.
+            cache.delete(_gen_lock_key)
 
     runtime_cfg = resolve_ai_runtime_config(user=target_user)
     if not runtime_cfg.get('ready'):
@@ -1212,8 +1266,20 @@ def generate_whale_advisory_task(
 
     provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
     model = str(runtime_cfg.get('model') or '').strip()
-    api_key = str(runtime_cfg.get('api_key') or '').strip()
+    # Pop api_key immediately so the full config dict is safe to log without exposing the key.
+    api_key = str(runtime_cfg.pop('api_key', '') or '').strip()
     ai_source = str(runtime_cfg.get('source') or 'unknown')
+
+    # Check per-provider rate-limit cooldown set by a previous 429 response.
+    if cache.get(f'advisory:provider-ratelimit:{provider}'):
+        logger.info(
+            'Whale advisory skipped — provider %s still in rate-limit cooldown symbol=%s user_id=%s',
+            provider,
+            symbol,
+            user_id,
+        )
+        return {'status': 'skipped', 'symbol': symbol, 'reason': 'provider_rate_limit_cooldown', 'user_id': user_id}
+
     use_concise = _should_use_concise_advisory(source_key, remaining_budget)
     start_advisory_session()
 
@@ -1256,7 +1322,25 @@ def generate_whale_advisory_task(
         end_advisory_phase('provider_generation')
         record_advisory_error_recovery(type(exc).__name__, 'provider_generation_failed', success=False)
         end_advisory_session()
-        logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
+        # If the provider returned 429, set a per-provider cooldown key so other queued
+        # tasks see it immediately and skip rather than hammering the rate-limited endpoint.
+        exc_str = str(exc or '')
+        if '429' in exc_str or 'Too Many Requests' in exc_str:
+            _rl_key = f'advisory:provider-ratelimit:{provider}'
+            _rl_seconds = int(os.getenv('AI_PROVIDER_RATELIMIT_PAUSE_SECONDS', '120'))
+            try:
+                cache.set(_rl_key, 1, timeout=_rl_seconds)
+            except Exception:
+                pass
+            logger.warning(
+                'AI provider 429 rate limit for %s/%s — advisory cooldown %ds symbol=%s',
+                provider,
+                model,
+                _rl_seconds,
+                symbol,
+            )
+        else:
+            logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
         raise  # Celery retry
 
     record_advisory_token_usage(
@@ -1682,6 +1766,8 @@ def prefetch_ticker_price_board(self) -> dict:
                     logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
     except (Exception, SystemExit) as exc:
         logger.warning('prefetch_ticker_price_board vnstock error: %s', exc)
+        # Track consecutive timeouts; triggers 30-min circuit breaker after threshold.
+        _record_vnstock_timeout(exc)
         if _is_rate_limited_error(exc):
             _mark_price_board_rate_limited(exc)
             countdown = _prefetch_retry_countdown(getattr(self.request, 'retries', 0))

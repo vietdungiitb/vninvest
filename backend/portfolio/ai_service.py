@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any
 
 import httpx
@@ -42,26 +43,57 @@ def _openai_compatible_completion(
         'temperature': 0.3,
     }
 
-    resp = httpx.post(
-        target_url,
-        headers=headers,
-        json=payload,
-        timeout=30.0,
-    )
+    _max_retries = int(os.getenv('AI_PROVIDER_RATE_LIMIT_MAX_RETRIES', '3'))
+    _retry_base_seconds = float(os.getenv('AI_PROVIDER_RATE_LIMIT_RETRY_BASE_SECONDS', '5'))
 
-    # Some GitHub Models deployments expose OpenAI-compatible endpoint on
-    # models.inference.ai.azure.com instead of models.github.ai/inference.
-    if resp.status_code == 404 and 'models.github.ai' in target_url:
-        fallback_url = target_url.replace('models.github.ai/inference', 'models.inference.ai.azure.com')
-        if fallback_url != target_url:
-            fallback_resp = httpx.post(
-                fallback_url,
-                headers=headers,
-                json=payload,
-                timeout=30.0,
+    for attempt in range(_max_retries + 1):
+        resp = httpx.post(
+            target_url,
+            headers=headers,
+            json=payload,
+            timeout=30.0,
+        )
+
+        # Some GitHub Models deployments expose OpenAI-compatible endpoint on
+        # models.inference.ai.azure.com instead of models.github.ai/inference.
+        if resp.status_code == 404 and 'models.github.ai' in target_url:
+            fallback_url = target_url.replace('models.github.ai/inference', 'models.inference.ai.azure.com')
+            if fallback_url != target_url:
+                fallback_resp = httpx.post(
+                    fallback_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0,
+                )
+                if fallback_resp.status_code < 400:
+                    resp = fallback_resp
+
+        if resp.status_code == 429:
+            if attempt >= _max_retries:
+                logger.warning(
+                    'AI provider 429 rate limit exceeded after %d retries url=%s',
+                    attempt,
+                    target_url,
+                )
+                resp.raise_for_status()
+            # Respect Retry-After header if provider sends it; otherwise exponential backoff.
+            retry_after_raw = resp.headers.get('Retry-After') or resp.headers.get('x-ratelimit-reset-after')
+            try:
+                wait_seconds = float(retry_after_raw) if retry_after_raw else _retry_base_seconds * (2 ** attempt)
+            except (TypeError, ValueError):
+                wait_seconds = _retry_base_seconds * (2 ** attempt)
+            wait_seconds = min(max(wait_seconds, 1.0), 60.0)
+            logger.warning(
+                'AI provider 429 rate limit url=%s attempt=%d/%d — retrying in %.1fs',
+                target_url,
+                attempt + 1,
+                _max_retries,
+                wait_seconds,
             )
-            if fallback_resp.status_code < 400:
-                resp = fallback_resp
+            time.sleep(wait_seconds)
+            continue
+
+        break
 
     resp.raise_for_status()
     body = resp.json()
@@ -73,20 +105,39 @@ def _openai_compatible_completion(
 
 
 def _claude_completion(api_key: str, model: str, prompt: str, max_tokens: int) -> dict[str, Any]:
-    resp = httpx.post(
-        'https://api.anthropic.com/v1/messages',
-        headers={
-            'x-api-key': api_key,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json',
-        },
-        json={
-            'model': model,
-            'max_tokens': max_tokens,
-            'messages': [{'role': 'user', 'content': prompt}],
-        },
-        timeout=30.0,
-    )
+    _max_retries = int(os.getenv('AI_PROVIDER_RATE_LIMIT_MAX_RETRIES', '3'))
+    _retry_base_seconds = float(os.getenv('AI_PROVIDER_RATE_LIMIT_RETRY_BASE_SECONDS', '5'))
+
+    for attempt in range(_max_retries + 1):
+        resp = httpx.post(
+            'https://api.anthropic.com/v1/messages',
+            headers={
+                'x-api-key': api_key,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json',
+            },
+            json={
+                'model': model,
+                'max_tokens': max_tokens,
+                'messages': [{'role': 'user', 'content': prompt}],
+            },
+            timeout=30.0,
+        )
+        if resp.status_code == 429:
+            if attempt >= _max_retries:
+                logger.warning('Claude 429 rate limit exceeded after %d retries', attempt)
+                resp.raise_for_status()
+            retry_after_raw = resp.headers.get('Retry-After') or resp.headers.get('anthropic-ratelimit-requests-reset')
+            try:
+                wait_seconds = float(retry_after_raw) if retry_after_raw else _retry_base_seconds * (2 ** attempt)
+            except (TypeError, ValueError):
+                wait_seconds = _retry_base_seconds * (2 ** attempt)
+            wait_seconds = min(max(wait_seconds, 1.0), 60.0)
+            logger.warning('Claude 429 attempt=%d/%d — retrying in %.1fs', attempt + 1, _max_retries, wait_seconds)
+            time.sleep(wait_seconds)
+            continue
+        break
+
     resp.raise_for_status()
     body = resp.json()
     texts = [part.get('text', '') for part in body.get('content', []) if isinstance(part, dict)]
