@@ -3775,7 +3775,19 @@ class WhaleAdvisoryListView(generics.ListAPIView):
             tracked_symbols = TrackedSymbol.objects.filter(user=self.request.user).values_list('symbol', flat=True)
             qs = qs.filter(symbol__in=tracked_symbols)
 
-        return qs[:100]
+        # FIX: Get latest advisory per symbol (not just first 100 globally)
+        # This ensures canonical contract returns latest advisory for each symbol
+        # even if that symbol's latest falls outside the global 100 limit
+        seen_symbols = set()
+        result = []
+        for advisory in qs:
+            symbol = str(advisory.symbol or '').strip().upper()
+            if symbol and symbol not in seen_symbols:
+                seen_symbols.add(symbol)
+                result.append(advisory)
+                if len(result) >= 100:  # Limit to 100 symbols max
+                    break
+        return result
 
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
@@ -3784,13 +3796,9 @@ class WhaleAdvisoryListView(generics.ListAPIView):
 
         if contract == 'canonical':
             user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
-            seen_symbols = set()
+            # qs already contains one advisory per symbol (latest for each)
             items = []
             for advisory in qs:
-                symbol = str(advisory.symbol or '').strip().upper()
-                if not symbol or symbol in seen_symbols:
-                    continue
-                seen_symbols.add(symbol)
                 items.append(_build_advisory_canonical_payload(request.user, advisory, user_cfg=user_cfg))
             return Response({'ok': True, 'contract_version': 'canonical_v1', 'items': items})
 
