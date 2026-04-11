@@ -3857,6 +3857,45 @@ def _is_celery_worker_available() -> bool:
         return False
 
 
+def _submit_advisory_generation_with_fallback(
+    *,
+    payload_kwargs: dict,
+    prefer_sync_fallback: bool,
+    force_sync: bool = False,
+    context_label: str = 'advisory_generation',
+) -> dict:
+    from portfolio.tasks import generate_whale_advisory_task
+
+    if force_sync:
+        try:
+            result = generate_whale_advisory_task.run(**payload_kwargs)
+            return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
+        except Exception as exc:
+            logger.warning('%s force sync failed: %s', context_label, exc)
+
+    worker_available = _is_celery_worker_available()
+    if worker_available:
+        try:
+            task = generate_whale_advisory_task.apply_async(kwargs=payload_kwargs, countdown=0)
+            return {'queued': True, 'task_id': task.id, 'sync': False}
+        except Exception as exc:
+            logger.warning('%s queue submit failed (fallback=%s): %s', context_label, prefer_sync_fallback, exc)
+            if not prefer_sync_fallback:
+                return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': str(exc)}
+    elif not prefer_sync_fallback:
+        return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': 'no_worker_available'}
+
+    if not prefer_sync_fallback:
+        return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': 'sync_fallback_disabled'}
+
+    try:
+        result = generate_whale_advisory_task.run(**payload_kwargs)
+        return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
+    except Exception as exc:
+        logger.exception('%s sync fallback failed: %s', context_label, exc)
+        return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': str(exc)}
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def refresh_whale_advisory_api(request, symbol: str):
@@ -3864,8 +3903,6 @@ def refresh_whale_advisory_api(request, symbol: str):
     POST /api/portfolio/whale-advisory/<symbol>/refresh/
     Làm mới advisory thủ công để tiết kiệm token: chỉ gọi khi user chủ động bấm Refresh.
     """
-    from portfolio.tasks import generate_whale_advisory_task
-
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'queued': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -3949,46 +3986,7 @@ def refresh_whale_advisory_api(request, symbol: str):
     }
 
     prefer_sync_fallback = bool(getattr(settings, 'WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
-
-    worker_available = _is_celery_worker_available()
     should_force_sync_first_create = latest is None and prefer_sync_fallback
-
-    if worker_available and not should_force_sync_first_create:
-        try:
-            task = generate_whale_advisory_task.apply_async(
-                kwargs=task_kwargs,
-                countdown=0,
-            )
-            _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
-            return Response(
-                {
-                    'queued': True,
-                    'symbol': normalized_symbol,
-                    'task_id': task.id,
-                    'runtime_ai_source': ai_status.get('source'),
-                    'runtime_ai_provider': ai_status.get('provider'),
-                    'runtime_ai_model': ai_status.get('model'),
-                    'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
-                },
-                status=status.HTTP_202_ACCEPTED,
-            )
-        except Exception as exc:
-            logger.warning(
-                'Queue refresh whale advisory failed for user=%s symbol=%s, fallback sync=%s err=%s',
-                request.user.id,
-                normalized_symbol,
-                prefer_sync_fallback,
-                exc,
-            )
-            if not prefer_sync_fallback:
-                return Response(
-                    {
-                        'queued': False,
-                        'symbol': normalized_symbol,
-                        'message': 'Không thể đưa yêu cầu vào hàng đợi xử lý advisory. Vui lòng thử lại sau.',
-                    },
-                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                )
 
     if should_force_sync_first_create:
         logger.info(
@@ -3997,34 +3995,39 @@ def refresh_whale_advisory_api(request, symbol: str):
             normalized_symbol,
         )
 
-    if not prefer_sync_fallback:
-        return Response(
-            {
-                'queued': False,
-                'symbol': normalized_symbol,
-                'message': 'Không có worker xử lý advisory. Vui lòng thử lại sau.',
-            },
-            status=status.HTTP_503_SERVICE_UNAVAILABLE,
-        )
+    submit_result = _submit_advisory_generation_with_fallback(
+        payload_kwargs=task_kwargs,
+        prefer_sync_fallback=prefer_sync_fallback,
+        force_sync=should_force_sync_first_create,
+        context_label='refresh_whale_advisory_api',
+    )
 
-    try:
-        result = generate_whale_advisory_task.run(**task_kwargs)
-    except Exception as exc:
-        logger.exception(
-            'Sync fallback refresh whale advisory failed for user=%s symbol=%s',
-            request.user.id,
-            normalized_symbol,
-        )
+    if submit_result.get('queue_error'):
         return Response(
             {
                 'queued': False,
                 'symbol': normalized_symbol,
-                'message': f'Không thể tạo advisory ngay lúc này: {exc}',
+                'message': 'Không thể xử lý advisory lúc này. Vui lòng thử lại sau.',
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
     _cache_set(refresh_lock_key, timezone.now().isoformat(), timeout=refresh_cooldown)
+    if submit_result.get('queued'):
+        return Response(
+            {
+                'queued': True,
+                'symbol': normalized_symbol,
+                'task_id': submit_result.get('task_id'),
+                'runtime_ai_source': ai_status.get('source'),
+                'runtime_ai_provider': ai_status.get('provider'),
+                'runtime_ai_model': ai_status.get('model'),
+                'message': 'Đã nhận yêu cầu refresh advisory.' if latest else 'Đã nhận yêu cầu tạo advisory đầu tiên cho mã này.',
+            },
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+    result = submit_result.get('result')
     if isinstance(result, dict) and result.get('status') == 'ok':
         return Response(
             {
@@ -5400,8 +5403,6 @@ def stock_ai_advisory_session_api(request, symbol: str):
     - GET: trả advisory mới nhất; nếu chưa có thì tự queue tạo advisory.
     - POST: refresh thủ công advisory cho mã hiện tại.
     """
-    from portfolio.tasks import generate_whale_advisory_task
-
     denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_session_api')
     if denied_response is not None:
         return denied_response
@@ -5454,33 +5455,12 @@ def stock_ai_advisory_session_api(request, symbol: str):
         return bool(getattr(settings, 'STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
 
     def _queue_or_run(payload_kwargs: dict, *, force_sync: bool = False) -> dict:
-        if force_sync:
-            try:
-                result = generate_whale_advisory_task.run(**payload_kwargs)
-                return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
-            except Exception as exc:
-                logger.warning('stock_ai_advisory_session_api force sync failed %s: %s', normalized_symbol, exc)
-
-        if _should_use_sync_fallback():
-            try:
-                from celery import current_app
-                worker_responses = current_app.control.inspect(timeout=0.6).ping() or {}
-            except Exception:
-                worker_responses = {}
-
-            if not worker_responses:
-                try:
-                    result = generate_whale_advisory_task.run(**payload_kwargs)
-                    return {'queued': False, 'task_id': None, 'sync': True, 'result': result}
-                except Exception as exc:
-                    logger.warning('stock_ai_advisory_session_api sync fallback failed %s: %s', normalized_symbol, exc)
-
-        try:
-            task = generate_whale_advisory_task.apply_async(kwargs=payload_kwargs, countdown=0)
-            return {'queued': True, 'task_id': task.id, 'sync': False}
-        except Exception as exc:
-            logger.error('stock_ai_advisory_session_api queue failed %s: %s', normalized_symbol, exc)
-            return {'queued': False, 'task_id': None, 'sync': False, 'queue_error': str(exc)}
+        return _submit_advisory_generation_with_fallback(
+            payload_kwargs=payload_kwargs,
+            prefer_sync_fallback=_should_use_sync_fallback(),
+            force_sync=force_sync,
+            context_label=f'stock_ai_advisory_session_api:{normalized_symbol}',
+        )
 
     def _serialize_latest(latest_advisory):
         if latest_advisory is None:

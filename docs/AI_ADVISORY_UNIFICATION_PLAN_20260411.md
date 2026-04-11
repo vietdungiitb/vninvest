@@ -2,7 +2,7 @@
 
 Date: 2026-04-11
 Owner: Advisory Platform Team
-Status: In Progress (Phase 0 done)
+Status: In Progress (Phase 0-1 done)
 
 ## 1) Goal
 
@@ -93,19 +93,24 @@ Code change:
   - refreshWhaleAdvisory(symbol) now points to:
     /stock-management/stocks/<symbol>/ai-advisory-session/ (POST)
 
-### Phase 1
+### Phase 1 (Completed)
 
-Backend extract shared service for refresh queue/sync fallback:
+Backend extracted shared service for refresh queue/sync fallback:
 
-- Create one internal service helper used by both:
-  - stock_ai_advisory_session_api (POST)
-  - legacy refresh_whale_advisory_api
+Implemented internal shared helper used by both:
 
-Deliverables:
+- stock_ai_advisory_session_api (POST)
+- legacy refresh_whale_advisory_api
 
-1. Common lock/cooldown logic.
-2. Common queue/sync fallback policy.
-3. Common response mapping utility.
+Delivered:
+
+1. Common queue/sync fallback submit path.
+2. Common force-sync first-create behavior support.
+3. Common queue-error handling contract (`queue_error`).
+
+Implementation note:
+
+- backend/portfolio/views.py now contains shared helper `_submit_advisory_generation_with_fallback(...)` and both refresh entrypoints call through it.
 
 ### Phase 2
 

@@ -338,6 +338,14 @@ UserConfig settings
 - `docs/SPRINT33_ACCEPTANCE_CHECKLIST.md`
 - `docs/SPRINT33_TASKBOARD.csv`
 
+**AI Advisory Unification Tracker (Stock Detail + AI Advisory):**
+- ✅ Phase 0 completed: frontend refresh call-site unified to stock advisory session endpoint.
+- ✅ Phase 1 completed: backend shared submit helper path for refresh queue/sync fallback.
+- ⏳ Phase 2 pending: canonical read contract + adapter layer for backward compatibility.
+- ⏳ Phase 3 pending: UI convergence on canonical payload + cross-screen invalidation.
+- ⏳ Phase 4 pending: language output hardening (vi/en) + prompt quality metrics.
+- Plan doc: `docs/AI_ADVISORY_UNIFICATION_PLAN_20260411.md`
+
 ---
 
 ### ✅ Sprint 34 - COMPLETED (Dark Money Integrity & Usability Phase 1)
