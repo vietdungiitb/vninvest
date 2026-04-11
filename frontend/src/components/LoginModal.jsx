@@ -51,32 +51,58 @@ function normalizeErrorMessage(errorData, fallbackMessage) {
   return fallbackMessage;
 }
 
-function resolveLoginErrorMessage(err, t) {
+function resolveLoginError(err, t) {
   const errorData = err?.response?.data;
   const detail = String(errorData?.detail || errorData?.message || '').toLowerCase();
   const status = Number(err?.response?.status || 0);
+  const isUnverifiedEmail = (
+    detail.includes('chua xac thuc email')
+    || detail.includes('chưa xác thực email')
+    || detail.includes('not verified')
+    || detail.includes('email not verified')
+    || detail.includes('verify email')
+    || detail.includes('xác thực')
+  );
 
   if (!err?.response) {
-    return t('auth.loginErrorNetwork');
+    return {
+      message: t('auth.loginErrorNetwork'),
+      isUnverifiedEmail: false,
+    };
   }
 
-  if (detail.includes('chua xac thuc email') || detail.includes('chưa xác thực email') || detail.includes('verify')) {
-    return t('auth.loginErrorUnverifiedEmail');
+  if (isUnverifiedEmail) {
+    return {
+      message: t('auth.loginErrorUnverifiedEmail'),
+      isUnverifiedEmail: true,
+    };
   }
 
   if (status === 401) {
-    return t('auth.loginErrorInvalidCredentials');
+    return {
+      message: t('auth.loginErrorInvalidCredentials'),
+      isUnverifiedEmail: false,
+    };
   }
 
   if (status === 429) {
-    return t('auth.loginErrorRateLimited');
+    return {
+      message: t('auth.loginErrorRateLimited'),
+      isUnverifiedEmail: false,
+    };
   }
 
   if (status >= 500) {
-    return t('auth.loginErrorServer');
+    return {
+      message: t('auth.loginErrorServer'),
+      isUnverifiedEmail: false,
+    };
   }
 
-  return normalizeErrorMessage(errorData, t('auth.loginError'));
+  return {
+    message: normalizeErrorMessage(errorData, t('auth.loginError')),
+    isUnverifiedEmail: false,
+  };
 }
 
 function normalizeFieldErrors(errorData) {
@@ -131,6 +157,7 @@ export default function LoginModal({ onSuccess }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [pendingIdentifier, setPendingIdentifier] = useState('');
+  const [canResendVerification, setCanResendVerification] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -160,6 +187,10 @@ export default function LoginModal({ onSuccess }) {
       [key]: '',
       ...(key === 'passwordConfirm' ? { password_confirm: '' } : {}),
     }));
+
+    if (key === 'username' && mode === 'login') {
+      setCanResendVerification(false);
+    }
   };
 
   const switchMode = (nextMode) => {
@@ -170,6 +201,8 @@ export default function LoginModal({ onSuccess }) {
     setError('');
     setNotice('');
     setFieldErrors({});
+    setCanResendVerification(false);
+    setPendingIdentifier('');
     setForm((prev) => ({
       ...prev,
       password: '',
@@ -205,6 +238,7 @@ export default function LoginModal({ onSuccess }) {
           passwordConfirm: form.passwordConfirm,
         });
         setPendingIdentifier(response.email || form.email.trim() || form.username.trim());
+        setCanResendVerification(Boolean(response.verification_required !== false));
         setNotice(response.message || t('auth.registerSuccess'));
         setMode('login');
         setForm({
@@ -215,26 +249,29 @@ export default function LoginModal({ onSuccess }) {
         });
       } else {
         await login(form.username.trim(), form.password);
+        setCanResendVerification(false);
+        setPendingIdentifier('');
         onSuccess?.();
       }
     } catch (err) {
       const errorData = err.response?.data;
       setFieldErrors(normalizeFieldErrors(errorData));
-      if (!isRegisterMode && form.username.trim()) {
-        setPendingIdentifier(form.username.trim());
+
+      if (isRegisterMode) {
+        setError(normalizeErrorMessage(errorData, t('auth.registerError')));
+      } else {
+        const loginError = resolveLoginError(err, t);
+        setCanResendVerification(loginError.isUnverifiedEmail);
+        setPendingIdentifier(loginError.isUnverifiedEmail ? form.username.trim() : '');
+        setError(loginError.message);
       }
-      setError(
-        isRegisterMode
-          ? normalizeErrorMessage(errorData, t('auth.registerError'))
-          : resolveLoginErrorMessage(err, t),
-      );
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendVerification = async () => {
-    const identifier = pendingIdentifier || form.email.trim() || form.username.trim();
+    const identifier = form.username.trim() || pendingIdentifier || form.email.trim();
     if (!identifier || resendLoading) {
       return;
     }
@@ -367,7 +404,7 @@ export default function LoginModal({ onSuccess }) {
           {notice && <p className="text-emerald-400 text-xs leading-5">{notice}</p>}
           {error && <p className="text-red-400 text-xs leading-5">{error}</p>}
 
-          {!isRegisterMode && pendingIdentifier && (
+          {!isRegisterMode && canResendVerification && (
             <button
               type="button"
               onClick={handleResendVerification}

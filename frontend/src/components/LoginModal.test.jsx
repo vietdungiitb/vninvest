@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import LoginModal from './LoginModal';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
@@ -28,12 +29,13 @@ describe('LoginModal', () => {
     jest.clearAllMocks();
     usePortfolio.mockReturnValue(mockPortfolioContext);
     useI18n.mockReturnValue(mockI18nContext);
-    client.fetchLegalPages.mockResolvedValue([]);
+    // Keep legal pages request unresolved in tests to avoid unrelated async state updates.
+    client.fetchLegalPages.mockRejectedValue(new Error('skip legal pages in LoginModal tests'));
   });
 
   it('renders login form on mount', () => {
     render(<LoginModal onSuccess={jest.fn()} />);
-    expect(screen.getByPlaceholderText('testuser')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('auth.usernamePlaceholder')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
   });
 
@@ -48,13 +50,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -72,13 +74,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -93,13 +95,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -117,13 +119,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -141,13 +143,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -167,18 +169,70 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /auth.resendVerification/i })).toBeInTheDocument();
       });
+    });
+
+    it('does not show resend verification button for invalid credentials', async () => {
+      mockPortfolioContext.login.mockRejectedValue({
+        response: {
+          status: 401,
+          data: { detail: 'Invalid credentials' },
+        },
+      });
+
+      render(<LoginModal onSuccess={jest.fn()} />);
+
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
+      const passwordInput = screen.getByPlaceholderText('••••••••');
+
+      await userEvent.type(usernameInput, 'testuser');
+      await userEvent.type(passwordInput, 'password123');
+
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.loginErrorInvalidCredentials')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByRole('button', { name: /auth.resendVerification/i })).not.toBeInTheDocument();
+    });
+
+    it('shows resend verification button for english unverified error', async () => {
+      mockPortfolioContext.login.mockRejectedValue({
+        response: {
+          status: 401,
+          data: { detail: 'Email not verified yet.' },
+        },
+      });
+
+      render(<LoginModal onSuccess={jest.fn()} />);
+
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
+      const passwordInput = screen.getByPlaceholderText('••••••••');
+
+      await userEvent.type(usernameInput, 'testuser');
+      await userEvent.type(passwordInput, 'password123');
+
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.loginErrorUnverifiedEmail')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('button', { name: /auth.resendVerification/i })).toBeInTheDocument();
     });
 
     it('calls resendVerification when resend button clicked', async () => {
@@ -194,13 +248,13 @@ describe('LoginModal', () => {
 
       render(<LoginModal onSuccess={jest.fn()} />);
       
-      const usernameInput = screen.getByPlaceholderText('testuser');
+      const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
       
       await userEvent.type(usernameInput, 'testuser');
       await userEvent.type(passwordInput, 'password123');
       
-      const submitButton = screen.getByRole('button', { name: /auth.login/i });
+      const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
       fireEvent.click(submitButton);
 
       await waitFor(() => {
@@ -222,13 +276,13 @@ describe('LoginModal', () => {
     const onSuccess = jest.fn();
     render(<LoginModal onSuccess={onSuccess} />);
     
-    const usernameInput = screen.getByPlaceholderText('testuser');
+    const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
     const passwordInput = screen.getByPlaceholderText('••••••••');
     
     await userEvent.type(usernameInput, 'validuser');
     await userEvent.type(passwordInput, 'validpass123');
     
-    const submitButton = screen.getByRole('button', { name: /auth.login/i });
+    const submitButton = screen.getByText('auth.login', { selector: 'button[type="submit"]' });
     fireEvent.click(submitButton);
 
     await waitFor(() => {
@@ -240,12 +294,15 @@ describe('LoginModal', () => {
   it('switches between login and register modes', async () => {
     render(<LoginModal onSuccess={jest.fn()} />);
     
-    const registerButton = screen.getByRole('button', { name: /auth.register/i });
+    const registerButton = screen.getByRole('button', { name: 'auth.register' });
     fireEvent.click(registerButton);
 
     // Should show email field in register mode
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/ban@example.com/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('auth.emailPlaceholder')).toBeInTheDocument();
     });
   });
 });
+
+
+
