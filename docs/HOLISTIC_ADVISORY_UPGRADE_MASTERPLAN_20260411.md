@@ -286,6 +286,15 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
   - `aggregate.decision` gom: `score`, `score_band`, `action`, `risk` de FE/replay su dung nhat quan.
   - uu tien lay `score` tu `snapshot.state_json.quality.actionability`; fallback theo ratio `matched_value/threshold`.
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
+- H2-step-9 hoan tat: bo sung API export artifact cho QA/audit.
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-trace-export/?advisory_id=<id>&contract=v1|v2&history_limit=<n>`
+  - payload export gom `session` + `trace` + `history` + `filters` + `exported_at`.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_trace_export_returns_audit_artifact_bundle`
+
+### H2 completion status (2026-04-11)
+
+- H2 backend replay/audit milestone da hoan tat qua cac slice H2-step-1..H2-step-9.
+- Da co du flow: snapshot linkage, replay command, trace APIs, filterable history, session v2 contract (flag + query override), decision digest va export artifact cho QA/audit.
 
 Work items:
 

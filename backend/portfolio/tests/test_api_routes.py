@@ -2549,6 +2549,56 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data['ok'])
 
+    def test_stock_ai_advisory_trace_export_returns_audit_artifact_bundle(self):
+        self.authenticate()
+        snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=9,
+            state_json={'seq': 9, 'quality': {'actionability': 0.61}},
+        )
+        advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='export trace summary',
+            ai_detail='export trace detail',
+            ai_provider='openclaw',
+            ai_model='default',
+            aggregate_snapshot=snapshot,
+            severity=WhaleAdvisory.SeverityChoices.WARNING,
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory.id - 1, 'snapshot_id': snapshot.id - 1},
+            after_state_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='unit-test-system',
+            metadata_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+        )
+
+        response = self.client.get(
+            f'/api/stock-management/stocks/BCM/ai-advisory-trace-export/?advisory_id={advisory.id}&contract=v2&history_limit=3'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['filters']['contract'], 'v2')
+        self.assertIn('exported_at', response.data)
+        self.assertIn('session', response.data)
+        self.assertIn('trace', response.data)
+        self.assertIn('history', response.data)
+        self.assertEqual(response.data['session']['contract_version'], 'v2')
+        self.assertEqual(response.data['session']['aggregate']['advisory_id'], advisory.id)
+        self.assertEqual(response.data['session']['aggregate']['decision']['score_band'], 'medium')
+        self.assertEqual(response.data['trace']['trace']['advisory_id'], advisory.id)
+        self.assertGreaterEqual(len(response.data['history']['items']), 1)
+
     @patch.dict(
         'os.environ',
         {

@@ -4820,6 +4820,51 @@ def stock_ai_advisory_summary_delete_api(request, symbol: str, summary_id: int):
     )
 
 
+def _build_session_v2_decision_digest(advisory_obj, snapshot_obj) -> dict:
+    if advisory_obj is None:
+        return {
+            'score': 0.0,
+            'score_band': 'neutral',
+            'action': 'watch',
+            'risk': 'medium',
+        }
+
+    state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
+    quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
+
+    score_value = quality.get('actionability')
+    if score_value is None:
+        threshold = float(advisory_obj.threshold or 0.0)
+        ratio = (float(advisory_obj.matched_value or 0.0) / threshold) if threshold > 0 else 0.0
+        score_value = max(0.0, min(ratio / 2.0, 1.0))
+    score_value = max(0.0, min(float(score_value or 0.0), 1.0))
+
+    if score_value >= 0.75:
+        score_band = 'high'
+    elif score_value >= 0.45:
+        score_band = 'medium'
+    else:
+        score_band = 'low'
+
+    action_map = {
+        'BUY': 'accumulate',
+        'SELL': 'reduce',
+        'UNKNOWN': 'watch',
+    }
+    risk_map = {
+        WhaleAdvisory.SeverityChoices.URGENT: 'high',
+        WhaleAdvisory.SeverityChoices.WARNING: 'medium',
+        WhaleAdvisory.SeverityChoices.INFO: 'low',
+    }
+
+    return {
+        'score': round(score_value, 4),
+        'score_band': score_band,
+        'action': action_map.get(str(advisory_obj.side or '').upper(), 'watch'),
+        'risk': risk_map.get(advisory_obj.severity, 'medium'),
+    }
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_session_api(request, symbol: str):
@@ -4905,50 +4950,6 @@ def stock_ai_advisory_session_api(request, symbol: str):
         payload['effective_ai_source'] = ai_status.get('source')
         payload['contract_version'] = 'v1'
 
-        def _build_decision_digest(advisory_obj, snapshot_obj):
-            if advisory_obj is None:
-                return {
-                    'score': 0.0,
-                    'score_band': 'neutral',
-                    'action': 'watch',
-                    'risk': 'medium',
-                }
-
-            state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
-            quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
-
-            score_value = quality.get('actionability')
-            if score_value is None:
-                threshold = float(advisory_obj.threshold or 0.0)
-                ratio = (float(advisory_obj.matched_value or 0.0) / threshold) if threshold > 0 else 0.0
-                score_value = max(0.0, min(ratio / 2.0, 1.0))
-            score_value = max(0.0, min(float(score_value or 0.0), 1.0))
-
-            if score_value >= 0.75:
-                score_band = 'high'
-            elif score_value >= 0.45:
-                score_band = 'medium'
-            else:
-                score_band = 'low'
-
-            action_map = {
-                'BUY': 'accumulate',
-                'SELL': 'reduce',
-                'UNKNOWN': 'watch',
-            }
-            risk_map = {
-                WhaleAdvisory.SeverityChoices.URGENT: 'high',
-                WhaleAdvisory.SeverityChoices.WARNING: 'medium',
-                WhaleAdvisory.SeverityChoices.INFO: 'low',
-            }
-
-            return {
-                'score': round(score_value, 4),
-                'score_band': score_band,
-                'action': action_map.get(str(advisory_obj.side or '').upper(), 'watch'),
-                'risk': risk_map.get(advisory_obj.severity, 'medium'),
-            }
-
         if session_v2_enabled:
             trace_payload = _build_advisory_trace_payload_for_user(
                 user=request.user,
@@ -4960,7 +4961,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
             )
             latest_log = (trace_payload.get('audit_logs') or [None])[0] if trace_payload.get('ok') else None
             snapshot_obj = latest_advisory.aggregate_snapshot if latest_advisory is not None else None
-            decision_digest = _build_decision_digest(latest_advisory, snapshot_obj)
+            decision_digest = _build_session_v2_decision_digest(latest_advisory, snapshot_obj)
             payload['contract_version'] = 'v2'
             payload['aggregate'] = {
                 'advisory_id': latest_advisory.id if latest_advisory is not None else None,
@@ -5491,6 +5492,193 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
                 'cursor': cursor,
                 'next_cursor': next_cursor,
                 'has_more': has_more,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_trace_export_api(request, symbol: str):
+    from django.utils.dateparse import parse_datetime
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    advisory_id_raw = request.query_params.get('advisory_id')
+    snapshot_id_raw = request.query_params.get('snapshot_id')
+    max_logs_raw = request.query_params.get('max_logs')
+    history_limit_raw = request.query_params.get('history_limit')
+    contract_raw = str(request.query_params.get('contract') or 'v2').strip().lower()
+    reason_raw = str(request.query_params.get('reason') or '').strip().lower()
+    actor_raw = str(request.query_params.get('actor') or '').strip().lower()
+    start_at_raw = str(request.query_params.get('start_at') or '').strip()
+    end_at_raw = str(request.query_params.get('end_at') or '').strip()
+
+    if contract_raw not in {'v1', 'v2'}:
+        return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        advisory_id = int(advisory_id_raw) if advisory_id_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'advisory_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        snapshot_id = int(snapshot_id_raw) if snapshot_id_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'snapshot_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        max_logs = max(int(max_logs_raw or 20), 1)
+        max_logs = min(max_logs, 200)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'max_logs khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        history_limit = max(int(history_limit_raw or 10), 1)
+        history_limit = min(history_limit, 50)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'history_limit khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    valid_reasons = {value for value, _ in AdvisoryAggregateAuditLog.ReasonChoices.choices}
+    valid_actors = {value for value, _ in AdvisoryAggregateAuditLog.ActorChoices.choices}
+    if reason_raw and reason_raw not in valid_reasons:
+        return Response({'ok': False, 'message': 'reason khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+    if actor_raw and actor_raw not in valid_actors:
+        return Response({'ok': False, 'message': 'actor khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    start_at = None
+    end_at = None
+    if start_at_raw:
+        start_at = parse_datetime(start_at_raw)
+        if not start_at:
+            return Response({'ok': False, 'message': 'start_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if end_at_raw:
+        end_at = parse_datetime(end_at_raw)
+        if not end_at:
+            return Response({'ok': False, 'message': 'end_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if start_at is not None and end_at is not None and start_at > end_at:
+        return Response({'ok': False, 'message': 'start_at phai <= end_at.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    trace_payload = _build_advisory_trace_payload_for_user(
+        user=request.user,
+        symbol=normalized_symbol,
+        advisory_id=advisory_id,
+        snapshot_id=snapshot_id,
+        max_logs=max_logs,
+        audit_reason=reason_raw,
+        audit_actor=actor_raw,
+        audit_start_at=start_at,
+        audit_end_at=end_at,
+    )
+    if not trace_payload.get('ok'):
+        return Response(trace_payload, status=status.HTTP_404_NOT_FOUND)
+
+    advisory_ref_id = trace_payload.get('advisory', {}).get('id')
+    advisory_obj = (
+        WhaleAdvisory.objects.select_related('aggregate_snapshot')
+        .filter(id=advisory_ref_id, user=request.user, symbol=normalized_symbol)
+        .first()
+    )
+    snapshot_obj = advisory_obj.aggregate_snapshot if advisory_obj is not None else None
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    ai_status = _get_ai_runtime_config_status(user_cfg)
+    advisory_data = WhaleAdvisorySerializer(advisory_obj).data if advisory_obj is not None else None
+    if advisory_data and _get_plan(request.user) not in ('premium', 'admin'):
+        advisory_data['ai_detail'] = ''
+
+    session_payload = {
+        'contract_version': contract_raw,
+        'symbol': normalized_symbol,
+        'advisory': advisory_data,
+        'effective_ai_provider': ai_status.get('provider'),
+        'effective_ai_model': ai_status.get('model'),
+        'effective_ai_source': ai_status.get('source'),
+    }
+    if contract_raw == 'v2':
+        latest_log = (trace_payload.get('audit_logs') or [None])[0]
+        session_payload['aggregate'] = {
+            'advisory_id': advisory_obj.id if advisory_obj is not None else None,
+            'snapshot_id': advisory_obj.aggregate_snapshot_id if advisory_obj is not None else None,
+            'snapshot_seq': snapshot_obj.snapshot_seq if snapshot_obj is not None else None,
+            'last_audit_reason': latest_log.get('reason') if latest_log else None,
+            'last_audit_actor': latest_log.get('actor') if latest_log else None,
+            'last_audit_at': latest_log.get('created_at') if latest_log else None,
+            'decision': _build_session_v2_decision_digest(advisory_obj, snapshot_obj),
+        }
+
+    history_qs = (
+        WhaleAdvisory.objects.select_related('aggregate_snapshot')
+        .filter(user=request.user, symbol=normalized_symbol)
+        .order_by('-id')
+    )
+    if advisory_obj is not None:
+        history_qs = history_qs.filter(id__lte=advisory_obj.id)
+
+    history_items = []
+    has_audit_filters = bool(reason_raw or actor_raw or start_at is not None or end_at is not None)
+    for advisory_item in history_qs.iterator():
+        history_snapshot = advisory_item.aggregate_snapshot
+        item_trace_payload = _build_advisory_trace_payload_for_user(
+            user=request.user,
+            symbol=normalized_symbol,
+            advisory_id=advisory_item.id,
+            snapshot_id=history_snapshot.id if history_snapshot is not None else None,
+            max_logs=2,
+            audit_reason=reason_raw,
+            audit_actor=actor_raw,
+            audit_start_at=start_at,
+            audit_end_at=end_at,
+            strict_after_state=True,
+        )
+        if not item_trace_payload.get('ok'):
+            continue
+        matched_count = item_trace_payload.get('counts', {}).get('matched_audit_logs', 0)
+        if has_audit_filters and matched_count <= 0:
+            continue
+
+        history_items.append(
+            {
+                'advisory_id': advisory_item.id,
+                'created_at': advisory_item.created_at.isoformat() if advisory_item.created_at else None,
+                'source': advisory_item.source,
+                'severity': advisory_item.severity,
+                'snapshot_id': advisory_item.aggregate_snapshot_id,
+                'snapshot_seq': history_snapshot.snapshot_seq if history_snapshot is not None else None,
+                'matched_audit_logs': matched_count,
+                'last_audit_reason': (
+                    (item_trace_payload.get('audit_logs') or [{}])[0].get('reason')
+                    if item_trace_payload.get('audit_logs')
+                    else None
+                ),
+            }
+        )
+        if len(history_items) >= history_limit:
+            break
+
+    history_has_more = len(history_items) == history_limit and history_qs.filter(id__lt=history_items[-1]['advisory_id']).exists()
+
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'exported_at': timezone.now().isoformat(),
+            'filters': {
+                'contract': contract_raw,
+                'reason': reason_raw or None,
+                'actor': actor_raw or None,
+                'start_at': start_at_raw or None,
+                'end_at': end_at_raw or None,
+            },
+            'session': session_payload,
+            'trace': trace_payload,
+            'history': {
+                'limit': history_limit,
+                'has_more': history_has_more,
+                'items': history_items,
             },
         },
         status=status.HTTP_200_OK,
