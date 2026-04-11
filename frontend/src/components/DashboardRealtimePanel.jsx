@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getRealtimeHealth, getUnifiedAlerts } from '../api/client';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
+import AllocationPieChart from './AllocationPieChart';
 import { useI18n } from '../context/LangContext';
 
 function formatNumberSafe(value, formatNumberFn) {
@@ -74,6 +75,7 @@ export default function DashboardRealtimePanel({
   enableSnapshot = true,
   onSyncRequest = null,
   showSummaryMetrics = true,
+  portfolioId = null,
 }) {
   const { t, formatNumber, formatTime, formatQuotePrice, formatQuoteInteger } = useI18n();
   const [realtimeHealth, setRealtimeHealth] = useState(null);
@@ -728,49 +730,49 @@ export default function DashboardRealtimePanel({
             {compact ? '▼ ' : '▲ '}{compact ? t('dashboardRealtime.expandPanel') : t('dashboardRealtime.collapsePanel')}
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-1.5 text-xs mt-2 w-full">
+        <div className="flex items-center gap-1.5 text-xs mt-2 w-full overflow-x-auto whitespace-nowrap">
           <span className="text-gray-600 mr-0.5">{t('dashboardRealtime.observability')}</span>
-          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+          <span className="shrink-0 px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
             📈 {t('dashboardRealtime.eventTickers', { count: formatNumber(metrics?.eventCounts?.ticker_update ?? 0) })}
           </span>
-          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+          <span className="shrink-0 px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
             🐋 {t('dashboardRealtime.eventWhale', { count: formatNumber(metrics?.eventCounts?.whale_alert ?? 0) })}
           </span>
           {(metrics?.eventCounts?.dark_flow_alert ?? 0) > 0 && (
-            <span className="px-2 py-0.5 rounded border border-violet-800 bg-violet-950/20 text-violet-400">
+            <span className="shrink-0 px-2 py-0.5 rounded border border-violet-800 bg-violet-950/20 text-violet-400">
               🌊 {t('dashboardRealtime.eventDarkFlow', { count: formatNumber(metrics.eventCounts.dark_flow_alert) })}
             </span>
           )}
-          <span className="px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
+          <span className="shrink-0 px-2 py-0.5 rounded border border-gray-800 bg-gray-950 text-gray-500">
             💓 {t('dashboardRealtime.eventHeartbeat', { count: formatNumber(metrics?.eventCounts?.heartbeat ?? 0) })}
           </span>
           {(metrics?.eventCounts?.reconnect_attempts ?? 0) > 0 && (
-            <span className="px-2 py-0.5 rounded border border-amber-800 bg-amber-950/20 text-amber-400">
+            <span className="shrink-0 px-2 py-0.5 rounded border border-amber-800 bg-amber-950/20 text-amber-400">
               ↺ {t('dashboardRealtime.eventReconnect', { count: formatNumber(metrics.eventCounts.reconnect_attempts) })}
             </span>
           )}
           {metrics?.lastLatencyMs !== null && metrics?.lastLatencyMs !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'}`}>
+            <span className={`shrink-0 px-2 py-0.5 rounded border bg-gray-950 ${metrics.lastLatencyMs > 1500 ? 'border-red-800 text-red-400' : 'border-gray-800 text-gray-500'}`}>
               ⚡ {metrics.lastLatencyMs}ms
             </span>
           )}
           {metrics?.uiRefreshP95Ms !== null && metrics?.uiRefreshP95Ms !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.uiRefreshP95Ms > 1500 ? 'border-red-800 text-red-400' : metrics.uiRefreshP95Ms > 800 ? 'border-amber-800 text-amber-400' : 'border-emerald-900 text-emerald-500'}`}>
+            <span className={`shrink-0 px-2 py-0.5 rounded border bg-gray-950 ${metrics.uiRefreshP95Ms > 1500 ? 'border-red-800 text-red-400' : metrics.uiRefreshP95Ms > 800 ? 'border-amber-800 text-amber-400' : 'border-emerald-900 text-emerald-500'}`}>
               p95 {Number(metrics.uiRefreshP95Ms).toFixed(0)}ms
             </span>
           )}
           {metrics?.staleRatioPct !== null && metrics?.staleRatioPct !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.staleRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.staleRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
+            <span className={`shrink-0 px-2 py-0.5 rounded border bg-gray-950 ${metrics.staleRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.staleRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
               stale {Number(metrics.staleRatioPct).toFixed(2)}%
             </span>
           )}
           {metrics?.fallbackRatioPct !== null && metrics?.fallbackRatioPct !== undefined && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${metrics.fallbackRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.fallbackRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
+            <span className={`shrink-0 px-2 py-0.5 rounded border bg-gray-950 ${metrics.fallbackRatioPct > 20 ? 'border-red-800 text-red-400' : metrics.fallbackRatioPct > 5 ? 'border-amber-800 text-amber-400' : 'border-gray-800 text-gray-500'}`}>
               fallback {Number(metrics.fallbackRatioPct).toFixed(2)}%
             </span>
           )}
           {realtimeHealth && (
-            <span className={`px-2 py-0.5 rounded border bg-gray-950 ${realtimeHealth.channel_layer_type === 'inmemory'
+            <span className={`shrink-0 px-2 py-0.5 rounded border bg-gray-950 ${realtimeHealth.channel_layer_type === 'inmemory'
                 ? 'border-yellow-800 text-yellow-500'
                 : realtimeHealth.redis_ok === false
                   ? 'border-red-800 text-red-400'
@@ -783,6 +785,23 @@ export default function DashboardRealtimePanel({
                   : t('dashboardRealtime.channelRedisUp')}
             </span>
           )}
+          <div className="ml-auto flex items-center gap-1.5 pl-2 shrink-0">
+            {alertWorkspaceTabs.map((tab) => {
+              const isActive = activeWorkspaceTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveWorkspaceTab(tab.key)}
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors ${isActive
+                    ? 'border border-brand-600 bg-brand-900/30 text-brand-200'
+                    : 'border border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600 hover:text-gray-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -846,25 +865,6 @@ export default function DashboardRealtimePanel({
           </div>
         </div>
       )}
-
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-gray-950/60 p-2">
-        {alertWorkspaceTabs.map((tab) => {
-          const isActive = activeWorkspaceTab === tab.key;
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveWorkspaceTab(tab.key)}
-              className={`rounded-lg px-3 py-2 text-left transition-colors ${isActive
-                ? 'border border-brand-600 bg-brand-900/30 text-brand-200'
-                : 'border border-transparent bg-transparent text-gray-400 hover:border-gray-700 hover:bg-gray-900 hover:text-gray-200'
-              }`}
-            >
-              <div className="text-xs font-semibold uppercase tracking-wider">{tab.label}</div>
-              <div className="mt-0.5 text-[11px] text-inherit opacity-80">{tab.description}</div>
-            </button>
-          );
-        })}
-      </div>
 
       {/* Context-aware sync CTA: hiện khi có stale positions */}
       {realtimePortfolioStats.stalePositions > 0 && (
@@ -1059,7 +1059,7 @@ export default function DashboardRealtimePanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
             <div className="rounded-xl border border-gray-800 overflow-hidden">
               <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
                 <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
@@ -1070,7 +1070,7 @@ export default function DashboardRealtimePanel({
                   {t('dashboardRealtime.noSymbols')}
                 </div>
               ) : (
-                <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+                <div className="max-h-[308px] overflow-y-auto overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-800">
@@ -1116,7 +1116,7 @@ export default function DashboardRealtimePanel({
               )}
             </div>
 
-            <RealtimeDebugPanel />
+            <AllocationPieChart portfolioId={portfolioId} />
           </div>
         </div>
       ) : (
