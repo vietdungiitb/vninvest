@@ -3554,105 +3554,20 @@ class StockWorkspaceChartView(APIView):
     throttle_scope = 'realtime_chart'
 
     def get(self, request, symbol):
-        normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol or len(normalized_symbol) > 10:
-            return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        generics.get_object_or_404(StockProfile, symbol=normalized_symbol)
-
         try:
-            days = int(request.query_params.get('days', 180))
-        except (TypeError, ValueError):
-            days = 180
-
-        days = min(max(days, 30), 365)
-        end_date = date.today()
-        start_date = end_date - timedelta(days=days)
-
-        # --- 1. Redis cache ---
-        cache_key = f'chart:{normalized_symbol}:{days}'
-        cached = _cache_get(cache_key)
-        if cached is not None:
-            return Response(cached)
-
-        # --- 2. vnstock — dữ liệu thật (source KBS, interval 1D) ---
-        series = None
-        tech_rows = None
-
-        def _fetch_vnstock():
-            return fetch_history_dataframe(
-                normalized_symbol,
-                start=str(start_date),
-                end=str(end_date),
-                interval='1D',
-                source='KBS',
+            payload = market_data_service.get_stock_workspace_chart(
+                request.user,
+                symbol,
+                request.query_params.get('days', 180),
+                request.query_params.get('timeframe'),
             )
+        except MarketDataValidationException as exc:
+            return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            logger.warning('StockWorkspaceChartView legacy bridge lỗi %s: %s', symbol, exc)
+            return Response({'detail': 'Không thể tải dữ liệu biểu đồ.'}, status=status.HTTP_502_BAD_GATEWAY)
 
-        try:
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(_fetch_vnstock)
-                try:
-                    df = future.result(timeout=8)
-                except concurrent.futures.TimeoutError:
-                    logger.warning('StockWorkspaceChartView vnstock timeout %s', normalized_symbol)
-                    df = None
-            if df is not None and not df.empty:
-                series = []
-                for _, row in df.iterrows():
-                    try:
-                        raw_time = row.get('time', row.get('date', ''))
-                        d = raw_time.date() if hasattr(raw_time, 'date') else date.fromisoformat(str(raw_time)[:10])
-                        series.append({
-                            'date': str(d),
-                            'open': float(row['open']) if row.get('open') is not None else None,
-                            'high': float(row['high']) if row.get('high') is not None else None,
-                            'low': float(row['low']) if row.get('low') is not None else None,
-                            'close': float(row['close']),
-                            'volume': float(row['volume']) if row.get('volume') is not None else None,
-                        })
-                    except (TypeError, ValueError, KeyError):
-                        continue
-                tech_rows = [{'close_price': s['close'], 'volume': s['volume']} for s in series]
-        except (ExternalSystemException, Exception, SystemExit) as exc:
-            logger.warning('StockWorkspaceChartView vnstock lỗi %s: %s', normalized_symbol, exc)
-
-        # --- 3. Fallback DB ---
-        if not series:
-            db_rows = list(
-                DailyPrice.objects
-                .filter(symbol=normalized_symbol, date__range=(start_date, end_date))
-                .order_by('date')
-                .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')
-            )
-            series = [
-                {
-                    'date': str(row['date']),
-                    'open': _to_float(row['open_price']),
-                    'high': _to_float(row['high_price']),
-                    'low': _to_float(row['low_price']),
-                    'close': float(row['close_price']),
-                    'volume': _to_float(row['volume']),
-                }
-                for row in db_rows
-            ]
-            tech_rows = db_rows  # DB rows already have close_price key
-
-        overview = _build_stock_workspace_overview(normalized_symbol, request.user)
-        payload = {
-            'symbol': normalized_symbol,
-            'days': days,
-            'start_date': str(start_date),
-            'end_date': str(end_date),
-            'points': StockWorkspaceChartPointSerializer(series, many=True).data,
-            'technical': StockWorkspaceTechnicalSerializer(
-                _compute_stock_workspace_technical(tech_rows or [], overview)
-            ).data,
-        }
-
-        result = StockWorkspaceChartResponseSerializer(payload).data
-        _cache_set(cache_key, result, timeout=3600)
-        return Response(result)
+        return Response(payload)
 
 # --- StockProfile Views ---
 from .models import StockProfile
