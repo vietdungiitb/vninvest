@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import WhaleAlertsHub from './WhaleAlertsHub';
 import {
   getAggregateWhaleFeed,
+  getSymbolInvestigation,
   getTrackedSymbols,
   getWatchlistGroups,
   getWhaleCampaigns,
@@ -13,6 +14,7 @@ import { useI18n } from '../context/LangContext';
 
 jest.mock('../api/client', () => ({
   getAggregateWhaleFeed: jest.fn(),
+  getSymbolInvestigation: jest.fn(),
   getTrackedSymbols: jest.fn(),
   getWatchlistGroups: jest.fn(),
   getWhaleAdvisories: jest.fn(),
@@ -227,5 +229,70 @@ describe('WhaleAlertsHub Campaigns', () => {
 
     const secondCall = getWhaleCampaigns.mock.calls[1][0];
     expect(secondCall.cursor).toBe('cursor-1');
+  });
+
+  it('loads symbol investigation timeline with co-observation badge', async () => {
+    getWhaleCampaigns.mockResolvedValue({
+      data: {
+        results: [],
+        has_more: false,
+        next_cursor: null,
+      },
+    });
+
+    getSymbolInvestigation.mockResolvedValue({
+      data: {
+        correlated_campaigns: [
+          {
+            event_id: 'cmp-evt-1',
+            symbol: 'HPG',
+            side: 'BUY',
+            matched_value: 900000000,
+            created_at: '2026-04-10T10:00:00Z',
+          },
+        ],
+        correlated_signals: [
+          {
+            signal_id: 'sig-1',
+            signal_type: 'dark_money_flow',
+            strength: 86,
+            confidence: 0.82,
+            created_at: '2026-04-10T10:01:00Z',
+          },
+        ],
+        grouped_timeline: [
+          {
+            bucket_start: '2026-04-10T10:00:00Z',
+            whale_count: 2,
+            signal_count: 1,
+            has_co_observation: true,
+          },
+        ],
+        co_observation_summary: {
+          co_observation_count: 2,
+        },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(getWhaleCampaigns).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabSymbolInvestigation' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'HPG' }));
+
+    await waitFor(() => {
+      expect(getSymbolInvestigation).toHaveBeenCalledWith('HPG', {
+        window: '5d',
+        sort: 'created_at',
+      });
+    });
+
+    expect(await screen.findByText('whaleHub.coObservationTimeline')).toBeTruthy();
+    expect(screen.getByText('2 co-observed')).toBeTruthy();
+    expect(screen.getByText('whaleHub.coObservationBucket')).toBeTruthy();
   });
 });
