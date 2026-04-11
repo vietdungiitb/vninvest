@@ -707,7 +707,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from django.contrib.auth.models import User
 import redis as redis_lib
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from .models import Portfolio, Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, AdvisoryTokenLog, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
+from .models import Portfolio, Transaction, DailyPrice, IntradayTick, OrderFlowSignal, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, AdvisoryTokenLog, SecuritiesGroup, SecuritiesItem, TrackedSymbol, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, StockProfile, PriceAlertRule, MarketGroupSyncLog, StockProfileSyncLog, WhaleAdvisory
 from .serializers import (
     PortfolioSerializer, TransactionSerializer, UserConfigSerializer, SubAccountSerializer,
     HoldingSerializer, SummarySerializer, ChartPointSerializer,
@@ -5093,6 +5093,162 @@ def stock_ai_advisory_session_api(request, symbol: str):
         },
         status.HTTP_202_ACCEPTED,
     )
+
+
+def _build_advisory_trace_payload_for_user(
+    *,
+    user,
+    symbol: str,
+    advisory_id: int | None,
+    snapshot_id: int | None,
+    max_logs: int,
+) -> dict:
+    advisory = None
+    snapshot = None
+
+    if advisory_id is not None:
+        advisory = (
+            WhaleAdvisory.objects.select_related('aggregate_snapshot')
+            .filter(id=advisory_id, user=user, symbol=symbol)
+            .first()
+        )
+        if advisory is None:
+            return {'ok': False, 'message': 'Khong tim thay advisory theo advisory_id.'}
+        snapshot = advisory.aggregate_snapshot
+        if snapshot is not None and snapshot_id is None:
+            snapshot_id = snapshot.id
+
+    if snapshot_id is not None and snapshot is None:
+        snapshot = AdvisoryAggregateSnapshot.objects.filter(
+            id=snapshot_id,
+            user=user,
+            symbol=symbol,
+        ).first()
+        if snapshot is None:
+            return {'ok': False, 'message': 'Khong tim thay snapshot theo snapshot_id.'}
+
+    if advisory is None and snapshot is not None:
+        advisory = (
+            WhaleAdvisory.objects.filter(user=user, symbol=symbol, aggregate_snapshot=snapshot)
+            .order_by('-created_at')
+            .first()
+        )
+        if advisory is not None and advisory_id is None:
+            advisory_id = advisory.id
+
+    if advisory is None and snapshot is None:
+        return {'ok': False, 'message': 'Can truyen advisory_id hoac snapshot_id hop le cho symbol nay.'}
+
+    def _matches_trace(log_item) -> bool:
+        before_state = log_item.before_state_json or {}
+        after_state = log_item.after_state_json or {}
+        metadata = log_item.metadata_json or {}
+
+        advisory_candidates = {
+            before_state.get('advisory_id'),
+            after_state.get('advisory_id'),
+            metadata.get('advisory_id'),
+        }
+        snapshot_candidates = {
+            before_state.get('snapshot_id'),
+            after_state.get('snapshot_id'),
+            metadata.get('snapshot_id'),
+        }
+
+        advisory_ok = advisory_id is None or advisory_id in advisory_candidates
+        snapshot_ok = snapshot_id is None or snapshot_id in snapshot_candidates
+        return advisory_ok and snapshot_ok
+
+    matched_logs = []
+    logs_qs = AdvisoryAggregateAuditLog.objects.filter(user=user, symbol=symbol).order_by('-created_at')
+    for log_item in logs_qs.iterator():
+        if _matches_trace(log_item):
+            matched_logs.append(log_item)
+            if len(matched_logs) >= max_logs:
+                break
+
+    return {
+        'ok': True,
+        'trace': {
+            'symbol': symbol,
+            'advisory_id': advisory_id,
+            'snapshot_id': snapshot_id,
+            'replay_ready': bool(snapshot_id),
+        },
+        'advisory': {
+            'id': advisory.id if advisory else None,
+            'created_at': advisory.created_at.isoformat() if advisory and advisory.created_at else None,
+            'source': advisory.source if advisory else '',
+            'severity': advisory.severity if advisory else '',
+            'threshold': float(advisory.threshold or 0) if advisory else 0.0,
+            'aggregate_snapshot_id': advisory.aggregate_snapshot_id if advisory else None,
+            'ai_provider': advisory.ai_provider if advisory else '',
+            'ai_model': advisory.ai_model if advisory else '',
+        },
+        'snapshot': {
+            'id': snapshot.id if snapshot else None,
+            'snapshot_seq': snapshot.snapshot_seq if snapshot else None,
+            'created_at': snapshot.created_at.isoformat() if snapshot and snapshot.created_at else None,
+            'expires_at': snapshot.expires_at.isoformat() if snapshot and snapshot.expires_at else None,
+            'state_json': snapshot.state_json if snapshot else {},
+        },
+        'audit_logs': [
+            {
+                'id': log_item.id,
+                'created_at': log_item.created_at.isoformat() if log_item.created_at else None,
+                'reason': log_item.reason,
+                'actor': log_item.actor,
+                'actor_id': log_item.actor_id,
+                'before_state_json': log_item.before_state_json,
+                'after_state_json': log_item.after_state_json,
+                'metadata_json': log_item.metadata_json,
+            }
+            for log_item in matched_logs
+        ],
+        'counts': {
+            'matched_audit_logs': len(matched_logs),
+            'max_logs': max_logs,
+        },
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_trace_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    advisory_id_raw = request.query_params.get('advisory_id')
+    snapshot_id_raw = request.query_params.get('snapshot_id')
+    max_logs_raw = request.query_params.get('max_logs')
+
+    try:
+        advisory_id = int(advisory_id_raw) if advisory_id_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'advisory_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        snapshot_id = int(snapshot_id_raw) if snapshot_id_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'snapshot_id khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        max_logs = max(int(max_logs_raw or 20), 1)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'max_logs khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = _build_advisory_trace_payload_for_user(
+        user=request.user,
+        symbol=normalized_symbol,
+        advisory_id=advisory_id,
+        snapshot_id=snapshot_id,
+        max_logs=max_logs,
+    )
+    if not payload.get('ok'):
+        return Response(payload, status=status.HTTP_404_NOT_FOUND)
+
+    return Response(payload, status=status.HTTP_200_OK)
 
 
 # ---------------------------------------------------------------------------

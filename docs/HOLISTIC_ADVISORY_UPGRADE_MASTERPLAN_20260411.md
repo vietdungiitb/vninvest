@@ -261,6 +261,9 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
 - H2-step-2 hoan tat: bo sung command replay trace theo `advisory_id`/`snapshot_id`:
   - `python backend/manage.py replay_advisory_trace --advisory-id <id> --max-logs 30`
   - Smoke artifact: `docs/HOLISTIC_ADVISORY_H2_REPLAY_SMOKE_20260411.json`
+- H2-step-3 hoan tat: bo sung read-only API replay trace cho stock workspace:
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-trace/?advisory_id=<id>&max_logs=<n>`
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_trace_returns_snapshot_and_matched_audit_logs`
 
 Work items:
 

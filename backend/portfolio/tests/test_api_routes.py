@@ -10,7 +10,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
-from portfolio.models import AdvisoryAggregateAuditLog, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
+from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
@@ -2275,6 +2275,49 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('component_template_generation', audit.metadata_json['phase_timings'])
         self.assertIn('template_generation_fallback', audit.metadata_json['component_timings'])
         self.assertIn('indicator:RSI', audit.metadata_json['created_component_keys'])
+
+    def test_stock_ai_advisory_trace_returns_snapshot_and_matched_audit_logs(self):
+        self.authenticate()
+        snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=1,
+            state_json={'seq': 1, 'history': [{'event': 'seed'}]},
+        )
+        advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='trace summary',
+            ai_detail='trace detail',
+            ai_provider='openclaw',
+            ai_model='default',
+            aggregate_snapshot=snapshot,
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory.id - 1, 'snapshot_id': 0},
+            after_state_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='unit-test',
+            metadata_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id, 'operation': 'advisory_generation'},
+        )
+
+        response = self.client.get(
+            f'/api/stock-management/stocks/BCM/ai-advisory-trace/?advisory_id={advisory.id}&max_logs=5'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['trace']['advisory_id'], advisory.id)
+        self.assertEqual(response.data['trace']['snapshot_id'], snapshot.id)
+        self.assertEqual(response.data['advisory']['aggregate_snapshot_id'], snapshot.id)
+        self.assertEqual(response.data['snapshot']['snapshot_seq'], 1)
+        self.assertGreaterEqual(response.data['counts']['matched_audit_logs'], 1)
 
     @patch.dict(
         'os.environ',
