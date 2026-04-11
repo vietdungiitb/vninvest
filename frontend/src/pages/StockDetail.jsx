@@ -1330,6 +1330,7 @@ export default function StockDetail() {
   const [advisoryObservabilityWindowHours, setAdvisoryObservabilityWindowHours] = useState(48);
   const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
   const [retryEventReasonFilter, setRetryEventReasonFilter] = useState('all');
+  const [retryEventSortMode, setRetryEventSortMode] = useState('newest');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
@@ -1351,14 +1352,29 @@ export default function StockDetail() {
 
   const filteredPersistedRetryEvents = useMemo(() => {
     const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
-    return events.filter((event) => {
+    const filtered = events.filter((event) => {
       const outcomeOk = retryEventOutcomeFilter === 'all'
         || String(event?.outcome || '').toLowerCase() === retryEventOutcomeFilter;
       const reasonOk = retryEventReasonFilter === 'all'
         || String(event?.reason || '').toLowerCase() === retryEventReasonFilter;
       return outcomeOk && reasonOk;
     });
-  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter, retryEventReasonFilter]);
+    const toTs = (value) => {
+      const ts = new Date(value || '').getTime();
+      return Number.isFinite(ts) ? ts : 0;
+    };
+    const sorted = [...filtered].sort((a, b) => {
+      if (retryEventSortMode === 'oldest') {
+        return toTs(a.created_at) - toTs(b.created_at);
+      }
+      if (retryEventSortMode === 'most_failed') {
+        const failDelta = Number(b?.failed_count || 0) - Number(a?.failed_count || 0);
+        if (failDelta !== 0) return failDelta;
+      }
+      return toTs(b.created_at) - toTs(a.created_at);
+    });
+    return sorted;
+  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
 
   const retryEventReasonOptions = useMemo(() => {
     const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
@@ -1523,6 +1539,7 @@ export default function StockDetail() {
     advisoryRetryTelemetrySyncKeyRef.current = '';
     setRetryEventOutcomeFilter('all');
     setRetryEventReasonFilter('all');
+    setRetryEventSortMode('newest');
     setAdvisoryObservabilityWindowHours(48);
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
@@ -2678,6 +2695,16 @@ export default function StockDetail() {
                               {retryEventReasonOptions.map((reason) => (
                                 <option key={reason} value={reason}>{reason}</option>
                               ))}
+                            </select>
+                            <span className="text-[11px] text-slate-500">{t('stockDetail.retrySort')}</span>
+                            <select
+                              value={retryEventSortMode}
+                              onChange={(e) => setRetryEventSortMode(e.target.value)}
+                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                            >
+                              <option value="newest">{t('stockDetail.retrySortNewest')}</option>
+                              <option value="oldest">{t('stockDetail.retrySortOldest')}</option>
+                              <option value="most_failed">{t('stockDetail.retrySortMostFailed')}</option>
                             </select>
                           </div>
                         </div>
