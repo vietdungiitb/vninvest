@@ -4098,6 +4098,119 @@ def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshol
     return (user_default_threshold_vnd, 'user_default')
 
 
+def _build_component_generation_key(component) -> str:
+    component_type = str(getattr(component, 'component_type', '') or 'component').strip().lower() or 'component'
+    indicator_name = str(getattr(component, 'indicator_name', '') or '').strip().upper()
+    if indicator_name:
+        return f'{component_type}:{indicator_name}'
+    return component_type
+
+
+def _estimate_component_generation_confidence(*, dark_flow: dict | None, generated_by_ai: bool, created_count: int) -> float:
+    strength = 0.0
+    if isinstance(dark_flow, dict):
+        try:
+            strength = float(dark_flow.get('strength') or 0.0)
+        except Exception:
+            strength = 0.0
+    if strength > 1.0:
+        strength = strength / 100.0
+
+    score = 0.40 + min(max(strength, 0.0), 0.35)
+    if generated_by_ai:
+        score += 0.12
+    if created_count >= 3:
+        score += 0.08
+    return max(0.0, min(score, 0.99))
+
+
+def _estimate_component_generation_actionability(created_components) -> float:
+    created_components = list(created_components or [])
+    if not created_components:
+        return 0.0
+
+    actionable_components = 0
+    confidence_total = 0.0
+    for component in created_components:
+        suggested_action = str(getattr(component, 'suggested_action', '') or '').strip().lower()
+        if suggested_action and suggested_action not in {'watch', 'hold', 'neutral'}:
+            actionable_components += 1
+        try:
+            confidence_total += float(getattr(component, 'confidence_score', 0) or 0)
+        except Exception:
+            confidence_total += 0.0
+
+    actionable_ratio = actionable_components / len(created_components)
+    normalized_confidence = min(max((confidence_total / len(created_components)) / 10.0, 0.0), 1.0)
+    score = 0.35 + (actionable_ratio * 0.40) + (normalized_confidence * 0.20)
+    return max(0.0, min(score, 0.99))
+
+
+def _persist_component_generation_metrics_audit_log(
+    *,
+    user,
+    symbol: str,
+    latest_advisory,
+    created_components,
+    timeframe: str,
+    generated_by_ai: bool,
+    chart_context_used: bool,
+    chart_context_warnings: list[str],
+    metrics: dict,
+) -> None:
+    if user is None:
+        return
+
+    created_components = list(created_components or [])
+    before_state = {}
+    if latest_advisory is not None:
+        before_state = {
+            'advisory_id': latest_advisory.id,
+            'severity': getattr(latest_advisory, 'severity', ''),
+            'source': getattr(latest_advisory, 'source', ''),
+            'threshold_source': getattr(latest_advisory, 'threshold_source', ''),
+            'created_at': latest_advisory.created_at.isoformat() if latest_advisory.created_at else None,
+        }
+
+    after_state = {
+        'operation': 'component_generation',
+        'timeframe': timeframe,
+        'generated_by_ai': bool(generated_by_ai),
+        'component_count': len(created_components),
+        'component_ids': [component.id for component in created_components],
+    }
+
+    metadata_payload = dict(metrics or {})
+    metadata_payload.update(
+        {
+            'operation': 'component_generation',
+            'symbol': symbol,
+            'timeframe': timeframe,
+            'generated_by_ai': bool(generated_by_ai),
+            'chart_context_used': bool(chart_context_used),
+            'chart_context_warning_count': len(chart_context_warnings or []),
+            'created_count': len(created_components),
+            'created_component_keys': [_build_component_generation_key(component) for component in created_components],
+        }
+    )
+
+    try:
+        from portfolio.models import AdvisoryAggregateAuditLog
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=user,
+            symbol=symbol,
+            before_state_json=before_state,
+            after_state_json=after_state,
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id=str(user.id),
+            metadata_json=metadata_payload,
+        )
+    except Exception as exc:
+        logger.warning('Component generation metrics audit log persistence failed for %s: %s', symbol, exc)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_order_flow_api(request, symbol: str):
@@ -4221,7 +4334,18 @@ def stock_order_flow_api(request, symbol: str):
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_components_generate_api(request, symbol: str):
     from portfolio.order_flow import detect_dark_flow
-    from portfolio.observability import record_ai_chart_context_observation
+    from portfolio.observability import (
+        end_advisory_phase,
+        end_advisory_session,
+        record_advisory_actionability,
+        record_advisory_component,
+        record_advisory_confidence,
+        record_advisory_error_recovery,
+        record_ai_chart_context_observation,
+        start_advisory_phase,
+        start_advisory_session,
+    )
+    from time import perf_counter
 
     denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_ai_advisory_components_generate_api')
     if denied_response is not None:
@@ -4296,24 +4420,98 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
         payload_bytes=chart_context_payload_bytes,
     )
 
-    # F2 Fix: Pass window_minutes to detect_dark_flow based on user-requested timeframe
-    window_minutes = _timeframe_to_minutes(timeframe)
-    dark_flow = detect_dark_flow(normalized_symbol, window_minutes=window_minutes)
-    templates = _sprint17_generate_component_templates_with_ai(
-        user=request.user,
-        symbol=normalized_symbol,
-        latest_advisory=latest,
-        dark_flow=dark_flow,
-        timeframe=timeframe,
-        chart_context=chart_context,
-    )
-    generated_by_ai = bool(templates)
-    if not templates:
-        templates = _sprint17_build_component_templates(normalized_symbol, latest, dark_flow, timeframe, chart_context=chart_context)
-    created = [
-        AIAdvisoryComponentRecord.objects.create(user=request.user, **payload)
-        for payload in templates
-    ]
+    start_advisory_session()
+    session_closed = False
+    try:
+        window_minutes = _timeframe_to_minutes(timeframe)
+
+        start_advisory_phase('component_dark_flow_detection')
+        dark_flow_started = perf_counter()
+        try:
+            dark_flow = detect_dark_flow(normalized_symbol, window_minutes=window_minutes)
+        finally:
+            end_advisory_phase('component_dark_flow_detection')
+        record_advisory_component('dark_flow_detection', (perf_counter() - dark_flow_started) * 1000)
+
+        start_advisory_phase('component_template_generation')
+        template_started = perf_counter()
+        try:
+            templates = _sprint17_generate_component_templates_with_ai(
+                user=request.user,
+                symbol=normalized_symbol,
+                latest_advisory=latest,
+                dark_flow=dark_flow,
+                timeframe=timeframe,
+                chart_context=chart_context,
+            )
+            generated_by_ai = bool(templates)
+            if not templates:
+                templates = _sprint17_build_component_templates(
+                    normalized_symbol,
+                    latest,
+                    dark_flow,
+                    timeframe,
+                    chart_context=chart_context,
+                )
+        finally:
+            end_advisory_phase('component_template_generation')
+        record_advisory_component(
+            'template_generation_ai' if generated_by_ai else 'template_generation_fallback',
+            (perf_counter() - template_started) * 1000,
+        )
+
+        start_advisory_phase('component_record_persistence')
+        persistence_started = perf_counter()
+        try:
+            created = [
+                AIAdvisoryComponentRecord.objects.create(user=request.user, **payload)
+                for payload in templates
+            ]
+        finally:
+            end_advisory_phase('component_record_persistence')
+        persistence_latency_ms = (perf_counter() - persistence_started) * 1000
+        record_advisory_component('component_record_persistence', persistence_latency_ms)
+
+        per_component_latency_ms = persistence_latency_ms / max(len(created), 1)
+        for component in created:
+            record_advisory_component(_build_component_generation_key(component), per_component_latency_ms)
+
+        record_advisory_confidence(
+            _estimate_component_generation_confidence(
+                dark_flow=dark_flow,
+                generated_by_ai=generated_by_ai,
+                created_count=len(created),
+            ),
+            source='component_generation',
+        )
+        record_advisory_actionability(_estimate_component_generation_actionability(created))
+
+        start_advisory_phase('component_response_serialization')
+        serialization_started = perf_counter()
+        try:
+            components_payload = AIAdvisoryComponentRecordSerializer(created, many=True).data
+        finally:
+            end_advisory_phase('component_response_serialization')
+        record_advisory_component('component_response_serialization', (perf_counter() - serialization_started) * 1000)
+
+        metrics = end_advisory_session()
+        session_closed = True
+        _persist_component_generation_metrics_audit_log(
+            user=request.user,
+            symbol=normalized_symbol,
+            latest_advisory=latest,
+            created_components=created,
+            timeframe=timeframe,
+            generated_by_ai=generated_by_ai,
+            chart_context_used=chart_context_used,
+            chart_context_warnings=chart_context_warnings,
+            metrics=metrics,
+        )
+    except Exception as exc:
+        record_advisory_error_recovery(type(exc).__name__, 'component_generation_failed', success=False)
+        if not session_closed:
+            end_advisory_session()
+        raise
 
     _track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_components_generate_api', status.HTTP_201_CREATED)
     return Response(
@@ -4324,7 +4522,7 @@ def stock_ai_advisory_components_generate_api(request, symbol: str):
             'generated_by_ai': generated_by_ai,
             'chart_context_used': chart_context_used,
             'chart_context_warnings': chart_context_warnings,
-            'components': AIAdvisoryComponentRecordSerializer(created, many=True).data,
+            'components': components_payload,
         },
         status=status.HTTP_201_CREATED,
     )

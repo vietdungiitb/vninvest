@@ -40,6 +40,11 @@ class Command(BaseCommand):
             default='',
             help='Optional path to write the JSON report.',
         )
+        parser.add_argument(
+            '--operation',
+            default='',
+            help='Optional metadata_json.operation filter, e.g. component_generation.',
+        )
 
     def handle(self, *args, **options):
         username = str(options.get('username') or '').strip()
@@ -47,6 +52,7 @@ class Command(BaseCommand):
         days = max(int(options.get('days') or 0), 1)
         limit = max(int(options.get('limit') or 0), 1)
         output = str(options.get('output') or '').strip()
+        operation = str(options.get('operation') or '').strip()
 
         try:
             user = User.objects.get(username=username)
@@ -64,19 +70,25 @@ class Command(BaseCommand):
         logs = list(audit_qs[:limit])
         metrics_samples = []
         sampled_symbols = set()
+        sampled_operations = set()
         for log in logs:
             metadata = log.metadata_json or {}
             if not isinstance(metadata, dict):
+                continue
+            metadata_operation = str(metadata.get('operation') or '').strip()
+            if operation and metadata_operation != operation:
                 continue
             if 'latency_ms' not in metadata and 'token_cost' not in metadata:
                 continue
             metrics_samples.append(metadata)
             sampled_symbols.add(log.symbol)
+            if metadata_operation:
+                sampled_operations.add(metadata_operation)
 
         if not metrics_samples:
             raise CommandError(
                 f'No advisory metrics samples found for username={username} '
-                f'symbol={symbol or "ALL"} days={days} limit={limit}'
+                f'symbol={symbol or "ALL"} days={days} limit={limit} operation={operation or "ALL"}'
             )
 
         report_symbol = symbol or 'ALL'
@@ -84,9 +96,11 @@ class Command(BaseCommand):
         report['source'] = {
             'username': username,
             'symbol_filter': symbol or None,
+            'operation_filter': operation or None,
             'days': days,
             'limit': limit,
             'sampled_symbols': sorted(sampled_symbols),
+            'sampled_operations': sorted(sampled_operations),
             'audit_log_rows_scanned': len(logs),
             'metrics_samples_used': len(metrics_samples),
         }

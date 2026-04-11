@@ -10,7 +10,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
-from portfolio.models import DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
+from portfolio.models import AdvisoryAggregateAuditLog, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
@@ -2215,6 +2215,66 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertGreaterEqual(response.data['created_count'], 3)
         self.assertIn('generated_by_ai', response.data)
         self.assertEqual(AIAdvisoryComponentRecord.objects.filter(user=self.user, symbol='BCM', is_deleted=False).count(), response.data['created_count'])
+
+    @patch('portfolio.views._sprint17_build_component_templates')
+    @patch('portfolio.views._sprint17_generate_component_templates_with_ai', return_value=[])
+    @patch('portfolio.order_flow.detect_dark_flow')
+    def test_stock_ai_advisory_components_generate_persists_component_metrics_audit_log(
+        self,
+        mock_detect_dark_flow,
+        _mock_generate_with_ai,
+        mock_build_templates,
+    ):
+        self.authenticate()
+        self._create_stock_workspace_advisory(symbol='BCM')
+        mock_detect_dark_flow.return_value = {
+            'signal_type': 'iceberg',
+            'strength': 72,
+            'confidence': 'high',
+            'components': {'tick_rate': {'score': 18}},
+        }
+        mock_build_templates.return_value = [
+            {
+                'symbol': 'BCM',
+                'component_type': 'indicator',
+                'indicator_name': 'RSI',
+                'status': 'bullish',
+                'confidence_score': 8,
+                'suggested_action': 'accumulate',
+                'rationale_text': 'component-metrics-test',
+                'timeframe': '15m',
+                'include_in_summary': True,
+            },
+            {
+                'symbol': 'BCM',
+                'component_type': 'flow',
+                'indicator_name': 'DARK_FLOW',
+                'status': 'bullish',
+                'confidence_score': 9,
+                'suggested_action': 'follow',
+                'rationale_text': 'dark-flow-component',
+                'timeframe': '15m',
+                'include_in_summary': True,
+            },
+        ]
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-components/generate/',
+            {'timeframe': '15m'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        audit = AdvisoryAggregateAuditLog.objects.get(user=self.user, symbol='BCM')
+        self.assertEqual(audit.reason, AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH)
+        self.assertEqual(audit.actor, AdvisoryAggregateAuditLog.ActorChoices.USER)
+        self.assertEqual(audit.metadata_json['operation'], 'component_generation')
+        self.assertEqual(audit.metadata_json['timeframe'], '15m')
+        self.assertEqual(audit.metadata_json['created_count'], 2)
+        self.assertGreaterEqual(audit.metadata_json['latency_ms'], 0)
+        self.assertIn('component_template_generation', audit.metadata_json['phase_timings'])
+        self.assertIn('template_generation_fallback', audit.metadata_json['component_timings'])
+        self.assertIn('indicator:RSI', audit.metadata_json['created_component_keys'])
 
     @patch.dict(
         'os.environ',
