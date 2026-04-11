@@ -250,6 +250,15 @@ Acceptance:
 
 Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
 
+### H2 progress update (2026-04-11)
+
+- H2-step-1 hoan tat: moi `WhaleAdvisory` moi da duoc gan `aggregate_snapshot` (FK den `AdvisoryAggregateSnapshot`).
+- Snapshot duoc persist theo sequence tang dan theo `(user, symbol)` trong advisory generation task.
+- Audit metadata va websocket payload da bo sung `snapshot_id` de trace/replay.
+- Test evidence:
+  - `test_task_persists_metrics_into_aggregate_audit_log`
+  - `test_task_persists_snapshot_with_monotonic_sequence`
+
 Work items:
 
 1. Redis aggregate updater tasks:

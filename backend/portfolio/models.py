@@ -1232,6 +1232,14 @@ class WhaleAdvisory(models.Model):
     next_refresh_at   = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Lần refresh tự động tiếp theo')
     refresh_count     = models.PositiveIntegerField(default=0, verbose_name='Số lần refresh')
     is_auto_generated = models.BooleanField(default=False, verbose_name='Được tạo tự động?')
+    aggregate_snapshot = models.ForeignKey(
+        'AdvisoryAggregateSnapshot',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='advisories',
+        verbose_name='Snapshot aggregate tham chiếu',
+    )
     source            = models.CharField(max_length=20, choices=SourceChoices.choices, default=SourceChoices.WHALE_SIGNAL, verbose_name='Nguồn')
     merged_sources    = models.JSONField(default=list, blank=True, verbose_name='Nguồn trigger gộp')
     primary_source    = models.CharField(max_length=30, blank=True, default='', verbose_name='Nguồn trigger chính')

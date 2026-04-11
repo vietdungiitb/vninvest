@@ -441,6 +441,10 @@ Production rollout preparation pack:
 - `docs/HOLISTIC_ADVISORY_H1_MONITORING_QUERIES_20260411.md`
 - `docs/HOLISTIC_ADVISORY_H1_GO_NO_GO_MINI_GATE_20260411.md`
 
+H2 bootstrap status (2026-04-11):
+- Advisory generation task da persist `AdvisoryAggregateSnapshot` va gan FK `aggregate_snapshot` cho `WhaleAdvisory`.
+- `snapshot_id` duoc dua vao audit metadata + websocket payload cho replay trace.
+
 ### H1 Update (2026-04-11)
 
 - Component-level baseline scope da dat 130 samples tren API path thuc te (admin account), operation filter=`component_generation`.

@@ -8,11 +8,13 @@ import random
 from celery import shared_task
 from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
 from portfolio.models import (
     AdvisoryTokenLog,
+    AdvisoryAggregateSnapshot,
     PriceAlertRule,
     SecuritiesGroup,
     SecuritiesItem,
@@ -359,14 +361,15 @@ def _persist_advisory_metrics_audit_log(
     if latest_existing_advisory is not None:
         before_state = {
             'advisory_id': latest_existing_advisory.id,
-            'severity': latest_existing_advisory.severity,
-            'source': latest_existing_advisory.source,
-            'threshold_source': latest_existing_advisory.threshold_source,
+            'severity': getattr(latest_existing_advisory, 'severity', ''),
+            'source': getattr(latest_existing_advisory, 'source', ''),
+            'threshold_source': getattr(latest_existing_advisory, 'threshold_source', ''),
             'created_at': latest_existing_advisory.created_at.isoformat() if latest_existing_advisory.created_at else None,
         }
 
     after_state = {
         'advisory_id': advisory.id,
+        'snapshot_id': advisory.aggregate_snapshot_id,
         'severity': advisory.severity,
         'source': advisory.source,
         'threshold_source': threshold_source,
@@ -401,6 +404,115 @@ def _get_tokens_used_today(user_id: int) -> int:
         created_at__date=timezone.localdate(),
     ).aggregate(total=Sum('tokens_used'))['total']
     return int(total or 0)
+
+
+def _build_advisory_aggregate_state_payload(
+    *,
+    symbol: str,
+    matched_value_vnd: float,
+    threshold: float,
+    side: str,
+    source: str,
+    severity: str,
+    merged_sources: list[str],
+    primary_source: str,
+    dark_flow_strength: float | None,
+    dark_flow_confidence: str | None,
+    use_concise: bool,
+) -> dict:
+    return {
+        'whale': {
+            'signal_count': 1,
+            'max_value': float(matched_value_vnd or 0),
+            'max_threshold': float(threshold or 0),
+            'side': str(side or 'UNKNOWN').upper(),
+        },
+        'dark_flow': {
+            'detection_count': 1 if dark_flow_strength is not None else 0,
+            'max_strength': float(dark_flow_strength or 0),
+            'max_confidence': str(dark_flow_confidence or 'low'),
+        },
+        'order_flow': {
+            'event_count': 1,
+            'latest_severity': str(severity or WhaleAdvisory.SeverityChoices.INFO),
+        },
+        'market': {
+            'context': 'legacy_h2_bootstrap',
+            'benchmark': {},
+        },
+        'history': [
+            {
+                'timestamp': timezone.now().isoformat(),
+                'event': 'advisory_generation',
+                'source': str(source or WhaleAdvisory.SourceChoices.WHALE_SIGNAL),
+            }
+        ],
+        'quality': {
+            'actionability': 0.0,
+            'noise_ratio': 0.0,
+            'consistency': 1.0 if len(merged_sources or []) > 1 else 0.7,
+        },
+        'updated_at': timezone.now().isoformat(),
+        'source': str(source or WhaleAdvisory.SourceChoices.WHALE_SIGNAL),
+        'merged_sources': list(merged_sources or []),
+        'primary_source': str(primary_source or ''),
+        'severity': str(severity or WhaleAdvisory.SeverityChoices.INFO),
+        'used_concise': bool(use_concise),
+    }
+
+
+def _persist_advisory_aggregate_snapshot(
+    *,
+    user,
+    symbol: str,
+    matched_value_vnd: float,
+    threshold: float,
+    side: str,
+    source: str,
+    severity: str,
+    merged_sources: list[str],
+    primary_source: str,
+    dark_flow_strength: float | None,
+    dark_flow_confidence: str | None,
+    use_concise: bool,
+) -> AdvisoryAggregateSnapshot | None:
+    if user is None:
+        return None
+
+    normalized_symbol = _normalize_symbol(symbol)
+    now = timezone.now()
+    expires_at = now + timedelta(days=30)
+
+    with transaction.atomic():
+        latest_snapshot = (
+            AdvisoryAggregateSnapshot.objects.select_for_update()
+            .filter(user=user, symbol=normalized_symbol)
+            .order_by('-snapshot_seq')
+            .first()
+        )
+        next_seq = (latest_snapshot.snapshot_seq + 1) if latest_snapshot is not None else 1
+        state_json = _build_advisory_aggregate_state_payload(
+            symbol=normalized_symbol,
+            matched_value_vnd=matched_value_vnd,
+            threshold=threshold,
+            side=side,
+            source=source,
+            severity=severity,
+            merged_sources=merged_sources,
+            primary_source=primary_source,
+            dark_flow_strength=dark_flow_strength,
+            dark_flow_confidence=dark_flow_confidence,
+            use_concise=use_concise,
+        )
+        state_json['seq'] = next_seq
+
+        return AdvisoryAggregateSnapshot.objects.create(
+            user=user,
+            symbol=normalized_symbol,
+            snapshot_seq=next_seq,
+            state_json=state_json,
+            expires_at=expires_at,
+        )
 
 
 def _get_remaining_advisory_budget(user_config: UserConfig) -> int:
@@ -1215,6 +1327,21 @@ def generate_whale_advisory_task(
         },
     )
 
+    aggregate_snapshot = _persist_advisory_aggregate_snapshot(
+        user=target_user,
+        symbol=symbol,
+        matched_value_vnd=matched_value_vnd,
+        threshold=float(threshold or 0),
+        side=side,
+        source=source_key,
+        severity=resolved_severity,
+        merged_sources=normalized_merged_sources,
+        primary_source=normalized_primary_source,
+        dark_flow_strength=dark_flow_strength,
+        dark_flow_confidence=dark_flow_confidence,
+        use_concise=use_concise,
+    )
+
     start_advisory_phase('persist_advisory')
     advisory = WhaleAdvisory.objects.create(
         user=target_user,
@@ -1231,6 +1358,7 @@ def generate_whale_advisory_task(
         next_refresh_at=_resolve_next_refresh_at(user_cfg),
         refresh_count=refresh_count,
         is_auto_generated=source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        aggregate_snapshot=aggregate_snapshot,
         source=source_key,
         merged_sources=normalized_merged_sources,
         primary_source=normalized_primary_source,
@@ -1275,6 +1403,7 @@ def generate_whale_advisory_task(
                     'ts': advisory.created_at.isoformat(),
                     'created_at': advisory.created_at.isoformat(),
                     'id': advisory.id,
+                    'snapshot_id': advisory.aggregate_snapshot_id,
                 },
             },
         )
@@ -1297,6 +1426,7 @@ def generate_whale_advisory_task(
                 'merged_sources': normalized_merged_sources,
                 'primary_source': normalized_primary_source,
                 'used_concise': use_concise,
+                'snapshot_id': advisory.aggregate_snapshot_id,
             }
         )
         _persist_advisory_metrics_audit_log(
@@ -1327,6 +1457,7 @@ def generate_whale_advisory_task(
         'merged_sources': normalized_merged_sources,
         'primary_source': normalized_primary_source,
         'used_concise': use_concise,
+        'snapshot_id': advisory.aggregate_snapshot_id,
     }
 
 
