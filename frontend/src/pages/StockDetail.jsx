@@ -161,6 +161,24 @@ function advisoryRetryOutcomeBadgeClass(outcome) {
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
 
+function advisoryGovernanceEndpointLabel(endpoint, t) {
+  const map = {
+    stock_ai_advisory_session_api: t('stockDetail.governanceEndpointSessionApi'),
+    stock_ai_advisory_observability_api: t('stockDetail.governanceEndpointObservabilityApi'),
+  };
+  return map[String(endpoint || '').toLowerCase()] || endpoint || t('common.notAvailable');
+}
+
+function advisoryGovernanceReasonLabel(reason, t) {
+  const map = {
+    global_disabled: t('stockDetail.governanceReasonGlobalDisabled'),
+    allowlist_blocked: t('stockDetail.governanceReasonAllowlistBlocked'),
+    staff_only: t('stockDetail.governanceReasonStaffOnly'),
+    all: t('stockDetail.governanceReasonAllAllowed'),
+  };
+  return map[String(reason || '').toLowerCase()] || reason || t('common.notAvailable');
+}
+
 function KLineChartComponent({ data, activePeriod, onPeriodChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
@@ -2659,7 +2677,7 @@ export default function StockDetail() {
                         >
                           <option value="all">{t('stockDetail.retryFilterAll')}</option>
                           {governanceEndpointOptions.map((endpoint) => (
-                            <option key={endpoint} value={endpoint}>{endpoint}</option>
+                            <option key={endpoint} value={endpoint}>{advisoryGovernanceEndpointLabel(endpoint, t)}</option>
                           ))}
                         </select>
                         <span className="text-[11px] text-slate-500">{t('stockDetail.governanceFilterReason')}</span>
@@ -2670,7 +2688,7 @@ export default function StockDetail() {
                         >
                           <option value="all">{t('stockDetail.retryFilterAll')}</option>
                           {governanceReasonOptions.map((reason) => (
-                            <option key={reason} value={reason}>{reason}</option>
+                            <option key={reason} value={reason}>{advisoryGovernanceReasonLabel(reason, t)}</option>
                           ))}
                         </select>
                         {advisoryObservabilityLoading ? (
@@ -2768,7 +2786,7 @@ export default function StockDetail() {
                                 />
                               </div>
                               <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
-                                <span>{t('stockDetail.governanceTopReason')}: {row.topReason}</span>
+                                <span>{t('stockDetail.governanceTopReason')}: {advisoryGovernanceReasonLabel(row.topReason, t)}</span>
                                 <span>{t('stockDetail.governanceTopCohort')}: {row.topCohort}</span>
                               </div>
                             </div>

@@ -518,11 +518,15 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - Test/build evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_applies_governance_endpoint_reason_filters`
     - `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-7 hoan tat (UX nhan de doc nhanh cho governance filters):
+  - map endpoint raw -> nhan de hien thi (`Session API`, `Observability API`) trong dropdown filter.
+  - map deny reason raw -> nhan de doc nhanh theo ngon ngu (vi/en) cho dropdown + trend rows.
+  - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung endpoint suggestion labels (thay endpoint raw bang nhan de doc nhanh) trong governance filter.
+2. Bo sung chips breakdown theo endpoint/reason ngay tren governance block de giam thao tac filter.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:
