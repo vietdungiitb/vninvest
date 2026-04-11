@@ -292,7 +292,7 @@ export const getWhaleAdvisories = (params = {}) => {
   return apiClient.get(`/portfolio/ai-advisory/${suffix}`);
 };
 export const refreshWhaleAdvisory = (symbol) =>
-  apiClient.post(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/refresh/`);
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
 export const deleteCurrentWhaleAdvisory = (symbol) =>
   apiClient.delete(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/current/`);
 export const getAdvisoryAutoRefreshInfo = (symbol) =>
