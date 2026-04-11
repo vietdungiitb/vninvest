@@ -5102,6 +5102,11 @@ def _build_advisory_trace_payload_for_user(
     advisory_id: int | None,
     snapshot_id: int | None,
     max_logs: int,
+    audit_reason: str = '',
+    audit_actor: str = '',
+    audit_start_at=None,
+    audit_end_at=None,
+    strict_after_state: bool = False,
 ) -> dict:
     advisory = None
     snapshot = None
@@ -5155,9 +5160,17 @@ def _build_advisory_trace_payload_for_user(
             metadata.get('snapshot_id'),
         }
 
-        advisory_ok = advisory_id is None or advisory_id in advisory_candidates
-        snapshot_ok = snapshot_id is None or snapshot_id in snapshot_candidates
-        return advisory_ok and snapshot_ok
+        if strict_after_state:
+            advisory_ok = advisory_id is None or after_state.get('advisory_id') == advisory_id
+            snapshot_ok = snapshot_id is None or after_state.get('snapshot_id') == snapshot_id
+        else:
+            advisory_ok = advisory_id is None or advisory_id in advisory_candidates
+            snapshot_ok = snapshot_id is None or snapshot_id in snapshot_candidates
+        reason_ok = not audit_reason or log_item.reason == audit_reason
+        actor_ok = not audit_actor or log_item.actor == audit_actor
+        start_ok = audit_start_at is None or (log_item.created_at is not None and log_item.created_at >= audit_start_at)
+        end_ok = audit_end_at is None or (log_item.created_at is not None and log_item.created_at <= audit_end_at)
+        return advisory_ok and snapshot_ok and reason_ok and actor_ok and start_ok and end_ok
 
     matched_logs = []
     logs_qs = AdvisoryAggregateAuditLog.objects.filter(user=user, symbol=symbol).order_by('-created_at')
@@ -5215,6 +5228,8 @@ def _build_advisory_trace_payload_for_user(
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_trace_api(request, symbol: str):
+    from django.utils.dateparse import parse_datetime
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -5222,6 +5237,10 @@ def stock_ai_advisory_trace_api(request, symbol: str):
     advisory_id_raw = request.query_params.get('advisory_id')
     snapshot_id_raw = request.query_params.get('snapshot_id')
     max_logs_raw = request.query_params.get('max_logs')
+    reason_raw = str(request.query_params.get('reason') or '').strip().lower()
+    actor_raw = str(request.query_params.get('actor') or '').strip().lower()
+    start_at_raw = str(request.query_params.get('start_at') or '').strip()
+    end_at_raw = str(request.query_params.get('end_at') or '').strip()
 
     try:
         advisory_id = int(advisory_id_raw) if advisory_id_raw not in (None, '') else None
@@ -5238,12 +5257,36 @@ def stock_ai_advisory_trace_api(request, symbol: str):
     except (TypeError, ValueError):
         return Response({'ok': False, 'message': 'max_logs khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    valid_reasons = {value for value, _ in AdvisoryAggregateAuditLog.ReasonChoices.choices}
+    valid_actors = {value for value, _ in AdvisoryAggregateAuditLog.ActorChoices.choices}
+    if reason_raw and reason_raw not in valid_reasons:
+        return Response({'ok': False, 'message': 'reason khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+    if actor_raw and actor_raw not in valid_actors:
+        return Response({'ok': False, 'message': 'actor khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    start_at = None
+    end_at = None
+    if start_at_raw:
+        start_at = parse_datetime(start_at_raw)
+        if not start_at:
+            return Response({'ok': False, 'message': 'start_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if end_at_raw:
+        end_at = parse_datetime(end_at_raw)
+        if not end_at:
+            return Response({'ok': False, 'message': 'end_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if start_at is not None and end_at is not None and start_at > end_at:
+        return Response({'ok': False, 'message': 'start_at phai <= end_at.'}, status=status.HTTP_400_BAD_REQUEST)
+
     payload = _build_advisory_trace_payload_for_user(
         user=request.user,
         symbol=normalized_symbol,
         advisory_id=advisory_id,
         snapshot_id=snapshot_id,
         max_logs=max_logs,
+        audit_reason=reason_raw,
+        audit_actor=actor_raw,
+        audit_start_at=start_at,
+        audit_end_at=end_at,
     )
     if not payload.get('ok'):
         return Response(payload, status=status.HTTP_404_NOT_FOUND)
@@ -5254,12 +5297,18 @@ def stock_ai_advisory_trace_api(request, symbol: str):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_trace_list_api(request, symbol: str):
+    from django.utils.dateparse import parse_datetime
+
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
     limit_raw = request.query_params.get('limit')
     cursor_raw = request.query_params.get('cursor')
+    reason_raw = str(request.query_params.get('reason') or '').strip().lower()
+    actor_raw = str(request.query_params.get('actor') or '').strip().lower()
+    start_at_raw = str(request.query_params.get('start_at') or '').strip()
+    end_at_raw = str(request.query_params.get('end_at') or '').strip()
 
     try:
         limit = max(int(limit_raw or 20), 1)
@@ -5272,6 +5321,26 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
     except (TypeError, ValueError):
         return Response({'ok': False, 'message': 'cursor khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    valid_reasons = {value for value, _ in AdvisoryAggregateAuditLog.ReasonChoices.choices}
+    valid_actors = {value for value, _ in AdvisoryAggregateAuditLog.ActorChoices.choices}
+    if reason_raw and reason_raw not in valid_reasons:
+        return Response({'ok': False, 'message': 'reason khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+    if actor_raw and actor_raw not in valid_actors:
+        return Response({'ok': False, 'message': 'actor khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    start_at = None
+    end_at = None
+    if start_at_raw:
+        start_at = parse_datetime(start_at_raw)
+        if not start_at:
+            return Response({'ok': False, 'message': 'start_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if end_at_raw:
+        end_at = parse_datetime(end_at_raw)
+        if not end_at:
+            return Response({'ok': False, 'message': 'end_at khong dung dinh dang ISO datetime.'}, status=status.HTTP_400_BAD_REQUEST)
+    if start_at is not None and end_at is not None and start_at > end_at:
+        return Response({'ok': False, 'message': 'start_at phai <= end_at.'}, status=status.HTTP_400_BAD_REQUEST)
+
     advisories_qs = (
         WhaleAdvisory.objects.select_related('aggregate_snapshot')
         .filter(user=request.user, symbol=normalized_symbol)
@@ -5280,9 +5349,14 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
     if cursor is not None:
         advisories_qs = advisories_qs.filter(id__lt=cursor)
 
-    advisories = list(advisories_qs[:limit])
+    advisories = []
+    for advisory_item in advisories_qs.iterator():
+        advisories.append(advisory_item)
+        if len(advisories) >= 500:
+            break
 
     items = []
+    has_audit_filters = bool(reason_raw or actor_raw or start_at is not None or end_at is not None)
     for advisory in advisories:
         snapshot = advisory.aggregate_snapshot
         trace_payload = _build_advisory_trace_payload_for_user(
@@ -5291,8 +5365,16 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
             advisory_id=advisory.id,
             snapshot_id=snapshot.id if snapshot is not None else None,
             max_logs=5,
+            audit_reason=reason_raw,
+            audit_actor=actor_raw,
+            audit_start_at=start_at,
+            audit_end_at=end_at,
+            strict_after_state=True,
         )
         if not trace_payload.get('ok'):
+            continue
+        matched_count = trace_payload.get('counts', {}).get('matched_audit_logs', 0)
+        if has_audit_filters and matched_count <= 0:
             continue
 
         items.append(
@@ -5303,7 +5385,7 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
                 'source': advisory.source,
                 'snapshot_id': advisory.aggregate_snapshot_id,
                 'snapshot_seq': snapshot.snapshot_seq if snapshot is not None else None,
-                'matched_audit_logs': trace_payload.get('counts', {}).get('matched_audit_logs', 0),
+                'matched_audit_logs': matched_count,
                 'last_audit_reason': (
                     (trace_payload.get('audit_logs') or [{}])[0].get('reason')
                     if trace_payload.get('audit_logs')
@@ -5311,19 +5393,28 @@ def stock_ai_advisory_trace_list_api(request, symbol: str):
                 ),
             }
         )
+        if len(items) >= limit:
+            break
 
-    next_cursor = items[-1]['advisory_id'] if len(items) == limit else None
+    has_more = len(items) == limit and advisories_qs.filter(id__lt=items[-1]['advisory_id']).exists()
+    next_cursor = items[-1]['advisory_id'] if has_more else None
 
     return Response(
         {
             'ok': True,
             'symbol': normalized_symbol,
             'items': items,
+            'filters': {
+                'reason': reason_raw or None,
+                'actor': actor_raw or None,
+                'start_at': start_at_raw or None,
+                'end_at': end_at_raw or None,
+            },
             'paging': {
                 'limit': limit,
                 'cursor': cursor,
                 'next_cursor': next_cursor,
-                'has_more': bool(next_cursor),
+                'has_more': has_more,
             },
         },
         status=status.HTTP_200_OK,

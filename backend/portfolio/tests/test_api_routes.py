@@ -2366,6 +2366,94 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(second.data['paging']['has_more'])
         self.assertIsNone(second.data['paging']['next_cursor'])
 
+    def test_stock_ai_advisory_trace_list_supports_reason_actor_time_filters(self):
+        self.authenticate()
+        now = timezone.now()
+
+        snapshot_old = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=1,
+            state_json={'seq': 1},
+        )
+        advisory_old = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_000_000_001,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='old trace summary',
+            ai_detail='old trace detail',
+            ai_provider='openclaw',
+            ai_model='default',
+            aggregate_snapshot=snapshot_old,
+        )
+        old_log = AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory_old.id - 1, 'snapshot_id': 0},
+            after_state_json={'advisory_id': advisory_old.id, 'snapshot_id': snapshot_old.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id='unit-test-user',
+            metadata_json={'advisory_id': advisory_old.id, 'snapshot_id': snapshot_old.id},
+        )
+        AdvisoryAggregateAuditLog.objects.filter(pk=old_log.pk).update(created_at=now - timedelta(days=2))
+
+        snapshot_new = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=2,
+            state_json={'seq': 2},
+        )
+        advisory_new = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_000_000_002,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='new trace summary',
+            ai_detail='new trace detail',
+            ai_provider='openclaw',
+            ai_model='default',
+            aggregate_snapshot=snapshot_new,
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory_new.id - 1, 'snapshot_id': snapshot_old.id},
+            after_state_json={'advisory_id': advisory_new.id, 'snapshot_id': snapshot_new.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='unit-test-system',
+            metadata_json={'advisory_id': advisory_new.id, 'snapshot_id': snapshot_new.id},
+        )
+
+        start_at = (now - timedelta(hours=1)).isoformat()
+        response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-traces/',
+            {
+                'limit': 10,
+                'reason': 'new_whale_event',
+                'actor': 'system',
+                'start_at': start_at,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(response.data['items'][0]['advisory_id'], advisory_new.id)
+        self.assertEqual(response.data['items'][0]['last_audit_reason'], AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT)
+        self.assertEqual(response.data['filters']['reason'], 'new_whale_event')
+        self.assertEqual(response.data['filters']['actor'], 'system')
+
+    def test_stock_ai_advisory_trace_list_returns_400_for_invalid_reason_filter(self):
+        self.authenticate()
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-traces/?reason=invalid_reason')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['ok'])
+
     @patch.dict(
         'os.environ',
         {
