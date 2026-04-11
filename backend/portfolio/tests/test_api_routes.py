@@ -1399,7 +1399,7 @@ class ApiRouteSmokeTests(APITestCase):
             user=self.user,
             symbol='BCM',
             snapshot_seq=7,
-            state_json={'seq': 7},
+            state_json={'seq': 7, 'quality': {'actionability': 0.82}},
         )
         advisory = WhaleAdvisory.objects.create(
             user=self.user,
@@ -1412,6 +1412,7 @@ class ApiRouteSmokeTests(APITestCase):
             ai_provider='copilot',
             ai_model='openai/gpt-4o',
             aggregate_snapshot=snapshot,
+            severity=WhaleAdvisory.SeverityChoices.WARNING,
         )
         AdvisoryAggregateAuditLog.objects.create(
             user=self.user,
@@ -1434,6 +1435,11 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['aggregate']['snapshot_seq'], 7)
         self.assertEqual(response.data['aggregate']['last_audit_reason'], AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT)
         self.assertEqual(response.data['aggregate']['last_audit_actor'], AdvisoryAggregateAuditLog.ActorChoices.SYSTEM)
+        self.assertIn('decision', response.data['aggregate'])
+        self.assertEqual(response.data['aggregate']['decision']['action'], 'accumulate')
+        self.assertEqual(response.data['aggregate']['decision']['risk'], 'medium')
+        self.assertEqual(response.data['aggregate']['decision']['score_band'], 'high')
+        self.assertEqual(response.data['aggregate']['decision']['score'], 0.82)
 
     def test_stock_ai_advisory_session_get_accepts_contract_v2_query_override(self):
         self.authenticate()

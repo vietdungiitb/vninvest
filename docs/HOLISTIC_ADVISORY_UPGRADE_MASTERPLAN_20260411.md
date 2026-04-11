@@ -282,6 +282,10 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
   - Test evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_accepts_contract_v2_query_override`
     - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_400_for_invalid_contract_query`
+- H2-step-8 hoan tat: bo sung `aggregate.decision` digest (score/action/risk) cho Session API v2.
+  - `aggregate.decision` gom: `score`, `score_band`, `action`, `risk` de FE/replay su dung nhat quan.
+  - uu tien lay `score` tu `snapshot.state_json.quality.actionability`; fallback theo ratio `matched_value/threshold`.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
 
 Work items:
 

@@ -4905,6 +4905,50 @@ def stock_ai_advisory_session_api(request, symbol: str):
         payload['effective_ai_source'] = ai_status.get('source')
         payload['contract_version'] = 'v1'
 
+        def _build_decision_digest(advisory_obj, snapshot_obj):
+            if advisory_obj is None:
+                return {
+                    'score': 0.0,
+                    'score_band': 'neutral',
+                    'action': 'watch',
+                    'risk': 'medium',
+                }
+
+            state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
+            quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
+
+            score_value = quality.get('actionability')
+            if score_value is None:
+                threshold = float(advisory_obj.threshold or 0.0)
+                ratio = (float(advisory_obj.matched_value or 0.0) / threshold) if threshold > 0 else 0.0
+                score_value = max(0.0, min(ratio / 2.0, 1.0))
+            score_value = max(0.0, min(float(score_value or 0.0), 1.0))
+
+            if score_value >= 0.75:
+                score_band = 'high'
+            elif score_value >= 0.45:
+                score_band = 'medium'
+            else:
+                score_band = 'low'
+
+            action_map = {
+                'BUY': 'accumulate',
+                'SELL': 'reduce',
+                'UNKNOWN': 'watch',
+            }
+            risk_map = {
+                WhaleAdvisory.SeverityChoices.URGENT: 'high',
+                WhaleAdvisory.SeverityChoices.WARNING: 'medium',
+                WhaleAdvisory.SeverityChoices.INFO: 'low',
+            }
+
+            return {
+                'score': round(score_value, 4),
+                'score_band': score_band,
+                'action': action_map.get(str(advisory_obj.side or '').upper(), 'watch'),
+                'risk': risk_map.get(advisory_obj.severity, 'medium'),
+            }
+
         if session_v2_enabled:
             trace_payload = _build_advisory_trace_payload_for_user(
                 user=request.user,
@@ -4916,6 +4960,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
             )
             latest_log = (trace_payload.get('audit_logs') or [None])[0] if trace_payload.get('ok') else None
             snapshot_obj = latest_advisory.aggregate_snapshot if latest_advisory is not None else None
+            decision_digest = _build_decision_digest(latest_advisory, snapshot_obj)
             payload['contract_version'] = 'v2'
             payload['aggregate'] = {
                 'advisory_id': latest_advisory.id if latest_advisory is not None else None,
@@ -4924,6 +4969,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 'last_audit_reason': latest_log.get('reason') if latest_log else None,
                 'last_audit_actor': latest_log.get('actor') if latest_log else None,
                 'last_audit_at': latest_log.get('created_at') if latest_log else None,
+                'decision': decision_digest,
             }
         return payload
 
