@@ -5251,6 +5251,85 @@ def stock_ai_advisory_trace_api(request, symbol: str):
     return Response(payload, status=status.HTTP_200_OK)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_trace_list_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    limit_raw = request.query_params.get('limit')
+    cursor_raw = request.query_params.get('cursor')
+
+    try:
+        limit = max(int(limit_raw or 20), 1)
+        limit = min(limit, 100)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'limit khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        cursor = int(cursor_raw) if cursor_raw not in (None, '') else None
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'cursor khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    advisories_qs = (
+        WhaleAdvisory.objects.select_related('aggregate_snapshot')
+        .filter(user=request.user, symbol=normalized_symbol)
+        .order_by('-id')
+    )
+    if cursor is not None:
+        advisories_qs = advisories_qs.filter(id__lt=cursor)
+
+    advisories = list(advisories_qs[:limit])
+
+    items = []
+    for advisory in advisories:
+        snapshot = advisory.aggregate_snapshot
+        trace_payload = _build_advisory_trace_payload_for_user(
+            user=request.user,
+            symbol=normalized_symbol,
+            advisory_id=advisory.id,
+            snapshot_id=snapshot.id if snapshot is not None else None,
+            max_logs=5,
+        )
+        if not trace_payload.get('ok'):
+            continue
+
+        items.append(
+            {
+                'advisory_id': advisory.id,
+                'created_at': advisory.created_at.isoformat() if advisory.created_at else None,
+                'severity': advisory.severity,
+                'source': advisory.source,
+                'snapshot_id': advisory.aggregate_snapshot_id,
+                'snapshot_seq': snapshot.snapshot_seq if snapshot is not None else None,
+                'matched_audit_logs': trace_payload.get('counts', {}).get('matched_audit_logs', 0),
+                'last_audit_reason': (
+                    (trace_payload.get('audit_logs') or [{}])[0].get('reason')
+                    if trace_payload.get('audit_logs')
+                    else ''
+                ),
+            }
+        )
+
+    next_cursor = items[-1]['advisory_id'] if len(items) == limit else None
+
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'items': items,
+            'paging': {
+                'limit': limit,
+                'cursor': cursor,
+                'next_cursor': next_cursor,
+                'has_more': bool(next_cursor),
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Screener — CRUD + Evaluator
 # ---------------------------------------------------------------------------

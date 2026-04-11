@@ -2319,6 +2319,53 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['snapshot']['snapshot_seq'], 1)
         self.assertGreaterEqual(response.data['counts']['matched_audit_logs'], 1)
 
+    def test_stock_ai_advisory_trace_list_supports_cursor_pagination(self):
+        self.authenticate()
+        for seq in (1, 2, 3):
+            snapshot = AdvisoryAggregateSnapshot.objects.create(
+                user=self.user,
+                symbol='BCM',
+                snapshot_seq=seq,
+                state_json={'seq': seq},
+            )
+            advisory = WhaleAdvisory.objects.create(
+                user=self.user,
+                symbol='BCM',
+                matched_value=6_000_000_000 + seq,
+                side='BUY',
+                threshold=5_000_000_000,
+                ai_summary=f'trace summary {seq}',
+                ai_detail=f'trace detail {seq}',
+                ai_provider='openclaw',
+                ai_model='default',
+                aggregate_snapshot=snapshot,
+            )
+            AdvisoryAggregateAuditLog.objects.create(
+                user=self.user,
+                symbol='BCM',
+                before_state_json={'advisory_id': advisory.id - 1, 'snapshot_id': max(seq - 1, 0)},
+                after_state_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+                reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+                actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+                actor_id='unit-test',
+                metadata_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+            )
+
+        first = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-traces/?limit=2')
+        self.assertEqual(first.status_code, status.HTTP_200_OK)
+        self.assertTrue(first.data['ok'])
+        self.assertEqual(len(first.data['items']), 2)
+        self.assertTrue(first.data['paging']['has_more'])
+        self.assertIsNotNone(first.data['paging']['next_cursor'])
+
+        next_cursor = first.data['paging']['next_cursor']
+        second = self.client.get(f'/api/stock-management/stocks/BCM/ai-advisory-traces/?limit=2&cursor={next_cursor}')
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertTrue(second.data['ok'])
+        self.assertEqual(len(second.data['items']), 1)
+        self.assertFalse(second.data['paging']['has_more'])
+        self.assertIsNone(second.data['paging']['next_cursor'])
+
     @patch.dict(
         'os.environ',
         {

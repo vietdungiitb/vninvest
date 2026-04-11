@@ -264,6 +264,9 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
 - H2-step-3 hoan tat: bo sung read-only API replay trace cho stock workspace:
   - `GET /api/stock-management/stocks/<symbol>/ai-advisory-trace/?advisory_id=<id>&max_logs=<n>`
   - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_trace_returns_snapshot_and_matched_audit_logs`
+- H2-step-4 hoan tat: bo sung API history replay theo symbol (cursor pagination):
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-traces/?limit=<n>&cursor=<advisory_id>`
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_trace_list_supports_cursor_pagination`
 
 Work items:
 
