@@ -340,7 +340,25 @@ Each advisory generation will:
    }
    ```
 
-### 5.3 Comparative Analysis (Post-Sprint H1)
+### 5.3 Rebuild Command
+
+Report co the duoc tai tao truc tiep tu sample that da persist trong `AdvisoryAggregateAuditLog`:
+
+```powershell
+cd backend
+$env:DB_ENGINE='sqlite'
+& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py generate_advisory_baseline_report --username <username> --symbol <symbol> --days 30 --limit 200
+```
+
+Ghi report ra file JSON:
+
+```powershell
+cd backend
+$env:DB_ENGINE='sqlite'
+& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py generate_advisory_baseline_report --username <username> --symbol <symbol> --days 30 --limit 200 --output ..\docs\baseline_<username>_<symbol>.json
+```
+
+### 5.4 Comparative Analysis (Post-Sprint H1)
 
 After implementing corrections from PR-1 through PR-4, we expect:
 - **Latency**: 10-15% reduction (fewer error paths, better data alignment)
