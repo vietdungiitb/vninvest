@@ -47,3 +47,15 @@ export function resolveAdvisoryConflictState(responseData, t) {
     executiveSummaries: Array.isArray(payload.executive_summaries) ? payload.executive_summaries : [],
   };
 }
+
+export function shouldAutoRetryAdvisoryConflict(conflictState) {
+  const reason = String(conflictState?.reason || '').toLowerCase();
+  return reason !== 'ai_not_configured';
+}
+
+export function getAdvisoryConflictRetryDelayMs(attempt) {
+  const safeAttempt = Number.isFinite(Number(attempt)) ? Math.max(1, Number(attempt)) : 1;
+  const baseDelayMs = 2000;
+  const computed = baseDelayMs * (2 ** (safeAttempt - 1));
+  return Math.min(computed, 15000);
+}

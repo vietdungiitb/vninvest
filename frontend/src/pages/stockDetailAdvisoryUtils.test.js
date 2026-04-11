@@ -1,4 +1,8 @@
-import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
+import {
+  getAdvisoryConflictRetryDelayMs,
+  resolveAdvisoryConflictState,
+  shouldAutoRetryAdvisoryConflict,
+} from './stockDetailAdvisoryUtils';
 
 describe('resolveAdvisoryConflictState', () => {
   it('maps missing system settings conflict to specific translated message', () => {
@@ -37,5 +41,23 @@ describe('resolveAdvisoryConflictState', () => {
 
     expect(state.message).toBe('Backend says configure AI first');
     expect(state.components).toEqual([{ id: 10 }]);
+  });
+});
+
+describe('advisory conflict retry helpers', () => {
+  it('does not auto retry when AI is not configured', () => {
+    expect(shouldAutoRetryAdvisoryConflict({ reason: 'ai_not_configured' })).toBe(false);
+  });
+
+  it('auto retries for transient conflict reasons', () => {
+    expect(shouldAutoRetryAdvisoryConflict({ reason: 'session_conflict' })).toBe(true);
+    expect(shouldAutoRetryAdvisoryConflict({ reason: '' })).toBe(true);
+  });
+
+  it('computes exponential delay with cap', () => {
+    expect(getAdvisoryConflictRetryDelayMs(1)).toBe(2000);
+    expect(getAdvisoryConflictRetryDelayMs(2)).toBe(4000);
+    expect(getAdvisoryConflictRetryDelayMs(3)).toBe(8000);
+    expect(getAdvisoryConflictRetryDelayMs(5)).toBe(15000);
   });
 });

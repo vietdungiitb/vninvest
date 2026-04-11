@@ -530,6 +530,7 @@ const vi = {
     loadAiAdvisoryFailed: 'Không tải được AI Advisory cho mã này.',
     aiAdvisoryConflictAiNotConfigured: 'AI Advisory chưa được cấu hình cho tài khoản hiện tại.',
     aiAdvisoryConflictMissingSystemSettings: 'AI Advisory chưa sẵn sàng do thiếu cấu hình hệ thống AI.',
+    aiAdvisoryAutoRetryInSeconds: 'Hệ thống sẽ tự thử lại sau {seconds}s.',
     retryAiAdvisory: 'Thử lại AI Advisory',
     loadSymbolDataFailed: 'Không tải được dữ liệu cho {symbol}.',
     removedFromShortlist: 'Đã bỏ {symbol} khỏi shortlist.',

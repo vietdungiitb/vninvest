@@ -40,7 +40,11 @@ import {
 import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
-import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
+import {
+  getAdvisoryConflictRetryDelayMs,
+  resolveAdvisoryConflictState,
+  shouldAutoRetryAdvisoryConflict,
+} from './stockDetailAdvisoryUtils';
 
 // Giá hiển thị theo chuẩn bảng giá: en-US, 2 chữ số thập phân, không kèm đơn vị trong từng ô.
 
@@ -1308,6 +1312,8 @@ export default function StockDetail() {
   const [orderFlowData, setOrderFlowData] = useState(null);
   const [orderFlowLoading, setOrderFlowLoading] = useState(true);
   const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
+  const advisoryConflictRetryTimeoutRef = useRef(null);
+  const advisoryConflictRetryCountRef = useRef(0);
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1337,6 +1343,11 @@ export default function StockDetail() {
     try {
       const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
       const payload = response?.data || {};
+      if (advisoryConflictRetryTimeoutRef.current) {
+        clearTimeout(advisoryConflictRetryTimeoutRef.current);
+        advisoryConflictRetryTimeoutRef.current = null;
+      }
+      advisoryConflictRetryCountRef.current = 0;
       setAdvisorySessionConflict(false);
       setAdvisorySession(payload.advisory || null);
       setAdvisoryAggregate(payload.aggregate || null);
@@ -1373,10 +1384,36 @@ export default function StockDetail() {
           }
           return conflictState.components[0]?.id || null;
         });
-        setAdvisoryMessage(conflictState.message);
+        const canAutoRetry = shouldAutoRetryAdvisoryConflict(conflictState);
+        const attempt = advisoryConflictRetryCountRef.current + 1;
+        const maxRetryAttempts = 3;
+
+        if (canAutoRetry && attempt <= maxRetryAttempts) {
+          const retryDelayMs = getAdvisoryConflictRetryDelayMs(attempt);
+          advisoryConflictRetryCountRef.current = attempt;
+
+          if (advisoryConflictRetryTimeoutRef.current) {
+            clearTimeout(advisoryConflictRetryTimeoutRef.current);
+          }
+
+          advisoryConflictRetryTimeoutRef.current = setTimeout(() => {
+            advisoryConflictRetryTimeoutRef.current = null;
+            fetchAdvisorySession({ silent: true });
+          }, retryDelayMs);
+
+          const retrySeconds = Math.max(1, Math.ceil(retryDelayMs / 1000));
+          setAdvisoryMessage(`${conflictState.message} ${t('stockDetail.aiAdvisoryAutoRetryInSeconds', { seconds: retrySeconds })}`);
+        } else {
+          setAdvisoryMessage(conflictState.message);
+        }
         setAdvisorySessionConflict(true);
         return;
       }
+      if (advisoryConflictRetryTimeoutRef.current) {
+        clearTimeout(advisoryConflictRetryTimeoutRef.current);
+        advisoryConflictRetryTimeoutRef.current = null;
+      }
+      advisoryConflictRetryCountRef.current = 0;
       setAdvisorySessionConflict(false);
       setAdvisoryMessage(err?.response?.data?.message || t('stockDetail.loadAiAdvisoryFailed'));
     } finally {
@@ -1385,6 +1422,21 @@ export default function StockDetail() {
       }
     }
   }, [normalizedSymbol, t]);
+
+  useEffect(() => () => {
+    if (advisoryConflictRetryTimeoutRef.current) {
+      clearTimeout(advisoryConflictRetryTimeoutRef.current);
+      advisoryConflictRetryTimeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    advisoryConflictRetryCountRef.current = 0;
+    if (advisoryConflictRetryTimeoutRef.current) {
+      clearTimeout(advisoryConflictRetryTimeoutRef.current);
+      advisoryConflictRetryTimeoutRef.current = null;
+    }
+  }, [normalizedSymbol]);
 
   const fetchAdvisoryObservability = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;

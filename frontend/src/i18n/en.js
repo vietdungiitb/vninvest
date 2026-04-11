@@ -527,6 +527,7 @@ const en = {
     loadAiAdvisoryFailed: 'Unable to load AI advisory for this symbol.',
     aiAdvisoryConflictAiNotConfigured: 'AI advisory is not configured for this account yet.',
     aiAdvisoryConflictMissingSystemSettings: 'AI advisory service is not ready because system AI settings are missing.',
+    aiAdvisoryAutoRetryInSeconds: 'System will retry automatically in {seconds}s.',
     retryAiAdvisory: 'Retry AI advisory',
     loadSymbolDataFailed: 'Unable to load data for {symbol}.',
     removedFromShortlist: 'Removed {symbol} from shortlist.',
