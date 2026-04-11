@@ -239,7 +239,9 @@ def _is_tick_row_in_window(row, window: str, now=None) -> bool:
     start_dt = _window_start_datetime(normalized, now=resolved_now)
     if start_dt is None:
         return True
-    return start_dt <= row_dt <= resolved_now
+    # DB ticks are historical records; keep lower-bound window semantics only.
+    # Avoid dropping valid rows when runtime clock/timezone is earlier than trade_time.
+    return start_dt <= row_dt
 
 
 # ---------------------------------------------------------------------------

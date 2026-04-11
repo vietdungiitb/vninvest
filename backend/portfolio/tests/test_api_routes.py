@@ -3486,7 +3486,7 @@ class ApiRouteSmokeTests(APITestCase):
         )
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['filters']['scope'], 'tracked')
@@ -3523,11 +3523,16 @@ class ApiRouteSmokeTests(APITestCase):
             stream_id='db-fpt-1',
         )
         mock_stream_reader.return_value.get_intraday_ticks.return_value = [
-            {'price': 101000, 'volume': 10000, 'side': 'BUY', 'ts': '2026-04-03T09:20:00+07:00'},
+            {
+                'price': 101000,
+                'volume': 10000,
+                'side': 'BUY',
+                'ts': (timezone.now() - timedelta(minutes=1)).isoformat(),
+            },
         ]
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['source'], 'redis_stream')
@@ -3573,11 +3578,16 @@ class ApiRouteSmokeTests(APITestCase):
         TrackedSymbol.objects.create(user=self.user, symbol='FPT')
         mock_stream_reader.return_value.get_intraday_ticks.return_value = []
         mock_vnstock.return_value.stock.return_value.quote.intraday.return_value = pd.DataFrame([
-            {'time': '2026-04-03T09:30:00+07:00', 'price': 100000, 'volume': 12000, 'match_type': 'buy'},
+            {
+                'time': (timezone.now() - timedelta(minutes=1)).isoformat(),
+                'price': 100000,
+                'volume': 12000,
+                'match_type': 'buy',
+            },
         ])
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['source'], 'vnstock')
@@ -3620,7 +3630,7 @@ class ApiRouteSmokeTests(APITestCase):
         )
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=10&campaign_sort=strength')
+        response = self.client.get('/api/realtime/whale-campaigns/?window=5d&campaign_limit=10&campaign_sort=strength')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('results', response.data)
@@ -3693,7 +3703,7 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.authenticate()
 
-        first_response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=1&campaign_sort=latest')
+        first_response = self.client.get('/api/realtime/whale-campaigns/?window=5d&campaign_limit=1&campaign_sort=latest')
         self.assertEqual(first_response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(first_response.data['results']), 1)
         self.assertTrue(first_response.data['has_more'])
@@ -3705,7 +3715,7 @@ class ApiRouteSmokeTests(APITestCase):
         second_response = self.client.get(
             '/api/realtime/whale-campaigns/',
             {
-                'window': 'session',
+                'window': '5d',
                 'campaign_limit': 1,
                 'campaign_sort': 'latest',
                 'cursor': next_cursor,
@@ -3751,7 +3761,7 @@ class ApiRouteSmokeTests(APITestCase):
         )
 
         self.authenticate()
-        response = self.client.get('/api/realtime/whale-campaigns/?window=session&campaign_limit=5')
+        response = self.client.get('/api/realtime/whale-campaigns/?window=5d&campaign_limit=5')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data['results']), 1)
@@ -3811,7 +3821,7 @@ class ApiRouteSmokeTests(APITestCase):
         mock_stream_reader.return_value.get_intraday_ticks.return_value = []
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['source'], 'intraday_tick_db')
@@ -4438,7 +4448,7 @@ class ApiRouteSmokeTests(APITestCase):
             'entitlements': {'plan': 'free'},
         }
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         mock_get_whale_feed_aggregate.assert_called_once()
@@ -4489,11 +4499,16 @@ class ApiRouteSmokeTests(APITestCase):
             stream_id='db-refactor-agg-fpt-1',
         )
         mock_read_stream_intraday_ticks.return_value = [
-            {'price': 101000, 'volume': 10000, 'side': 'BUY', 'ts': '2026-04-03T09:20:00+07:00'},
+            {
+                'price': 101000,
+                'volume': 10000,
+                'side': 'BUY',
+                'ts': (timezone.now() - timedelta(minutes=1)).isoformat(),
+            },
         ]
         self.authenticate()
 
-        response = self.client.get('/api/realtime/whale-feed/aggregate/')
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['source'], 'redis_stream')

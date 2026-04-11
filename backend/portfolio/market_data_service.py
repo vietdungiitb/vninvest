@@ -1889,7 +1889,6 @@ class MarketDataService:
         return start_dt <= event_dt <= resolved_now
 
     def _is_tick_row_in_window(self, row, window: str, now=None) -> bool:
-        resolved_now = now or timezone.now()
         try:
             row_dt = timezone.make_aware(
                 datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
@@ -1900,7 +1899,8 @@ class MarketDataService:
         start_dt = self._window_start_datetime(window, now=now)
         if start_dt is None:
             return True
-        return start_dt <= row_dt <= resolved_now
+        # DB ticks are historical records; enforce only lower-bound window check.
+        return start_dt <= row_dt
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
         max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
