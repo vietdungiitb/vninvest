@@ -72,6 +72,19 @@ if (-not $SkipBuild) {
 # ── Khởi động services ───────────────────────────────────────────────────────
 Write-Step "Khởi động tất cả services"
 
+# Tạo external volumes nếu chưa tồn tại (tránh lỗi volume not found khi compose up).
+$requiredVolumes = @(
+    "${ProjectName}_postgres_data",
+    "${ProjectName}_redis_data"
+)
+$existingVolumes = docker volume ls --format "{{.Name}}"
+foreach ($vol in $requiredVolumes) {
+    if ($existingVolumes -notcontains $vol) {
+        Write-Host "  - Create volume: $vol"
+        docker volume create $vol | Out-Null
+    }
+}
+
 # Dọn stale containers có tên cố định để tránh lỗi conflict khi compose up.
 $devContainerNames = @(
     "vninvest-dev-db",
@@ -206,3 +219,34 @@ Write-Host "  Xem log celery:    docker compose --env-file compose.dev.env -p vn
 Write-Host "  Dừng stack:        .\start_dev.ps1 -Down"
 Write-Host "  Smoke test API:    Invoke-RestMethod http://localhost:8000/api/health/"
 Write-Host ""
+
+# Smoke probes để xác nhận backend/frontend đã sẵn sàng test thủ công.
+Write-Step "Smoke checks (backend + frontend)"
+$backendOk = $false
+$frontendOk = $false
+
+try {
+    $backendResp = Invoke-WebRequest -Uri "http://localhost:8000/api/health/" -UseBasicParsing -TimeoutSec 15
+    if ($backendResp.StatusCode -ge 200 -and $backendResp.StatusCode -lt 500) {
+        $backendOk = $true
+    }
+} catch {
+    $backendOk = $false
+}
+
+try {
+    $frontendResp = Invoke-WebRequest -Uri "http://localhost:8080" -UseBasicParsing -TimeoutSec 15
+    if ($frontendResp.StatusCode -ge 200 -and $frontendResp.StatusCode -lt 500) {
+        $frontendOk = $true
+    }
+} catch {
+    $frontendOk = $false
+}
+
+Write-Host ("  Backend health  : " + ($(if ($backendOk) { "OK" } else { "FAIL" })))
+Write-Host ("  Frontend health : " + ($(if ($frontendOk) { "OK" } else { "FAIL" })))
+
+if (-not $backendOk -or -not $frontendOk) {
+    Write-Host ""
+    Write-Host "WARN: Co service chua san sang. Ban co the xem log bang cac lenh o tren." -ForegroundColor Yellow
+}
