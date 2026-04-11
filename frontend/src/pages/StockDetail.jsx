@@ -1461,19 +1461,29 @@ export default function StockDetail() {
     const min = Math.min(...values);
     const width = 220;
     const height = 44;
-    const points = values.map((value, idx) => {
+    const pointItems = values.map((value, idx) => {
       const x = values.length === 1 ? 0 : Math.round((idx / (values.length - 1)) * width);
       const y = Math.round(height - ((value / max) * height));
-      return `${x},${y}`;
-    }).join(' ');
+      return {
+        x,
+        y,
+        value,
+        bucket: governanceTrendRows[idx]?.bucket || '',
+      };
+    });
+    const polylinePoints = pointItems.map((point) => `${point.x},${point.y}`).join(' ');
+    const maxValue = Math.max(...values);
+    const maxPoint = pointItems.find((point) => point.value === maxValue) || null;
     return {
-      points,
+      pointItems,
+      polylinePoints,
       width,
       height,
       min,
       max,
       latest: values[values.length - 1] || 0,
       previous: values.length > 1 ? values[values.length - 2] : values[values.length - 1] || 0,
+      maxPoint,
     };
   }, [governanceTrendRows]);
 
@@ -2847,13 +2857,41 @@ export default function StockDetail() {
                                   fill="none"
                                   stroke="rgba(248, 113, 113, 0.95)"
                                   strokeWidth="2"
-                                  points={governanceSparkline.points}
+                                  points={governanceSparkline.polylinePoints}
                                 />
+                                {governanceSparkline.pointItems.map((point) => (
+                                  <circle
+                                    key={`spark-point-${point.bucket}`}
+                                    cx={point.x}
+                                    cy={point.y}
+                                    r="2"
+                                    fill="rgba(251, 113, 133, 0.55)"
+                                  />
+                                ))}
+                                {governanceSparkline.maxPoint ? (
+                                  <circle
+                                    cx={governanceSparkline.maxPoint.x}
+                                    cy={governanceSparkline.maxPoint.y}
+                                    r="4"
+                                    fill="rgba(251, 191, 36, 0.95)"
+                                    stroke="rgba(255, 255, 255, 0.85)"
+                                    strokeWidth="1"
+                                  >
+                                    <title>
+                                      {`${t('stockDetail.governanceSparklinePeak')}: ${governanceSparkline.maxPoint.bucket} (${governanceSparkline.maxPoint.value})`}
+                                    </title>
+                                  </circle>
+                                ) : null}
                               </svg>
                               <span className={`text-[11px] font-semibold ${governanceSparkline.latest > governanceSparkline.previous ? 'text-rose-300' : 'text-emerald-300'}`}>
                                 {governanceSparkline.latest > governanceSparkline.previous ? '▲' : '▼'}
                               </span>
                             </div>
+                            {governanceSparkline.maxPoint ? (
+                              <p className="mt-1 text-[10px] text-slate-500">
+                                {t('stockDetail.governanceSparklinePeak')}: {governanceSparkline.maxPoint.bucket} ({governanceSparkline.maxPoint.value})
+                              </p>
+                            ) : null}
                           </div>
                         ) : null}
                         {governanceEndpointBreakdown.length > 0 ? (
