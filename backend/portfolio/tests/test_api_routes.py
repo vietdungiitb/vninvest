@@ -10,6 +10,7 @@ from django.test.utils import override_settings
 from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
+from portfolio import auth_views
 from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
 from portfolio.password_reset import generate_password_reset_token
@@ -327,6 +328,10 @@ class ApiRouteSmokeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('token', response.data)
+
+    def test_password_reset_views_define_dedicated_throttle_scopes(self):
+        self.assertEqual(auth_views.PasswordResetRequestView.throttle_scope, 'auth_password_reset_request')
+        self.assertEqual(auth_views.PasswordResetConfirmView.throttle_scope, 'auth_password_reset_confirm')
 
     @patch('portfolio.auth_views.send_verification_email', return_value=1)
     def test_verify_email_endpoint_marks_user_as_verified(self, _mock_send_verification_email):

@@ -12,6 +12,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework import serializers, status
 from rest_framework.exceptions import APIException, AuthenticationFailed, ValidationError
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -30,6 +31,13 @@ from .starter_portfolio_service import (
 
 
 logger = logging.getLogger(__name__)
+
+
+def _request_ip(request) -> str:
+    forwarded = str(request.META.get('HTTP_X_FORWARDED_FOR', '') or '').strip()
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return str(request.META.get('REMOTE_ADDR', '') or '').strip()
 
 
 class EmailDeliveryFailed(APIException):
@@ -269,12 +277,15 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
 class PasswordResetRequestView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_password_reset_request'
 
     def post(self, request, *args, **kwargs):
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         identifier = serializer.validated_data['identifier'].strip()
+        identifier_type = 'email' if '@' in identifier else 'username'
         user = User.objects.filter(username__iexact=identifier).first()
         if user is None:
             user = User.objects.filter(email__iexact=identifier).first()
@@ -282,8 +293,20 @@ class PasswordResetRequestView(APIView):
         if user is not None and (user.email or '').strip():
             try:
                 send_password_reset_email(user)
+                logger.info(
+                    'password_reset_request.sent user_id=%s identifier_type=%s ip=%s',
+                    user.id,
+                    identifier_type,
+                    _request_ip(request),
+                )
             except Exception:
                 logger.exception('Failed to send password reset email for user_id=%s', user.id)
+        else:
+            logger.info(
+                'password_reset_request.unknown_identifier identifier_type=%s ip=%s',
+                identifier_type,
+                _request_ip(request),
+            )
 
         return Response(
             {'message': 'Nếu tài khoản tồn tại, hệ thống đã gửi email hướng dẫn đặt lại mật khẩu.'},
@@ -304,6 +327,8 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
 class PasswordResetConfirmView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_password_reset_confirm'
 
     def post(self, request, *args, **kwargs):
         serializer = PasswordResetConfirmSerializer(data=request.data)
@@ -315,11 +340,13 @@ class PasswordResetConfirmView(APIView):
         try:
             user = resolve_password_reset_token(token)
         except (KeyError, signing.BadSignature, User.DoesNotExist):
+            logger.warning('password_reset_confirm.invalid_token ip=%s', _request_ip(request))
             raise ValidationError({'token': 'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.'})
 
         validate_password(new_password, user=user)
         user.set_password(new_password)
         user.save(update_fields=['password'])
+        logger.info('password_reset_confirm.success user_id=%s ip=%s', user.id, _request_ip(request))
 
         return Response(
             {'message': 'Đặt lại mật khẩu thành công. Bạn đã có thể đăng nhập bằng mật khẩu mới.'},
