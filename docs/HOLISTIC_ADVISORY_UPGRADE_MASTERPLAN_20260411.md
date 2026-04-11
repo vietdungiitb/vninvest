@@ -360,6 +360,11 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - fix JSX parse error trong `SymbolInvestigationPanel` do nhanh render tra ve 2 sibling cung cap.
   - bo sung fragment bao quanh khoi `grid` va `co-observation timeline` trong `frontend/src/pages/WhaleAlertsHub.jsx`.
   - Build evidence: `npm run build` trong `frontend/` da `Compiled successfully`.
+- H3-step-7 hoan tat (frontend smoke test cho symbol investigation + co-observation timeline):
+  - bo sung testcase cho tab `Symbol Investigation` de xac nhan flow chon symbol va goi API `getSymbolInvestigation`.
+  - verify render `co-observation timeline` badge va bucket marker de tranh regression sau H3-step-6.
+  - Test evidence: `npm test -- --watchAll=false --runInBand src/pages/WhaleAlertsHub.test.jsx` (4 tests passed).
+  - File: `frontend/src/pages/WhaleAlertsHub.test.jsx`.
 
 Work items:
 
