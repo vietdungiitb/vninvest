@@ -2801,6 +2801,65 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['summary']['retry_recovered_total'], 1)
         self.assertEqual(response.data['summary']['retry_failed_total'], 1)
 
+    def test_stock_ai_advisory_observability_get_applies_retry_filters_and_sort(self):
+        self.authenticate()
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'frontend_retry_telemetry'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id=str(self.user.id),
+            metadata_json={
+                'event_type': 'frontend_retry_telemetry',
+                'outcome': 'scheduled',
+                'telemetry': {
+                    'scheduled_count': 3,
+                    'recovered_count': 0,
+                    'failed_count': 4,
+                    'last_reason': 'session_conflict',
+                },
+            },
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'frontend_retry_telemetry'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id=str(self.user.id),
+            metadata_json={
+                'event_type': 'frontend_retry_telemetry',
+                'outcome': 'recovered',
+                'telemetry': {
+                    'scheduled_count': 1,
+                    'recovered_count': 1,
+                    'failed_count': 0,
+                    'last_reason': 'session_conflict',
+                },
+            },
+        )
+
+        filtered_response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5&retry_outcome=scheduled'
+        )
+        self.assertEqual(filtered_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(filtered_response.data['retry_events']), 1)
+        self.assertEqual(filtered_response.data['retry_events'][0]['outcome'], 'scheduled')
+
+        sorted_response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5&retry_sort=most_failed'
+        )
+        self.assertEqual(sorted_response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(sorted_response.data['retry_events']), 2)
+        self.assertGreaterEqual(
+            sorted_response.data['retry_events'][0]['failed_count'],
+            sorted_response.data['retry_events'][1]['failed_count'],
+        )
+
     @patch.dict(
         'os.environ',
         {

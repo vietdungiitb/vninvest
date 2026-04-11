@@ -5956,6 +5956,19 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     except (TypeError, ValueError):
         return Response({'ok': False, 'message': 'window_hours khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    retry_outcome_filter = str(request.query_params.get('retry_outcome') or '').strip().lower()
+    retry_reason_filter = str(request.query_params.get('retry_reason') or '').strip().lower()
+    retry_sort = str(request.query_params.get('retry_sort') or 'newest').strip().lower()
+    valid_retry_sort_values = {'newest', 'oldest', 'most_failed'}
+    if retry_sort not in valid_retry_sort_values:
+        return Response({'ok': False, 'message': 'retry_sort khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    def _safe_int(value, default=0):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     since_at = timezone.now() - timedelta(hours=window_hours)
     advisories = list(
         WhaleAdvisory.objects.select_related('aggregate_snapshot')
@@ -6015,23 +6028,41 @@ def stock_ai_advisory_observability_api(request, symbol: str):
             continue
 
         telemetry_payload = metadata.get('telemetry') if isinstance(metadata.get('telemetry'), dict) else {}
-        retry_scheduled_total += int(telemetry_payload.get('scheduled_count') or 0)
-        retry_recovered_total += int(telemetry_payload.get('recovered_count') or 0)
-        retry_failed_total += int(telemetry_payload.get('failed_count') or 0)
-        retry_events.append(
-            {
-                'log_id': log_item.id,
-                'created_at': log_item.created_at.isoformat() if log_item.created_at else None,
-                'outcome': metadata.get('outcome') or '',
-                'reason': telemetry_payload.get('last_reason') or '',
-                'scheduled_count': int(telemetry_payload.get('scheduled_count') or 0),
-                'recovered_count': int(telemetry_payload.get('recovered_count') or 0),
-                'failed_count': int(telemetry_payload.get('failed_count') or 0),
-                'client_ts': metadata.get('client_ts') or '',
-            }
+        scheduled_count = _safe_int(telemetry_payload.get('scheduled_count') or 0)
+        recovered_count = _safe_int(telemetry_payload.get('recovered_count') or 0)
+        failed_count = _safe_int(telemetry_payload.get('failed_count') or 0)
+        retry_scheduled_total += scheduled_count
+        retry_recovered_total += recovered_count
+        retry_failed_total += failed_count
+
+        event_payload = {
+            'log_id': log_item.id,
+            'created_at': log_item.created_at.isoformat() if log_item.created_at else None,
+            'outcome': str(metadata.get('outcome') or '').lower(),
+            'reason': str(telemetry_payload.get('last_reason') or '').lower(),
+            'scheduled_count': scheduled_count,
+            'recovered_count': recovered_count,
+            'failed_count': failed_count,
+            'client_ts': metadata.get('client_ts') or '',
+        }
+
+        if retry_outcome_filter and event_payload['outcome'] != retry_outcome_filter:
+            continue
+        if retry_reason_filter and event_payload['reason'] != retry_reason_filter:
+            continue
+        retry_events.append(event_payload)
+
+    if retry_sort == 'oldest':
+        retry_events.sort(key=lambda item: str(item.get('created_at') or ''))
+    elif retry_sort == 'most_failed':
+        retry_events.sort(
+            key=lambda item: (int(item.get('failed_count') or 0), str(item.get('created_at') or '')),
+            reverse=True,
         )
-        if len(retry_events) >= limit:
-            break
+    else:
+        retry_events.sort(key=lambda item: str(item.get('created_at') or ''), reverse=True)
+
+    retry_events = retry_events[:limit]
 
     return Response(
         {
@@ -6039,6 +6070,11 @@ def stock_ai_advisory_observability_api(request, symbol: str):
             'symbol': normalized_symbol,
             'window_hours': window_hours,
             'limit': limit,
+            'retry_filters': {
+                'outcome': retry_outcome_filter or None,
+                'reason': retry_reason_filter or None,
+                'sort': retry_sort,
+            },
             'summary': {
                 'current_severity': current_severity,
                 'current_severity_score': current_severity_score,

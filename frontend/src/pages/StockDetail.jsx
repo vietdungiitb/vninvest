@@ -1368,30 +1368,8 @@ export default function StockDetail() {
   const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
 
   const filteredPersistedRetryEvents = useMemo(() => {
-    const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
-    const filtered = events.filter((event) => {
-      const outcomeOk = retryEventOutcomeFilter === 'all'
-        || String(event?.outcome || '').toLowerCase() === retryEventOutcomeFilter;
-      const reasonOk = retryEventReasonFilter === 'all'
-        || String(event?.reason || '').toLowerCase() === retryEventReasonFilter;
-      return outcomeOk && reasonOk;
-    });
-    const toTs = (value) => {
-      const ts = new Date(value || '').getTime();
-      return Number.isFinite(ts) ? ts : 0;
-    };
-    const sorted = [...filtered].sort((a, b) => {
-      if (retryEventSortMode === 'oldest') {
-        return toTs(a.created_at) - toTs(b.created_at);
-      }
-      if (retryEventSortMode === 'most_failed') {
-        const failDelta = Number(b?.failed_count || 0) - Number(a?.failed_count || 0);
-        if (failDelta !== 0) return failDelta;
-      }
-      return toTs(b.created_at) - toTs(a.created_at);
-    });
-    return sorted;
-  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
+    return Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
+  }, [advisoryObservability?.retry_events]);
 
   const retryEventReasonOptions = useMemo(() => {
     const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
@@ -1618,9 +1596,19 @@ export default function StockDetail() {
       setAdvisoryObservabilityLoading(true);
     }
     try {
-      const response = await getStockAIAdvisoryObservability(normalizedSymbol, {
+      const params = {
         window_hours: advisoryObservabilityWindowHours,
         limit: 12,
+        retry_sort: retryEventSortMode,
+      };
+      if (retryEventOutcomeFilter !== 'all') {
+        params.retry_outcome = retryEventOutcomeFilter;
+      }
+      if (retryEventReasonFilter !== 'all') {
+        params.retry_reason = retryEventReasonFilter;
+      }
+      const response = await getStockAIAdvisoryObservability(normalizedSymbol, {
+        ...params,
       });
       setAdvisoryObservability(response?.data || null);
     } catch (_) {
@@ -1632,7 +1620,7 @@ export default function StockDetail() {
         setAdvisoryObservabilityLoading(false);
       }
     }
-  }, [advisoryObservabilityWindowHours, normalizedSymbol]);
+  }, [advisoryObservabilityWindowHours, normalizedSymbol, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
 
   const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;
