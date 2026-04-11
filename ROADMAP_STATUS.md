@@ -157,6 +157,22 @@
 - From: Sprint 27 user/auth flow da san sang
 - To: Co the mo rong Sprint sau cho consent acceptance tracking theo user/version
 
+### 🚨 Sprint 35 - IN PROGRESS (Unified Alert Center on Dashboard)
+**Focus**: Hop nhat whale alert + dark flow + canh bao khac tren dashboard de nha dau tu nhan dien nhanh
+**Status**: IN PROGRESS
+
+**Scope da chot Sprint 35:**
+- [x] Dashboard pass `darkFlowAlerts` vao panel realtime.
+- [x] Unified Alert Strip theo severity (critical/high/medium/low).
+- [x] Unified Alert Center feed merge whale + dark flow + price shock + stale quote.
+- [x] Hot Symbols chips de uu tien ma can theo doi.
+- [x] i18n vi/en cho toan bo label moi.
+- [ ] UAT threshold tuning + rollout gate theo feature flag.
+
+**Canonical references:**
+- `docs/SPRINT35_UNIFIED_ALERT_CENTER_DETAILED_PLAN_20260411.md`
+- `docs/SPRINT35_ACCEPTANCE_CHECKLIST.md`
+
 ---
 
 ### 🐋 **Sprint 32 (NEW) - Whale Advisory Auto-Generation & Auto-Refresh**

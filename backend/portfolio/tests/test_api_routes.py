@@ -11,7 +11,7 @@ from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
 from portfolio import auth_views
-from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
+from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, OrderFlowSignal, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
 from portfolio.password_reset import generate_password_reset_token
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
@@ -23,6 +23,36 @@ from rest_framework.test import APITestCase
 class ApiRouteSmokeTests(APITestCase):
     def setUp(self):
         cache.delete('admin_ops:holistic_governance_delta_thresholds')
+        from portfolio.opencore_dpi import DPIPlan
+
+        DPIPlan.objects.update_or_create(
+            name='free',
+            defaults={
+                'description': 'free test plan',
+                'display_name': 'Community',
+                'annual_price_usd': 0,
+                'monthly_price_usd': 0,
+                'max_watchlist_items': 50,
+                'max_portfolio_accounts': 5,
+                'max_alerts': 100,
+                'max_api_calls_per_month': 100000,
+                'features': {
+                    'sma': True,
+                    'rsi': True,
+                    'volume_profile': True,
+                    'whale_momentum': True,
+                    'dark_pool_flow': True,
+                    'correlation_matrix': True,
+                    'volatility_surface': True,
+                    'sentiment_score': True,
+                    'predictive_ml': True,
+                    'cross_market_alpha': True,
+                    'fund_flow_analysis': True,
+                    'hedging_strategy': True,
+                },
+                'is_active': True,
+            },
+        )
         self.username = 'route-smoke-user'
         self.password = 'Test@123456'
         self.user = User.objects.create_user(
@@ -48,6 +78,9 @@ class ApiRouteSmokeTests(APITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
+
+    def authenticate_direct(self):
+        self.client.force_authenticate(user=self.user)
 
     def _attach_dpi_license(self, plan_name, feature_flags=None, status='active', grace_days=7):
         from portfolio.opencore_dpi import DPIPlan, DPILicense
@@ -5594,6 +5627,227 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(five_day_response.status_code, status.HTTP_200_OK)
         self.assertEqual(five_day_response.data['filters']['window'], '5d')
         self.assertGreaterEqual(len(five_day_response.data['results']), len(session_response.data['results']))
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+
+        mock_whale_aggregate.return_value = {
+            'results': [
+                {
+                    'event_id': 'whale:FPT:test-unified-1',
+                    'symbol': 'FPT',
+                    'severity': 'high',
+                    'side': 'BUY',
+                    'matched_value': 1_250_000_000,
+                    'ts': timezone.now().isoformat(),
+                }
+            ]
+        }
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:22:00', '%H:%M:%S').time(),
+            price=Decimal('100000'),
+            volume=8000,
+            side='BUY',
+            stream_id='fpt-unified-whale-1',
+        )
+        OrderFlowSignal.objects.create(
+            symbol='FPT',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=82,
+            confidence='high',
+            tick_rate=14.5,
+            small_order_ratio=0.66,
+            cvd_at_signal=1500000,
+            price_at_signal=100500,
+            window_seconds=300,
+            components_json={'test': True},
+            event_id='dark_flow:FPT:test-unified-1',
+            severity=OrderFlowSignal.SeverityChoices.URGENT,
+        )
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&limit=10')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('results', response.data)
+        self.assertGreaterEqual(len(response.data['results']), 1)
+        sources = {item.get('source') for item in response.data['results']}
+        self.assertIn('dark_flow', sources)
+        self.assertIn('whale', sources)
+        self.assertEqual(response.data['meta']['contract_version'], '2.0')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_respects_severity_min_filter(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+        mock_whale_aggregate.return_value = {
+            'results': [
+                {
+                    'event_id': 'whale:HPG:test-unified-critical',
+                    'symbol': 'HPG',
+                    'severity': 'extreme',
+                    'side': 'SELL',
+                    'matched_value': 1_500_000_000,
+                    'ts': timezone.now().isoformat(),
+                }
+            ]
+        }
+
+        OrderFlowSignal.objects.create(
+            symbol='HPG',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=70,
+            confidence='medium',
+            tick_rate=12.1,
+            small_order_ratio=0.51,
+            cvd_at_signal=500000,
+            price_at_signal=45000,
+            window_seconds=300,
+            components_json={'test': True},
+            event_id='dark_flow:HPG:test-unified-high',
+            severity=OrderFlowSignal.SeverityChoices.WARNING,
+        )
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&limit=10&severity_min=critical')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for item in response.data['results']:
+            self.assertEqual(item.get('severity'), 'critical')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_unified_alerts_endpoint_rejects_invalid_severity_min(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?severity_min=extreme_plus')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_cursor_pagination_has_no_overlap(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='VNM')
+        mock_whale_aggregate.return_value = {'results': []}
+
+        OrderFlowSignal.objects.create(
+            symbol='VNM',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=85,
+            confidence='high',
+            tick_rate=15.2,
+            small_order_ratio=0.62,
+            cvd_at_signal=1200000,
+            price_at_signal=78000,
+            window_seconds=300,
+            components_json={'case': 1},
+            event_id='dark_flow:VNM:cursor-1',
+            severity=OrderFlowSignal.SeverityChoices.URGENT,
+        )
+        OrderFlowSignal.objects.create(
+            symbol='VNM',
+            signal_type=OrderFlowSignal.SignalType.ABSORPTION,
+            strength=81,
+            confidence='high',
+            tick_rate=13.7,
+            small_order_ratio=0.57,
+            cvd_at_signal=900000,
+            price_at_signal=77900,
+            window_seconds=300,
+            components_json={'case': 2},
+            event_id='dark_flow:VNM:cursor-2',
+            severity=OrderFlowSignal.SeverityChoices.URGENT,
+        )
+        self.authenticate_direct()
+
+        page_one = self.client.get('/api/realtime/unified-alerts/?window=session&limit=1&severity_min=medium')
+
+        self.assertEqual(page_one.status_code, status.HTTP_200_OK)
+        self.assertTrue(page_one.data['has_more'])
+        self.assertIsNotNone(page_one.data['next_cursor'])
+        self.assertEqual(len(page_one.data['results']), 1)
+
+        page_two = self.client.get(
+            f"/api/realtime/unified-alerts/?window=session&limit=1&severity_min=medium&cursor={page_one.data['next_cursor']}"
+        )
+
+        self.assertEqual(page_two.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(page_two.data['results']), 1)
+        self.assertNotEqual(page_one.data['results'][0]['event_id'], page_two.data['results'][0]['event_id'])
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_unified_alerts_endpoint_rejects_invalid_cursor(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&severity_min=medium&cursor=not-a-valid-cursor')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_unified_alerts_endpoint_rejects_cursor_window_mismatch(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate_direct()
+
+        cursor_payload = {
+            'severity_rank': 3,
+            'event_id': 'dark_flow:VNM:cursor-window',
+            'ts': timezone.now().isoformat(),
+            'window': 'session',
+            'severity_min': 'medium',
+        }
+        cursor = base64.urlsafe_b64encode(json.dumps(cursor_payload).encode('utf-8')).decode('ascii').rstrip('=')
+
+        response = self.client.get(f'/api/realtime/unified-alerts/?window=5d&severity_min=medium&cursor={cursor}')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
+    def test_unified_alerts_endpoint_rejects_cursor_severity_min_mismatch(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate_direct()
+
+        cursor_payload = {
+            'severity_rank': 3,
+            'event_id': 'dark_flow:VNM:cursor-severity',
+            'ts': timezone.now().isoformat(),
+            'window': 'session',
+            'severity_min': 'medium',
+        }
+        cursor = base64.urlsafe_b64encode(json.dumps(cursor_payload).encode('utf-8')).decode('ascii').rstrip('=')
+
+        response = self.client.get(f'/api/realtime/unified-alerts/?window=session&severity_min=critical&cursor={cursor}')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_depth_chart')

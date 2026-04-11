@@ -50,6 +50,7 @@ export default function Dashboard() {
     realtimeStatus,
     lastEventAt,
     alerts,
+    darkFlowAlerts,
     metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
 
@@ -230,10 +231,12 @@ export default function Dashboard() {
 
       <DashboardRealtimePanel
         holdings={liveHoldings}
+        trackedSymbolNames={trackedSymbolNames}
         quotesBySymbol={quotesBySymbol}
         realtimeStatus={realtimeStatus}
         lastEventAt={lastEventAt}
         alerts={alerts}
+        darkFlowAlerts={darkFlowAlerts}
         metrics={metrics}
         monitoredSymbols={monitoredSymbols}
         enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}

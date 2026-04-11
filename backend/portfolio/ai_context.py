@@ -19,6 +19,30 @@ def _to_float(value, default=0.0) -> float:
         return float(default)
 
 
+def _empty_side_stats() -> dict:
+    return {
+        'count': 0,
+        'total_value': 0.0,
+        'avg_value': 0.0,
+        'max_value': 0.0,
+    }
+
+
+def _build_side_stats(rows: list[dict]) -> dict:
+    if not rows:
+        return _empty_side_stats()
+    values = [_to_float(row.get('price')) * _to_float(row.get('volume')) for row in rows]
+    if not values:
+        return _empty_side_stats()
+    total_value = sum(values)
+    return {
+        'count': len(values),
+        'total_value': float(total_value),
+        'avg_value': float(total_value / len(values)),
+        'max_value': float(max(values)),
+    }
+
+
 def build_symbol_ai_context(symbol: str, user=None) -> dict:
     normalized_symbol = str(symbol or '').strip().upper()
     today = timezone.localdate()
@@ -59,6 +83,29 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
             intraday_buy_value += tick_value
         elif side == 'SELL':
             intraday_sell_value += tick_value
+
+    ticks_5d = list(
+        IntradayTick.objects.filter(
+            symbol=normalized_symbol,
+            trade_date__gte=today - timedelta(days=4),
+        )
+        .values('trade_date', 'trade_time', 'price', 'volume', 'side')[:5000]
+    )
+    session_buy_rows = [row for row in intraday_ticks if str(row.get('side') or '').upper() == 'BUY']
+    session_sell_rows = [row for row in intraday_ticks if str(row.get('side') or '').upper() == 'SELL']
+    recent_5d_buy_rows = [row for row in ticks_5d if str(row.get('side') or '').upper() == 'BUY']
+    recent_5d_sell_rows = [row for row in ticks_5d if str(row.get('side') or '').upper() == 'SELL']
+
+    order_stats = {
+        'session': {
+            'buy': _build_side_stats(session_buy_rows),
+            'sell': _build_side_stats(session_sell_rows),
+        },
+        'five_day': {
+            'buy': _build_side_stats(recent_5d_buy_rows),
+            'sell': _build_side_stats(recent_5d_sell_rows),
+        },
+    }
 
     active_alerts_count = PriceAlertRule.objects.filter(symbol=normalized_symbol, is_active=True).count()
 
@@ -148,6 +195,7 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
             'latest_small_order_ratio': _to_float(latest_order_flow.get('small_order_ratio')),
             'recent_signals': recent_order_flow_signals,
         },
+        'order_stats': order_stats,
         'history': {
             'recent_advisories': recent_advisories,
         },
@@ -163,6 +211,14 @@ def render_context_for_prompt(context: dict) -> str:
     intraday = context.get('intraday') or {}
     alerts = context.get('alerts') or {}
     order_flow = context.get('order_flow') or {}
+    order_stats = context.get('order_stats') or {}
+    session_stats = order_stats.get('session') or {}
+    five_day_stats = order_stats.get('five_day') or {}
+
+    session_buy = session_stats.get('buy') or _empty_side_stats()
+    session_sell = session_stats.get('sell') or _empty_side_stats()
+    five_day_buy = five_day_stats.get('buy') or _empty_side_stats()
+    five_day_sell = five_day_stats.get('sell') or _empty_side_stats()
     recent = (context.get('history') or {}).get('recent_advisories') or []
     recent_order_flow = order_flow.get('recent_signals') or []
 
@@ -196,6 +252,8 @@ def render_context_for_prompt(context: dict) -> str:
         f"Intraday today: ticks {intraday.get('tick_count_today', 0)}, total {intraday.get('total_value_today', 0):,.0f} VND, buy {intraday.get('buy_value_today', 0):,.0f}, sell {intraday.get('sell_value_today', 0):,.0f}\n"
         f"Active price alerts: {alerts.get('active_price_alerts', 0)}\n"
         f"Latest order flow: {order_flow.get('latest_signal_type', 'none')} | strength {order_flow.get('latest_strength', 0):.1f} | confidence {order_flow.get('latest_confidence', 'low')} | tick rate {order_flow.get('latest_tick_rate', 0):.1f} | small-order ratio {order_flow.get('latest_small_order_ratio', 0):.2f}\n"
+        f"BUY/SELL stats session: BUY count {session_buy.get('count', 0)}, total {session_buy.get('total_value', 0):,.0f} VND, max {session_buy.get('max_value', 0):,.0f} | SELL count {session_sell.get('count', 0)}, total {session_sell.get('total_value', 0):,.0f} VND, max {session_sell.get('max_value', 0):,.0f}\n"
+        f"BUY/SELL stats 5D: BUY count {five_day_buy.get('count', 0)}, total {five_day_buy.get('total_value', 0):,.0f} VND, max {five_day_buy.get('max_value', 0):,.0f} | SELL count {five_day_sell.get('count', 0)}, total {five_day_sell.get('total_value', 0):,.0f} VND, max {five_day_sell.get('max_value', 0):,.0f}\n"
         f"Recent order-flow signals:\n{order_flow_block}\n"
         f"Recent advisories:\n{recent_block}\n"
         f"Use this context to reduce hallucination and ground recommendations in data."
@@ -212,11 +270,16 @@ def render_concise_context_for_prompt(context: dict) -> str:
     intraday = context.get('intraday') or {}
     portfolio_pos = context.get('portfolio_position')
     order_flow = context.get('order_flow') or {}
+    order_stats = context.get('order_stats') or {}
+    session_stats = order_stats.get('session') or {}
+    session_buy = session_stats.get('buy') or _empty_side_stats()
+    session_sell = session_stats.get('sell') or _empty_side_stats()
     
     lines = [
         f"Symbol: {context.get('symbol')} | {profile.get('company_name', 'N/A')} | {profile.get('industry', 'N/A')}",
         f"Price: {market.get('latest_close', 0):,.2f} VND | Change: 1D {market.get('change_1d_pct', 0):.1f}%, 5D {market.get('change_5d_pct', 0):.1f}%, 20D {market.get('change_20d_pct', 0):.1f}%",
         f"Today: {intraday.get('total_value_today', 0):,.0f} VND traded (buy {intraday.get('buy_value_today', 0):,.0f}, sell {intraday.get('sell_value_today', 0):,.0f})",
+        f"Session BUY/SELL ticks: buy {session_buy.get('count', 0)} (max {session_buy.get('max_value', 0):,.0f} VND), sell {session_sell.get('count', 0)} (max {session_sell.get('max_value', 0):,.0f} VND)",
         f"Order flow: {order_flow.get('latest_signal_type', 'none')} | Confidence: {order_flow.get('latest_confidence', 'low')} | Strength: {order_flow.get('latest_strength', 0):.1f}",
     ]
     

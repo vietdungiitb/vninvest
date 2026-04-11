@@ -125,6 +125,17 @@ class WhaleCampaignsView(BaseMarketDataView):
         return Response(payload)
 
 
+class UnifiedAlertsView(BaseMarketDataView):
+    throttle_scope = 'realtime_whale_aggregate'
+
+    def get(self, request):
+        try:
+            payload = market_data_service.get_unified_alerts(request.user, request.query_params)
+        except Exception as exc:
+            return self.handle_exception_response(exc)
+        return Response(payload)
+
+
 class DepthChartView(BaseMarketDataView):
     def get(self, request, symbol):
         try:

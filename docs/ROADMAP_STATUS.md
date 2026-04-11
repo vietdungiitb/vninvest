@@ -156,6 +156,35 @@ Tai lieu implementation companion:
 - `docs/WHALE_ALERTS_API_CONTRACT_V2_DRAFT_20260410.md`
 - `docs/WHALE_ALERTS_PROFESSIONALIZATION_ROADMAP_20260410.md`
 
+## 0.6 Sprint 35 - IN PROGRESS (Unified Alert Center on Dashboard)
+
+Focus: xay panel canh bao hop nhat tren dashboard de nha dau tu nhan biet whale + dark flow + bien dong gia bat thuong ro rang trong 3 giay.
+
+Trang thai hien tai: IN PROGRESS (roadmap + docs + frontend phase 1 da co code).
+
+Muc tieu sprint:
+1. Hop nhat nguon canh bao whale alert, dark flow alert va gia bat thuong vao mot luong hien thi.
+2. Them alert strip severity (critical/high/medium/low) + hot symbols chips.
+3. Chuan hoa Unified Alert Center voi thong diep ngan gon, giai thich ly do va confidence score.
+4. Giu tuong thich voi realtime pipeline hien tai, khong pha API contract cu.
+5. Co checklist QA + rollout gate va KPI theo doi noise/actionability.
+
+Tai lieu chuan cho sprint nay:
+- `docs/SPRINT35_UNIFIED_ALERT_CENTER_DETAILED_PLAN_20260411.md`
+- `docs/SPRINT35_ACCEPTANCE_CHECKLIST.md`
+
+Tien do cap nhat:
+- Da cap nhat dashboard de pass dark-flow alerts tu hook realtime xuong panel.
+- Da nang cap DashboardRealtimePanel thanh unified alert center (strip + hot symbols + feed hop nhat).
+- Da bo sung i18n vi/en cho nhom label moi.
+- Da bo sung phase 2 frontend: filter source/severity, mark-as-read, mute symbol 30 phut.
+- Da bo sung phase 2 frontend mo rong: filter holdings/watchlist va critical toast cooldown.
+- Da bo sung critical toast sound toggle + queue policy uu tien holdings.
+- Da co backend endpoint `realtime/unified-alerts` va frontend snapshot integration.
+- Da bo sung backend regression tests cho `realtime/unified-alerts`.
+- Da bo sung cursor pagination deterministic cho unified endpoint.
+- Con lai: UAT tuning threshold, gate rollout.
+
 ---
 
 ## 0.1 Sprint 18 — CODE COMPLETE (Django Admin Google Mail OAuth2)

@@ -255,6 +255,30 @@ export const getWhaleCampaigns = ({
   return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`);
 };
 
+export const getUnifiedAlerts = ({ symbols, watchlistGroupIds, window = 'session', severityMin = 'low', limit = 20, cursor } = {}) => {
+  const params = new URLSearchParams();
+  if (Array.isArray(symbols) && symbols.length > 0) {
+    params.set('symbols', symbols.join(','));
+  }
+  if (Array.isArray(watchlistGroupIds) && watchlistGroupIds.length > 0) {
+    params.set('watchlist_group_ids', watchlistGroupIds.join(','));
+  }
+  if (window) {
+    params.set('window', window);
+  }
+  if (severityMin) {
+    params.set('severity_min', severityMin);
+  }
+  if (limit) {
+    params.set('limit', String(limit));
+  }
+  if (cursor) {
+    params.set('cursor', String(cursor));
+  }
+  const queryString = params.toString();
+  return apiClient.get(`/realtime/unified-alerts/${queryString ? `?${queryString}` : ''}`);
+};
+
 /**
  * Get symbol co-observation data (dark money + whale campaigns correlation)
  * @param {string} symbol - Stock symbol (e.g. 'VNM')

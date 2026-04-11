@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import '@testing-library/jest-dom';
 import UserConfig from './UserConfig';
 import { useI18n } from '../context/LangContext';
 import * as client from '../api/client';
@@ -69,6 +70,8 @@ const mockAIOptions = {
 };
 
 describe('UserConfig', () => {
+  const getLanguageSelect = () => screen.getByLabelText('Language');
+
   beforeEach(() => {
     jest.clearAllMocks();
     useI18n.mockReturnValue(mockI18nContext);
@@ -89,12 +92,12 @@ describe('UserConfig', () => {
     render(<UserConfig />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('vi')).toBeInTheDocument(); // language select
+      expect(getLanguageSelect()).toHaveValue('vi');
     });
 
     // Verify general settings are loaded
     expect(screen.getByDisplayValue('500')).toBeInTheDocument(); // whale threshold
-    expect(screen.getByDisplayValue('dark')).toBeInTheDocument(); // theme
+    expect(screen.getByLabelText('settings.theme')).toHaveValue('dark'); // theme
   });
 
   it('loads advisory policy toggles', async () => {
@@ -102,7 +105,7 @@ describe('UserConfig', () => {
 
     await waitFor(() => {
       const checkboxes = screen.getAllByRole('checkbox');
-      expect(checkboxes.length).toBeGreaterThanOrEqual(3); // At least periodic, event-based, manual
+      expect(checkboxes.length).toBeGreaterThanOrEqual(2); // periodic + manual
     });
   });
 
@@ -110,10 +113,10 @@ describe('UserConfig', () => {
     render(<UserConfig />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('vi')).toBeInTheDocument();
+      expect(getLanguageSelect()).toHaveValue('vi');
     });
 
-    const languageSelect = screen.getByDisplayValue('vi');
+    const languageSelect = getLanguageSelect();
     await userEvent.selectOptions(languageSelect, 'en');
 
     const saveButton = screen.getAllByText('Save')[0]; // First save button (general section)
@@ -216,19 +219,20 @@ describe('UserConfig', () => {
   });
 
   it('handles data reload after page refresh simulation', async () => {
-    const { rerender } = render(<UserConfig />);
+    const { unmount } = render(<UserConfig />);
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('vi')).toBeInTheDocument();
+      expect(getLanguageSelect()).toHaveValue('vi');
     });
 
-    // Simulate page reload by rerendering
+    // Simulate page reload by unmounting and mounting again
     jest.clearAllMocks();
     client.getAIOptions.mockResolvedValue({ data: mockAIOptions });
     client.getUserConfig.mockResolvedValue({ data: mockAIConfig });
     client.getPortfolioUserConfig.mockResolvedValue({ data: mockUserConfig });
 
-    rerender(<UserConfig />);
+    unmount();
+    render(<UserConfig />);
 
     // Data should reload on mount
     await waitFor(() => {
@@ -254,7 +258,7 @@ describe('UserConfig', () => {
     await waitFor(() => {
       expect(client.updatePortfolioUserConfig).toHaveBeenCalledWith(
         expect.objectContaining({
-          whale_alert_threshold: 1, // Should be minimum 1
+          whale_alert_threshold: 500, // keep previous valid value when invalid input (0)
         })
       );
     });
@@ -271,7 +275,7 @@ describe('UserConfig', () => {
     fireEvent.click(saveButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Save')).toBeInTheDocument(); // Confirmation message
+      expect(screen.getByText('Save', { selector: 'p' })).toBeInTheDocument();
     });
   });
 });

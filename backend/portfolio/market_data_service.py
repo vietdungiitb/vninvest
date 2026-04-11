@@ -36,6 +36,7 @@ from .exceptions import ExternalSystemException, MarketDataValidationException
 from .models import (
     DailyPrice,
     IntradayTick,
+    OrderFlowSignal,
     SecuritiesGroup,
     SecuritiesItem,
     StockProfile,
@@ -1824,6 +1825,240 @@ class MarketDataService:
             },
             'fetched_at': timezone.now().isoformat(),
         }
+
+    def get_unified_alerts(self, user, query_params) -> dict:
+        symbols, scope, watchlist_group_ids, scope_source = self._resolve_whale_feed_symbols(user, query_params)
+        limit = self._parse_limit(query_params.get('limit', 20))
+        window = self._parse_aggregate_window(query_params.get('window', 'session'))
+        severity_min = self._parse_unified_severity_min(query_params.get('severity_min', 'low'))
+        cursor_payload = self._decode_unified_alerts_cursor(query_params.get('cursor'))
+        if query_params.get('cursor') and cursor_payload is None:
+            raise MarketDataValidationException('cursor không hợp lệ cho unified alerts.')
+        if cursor_payload is not None:
+            if str(cursor_payload.get('window') or '') != window:
+                raise MarketDataValidationException('cursor không hợp lệ cho window hiện tại.')
+            if str(cursor_payload.get('severity_min') or '') != severity_min:
+                raise MarketDataValidationException('cursor không hợp lệ cho severity_min hiện tại.')
+        now = timezone.now()
+
+        if not symbols:
+            return {
+                'results': [],
+                'server_time': now.isoformat(),
+                'filters': {
+                    'scope': scope,
+                    'scope_source': scope_source,
+                    'symbols': [],
+                    'watchlist_group_ids': watchlist_group_ids,
+                    'window': window,
+                    'limit': limit,
+                    'severity_min': severity_min,
+                },
+                'next_cursor': None,
+                'has_more': False,
+                'meta': {
+                    'contract_version': '2.0',
+                    'source_mix': {
+                        'whale': 0,
+                        'dark_flow': 0,
+                    },
+                    'pagination': {
+                        'limit': limit,
+                        'has_more': False,
+                        'next_cursor': None,
+                    },
+                },
+            }
+
+        aggregate_limit = min(max(limit * 2, 20), 50)
+        whale_payload = self.get_whale_feed_aggregate(
+            user,
+            {
+                'symbols': ','.join(symbols),
+                'sort': 'ts',
+                'window': window,
+                'limit': str(aggregate_limit),
+            },
+        )
+        whale_events = whale_payload.get('results') or []
+
+        whale_unified = []
+        for event in whale_events:
+            raw_severity = str(event.get('severity') or 'medium').lower()
+            severity = 'critical' if raw_severity == 'extreme' else raw_severity
+            whale_unified.append({
+                'event_id': event.get('event_id') or f"whale:{event.get('symbol')}:{event.get('ts')}",
+                'symbol': str(event.get('symbol') or '').upper(),
+                'source': 'whale',
+                'severity': severity,
+                'confidence': event.get('display_score'),
+                'headline': 'Large buy flow detected' if str(event.get('side') or '').lower() == 'buy' else 'Large sell flow detected',
+                'detail': f"Matched value: {round(float(event.get('matched_value') or 0.0), 2)}",
+                'ts': event.get('ts') or now.isoformat(),
+                'to': f"/whale-alerts/{event.get('symbol')}",
+            })
+
+        window_start = self._window_start_datetime(window, now=now)
+        dark_flow_qs = OrderFlowSignal.objects.filter(symbol__in=symbols)
+        if window_start is not None:
+            dark_flow_qs = dark_flow_qs.filter(created_at__gte=window_start)
+        dark_flow_rows = list(dark_flow_qs.order_by('-created_at', '-id')[: max(limit * 3, 30)])
+
+        dark_flow_unified = []
+        for row in dark_flow_rows:
+            confidence_text = str(row.confidence or '').lower()
+            confidence_score = 80 if confidence_text == 'high' else 60 if confidence_text == 'medium' else 40
+            if row.strength >= 80 or confidence_score >= 80:
+                severity = 'critical'
+            elif row.strength >= 65 or confidence_score >= 60:
+                severity = 'high'
+            else:
+                severity = 'medium'
+
+            dark_flow_unified.append({
+                'event_id': row.event_id or f"dark_flow:{row.symbol}:{row.created_at.isoformat()}:{row.signal_type}",
+                'symbol': str(row.symbol or '').upper(),
+                'source': 'dark_flow',
+                'severity': severity,
+                'confidence': row.strength,
+                'headline': 'Dark money signal detected',
+                'detail': f"Signal {row.signal_type} | strength={round(float(row.strength or 0.0), 1)}",
+                'ts': row.created_at.isoformat(),
+                'to': f"/stocks/{row.symbol}",
+            })
+
+        combined = whale_unified + dark_flow_unified
+        min_rank = self._unified_severity_rank(severity_min)
+        combined = [
+            item for item in combined
+            if self._unified_severity_rank(item.get('severity')) >= min_rank
+        ]
+
+        seen = set()
+        deduped = []
+        for item in combined:
+            dedupe_key = item.get('event_id') or f"{item.get('source')}:{item.get('symbol')}:{item.get('headline')}"
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            deduped.append(item)
+
+        deduped.sort(
+            key=lambda item: (
+                self._unified_severity_rank(item.get('severity')),
+                datetime.fromisoformat(str(item.get('ts')).replace('Z', '+00:00')) if item.get('ts') else datetime.min,
+                str(item.get('event_id') or ''),
+            ),
+            reverse=True,
+        )
+
+        if cursor_payload is not None:
+            cursor_rank = int(cursor_payload.get('severity_rank'))
+            cursor_ts = self._safe_parse_unified_alert_ts(cursor_payload.get('ts'))
+            cursor_event_id = str(cursor_payload.get('event_id') or '')
+            filtered = []
+            for item in deduped:
+                item_rank = self._unified_severity_rank(item.get('severity'))
+                item_ts = self._safe_parse_unified_alert_ts(item.get('ts'))
+                item_event_id = str(item.get('event_id') or '')
+                if item_rank < cursor_rank:
+                    filtered.append(item)
+                    continue
+                if item_rank == cursor_rank and item_ts < cursor_ts:
+                    filtered.append(item)
+                    continue
+                if item_rank == cursor_rank and item_ts == cursor_ts and item_event_id < cursor_event_id:
+                    filtered.append(item)
+            deduped = filtered
+
+        has_more = len(deduped) > limit
+        results = deduped[:limit]
+        next_cursor = self._build_unified_alerts_next_cursor(results[-1], window=window, severity_min=severity_min) if has_more and results else None
+        return {
+            'results': results,
+            'server_time': now.isoformat(),
+            'filters': {
+                'scope': scope,
+                'scope_source': scope_source,
+                'symbols': symbols,
+                'watchlist_group_ids': watchlist_group_ids,
+                'window': window,
+                'limit': limit,
+                'severity_min': severity_min,
+            },
+            'next_cursor': next_cursor,
+            'has_more': has_more,
+            'meta': {
+                'contract_version': '2.0',
+                'source_mix': {
+                    'whale': len([item for item in results if item.get('source') == 'whale']),
+                    'dark_flow': len([item for item in results if item.get('source') == 'dark_flow']),
+                },
+                'pagination': {
+                    'limit': limit,
+                    'has_more': has_more,
+                    'next_cursor': next_cursor,
+                },
+            },
+        }
+
+    def _parse_unified_severity_min(self, severity_raw) -> str:
+        severity = str(severity_raw or 'low').strip().lower()
+        if severity not in {'low', 'medium', 'high', 'critical'}:
+            raise MarketDataValidationException("severity_min không hợp lệ. Chỉ hỗ trợ: 'low', 'medium', 'high', 'critical'.")
+        return severity
+
+    def _unified_severity_rank(self, severity: str | None) -> int:
+        normalized = str(severity or '').strip().lower()
+        if normalized == 'critical':
+            return 4
+        if normalized == 'high':
+            return 3
+        if normalized == 'medium':
+            return 2
+        return 1
+
+    def _safe_parse_unified_alert_ts(self, ts_raw) -> datetime:
+        if not ts_raw:
+            return datetime.min
+        try:
+            return datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+        except Exception:
+            return datetime.min
+
+    def _decode_unified_alerts_cursor(self, raw_cursor: str | None) -> dict | None:
+        payload = self._decode_whale_feed_cursor(raw_cursor)
+        if not payload:
+            return None
+        try:
+            severity_rank = int(payload.get('severity_rank'))
+            event_id = str(payload.get('event_id') or '')
+            ts = str(payload.get('ts') or '')
+            window = str(payload.get('window') or '')
+            severity_min = str(payload.get('severity_min') or '')
+        except (TypeError, ValueError):
+            return None
+        if severity_rank < 1 or severity_rank > 4:
+            return None
+        if not event_id or not ts or not window or not severity_min:
+            return None
+        return {
+            'severity_rank': severity_rank,
+            'event_id': event_id,
+            'ts': ts,
+            'window': window,
+            'severity_min': severity_min,
+        }
+
+    def _build_unified_alerts_next_cursor(self, item: dict, *, window: str, severity_min: str) -> str:
+        payload = {
+            'severity_rank': self._unified_severity_rank(item.get('severity')),
+            'event_id': str(item.get('event_id') or ''),
+            'ts': str(item.get('ts') or ''),
+            'window': str(window),
+            'severity_min': str(severity_min),
+        }
+        return self._encode_whale_feed_cursor(payload)
 
     def _parse_limit(self, limit_raw) -> int:
         try:

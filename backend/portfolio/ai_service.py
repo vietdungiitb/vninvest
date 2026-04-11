@@ -26,6 +26,74 @@ def _language_instruction(language: str) -> str:
     return 'Viết toàn bộ nội dung bằng tiếng Việt có dấu.'
 
 
+def _build_signal_prompt_intro(symbol: str, matched_value_vnd: float, side: str, context_payload: dict[str, Any]) -> str:
+    side_key = str(side or '').strip().upper()
+    value_billion = float(matched_value_vnd or 0.0) / 1_000_000_000
+    order_flow = (context_payload or {}).get('order_flow') or {}
+    market = (context_payload or {}).get('market') or {}
+    intraday = (context_payload or {}).get('intraday') or {}
+    order_stats = (context_payload or {}).get('order_stats') or {}
+    session_stats = order_stats.get('session') or {}
+    five_day_stats = order_stats.get('five_day') or {}
+
+    session_side_stats = (session_stats.get('buy') if side_key == 'BUY' else session_stats.get('sell')) or {}
+    five_day_side_stats = (five_day_stats.get('buy') if side_key == 'BUY' else five_day_stats.get('sell')) or {}
+
+    session_count = int(session_side_stats.get('count') or 0)
+    session_total = float(session_side_stats.get('total_value') or 0.0)
+    session_max = float(session_side_stats.get('max_value') or 0.0)
+    five_day_count = int(five_day_side_stats.get('count') or 0)
+    five_day_total = float(five_day_side_stats.get('total_value') or 0.0)
+    five_day_max = float(five_day_side_stats.get('max_value') or 0.0)
+
+    signal_type = str(order_flow.get('latest_signal_type') or 'none').strip().lower()
+    signal_strength = float(order_flow.get('latest_strength') or 0.0)
+    signal_confidence = str(order_flow.get('latest_confidence') or 'low').strip().lower()
+
+    latest_close = float(market.get('latest_close') or 0.0)
+    change_1d_pct = float(market.get('change_1d_pct') or 0.0)
+    change_5d_pct = float(market.get('change_5d_pct') or 0.0)
+    intraday_buy_value = float(intraday.get('buy_value_today') or 0.0)
+    intraday_sell_value = float(intraday.get('sell_value_today') or 0.0)
+    intraday_net_value = intraday_buy_value - intraday_sell_value
+
+    if side_key in {'BUY', 'SELL'} and value_billion > 0:
+        market_clause = (
+            f"Giá hiện tại khoảng {latest_close:,.2f} VND; biến động 1D {change_1d_pct:.2f}% và 5D {change_5d_pct:.2f}%."
+            if latest_close > 0
+            else ""
+        )
+        order_flow_clause = (
+            f"Dark money/order-flow gần nhất: {signal_type.upper()} (strength {signal_strength:.1f}, confidence {signal_confidence})."
+            if signal_type not in {'none', 'unknown', ''}
+            else ""
+        )
+        intraday_clause = (
+            f"Dòng tiền intraday: buy {intraday_buy_value:,.0f} VND, sell {intraday_sell_value:,.0f} VND, net {intraday_net_value:,.0f} VND."
+            if (intraday_buy_value > 0 or intraday_sell_value > 0)
+            else ""
+        )
+        return (
+            f"Phân tích tín hiệu giao dịch tại TTCK Việt Nam cho mã {symbol}. "
+            f"Lệnh {side_key}, giá trị khoảng {value_billion:.1f} tỷ VNĐ. "
+            f"Thống kê {side_key} trong phiên: {session_count} lệnh, tổng {session_total:,.0f} VND, lớn nhất {session_max:,.0f} VND. "
+            f"Thống kê {side_key} 5 phiên gần nhất: {five_day_count} lệnh, tổng {five_day_total:,.0f} VND, lớn nhất {five_day_max:,.0f} VND. "
+            f"{market_clause} {order_flow_clause} {intraday_clause}".strip()
+        )
+
+    if signal_type not in {'none', 'unknown', ''} and signal_strength >= 50:
+        return (
+            f"Phân tích diễn biến order-flow cho mã {symbol}. "
+            f"Tín hiệu gần nhất là {signal_type.upper()} (strength {signal_strength:.1f}), "
+            "nhưng chưa đủ xác nhận hướng mua/bán lớn."
+        )
+
+    return (
+        f"Phân tích trạng thái dòng tiền của mã {symbol} theo bối cảnh thị trường hiện tại. "
+        "Hiện chưa ghi nhận lệnh mua/bán lớn đủ rõ để kết luận một chiều."
+    )
+
+
 def _openai_compatible_completion(
     base_url: str,
     api_key: str,
@@ -198,9 +266,9 @@ def generate_whale_text(
     context_block = render_context_for_prompt(context_payload)
     resolved_language = output_language or _resolve_output_language(getattr(user, 'userconfig', user))
     language_instruction = _language_instruction(resolved_language)
+    intro_text = _build_signal_prompt_intro(symbol, matched_value_vnd, side, context_payload)
     prompt = (
-        f"Phân tích tín hiệu giao dịch tại TTCK Việt Nam cho mã {symbol}. "
-        f"Lệnh {side}, giá trị khoảng {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ. "
+        f"{intro_text} "
         f"Viết khoảng {mode_text}, nêu ý nghĩa tín hiệu, rủi ro và điểm cần theo dõi."
         f" {language_instruction}"
         f"{context_block}"

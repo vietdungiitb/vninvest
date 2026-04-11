@@ -4,11 +4,16 @@ Django signals for OpenCore DPI integration.
 Automatically creates default Free tier licenses for new users.
 """
 
+import logging
+
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from django.utils import timezone
 from .opencore_dpi import DPIPlan, DPILicense, DPIUsageMetrics, get_or_create_default_license
+
+
+logger = logging.getLogger(__name__)
 
 
 @receiver(post_save, sender=User)
@@ -23,6 +28,6 @@ def create_dpi_license_for_new_user(sender, instance, created, **kwargs):
     try:
         # Create or get default license
         license = get_or_create_default_license(instance)
-        print(f"[OpenCore] Created default Free license for user: {instance.username}")
+        logger.debug('opencore.default_license.created username=%s license_id=%s', instance.username, getattr(license, 'id', None))
     except Exception as e:
-        print(f"[OpenCore] Error creating license for {instance.username}: {e}")
+        logger.warning('opencore.default_license.create_failed username=%s error=%s', instance.username, e)
