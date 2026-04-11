@@ -1392,6 +1392,49 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('executive_summary', response.data)
         self.assertIn('executive_summaries', response.data)
 
+    @override_settings(STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True)
+    def test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled(self):
+        self.authenticate()
+        snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=7,
+            state_json={'seq': 7},
+        )
+        advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+            aggregate_snapshot=snapshot,
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': advisory.id - 1, 'snapshot_id': snapshot.id - 1},
+            after_state_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='route-smoke-system',
+            metadata_json={'advisory_id': advisory.id, 'snapshot_id': snapshot.id},
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['contract_version'], 'v2')
+        self.assertIn('aggregate', response.data)
+        self.assertEqual(response.data['aggregate']['advisory_id'], advisory.id)
+        self.assertEqual(response.data['aggregate']['snapshot_id'], snapshot.id)
+        self.assertEqual(response.data['aggregate']['snapshot_seq'], 7)
+        self.assertEqual(response.data['aggregate']['last_audit_reason'], AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT)
+        self.assertEqual(response.data['aggregate']['last_audit_actor'], AdvisoryAggregateAuditLog.ActorChoices.SYSTEM)
+
     def test_stock_order_flow_returns_403_when_feature_locked_for_free_dpi_license(self):
         self._attach_dpi_license('free', {'dark_pool_flow': False})
         self.authenticate()

@@ -4845,6 +4845,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
     threshold_vnd = threshold_m * 1_000_000
+    session_v2_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_SESSION_V2_ENABLED', False))
 
     def _should_use_sync_fallback() -> bool:
         return bool(getattr(settings, 'STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
@@ -4895,6 +4896,28 @@ def stock_ai_advisory_session_api(request, symbol: str):
         payload['effective_ai_provider'] = ai_status.get('provider')
         payload['effective_ai_model'] = ai_status.get('model')
         payload['effective_ai_source'] = ai_status.get('source')
+        payload['contract_version'] = 'v1'
+
+        if session_v2_enabled:
+            trace_payload = _build_advisory_trace_payload_for_user(
+                user=request.user,
+                symbol=normalized_symbol,
+                advisory_id=latest_advisory.id if latest_advisory is not None else None,
+                snapshot_id=(latest_advisory.aggregate_snapshot_id if latest_advisory is not None else None),
+                max_logs=1,
+                strict_after_state=True,
+            )
+            latest_log = (trace_payload.get('audit_logs') or [None])[0] if trace_payload.get('ok') else None
+            snapshot_obj = latest_advisory.aggregate_snapshot if latest_advisory is not None else None
+            payload['contract_version'] = 'v2'
+            payload['aggregate'] = {
+                'advisory_id': latest_advisory.id if latest_advisory is not None else None,
+                'snapshot_id': latest_advisory.aggregate_snapshot_id if latest_advisory is not None else None,
+                'snapshot_seq': snapshot_obj.snapshot_seq if snapshot_obj is not None else None,
+                'last_audit_reason': latest_log.get('reason') if latest_log else None,
+                'last_audit_actor': latest_log.get('actor') if latest_log else None,
+                'last_audit_at': latest_log.get('created_at') if latest_log else None,
+            }
         return payload
 
     def _tracked_response(payload: dict, response_status: int):

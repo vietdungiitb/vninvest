@@ -273,6 +273,9 @@ Muc tieu: Build AdvisoryAggregateState pipeline va auditability.
   - Test evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_trace_list_supports_reason_actor_time_filters`
     - `ApiRouteSmokeTests.test_stock_ai_advisory_trace_list_returns_400_for_invalid_reason_filter`
+- H2-step-6 hoan tat: bo sung khung Session API v2 sau feature flag `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`.
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/` giu backward compatibility va them `contract_version=v2` + `aggregate` provenance fields khi bat flag.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
 
 Work items:
 
