@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import LoginModal from './LoginModal';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
@@ -24,6 +25,14 @@ const mockI18nContext = {
   setLanguage: jest.fn(),
 };
 
+function renderLoginModal(props = {}) {
+  return render(
+    <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <LoginModal onSuccess={jest.fn()} {...props} />
+    </MemoryRouter>,
+  );
+}
+
 describe('LoginModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -34,9 +43,15 @@ describe('LoginModal', () => {
   });
 
   it('renders login form on mount', () => {
-    render(<LoginModal onSuccess={jest.fn()} />);
+    renderLoginModal();
     expect(screen.getByPlaceholderText('auth.usernamePlaceholder')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('••••••••')).toBeInTheDocument();
+  });
+
+  it('shows forgot password link in login mode', () => {
+    renderLoginModal();
+    const forgotLink = screen.getByRole('link', { name: 'auth.forgotPassword' });
+    expect(forgotLink).toHaveAttribute('href', '/reset-password');
   });
 
   describe('Login error handling', () => {
@@ -48,7 +63,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -72,7 +87,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -93,7 +108,7 @@ describe('LoginModal', () => {
         response: undefined,
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -117,7 +132,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -141,7 +156,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -167,7 +182,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -191,7 +206,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
 
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -217,7 +232,7 @@ describe('LoginModal', () => {
         },
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
 
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -246,7 +261,7 @@ describe('LoginModal', () => {
         message: 'Verification email sent',
       });
 
-      render(<LoginModal onSuccess={jest.fn()} />);
+      renderLoginModal();
       
       const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
       const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -274,7 +289,7 @@ describe('LoginModal', () => {
     });
 
     const onSuccess = jest.fn();
-    render(<LoginModal onSuccess={onSuccess} />);
+    renderLoginModal({ onSuccess });
     
     const usernameInput = screen.getByPlaceholderText('auth.usernamePlaceholder');
     const passwordInput = screen.getByPlaceholderText('••••••••');
@@ -292,7 +307,7 @@ describe('LoginModal', () => {
   });
 
   it('switches between login and register modes', async () => {
-    render(<LoginModal onSuccess={jest.fn()} />);
+    renderLoginModal();
     
     const registerButton = screen.getByRole('button', { name: 'auth.register' });
     fireEvent.click(registerButton);
@@ -303,6 +318,7 @@ describe('LoginModal', () => {
     });
   });
 });
+
 
 
 
