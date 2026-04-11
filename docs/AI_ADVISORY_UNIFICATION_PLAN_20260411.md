@@ -188,3 +188,128 @@ Mitigation:
 - Gate decision: CLOSED - Implementation complete for unification phases 0-4.
 - Remaining operation mode: monitor `language_quality` and failover/provider KPIs in runtime dashboard for stabilization window.
 - Backward compatibility: legacy contracts remain available during transition.
+
+## 12) Conversation Log Addendum (VN) - 2026-04-11
+
+This addendum records the full follow-up discussion and implementation after Phase 0-4 closure.
+
+### 12.1 User-reported symptom
+
+User reported: AI advisory content for `FPT` on AI Advisory page did not match Stock Detail advisory.
+
+### 12.2 Root cause identified
+
+In `WhaleAdvisoryListView.get_queryset()` (backend/portfolio/views.py), list flow previously used global slicing:
+
+- `qs.order_by('-created_at')[:100]`
+
+Then canonical conversion deduplicated symbols after slicing.
+
+Impact:
+
+1. If latest advisory of a symbol was outside top 100 global records, AI Advisory page could show an older advisory.
+2. Stock Detail queried by symbol/session and still showed latest advisory.
+
+### 12.3 Fix applied
+
+Adjusted list selection logic to collect latest advisory per symbol first (up to 100 symbols), instead of first 100 records globally.
+
+Result:
+
+1. AI Advisory page and Stock Detail now align on latest advisory per symbol.
+2. Canonical contract consistency improved.
+
+Commit recorded:
+
+- `f7b0eebd` - fix(advisory): ensure latest advisory per symbol in WhaleAdvisoryListView
+
+### 12.4 Clarified endpoint/source mapping (important)
+
+Two user actions are NOT the same source path:
+
+1. AI Advisory page `Refresh AI`
+  - Calls session endpoint (`POST /stock-management/stocks/<symbol>/ai-advisory-session/`)
+  - Generates/refreshes advisory root context (WhaleAdvisory path)
+
+2. Stock Detail `Tong hop lai` (Regenerate Summary)
+  - Calls summary regenerate endpoint (`POST /stock-management/stocks/<symbol>/ai-advisory-summary/regenerate/`)
+  - Regenerates executive summary from active components
+
+Therefore outputs can differ if contexts are not synced.
+
+### 12.5 Prompt-input trace (recorded during investigation)
+
+Refresh AI prompt inputs include:
+
+1. Symbol + side + matched value
+2. Market context block from `build_symbol_ai_context`:
+  - profile, price deltas (1D/5D/20D), volume/volatility
+  - intraday buy/sell value
+  - order-flow recent signals
+  - recent advisories
+  - optional portfolio position for user
+
+Regenerate Summary prompt inputs include:
+
+1. Symbol
+2. Summary control fields (`strategy_action`, `risk_level`, `overall_confidence`, synthesis preference)
+3. Active component lines (indicator/type/status/confidence/action/rationale)
+
+### 12.6 2-layer architecture decision (design)
+
+Agreed direction for consistency:
+
+1. Layer 1: canonical advisory source (latest advisory context per symbol/user)
+2. Layer 2: executive synthesis over active components anchored to layer 1 context
+
+Target behavior:
+
+1. Stock Detail regenerate should auto-sync/create advisory source when missing.
+2. Summary versions remain v1, v2, v3... (version history preserved).
+
+### 12.7 UX behavior requested by user
+
+User requested:
+
+1. If user presses `Tong hop lai` while no advisory exists, auto-create first then regenerate.
+2. Preserve summary version history (v1, v2...).
+
+### 12.8 Implementation applied for auto-create before regenerate
+
+Frontend `StockDetail` regenerate flow updated:
+
+1. On `Tong hop lai`, if no session advisory -> call session refresh endpoint first.
+2. If advisory is queued (no immediate advisory in response) -> show wait message and exit safely.
+3. If no active components -> auto-generate components before regenerate summary.
+4. If still no active components -> show explicit message and stop.
+
+File updated:
+
+- `frontend/src/pages/StockDetail.jsx`
+
+Status:
+
+1. Syntax check passed for updated file.
+2. Full frontend regression suite not executed in this patch window.
+
+### 12.9 Decision/status matrix (implemented vs pending)
+
+Implemented:
+
+1. Cross-screen latest-per-symbol consistency fix in list canonical source.
+2. Stock Detail auto-create advisory before regenerate summary.
+3. Stock Detail auto-generate components before regenerate summary when missing.
+
+Not yet implemented (requires separate backend migration/feature work):
+
+1. Hard guarantee to physically delete all older advisory records per symbol and keep exactly one row in DB.
+2. Strict advisory-id anchoring contract for regenerate endpoint (409 on stale advisory_id mismatch).
+3. Persisted summary-to-advisory linkage fields (`source_advisory_id`, version anchor) as mandatory schema.
+
+### 12.10 Operational note
+
+For now, product behavior is:
+
+1. User experience is aligned toward latest advisory context.
+2. Summary history versions continue to accumulate.
+3. Data-retention policy for old advisory rows remains as current backend policy unless further migration is approved.

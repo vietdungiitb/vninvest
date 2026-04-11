@@ -2420,7 +2420,47 @@ export default function StockDetail() {
     }
     setAdvisoryRegeneratingSummary(true);
     try {
-      const activeIds = advisoryComponents.filter((item) => item.include_in_summary).map((item) => item.id);
+      let sessionAdvisory = advisorySession;
+      if (!sessionAdvisory) {
+        setAdvisoryMessage('Đang tạo AI advisory gốc trước khi tổng hợp...');
+        const sessionResp = await refreshStockAIAdvisorySession(normalizedSymbol);
+        const sessionPayload = sessionResp?.data || {};
+        if (!sessionPayload?.advisory) {
+          setAdvisoryMessage(
+            sessionPayload?.message || 'Đã gửi yêu cầu tạo AI advisory. Vui lòng đợi vài giây rồi bấm Tổng hợp lại.'
+          );
+          return;
+        }
+        sessionAdvisory = sessionPayload.advisory;
+        setAdvisorySession(sessionAdvisory);
+        if (Array.isArray(sessionPayload.components)) {
+          setAdvisoryComponents(sessionPayload.components);
+        }
+      }
+
+      let currentComponents = advisoryComponents;
+      let activeIds = currentComponents.filter((item) => item.include_in_summary).map((item) => item.id);
+
+      if (!activeIds.length) {
+        setAdvisoryMessage('Đang tạo AI tabs từ advisory mới nhất trước khi tổng hợp...');
+        const generatedResp = await generateStockAIAdvisoryComponents(normalizedSymbol, {
+          timeframe: orderFlowWindow || '30m',
+          chart_context: buildChartContextPayload(),
+        });
+        const generatedPayload = generatedResp?.data || {};
+        const nextComponents = Array.isArray(generatedPayload.components) ? generatedPayload.components : [];
+        currentComponents = nextComponents;
+        setAdvisoryComponents(nextComponents);
+        setAdvisoryDeletedComponents([]);
+        setActiveAdvisoryComponentId(nextComponents[0]?.id || null);
+        activeIds = nextComponents.filter((item) => item.include_in_summary).map((item) => item.id);
+      }
+
+      if (!activeIds.length) {
+        setAdvisoryMessage('Không có component active để tổng hợp. Vui lòng tạo hoặc bật AI tab trước.');
+        return;
+      }
+
       const response = await regenerateStockAIExecutiveSummary(normalizedSymbol, {
         component_ids: activeIds,
         synthesis_preference: advisorySynthesisPreference,
