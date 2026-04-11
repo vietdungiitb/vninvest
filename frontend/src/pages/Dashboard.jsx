@@ -196,6 +196,20 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <DashboardRealtimePanel
+        holdings={liveHoldings}
+        trackedSymbolNames={trackedSymbolNames}
+        quotesBySymbol={quotesBySymbol}
+        realtimeStatus={realtimeStatus}
+        lastEventAt={lastEventAt}
+        alerts={alerts}
+        darkFlowAlerts={darkFlowAlerts}
+        metrics={metrics}
+        monitoredSymbols={monitoredSymbols}
+        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
+        onSyncRequest={handleSync}
+      />
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
@@ -228,20 +242,6 @@ export default function Dashboard() {
           showInteger={true}
         />
       </div>
-
-      <DashboardRealtimePanel
-        holdings={liveHoldings}
-        trackedSymbolNames={trackedSymbolNames}
-        quotesBySymbol={quotesBySymbol}
-        realtimeStatus={realtimeStatus}
-        lastEventAt={lastEventAt}
-        alerts={alerts}
-        darkFlowAlerts={darkFlowAlerts}
-        metrics={metrics}
-        monitoredSymbols={monitoredSymbols}
-        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
-        onSyncRequest={handleSync}
-      />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

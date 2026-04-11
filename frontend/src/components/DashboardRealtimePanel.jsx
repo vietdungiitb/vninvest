@@ -81,6 +81,7 @@ export default function DashboardRealtimePanel({
   const [backendUnifiedNextCursor, setBackendUnifiedNextCursor] = useState(null);
   const [backendUnifiedHasMore, setBackendUnifiedHasMore] = useState(false);
   const [loadingMoreUnified, setLoadingMoreUnified] = useState(false);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState('alerts');
   const [compact, setCompact] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -661,6 +662,19 @@ export default function DashboardRealtimePanel({
       ? 'border-amber-700 bg-amber-950/30 text-amber-300'
       : 'border-gray-700 bg-gray-950 text-gray-400';
 
+  const alertWorkspaceTabs = [
+    {
+      key: 'alerts',
+      label: t('dashboardRealtime.workspaceTabAlerts'),
+      description: t('dashboardRealtime.workspaceTabAlertsHint'),
+    },
+    {
+      key: 'settings',
+      label: t('dashboardRealtime.workspaceTabSettings'),
+      description: t('dashboardRealtime.workspaceTabSettingsHint'),
+    },
+  ];
+
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
       {criticalToasts.length > 0 && (
@@ -832,6 +846,25 @@ export default function DashboardRealtimePanel({
         </div>
       )}
 
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-800 bg-gray-950/60 p-2">
+        {alertWorkspaceTabs.map((tab) => {
+          const isActive = activeWorkspaceTab === tab.key;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveWorkspaceTab(tab.key)}
+              className={`rounded-lg px-3 py-2 text-left transition-colors ${isActive
+                ? 'border border-brand-600 bg-brand-900/30 text-brand-200'
+                : 'border border-transparent bg-transparent text-gray-400 hover:border-gray-700 hover:bg-gray-900 hover:text-gray-200'
+              }`}
+            >
+              <div className="text-xs font-semibold uppercase tracking-wider">{tab.label}</div>
+              <div className="mt-0.5 text-[11px] text-inherit opacity-80">{tab.description}</div>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Context-aware sync CTA: hiện khi có stale positions */}
       {realtimePortfolioStats.stalePositions > 0 && (
         <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-800/60 bg-amber-950/20 px-4 py-2.5">
@@ -849,119 +882,304 @@ export default function DashboardRealtimePanel({
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-3 space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-semibold text-gray-100">{t('dashboardRealtime.unifiedAlertStripTitle')}</h3>
-          <span className="text-xs text-gray-400">{t('dashboardRealtime.unifiedTotal', { count: filteredUnifiedAlerts.length })}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">{t('dashboardRealtime.filterBySource')}</span>
-          {['all', 'whale', 'dark_flow', 'price_shock', 'stale_quote'].map((source) => (
-            <button
-              key={source}
-              onClick={() => setSourceFilter(source)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${sourceFilter === source
-                ? 'border-brand-600 bg-brand-900/30 text-brand-300'
-                : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                }`}
-            >
-              {source === 'all' ? t('dashboardRealtime.filterAll') : sourceLabel(source, t)}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">{t('dashboardRealtime.filterByAudience')}</span>
-          {[
-            { value: 'all', label: t('dashboardRealtime.filterAll') },
-            { value: 'holdings', label: t('dashboardRealtime.filterHoldingsOnly') },
-            { value: 'watchlist', label: t('dashboardRealtime.filterWatchlistOnly') },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setAudienceFilter(item.value)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${audienceFilter === item.value
-                ? 'border-brand-600 bg-brand-900/30 text-brand-300'
-                : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">{t('dashboardRealtime.filterBySeverity')}</span>
-          {[
-            { value: 'all', label: t('dashboardRealtime.filterAll') },
-            { value: 'critical', label: t('dashboardRealtime.filterCriticalOnly') },
-            { value: 'high_plus', label: t('dashboardRealtime.filterHighPlus') },
-            { value: 'medium_plus', label: t('dashboardRealtime.filterMediumPlus') },
-          ].map((item) => (
-            <button
-              key={item.value}
-              onClick={() => setSeverityFilter(item.value)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${severityFilter === item.value
-                ? 'border-brand-600 bg-brand-900/30 text-brand-300'
-                : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                }`}
-            >
-              {item.label}
-            </button>
-          ))}
-          <span className="text-xs text-amber-300">{t('dashboardRealtime.unreadAlerts', { count: unreadCount })}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-gray-500">{t('dashboardRealtime.criticalToastPolicy')}</span>
-          <span className="text-xs rounded-full border border-gray-700 bg-gray-900 px-2 py-1 text-gray-300">
-            {t('dashboardRealtime.toastQueuePolicy')}
-          </span>
-          <button
-            onClick={toggleCriticalSound}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${criticalSoundEnabled
-              ? 'border-emerald-700 bg-emerald-950/30 text-emerald-300'
-              : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
-              }`}
-          >
-            {criticalSoundEnabled ? t('dashboardRealtime.soundOn') : t('dashboardRealtime.soundOff')}
-          </button>
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          <div className="rounded-lg border border-rose-700/60 bg-rose-950/35 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-rose-300">Critical</p>
-            <p className="text-lg font-bold text-rose-100 mt-1">{formatNumber(alertSummary.critical)}</p>
+      {activeWorkspaceTab === 'alerts' ? (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 xl:grid-cols-[0.92fr_1.08fr] gap-4 items-start">
+            <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-100">{t('dashboardRealtime.unifiedAlertStripTitle')}</h3>
+                  <p className="mt-1 text-xs text-gray-500">{t('dashboardRealtime.unifiedAlertStripHint')}</p>
+                </div>
+                <span className="rounded-full border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-300">
+                  {t('dashboardRealtime.unifiedTotal', { count: filteredUnifiedAlerts.length })}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-2 gap-2">
+                <div className="rounded-lg border border-rose-700/60 bg-rose-950/35 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wider text-rose-300">Critical</p>
+                  <p className="text-lg font-bold text-rose-100 mt-1">{formatNumber(alertSummary.critical)}</p>
+                </div>
+                <div className="rounded-lg border border-amber-700/60 bg-amber-950/35 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wider text-amber-300">High</p>
+                  <p className="text-lg font-bold text-amber-100 mt-1">{formatNumber(alertSummary.high)}</p>
+                </div>
+                <div className="rounded-lg border border-yellow-700/60 bg-yellow-950/25 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wider text-yellow-300">Medium</p>
+                  <p className="text-lg font-bold text-yellow-100 mt-1">{formatNumber(alertSummary.medium)}</p>
+                </div>
+                <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wider text-slate-300">Low</p>
+                  <p className="text-lg font-bold text-slate-100 mt-1">{formatNumber(alertSummary.low)}</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-gray-800 bg-gray-950/80 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('dashboardRealtime.hotSymbols')}</span>
+                  <span className="text-xs text-amber-300">{t('dashboardRealtime.unreadAlerts', { count: unreadCount })}</span>
+                </div>
+                {hotSymbols.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {hotSymbols.map((item) => (
+                      <Link
+                        key={item.symbol}
+                        to={`/stocks/${item.symbol}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-300 hover:border-brand-600 hover:text-brand-300 transition-colors"
+                      >
+                        <span className="font-semibold">{item.symbol}</span>
+                        <span className="text-gray-500">{item.total}</span>
+                        {item.critical > 0 && <span className="text-rose-300">C{item.critical}</span>}
+                        {item.high > 0 && <span className="text-amber-300">H{item.high}</span>}
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-gray-500">{t('dashboardRealtime.noHotSymbols')}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.unifiedCenterTitle')}</h3>
+                  <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.unifiedCenterHint')}</p>
+                </div>
+                <Link
+                  to="/whale-alerts"
+                  className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
+                >
+                  {t('dashboardRealtime.viewAll')}
+                </Link>
+              </div>
+              {filteredUnifiedAlerts.length === 0 ? (
+                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                  {t('dashboardRealtime.noUnifiedAlerts')}
+                </div>
+              ) : (
+                <div className="max-h-[460px] overflow-y-auto px-3 py-3 flex flex-col gap-2">
+                  {filteredUnifiedAlerts.map((alert, index) => {
+                    const severity = normalizeUnifiedSeverity(alert.severity, 'medium');
+                    const isUnread = !readAlertIds.has(alert.id);
+                    return (
+                      <Link
+                        key={alert.id || `${alert.symbol}-${alert.ts}-${index}`}
+                        to={alert.to || `/stocks/${alert.symbol}`}
+                        className="block"
+                      >
+                        <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)} ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-bold text-white text-[13px]">{alert.symbol || 'N/A'}</span>
+                            <div className="flex items-center gap-2">
+                              {isUnread && (
+                                <span className="rounded-full border border-cyan-700/70 bg-cyan-950/35 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-200">
+                                  {t('dashboardRealtime.badgeNew')}
+                                </span>
+                              )}
+                              <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${sourceTone(alert.source)}`}>
+                                {sourceLabel(alert.source, t)}
+                              </span>
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase bg-slate-900/60 text-slate-200 border border-slate-700">
+                                {t(`dashboardRealtime.severity${severity.charAt(0).toUpperCase()}${severity.slice(1)}`)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-1 flex items-baseline justify-between gap-2">
+                            <span className="text-sm font-bold text-white">{alert.headline}</span>
+                            <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-slate-500">
+                            {alert.detail}
+                          </div>
+                          {alert.confidence != null && (
+                            <div className="mt-0.5 text-[11px] text-slate-500">
+                              {t('dashboardRealtime.confidence')}: {formatNumber(Number(alert.confidence) || 0)}
+                            </div>
+                          )}
+                          <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <button
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                markAlertAsRead(alert.id);
+                              }}
+                              className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100"
+                            >
+                              {t('dashboardRealtime.markRead')}
+                            </button>
+                            <button
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                muteSymbolFor30m(alert.symbol);
+                              }}
+                              className="rounded border border-amber-700/70 bg-amber-950/25 px-2 py-1 text-[10px] font-semibold text-amber-200 hover:bg-amber-900/35"
+                            >
+                              {t('dashboardRealtime.mute30m')}
+                            </button>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                  {backendUnifiedHasMore && (
+                    <div className="pt-1">
+                      <button
+                        onClick={loadMoreUnifiedSnapshot}
+                        disabled={loadingMoreUnified}
+                        className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100 disabled:opacity-60"
+                      >
+                        {loadingMoreUnified ? t('dashboardRealtime.loadingMore') : t('dashboardRealtime.loadMore')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="rounded-lg border border-amber-700/60 bg-amber-950/35 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-amber-300">High</p>
-            <p className="text-lg font-bold text-amber-100 mt-1">{formatNumber(alertSummary.high)}</p>
-          </div>
-          <div className="rounded-lg border border-yellow-700/60 bg-yellow-950/25 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-yellow-300">Medium</p>
-            <p className="text-lg font-bold text-yellow-100 mt-1">{formatNumber(alertSummary.medium)}</p>
-          </div>
-          <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-slate-300">Low</p>
-            <p className="text-lg font-bold text-slate-100 mt-1">{formatNumber(alertSummary.low)}</p>
+
+          <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+            <div className="rounded-xl border border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
+                <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
+                <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.priceUnitHint')}</p>
+              </div>
+              {quoteList.length === 0 ? (
+                <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                  {t('dashboardRealtime.noSymbols')}
+                </div>
+              ) : (
+                <div className="max-h-[420px] overflow-y-auto overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-800">
+                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableSymbol')}</th>
+                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePrice')}</th>
+                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePctChange')}</th>
+                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableFreshness')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/60">
+                      {quoteList.map((item) => {
+                        const isUp = (item.change_pct ?? 0) > 0;
+                        const isDown = (item.change_pct ?? 0) < 0;
+                        return (
+                          <tr key={item.symbol} className="hover:bg-gray-800/30 transition-colors">
+                            <td className="px-4 py-3 font-bold text-brand-300">
+                              <Link
+                                to={`/stocks/${item.symbol}`}
+                                className="inline-flex items-center hover:text-cyan-300 transition-colors"
+                              >
+                                {item.symbol}
+                              </Link>
+                            </td>
+                            <td className="px-4 py-3 text-gray-200 tabular-nums">{formatQuotePrice(item.current_price)}</td>
+                            <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
+                              {item.change_pct === null || item.change_pct === undefined
+                                ? '—'
+                                : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
+                            </td>
+                            <td className="px-4 py-3 text-xs">
+                              {item.stale ? (
+                                <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
+                              ) : (
+                                <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <RealtimeDebugPanel />
           </div>
         </div>
-        {hotSymbols.length > 0 && (
+      ) : (
+        <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-100">{t('dashboardRealtime.settingsPanelTitle')}</h3>
+              <p className="mt-1 text-xs text-gray-500">{t('dashboardRealtime.settingsPanelHint')}</p>
+            </div>
+            <span className="text-xs text-amber-300">{t('dashboardRealtime.unreadAlerts', { count: unreadCount })}</span>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-gray-500">{t('dashboardRealtime.hotSymbols')}</span>
-            {hotSymbols.map((item) => (
-              <Link
-                key={item.symbol}
-                to={`/stocks/${item.symbol}`}
-                className="inline-flex items-center gap-1 rounded-full border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs text-gray-300 hover:border-brand-600 hover:text-brand-300 transition-colors"
+            <span className="text-xs text-gray-500">{t('dashboardRealtime.filterBySource')}</span>
+            {['all', 'whale', 'dark_flow', 'price_shock', 'stale_quote'].map((source) => (
+              <button
+                key={source}
+                onClick={() => setSourceFilter(source)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${sourceFilter === source
+                  ? 'border-brand-600 bg-brand-900/30 text-brand-300'
+                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                }`}
               >
-                <span className="font-semibold">{item.symbol}</span>
-                <span className="text-gray-500">{item.total}</span>
-                {item.critical > 0 && <span className="text-rose-300">C{item.critical}</span>}
-                {item.high > 0 && <span className="text-amber-300">H{item.high}</span>}
-              </Link>
+                {source === 'all' ? t('dashboardRealtime.filterAll') : sourceLabel(source, t)}
+              </button>
             ))}
           </div>
-        )}
-      </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500">{t('dashboardRealtime.filterByAudience')}</span>
+            {[
+              { value: 'all', label: t('dashboardRealtime.filterAll') },
+              { value: 'holdings', label: t('dashboardRealtime.filterHoldingsOnly') },
+              { value: 'watchlist', label: t('dashboardRealtime.filterWatchlistOnly') },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setAudienceFilter(item.value)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${audienceFilter === item.value
+                  ? 'border-brand-600 bg-brand-900/30 text-brand-300'
+                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500">{t('dashboardRealtime.filterBySeverity')}</span>
+            {[
+              { value: 'all', label: t('dashboardRealtime.filterAll') },
+              { value: 'critical', label: t('dashboardRealtime.filterCriticalOnly') },
+              { value: 'high_plus', label: t('dashboardRealtime.filterHighPlus') },
+              { value: 'medium_plus', label: t('dashboardRealtime.filterMediumPlus') },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setSeverityFilter(item.value)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${severityFilter === item.value
+                  ? 'border-brand-600 bg-brand-900/30 text-brand-300'
+                  : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500">{t('dashboardRealtime.criticalToastPolicy')}</span>
+            <span className="text-xs rounded-full border border-gray-700 bg-gray-900 px-2 py-1 text-gray-300">
+              {t('dashboardRealtime.toastQueuePolicy')}
+            </span>
+            <button
+              onClick={toggleCriticalSound}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${criticalSoundEnabled
+                ? 'border-emerald-700 bg-emerald-950/30 text-emerald-300'
+                : 'border-gray-700 bg-gray-900 text-gray-400 hover:text-gray-200 hover:border-gray-600'
+              }`}
+            >
+              {criticalSoundEnabled ? t('dashboardRealtime.soundOn') : t('dashboardRealtime.soundOff')}
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-4">
+      <div className="hidden">
         <div className="rounded-xl border border-gray-800 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
             <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
@@ -1014,101 +1232,6 @@ export default function DashboardRealtimePanel({
                   })}
                 </tbody>
               </table>
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-gray-800 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.unifiedCenterTitle')}</h3>
-            <Link
-              to="/whale-alerts"
-              className="text-xs text-brand-400 hover:text-brand-300 transition-colors"
-            >
-              {t('dashboardRealtime.viewAll')}
-            </Link>
-          </div>
-          {filteredUnifiedAlerts.length === 0 ? (
-            <div className="px-4 py-8 text-sm text-gray-500 text-center">
-              {t('dashboardRealtime.noUnifiedAlerts')}
-            </div>
-          ) : (
-            <div className="max-h-[420px] overflow-y-auto px-3 py-3 flex flex-col gap-2">
-              {filteredUnifiedAlerts.map((alert, index) => {
-                const severity = normalizeUnifiedSeverity(alert.severity, 'medium');
-                const isUnread = !readAlertIds.has(alert.id);
-                return (
-                  <Link
-                    key={alert.id || `${alert.symbol}-${alert.ts}-${index}`}
-                    to={alert.to || `/stocks/${alert.symbol}`}
-                    className="block"
-                  >
-                    <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)} ${index === 0 ? 'animate-pulse-once' : ''}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-white text-[13px]">{alert.symbol || 'N/A'}</span>
-                        <div className="flex items-center gap-2">
-                          {isUnread && (
-                            <span className="rounded-full border border-cyan-700/70 bg-cyan-950/35 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-200">
-                              {t('dashboardRealtime.badgeNew')}
-                            </span>
-                          )}
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${sourceTone(alert.source)}`}>
-                            {sourceLabel(alert.source, t)}
-                          </span>
-                          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold uppercase bg-slate-900/60 text-slate-200 border border-slate-700">
-                            {t(`dashboardRealtime.severity${severity.charAt(0).toUpperCase()}${severity.slice(1)}`)}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="mt-1 flex items-baseline justify-between gap-2">
-                        <span className="text-sm font-bold text-white">{alert.headline}</span>
-                        <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-slate-500">
-                        {alert.detail}
-                      </div>
-                      {alert.confidence != null && (
-                        <div className="mt-0.5 text-[11px] text-slate-500">
-                          {t('dashboardRealtime.confidence')}: {formatNumber(Number(alert.confidence) || 0)}
-                        </div>
-                      )}
-                      <div className="mt-2 flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            markAlertAsRead(alert.id);
-                          }}
-                          className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100"
-                        >
-                          {t('dashboardRealtime.markRead')}
-                        </button>
-                        <button
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            muteSymbolFor30m(alert.symbol);
-                          }}
-                          className="rounded border border-amber-700/70 bg-amber-950/25 px-2 py-1 text-[10px] font-semibold text-amber-200 hover:bg-amber-900/35"
-                        >
-                          {t('dashboardRealtime.mute30m')}
-                        </button>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-              {backendUnifiedHasMore && (
-                <div className="pt-1">
-                  <button
-                    onClick={loadMoreUnifiedSnapshot}
-                    disabled={loadingMoreUnified}
-                    className="w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100 disabled:opacity-60"
-                  >
-                    {loadingMoreUnified ? t('dashboardRealtime.loadingMore') : t('dashboardRealtime.loadMore')}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
