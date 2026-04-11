@@ -1,4 +1,4 @@
-# Holistic Advisory H4 CI Stability Tracker
+﻿# Holistic Advisory H4 CI Stability Tracker
 
 Status: IN PROGRESS
 Date: 2026-04-11
@@ -54,6 +54,27 @@ Quy uoc dien `Notes`:
 - Neu co warning OpenCore DPIPlan nhung test `OK`: ghi `known noise only`.
 - Neu fail: ghi test dau tien fail + ly do ngan gon.
 - Luon kem `Run URL` de trace lai.
+
+## 3.2 Script cap nhat nhanh tracker row
+
+Co the cap nhat bang bang script:
+
+`scripts/ops/sprint31_update_ci_tracker_row.ps1`
+
+Vi du:
+
+```powershell
+.\scripts\ops\sprint31_update_ci_tracker_row.ps1 \
+	-RunNumber 2 \
+	-Timestamp "2026-04-11 15:10 (+07)" \
+	-Branch "deploy" \
+	-Trigger workflow_dispatch \
+	-Commit "00ea9180" \
+	-Result OK \
+	-Duration "06:42" \
+	-RunUrl "https://github.com/<owner>/<repo>/actions/runs/<id>" \
+	-Notes "known noise only"
+```
 
 ## 4) Danh gia on dinh
 
