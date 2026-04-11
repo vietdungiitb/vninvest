@@ -1,6 +1,6 @@
 ﻿# Holistic Advisory H4 CI Stability Tracker
 
-Status: IN PROGRESS
+Status: CLOSED - NO-GO (MISSING ACTIONS EVIDENCE)
 Date: 2026-04-11
 Scope: Governance Release Gate workflow (`.github/workflows/governance-release-gate.yml`)
 
@@ -101,8 +101,13 @@ Lenh:
 ## 5) Action items
 
 1. Xac nhan run #1 (commit 6a56371c) tren Actions UI va cap nhat `Result` + `Duration`.
-2. TODO
-3. TODO
+2. Bo sung run #2 va #3 tu GitHub Actions UI (kem run URL + duration).
+3. Chay `scripts/ops/sprint31_refresh_go_no_go_from_tracker.ps1` de mo lai gate assessment.
+
+## 7) Gate decision lock (2026-04-11)
+
+- Trang thai tracker duoc khoa tai muc NO-GO tam thoi vi chua du du lieu run #1..#3 tu Actions UI.
+- Khong duoc doi sang GO candidate neu chua co toi thieu 3 run lien tiep `OK` voi evidence run URL ro rang.
 
 ## 5.1 Mapping nhanh trang thai run
 
