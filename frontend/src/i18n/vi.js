@@ -565,6 +565,8 @@ const vi = {
     governanceDenyCount: 'Deny',
     governanceTopReason: 'Reason chính',
     governanceTopCohort: 'Cohort chính',
+    governanceBreakdownEndpoint: 'Breakdown theo endpoint',
+    governanceBreakdownReason: 'Breakdown theo reason',
     governanceEndpointSessionApi: 'Session API',
     governanceEndpointObservabilityApi: 'Observability API',
     governanceReasonGlobalDisabled: 'Tắt gate toàn cục',

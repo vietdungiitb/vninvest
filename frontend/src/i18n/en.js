@@ -562,6 +562,8 @@ const en = {
     governanceDenyCount: 'Deny',
     governanceTopReason: 'Top reason',
     governanceTopCohort: 'Top cohort',
+    governanceBreakdownEndpoint: 'Breakdown by endpoint',
+    governanceBreakdownReason: 'Breakdown by reason',
     governanceEndpointSessionApi: 'Session API',
     governanceEndpointObservabilityApi: 'Observability API',
     governanceReasonGlobalDisabled: 'Global gate disabled',

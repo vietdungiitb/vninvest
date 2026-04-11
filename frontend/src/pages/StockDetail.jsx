@@ -1428,6 +1428,20 @@ export default function StockDetail() {
     return Object.keys(map).sort((a, b) => a.localeCompare(b));
   }, [advisoryObservability?.governance?.rollout_gate_deny_by_reason]);
 
+  const governanceEndpointBreakdown = useMemo(() => {
+    const map = advisoryObservability?.governance?.rollout_gate_deny_by_endpoint || {};
+    return Object.entries(map)
+      .map(([key, count]) => ({ key, count: Number(count || 0) }))
+      .sort((a, b) => b.count - a.count);
+  }, [advisoryObservability?.governance?.rollout_gate_deny_by_endpoint]);
+
+  const governanceReasonBreakdown = useMemo(() => {
+    const map = advisoryObservability?.governance?.rollout_gate_deny_by_reason || {};
+    return Object.entries(map)
+      .map(([key, count]) => ({ key, count: Number(count || 0) }))
+      .sort((a, b) => b.count - a.count);
+  }, [advisoryObservability?.governance?.rollout_gate_deny_by_reason]);
+
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
     try {
@@ -2772,6 +2786,54 @@ export default function StockDetail() {
                             {t('stockDetail.governanceDenyTotal')}: {advisoryObservability?.governance?.rollout_gate_deny_total ?? 0}
                           </div>
                         </div>
+                        {governanceEndpointBreakdown.length > 0 ? (
+                          <div className="mt-2">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceBreakdownEndpoint')}</p>
+                            <div className="mt-1 flex flex-wrap gap-2">
+                              {governanceEndpointBreakdown.map((item) => {
+                                const selected = advisoryGovernanceEndpointFilter === item.key;
+                                return (
+                                  <button
+                                    key={`gov-endpoint-${item.key}`}
+                                    type="button"
+                                    onClick={() => setAdvisoryGovernanceEndpointFilter(selected ? 'all' : item.key)}
+                                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                                      selected
+                                        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                                        : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'
+                                    }`}
+                                  >
+                                    {advisoryGovernanceEndpointLabel(item.key, t)} ({item.count})
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
+                        {governanceReasonBreakdown.length > 0 ? (
+                          <div className="mt-2">
+                            <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceBreakdownReason')}</p>
+                            <div className="mt-1 flex flex-wrap gap-2">
+                              {governanceReasonBreakdown.map((item) => {
+                                const selected = advisoryGovernanceReasonFilter === item.key;
+                                return (
+                                  <button
+                                    key={`gov-reason-${item.key}`}
+                                    type="button"
+                                    onClick={() => setAdvisoryGovernanceReasonFilter(selected ? 'all' : item.key)}
+                                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
+                                      selected
+                                        ? 'border-amber-500/70 bg-amber-500/10 text-amber-300'
+                                        : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'
+                                    }`}
+                                  >
+                                    {advisoryGovernanceReasonLabel(item.key, t)} ({item.count})
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : null}
                         <div className="mt-2 space-y-1.5">
                           {governanceTrendRows.map((row) => (
                             <div key={`gov-trend-${row.bucket}`} className="space-y-1">
