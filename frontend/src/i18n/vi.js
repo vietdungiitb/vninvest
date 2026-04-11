@@ -558,6 +558,8 @@ const vi = {
     governanceBucket: 'Bucket governance',
     governanceBucketHour: 'Theo giờ',
     governanceBucketDay: 'Theo ngày',
+    governanceFilterEndpoint: 'Lọc endpoint',
+    governanceFilterReason: 'Lọc reason',
     governanceTrendTitle: 'Rollout deny trend',
     governanceDenyTotal: 'Tổng deny',
     governanceDenyCount: 'Deny',

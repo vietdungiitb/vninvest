@@ -555,6 +555,8 @@ const en = {
     governanceBucket: 'Governance bucket',
     governanceBucketHour: 'Hourly',
     governanceBucketDay: 'Daily',
+    governanceFilterEndpoint: 'Filter endpoint',
+    governanceFilterReason: 'Filter reason',
     governanceTrendTitle: 'Rollout deny trend',
     governanceDenyTotal: 'Total deny',
     governanceDenyCount: 'Deny',

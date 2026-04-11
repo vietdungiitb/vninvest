@@ -3017,6 +3017,58 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data['ok'])
 
+    def test_stock_ai_advisory_observability_get_applies_governance_endpoint_reason_filters(self):
+        self.authenticate()
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'holistic_rollout_gate', 'outcome': 'denied'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.HOLISTIC_ROLLOUT_DENY,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='holistic_rollout_gate',
+            metadata_json={
+                'event_type': 'rollout_gate_deny',
+                'endpoint': 'stock_ai_advisory_session_api',
+                'deny_reason': 'allowlist_blocked',
+                'cohort_mode': 'allowlist',
+            },
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'holistic_rollout_gate', 'outcome': 'denied'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.HOLISTIC_ROLLOUT_DENY,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='holistic_rollout_gate',
+            metadata_json={
+                'event_type': 'rollout_gate_deny',
+                'endpoint': 'stock_ai_advisory_observability_api',
+                'deny_reason': 'staff_only',
+                'cohort_mode': 'staff',
+            },
+        )
+
+        response = self.client.get(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5&governance_endpoint=stock_ai_advisory_session_api&governance_reason=allowlist_blocked'
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['governance']['rollout_gate_deny_total'], 1)
+        self.assertEqual(
+            response.data['governance']['rollout_gate_deny_by_endpoint'].get('stock_ai_advisory_session_api'),
+            1,
+        )
+        self.assertEqual(
+            response.data['governance']['rollout_gate_deny_by_reason'].get('allowlist_blocked'),
+            1,
+        )
+        self.assertEqual(response.data['governance']['filters']['endpoint'], 'stock_ai_advisory_session_api')
+        self.assertEqual(response.data['governance']['filters']['reason'], 'allowlist_blocked')
+
     @patch.dict(
         'os.environ',
         {

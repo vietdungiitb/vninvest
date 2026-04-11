@@ -509,11 +509,20 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - render mini trend bar cho `rollout_gate_deny_trend` (toi da 8 buckets gan nhat), hien deny count + top reason + top cohort mode.
   - bo sung i18n keys cho vi/en.
   - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-6 hoan tat (governance filter theo endpoint/reason, BE + FE):
+  - backend `GET ai-advisory-observability` ho tro query:
+    - `governance_endpoint=<endpoint_name>`
+    - `governance_reason=<deny_reason>`
+  - governance response bo sung `filters` de FE tracking context query.
+  - frontend bo sung 2 selector filter endpoint/reason trong governance block va dong bo query params.
+  - Test/build evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_applies_governance_endpoint_reason_filters`
+    - `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung FE filter theo endpoint/reason cho governance block (phase tiep theo).
+2. Bo sung endpoint suggestion labels (thay endpoint raw bang nhan de doc nhanh) trong governance filter.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

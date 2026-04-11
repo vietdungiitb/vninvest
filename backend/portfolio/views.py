@@ -6062,6 +6062,8 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     retry_reason_filter = str(request.query_params.get('retry_reason') or '').strip().lower()
     retry_sort = str(request.query_params.get('retry_sort') or 'newest').strip().lower()
     governance_bucket = str(request.query_params.get('governance_bucket') or 'hour').strip().lower()
+    governance_endpoint_filter = str(request.query_params.get('governance_endpoint') or '').strip().lower()
+    governance_reason_filter = str(request.query_params.get('governance_reason') or '').strip().lower()
     valid_retry_sort_values = {'newest', 'oldest', 'most_failed'}
     if retry_sort not in valid_retry_sort_values:
         return Response({'ok': False, 'message': 'retry_sort khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -6136,10 +6138,16 @@ def stock_ai_advisory_observability_api(request, symbol: str):
         metadata = log_item.metadata_json or {}
         event_type = str(metadata.get('event_type') or '').strip().lower()
         if event_type == 'rollout_gate_deny':
-            rollout_deny_total += 1
             endpoint = str(metadata.get('endpoint') or '').strip().lower()
             deny_reason = str(metadata.get('deny_reason') or '').strip().lower()
             cohort_mode = str(metadata.get('cohort_mode') or '').strip().lower()
+
+            if governance_endpoint_filter and endpoint != governance_endpoint_filter:
+                continue
+            if governance_reason_filter and deny_reason != governance_reason_filter:
+                continue
+
+            rollout_deny_total += 1
             if endpoint:
                 rollout_deny_by_endpoint[endpoint] = rollout_deny_by_endpoint.get(endpoint, 0) + 1
             if deny_reason:
@@ -6239,6 +6247,10 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 'rollout_gate_deny_by_endpoint': rollout_deny_by_endpoint,
                 'rollout_gate_deny_by_reason': rollout_deny_by_reason,
                 'cohort_modes_seen': sorted(rollout_gate_cohort_modes),
+                'filters': {
+                    'endpoint': governance_endpoint_filter or None,
+                    'reason': governance_reason_filter or None,
+                },
                 'trend_bucket': governance_bucket,
                 'rollout_gate_deny_trend': [
                     rollout_deny_trend[key]

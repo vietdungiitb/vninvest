@@ -1346,6 +1346,8 @@ export default function StockDetail() {
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
   const [advisoryObservabilityWindowHours, setAdvisoryObservabilityWindowHours] = useState(48);
   const [advisoryGovernanceBucket, setAdvisoryGovernanceBucket] = useState('hour');
+  const [advisoryGovernanceEndpointFilter, setAdvisoryGovernanceEndpointFilter] = useState('all');
+  const [advisoryGovernanceReasonFilter, setAdvisoryGovernanceReasonFilter] = useState('all');
   const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
   const [retryEventReasonFilter, setRetryEventReasonFilter] = useState('all');
   const [retryEventSortMode, setRetryEventSortMode] = useState('newest');
@@ -1397,6 +1399,16 @@ export default function StockDetail() {
       };
     });
   }, [advisoryObservability?.governance?.rollout_gate_deny_trend]);
+
+  const governanceEndpointOptions = useMemo(() => {
+    const map = advisoryObservability?.governance?.rollout_gate_deny_by_endpoint || {};
+    return Object.keys(map).sort((a, b) => a.localeCompare(b));
+  }, [advisoryObservability?.governance?.rollout_gate_deny_by_endpoint]);
+
+  const governanceReasonOptions = useMemo(() => {
+    const map = advisoryObservability?.governance?.rollout_gate_deny_by_reason || {};
+    return Object.keys(map).sort((a, b) => a.localeCompare(b));
+  }, [advisoryObservability?.governance?.rollout_gate_deny_by_reason]);
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -1558,6 +1570,8 @@ export default function StockDetail() {
     setRetryEventSortMode('newest');
     setAdvisoryObservabilityWindowHours(48);
     setAdvisoryGovernanceBucket('hour');
+    setAdvisoryGovernanceEndpointFilter('all');
+    setAdvisoryGovernanceReasonFilter('all');
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
       recoveredCount: 0,
@@ -1624,6 +1638,12 @@ export default function StockDetail() {
         retry_sort: retryEventSortMode,
         governance_bucket: advisoryGovernanceBucket,
       };
+      if (advisoryGovernanceEndpointFilter !== 'all') {
+        params.governance_endpoint = advisoryGovernanceEndpointFilter;
+      }
+      if (advisoryGovernanceReasonFilter !== 'all') {
+        params.governance_reason = advisoryGovernanceReasonFilter;
+      }
       if (retryEventOutcomeFilter !== 'all') {
         params.retry_outcome = retryEventOutcomeFilter;
       }
@@ -1643,7 +1663,7 @@ export default function StockDetail() {
         setAdvisoryObservabilityLoading(false);
       }
     }
-  }, [advisoryGovernanceBucket, advisoryObservabilityWindowHours, normalizedSymbol, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
+  }, [advisoryGovernanceBucket, advisoryGovernanceEndpointFilter, advisoryGovernanceReasonFilter, advisoryObservabilityWindowHours, normalizedSymbol, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
 
   const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;
@@ -2630,6 +2650,28 @@ export default function StockDetail() {
                         >
                           <option value="hour">{t('stockDetail.governanceBucketHour')}</option>
                           <option value="day">{t('stockDetail.governanceBucketDay')}</option>
+                        </select>
+                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceFilterEndpoint')}</span>
+                        <select
+                          value={advisoryGovernanceEndpointFilter}
+                          onChange={(e) => setAdvisoryGovernanceEndpointFilter(e.target.value)}
+                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                        >
+                          <option value="all">{t('stockDetail.retryFilterAll')}</option>
+                          {governanceEndpointOptions.map((endpoint) => (
+                            <option key={endpoint} value={endpoint}>{endpoint}</option>
+                          ))}
+                        </select>
+                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceFilterReason')}</span>
+                        <select
+                          value={advisoryGovernanceReasonFilter}
+                          onChange={(e) => setAdvisoryGovernanceReasonFilter(e.target.value)}
+                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                        >
+                          <option value="all">{t('stockDetail.retryFilterAll')}</option>
+                          {governanceReasonOptions.map((reason) => (
+                            <option key={reason} value={reason}>{reason}</option>
+                          ))}
                         </select>
                         {advisoryObservabilityLoading ? (
                           <span className="text-[11px] text-slate-500">Refreshing...</span>
