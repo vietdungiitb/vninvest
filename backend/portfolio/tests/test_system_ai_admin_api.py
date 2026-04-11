@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from unittest.mock import patch
 from django.utils import timezone
 
@@ -14,6 +15,7 @@ class SystemAIAdminApiTests(APITestCase):
     AUDIT_URL = '/api/admin-ops/system-ai-settings/audit-logs/'
 
     def setUp(self):
+        cache.delete('admin_ops:holistic_governance_delta_thresholds')
         self.admin_user = User.objects.create_superuser(
             username='system-ai-admin',
             email='system-ai-admin@example.com',
@@ -68,6 +70,53 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertTrue(cfg.ai_api_key)
         self.assertNotEqual(cfg.ai_api_key, 'sk-system-admin-key')
         self.assertTrue(SystemAISettingsAuditLog.objects.filter(action='update_settings').exists())
+
+    def test_put_updates_governance_delta_thresholds(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'governance_delta_thresholds': {
+                    'warning': 1.5,
+                    'critical': 3.5,
+                    'cooldown': 1.0,
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('ok'))
+        thresholds = response.data['settings']['governance_delta_thresholds']
+        self.assertEqual(thresholds['warning'], 1.5)
+        self.assertEqual(thresholds['critical'], 3.5)
+        self.assertEqual(thresholds['cooldown'], 1.0)
+
+        get_response = self.client.get(self.URL)
+        self.assertEqual(get_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(get_response.data['settings']['governance_delta_thresholds']['warning'], 1.5)
+        self.assertEqual(get_response.data['settings']['governance_delta_thresholds']['critical'], 3.5)
+        self.assertEqual(get_response.data['settings']['governance_delta_thresholds']['cooldown'], 1.0)
+
+    def test_put_rejects_invalid_governance_delta_thresholds(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'governance_delta_thresholds': {
+                    'warning': 3,
+                    'critical': 2,
+                    'cooldown': 1,
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok'))
+        self.assertIn('critical', str(response.data.get('message', '')).lower())
 
     @patch('portfolio.ai_service.test_ai_connection')
     def test_admin_can_test_system_ai_connection(self, mock_test_ai_connection):

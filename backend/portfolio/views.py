@@ -219,6 +219,67 @@ def admin_runtime_kpi_whale_pipeline_api(request):
     )
 
 
+HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY = 'admin_ops:holistic_governance_delta_thresholds'
+
+
+def _default_governance_delta_thresholds():
+    warning = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD', 2.0) or 2.0))
+    critical = max(warning, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD', 4.0) or 4.0))
+    cooldown = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD', 2.0) or 2.0))
+    return {
+        'warning': warning,
+        'critical': critical,
+        'cooldown': cooldown,
+    }
+
+
+def _coerce_governance_delta_thresholds(raw_payload, fallback=None):
+    payload = raw_payload if isinstance(raw_payload, dict) else {}
+    base = fallback or _default_governance_delta_thresholds()
+
+    try:
+        warning = float(payload.get('warning', base['warning']))
+        critical = float(payload.get('critical', base['critical']))
+        cooldown = float(payload.get('cooldown', base['cooldown']))
+    except (TypeError, ValueError):
+        raise ValueError('governance_delta_thresholds phải là số hợp lệ.')
+
+    if warning < 0 or critical < 0 or cooldown < 0:
+        raise ValueError('governance_delta_thresholds không được âm.')
+    if critical < warning:
+        raise ValueError('critical phải lớn hơn hoặc bằng warning.')
+
+    return {
+        'warning': warning,
+        'critical': critical,
+        'cooldown': cooldown,
+    }
+
+
+def _get_runtime_governance_delta_thresholds():
+    from django.core.cache import cache
+
+    default_thresholds = _default_governance_delta_thresholds()
+    cached = cache.get(HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY)
+    if not isinstance(cached, dict):
+        return default_thresholds
+    try:
+        return _coerce_governance_delta_thresholds(cached, fallback=default_thresholds)
+    except ValueError:
+        return default_thresholds
+
+
+def _set_runtime_governance_delta_thresholds(raw_payload):
+    from django.core.cache import cache
+
+    normalized = _coerce_governance_delta_thresholds(raw_payload, fallback=_default_governance_delta_thresholds())
+    cache.set(HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY, normalized, timeout=None)
+    setattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD', normalized['warning'])
+    setattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD', normalized['critical'])
+    setattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD', normalized['cooldown'])
+    return normalized
+
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAdminUser])
 def admin_system_ai_settings_api(request):
@@ -235,6 +296,7 @@ def admin_system_ai_settings_api(request):
         settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
 
     def _serialize(obj):
+        governance_thresholds = _get_runtime_governance_delta_thresholds()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -245,10 +307,22 @@ def admin_system_ai_settings_api(request):
             'allow_env_fallback': bool(obj.allow_env_fallback),
             'ai_api_key_configured': obj.ai_api_key_configured,
             'notes': str(obj.notes or ''),
+            'governance_delta_thresholds': governance_thresholds,
+            'governance_delta_rulebook': {
+                'warning_min': 0,
+                'critical_must_be_gte_warning': True,
+                'cooldown_min': 0,
+                'recommended': {
+                    'warning': 2.0,
+                    'critical': 4.0,
+                    'cooldown': 2.0,
+                },
+            },
             'updated_at': obj.updated_at.isoformat() if obj.updated_at else None,
         }
 
     def _snapshot(obj):
+        governance_thresholds = _get_runtime_governance_delta_thresholds()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -259,6 +333,7 @@ def admin_system_ai_settings_api(request):
             'allow_env_fallback': bool(obj.allow_env_fallback),
             'ai_api_key_configured': obj.ai_api_key_configured,
             'notes': str(obj.notes or ''),
+            'governance_delta_thresholds': governance_thresholds,
         }
 
     if request.method == 'GET':
@@ -272,6 +347,7 @@ def admin_system_ai_settings_api(request):
     allow_env_fallback = bool(request.data.get('allow_env_fallback', settings_obj.allow_env_fallback))
     is_active = bool(request.data.get('is_active', settings_obj.is_active))
     raw_key = request.data.get('ai_api_key', None)
+    governance_thresholds_payload = request.data.get('governance_delta_thresholds', None)
 
     if not is_valid_provider(provider):
         return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -291,9 +367,11 @@ def admin_system_ai_settings_api(request):
         settings_obj.set_ai_api_key(str(raw_key or '').strip())
 
     try:
+        if governance_thresholds_payload is not None:
+            _set_runtime_governance_delta_thresholds(governance_thresholds_payload)
         settings_obj.full_clean()
         settings_obj.save()
-    except ValidationError as exc:
+    except (ValidationError, ValueError) as exc:
         return Response({'ok': False, 'message': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     after_snapshot = _snapshot(settings_obj)
@@ -6070,9 +6148,10 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     if governance_bucket not in {'hour', 'day'}:
         return Response({'ok': False, 'message': 'governance_bucket khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    warning_threshold = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_WARNING_THRESHOLD', 2.0) or 2.0))
-    critical_threshold = max(warning_threshold, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_CRITICAL_THRESHOLD', 4.0) or 4.0))
-    cooldown_threshold = max(0.0, float(getattr(settings, 'HOLISTIC_GOVERNANCE_DELTA_COOLDOWN_THRESHOLD', 2.0) or 2.0))
+    runtime_thresholds = _get_runtime_governance_delta_thresholds()
+    warning_threshold = runtime_thresholds['warning']
+    critical_threshold = runtime_thresholds['critical']
+    cooldown_threshold = runtime_thresholds['cooldown']
 
     def _safe_int(value, default=0):
         try:

@@ -10,7 +10,15 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getAdminOpsStats, syncMarketGroups, syncStockProfile, syncWatchlistPrices, warmTickerPrefetch } from '../api/client';
+import {
+  getAdminOpsStats,
+  getAdminSystemAiSettings,
+  syncMarketGroups,
+  syncStockProfile,
+  syncWatchlistPrices,
+  updateAdminSystemAiSettings,
+  warmTickerPrefetch,
+} from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 
@@ -152,6 +160,10 @@ export default function AdminOps() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const [stats, setStats] = useState(null);
+  const [systemAiSettings, setSystemAiSettings] = useState(null);
+  const [thresholdForm, setThresholdForm] = useState({ warning: '', critical: '', cooldown: '' });
+  const [thresholdState, setThresholdState] = useState('idle');
+  const [thresholdMessage, setThresholdMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [syncStates, setSyncStates] = useState({});
@@ -162,8 +174,17 @@ export default function AdminOps() {
     }
     setError(null);
     try {
-      const res = await getAdminOpsStats();
-      setStats(res.data);
+      const [statsRes, settingsRes] = await Promise.all([getAdminOpsStats(), getAdminSystemAiSettings()]);
+      setStats(statsRes.data);
+      const payload = settingsRes.data?.settings || null;
+      setSystemAiSettings(payload);
+      if (payload?.governance_delta_thresholds) {
+        setThresholdForm({
+          warning: String(payload.governance_delta_thresholds.warning ?? ''),
+          critical: String(payload.governance_delta_thresholds.critical ?? ''),
+          cooldown: String(payload.governance_delta_thresholds.cooldown ?? ''),
+        });
+      }
     } catch (err) {
       const status = err.response?.status;
       if (status === 403 || status === 401) {
@@ -201,6 +222,54 @@ export default function AdminOps() {
       setSyncStates((s) => ({ ...s, [key]: 'error' }));
     }
   }, [load]);
+
+  const handleThresholdInput = useCallback((field, value) => {
+    setThresholdForm((prev) => ({ ...prev, [field]: value }));
+    if (thresholdState !== 'idle') {
+      setThresholdState('idle');
+      setThresholdMessage('');
+    }
+  }, [thresholdState]);
+
+  const handleThresholdSave = useCallback(async (event) => {
+    event.preventDefault();
+    const warning = Number(thresholdForm.warning);
+    const critical = Number(thresholdForm.critical);
+    const cooldown = Number(thresholdForm.cooldown);
+
+    if ([warning, critical, cooldown].some((value) => Number.isNaN(value))) {
+      setThresholdState('error');
+      setThresholdMessage(t('adminOps.thresholdValidationNumber'));
+      return;
+    }
+
+    setThresholdState('saving');
+    setThresholdMessage('');
+    try {
+      const response = await updateAdminSystemAiSettings({
+        governance_delta_thresholds: {
+          warning,
+          critical,
+          cooldown,
+        },
+      });
+      const payload = response.data?.settings || null;
+      setSystemAiSettings(payload);
+      if (payload?.governance_delta_thresholds) {
+        setThresholdForm({
+          warning: String(payload.governance_delta_thresholds.warning ?? ''),
+          critical: String(payload.governance_delta_thresholds.critical ?? ''),
+          cooldown: String(payload.governance_delta_thresholds.cooldown ?? ''),
+        });
+      }
+      setThresholdState('success');
+      setThresholdMessage(t('adminOps.thresholdSaveSuccess'));
+      await load({ silent: true });
+    } catch (err) {
+      setThresholdState('error');
+      setThresholdMessage(err.response?.data?.message || t('adminOps.thresholdSaveFailed'));
+    }
+  }, [load, t, thresholdForm]);
 
   // ─── Render states ───────────────────────────────────────────────────────
 
@@ -254,6 +323,8 @@ export default function AdminOps() {
   const workerSummary = dashboard.worker_summary || {};
   const workerRows = Array.isArray(workerSummary.workers) ? workerSummary.workers.slice(0, 5) : [];
   const prefetch = stats.ticker_prefetch || {};
+  const governanceThresholds = systemAiSettings?.governance_delta_thresholds || {};
+  const governanceRulebook = systemAiSettings?.governance_delta_rulebook || {};
 
   const syncBtn = (key, label, fn, ...args) => {
     const st = syncStates[key];
@@ -533,6 +604,69 @@ export default function AdminOps() {
       </section>
 
       {/* S24-04: Runtime KPI Panel */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('adminOps.governanceThresholdsTitle')}</h2>
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 space-y-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {t('adminOps.governanceThresholdsDescription')}
+          </p>
+          <form onSubmit={handleThresholdSave} className="grid gap-4 md:grid-cols-3">
+            <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.thresholdWarning')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={thresholdForm.warning}
+                onChange={(event) => handleThresholdInput('warning', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.thresholdCritical')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={thresholdForm.critical}
+                onChange={(event) => handleThresholdInput('critical', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.thresholdCooldown')}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.1"
+                value={thresholdForm.cooldown}
+                onChange={(event) => handleThresholdInput('cooldown', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <div className="md:col-span-3 flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={thresholdState === 'saving'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${thresholdState === 'saving' ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {thresholdState === 'saving' ? t('adminOps.thresholdSaving') : t('adminOps.thresholdSave')}
+              </button>
+              {thresholdMessage ? (
+                <span className={`text-sm ${thresholdState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {thresholdMessage}
+                </span>
+              ) : null}
+            </div>
+          </form>
+          <div className="grid gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <p>{t('adminOps.thresholdRuleMin', { value: governanceRulebook.warning_min ?? 0 })}</p>
+            <p>{t('adminOps.thresholdRuleCritical')}</p>
+            <p>{t('adminOps.thresholdRuleDefault', { warning: governanceRulebook.recommended?.warning ?? governanceThresholds.warning ?? '2.0', critical: governanceRulebook.recommended?.critical ?? governanceThresholds.critical ?? '4.0', cooldown: governanceRulebook.recommended?.cooldown ?? governanceThresholds.cooldown ?? '2.0' })}</p>
+          </div>
+        </div>
+      </section>
+
       <section>
         <RuntimeKPIPanel />
       </section>

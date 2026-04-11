@@ -562,12 +562,24 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - Test/build evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds`
     - `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-15 hoan tat (admin-operable thresholds + rulebook):
+  - backend mo rong `GET/PUT /api/admin-ops/system-ai-settings/` de cho phep doc/ghi `governance_delta_thresholds` voi rulebook validation:
+    - warning/critical/cooldown phai >= 0
+    - critical phai >= warning
+  - bo sung runtime override helper de observability API doc nguong runtime tu cache key chung (`admin_ops:holistic_governance_delta_thresholds`).
+  - frontend bo sung section trong `AdminOps` de admin cap nhat 3 nguong va xem rulebook ngay tren UI, khong can sua env thu cong.
+  - Test/build evidence:
+    - `SystemAIAdminApiTests.test_put_updates_governance_delta_thresholds` => `OK` (sqlite override local)
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_governance_delta_thresholds` => `OK` (sqlite override local)
+    - `npm run build` trong `frontend/` => `Compiled successfully`.
+  - Ghi chu moi truong:
+    - Chay test voi DB profile mac dinh (PostgreSQL localhost:5432) dang bi block boi connectivity timeout, can khoi phuc DB de rerun full theo profile prod-like.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung admin UI/rulebook de cap nhat cac nguong delta runtime ma khong can sua env thu cong.
-3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
+2. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
+3. Khoi phuc ket noi PostgreSQL local va rerun regression tests theo DB profile mac dinh de dong dau xanh production-parity.
 
 Deliverables:
 
