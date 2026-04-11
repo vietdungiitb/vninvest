@@ -578,12 +578,22 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
     - CI enforcement: them workflow `.github/workflows/governance-release-gate.yml` chay governance regression tren postgres service cho `deploy/main` (push + PR).
     - Release manager trigger: workflow tren ho tro `workflow_dispatch` de co the chay gate thu cong truoc GO/NO-GO.
     - `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-16 hoan tat (release runbook env template theo cohort):
+  - bo sung runbook rollout theo cohort + governance threshold tai `docs/HOLISTIC_ADVISORY_H4_ROLLOUT_RUNBOOK_20260411.md`.
+  - runbook cover:
+    - env templates cho `pre-release lock`, `staff`, `allowlist`, `all`
+    - governance threshold presets + rule constraints
+    - smoke checklist sau moi lan doi cohort
+    - rollback nhanh va references den release gate scripts/workflow.
+- H4-step-17 hoan tat (CI stability tracker cho governance gate):
+  - tao tracker `docs/HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md` de theo doi 3-5 lan chay dau tien.
+  - bao gom checklist moi lan run, run log table, quy tac GO/NO-GO va khuon action items.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
-3. Theo doi 3-5 lan chay CI dau tien tren `deploy/main`, xac nhan do on dinh va khong co false-positive.
+2. Dien du lieu that cho 3-5 lan chay CI dau tien vao `HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md`.
+3. Chot ket qua theo doi CI vao artifact GO/NO-GO tiep theo (ty le pass, flaky signals, action items neu co).
 
 Deliverables:
 
