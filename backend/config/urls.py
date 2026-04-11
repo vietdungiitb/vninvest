@@ -6,6 +6,8 @@ import portfolio.views as portfolio_views
 from portfolio.views import AdminOpsStatsView
 from portfolio.auth_views import (
     GoogleOAuthView,
+    PasswordResetConfirmView,
+    PasswordResetRequestView,
     RegisterView,
     ResendVerificationEmailView,
     UserMeView,
@@ -23,6 +25,8 @@ urlpatterns = [
     path('api/auth/oauth/google/', GoogleOAuthView.as_view(), name='auth-oauth-google'),
     path('api/auth/verify-email/', VerifyEmailView.as_view(), name='auth-verify-email'),
     path('api/auth/resend-verification/', ResendVerificationEmailView.as_view(), name='auth-resend-verification'),
+    path('api/auth/password-reset/request/', PasswordResetRequestView.as_view(), name='auth-password-reset-request'),
+    path('api/auth/password-reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
     path('api/portfolio/', include('portfolio.urls')),
     # Tách biệt route stock-management
     path('api/stock-management/', include('portfolio.urls_stock')),

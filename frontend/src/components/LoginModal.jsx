@@ -3,6 +3,7 @@
  * Form auth JWT với 2 chế độ đăng nhập và đăng ký.
  */
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import { fetchLegalPages } from '../api/client';
@@ -378,6 +379,13 @@ export default function LoginModal({ onSuccess }) {
               placeholder="••••••••"
             />
             {fieldErrors.password && <p className="mt-1 text-xs text-red-400">{fieldErrors.password}</p>}
+            {!isRegisterMode && (
+              <div className="mt-2 text-right">
+                <Link to="/reset-password" className="text-xs text-brand-400 hover:text-brand-300 transition-colors">
+                  {t('auth.forgotPassword')}
+                </Link>
+              </div>
+            )}
           </div>
 
           {isRegisterMode && (

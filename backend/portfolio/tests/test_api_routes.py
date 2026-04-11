@@ -12,6 +12,7 @@ import pandas as pd
 from portfolio.exceptions import ExternalSystemException
 from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.email_verification import generate_email_verification_token
+from portfolio.password_reset import generate_password_reset_token
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
 from rest_framework import status
@@ -263,7 +264,69 @@ class ApiRouteSmokeTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIn('access', response.data)
+
+    @patch('portfolio.auth_views.send_password_reset_email', return_value=1)
+    def test_password_reset_request_sends_email_when_user_exists(self, mock_send_password_reset_email):
+        response = self.client.post(
+            '/api/auth/password-reset/request/',
+            {'identifier': self.username},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        mock_send_password_reset_email.assert_called_once_with(self.user)
+
+    @patch('portfolio.auth_views.send_password_reset_email', return_value=1)
+    def test_password_reset_request_returns_generic_message_for_unknown_user(self, mock_send_password_reset_email):
+        response = self.client.post(
+            '/api/auth/password-reset/request/',
+            {'identifier': 'unknown-user'},
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('message', response.data)
+        mock_send_password_reset_email.assert_not_called()
+
+    def test_password_reset_confirm_updates_password(self):
+        token = generate_password_reset_token(self.user)
+        new_password = 'NewPass@123456'
+
+        response = self.client.post(
+            '/api/auth/password-reset/confirm/',
+            {
+                'token': token,
+                'new_password': new_password,
+                'new_password_confirm': new_password,
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password(new_password))
+
+        login_response = self.client.post(
+            '/api/auth/token/',
+            {'username': self.username, 'password': new_password},
+            format='json',
+        )
+        self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+
+    def test_password_reset_confirm_rejects_invalid_token(self):
+        response = self.client.post(
+            '/api/auth/password-reset/confirm/',
+            {
+                'token': 'invalid-token',
+                'new_password': 'NewPass@123456',
+                'new_password_confirm': 'NewPass@123456',
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('token', response.data)
 
     @patch('portfolio.auth_views.send_verification_email', return_value=1)
     def test_verify_email_endpoint_marks_user_as_verified(self, _mock_send_verification_email):

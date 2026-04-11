@@ -2,6 +2,7 @@
 import logging
 
 from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
 from django.core import signing
 from django.db import transaction
 from django.utils import timezone
@@ -20,6 +21,7 @@ from .email_verification import resolve_email_verification_token, send_verificat
 from .google_oauth_service import fetch_google_user_email
 from .models import UserConfig
 from .onboarding_trial_service import apply_onboarding_trial_for_new_user
+from .password_reset import resolve_password_reset_token, send_password_reset_email
 from .permissions import _get_plan, resolve_user_entitlements
 from .starter_portfolio_service import (
     provision_starter_portfolios_for_user,
@@ -257,6 +259,70 @@ class ResendVerificationEmailView(APIView):
 
         return Response(
             {'message': 'Nếu tài khoản tồn tại và chưa xác thực, hệ thống đã gửi lại email xác thực.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    identifier = serializers.CharField()
+
+
+class PasswordResetRequestView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        identifier = serializer.validated_data['identifier'].strip()
+        user = User.objects.filter(username__iexact=identifier).first()
+        if user is None:
+            user = User.objects.filter(email__iexact=identifier).first()
+
+        if user is not None and (user.email or '').strip():
+            try:
+                send_password_reset_email(user)
+            except Exception:
+                logger.exception('Failed to send password reset email for user_id=%s', user.id)
+
+        return Response(
+            {'message': 'Nếu tài khoản tồn tại, hệ thống đã gửi email hướng dẫn đặt lại mật khẩu.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    new_password = serializers.CharField(min_length=8, write_only=True)
+    new_password_confirm = serializers.CharField(write_only=True)
+
+    def validate(self, data):
+        if data['new_password'] != data['new_password_confirm']:
+            raise serializers.ValidationError({'new_password_confirm': 'Mật khẩu xác nhận không khớp.'})
+        return data
+
+
+class PasswordResetConfirmView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        token = serializer.validated_data['token']
+        new_password = serializer.validated_data['new_password']
+
+        try:
+            user = resolve_password_reset_token(token)
+        except (KeyError, signing.BadSignature, User.DoesNotExist):
+            raise ValidationError({'token': 'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.'})
+
+        validate_password(new_password, user=user)
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        return Response(
+            {'message': 'Đặt lại mật khẩu thành công. Bạn đã có thể đăng nhập bằng mật khẩu mới.'},
             status=status.HTTP_200_OK,
         )
 

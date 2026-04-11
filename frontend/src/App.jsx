@@ -13,6 +13,7 @@ import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
 import Screener from './pages/Screener';
 import VerifyEmail from './pages/VerifyEmail';
+import ResetPassword from './pages/ResetPassword';
 import PortfolioManagement from './pages/PortfolioManagement';
 import UserConfig from './pages/UserConfig';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
@@ -50,6 +51,7 @@ export default function App() {
             <Routes>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="/" element={<ProtectedLayout />}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
