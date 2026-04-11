@@ -2727,6 +2727,41 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertIn('avg_aggregate_quality_score', response.data['summary'])
         self.assertIn('aggregate_quality', response.data['timeline'][0])
 
+    def test_stock_ai_advisory_observability_post_retry_telemetry_creates_audit_log(self):
+        self.authenticate()
+
+        payload = {
+            'event_type': 'frontend_retry_telemetry',
+            'outcome': 'recovered',
+            'client_ts': '2026-04-11T10:20:30Z',
+            'telemetry': {
+                'scheduled_count': 2,
+                'recovered_count': 1,
+                'failed_count': 0,
+                'last_reason': 'session_conflict',
+                'last_event_at': '2026-04-11T10:20:29Z',
+            },
+        }
+
+        response = self.client.post(
+            '/api/stock-management/stocks/BCM/ai-advisory-observability/',
+            payload,
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertIn('log_id', response.data)
+
+        latest_log = AdvisoryAggregateAuditLog.objects.filter(user=self.user, symbol='BCM').order_by('-created_at').first()
+        self.assertIsNotNone(latest_log)
+        self.assertEqual(latest_log.reason, AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH)
+        self.assertEqual(latest_log.actor, AdvisoryAggregateAuditLog.ActorChoices.USER)
+        self.assertEqual(latest_log.metadata_json.get('event_type'), 'frontend_retry_telemetry')
+        self.assertEqual(latest_log.metadata_json.get('outcome'), 'recovered')
+        self.assertEqual(latest_log.metadata_json.get('telemetry', {}).get('scheduled_count'), 2)
+
     @patch.dict(
         'os.environ',
         {

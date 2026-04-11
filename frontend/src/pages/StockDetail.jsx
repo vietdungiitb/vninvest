@@ -22,6 +22,7 @@ import {
   getStockFinancials,
   getStockAIAdvisorySession,
   getStockAIAdvisoryObservability,
+  postStockAIAdvisoryObservabilityEvent,
   refreshStockAIAdvisorySession,
   generateStockAIAdvisoryComponents,
   getStockOrderFlow,
@@ -1334,6 +1335,7 @@ export default function StockDetail() {
   const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
   const advisoryConflictRetryTimeoutRef = useRef(null);
   const advisoryConflictRetryCountRef = useRef(0);
+  const advisoryRetryTelemetrySyncKeyRef = useRef('');
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1498,6 +1500,7 @@ export default function StockDetail() {
       clearTimeout(advisoryConflictRetryTimeoutRef.current);
       advisoryConflictRetryTimeoutRef.current = null;
     }
+    advisoryRetryTelemetrySyncKeyRef.current = '';
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
       recoveredCount: 0,
@@ -1507,6 +1510,50 @@ export default function StockDetail() {
       lastEventAt: null,
     });
   }, [normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) return;
+    if (!advisoryRetryTelemetry.lastEventAt) return;
+    if (advisoryRetryTelemetry.lastOutcome === 'idle') return;
+
+    const syncKey = [
+      normalizedSymbol,
+      advisoryRetryTelemetry.lastEventAt,
+      advisoryRetryTelemetry.lastOutcome,
+      advisoryRetryTelemetry.lastReason,
+      advisoryRetryTelemetry.scheduledCount,
+      advisoryRetryTelemetry.recoveredCount,
+      advisoryRetryTelemetry.failedCount,
+    ].join('|');
+
+    if (advisoryRetryTelemetrySyncKeyRef.current === syncKey) {
+      return;
+    }
+    advisoryRetryTelemetrySyncKeyRef.current = syncKey;
+
+    postStockAIAdvisoryObservabilityEvent(normalizedSymbol, {
+      event_type: 'frontend_retry_telemetry',
+      outcome: advisoryRetryTelemetry.lastOutcome,
+      client_ts: new Date().toISOString(),
+      telemetry: {
+        scheduled_count: advisoryRetryTelemetry.scheduledCount,
+        recovered_count: advisoryRetryTelemetry.recoveredCount,
+        failed_count: advisoryRetryTelemetry.failedCount,
+        last_reason: advisoryRetryTelemetry.lastReason,
+        last_event_at: advisoryRetryTelemetry.lastEventAt,
+      },
+    }).catch(() => {
+      // Keep telemetry sync best-effort; UX must not fail if logging endpoint is unavailable.
+    });
+  }, [
+    advisoryRetryTelemetry.failedCount,
+    advisoryRetryTelemetry.lastEventAt,
+    advisoryRetryTelemetry.lastOutcome,
+    advisoryRetryTelemetry.lastReason,
+    advisoryRetryTelemetry.recoveredCount,
+    advisoryRetryTelemetry.scheduledCount,
+    normalizedSymbol,
+  ]);
 
   const fetchAdvisoryObservability = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;

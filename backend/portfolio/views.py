@@ -5877,12 +5877,70 @@ def stock_ai_advisory_trace_export_api(request, symbol: str):
     )
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_ai_advisory_observability_api(request, symbol: str):
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'POST':
+        payload = request.data if isinstance(request.data, dict) else {}
+        telemetry = payload.get('telemetry') if isinstance(payload.get('telemetry'), dict) else {}
+
+        event_type = str(payload.get('event_type') or 'frontend_retry_telemetry').strip()[:80]
+        outcome = str(payload.get('outcome') or '').strip()[:60]
+        client_ts = str(payload.get('client_ts') or '').strip()[:64]
+
+        def _safe_non_negative_int(value, default=0):
+            try:
+                parsed = int(value)
+                return parsed if parsed >= 0 else default
+            except (TypeError, ValueError):
+                return default
+
+        scheduled_count = _safe_non_negative_int(telemetry.get('scheduled_count', 0))
+        recovered_count = _safe_non_negative_int(telemetry.get('recovered_count', 0))
+        failed_count = _safe_non_negative_int(telemetry.get('failed_count', 0))
+        last_reason = str(telemetry.get('last_reason') or '').strip()[:120]
+
+        metadata_payload = {
+            'event_type': event_type,
+            'outcome': outcome,
+            'telemetry': {
+                'scheduled_count': scheduled_count,
+                'recovered_count': recovered_count,
+                'failed_count': failed_count,
+                'last_reason': last_reason,
+                'last_event_at': str(telemetry.get('last_event_at') or '').strip()[:64],
+            },
+            'client_ts': client_ts,
+        }
+
+        audit_log = AdvisoryAggregateAuditLog.objects.create(
+            user=request.user,
+            symbol=normalized_symbol,
+            before_state_json={},
+            after_state_json={
+                'operation': 'frontend_retry_telemetry',
+                'outcome': outcome,
+                'event_type': event_type,
+            },
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id=str(request.user.id),
+            metadata_json=metadata_payload,
+        )
+
+        return Response(
+            {
+                'ok': True,
+                'symbol': normalized_symbol,
+                'log_id': audit_log.id,
+                'message': 'Telemetry recorded.',
+            },
+            status=status.HTTP_201_CREATED,
+        )
 
     limit_raw = request.query_params.get('limit')
     window_hours_raw = request.query_params.get('window_hours')

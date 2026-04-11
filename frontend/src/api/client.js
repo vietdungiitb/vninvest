@@ -168,6 +168,8 @@ export const getStockAIAdvisorySession = (symbol, params = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });
 export const getStockAIAdvisoryObservability = (symbol, params = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, { params });
+export const postStockAIAdvisoryObservabilityEvent = (symbol, payload = {}) =>
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-observability/`, payload);
 export const refreshStockAIAdvisorySession = (symbol) =>
   apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`);
 export const generateStockAIAdvisoryComponents = (symbol, payload = {}) =>
