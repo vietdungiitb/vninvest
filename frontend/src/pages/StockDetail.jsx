@@ -2611,6 +2611,21 @@ export default function StockDetail() {
                         </div>
                       </div>
                     ) : null}
+                    {Array.isArray(advisoryObservability?.retry_events) && advisoryObservability.retry_events.length > 0 ? (
+                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
+                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Retry events (persisted)</p>
+                        <div className="mt-1 flex flex-wrap gap-2">
+                          {advisoryObservability.retry_events.slice(0, 5).map((event) => (
+                            <span
+                              key={`retry-${event.log_id}`}
+                              className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300"
+                            >
+                              {event.outcome || 'unknown'} r={event.reason || 'n/a'} s={event.scheduled_count} ok={event.recovered_count} f={event.failed_count}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
 
                   {advisoryDeletedComponents.length > 0 ? (

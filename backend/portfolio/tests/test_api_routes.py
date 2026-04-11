@@ -2762,6 +2762,45 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(latest_log.metadata_json.get('outcome'), 'recovered')
         self.assertEqual(latest_log.metadata_json.get('telemetry', {}).get('scheduled_count'), 2)
 
+    def test_stock_ai_advisory_observability_get_includes_retry_events_from_audit_logs(self):
+        self.authenticate()
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={},
+            after_state_json={'operation': 'frontend_retry_telemetry'},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.MANUAL_REFRESH,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.USER,
+            actor_id=str(self.user.id),
+            metadata_json={
+                'event_type': 'frontend_retry_telemetry',
+                'outcome': 'scheduled',
+                'client_ts': '2026-04-11T11:00:00Z',
+                'telemetry': {
+                    'scheduled_count': 3,
+                    'recovered_count': 1,
+                    'failed_count': 1,
+                    'last_reason': 'session_conflict',
+                    'last_event_at': '2026-04-11T10:59:58Z',
+                },
+            },
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=5')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertIn('retry_events', response.data)
+        self.assertGreaterEqual(len(response.data['retry_events']), 1)
+        first_event = response.data['retry_events'][0]
+        self.assertEqual(first_event['outcome'], 'scheduled')
+        self.assertEqual(first_event['reason'], 'session_conflict')
+        self.assertEqual(first_event['scheduled_count'], 3)
+        self.assertEqual(response.data['summary']['retry_scheduled_total'], 3)
+        self.assertEqual(response.data['summary']['retry_recovered_total'], 1)
+        self.assertEqual(response.data['summary']['retry_failed_total'], 1)
+
     @patch.dict(
         'os.environ',
         {

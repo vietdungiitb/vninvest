@@ -5998,6 +5998,41 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     drift_label = 'high_drift' if abs(severity_delta) >= 1.2 else 'moderate_drift' if abs(severity_delta) >= 0.6 else 'stable'
     avg_quality_score = round(sum(quality_scores) / len(quality_scores), 1) if quality_scores else 0.0
 
+    audit_logs = list(
+        AdvisoryAggregateAuditLog.objects.filter(
+            user=request.user,
+            symbol=normalized_symbol,
+            created_at__gte=since_at,
+        ).order_by('-created_at')[:200]
+    )
+    retry_events = []
+    retry_scheduled_total = 0
+    retry_recovered_total = 0
+    retry_failed_total = 0
+    for log_item in audit_logs:
+        metadata = log_item.metadata_json or {}
+        if str(metadata.get('event_type') or '') != 'frontend_retry_telemetry':
+            continue
+
+        telemetry_payload = metadata.get('telemetry') if isinstance(metadata.get('telemetry'), dict) else {}
+        retry_scheduled_total += int(telemetry_payload.get('scheduled_count') or 0)
+        retry_recovered_total += int(telemetry_payload.get('recovered_count') or 0)
+        retry_failed_total += int(telemetry_payload.get('failed_count') or 0)
+        retry_events.append(
+            {
+                'log_id': log_item.id,
+                'created_at': log_item.created_at.isoformat() if log_item.created_at else None,
+                'outcome': metadata.get('outcome') or '',
+                'reason': telemetry_payload.get('last_reason') or '',
+                'scheduled_count': int(telemetry_payload.get('scheduled_count') or 0),
+                'recovered_count': int(telemetry_payload.get('recovered_count') or 0),
+                'failed_count': int(telemetry_payload.get('failed_count') or 0),
+                'client_ts': metadata.get('client_ts') or '',
+            }
+        )
+        if len(retry_events) >= limit:
+            break
+
     return Response(
         {
             'ok': True,
@@ -6012,8 +6047,12 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 'severity_drift_label': drift_label,
                 'avg_aggregate_quality_score': avg_quality_score,
                 'sample_size': len(timeline),
+                'retry_scheduled_total': retry_scheduled_total,
+                'retry_recovered_total': retry_recovered_total,
+                'retry_failed_total': retry_failed_total,
             },
             'timeline': timeline,
+            'retry_events': retry_events,
         },
         status=status.HTTP_200_OK,
     )
