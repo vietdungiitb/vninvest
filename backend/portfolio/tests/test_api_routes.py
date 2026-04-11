@@ -2679,6 +2679,54 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertEqual(response.data['trace']['trace']['advisory_id'], advisory.id)
         self.assertGreaterEqual(len(response.data['history']['items']), 1)
 
+    def test_stock_ai_advisory_observability_returns_summary_and_timeline(self):
+        self.authenticate()
+        for idx, severity in enumerate([
+            WhaleAdvisory.SeverityChoices.INFO,
+            WhaleAdvisory.SeverityChoices.WARNING,
+            WhaleAdvisory.SeverityChoices.URGENT,
+        ], start=1):
+            snapshot = AdvisoryAggregateSnapshot.objects.create(
+                user=self.user,
+                symbol='BCM',
+                snapshot_seq=20 + idx,
+                state_json={
+                    'seq': 20 + idx,
+                    'quality': {
+                        'actionability': 0.4 + (idx * 0.1),
+                        'noise_ratio': 0.2,
+                        'consistency': 0.7,
+                    },
+                },
+            )
+            WhaleAdvisory.objects.create(
+                user=self.user,
+                symbol='BCM',
+                matched_value=6_000_000_000 + idx,
+                side='BUY',
+                threshold=5_000_000_000,
+                ai_summary=f'observability summary {idx}',
+                ai_detail=f'observability detail {idx}',
+                ai_provider='openclaw',
+                ai_model='default',
+                aggregate_snapshot=snapshot,
+                severity=severity,
+            )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=48&limit=2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['ok'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        self.assertEqual(response.data['window_hours'], 48)
+        self.assertEqual(response.data['limit'], 2)
+        self.assertIn('summary', response.data)
+        self.assertIn('timeline', response.data)
+        self.assertEqual(len(response.data['timeline']), 2)
+        self.assertIn('severity_drift_label', response.data['summary'])
+        self.assertIn('avg_aggregate_quality_score', response.data['summary'])
+        self.assertIn('aggregate_quality', response.data['timeline'][0])
+
     @patch.dict(
         'os.environ',
         {

@@ -348,6 +348,10 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - Test evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled`
     - `ApiRouteSmokeTests.test_stock_ai_advisory_trace_export_returns_audit_artifact_bundle`
+- H3-step-4 hoan tat (mini dashboard observability API cho FE H3):
+  - them endpoint: `GET /api/stock-management/stocks/<symbol>/ai-advisory-observability/?window_hours=<n>&limit=<n>`
+  - response gom `summary` (severity drift + avg aggregate quality) va `timeline` theo advisory.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_summary_and_timeline`
 
 Work items:
 

@@ -5002,6 +5002,28 @@ def _build_session_v2_observability(user, symbol: str, advisory_obj, snapshot_ob
     else:
         drift_label = 'stable'
 
+    quality_metrics = _build_session_v2_aggregate_quality_metrics(advisory_obj, snapshot_obj)
+
+    return {
+        'severity_drift_24h': {
+            'current': current_severity,
+            'current_score': current_score,
+            'baseline_score': baseline_score,
+            'delta': severity_delta,
+            'label': drift_label,
+            'sample_size': len(recent_scores),
+        },
+        'aggregate_quality': {
+            'score': quality_metrics['score'],
+            'label': quality_metrics['label'],
+            'actionability': quality_metrics['actionability'],
+            'noise_ratio': quality_metrics['noise_ratio'],
+            'consistency': quality_metrics['consistency'],
+        },
+    }
+
+
+def _build_session_v2_aggregate_quality_metrics(advisory_obj, snapshot_obj) -> dict:
     state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
     quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
     actionability = quality.get('actionability')
@@ -5020,21 +5042,11 @@ def _build_session_v2_observability(user, symbol: str, advisory_obj, snapshot_ob
         quality_label = 'low'
 
     return {
-        'severity_drift_24h': {
-            'current': current_severity,
-            'current_score': current_score,
-            'baseline_score': baseline_score,
-            'delta': severity_delta,
-            'label': drift_label,
-            'sample_size': len(recent_scores),
-        },
-        'aggregate_quality': {
-            'score': quality_score,
-            'label': quality_label,
-            'actionability': round(actionability, 4),
-            'noise_ratio': round(noise_ratio, 4),
-            'consistency': round(consistency, 4),
-        },
+        'score': quality_score,
+        'label': quality_label,
+        'actionability': round(actionability, 4),
+        'noise_ratio': round(noise_ratio, 4),
+        'consistency': round(consistency, 4),
     }
 
 
@@ -5860,6 +5872,90 @@ def stock_ai_advisory_trace_export_api(request, symbol: str):
                 'has_more': history_has_more,
                 'items': history_items,
             },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stock_ai_advisory_observability_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    limit_raw = request.query_params.get('limit')
+    window_hours_raw = request.query_params.get('window_hours')
+    try:
+        limit = max(int(limit_raw or 20), 1)
+        limit = min(limit, 100)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'limit khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        window_hours = max(int(window_hours_raw or 24), 1)
+        window_hours = min(window_hours, 168)
+    except (TypeError, ValueError):
+        return Response({'ok': False, 'message': 'window_hours khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    since_at = timezone.now() - timedelta(hours=window_hours)
+    advisories = list(
+        WhaleAdvisory.objects.select_related('aggregate_snapshot')
+        .filter(user=request.user, symbol=normalized_symbol, created_at__gte=since_at)
+        .order_by('-created_at')[:limit]
+    )
+
+    severity_rank = {
+        WhaleAdvisory.SeverityChoices.INFO: 1.0,
+        WhaleAdvisory.SeverityChoices.WARNING: 2.0,
+        WhaleAdvisory.SeverityChoices.URGENT: 3.0,
+    }
+
+    timeline = []
+    severity_scores = []
+    quality_scores = []
+    for advisory in advisories:
+        snapshot = advisory.aggregate_snapshot
+        quality_metrics = _build_session_v2_aggregate_quality_metrics(advisory, snapshot)
+        severity_score = severity_rank.get(str(advisory.severity or ''), 1.0)
+        severity_scores.append(severity_score)
+        quality_scores.append(quality_metrics['score'])
+        timeline.append(
+            {
+                'advisory_id': advisory.id,
+                'created_at': advisory.created_at.isoformat() if advisory.created_at else None,
+                'source': advisory.source,
+                'severity': advisory.severity,
+                'severity_score': severity_score,
+                'snapshot_id': advisory.aggregate_snapshot_id,
+                'snapshot_seq': snapshot.snapshot_seq if snapshot is not None else None,
+                'aggregate_quality': quality_metrics,
+            }
+        )
+
+    current_severity = timeline[0]['severity'] if timeline else WhaleAdvisory.SeverityChoices.INFO
+    current_severity_score = timeline[0]['severity_score'] if timeline else 1.0
+    baseline_score = round(sum(severity_scores) / len(severity_scores), 2) if severity_scores else 1.0
+    severity_delta = round(current_severity_score - baseline_score, 2)
+    drift_label = 'high_drift' if abs(severity_delta) >= 1.2 else 'moderate_drift' if abs(severity_delta) >= 0.6 else 'stable'
+    avg_quality_score = round(sum(quality_scores) / len(quality_scores), 1) if quality_scores else 0.0
+
+    return Response(
+        {
+            'ok': True,
+            'symbol': normalized_symbol,
+            'window_hours': window_hours,
+            'limit': limit,
+            'summary': {
+                'current_severity': current_severity,
+                'current_severity_score': current_severity_score,
+                'baseline_severity_score': baseline_score,
+                'severity_delta': severity_delta,
+                'severity_drift_label': drift_label,
+                'avg_aggregate_quality_score': avg_quality_score,
+                'sample_size': len(timeline),
+            },
+            'timeline': timeline,
         },
         status=status.HTTP_200_OK,
     )
