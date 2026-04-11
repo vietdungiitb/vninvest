@@ -491,11 +491,17 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - Test evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_session_v2_contract_returns_403_when_user_not_in_holistic_allowlist`
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_403_when_user_not_in_holistic_allowlist`
+- H4-step-3 hoan tat (governance observability cho rollout deny trend):
+  - moi request bi deny boi rollout gate duoc persist vao `AdvisoryAggregateAuditLog` voi event `rollout_gate_deny` (co `endpoint`, `deny_reason`, `cohort_mode`).
+  - `GET ai-advisory-observability` bo sung block `governance` va summary field `rollout_gate_deny_total`.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_returns_403_when_holistic_gate_disabled`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_rollout_governance_trend`
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Mo rong observability cho rollout governance (log cohort mode, deny reason trend).
+2. Mo rong governance analytics: deny trend theo time bucket/cohort segment de phuc vu dashboard release.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

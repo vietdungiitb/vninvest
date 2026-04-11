@@ -1898,6 +1898,7 @@ class AdvisoryAggregateAuditLog(models.Model):
         MANUAL_REFRESH = 'manual_refresh', 'User requested refresh'
         AUTO_GENERATION = 'auto_generation', 'Automatic generation'
         STATE_COMPACTION = 'state_compaction', 'State cleanup/compaction'
+        HOLISTIC_ROLLOUT_DENY = 'holistic_rollout_deny', 'Holistic rollout gate denied request'
     
     class ActorChoices(models.TextChoices):
         SYSTEM = 'system', 'Automated system'

@@ -5023,23 +5023,67 @@ def _build_session_v2_observability(user, symbol: str, advisory_obj, snapshot_ob
     }
 
 
-def _is_holistic_advisory_v1_enabled_for_user(user) -> bool:
+def _get_holistic_advisory_v1_gate_status(user) -> dict:
     if not bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True)):
-        return False
+        return {
+            'enabled': False,
+            'reason': 'global_disabled',
+            'cohort_mode': str(getattr(settings, 'HOLISTIC_ADVISORY_V1_COHORT_MODE', 'all') or 'all').strip().lower(),
+        }
 
     cohort_mode = str(getattr(settings, 'HOLISTIC_ADVISORY_V1_COHORT_MODE', 'all') or 'all').strip().lower()
     if cohort_mode == 'all':
-        return True
+        return {'enabled': True, 'reason': 'all', 'cohort_mode': cohort_mode}
 
     if cohort_mode == 'staff':
-        return bool(getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False))
+        is_staff = bool(getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False))
+        return {
+            'enabled': is_staff,
+            'reason': 'staff' if is_staff else 'staff_only',
+            'cohort_mode': cohort_mode,
+        }
 
     if cohort_mode == 'allowlist':
         allowlist = getattr(settings, 'HOLISTIC_ADVISORY_V1_COHORT_USERNAMES', []) or []
         normalized_allowlist = {str(item).strip().lower() for item in allowlist if str(item).strip()}
-        return str(getattr(user, 'username', '')).strip().lower() in normalized_allowlist
+        in_allowlist = str(getattr(user, 'username', '')).strip().lower() in normalized_allowlist
+        return {
+            'enabled': in_allowlist,
+            'reason': 'allowlist' if in_allowlist else 'allowlist_blocked',
+            'cohort_mode': cohort_mode,
+        }
 
-    return True
+    # Unknown mode falls back to enabled to avoid accidental hard lockout.
+    return {'enabled': True, 'reason': 'unknown_mode_fallback', 'cohort_mode': cohort_mode}
+
+
+def _is_holistic_advisory_v1_enabled_for_user(user) -> bool:
+    return bool(_get_holistic_advisory_v1_gate_status(user).get('enabled'))
+
+
+def _log_holistic_rollout_gate_deny(*, user, symbol: str, endpoint: str, gate_status: dict) -> None:
+    try:
+        AdvisoryAggregateAuditLog.objects.create(
+            user=user,
+            symbol=symbol,
+            before_state_json={},
+            after_state_json={
+                'operation': 'holistic_rollout_gate',
+                'outcome': 'denied',
+                'endpoint': endpoint,
+            },
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.HOLISTIC_ROLLOUT_DENY,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='holistic_rollout_gate',
+            metadata_json={
+                'event_type': 'rollout_gate_deny',
+                'endpoint': endpoint,
+                'deny_reason': str(gate_status.get('reason') or '').strip().lower(),
+                'cohort_mode': str(gate_status.get('cohort_mode') or '').strip().lower(),
+            },
+        )
+    except Exception:
+        logger.exception('Failed to persist holistic rollout deny audit log for %s/%s', user.id, symbol)
 
 
 def _build_session_v2_aggregate_quality_metrics(advisory_obj, snapshot_obj) -> dict:
@@ -5094,7 +5138,8 @@ def stock_ai_advisory_session_api(request, symbol: str):
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
     threshold_vnd = threshold_m * 1_000_000
-    holistic_v1_enabled = _is_holistic_advisory_v1_enabled_for_user(request.user)
+    holistic_gate_status = _get_holistic_advisory_v1_gate_status(request.user)
+    holistic_v1_enabled = bool(holistic_gate_status.get('enabled'))
     session_v2_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_SESSION_V2_ENABLED', False))
     benchmark_enrichment_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_BENCHMARKS_ENABLED', False))
     contract_raw = str(request.query_params.get('contract') or '').strip().lower()
@@ -5103,6 +5148,12 @@ def stock_ai_advisory_session_api(request, symbol: str):
     if contract_raw and contract_raw not in {'v1', 'v2'}:
         return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
     if contract_raw == 'v2' and not holistic_v1_enabled:
+        _log_holistic_rollout_gate_deny(
+            user=request.user,
+            symbol=normalized_symbol,
+            endpoint='stock_ai_advisory_session_api',
+            gate_status=holistic_gate_status,
+        )
         return Response(
             {
                 'ok': False,
@@ -5917,7 +5968,14 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not _is_holistic_advisory_v1_enabled_for_user(request.user):
+    holistic_gate_status = _get_holistic_advisory_v1_gate_status(request.user)
+    if not bool(holistic_gate_status.get('enabled')):
+        _log_holistic_rollout_gate_deny(
+            user=request.user,
+            symbol=normalized_symbol,
+            endpoint='stock_ai_advisory_observability_api',
+            gate_status=holistic_gate_status,
+        )
         return Response(
             {
                 'ok': False,
@@ -6066,8 +6124,25 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     retry_scheduled_total = 0
     retry_recovered_total = 0
     retry_failed_total = 0
+    rollout_deny_total = 0
+    rollout_deny_by_endpoint = {}
+    rollout_deny_by_reason = {}
+    rollout_gate_cohort_modes = set()
     for log_item in audit_logs:
         metadata = log_item.metadata_json or {}
+        event_type = str(metadata.get('event_type') or '').strip().lower()
+        if event_type == 'rollout_gate_deny':
+            rollout_deny_total += 1
+            endpoint = str(metadata.get('endpoint') or '').strip().lower()
+            deny_reason = str(metadata.get('deny_reason') or '').strip().lower()
+            cohort_mode = str(metadata.get('cohort_mode') or '').strip().lower()
+            if endpoint:
+                rollout_deny_by_endpoint[endpoint] = rollout_deny_by_endpoint.get(endpoint, 0) + 1
+            if deny_reason:
+                rollout_deny_by_reason[deny_reason] = rollout_deny_by_reason.get(deny_reason, 0) + 1
+            if cohort_mode:
+                rollout_gate_cohort_modes.add(cohort_mode)
+
         if str(metadata.get('event_type') or '') != 'frontend_retry_telemetry':
             continue
 
@@ -6130,6 +6205,13 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                 'retry_scheduled_total': retry_scheduled_total,
                 'retry_recovered_total': retry_recovered_total,
                 'retry_failed_total': retry_failed_total,
+                'rollout_gate_deny_total': rollout_deny_total,
+            },
+            'governance': {
+                'rollout_gate_deny_total': rollout_deny_total,
+                'rollout_gate_deny_by_endpoint': rollout_deny_by_endpoint,
+                'rollout_gate_deny_by_reason': rollout_deny_by_reason,
+                'cohort_modes_seen': sorted(rollout_gate_cohort_modes),
             },
             'timeline': timeline,
             'retry_events': retry_events,
