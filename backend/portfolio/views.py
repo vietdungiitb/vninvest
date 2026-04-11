@@ -5075,6 +5075,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
     threshold_vnd = threshold_m * 1_000_000
+    holistic_v1_enabled = bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True))
     session_v2_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_SESSION_V2_ENABLED', False))
     benchmark_enrichment_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_BENCHMARKS_ENABLED', False))
     contract_raw = str(request.query_params.get('contract') or '').strip().lower()
@@ -5082,6 +5083,19 @@ def stock_ai_advisory_session_api(request, symbol: str):
     include_benchmarks = include_benchmarks_raw in {'1', 'true', 'yes', 'on'}
     if contract_raw and contract_raw not in {'v1', 'v2'}:
         return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
+    if contract_raw == 'v2' and not holistic_v1_enabled:
+        return Response(
+            {
+                'ok': False,
+                'symbol': normalized_symbol,
+                'reason': 'holistic_disabled',
+                'message': 'Holistic Advisory V1 dang tat theo rollout gate.',
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+    if not holistic_v1_enabled:
+        session_v2_enabled = False
+        benchmark_enrichment_enabled = False
     if contract_raw == 'v1':
         session_v2_enabled = False
     elif contract_raw == 'v2':
@@ -5883,6 +5897,17 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True)):
+        return Response(
+            {
+                'ok': False,
+                'symbol': normalized_symbol,
+                'reason': 'holistic_disabled',
+                'message': 'Holistic Advisory V1 dang tat theo rollout gate.',
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
 
     if request.method == 'POST':
         payload = request.data if isinstance(request.data, dict) else {}
