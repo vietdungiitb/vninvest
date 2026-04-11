@@ -3404,28 +3404,10 @@ export default function StockDetail() {
         <div className="flex flex-col gap-3 md:gap-4 xl:gap-5 xl:min-h-0 xl:h-full">
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-          <WhaleFeedPanel
-            symbol={normalizedSymbol}
-            realtimeAlerts={symbolAlerts}
-            feedData={whaleFeedData}
-            loading={whaleFeedLoading}
-            onRefresh={refreshWhaleFeed}
-            feedHeightClass="h-[8cm]"
-          />
           {/* Tỷ trọng dòng tiền phiên */}
           <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
         </div>
         {/* Hàng căn đáy: Order Flow Radar (2 cột) || Phân bổ lệnh lớn (1 cột) */}
-        <div className="xl:col-span-2">
-          <OrderFlowPanel
-            symbol={normalizedSymbol}
-            loading={orderFlowLoading}
-            orderFlowData={orderFlowData}
-            latestRealtimeAlert={symbolDarkFlowAlert}
-            window={orderFlowWindow}
-            onWindowChange={setOrderFlowWindow}
-          />
-        </div>
         <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         {/* Cảnh báo giá - toàn chiều rộng */}
         {symbolAlerts.length > 0 && (
