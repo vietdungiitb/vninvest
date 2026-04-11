@@ -46,9 +46,17 @@ from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
 from portfolio.domain_constants import resolve_user_whale_threshold_vnd
 from portfolio.onboarding_trial_service import process_expired_onboarding_trials
 from portfolio.observability import (
+    end_advisory_phase,
+    end_advisory_session,
+    record_advisory_actionability,
+    record_advisory_confidence,
+    record_advisory_error_recovery,
     record_advisory_merge_observation,
+    record_advisory_token_usage,
     record_whale_dedup_observation,
     record_whale_event_observation,
+    start_advisory_phase,
+    start_advisory_session,
 )
 
 logger = logging.getLogger(__name__)
@@ -270,6 +278,121 @@ def _token_log_source_for_advisory_source(source: str) -> str:
     if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH:
         return AdvisoryTokenLog.SourceChoices.MANUAL_REFRESH
     return AdvisoryTokenLog.SourceChoices.WHALE_SIGNAL
+
+
+def _estimate_advisory_confidence(
+    *,
+    matched_value_vnd: float,
+    threshold: float,
+    dark_flow_strength: float | None,
+    merged_sources: list[str] | None,
+) -> float:
+    if dark_flow_strength is not None:
+        strength_value = float(dark_flow_strength or 0)
+        if strength_value > 1.0:
+            strength_value = strength_value / 100.0
+        confidence_score = strength_value
+    else:
+        ratio = float(matched_value_vnd or 0) / float(threshold or 1) if float(threshold or 0) > 0 else 0.5
+        confidence_score = ratio / 5.0
+
+    if len(merged_sources or []) > 1:
+        confidence_score += 0.05
+    return max(0.0, min(confidence_score, 0.99))
+
+
+def _estimate_advisory_actionability(
+    *,
+    severity: str,
+    use_concise: bool,
+    merged_sources: list[str] | None,
+) -> float:
+    base_score = {
+        WhaleAdvisory.SeverityChoices.URGENT: 0.90,
+        WhaleAdvisory.SeverityChoices.WARNING: 0.75,
+        WhaleAdvisory.SeverityChoices.INFO: 0.55,
+    }.get(str(severity or '').strip().lower(), 0.50)
+    if use_concise:
+        base_score -= 0.05
+    if len(merged_sources or []) > 1:
+        base_score += 0.05
+    return max(0.0, min(base_score, 0.99))
+
+
+def _advisory_audit_reason_for_source(source: str) -> str:
+    source_key = _normalize_advisory_source(source)
+    if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB:
+        return 'auto_generation'
+    if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH:
+        return 'manual_refresh'
+    if source_key == 'dark_flow':
+        return 'dark_flow_detected'
+    return 'new_whale_event'
+
+
+def _advisory_audit_actor_for_source(source: str) -> str:
+    source_key = _normalize_advisory_source(source)
+    if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB:
+        return 'scheduler'
+    if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH:
+        return 'user'
+    return 'system'
+
+
+def _persist_advisory_metrics_audit_log(
+    *,
+    user,
+    symbol: str,
+    advisory,
+    latest_existing_advisory,
+    source: str,
+    threshold_source: str,
+    merged_sources: list[str],
+    primary_source: str,
+    metrics: dict,
+    task_id: str,
+) -> None:
+    if user is None or advisory is None:
+        return
+
+    before_state = {}
+    if latest_existing_advisory is not None:
+        before_state = {
+            'advisory_id': latest_existing_advisory.id,
+            'severity': latest_existing_advisory.severity,
+            'source': latest_existing_advisory.source,
+            'threshold_source': latest_existing_advisory.threshold_source,
+            'created_at': latest_existing_advisory.created_at.isoformat() if latest_existing_advisory.created_at else None,
+        }
+
+    after_state = {
+        'advisory_id': advisory.id,
+        'severity': advisory.severity,
+        'source': advisory.source,
+        'threshold_source': threshold_source,
+        'primary_source': primary_source,
+        'merged_sources': merged_sources,
+        'created_at': advisory.created_at.isoformat() if advisory.created_at else None,
+    }
+
+    audit_actor = _advisory_audit_actor_for_source(source)
+    actor_id = str(user.id) if audit_actor == 'user' else str(task_id or 'generate_whale_advisory_task')
+
+    try:
+        from portfolio.models import AdvisoryAggregateAuditLog
+
+        AdvisoryAggregateAuditLog.objects.create(
+            user=user,
+            symbol=symbol,
+            before_state_json=before_state,
+            after_state_json=after_state,
+            reason=_advisory_audit_reason_for_source(source),
+            actor=audit_actor,
+            actor_id=actor_id,
+            metadata_json=metrics,
+        )
+    except Exception as exc:
+        logger.warning('Advisory metrics audit log persistence failed for %s: %s', symbol, exc)
 
 
 def _get_tokens_used_today(user_id: int) -> int:
@@ -980,8 +1103,10 @@ def generate_whale_advisory_task(
     api_key = str(runtime_cfg.get('api_key') or '').strip()
     ai_source = str(runtime_cfg.get('source') or 'unknown')
     use_concise = _should_use_concise_advisory(source_key, remaining_budget)
+    start_advisory_session()
 
     try:
+        start_advisory_phase('provider_generation')
         if use_concise:
             summary_resp = generate_advisory_concise(
                 provider=provider,
@@ -1014,9 +1139,23 @@ def generate_whale_advisory_task(
                 deep=True,
                 user=target_user,
             )
+        end_advisory_phase('provider_generation')
     except Exception as exc:
+        end_advisory_phase('provider_generation')
+        record_advisory_error_recovery(type(exc).__name__, 'provider_generation_failed', success=False)
+        end_advisory_session()
         logger.error('AI provider error for %s via %s/%s: %s', symbol, provider, model, exc)
         raise  # Celery retry
+
+    record_advisory_token_usage(
+        int(summary_resp.get('prompt_tokens', 0) or 0) + int(summary_resp.get('completion_tokens', 0) or 0),
+        source='summary_generation' if not use_concise else 'concise_generation',
+    )
+    if not use_concise:
+        record_advisory_token_usage(
+            int(deep_resp.get('prompt_tokens', 0) or 0) + int(deep_resp.get('completion_tokens', 0) or 0),
+            source='detail_generation',
+        )
 
     refresh_count = (latest_existing_advisory.refresh_count + 1) if (force_refresh and latest_existing_advisory is not None) else 0
     
@@ -1054,6 +1193,29 @@ def generate_whale_advisory_task(
     if not normalized_primary_source and normalized_merged_sources:
         normalized_primary_source = normalized_merged_sources[0]
 
+    record_advisory_confidence(
+        _estimate_advisory_confidence(
+            matched_value_vnd=matched_value_vnd,
+            threshold=float(threshold or 0),
+            dark_flow_strength=dark_flow_strength,
+            merged_sources=normalized_merged_sources,
+        ),
+        source=source_key,
+    )
+    record_advisory_actionability(
+        _estimate_advisory_actionability(
+            severity=resolved_severity,
+            use_concise=use_concise,
+            merged_sources=normalized_merged_sources,
+        ),
+        factors={
+            'severity_weight': 1.0 if resolved_severity == WhaleAdvisory.SeverityChoices.URGENT else 0.75 if resolved_severity == WhaleAdvisory.SeverityChoices.WARNING else 0.5,
+            'multi_source_bonus': 0.05 if len(normalized_merged_sources) > 1 else 0.0,
+            'concise_penalty': -0.05 if use_concise else 0.0,
+        },
+    )
+
+    start_advisory_phase('persist_advisory')
     advisory = WhaleAdvisory.objects.create(
         user=target_user,
         symbol=symbol,
@@ -1084,6 +1246,7 @@ def generate_whale_advisory_task(
             source=_token_log_source_for_advisory_source(source_key),
             symbol=symbol,
         )
+    end_advisory_phase('persist_advisory')
 
     # Set cooldown lock cho luồng auto; refresh thủ công có cooldown riêng ở API endpoint.
     if not force_refresh:
@@ -1091,6 +1254,7 @@ def generate_whale_advisory_task(
 
     # Push WebSocket event tới user group nếu advisory được sinh theo user cụ thể.
     try:
+        start_advisory_phase('broadcast')
         channel_layer = get_channel_layer()
         target_group = f'user_{user_id}_alerts' if user_id is not None else f'whale_{symbol}'
         async_to_sync(channel_layer.group_send)(
@@ -1114,8 +1278,39 @@ def generate_whale_advisory_task(
                 },
             },
         )
+        end_advisory_phase('broadcast')
     except Exception as exc:
+        end_advisory_phase('broadcast')
+        record_advisory_error_recovery(type(exc).__name__, 'broadcast_failed', success=False)
         logger.warning('WebSocket push failed for whale_advisory %s: %s', symbol, exc)
+
+    metrics_payload = end_advisory_session()
+    if metrics_payload:
+        metrics_payload.update(
+            {
+                'advisory_id': advisory.id,
+                'ai_provider': provider,
+                'ai_model': model,
+                'ai_source': ai_source,
+                'threshold_source': normalized_threshold_source,
+                'source': source_key,
+                'merged_sources': normalized_merged_sources,
+                'primary_source': normalized_primary_source,
+                'used_concise': use_concise,
+            }
+        )
+        _persist_advisory_metrics_audit_log(
+            user=target_user,
+            symbol=symbol,
+            advisory=advisory,
+            latest_existing_advisory=latest_existing_advisory,
+            source=source_key,
+            threshold_source=normalized_threshold_source,
+            merged_sources=normalized_merged_sources,
+            primary_source=normalized_primary_source,
+            metrics=metrics_payload,
+            task_id=getattr(self.request, 'id', ''),
+        )
 
     logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
     return {

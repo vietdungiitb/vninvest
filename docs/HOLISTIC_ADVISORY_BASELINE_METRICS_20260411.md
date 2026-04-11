@@ -289,7 +289,7 @@ retries_per_advisory    | [TBD]      | [TBD]
 **Current Integration** (Already in codebase):
 - ✅ `portfolio/models.py`: AdvisoryAggregateAuditLog for audit trail
 - ✅ `portfolio/models.py`: AdvisoryAggregateSnapshot for state snapshots
-- ⏳ `portfolio/tasks.py`: Advisory generation task (to add `start/end_advisory_session()`)
+- ✅ `portfolio/tasks.py`: Advisory generation task now emits runtime metrics + persists samples into `AdvisoryAggregateAuditLog.metadata_json`
 - ⏳ `portfolio/views.py`: Component generate API (to add phase timers)
 
 ---
@@ -413,7 +413,7 @@ def may_fail():
 - [x] **PR-5b**: Baseline report generator
 - [x] **PR-5c**: Test suite (28 tests, all syntax validated)
 - [x] **PR-5d**: This documentation
-- [ ] **Sprint H1**: Integrate instrumentation into advisory tasks
+- [x] **Sprint H1**: Integrate instrumentation into advisory tasks
 - [ ] **Sprint H1**: Collect 100+ real advisory metrics samples
 - [ ] **Sprint H1**: Generate formal baseline report
 - [ ] **Sprint H1**: Deploy to production + monitor

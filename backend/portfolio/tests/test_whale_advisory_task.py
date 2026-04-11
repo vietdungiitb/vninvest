@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from portfolio.models import AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
+from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryTokenLog, IntradayTick, TrackedSymbol, UserConfig, WhaleAdvisory
 from portfolio.observability import get_market_observability_snapshot, reset_market_observability
 from portfolio.tasks import _accumulate_user_advisory_event, auto_generate_advisories_for_all_tracked, collect_and_publish_realtime, detect_whale_reversal, flush_merged_advisory_event, generate_whale_advisory_task
 from portfolio.tasks import _compute_advisory_severity
@@ -260,6 +260,80 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertIsNotNone(advisory.next_refresh_at)
         self.assertEqual(token_log.tokens_used, 55)
         self.assertEqual(token_log.source, AdvisoryTokenLog.SourceChoices.AUTO_GENERATION)
+
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_whale_text')
+    def test_task_persists_metrics_into_aggregate_audit_log(
+        self,
+        mock_generate_text,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        staff_user = self._create_user_config('staff-metrics-audit', api_key='sk-test-metrics')
+        mock_generate_text.side_effect = [
+            {'text': 'Tom tat co action', 'prompt_tokens': 14, 'completion_tokens': 26},
+            {'text': 'Chi tiet co evidence', 'prompt_tokens': 28, 'completion_tokens': 42},
+        ]
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        result = generate_whale_advisory_task(
+            symbol='SSI',
+            matched_value_vnd=7_500_000_000,
+            side='BUY',
+            threshold=2_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+        )
+
+        advisory = WhaleAdvisory.objects.get(symbol='SSI', user=staff_user)
+        audit = AdvisoryAggregateAuditLog.objects.get(symbol='SSI', user=staff_user)
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(audit.reason, AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT)
+        self.assertEqual(audit.actor, AdvisoryAggregateAuditLog.ActorChoices.SYSTEM)
+        self.assertEqual(audit.after_state_json['advisory_id'], advisory.id)
+        self.assertEqual(audit.after_state_json['severity'], advisory.severity)
+        self.assertEqual(audit.metadata_json['advisory_id'], advisory.id)
+        self.assertEqual(audit.metadata_json['source'], WhaleAdvisory.SourceChoices.WHALE_SIGNAL)
+        self.assertGreater(audit.metadata_json['token_cost'], 0)
+        self.assertGreaterEqual(audit.metadata_json['latency_ms'], 0)
+        self.assertIn('actionability_score', audit.metadata_json)
+        self.assertIn('confidence', audit.metadata_json)
+
+    @patch('asgiref.sync.async_to_sync')
+    @patch('channels.layers.get_channel_layer')
+    @patch('portfolio.ai_service.generate_advisory_concise')
+    def test_periodic_task_metrics_use_scheduler_audit_labels(
+        self,
+        mock_generate_concise,
+        mock_get_channel_layer,
+        mock_async_to_sync,
+    ):
+        staff_user = self._create_user_config('staff-periodic-audit', api_key='sk-test-periodic-audit')
+        mock_generate_concise.return_value = {
+            'text': 'Tom tat ngan gon theo lich',
+            'prompt_tokens': 11,
+            'completion_tokens': 19,
+        }
+        mock_async_to_sync.return_value = MagicMock()
+        mock_get_channel_layer.return_value = MagicMock()
+
+        generate_whale_advisory_task(
+            symbol='VCI',
+            matched_value_vnd=2_200_000_000,
+            side='INFO',
+            threshold=1_000_000_000,
+            force_refresh=True,
+            user_id=staff_user.id,
+            source=WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        )
+
+        audit = AdvisoryAggregateAuditLog.objects.get(symbol='VCI', user=staff_user)
+        self.assertEqual(audit.reason, AdvisoryAggregateAuditLog.ReasonChoices.AUTO_GENERATION)
+        self.assertEqual(audit.actor, AdvisoryAggregateAuditLog.ActorChoices.SCHEDULER)
+        self.assertTrue(audit.metadata_json['used_concise'])
 
     def test_task_skips_when_daily_budget_exceeded(self):
         staff_user = self._create_user_config('staff-budget', api_key='sk-test-budget')
