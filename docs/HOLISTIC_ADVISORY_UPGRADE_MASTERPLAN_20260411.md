@@ -372,6 +372,10 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
 - H3-step-9 hoan tat (smoke artifact execution cho release gate):
   - da run lai bo smoke command set va luu artifact tai `docs/HOLISTIC_ADVISORY_H3_RELEASE_SMOKE_20260411.md`.
   - ket qua: docker stack healthy, frontend build pass, frontend investigation smoke tests pass (4/4), API protected endpoints tra 401 khi chua auth (expected behavior).
+- H3-step-10 hoan tat (authenticated smoke cho protected advisory endpoints):
+  - da run authenticated smoke bang test user seeded (`testuser`) va luu artifact tai `docs/HOLISTIC_ADVISORY_H3_AUTHENTICATED_SMOKE_20260411.md`.
+  - ket qua: auth endpoint 200 (JWT issued), observability endpoint 200; session v2 endpoint dang tra 409 conflict tren nhom symbol seeded (HPG/FPT/VCB/VNM).
+  - follow-up cho step tiep theo: triage root-cause 409 va bo sung fallback/retry policy cho UI.
 
 ### H3-step-8 release/rollback checklist (operational)
 
