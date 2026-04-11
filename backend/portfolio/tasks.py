@@ -4,6 +4,7 @@ from datetime import timedelta, datetime
 import logging
 import os
 import random
+import re
 
 from celery import shared_task
 from django.conf import settings
@@ -686,6 +687,27 @@ def _record_failover_event(source_provider: str, target_provider: str, failure_t
     if success:
         _increment_daily_counter(f'advisory:failover-success-count:{today_iso}')
         _increment_daily_counter(f'advisory:failover-success:{source_key}:{today_iso}')
+
+
+_VI_DIACRITIC_PATTERN = re.compile(r'[\u0102\u0103\u00c2\u00e2\u0110\u0111\u00ca\u00ea\u00d4\u00f4\u01a0\u01a1\u01af\u01b0\u00e1\u00e0\u1ea3\u00e3\u1ea1\u1eaf\u1eb1\u1eb3\u1eb5\u1eb7\u1ea5\u1ea7\u1ea9\u1eab\u1ead\u00e9\u00e8\u1ebb\u1ebd\u1eb9\u1ebf\u1ec1\u1ec3\u1ec5\u1ec7\u00ed\u00ec\u1ec9\u0129\u1ecb\u00f3\u00f2\u1ecf\u00f5\u1ecd\u1ed1\u1ed3\u1ed5\u1ed7\u1ed9\u1edb\u1edd\u1edf\u1ee1\u1ee3\u00fa\u00f9\u1ee7\u0169\u1ee5\u1ee9\u1eeb\u1eed\u1eef\u1ef1\u00fd\u1ef3\u1ef7\u1ef9\u1ef5]')
+
+
+def _is_language_mismatch(text: str, expected_language: str) -> bool:
+    content = str(text or '').strip()
+    if not content:
+        return False
+
+    expected = str(expected_language or 'vi').strip().lower()
+    has_vi_chars = bool(_VI_DIACRITIC_PATTERN.search(content))
+    english_cues = sum(
+        1
+        for token in re.findall(r'[a-zA-Z]{3,}', content.lower())
+        if token in {'the', 'and', 'risk', 'watch', 'signal', 'market', 'volume', 'trend', 'short', 'term', 'support', 'resistance'}
+    )
+
+    if expected == 'en':
+        return has_vi_chars
+    return (not has_vi_chars) and english_cues >= 2
 
 
 def _compute_advisory_severity(matched_value_vnd: float, threshold: float) -> str:
@@ -1412,6 +1434,9 @@ def generate_whale_advisory_task(
         return {'status': 'skipped', 'symbol': symbol, 'reason': 'provider_rate_limit_cooldown', 'user_id': user_id}
 
     use_concise = _should_use_concise_advisory(source_key, remaining_budget)
+    output_language = str(getattr(user_cfg, 'language', 'vi') if user_cfg is not None else 'vi').strip().lower()
+    if output_language not in {'vi', 'en'}:
+        output_language = 'vi'
 
     # P2: Route to cheaper model when remaining budget is below threshold percentage.
     _total_budget = int(user_cfg.advisory_max_tokens_per_day or 0) if user_cfg is not None else None
@@ -1454,6 +1479,7 @@ def generate_whale_advisory_task(
                     matched_value_vnd=matched_value_vnd,
                     side=side,
                     user=target_user,
+                    output_language=output_language,
                 )
                 deep_resp = {'text': '', 'prompt_tokens': 0, 'completion_tokens': 0}
             else:
@@ -1466,6 +1492,7 @@ def generate_whale_advisory_task(
                     side=side,
                     deep=False,
                     user=target_user,
+                    output_language=output_language,
                 )
                 deep_resp = generate_whale_text(
                     provider=attempt_provider,
@@ -1476,6 +1503,7 @@ def generate_whale_advisory_task(
                     side=side,
                     deep=True,
                     user=target_user,
+                    output_language=output_language,
                 )
 
             _record_provider_attempt(attempt_provider, success=True)
@@ -1527,6 +1555,21 @@ def generate_whale_advisory_task(
         record_advisory_error_recovery(type(last_exc).__name__ if last_exc else 'RuntimeError', 'provider_generation_failed', success=False)
         end_advisory_session()
         raise (last_exc or RuntimeError('All advisory providers failed'))
+
+    today_iso = timezone.localdate().isoformat()
+    _increment_daily_counter(f'advisory:language-check-count:{output_language}:{today_iso}')
+    summary_language_mismatch = _is_language_mismatch(summary_resp.get('text', ''), output_language)
+    detail_language_mismatch = _is_language_mismatch(deep_resp.get('text', ''), output_language)
+    language_mismatch = bool(summary_language_mismatch or detail_language_mismatch)
+    if language_mismatch:
+        _increment_daily_counter(f'advisory:language-mismatch-count:{output_language}:{today_iso}')
+        logger.warning(
+            'Advisory language mismatch detected symbol=%s expected=%s provider=%s model=%s',
+            symbol,
+            output_language,
+            provider,
+            model,
+        )
 
     record_advisory_token_usage(
         int(summary_resp.get('prompt_tokens', 0) or 0) + int(summary_resp.get('completion_tokens', 0) or 0),
@@ -1692,6 +1735,8 @@ def generate_whale_advisory_task(
                 'ai_provider_primary': primary_provider,
                 'ai_model_primary': primary_model,
                 'ai_source': ai_source,
+                'output_language': output_language,
+                'language_mismatch': language_mismatch,
                 'failover_occurred': failover_occurred,
                 'failover_reason': failover_reason,
                 'failover_chain_attempted': failover_chain_attempted,
@@ -1727,6 +1772,8 @@ def generate_whale_advisory_task(
         'ai_provider_primary': primary_provider,
         'ai_model_primary': primary_model,
         'ai_source': ai_source,
+        'output_language': output_language,
+        'language_mismatch': language_mismatch,
         'failover_occurred': failover_occurred,
         'failover_reason': failover_reason,
         'failover_chain_attempted': failover_chain_attempted,

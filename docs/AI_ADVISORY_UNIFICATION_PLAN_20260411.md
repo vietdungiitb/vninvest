@@ -2,7 +2,7 @@
 
 Date: 2026-04-11
 Owner: Advisory Platform Team
-Status: In Progress (Phase 0-3 done)
+Status: Completed (Phase 0-4 done)
 
 ## 1) Goal
 
@@ -130,13 +130,13 @@ UI convergence implemented:
 2. Canonical items are normalized for existing UI renderer compatibility.
 3. Added cross-screen invalidation event (`vninvest:advisory_updated`) and refetch listener.
 
-### Phase 4
+### Phase 4 (Completed)
 
-Language and prompt quality hardening:
+Language and prompt quality hardening implemented:
 
-1. Enforce language output by user preference.
-2. Add output_language assertion and fallback correction.
-3. Add prompt quality metrics and mismatch monitoring.
+1. Enforced output language instruction (vi/en) in advisory prompts across providers.
+2. Added output-language metadata in advisory task telemetry payload.
+3. Added language mismatch detection counters and admin KPI metric (`language_quality`).
 
 ## 6) Acceptance Criteria
 

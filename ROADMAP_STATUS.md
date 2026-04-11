@@ -343,7 +343,7 @@ UserConfig settings
 - ✅ Phase 1 completed: backend shared submit helper path for refresh queue/sync fallback.
 - ✅ Phase 2 completed: canonical read contract + adapter layer for backward compatibility.
 - ✅ Phase 3 completed: UI convergence on canonical payload + cross-screen invalidation.
-- ⏳ Phase 4 pending: language output hardening (vi/en) + prompt quality metrics.
+- ✅ Phase 4 completed: language output hardening (vi/en) + prompt quality metrics.
 - Plan doc: `docs/AI_ADVISORY_UNIFICATION_PLAN_20260411.md`
 
 ---

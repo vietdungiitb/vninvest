@@ -318,6 +318,17 @@ def admin_runtime_kpi_advisory_metrics_api(request):
     }
     budget_downgrade_count_today = int(cache.get(f'advisory:budget-downgrade-count:{today_iso}') or 0)
 
+    language_quality = {}
+    for lang in ('vi', 'en'):
+        checks = int(cache.get(f'advisory:language-check-count:{lang}:{today_iso}') or 0)
+        mismatches = int(cache.get(f'advisory:language-mismatch-count:{lang}:{today_iso}') or 0)
+        mismatch_rate = round((mismatches / checks) * 100.0, 2) if checks > 0 else None
+        language_quality[lang] = {
+            'checks_today': checks,
+            'mismatches_today': mismatches,
+            'mismatch_rate_pct': mismatch_rate,
+        }
+
     # ── 4b. Failover tracking + provider health (today) ─────────────────────
     failover_attempt_count_today = int(cache.get(f'advisory:failover-attempt-count:{today_iso}') or 0)
     failover_success_count_today = int(cache.get(f'advisory:failover-success-count:{today_iso}') or 0)
@@ -400,6 +411,7 @@ def admin_runtime_kpi_advisory_metrics_api(request):
             'ratelimit_cooldowns_active': ratelimit_cooldowns,
             'ratelimit_429_counts_today': ratelimit_429_counts_today,
             'budget_downgrade_count_today': budget_downgrade_count_today,
+            'language_quality': language_quality,
             'failover_tracking': {
                 'failovers_today': failover_attempt_count_today,
                 'by_source_provider': failover_by_source,

@@ -20,7 +20,13 @@ _API_KEY  = lambda: getattr(settings, 'OPENCLAW_API_KEY', '')
 _DISCLAIMER = '[Thông tin tham khảo, không phải lời khuyên đầu tư tài chính.]'
 
 
-def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
+def _language_instruction(language: str) -> str:
+    if str(language or '').strip().lower() == 'en':
+        return 'Write the full response in English only.'
+    return 'Viết toàn bộ nội dung bằng tiếng Việt có dấu.'
+
+
+def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '', output_language: str = 'vi') -> dict:
     """
     Tạo tóm tắt ~50 từ cho tier Pro.
     Returns: {text: str, prompt_tokens: int, completion_tokens: int}
@@ -30,12 +36,13 @@ def generate_whale_summary(symbol: str, matched_value_vnd: float, side: str, ext
         f"lệnh {side} mã {symbol}, giá trị {matched_value_vnd / 1_000_000_000:.1f} tỷ VNĐ. "
         f"Nêu ngắn gọn: động lực có thể và mức độ chú ý. "
         f"{extra_context or ''} "
+        f"{_language_instruction(output_language)} "
         f"{_DISCLAIMER}"
     )
     return _call(prompt, max_tokens=130)
 
 
-def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
+def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '', output_language: str = 'vi') -> dict:
     """
     Tạo phân tích sâu ~200 từ cho tier Premium.
     Returns: {text: str, prompt_tokens: int, completion_tokens: int}
@@ -46,13 +53,14 @@ def generate_whale_deep(symbol: str, matched_value_vnd: float, side: str, extra_
         f"Bao gồm: (1) bối cảnh ngành/công ty, (2) động lực giao dịch có thể, "
         f"(3) mức rủi ro và cơ hội, (4) khuyến nghị theo dõi ngắn hạn. "
         f"{extra_context or ''} "
+        f"{_language_instruction(output_language)} "
         f"{_DISCLAIMER}"
     )
     return _call(prompt, max_tokens=450)
 
 
 # PHASE 1: Concise advisory (5-10 dòng, ~100 tokens)
-def generate_whale_concise(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '') -> dict:
+def generate_whale_concise(symbol: str, matched_value_vnd: float, side: str, extra_context: str = '', output_language: str = 'vi') -> dict:
     """
     PHASE 1: Tạo khuyến nghị ngắn gọn (5-10 dòng, ~100 tokens) cho auto-gen & refresh.
     Tiết kiệm token so với summary/deep, nhưng vẫn đủ thông tin.
@@ -68,6 +76,7 @@ def generate_whale_concise(symbol: str, matched_value_vnd: float, side: str, ext
         f"1. Động lực có thể (1-2 dòng)\n"
         f"2. Rủi ro chính (1-2 dòng)\n"
         f"3. Điểm theo dõi (1-2 dòng)\n\n"
+        f"{_language_instruction(output_language)}\n"
         f"{_DISCLAIMER}"
     )
     return _call(prompt, max_tokens=130)
