@@ -1191,6 +1191,13 @@ const vi = {
     correlationStrength: 'Độ mạnh Tương quan',
     noCampaigns: 'Không tìm thấy campaign liên quan',
     noSignals: 'Không phát hiện tín hiệu dark flow',
+    whyTriggered: 'Tại sao kích hoạt',
+    nextChecks: 'Bước kiểm tra tiếp theo',
+    showExplain: '▼ Phân tích',
+    hideExplain: '▲ Ẩn',
+    coObservationTimeline: 'Timeline Co-observation',
+    coObservationBucket: 'Whale + Dark Flow cùng lúc',
+    noCoObservation: 'Không phát hiện co-observation trong giai đoạn này',
   },
   upgrade: {
     accessControl: 'Access control',

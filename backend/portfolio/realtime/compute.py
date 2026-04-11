@@ -154,6 +154,65 @@ def detect_whale_signals(
     return signals
 
 
+def _build_explainability(
+    matched_value: float,
+    threshold: float,
+    normalized_side: str,
+    size_class: str,
+    event_score: float,
+) -> dict:
+    """Generate why_triggered text bullets and next_checks action list for a whale event."""
+    why: list[str] = []
+
+    # Ratio to threshold
+    try:
+        ratio = float(matched_value) / float(threshold) if threshold > 0 else 0.0
+        if ratio >= 1.0:
+            why.append(f"{ratio:.1f}x threshold value")
+    except (TypeError, ZeroDivisionError):
+        pass
+
+    # Size class label
+    if size_class == "shark":
+        why.append("shark-class trade (≥5B VND)")
+    elif size_class == "whale":
+        why.append("whale-class trade (≥1B VND)")
+    else:
+        why.append("threshold-crossing trade")
+
+    # Side context
+    if normalized_side == "buy":
+        why.append("buy-side accumulation signal")
+    elif normalized_side == "sell":
+        why.append("sell-side distribution signal")
+    else:
+        why.append("neutral/mixed flow")
+
+    # Conviction level
+    if event_score >= 7:
+        why.append(f"high conviction signal (score {event_score:.1f})")
+    elif event_score >= 5:
+        why.append(f"moderate conviction (score {event_score:.1f})")
+
+    # next_checks action tokens
+    checks: list[str] = ["compare_dark_flow"]
+    if size_class == "shark":
+        checks.append("check_depth_wall")
+    if normalized_side == "buy":
+        checks.append("check_related_symbols")
+    elif normalized_side == "sell":
+        checks.append("monitor_reversal")
+    if event_score >= 7:
+        checks.append("verify_inst_footprint")
+    if "check_related_symbols" not in checks:
+        checks.append("check_related_symbols")
+
+    return {
+        "why_triggered": why,
+        "next_checks": checks,
+    }
+
+
 def build_whale_payload(
     signal: WhaleSignal,
     seq: int,
@@ -184,6 +243,14 @@ def build_whale_payload(
         occurred_at=signal.ts,
         config=score_config,
     )
+    size_class = _classify_signal_size(signal.matched_value)
+    explainability = _build_explainability(
+        matched_value=signal.matched_value,
+        threshold=signal.threshold,
+        normalized_side=normalized_side,
+        size_class=size_class,
+        event_score=score_result["event_score"],
+    )
 
     return {
         "event_type": "whale_alert",
@@ -197,13 +264,15 @@ def build_whale_payload(
         "side": normalized_side,
         "threshold": signal.threshold,
             "threshold_source": str(threshold_source or "user_default"),
-        "size_class": _classify_signal_size(signal.matched_value),
+        "size_class": size_class,
         "event_score": score_result["event_score"],
         "display_score": display_result["display_score"],
         "severity": display_result["severity"],
         "weights_version": score_result["weights_version"],
             "freshness_bucket": _derive_freshness_bucket(signal.ts),
             "recovered": recovered,
+        "why_triggered": explainability["why_triggered"],
+        "next_checks": explainability["next_checks"],
         "ts": signal.ts,
         "seq": seq,
     }

@@ -365,7 +365,12 @@ function AdvisoryPreviewCard({ item, canReadAdvisoryDetail, t, localeTag, format
 function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
   const tone = getSideTone(item.side, t);
   const severityTone = getSeverityTone(item.severity);
-  
+  const [showExplain, setShowExplain] = useState(false);
+
+  const whyList = Array.isArray(item.why_triggered) ? item.why_triggered : [];
+  const checkList = Array.isArray(item.next_checks) ? item.next_checks : [];
+  const hasExplain = whyList.length > 0 || checkList.length > 0;
+
   // Abnormality score coloring
   const abnormalityScore = Number(item.abnormality_score ?? 50);
   let abnormalityTone = 'bg-slate-800 text-slate-200';
@@ -374,52 +379,91 @@ function AggregateFeedCard({ item, t, localeTag, formatDateTimeFn }) {
   else if (abnormalityScore >= 40) abnormalityTone = 'bg-cyan-900/70 text-cyan-200';
 
   return (
-    <Link
-      to={`/whale-alerts/${item.symbol}`}
-      className={`block rounded-2xl border p-4 transition-colors hover:border-cyan-700/60 ${tone.container}`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-semibold text-slate-100">{item.symbol}</span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${tone.badge}`}>
-              {tone.label}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-slate-500">{formatTime(item.ts, formatDateTimeFn)}</p>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="rounded-full border border-slate-800 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-            {getSizeClassLabel(item.size_class, t)}
-          </div>
-          <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${severityTone}`}>
-            {getSeverityLabel(item.severity, t)}
-          </div>
-        </div>
-      </div>
-      <div className="mt-4 flex items-end justify-between gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('whaleHub.matchedValue')}</p>
-          <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value, localeTag)} VND</p>
-        </div>
-        <div className="text-right text-xs text-slate-400">
-          <div className="flex flex-wrap justify-end gap-1.5 mb-2">
-            <div className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${abnormalityTone}`}>
-              {t('whaleHub.abnormality')}: {abnormalityScore.toFixed(0)}
+    <div className={`rounded-2xl border transition-colors hover:border-cyan-700/60 ${tone.container}`}>
+      <Link
+        to={`/whale-alerts/${item.symbol}`}
+        className="block p-4"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-slate-100">{item.symbol}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${tone.badge}`}>
+                {tone.label}
+              </span>
             </div>
-            {item.session_percentile !== undefined && (
-              <div className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
-                p{Math.round(item.session_percentile || 0)}
-              </div>
-            )}
+            <p className="mt-1 text-xs text-slate-500">{formatTime(item.ts, formatDateTimeFn)}</p>
           </div>
-          <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
-          <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
-          <p>{t('whaleHub.thresholdSource')}: {getThresholdSourceLabel(item.threshold_source, t)}</p>
-          <p className="mt-1">{t('whaleHub.source')}: {item.source || t('whaleHub.sourceRealtime')}</p>
+          <div className="flex flex-col items-end gap-2">
+            <div className="rounded-full border border-slate-800 bg-slate-950/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+              {getSizeClassLabel(item.size_class, t)}
+            </div>
+            <div className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${severityTone}`}>
+              {getSeverityLabel(item.severity, t)}
+            </div>
+          </div>
         </div>
-      </div>
-    </Link>
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('whaleHub.matchedValue')}</p>
+            <p className="mt-1 text-xl font-semibold text-slate-100">{formatCompactMoney(item.matched_value, localeTag)} VND</p>
+          </div>
+          <div className="text-right text-xs text-slate-400">
+            <div className="flex flex-wrap justify-end gap-1.5 mb-2">
+              <div className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${abnormalityTone}`}>
+                {t('whaleHub.abnormality')}: {abnormalityScore.toFixed(0)}
+              </div>
+              {item.session_percentile !== undefined && (
+                <div className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
+                  p{Math.round(item.session_percentile || 0)}
+                </div>
+              )}
+            </div>
+            <p>{t('whaleHub.displayScore')}: {item.display_score ?? '—'}</p>
+            <p>{t('whaleHub.threshold')}: {formatCompactMoney(item.threshold, localeTag)} VND</p>
+            <p>{t('whaleHub.thresholdSource')}: {getThresholdSourceLabel(item.threshold_source, t)}</p>
+            <p className="mt-1">{t('whaleHub.source')}: {item.source || t('whaleHub.sourceRealtime')}</p>
+          </div>
+        </div>
+      </Link>
+      {hasExplain && (
+        <div className="border-t border-slate-800/60 px-4 pb-3">
+          <button
+            type="button"
+            onClick={() => setShowExplain((s) => !s)}
+            className="mt-2 text-[11px] text-cyan-400/70 hover:text-cyan-300 transition-colors"
+          >
+            {showExplain ? t('whaleHub.hideExplain') : t('whaleHub.showExplain')}
+          </button>
+          {showExplain && (
+            <div className="mt-2 space-y-2.5">
+              {whyList.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">{t('whaleHub.whyTriggered')}</p>
+                  <ul className="space-y-0.5">
+                    {whyList.map((reason, i) => (
+                      <li key={i} className="flex gap-1.5 text-[11px] text-slate-300">
+                        <span className="text-cyan-500 shrink-0">•</span>{reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {checkList.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">{t('whaleHub.nextChecks')}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {checkList.map((check) => (
+                      <span key={check} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[10px] font-mono text-slate-300">{check}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -594,6 +638,8 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
   const investigation = data || {};
   const campaigns = investigation.correlated_campaigns || [];
   const signals = investigation.correlated_signals || [];
+  const groupedTimeline = investigation.grouped_timeline || [];
+  const coObsSummary = investigation.co_observation_summary || {};
 
   return (
     <div className="space-y-4">
@@ -697,6 +743,43 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
             </div>
           </div>
         </div>
+
+        {groupedTimeline.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+              {t('whaleHub.coObservationTimeline')}
+              {coObsSummary.co_observation_count > 0 && (
+                <span className="ml-2 rounded-full bg-cyan-900/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 normal-case tracking-normal">
+                  {coObsSummary.co_observation_count} co-observed
+                </span>
+              )}
+            </p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              {groupedTimeline.map((bucket, i) => (
+                <div
+                  key={i}
+                  className={`rounded-lg border px-3 py-2 text-xs ${
+                    bucket.has_co_observation
+                      ? 'border-cyan-700/60 bg-cyan-950/30 text-cyan-200'
+                      : 'border-slate-800 bg-slate-950/50 text-slate-400'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-[11px]">{formatTime(bucket.bucket_start, formatDateTimeFn)}</span>
+                    {bucket.has_co_observation && (
+                      <span className="rounded-full bg-cyan-800/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                        {t('whaleHub.coObservationBucket')}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-0.5 text-[11px]">
+                    {bucket.whale_count ?? 0} whale · {bucket.signal_count ?? 0} dark flow
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       )}
     </div>
   );

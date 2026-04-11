@@ -1,7 +1,7 @@
 import pandas as pd
 from django.test import SimpleTestCase
 
-from portfolio.realtime.compute import build_ticker_payload, detect_whale_signals
+from portfolio.realtime.compute import build_ticker_payload, build_whale_payload, detect_whale_signals, WhaleSignal
 
 
 class RealtimeComputeTests(SimpleTestCase):
@@ -34,3 +34,42 @@ class RealtimeComputeTests(SimpleTestCase):
         self.assertEqual(signals[0].symbol, "HPG")
         self.assertEqual(signals[0].side, "BUY")
         self.assertGreaterEqual(signals[0].matched_value, 1000000000.0)
+
+    def test_build_whale_payload_includes_explainability_fields(self):
+        signal = WhaleSignal(
+            symbol="VNM",
+            matched_value=3_000_000_000,
+            side="BUY",
+            threshold=1_000_000_000,
+            ts="2026-04-11T09:00:00+00:00",
+        )
+        payload = build_whale_payload(signal, seq=1)
+
+        self.assertIn("why_triggered", payload)
+        self.assertIn("next_checks", payload)
+        self.assertIsInstance(payload["why_triggered"], list)
+        self.assertIsInstance(payload["next_checks"], list)
+        self.assertTrue(len(payload["why_triggered"]) >= 2)
+        # 3x threshold → ratio bullet present
+        self.assertTrue(any("3.0x" in w for w in payload["why_triggered"]))
+        # buy side → check_related_symbols in next_checks
+        self.assertIn("check_related_symbols", payload["next_checks"])
+        # always includes compare_dark_flow
+        self.assertIn("compare_dark_flow", payload["next_checks"])
+
+    def test_build_whale_payload_sell_side_explainability(self):
+        signal = WhaleSignal(
+            symbol="SSI",
+            matched_value=6_000_000_000,
+            side="SELL",
+            threshold=1_000_000_000,
+            ts="2026-04-11T09:00:00+00:00",
+        )
+        payload = build_whale_payload(signal, seq=2)
+
+        # shark-class trade
+        self.assertTrue(any("shark" in w for w in payload["why_triggered"]))
+        # sell side → monitor_reversal
+        self.assertIn("monitor_reversal", payload["next_checks"])
+        # shark → check_depth_wall
+        self.assertIn("check_depth_wall", payload["next_checks"])
