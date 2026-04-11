@@ -504,11 +504,16 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - Test evidence:
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_supports_governance_day_bucket`
     - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_returns_400_for_invalid_governance_bucket`
+- H4-step-5 hoan tat (frontend mini chart cho governance trend):
+  - panel H3 observability bo sung selector `governance bucket` (`hour/day`) de dong bo query voi backend.
+  - render mini trend bar cho `rollout_gate_deny_trend` (toi da 8 buckets gan nhat), hien deny count + top reason + top cohort mode.
+  - bo sung i18n keys cho vi/en.
+  - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Hoan tat FE mini chart cho governance trend (`hour/day`) trong observability panel.
+2. Bo sung FE filter theo endpoint/reason cho governance block (phase tiep theo).
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

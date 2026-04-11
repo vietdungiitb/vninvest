@@ -1345,6 +1345,7 @@ export default function StockDetail() {
   const [advisoryObservability, setAdvisoryObservability] = useState(null);
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
   const [advisoryObservabilityWindowHours, setAdvisoryObservabilityWindowHours] = useState(48);
+  const [advisoryGovernanceBucket, setAdvisoryGovernanceBucket] = useState('hour');
   const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
   const [retryEventReasonFilter, setRetryEventReasonFilter] = useState('all');
   const [retryEventSortMode, setRetryEventSortMode] = useState('newest');
@@ -1376,6 +1377,26 @@ export default function StockDetail() {
     const unique = Array.from(new Set(events.map((event) => String(event?.reason || '').toLowerCase()).filter(Boolean)));
     return unique.sort((a, b) => a.localeCompare(b));
   }, [advisoryObservability?.retry_events]);
+
+  const governanceTrendRows = useMemo(() => {
+    const rows = Array.isArray(advisoryObservability?.governance?.rollout_gate_deny_trend)
+      ? advisoryObservability.governance.rollout_gate_deny_trend
+      : [];
+    if (rows.length === 0) {
+      return [];
+    }
+    const maxDeny = Math.max(1, ...rows.map((row) => Number(row?.deny_total || 0)));
+    return rows.slice(-8).map((row) => {
+      const denyTotal = Number(row?.deny_total || 0);
+      return {
+        bucket: row?.bucket || '',
+        denyTotal,
+        widthPercent: Math.max(8, Math.round((denyTotal / maxDeny) * 100)),
+        topReason: Object.entries(row?.deny_by_reason || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a',
+        topCohort: Object.entries(row?.deny_by_cohort_mode || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a',
+      };
+    });
+  }, [advisoryObservability?.governance?.rollout_gate_deny_trend]);
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -1536,6 +1557,7 @@ export default function StockDetail() {
     setRetryEventReasonFilter('all');
     setRetryEventSortMode('newest');
     setAdvisoryObservabilityWindowHours(48);
+    setAdvisoryGovernanceBucket('hour');
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
       recoveredCount: 0,
@@ -1600,6 +1622,7 @@ export default function StockDetail() {
         window_hours: advisoryObservabilityWindowHours,
         limit: 12,
         retry_sort: retryEventSortMode,
+        governance_bucket: advisoryGovernanceBucket,
       };
       if (retryEventOutcomeFilter !== 'all') {
         params.retry_outcome = retryEventOutcomeFilter;
@@ -1620,7 +1643,7 @@ export default function StockDetail() {
         setAdvisoryObservabilityLoading(false);
       }
     }
-  }, [advisoryObservabilityWindowHours, normalizedSymbol, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
+  }, [advisoryGovernanceBucket, advisoryObservabilityWindowHours, normalizedSymbol, retryEventOutcomeFilter, retryEventReasonFilter, retryEventSortMode]);
 
   const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;
@@ -2599,6 +2622,15 @@ export default function StockDetail() {
                           <option value={72}>72h</option>
                           <option value={168}>7d</option>
                         </select>
+                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceBucket')}</span>
+                        <select
+                          value={advisoryGovernanceBucket}
+                          onChange={(e) => setAdvisoryGovernanceBucket(e.target.value)}
+                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                        >
+                          <option value="hour">{t('stockDetail.governanceBucketHour')}</option>
+                          <option value="day">{t('stockDetail.governanceBucketDay')}</option>
+                        </select>
                         {advisoryObservabilityLoading ? (
                           <span className="text-[11px] text-slate-500">Refreshing...</span>
                         ) : null}
@@ -2668,6 +2700,36 @@ export default function StockDetail() {
                             <span key={row.advisory_id} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300">
                               #{row.advisory_id} {row.severity} q={row.aggregate_quality?.score}
                             </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    {governanceTrendRows.length > 0 ? (
+                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceTrendTitle')}</p>
+                          <div className="text-[11px] text-slate-500">
+                            {t('stockDetail.governanceDenyTotal')}: {advisoryObservability?.governance?.rollout_gate_deny_total ?? 0}
+                          </div>
+                        </div>
+                        <div className="mt-2 space-y-1.5">
+                          {governanceTrendRows.map((row) => (
+                            <div key={`gov-trend-${row.bucket}`} className="space-y-1">
+                              <div className="flex items-center justify-between text-[11px] text-slate-400">
+                                <span>{row.bucket}</span>
+                                <span>{t('stockDetail.governanceDenyCount')}: {row.denyTotal}</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-slate-800/80">
+                                <div
+                                  className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-500"
+                                  style={{ width: `${row.widthPercent}%` }}
+                                />
+                              </div>
+                              <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                                <span>{t('stockDetail.governanceTopReason')}: {row.topReason}</span>
+                                <span>{t('stockDetail.governanceTopCohort')}: {row.topCohort}</span>
+                              </div>
+                            </div>
                           ))}
                         </div>
                       </div>
