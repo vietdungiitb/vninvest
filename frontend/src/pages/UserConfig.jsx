@@ -51,7 +51,7 @@ export default function UserConfig() {
     theme: 'dark',
     whale_alert_threshold: 500,
     advisory_auto_generation_enabled: true,
-    advisory_whale_signal_enabled: true,
+    advisory_whale_signal_enabled: false,
     advisory_manual_refresh_enabled: true,
     advisory_refresh_interval_hours: 24,
     advisory_max_auto_refreshes_per_day: 24,
@@ -94,7 +94,7 @@ export default function UserConfig() {
           theme: userCfg.theme || prev.theme,
           whale_alert_threshold: Number(userCfg.whale_alert_threshold ?? prev.whale_alert_threshold),
           advisory_auto_generation_enabled: Boolean(userCfg.advisory_auto_generation_enabled ?? prev.advisory_auto_generation_enabled),
-          advisory_whale_signal_enabled: Boolean(userCfg.advisory_whale_signal_enabled ?? prev.advisory_whale_signal_enabled),
+          advisory_whale_signal_enabled: false,
           advisory_manual_refresh_enabled: Boolean(userCfg.advisory_manual_refresh_enabled ?? prev.advisory_manual_refresh_enabled),
           advisory_refresh_interval_hours: Number(userCfg.advisory_refresh_interval_hours ?? prev.advisory_refresh_interval_hours),
           advisory_max_auto_refreshes_per_day: Number(userCfg.advisory_max_auto_refreshes_per_day ?? prev.advisory_max_auto_refreshes_per_day),
@@ -149,7 +149,7 @@ export default function UserConfig() {
         theme: form.theme,
         whale_alert_threshold: Math.max(1, Number(form.whale_alert_threshold) || 500),
         advisory_auto_generation_enabled: Boolean(form.advisory_auto_generation_enabled),
-        advisory_whale_signal_enabled: Boolean(form.advisory_whale_signal_enabled),
+        advisory_whale_signal_enabled: false,
         advisory_manual_refresh_enabled: Boolean(form.advisory_manual_refresh_enabled),
         advisory_refresh_interval_hours: Math.max(1, Number(form.advisory_refresh_interval_hours) || 24),
         advisory_max_auto_refreshes_per_day: Math.max(1, Number(form.advisory_max_auto_refreshes_per_day) || 24),
@@ -333,11 +333,6 @@ export default function UserConfig() {
               <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" checked={form.advisory_auto_generation_enabled} onChange={(e) => onField('advisory_auto_generation_enabled', e.target.checked)} />
                 {t('settings.periodicAuto')}
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input type="checkbox" checked={form.advisory_whale_signal_enabled} onChange={(e) => onField('advisory_whale_signal_enabled', e.target.checked)} />
-                {t('settings.eventBasedAuto')}
               </label>
 
               <label className="flex items-center gap-2 text-sm text-slate-300">
