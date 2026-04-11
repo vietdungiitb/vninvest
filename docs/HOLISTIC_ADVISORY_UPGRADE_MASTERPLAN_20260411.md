@@ -588,12 +588,15 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
 - H4-step-17 hoan tat (CI stability tracker cho governance gate):
   - tao tracker `docs/HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md` de theo doi 3-5 lan chay dau tien.
   - bao gom checklist moi lan run, run log table, quy tac GO/NO-GO va khuon action items.
+- H4-step-18 hoan tat (GO/NO-GO artifact draft):
+  - tao `docs/HOLISTIC_ADVISORY_H4_GO_NO_GO_GATE_20260411.md` de tong hop gate status theo evidence hien co.
+  - trang thai ban dau: `NO-GO tam thoi` khi chua du CI stability data va production deploy smoke dang skip theo dieu kien moi truong.
 
 Work items:
 
-1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Dien du lieu that cho 3-5 lan chay CI dau tien vao `HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md`.
-3. Chot ket qua theo doi CI vao artifact GO/NO-GO tiep theo (ty le pass, flaky signals, action items neu co).
+1. Dien du lieu that cho 3-5 lan chay CI dau tien vao `HOLISTIC_ADVISORY_H4_CI_STABILITY_TRACKER_20260411.md`.
+2. Cap nhat lai `HOLISTIC_ADVISORY_H4_GO_NO_GO_GATE_20260411.md` tu `NO-GO tam thoi` sang `GO` khi du dieu kien.
+3. Khi server deploy san sang, bo sung production smoke evidence vao GO/NO-GO artifact.
 
 Ghi chu tracker hien tai:
 
