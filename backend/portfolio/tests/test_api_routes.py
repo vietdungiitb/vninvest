@@ -20,6 +20,7 @@ from rest_framework.test import APITestCase
 
 class ApiRouteSmokeTests(APITestCase):
     def setUp(self):
+        cache.delete('admin_ops:holistic_governance_delta_thresholds')
         self.username = 'route-smoke-user'
         self.password = 'Test@123456'
         self.user = User.objects.create_user(
