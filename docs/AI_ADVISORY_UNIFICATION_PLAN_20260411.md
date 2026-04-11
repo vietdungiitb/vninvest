@@ -2,7 +2,7 @@
 
 Date: 2026-04-11
 Owner: Advisory Platform Team
-Status: In Progress (Phase 0-1 done)
+Status: In Progress (Phase 0-2 done)
 
 ## 1) Goal
 
@@ -112,13 +112,15 @@ Implementation note:
 
 - backend/portfolio/views.py now contains shared helper `_submit_advisory_generation_with_fallback(...)` and both refresh entrypoints call through it.
 
-### Phase 2
+### Phase 2 (Completed)
 
-Canonical read endpoint and adapter layer:
+Canonical read endpoint and adapter layer implemented:
 
-1. Add canonical advisory read endpoint by symbol.
-2. Keep old endpoints as adapters for backward compatibility.
-3. Standardize status codes and reason payload.
+1. Added canonical advisory read endpoint by symbol:
+  - `/api/portfolio/ai-advisory/<symbol>/canonical/`
+  - `/api/portfolio/whale-advisory/<symbol>/canonical/` (alias)
+2. Added adapter mode on list endpoint via query `contract=canonical`.
+3. Kept legacy list contract intact for backward compatibility.
 
 ### Phase 3
 

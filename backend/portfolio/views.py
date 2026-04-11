@@ -3768,12 +3768,113 @@ class WhaleAdvisoryListView(generics.ListAPIView):
     def list(self, request, *args, **kwargs):
         qs = self.get_queryset()
         plan = _get_plan(request.user)
+        contract = str(request.query_params.get('contract') or '').strip().lower()
+
+        if contract == 'canonical':
+            user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+            seen_symbols = set()
+            items = []
+            for advisory in qs:
+                symbol = str(advisory.symbol or '').strip().upper()
+                if not symbol or symbol in seen_symbols:
+                    continue
+                seen_symbols.add(symbol)
+                items.append(_build_advisory_canonical_payload(request.user, advisory, user_cfg=user_cfg))
+            return Response({'ok': True, 'contract_version': 'canonical_v1', 'items': items})
+
         data = WhaleAdvisorySerializer(qs, many=True).data
         # Pro: ẩn ai_detail (chỉ Premium+ được xem)
         if plan not in ('premium', 'admin'):
             for item in data:
                 item['ai_detail'] = ''
         return Response(data)
+
+
+def _extract_confidence_from_summary(ai_summary: str) -> float | None:
+    summary_text = str(ai_summary or '')
+    matched = re.search(r'(\d{1,3})\s*%', summary_text)
+    if not matched:
+        return None
+    try:
+        value = float(matched.group(1))
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(value, 100.0))
+
+
+def _build_advisory_canonical_payload(user, advisory: WhaleAdvisory | None, *, user_cfg: UserConfig | None = None) -> dict:
+    if advisory is None:
+        return {
+            'advisory_id': None,
+            'symbol': None,
+            'created_at': None,
+            'source': None,
+            'ai_provider': None,
+            'ai_model': None,
+            'summary_text': '',
+            'detail_text': '',
+            'confidence': None,
+            'risk_level': None,
+            'recommendation': None,
+            'output_language': str(getattr(user_cfg, 'language', 'vi') or 'vi').strip().lower(),
+            'freshness': {'next_refresh_at': None, 'is_stale': False},
+        }
+
+    if user_cfg is None:
+        user_cfg, _ = UserConfig.objects.get_or_create(user=user)
+
+    plan = _get_plan(user)
+    detail_text = str(advisory.ai_detail or '') if plan in ('premium', 'admin') else ''
+    next_refresh_at = advisory.next_refresh_at
+    if next_refresh_at is None:
+        interval_hours = max(int(getattr(user_cfg, 'advisory_refresh_interval_hours', 24) or 24), 1)
+        next_refresh_at = advisory.created_at + timedelta(hours=interval_hours)
+    now = timezone.now()
+
+    return {
+        'advisory_id': advisory.id,
+        'symbol': advisory.symbol,
+        'created_at': advisory.created_at,
+        'source': advisory.source,
+        'ai_provider': advisory.ai_provider,
+        'ai_model': advisory.ai_model,
+        'summary_text': str(advisory.ai_summary or ''),
+        'detail_text': detail_text,
+        'confidence': _extract_confidence_from_summary(advisory.ai_summary),
+        'risk_level': str(advisory.severity or ''),
+        'recommendation': str(advisory.side or ''),
+        'output_language': str(getattr(user_cfg, 'language', 'vi') or 'vi').strip().lower(),
+        'freshness': {
+            'next_refresh_at': next_refresh_at,
+            'is_stale': bool(next_refresh_at and next_refresh_at <= now),
+        },
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsProPlan])
+def ai_advisory_canonical_symbol_api(request, symbol: str):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return Response({'ok': False, 'message': 'Symbol không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    latest = (
+        WhaleAdvisory.objects
+        .filter(user=request.user, symbol=normalized_symbol)
+        .order_by('-created_at')
+        .first()
+    )
+
+    return Response(
+        {
+            'ok': True,
+            'contract_version': 'canonical_v1',
+            'symbol': normalized_symbol,
+            'advisory': _build_advisory_canonical_payload(request.user, latest, user_cfg=user_cfg),
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['GET'])
