@@ -1327,6 +1327,7 @@ export default function StockDetail() {
   const [advisoryAggregate, setAdvisoryAggregate] = useState(null);
   const [advisoryObservability, setAdvisoryObservability] = useState(null);
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
+  const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
@@ -1345,6 +1346,14 @@ export default function StockDetail() {
   const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
   const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
   const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
+
+  const filteredPersistedRetryEvents = useMemo(() => {
+    const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
+    if (retryEventOutcomeFilter === 'all') {
+      return events;
+    }
+    return events.filter((event) => String(event?.outcome || '').toLowerCase() === retryEventOutcomeFilter);
+  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter]);
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -1501,6 +1510,7 @@ export default function StockDetail() {
       advisoryConflictRetryTimeoutRef.current = null;
     }
     advisoryRetryTelemetrySyncKeyRef.current = '';
+    setRetryEventOutcomeFilter('all');
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
       recoveredCount: 0,
@@ -2583,13 +2593,13 @@ export default function StockDetail() {
                       <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
                         <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.advisoryRetryTelemetry')}</p>
                         <p className="mt-1 text-sm font-semibold text-violet-300">
-                          {t('stockDetail.retryScheduledCount')}: {advisoryRetryTelemetry.scheduledCount}
+                          {t('stockDetail.retryScheduledCount')}: {advisoryObservability?.summary?.retry_scheduled_total ?? advisoryRetryTelemetry.scheduledCount}
                         </p>
                         <p className="text-[11px] text-emerald-300">
-                          {t('stockDetail.retryRecoveredCount')}: {advisoryRetryTelemetry.recoveredCount}
+                          {t('stockDetail.retryRecoveredCount')}: {advisoryObservability?.summary?.retry_recovered_total ?? advisoryRetryTelemetry.recoveredCount}
                         </p>
                         <p className="text-[11px] text-rose-300">
-                          {t('stockDetail.retryFailedCount')}: {advisoryRetryTelemetry.failedCount}
+                          {t('stockDetail.retryFailedCount')}: {advisoryObservability?.summary?.retry_failed_total ?? advisoryRetryTelemetry.failedCount}
                         </p>
                         <p className="mt-1 text-[11px] text-slate-500">
                           {t('stockDetail.retryLast')}: {advisoryRetryOutcomeLabel(advisoryRetryTelemetry.lastOutcome, t)}
@@ -2613,16 +2623,36 @@ export default function StockDetail() {
                     ) : null}
                     {Array.isArray(advisoryObservability?.retry_events) && advisoryObservability.retry_events.length > 0 ? (
                       <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Retry events (persisted)</p>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.retryEventsPersisted')}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500">{t('stockDetail.retryFilterOutcome')}</span>
+                            <select
+                              value={retryEventOutcomeFilter}
+                              onChange={(e) => setRetryEventOutcomeFilter(e.target.value)}
+                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                            >
+                              <option value="all">{t('stockDetail.retryFilterAll')}</option>
+                              <option value="scheduled">{advisoryRetryOutcomeLabel('scheduled', t)}</option>
+                              <option value="recovered">{advisoryRetryOutcomeLabel('recovered', t)}</option>
+                              <option value="exhausted">{advisoryRetryOutcomeLabel('exhausted', t)}</option>
+                              <option value="skipped_config">{advisoryRetryOutcomeLabel('skipped_config', t)}</option>
+                              <option value="request_error">{advisoryRetryOutcomeLabel('request_error', t)}</option>
+                            </select>
+                          </div>
+                        </div>
                         <div className="mt-1 flex flex-wrap gap-2">
-                          {advisoryObservability.retry_events.slice(0, 5).map((event) => (
+                          {filteredPersistedRetryEvents.slice(0, 5).map((event) => (
                             <span
                               key={`retry-${event.log_id}`}
                               className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300"
                             >
-                              {event.outcome || 'unknown'} r={event.reason || 'n/a'} s={event.scheduled_count} ok={event.recovered_count} f={event.failed_count}
+                              {advisoryRetryOutcomeLabel(event.outcome, t)} r={event.reason || 'n/a'} s={event.scheduled_count} ok={event.recovered_count} f={event.failed_count}
                             </span>
                           ))}
+                          {filteredPersistedRetryEvents.length === 0 ? (
+                            <p className="text-[11px] text-slate-500">{t('stockDetail.retryNoEventsForFilter')}</p>
+                          ) : null}
                         </div>
                       </div>
                     ) : null}
