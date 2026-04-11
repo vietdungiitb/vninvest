@@ -1511,6 +1511,32 @@ class ApiRouteSmokeTests(APITestCase):
         self.assertFalse(response.data['ok'])
         self.assertEqual(response.data['reason'], 'holistic_disabled')
 
+    @override_settings(
+        HOLISTIC_ADVISORY_V1_ENABLED=True,
+        HOLISTIC_ADVISORY_V1_COHORT_MODE='allowlist',
+        HOLISTIC_ADVISORY_V1_COHORT_USERNAMES=['another-user'],
+        STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True,
+    )
+    def test_stock_ai_advisory_session_v2_contract_returns_403_when_user_not_in_holistic_allowlist(self):
+        self.authenticate()
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=7_000_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Stock workspace summary',
+            ai_detail='Stock workspace detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['reason'], 'holistic_disabled')
+
     @override_settings(STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True, STOCK_AI_ADVISORY_BENCHMARKS_ENABLED=True)
     def test_stock_ai_advisory_session_v2_includes_benchmark_enrichment(self):
         self.authenticate()
@@ -2824,6 +2850,20 @@ class ApiRouteSmokeTests(APITestCase):
 
     @override_settings(HOLISTIC_ADVISORY_V1_ENABLED=False)
     def test_stock_ai_advisory_observability_returns_403_when_holistic_gate_disabled(self):
+        self.authenticate()
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=24&limit=10')
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['ok'])
+        self.assertEqual(response.data['reason'], 'holistic_disabled')
+
+    @override_settings(
+        HOLISTIC_ADVISORY_V1_ENABLED=True,
+        HOLISTIC_ADVISORY_V1_COHORT_MODE='allowlist',
+        HOLISTIC_ADVISORY_V1_COHORT_USERNAMES=['another-user'],
+    )
+    def test_stock_ai_advisory_observability_returns_403_when_user_not_in_holistic_allowlist(self):
         self.authenticate()
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-observability/?window_hours=24&limit=10')

@@ -5023,6 +5023,25 @@ def _build_session_v2_observability(user, symbol: str, advisory_obj, snapshot_ob
     }
 
 
+def _is_holistic_advisory_v1_enabled_for_user(user) -> bool:
+    if not bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True)):
+        return False
+
+    cohort_mode = str(getattr(settings, 'HOLISTIC_ADVISORY_V1_COHORT_MODE', 'all') or 'all').strip().lower()
+    if cohort_mode == 'all':
+        return True
+
+    if cohort_mode == 'staff':
+        return bool(getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False))
+
+    if cohort_mode == 'allowlist':
+        allowlist = getattr(settings, 'HOLISTIC_ADVISORY_V1_COHORT_USERNAMES', []) or []
+        normalized_allowlist = {str(item).strip().lower() for item in allowlist if str(item).strip()}
+        return str(getattr(user, 'username', '')).strip().lower() in normalized_allowlist
+
+    return True
+
+
 def _build_session_v2_aggregate_quality_metrics(advisory_obj, snapshot_obj) -> dict:
     state_json = snapshot_obj.state_json if snapshot_obj is not None and isinstance(snapshot_obj.state_json, dict) else {}
     quality = state_json.get('quality') if isinstance(state_json.get('quality'), dict) else {}
@@ -5075,7 +5094,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
     user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
     threshold_m = float(user_cfg.whale_alert_threshold or 500)
     threshold_vnd = threshold_m * 1_000_000
-    holistic_v1_enabled = bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True))
+    holistic_v1_enabled = _is_holistic_advisory_v1_enabled_for_user(request.user)
     session_v2_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_SESSION_V2_ENABLED', False))
     benchmark_enrichment_enabled = bool(getattr(settings, 'STOCK_AI_ADVISORY_BENCHMARKS_ENABLED', False))
     contract_raw = str(request.query_params.get('contract') or '').strip().lower()
@@ -5898,7 +5917,7 @@ def stock_ai_advisory_observability_api(request, symbol: str):
     if not normalized_symbol:
         return Response({'ok': False, 'message': 'Symbol khong hop le.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if not bool(getattr(settings, 'HOLISTIC_ADVISORY_V1_ENABLED', True)):
+    if not _is_holistic_advisory_v1_enabled_for_user(request.user):
         return Response(
             {
                 'ok': False,
