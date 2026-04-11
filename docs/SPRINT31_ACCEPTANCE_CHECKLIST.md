@@ -46,6 +46,20 @@ Trang thai: GO - All whale regression gates green
 - [x] F2 Whale Hub tab Campaigns co modal/filter/cursor load-more + FE tests pass.
 - [x] F3 Abnormality baseline cache service skeleton da co interface fetch/cache/enrich.
 
+## Gate G - Phase 1 closure hardening (2026-04-11)
+
+- [x] G1 Symbol investigation grouping payload compatibility (`correlated_campaigns`, `correlated_signals`, `grouped_timeline`) merged.
+- [x] G2 Explainability text layer merged (`why_triggered`, `next_checks`) and rendered in Whale Hub.
+- [x] G3 P1-13 smoke tests merged: campaign board, symbol modal payload, window backward-compat.
+- [x] G4 Whale regression gate rerun green after final hardening fixes: `ApiRouteSmokeTests -k whale` = 56/56 PASS.
+
+### Gate G evidence (commits)
+
+- `2138939e` feat(sprint31-p1-11): symbol investigation endpoint grouping, FE payload alignment, param aliases
+- `c0294850` feat(sprint31-p1-9/10/12): explainability layer BE+FE, co-observation timeline panel
+- `88e8fa66` test(sprint31-p1-13): E2E smoke tests for campaign board, symbol modal, window filter backward compat
+- `9788d6f0` fix(sprint31): stabilize whale aggregate windows and make whale regression tests time-safe
+
 ### Closure note (Gate E3)
 
 - Decision: GO full.
