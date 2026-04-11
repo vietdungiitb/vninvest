@@ -5,6 +5,7 @@ function formatCompactNumber(value) {
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return n.toLocaleString(undefined);
 }
+const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { init as klineChartInit, dispose as klineChartDispose } from 'klinecharts';
 import { Link, useParams } from 'react-router-dom';
@@ -142,6 +143,18 @@ function advisoryRetryOutcomeLabel(outcome, t) {
     request_error: t('stockDetail.retryOutcomeRequestError'),
   };
   return map[String(outcome || '').toLowerCase()] || t('stockDetail.retryOutcomeIdle');
+}
+
+function emitAdvisoryInvalidation(symbol, advisory) {
+  const normalizedSymbol = String(symbol || '').trim().toUpperCase();
+  if (!normalizedSymbol) return;
+  window.dispatchEvent(new CustomEvent(ADVISORY_INVALIDATION_EVENT, {
+    detail: {
+      symbol: normalizedSymbol,
+      advisoryId: advisory?.id || null,
+      createdAt: advisory?.created_at || null,
+    },
+  }));
 }
 
 function advisoryRetryOutcomeBadgeClass(outcome) {
@@ -1405,6 +1418,7 @@ export default function StockDetail() {
   const advisoryConflictRetryTimeoutRef = useRef(null);
   const advisoryConflictRetryCountRef = useRef(0);
   const advisoryRetryTelemetrySyncKeyRef = useRef('');
+  const advisoryInvalidationKeyRef = useRef('');
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1583,6 +1597,17 @@ export default function StockDetail() {
       });
       if (payload.message) {
         setAdvisoryMessage(payload.message);
+      }
+
+      const advisory = payload?.advisory || null;
+      const advisoryKey = [
+        normalizedSymbol,
+        advisory?.id || 'none',
+        advisory?.created_at || 'none',
+      ].join(':');
+      if (advisoryKey !== advisoryInvalidationKeyRef.current) {
+        advisoryInvalidationKeyRef.current = advisoryKey;
+        emitAdvisoryInvalidation(normalizedSymbol, advisory);
       }
     } catch (err) {
       if (err?.response?.status === 409) {
@@ -2255,6 +2280,7 @@ export default function StockDetail() {
           // Sync fallback: có advisory ngay
           currentSession = sessionPayload.advisory;
           setAdvisorySession(currentSession);
+          emitAdvisoryInvalidation(normalizedSymbol, currentSession);
           if (Array.isArray(sessionPayload.components)) setAdvisoryComponents(sessionPayload.components);
           if (Array.isArray(sessionPayload.executive_summaries)) setAdvisoryExecutiveSummaries(sessionPayload.executive_summaries);
         } else {

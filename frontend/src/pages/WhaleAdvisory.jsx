@@ -40,6 +40,8 @@ function fmtTime(value) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(undefined);
 }
 
+const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
+
 function inferConfidence(advisory) {
   if (!advisory) return null;
   if (advisory.confidence !== null && advisory.confidence !== undefined) {
@@ -413,10 +415,27 @@ export default function WhaleAdvisory() {
   
   const fetchDataSnapshot = useCallback(async () => {
     const [advisoryResp, trackedResp] = await Promise.all([
-      getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true' } : {}),
+      getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true', contract: 'canonical' } : { contract: 'canonical' }),
       getTrackedSymbols(),
     ]);
-    const advisories = advisoryResp.data || [];
+    const advisoryData = advisoryResp?.data;
+    const canonicalItems = Array.isArray(advisoryData?.items) ? advisoryData.items : [];
+    const advisories = canonicalItems.map((item) => ({
+      id: item?.advisory_id,
+      symbol: item?.symbol,
+      side: item?.recommendation || 'UNKNOWN',
+      ai_summary: item?.summary_text || '',
+      ai_detail: item?.detail_text || '',
+      ai_provider: item?.ai_provider || 'openclaw',
+      ai_model: item?.ai_model || 'default',
+      created_at: item?.created_at,
+      source: item?.source,
+      severity: item?.risk_level || null,
+      confidence: item?.confidence,
+      next_refresh_at: item?.freshness?.next_refresh_at || null,
+      matched_value: 0,
+      refresh_count: 0,
+    }));
     const tracked = trackedResp.data || [];
     setItems(advisories);
     setTrackedSymbols(tracked);
@@ -447,6 +466,16 @@ export default function WhaleAdvisory() {
     }, 30000);
     return () => clearInterval(interval);
   }, [fetchWhaleStats]);
+
+  useEffect(() => {
+    const onAdvisoryInvalidated = () => {
+      fetchDataSnapshot();
+    };
+    window.addEventListener(ADVISORY_INVALIDATION_EVENT, onAdvisoryInvalidated);
+    return () => {
+      window.removeEventListener(ADVISORY_INVALIDATION_EVENT, onAdvisoryInvalidated);
+    };
+  }, [fetchDataSnapshot]);
 
   const ensureAiConfigured = useCallback(async (symbol) => {
     try {
@@ -533,6 +562,7 @@ export default function WhaleAdvisory() {
           [symbol]: t('whaleAdvisory.refreshQueued', { symbol }),
         }));
       }
+      window.dispatchEvent(new CustomEvent(ADVISORY_INVALIDATION_EVENT, { detail: { symbol } }));
     } catch (err) {
       const message = err?.response?.data?.message || err?.response?.data?.detail || t('whaleAdvisory.refreshFailed');
       setRowMessages((prev) => ({ ...prev, [symbol]: message }));

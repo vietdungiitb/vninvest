@@ -2,7 +2,7 @@
 
 Date: 2026-04-11
 Owner: Advisory Platform Team
-Status: In Progress (Phase 0-2 done)
+Status: In Progress (Phase 0-3 done)
 
 ## 1) Goal
 
@@ -122,13 +122,13 @@ Canonical read endpoint and adapter layer implemented:
 2. Added adapter mode on list endpoint via query `contract=canonical`.
 3. Kept legacy list contract intact for backward compatibility.
 
-### Phase 3
+### Phase 3 (Completed)
 
-UI convergence:
+UI convergence implemented:
 
-1. AI Advisory list reads canonical data for per-symbol latest advisory.
-2. Stock Detail reads same canonical core + optional enrichment.
-3. Broadcast invalidation/refetch event after successful refresh.
+1. AI Advisory list now reads canonical contract (`contract=canonical`).
+2. Canonical items are normalized for existing UI renderer compatibility.
+3. Added cross-screen invalidation event (`vninvest:advisory_updated`) and refetch listener.
 
 ### Phase 4
 
