@@ -563,6 +563,7 @@ const vi = {
     governanceTrendTitle: 'Rollout deny trend',
     governanceDenyTotal: 'Tổng deny',
     governanceDenyCount: 'Deny',
+    governanceTopEndpoint: 'Endpoint chính',
     governanceTopReason: 'Reason chính',
     governanceTopCohort: 'Cohort chính',
     governanceBreakdownEndpoint: 'Breakdown theo endpoint',

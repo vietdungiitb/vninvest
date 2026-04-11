@@ -526,11 +526,17 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
   - bo sung chips breakdown theo endpoint va reason ngay trong governance block.
   - cho phep click chip de ap filter tuong ung; click lai chip dang chon de reset ve `all`.
   - Build evidence: `npm run build` trong `frontend/` => `Compiled successfully`.
+- H4-step-9 hoan tat (hover tooltip cho trend bucket + top endpoint):
+  - backend trend payload bo sung `deny_by_endpoint` theo tung bucket.
+  - frontend hien `top endpoint` tren moi row va them tooltip hover tong hop (`deny`, `top endpoint`, `top reason`, `top cohort`).
+  - Test/build evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_supports_governance_day_bucket`
+    - `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
-2. Bo sung tooltip nho cho trend bucket de hien top endpoint/reason ngay khi hover (phase tiep theo).
+2. Bo sung compact sparkline mini (endpoint-filtered) de nhin drift deny nhanh theo 8 bucket gan nhat.
 3. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
 
 Deliverables:

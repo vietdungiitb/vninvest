@@ -3004,6 +3004,7 @@ class ApiRouteSmokeTests(APITestCase):
         first_bucket = response.data['governance']['rollout_gate_deny_trend'][0]
         self.assertIn('bucket', first_bucket)
         self.assertGreaterEqual(first_bucket['deny_total'], 1)
+        self.assertGreaterEqual(first_bucket['deny_by_endpoint'].get('stock_ai_advisory_observability_api', 0), 1)
         self.assertGreaterEqual(first_bucket['deny_by_reason'].get('global_disabled', 0), 1)
         self.assertGreaterEqual(first_bucket['deny_by_cohort_mode'].get('all', 0), 1)
 

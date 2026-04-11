@@ -560,6 +560,7 @@ const en = {
     governanceTrendTitle: 'Rollout deny trend',
     governanceDenyTotal: 'Total deny',
     governanceDenyCount: 'Deny',
+    governanceTopEndpoint: 'Top endpoint',
     governanceTopReason: 'Top reason',
     governanceTopCohort: 'Top cohort',
     governanceBreakdownEndpoint: 'Breakdown by endpoint',

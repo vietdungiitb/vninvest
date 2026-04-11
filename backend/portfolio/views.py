@@ -6168,11 +6168,14 @@ def stock_ai_advisory_observability_api(request, symbol: str):
                     {
                         'bucket': bucket_key,
                         'deny_total': 0,
+                        'deny_by_endpoint': {},
                         'deny_by_reason': {},
                         'deny_by_cohort_mode': {},
                     },
                 )
                 bucket_payload['deny_total'] += 1
+                if endpoint:
+                    bucket_payload['deny_by_endpoint'][endpoint] = bucket_payload['deny_by_endpoint'].get(endpoint, 0) + 1
                 if deny_reason:
                     bucket_payload['deny_by_reason'][deny_reason] = bucket_payload['deny_by_reason'].get(deny_reason, 0) + 1
                 if cohort_mode:

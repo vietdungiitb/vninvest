@@ -1408,15 +1408,25 @@ export default function StockDetail() {
     const maxDeny = Math.max(1, ...rows.map((row) => Number(row?.deny_total || 0)));
     return rows.slice(-8).map((row) => {
       const denyTotal = Number(row?.deny_total || 0);
+      const topEndpoint = Object.entries(row?.deny_by_endpoint || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a';
+      const topReason = Object.entries(row?.deny_by_reason || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a';
+      const topCohort = Object.entries(row?.deny_by_cohort_mode || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a';
       return {
         bucket: row?.bucket || '',
         denyTotal,
         widthPercent: Math.max(8, Math.round((denyTotal / maxDeny) * 100)),
-        topReason: Object.entries(row?.deny_by_reason || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a',
-        topCohort: Object.entries(row?.deny_by_cohort_mode || {}).sort((a, b) => Number(b?.[1] || 0) - Number(a?.[1] || 0))[0]?.[0] || 'n/a',
+        topEndpoint,
+        topReason,
+        topCohort,
+        tooltipText: [
+          `${t('stockDetail.governanceDenyCount')}: ${denyTotal}`,
+          `${t('stockDetail.governanceTopEndpoint')}: ${advisoryGovernanceEndpointLabel(topEndpoint, t)}`,
+          `${t('stockDetail.governanceTopReason')}: ${advisoryGovernanceReasonLabel(topReason, t)}`,
+          `${t('stockDetail.governanceTopCohort')}: ${topCohort}`,
+        ].join(' | '),
       };
     });
-  }, [advisoryObservability?.governance?.rollout_gate_deny_trend]);
+  }, [advisoryObservability?.governance?.rollout_gate_deny_trend, t]);
 
   const governanceEndpointOptions = useMemo(() => {
     const map = advisoryObservability?.governance?.rollout_gate_deny_by_endpoint || {};
@@ -2836,7 +2846,7 @@ export default function StockDetail() {
                         ) : null}
                         <div className="mt-2 space-y-1.5">
                           {governanceTrendRows.map((row) => (
-                            <div key={`gov-trend-${row.bucket}`} className="space-y-1">
+                            <div key={`gov-trend-${row.bucket}`} className="space-y-1" title={row.tooltipText}>
                               <div className="flex items-center justify-between text-[11px] text-slate-400">
                                 <span>{row.bucket}</span>
                                 <span>{t('stockDetail.governanceDenyCount')}: {row.denyTotal}</span>
@@ -2848,6 +2858,7 @@ export default function StockDetail() {
                                 />
                               </div>
                               <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                                <span>{t('stockDetail.governanceTopEndpoint')}: {advisoryGovernanceEndpointLabel(row.topEndpoint, t)}</span>
                                 <span>{t('stockDetail.governanceTopReason')}: {advisoryGovernanceReasonLabel(row.topReason, t)}</span>
                                 <span>{t('stockDetail.governanceTopCohort')}: {row.topCohort}</span>
                               </div>
