@@ -356,6 +356,10 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - FE doi sang goi session v2 (`contract=v2`) va render `aggregate` block (decision/benchmarks/observability).
   - FE goi endpoint `ai-advisory-observability` va hien thi timeline mini trong panel AI Advisory.
   - Files: `frontend/src/api/client.js`, `frontend/src/pages/StockDetail.jsx`.
+- H3-step-6 hoan tat (frontend hardening de dam bao build production xanh):
+  - fix JSX parse error trong `SymbolInvestigationPanel` do nhanh render tra ve 2 sibling cung cap.
+  - bo sung fragment bao quanh khoi `grid` va `co-observation timeline` trong `frontend/src/pages/WhaleAlertsHub.jsx`.
+  - Build evidence: `npm run build` trong `frontend/` da `Compiled successfully`.
 
 Work items:
 

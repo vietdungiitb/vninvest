@@ -688,98 +688,100 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
       ) : error ? (
         <div className="rounded-2xl border border-rose-800/60 bg-rose-950/20 px-4 py-3 text-sm text-rose-200">{error}</div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
-              {t('whaleHub.campaigns')} ({campaigns.length})
-            </p>
-            <div className="space-y-2">
-              {campaigns.length === 0 ? (
-                <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
-              ) : (
-                campaigns.map((item) => (
-                  <div key={item.event_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-semibold text-slate-100">{item.symbol}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
-                        item.side === 'BUY' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
-                      }`}>
-                        {item.side}
-                      </span>
+        <>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+                {t('whaleHub.campaigns')} ({campaigns.length})
+              </p>
+              <div className="space-y-2">
+                {campaigns.length === 0 ? (
+                  <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
+                ) : (
+                  campaigns.map((item) => (
+                    <div key={item.event_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-semibold text-slate-100">{item.symbol}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                          item.side === 'BUY' ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
+                        }`}>
+                          {item.side}
+                        </span>
+                      </div>
+                      <p className="text-slate-400">
+                        {t('whaleHub.matchedValue')}: {formatCompactMoney(item.matched_value, localeTag)} VND
+                      </p>
+                      <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
                     </div>
-                    <p className="text-slate-400">
-                      {t('whaleHub.matchedValue')}: {formatCompactMoney(item.matched_value, localeTag)} VND
-                    </p>
-                    <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+                {t('whaleHub.darkFlowSignals')} ({signals.length})
+              </p>
+              <div className="space-y-2">
+                {signals.length === 0 ? (
+                  <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
+                ) : (
+                  signals.map((item) => (
+                    <div key={item.signal_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-semibold text-slate-100">{item.signal_type}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-900/60 text-cyan-300`}>
+                          {(item.strength || 0).toFixed(0)}
+                        </span>
+                      </div>
+                      <p className="text-slate-400">
+                        {t('whaleHub.confidence')}: {item.confidence}
+                      </p>
+                      <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
 
-          <div>
-            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
-              {t('whaleHub.darkFlowSignals')} ({signals.length})
-            </p>
-            <div className="space-y-2">
-              {signals.length === 0 ? (
-                <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
-              ) : (
-                signals.map((item) => (
-                  <div key={item.signal_id} className="rounded-lg border border-slate-800 bg-slate-950/70 p-2.5 text-xs">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-semibold text-slate-100">{item.signal_type}</span>
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-semibold bg-cyan-900/60 text-cyan-300`}>
-                        {(item.strength || 0).toFixed(0)}
-                      </span>
+          {groupedTimeline.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+                {t('whaleHub.coObservationTimeline')}
+                {coObsSummary.co_observation_count > 0 && (
+                  <span className="ml-2 rounded-full bg-cyan-900/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 normal-case tracking-normal">
+                    {coObsSummary.co_observation_count} co-observed
+                  </span>
+                )}
+              </p>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {groupedTimeline.map((bucket, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-lg border px-3 py-2 text-xs ${
+                      bucket.has_co_observation
+                        ? 'border-cyan-700/60 bg-cyan-950/30 text-cyan-200'
+                        : 'border-slate-800 bg-slate-950/50 text-slate-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[11px]">{formatTime(bucket.bucket_start, formatDateTimeFn)}</span>
+                      {bucket.has_co_observation && (
+                        <span className="rounded-full bg-cyan-800/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
+                          {t('whaleHub.coObservationBucket')}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-slate-400">
-                      {t('whaleHub.confidence')}: {item.confidence}
+                    <p className="mt-0.5 text-[11px]">
+                      {bucket.whale_count ?? 0} whale · {bucket.signal_count ?? 0} dark flow
                     </p>
-                    <p className="text-slate-500 mt-1">{formatTime(item.created_at, formatDateTimeFn)}</p>
                   </div>
-                ))
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-
-        {groupedTimeline.length > 0 && (
-          <div className="mt-4">
-            <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
-              {t('whaleHub.coObservationTimeline')}
-              {coObsSummary.co_observation_count > 0 && (
-                <span className="ml-2 rounded-full bg-cyan-900/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300 normal-case tracking-normal">
-                  {coObsSummary.co_observation_count} co-observed
-                </span>
-              )}
-            </p>
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {groupedTimeline.map((bucket, i) => (
-                <div
-                  key={i}
-                  className={`rounded-lg border px-3 py-2 text-xs ${
-                    bucket.has_co_observation
-                      ? 'border-cyan-700/60 bg-cyan-950/30 text-cyan-200'
-                      : 'border-slate-800 bg-slate-950/50 text-slate-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-[11px]">{formatTime(bucket.bucket_start, formatDateTimeFn)}</span>
-                    {bucket.has_co_observation && (
-                      <span className="rounded-full bg-cyan-800/60 px-2 py-0.5 text-[10px] font-semibold text-cyan-300">
-                        {t('whaleHub.coObservationBucket')}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-[11px]">
-                    {bucket.whale_count ?? 0} whale · {bucket.signal_count ?? 0} dark flow
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          )}
+        </>
       )}
     </div>
   );
