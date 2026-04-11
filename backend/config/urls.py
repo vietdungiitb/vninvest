@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/admin-ops/runtime-kpi/', portfolio_views.admin_runtime_kpi_api, name='admin-ops-runtime-kpi'),
     path('api/admin-ops/runtime-kpi/advisory-merge/', portfolio_views.admin_runtime_kpi_advisory_merge_api, name='admin-ops-runtime-kpi-advisory-merge'),
     path('api/admin-ops/runtime-kpi/whale-pipeline/', portfolio_views.admin_runtime_kpi_whale_pipeline_api, name='admin-ops-runtime-kpi-whale-pipeline'),
+    path('api/admin-ops/runtime-kpi/advisory-metrics/', portfolio_views.admin_runtime_kpi_advisory_metrics_api, name='admin-ops-runtime-kpi-advisory-metrics'),
     path('api/admin-ops/system-ai-settings/', portfolio_views.admin_system_ai_settings_api, name='admin-ops-system-ai-settings'),
     path('api/admin-ops/system-ai-settings/test-connection/', portfolio_views.admin_system_ai_test_connection_api, name='admin-ops-system-ai-test-connection'),
     path('api/admin-ops/system-ai-settings/audit-logs/', portfolio_views.admin_system_ai_audit_logs_api, name='admin-ops-system-ai-audit-logs'),

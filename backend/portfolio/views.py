@@ -219,6 +219,147 @@ def admin_runtime_kpi_whale_pipeline_api(request):
     )
 
 
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_runtime_kpi_advisory_metrics_api(request):
+    """
+    GET /api/admin-ops/runtime-kpi/advisory-metrics/
+
+    Admin-only: monitoring metrics cho Advisory AI pipeline.
+    Tổng hợp 5 chỉ số chính phục vụ Grafana / alerting:
+      - p50 / p95 generation latency (từ AdvisoryAggregateAuditLog, window 24h)
+      - Token burn today vs. tổng budget khả dụng
+      - Provider distribution (7 ngày gần nhất)
+      - Active 429 rate-limit cooldowns per provider
+      - Advisory generation counts today by source
+
+    Query-params:
+      latency_window_hours=24  (default)   — cửa sổ tính latency, tối đa 168
+      provider_window_days=7   (default)   — cửa sổ phân phối provider, tối đa 30
+    """
+    import statistics
+    from time import time as _time
+    from django.db.models import Sum
+    from django.utils import timezone
+    from django.core.cache import cache
+    from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryTokenLog, UserConfig, WhaleAdvisory
+    from portfolio.ai_options import MODEL_CATALOG
+
+    sampled_at = _time()
+
+    # ── Query-param validation ────────────────────────────────────────────────
+    try:
+        latency_window_hours = min(max(int(request.query_params.get('latency_window_hours', 24)), 1), 168)
+    except (TypeError, ValueError):
+        latency_window_hours = 24
+
+    try:
+        provider_window_days = min(max(int(request.query_params.get('provider_window_days', 7)), 1), 30)
+    except (TypeError, ValueError):
+        provider_window_days = 7
+
+    # ── 1. Latency p50 / p95 ─────────────────────────────────────────────────
+    latency_window_start = timezone.now() - timezone.timedelta(hours=latency_window_hours)
+    audit_qs = AdvisoryAggregateAuditLog.objects.filter(
+        created_at__gte=latency_window_start,
+    ).values_list('metadata_json', flat=True)
+
+    latencies_ms: list[float] = []
+    for meta in audit_qs:
+        if isinstance(meta, dict):
+            val = meta.get('latency_ms')
+            if val is not None:
+                try:
+                    latencies_ms.append(float(val))
+                except (TypeError, ValueError):
+                    pass
+
+    latency_p50 = round(statistics.median(latencies_ms), 2) if latencies_ms else None
+    if latencies_ms:
+        sorted_lat = sorted(latencies_ms)
+        p95_idx = max(0, int(len(sorted_lat) * 0.95) - 1)
+        latency_p95 = round(sorted_lat[p95_idx], 2)
+    else:
+        latency_p95 = None
+
+    # ── 2. Token burn today ───────────────────────────────────────────────────
+    today = timezone.localdate()
+    token_burn_today = int(
+        AdvisoryTokenLog.objects.filter(created_at__date=today).aggregate(t=Sum('tokens_used'))['t'] or 0
+    )
+    total_configured_budget = int(
+        UserConfig.objects.filter(advisory_max_tokens_per_day__gt=0).aggregate(
+            s=Sum('advisory_max_tokens_per_day')
+        )['s'] or 0
+    )
+    burn_pct = round((token_burn_today / total_configured_budget * 100), 2) if total_configured_budget else None
+
+    # ── 3. Provider distribution (last N days) ────────────────────────────────
+    provider_window_start = timezone.now() - timezone.timedelta(days=provider_window_days)
+    provider_dist: dict[str, int] = {}
+    for meta in AdvisoryAggregateAuditLog.objects.filter(
+        created_at__gte=provider_window_start,
+    ).values_list('metadata_json', flat=True):
+        if isinstance(meta, dict):
+            prov = str(meta.get('ai_provider') or '').strip().lower()
+            if prov:
+                provider_dist[prov] = provider_dist.get(prov, 0) + 1
+
+    # ── 4. Active 429 rate-limit cooldowns per provider ──────────────────────
+    known_providers = list(MODEL_CATALOG.keys())
+    ratelimit_cooldowns: dict[str, bool] = {
+        prov: bool(cache.get(f'advisory:provider-ratelimit:{prov}'))
+        for prov in known_providers
+    }
+    today_iso = today.isoformat()
+    ratelimit_429_counts_today: dict[str, int] = {
+        prov: int(cache.get(f'advisory:429-count:{prov}:{today_iso}') or 0)
+        for prov in known_providers
+    }
+    budget_downgrade_count_today = int(cache.get(f'advisory:budget-downgrade-count:{today_iso}') or 0)
+
+    # ── 5. Generation counts today by source ─────────────────────────────────
+    source_counts: dict[str, int] = {}
+    for entry in (
+        AdvisoryTokenLog.objects.filter(created_at__date=today)
+        .values('source')
+        .annotate(cnt=Sum('tokens_used'))
+        .order_by()
+    ):
+        source_counts[str(entry['source'])] = int(entry['cnt'] or 0)
+
+    advisory_count_today = AdvisoryTokenLog.objects.filter(created_at__date=today).count()
+
+    return Response(
+        {
+            'sampled_at': sampled_at,
+            'windows': {
+                'latency_hours': latency_window_hours,
+                'provider_days': provider_window_days,
+            },
+            'latency': {
+                'p50_ms': latency_p50,
+                'p95_ms': latency_p95,
+                'sample_count': len(latencies_ms),
+            },
+            'token_burn': {
+                'today_tokens': token_burn_today,
+                'total_configured_budget': total_configured_budget,
+                'burn_pct': burn_pct,
+            },
+            'provider_distribution': provider_dist,
+            'ratelimit_cooldowns_active': ratelimit_cooldowns,
+            'ratelimit_429_counts_today': ratelimit_429_counts_today,
+            'budget_downgrade_count_today': budget_downgrade_count_today,
+            'advisory_counts_today': {
+                'total': advisory_count_today,
+                'by_source_tokens': source_counts,
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
 HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY = 'admin_ops:holistic_governance_delta_thresholds'
 
 
