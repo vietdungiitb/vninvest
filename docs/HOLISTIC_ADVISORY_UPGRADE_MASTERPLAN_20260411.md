@@ -365,6 +365,37 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - verify render `co-observation timeline` badge va bucket marker de tranh regression sau H3-step-6.
   - Test evidence: `npm test -- --watchAll=false --runInBand src/pages/WhaleAlertsHub.test.jsx` (4 tests passed).
   - File: `frontend/src/pages/WhaleAlertsHub.test.jsx`.
+- H3-step-8 hoan tat (release hardening: rollout + rollback + smoke command set):
+  - chot checklist rollout theo cohort cho observability layer (Session v2 + benchmark + observability panel).
+  - bo sung rollback checklist theo thu tu thao tac de quay ve mode an toan trong <15 phut.
+  - bo sung smoke command set (backend API + frontend build/test + docker stack health) de QA/ops verify nhanh.
+
+### H3-step-8 release/rollback checklist (operational)
+
+Rollout checklist (pre-deploy):
+
+1. Xac nhan flag runtime:
+  - `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`
+  - `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED`
+2. Chay smoke backend API:
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-session/?contract=v2&include_benchmarks=1`
+  - `GET /api/stock-management/stocks/<symbol>/ai-advisory-observability/?window_hours=24&limit=10`
+3. Chay smoke frontend:
+  - `npm run build` trong `frontend/`
+  - `npm test -- --watchAll=false --runInBand src/pages/WhaleAlertsHub.test.jsx`
+4. Chay smoke docker stack:
+  - `./start_dev.ps1 -SkipBuild`
+  - `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml ps`
+
+Rollback checklist (incident mode):
+
+1. Tat `STOCK_AI_ADVISORY_BENCHMARKS_ENABLED` va `STOCK_AI_ADVISORY_SESSION_V2_ENABLED`.
+2. Xac nhan endpoint session tra contract v1 mac dinh (khong benchmark/observability block).
+3. Xac nhan UI van hien advisory panel theo luong cu (khong crash, khong blank panel).
+4. Thu thap artifact dieu tra:
+  - trace export (`ai-advisory-trace-export` contract v2 neu can)
+  - backend log + celery log + frontend console snapshot.
+5. Mo postmortem item va gan owner truoc khi rollout lai.
 
 Work items:
 
