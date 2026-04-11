@@ -126,7 +126,15 @@ Result:
 - Session v2 conflict seen in initial run was caused by demo bootstrap data/config gap.
 - After step-11 fix, authenticated seeded-symbol flow returns 200 and is suitable for release smoke walkthrough.
 
-## Next Action (post step-11)
+## Next Action (post step-11) - Status Update
 
-1. Add optional UI retry/backoff policy for non-seeded symbols that may still return 409 when AI runtime is truly not configured.
-2. Extend authenticated smoke artifact with one successful Session v2 + Observability pair for additional symbols.
+1. UI retry/backoff policy: DONE.
+- FE da bo sung conflict-safe fallback + manual retry + auto-retry backoff cho conflict tam thoi.
+- Da bo sung telemetry counters va persisted retry-events timeline trong observability panel.
+
+2. Observability artifact hardening: DONE.
+- Retry telemetry da duoc luu backend qua `POST /ai-advisory-observability/`.
+- `GET /ai-advisory-observability/` da tra `retry_events` + summary totals + server-side filters/sort.
+
+3. H3 phase closure:
+- H3 da du maturity de chuyen sang H tiep theo (sang sprint scope moi) theo masterplan.

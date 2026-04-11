@@ -382,6 +382,40 @@ Muc tieu: Hoan tat workflow trang moi + benchmark layer.
   - Test evidence:
     - `python manage.py test portfolio.tests.test_seed_demo_data_whale_frontend -v 2` (sqlite): pass.
     - Sau khi rebuild backend images + reseed, probe `GET /api/stock-management/stocks/HPG/ai-advisory-session/?contract=v2&include_benchmarks=1` tra `200` (truoc do `409`).
+- H3-step-12 hoan tat (frontend conflict state handling cho session v2):
+  - FE bo sung conflict-safe fallback cho `GET ai-advisory-session` khi gap `409` (`ai_not_configured`, `missing_system_ai_settings`).
+  - hien thi message mem + nut retry thu cong, tranh crash/blank panel.
+  - Files: `frontend/src/pages/StockDetail.jsx`, `frontend/src/pages/stockDetailAdvisoryUtils.js`.
+- H3-step-13 hoan tat (auto-retry backoff cho conflict tam thoi):
+  - bo sung auto-retry toi da 3 lan voi backoff 2s/4s/8s cho conflict khong thuoc nhom `ai_not_configured`.
+  - co cleanup timeout khi doi symbol/unmount.
+- H3-step-14 hoan tat (frontend telemetry in-memory cho retry):
+  - bo sung telemetry counters: `scheduled`, `recovered`, `failed`, `last_reason`, `last_outcome`, `last_event_at`.
+  - hien thi telemetry card trong panel H3 observability.
+- H3-step-15 hoan tat (persist telemetry xuong backend):
+  - mo rong endpoint `ai-advisory-observability` ho tro `POST` de luu retry telemetry vao `AdvisoryAggregateAuditLog`.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_observability_post_retry_telemetry_creates_audit_log`.
+- H3-step-16 hoan tat (GET observability tra retry events persisted):
+  - bo sung `retry_events` va tong `retry_*_total` trong `summary` cua observability response.
+  - Test evidence: `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_retry_events_from_audit_logs`.
+- H3-step-17 hoan tat (retry events UX hardening):
+  - FE bo sung filter `outcome`, filter `reason`, time window selector (`24h/48h/72h/7d`) va sort (`newest/oldest/most_failed`).
+  - bo sung badge mau theo outcome + legend de debug nhanh.
+- H3-step-18 hoan tat (server-side retry filter/sort):
+  - GET observability nhan query params: `retry_outcome`, `retry_reason`, `retry_sort`.
+  - response tra them `retry_filters` de FE theo doi context query.
+  - Test evidence:
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_applies_retry_filters_and_sort`
+    - `ApiRouteSmokeTests.test_stock_ai_advisory_observability_get_includes_retry_events_from_audit_logs`
+
+### H3 completion status update (2026-04-11, end-of-phase)
+
+- H3 da duoc mo rong tu milestone benchmark/observability co ban sang conflict-resilience + telemetry governance + persisted observability UX.
+- Da hoan tat full flow: detect 409 -> conflict-safe UX -> auto-retry backoff -> telemetry capture -> telemetry persistence -> server-side filtered observability timeline.
+- Release readiness cho H3 dat muc:
+  - backend tests focused pass,
+  - frontend build pass,
+  - observability panel da co du bo loc/sap xep/mau sac/legend de thao tac audit nhanh.
 
 ### H3-step-8 release/rollback checklist (operational)
 
