@@ -413,6 +413,42 @@ class CoObservationServiceTests(TransactionTestCase):
         
         self.assertEqual(len(result['dark_flow_signals']), 0)
 
+    def test_timeline_groups_marks_co_observation_bucket(self):
+        created_at = self.now.isoformat()
+        campaigns = [{
+            'campaign_id': 'camp-1',
+            'symbol': 'VNM',
+            'side_bias': 'BUY',
+            'campaign_strength': 80,
+            'created_at': created_at,
+        }]
+        signals = [{
+            'id': 10,
+            'event_id': 'sig-1',
+            'signal_type': 'absorption',
+            'strength': 72,
+            'created_at': created_at,
+        }]
+
+        groups = self.service._build_timeline_groups(campaigns, signals, bucket_minutes=5)
+
+        self.assertEqual(len(groups), 1)
+        self.assertTrue(groups[0]['has_co_observation'])
+        self.assertEqual(len(groups[0]['whale_campaigns']), 1)
+        self.assertEqual(len(groups[0]['dark_flow_signals']), 1)
+
+    def test_symbol_investigation_returns_compatibility_keys(self):
+        result = self.service.get_symbol_investigation(
+            symbol='VNM',
+            window='5d',
+            include_whale=False,
+            include_dark_flow=False,
+        )
+
+        self.assertIn('correlated_campaigns', result)
+        self.assertIn('correlated_signals', result)
+        self.assertIn('grouped_timeline', result)
+
 
 class EndToEndCoObservationTests(TransactionTestCase):
     """End-to-end scenario tests"""

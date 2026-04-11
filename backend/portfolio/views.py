@@ -62,8 +62,10 @@ def symbol_investigation_api(request, symbol: str):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        include_whale = request.query_params.get('include_whale', 'true').lower() == 'true'
-        include_dark_flow = request.query_params.get('include_dark_flow', 'true').lower() == 'true'
+        include_whale_raw = request.query_params.get('include_whale', request.query_params.get('include_campaigns', 'true'))
+        include_dark_flow_raw = request.query_params.get('include_dark_flow', request.query_params.get('include_signals', 'true'))
+        include_whale = str(include_whale_raw).lower() == 'true'
+        include_dark_flow = str(include_dark_flow_raw).lower() == 'true'
         sort = request.query_params.get('sort', 'created_at')
         if sort not in ['created_at', 'correlation_strength']:
             return Response(

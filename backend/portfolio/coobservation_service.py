@@ -153,7 +153,11 @@ class CoObservationService:
         dark_signals = self._enrich_signals_with_correlations(dark_signals, correlations)
         campaigns, dark_signals = self._apply_sort(campaigns, dark_signals, sort)
         timeline = self._build_investigation_timeline(campaigns, dark_signals, correlations)
+        grouped_timeline = self._build_timeline_groups(campaigns, dark_signals)
         conviction = self._assess_conviction(campaigns, dark_signals, correlations)
+
+        correlated_campaigns = self._normalize_campaigns_for_investigation(campaigns)
+        correlated_signals = self._normalize_signals_for_investigation(dark_signals)
         
         return {
             'symbol': symbol,
@@ -161,8 +165,12 @@ class CoObservationService:
             'window_params': window_params,
             'whale_campaigns': campaigns,
             'dark_flow_signals': dark_signals,
+            # Compatibility payload for Symbol Investigation panel.
+            'correlated_campaigns': correlated_campaigns,
+            'correlated_signals': correlated_signals,
             'co_observation_summary': conviction,
-            'timeline': timeline
+            'timeline': timeline,
+            'grouped_timeline': grouped_timeline,
         }
 
     @staticmethod
@@ -371,6 +379,96 @@ class CoObservationService:
         
         events.sort(key=lambda x: x.get('timestamp', ''))
         return events
+
+    def _build_timeline_groups(self, campaigns: List[Dict], signals: List[Dict], bucket_minutes: int = 5) -> List[Dict]:
+        """Group whale campaigns + dark signals into time buckets for co-observation scanning."""
+        bucket_seconds = max(int(bucket_minutes), 1) * 60
+        grouped = {}
+
+        def _bucket_start(ts_value: str) -> Optional[datetime]:
+            try:
+                ts = timezone.datetime.fromisoformat(str(ts_value).replace('Z', '+00:00'))
+                if ts.tzinfo is None:
+                    ts = timezone.make_aware(ts, timezone.utc)
+                epoch = int(ts.timestamp())
+                aligned = epoch - (epoch % bucket_seconds)
+                return datetime.fromtimestamp(aligned, tz=timezone.utc)
+            except Exception:
+                return None
+
+        for campaign in campaigns:
+            start = _bucket_start(campaign.get('created_at'))
+            if start is None:
+                continue
+            key = start.isoformat()
+            grouped.setdefault(key, {
+                'group_start': key,
+                'group_end': (start + timedelta(seconds=bucket_seconds)).isoformat(),
+                'whale_campaigns': [],
+                'dark_flow_signals': [],
+            })
+            grouped[key]['whale_campaigns'].append({
+                'campaign_id': campaign.get('campaign_id'),
+                'symbol': campaign.get('symbol'),
+                'side': campaign.get('side_bias'),
+                'strength': campaign.get('campaign_strength'),
+                'created_at': campaign.get('created_at'),
+            })
+
+        for signal in signals:
+            start = _bucket_start(signal.get('created_at'))
+            if start is None:
+                continue
+            key = start.isoformat()
+            grouped.setdefault(key, {
+                'group_start': key,
+                'group_end': (start + timedelta(seconds=bucket_seconds)).isoformat(),
+                'whale_campaigns': [],
+                'dark_flow_signals': [],
+            })
+            grouped[key]['dark_flow_signals'].append({
+                'signal_id': signal.get('id'),
+                'event_id': signal.get('event_id'),
+                'signal_type': signal.get('signal_type'),
+                'strength': signal.get('strength'),
+                'created_at': signal.get('created_at'),
+            })
+
+        groups = sorted(grouped.values(), key=lambda item: item.get('group_start') or '', reverse=True)
+        for item in groups:
+            item['has_co_observation'] = bool(item['whale_campaigns'] and item['dark_flow_signals'])
+        return groups
+
+    @staticmethod
+    def _normalize_campaigns_for_investigation(campaigns: List[Dict]) -> List[Dict]:
+        normalized = []
+        for item in campaigns:
+            normalized.append({
+                'event_id': item.get('campaign_id'),
+                'campaign_id': item.get('campaign_id'),
+                'symbol': item.get('symbol'),
+                'side': item.get('side_bias') or 'MIXED',
+                'matched_value': float(item.get('total_matched_value') or 0.0),
+                'campaign_strength': float(item.get('campaign_strength') or 0.0),
+                'created_at': item.get('created_at'),
+                'last_event_at': item.get('last_event_at'),
+            })
+        return normalized
+
+    @staticmethod
+    def _normalize_signals_for_investigation(signals: List[Dict]) -> List[Dict]:
+        normalized = []
+        for item in signals:
+            normalized.append({
+                'signal_id': item.get('id'),
+                'event_id': item.get('event_id'),
+                'signal_type': item.get('signal_type'),
+                'strength': float(item.get('strength') or 0.0),
+                'confidence': item.get('confidence'),
+                'severity': item.get('severity'),
+                'created_at': item.get('created_at'),
+            })
+        return normalized
     
     def _assess_conviction(self, campaigns: List[Dict], signals: List[Dict], correlations: Dict) -> Dict:
         """Assess overall conviction level"""
