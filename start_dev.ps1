@@ -71,6 +71,25 @@ if (-not $SkipBuild) {
 
 # ── Khởi động services ───────────────────────────────────────────────────────
 Write-Step "Khởi động tất cả services"
+
+# Dọn stale containers có tên cố định để tránh lỗi conflict khi compose up.
+$devContainerNames = @(
+    "vninvest-dev-db",
+    "vninvest-dev-redis",
+    "vninvest-dev-mailpit",
+    "vninvest-dev-backend",
+    "vninvest-dev-celery-worker",
+    "vninvest-dev-celery-beat",
+    "vninvest-dev-frontend"
+)
+foreach ($name in $devContainerNames) {
+    $exists = docker ps -a --filter "name=^/${name}$" --format "{{.Names}}" 2>$null
+    if ($exists -eq $name) {
+        Write-Host "  - Remove stale container: $name"
+        docker rm -f $name | Out-Null
+    }
+}
+
 Invoke-Compose up -d --remove-orphans
 
 # ── Đợi backend healthy ──────────────────────────────────────────────────────
@@ -105,17 +124,26 @@ if (-not $healthy) {
 if (-not $SkipSeed) {
     Write-Step "Seed demo data (testuser + admin + mock whale data)"
 
-    # Tìm tên container backend đúng
-    $backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
-    if (-not $backendContainer) {
-        Write-Host "Lỗi: Không tìm thấy container backend đang chạy." -ForegroundColor Red
-        exit 1
+    $previousErrorActionPreference = $ErrorActionPreference
+    $nativeCommandErrPrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+    if ($nativeCommandErrPrefVar) {
+        $nativeCommandErrPref = $nativeCommandErrPrefVar.Value
+        $PSNativeCommandUseErrorActionPreference = $false
     }
-    Write-Host "  Container: $backendContainer"
+    $ErrorActionPreference = "Continue"
+    try {
 
-    # Tạo superuser admin
-    Write-Host "  Tạo superuser admin..."
-    docker exec $backendContainer python manage.py shell -c @"
+        # Tìm tên container backend đúng
+        $backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
+        if (-not $backendContainer) {
+            Write-Host "Lỗi: Không tìm thấy container backend đang chạy." -ForegroundColor Red
+            exit 1
+        }
+        Write-Host "  Container: $backendContainer"
+
+        # Tạo superuser admin
+        Write-Host "  Tạo superuser admin..."
+        docker exec $backendContainer python manage.py shell -c @"
 from django.contrib.auth.models import User
 password = 'test@123456'
 user, created = User.objects.get_or_create(username='admin', defaults={
@@ -130,19 +158,35 @@ user.set_password(password)
 user.save()
 print('Created admin / test@123456' if created else 'Updated admin password -> test@123456')
 "@
+        if ($LASTEXITCODE -ne 0) {
+            throw "Tạo superuser admin thất bại (exit code: $LASTEXITCODE)."
+        }
 
-    # Seed demo data (testuser / test123 + mock intraday data)
-    Write-Host "  Seed demo user + data..."
-    docker exec $backendContainer python manage.py seed_demo_data 2>&1
+        # Seed demo data (testuser / test123 + mock intraday data)
+        Write-Host "  Seed demo user + data..."
+        docker exec $backendContainer python manage.py seed_demo_data 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Seed demo data thất bại (exit code: $LASTEXITCODE)."
+        }
 
-    # Seed securities groups (VN30, sectors) nếu chưa có
-    Write-Host "  Seed securities groups..."
-    docker exec $backendContainer python manage.py seed_securities_groups 2>&1
+        # Seed securities groups (VN30, sectors) nếu chưa có
+        Write-Host "  Seed securities groups..."
+        docker exec $backendContainer python manage.py seed_securities_groups 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "Seed securities groups thất bại (exit code: $LASTEXITCODE)."
+        }
 
-    Write-Host ""
-    Write-Host "  Demo accounts:" -ForegroundColor Green
-    Write-Host "    testuser  / Test@123456  (user thường, portfolio đầy đủ)" -ForegroundColor Green
-    Write-Host "    admin     / test@123456 (superuser, vào /admin)" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "  Demo accounts:" -ForegroundColor Green
+        Write-Host "    testuser  / Test@123456  (user thường, portfolio đầy đủ)" -ForegroundColor Green
+        Write-Host "    admin     / test@123456 (superuser, vào /admin)" -ForegroundColor Green
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($nativeCommandErrPrefVar) {
+            $PSNativeCommandUseErrorActionPreference = $nativeCommandErrPref
+        }
+    }
 }
 
 # ── Done ─────────────────────────────────────────────────────────────────────
