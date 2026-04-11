@@ -250,8 +250,6 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
     { id: '5m',  days: 20 },
     { id: '15m', days: 60 },
     { id: '1H',  days: 180 },
-    { id: '2H',  days: 365 },
-    { id: '4H',  days: 730 },
     { id: 'D',   days: 365 },
     { id: 'W',   days: 1095 },
     { id: 'M',   days: 1825 },
