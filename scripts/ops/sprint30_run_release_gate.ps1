@@ -2,9 +2,11 @@ param(
   [string]$ApiBase = "http://127.0.0.1:8000",
   [System.Management.Automation.PSCredential]$Credential,
   [System.Security.SecureString]$AccessToken,
+  [System.Security.SecureString]$PostgresPassword,
   [switch]$SkipNetworkChecks,
   [switch]$SkipDeployEvidence,
-  [switch]$SkipRuntimeKpiSmoke
+  [switch]$SkipRuntimeKpiSmoke,
+  [switch]$SkipGovernanceRegression
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,6 +38,18 @@ if (-not $SkipRuntimeKpiSmoke) {
   }
 } else {
   Write-Host "=== Sprint 30 release gate: skip runtime KPI smoke (-SkipRuntimeKpiSmoke) ==="
+}
+
+if (-not $SkipGovernanceRegression) {
+  Write-Host "=== Sprint 30 release gate: governance postgres regression ==="
+  $governanceScript = Join-Path $ScriptRoot "sprint31_governance_postgres_regression.ps1"
+  if ($PostgresPassword) {
+    & $governanceScript -DbPassword $PostgresPassword
+  } else {
+    & $governanceScript
+  }
+} else {
+  Write-Host "=== Sprint 30 release gate: skip governance regression (-SkipGovernanceRegression) ==="
 }
 
 Write-Host "=== Sprint 30 release gate completed ==="

@@ -574,13 +574,14 @@ Muc tieu: Chuyen Holistic Advisory V1 rollout tu mode bat/tat toan cuc sang gove
     - Postgres profile parity: `OK` cho ca 2 tests khi chay voi `DB_ENGINE=postgres`, `POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`.
     - Expanded postgres regression: `OK` cho `portfolio.tests.test_system_ai_admin_api` + 4 governance observability smoke tests (tong 18 tests).
     - QA one-command script: `scripts/ops/sprint31_governance_postgres_regression.ps1` (postgres profile, 18 tests).
+    - Release gate integration: `scripts/ops/sprint30_run_release_gate.ps1` da goi governance regression step (co the skip bang `-SkipGovernanceRegression`).
     - `npm run build` trong `frontend/` => `Compiled successfully`.
 
 Work items:
 
 1. Gate matrix rollout: all/staff/allowlist + fallback mode khi cau hinh khong hop le.
 2. Cap nhat release runbook voi env template cho cohort rollout theo tung nhom user.
-3. Dua script regression governance postgres vao release checklist/CI gate de dam bao khong hoi quy.
+3. CI hoac pipeline script hoa buoc `sprint30_run_release_gate.ps1` de enforce governance regression truoc GO/NO-GO.
 
 Deliverables:
 
