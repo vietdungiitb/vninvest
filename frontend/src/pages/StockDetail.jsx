@@ -40,6 +40,7 @@ import {
 import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
+import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
 
 // Giá hiển thị theo chuẩn bảng giá: en-US, 2 chữ số thập phân, không kèm đơn vị trong từng ô.
 
@@ -1297,6 +1298,7 @@ export default function StockDetail() {
   const [advisoryDeletingSummary, setAdvisoryDeletingSummary] = useState(false);
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
+  const [advisorySessionConflict, setAdvisorySessionConflict] = useState(false);
   const [advisoryAggregate, setAdvisoryAggregate] = useState(null);
   const [advisoryObservability, setAdvisoryObservability] = useState(null);
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
@@ -1335,6 +1337,7 @@ export default function StockDetail() {
     try {
       const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
       const payload = response?.data || {};
+      setAdvisorySessionConflict(false);
       setAdvisorySession(payload.advisory || null);
       setAdvisoryAggregate(payload.aggregate || null);
       setAdvisoryUserProvider(payload.user_ai_provider || null);
@@ -1355,13 +1358,33 @@ export default function StockDetail() {
         setAdvisoryMessage(payload.message);
       }
     } catch (err) {
+      if (err?.response?.status === 409) {
+        const conflictState = resolveAdvisoryConflictState(err?.response?.data, t);
+        setAdvisorySession(conflictState.advisory);
+        setAdvisoryAggregate(conflictState.aggregate);
+        setAdvisoryUserProvider(conflictState.userAiProvider);
+        setAdvisoryComponents(conflictState.components);
+        setAdvisoryDeletedComponents(conflictState.deletedComponents);
+        setAdvisoryExecutiveSummaries(conflictState.executiveSummaries);
+        setAdvisoryExecutiveSummary(conflictState.executiveSummary || conflictState.executiveSummaries[0] || null);
+        setActiveAdvisoryComponentId((prev) => {
+          if (prev && conflictState.components.some((item) => item.id === prev)) {
+            return prev;
+          }
+          return conflictState.components[0]?.id || null;
+        });
+        setAdvisoryMessage(conflictState.message);
+        setAdvisorySessionConflict(true);
+        return;
+      }
+      setAdvisorySessionConflict(false);
       setAdvisoryMessage(err?.response?.data?.message || t('stockDetail.loadAiAdvisoryFailed'));
     } finally {
       if (!silent) {
         setAdvisoryLoading(false);
       }
     }
-  }, [normalizedSymbol]);
+  }, [normalizedSymbol, t]);
 
   const fetchAdvisoryObservability = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;
@@ -2595,7 +2618,18 @@ export default function StockDetail() {
               )}
 
               {advisoryMessage ? (
-                <p className="text-xs text-cyan-300">{advisoryMessage}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-xs text-cyan-300">{advisoryMessage}</p>
+                  {advisorySessionConflict ? (
+                    <button
+                      type="button"
+                      onClick={() => fetchAdvisorySession({ silent: false })}
+                      className="rounded-full border border-cyan-700/60 bg-cyan-500/10 px-2.5 py-0.5 text-[11px] text-cyan-300 hover:bg-cyan-500/20"
+                    >
+                      {t('stockDetail.retryAiAdvisory')}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
               {advisoryChartContextState.warnings.length > 0 ? (
                 <p className="text-xs text-amber-300">Chart context warnings: {advisoryChartContextState.warnings.join(', ')}</p>
