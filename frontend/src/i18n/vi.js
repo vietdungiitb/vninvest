@@ -546,6 +546,8 @@ const vi = {
     retryOutcomeRequestError: 'lỗi request ngoài conflict',
     retryEventsPersisted: 'Retry events (đã lưu)',
     retryFilterOutcome: 'Lọc theo outcome',
+    retryFilterReason: 'Lọc theo reason',
+    retryWindowHours: 'Cửa sổ',
     retryFilterAll: 'Tất cả',
     retryNoEventsForFilter: 'Không có retry event phù hợp bộ lọc.',
     loadSymbolDataFailed: 'Không tải được dữ liệu cho {symbol}.',

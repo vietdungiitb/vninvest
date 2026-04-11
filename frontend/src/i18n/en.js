@@ -543,6 +543,8 @@ const en = {
     retryOutcomeRequestError: 'request error outside conflict',
     retryEventsPersisted: 'Retry events (persisted)',
     retryFilterOutcome: 'Filter outcome',
+    retryFilterReason: 'Filter reason',
+    retryWindowHours: 'Window',
     retryFilterAll: 'All',
     retryNoEventsForFilter: 'No retry events match this filter.',
     loadSymbolDataFailed: 'Unable to load data for {symbol}.',

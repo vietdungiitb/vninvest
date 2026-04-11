@@ -1327,7 +1327,9 @@ export default function StockDetail() {
   const [advisoryAggregate, setAdvisoryAggregate] = useState(null);
   const [advisoryObservability, setAdvisoryObservability] = useState(null);
   const [advisoryObservabilityLoading, setAdvisoryObservabilityLoading] = useState(false);
+  const [advisoryObservabilityWindowHours, setAdvisoryObservabilityWindowHours] = useState(48);
   const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
+  const [retryEventReasonFilter, setRetryEventReasonFilter] = useState('all');
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
@@ -1349,11 +1351,20 @@ export default function StockDetail() {
 
   const filteredPersistedRetryEvents = useMemo(() => {
     const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
-    if (retryEventOutcomeFilter === 'all') {
-      return events;
-    }
-    return events.filter((event) => String(event?.outcome || '').toLowerCase() === retryEventOutcomeFilter);
-  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter]);
+    return events.filter((event) => {
+      const outcomeOk = retryEventOutcomeFilter === 'all'
+        || String(event?.outcome || '').toLowerCase() === retryEventOutcomeFilter;
+      const reasonOk = retryEventReasonFilter === 'all'
+        || String(event?.reason || '').toLowerCase() === retryEventReasonFilter;
+      return outcomeOk && reasonOk;
+    });
+  }, [advisoryObservability?.retry_events, retryEventOutcomeFilter, retryEventReasonFilter]);
+
+  const retryEventReasonOptions = useMemo(() => {
+    const events = Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
+    const unique = Array.from(new Set(events.map((event) => String(event?.reason || '').toLowerCase()).filter(Boolean)));
+    return unique.sort((a, b) => a.localeCompare(b));
+  }, [advisoryObservability?.retry_events]);
 
   const refreshWhaleFeed = useCallback(async () => {
     setWhaleFeedLoading(true);
@@ -1511,6 +1522,8 @@ export default function StockDetail() {
     }
     advisoryRetryTelemetrySyncKeyRef.current = '';
     setRetryEventOutcomeFilter('all');
+    setRetryEventReasonFilter('all');
+    setAdvisoryObservabilityWindowHours(48);
     setAdvisoryRetryTelemetry({
       scheduledCount: 0,
       recoveredCount: 0,
@@ -1571,7 +1584,10 @@ export default function StockDetail() {
       setAdvisoryObservabilityLoading(true);
     }
     try {
-      const response = await getStockAIAdvisoryObservability(normalizedSymbol, { window_hours: 48, limit: 12 });
+      const response = await getStockAIAdvisoryObservability(normalizedSymbol, {
+        window_hours: advisoryObservabilityWindowHours,
+        limit: 12,
+      });
       setAdvisoryObservability(response?.data || null);
     } catch (_) {
       if (!silent) {
@@ -1582,7 +1598,7 @@ export default function StockDetail() {
         setAdvisoryObservabilityLoading(false);
       }
     }
-  }, [normalizedSymbol]);
+  }, [advisoryObservabilityWindowHours, normalizedSymbol]);
 
   const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) return;
@@ -2549,9 +2565,22 @@ export default function StockDetail() {
                   <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">H3 observability</p>
-                      {advisoryObservabilityLoading ? (
-                        <span className="text-[11px] text-slate-500">Refreshing...</span>
-                      ) : null}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] text-slate-500">{t('stockDetail.retryWindowHours')}</span>
+                        <select
+                          value={advisoryObservabilityWindowHours}
+                          onChange={(e) => setAdvisoryObservabilityWindowHours(Number(e.target.value) || 48)}
+                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                        >
+                          <option value={24}>24h</option>
+                          <option value={48}>48h</option>
+                          <option value={72}>72h</option>
+                          <option value={168}>7d</option>
+                        </select>
+                        {advisoryObservabilityLoading ? (
+                          <span className="text-[11px] text-slate-500">Refreshing...</span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
                       <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
@@ -2625,7 +2654,7 @@ export default function StockDetail() {
                       <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.retryEventsPersisted')}</p>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[11px] text-slate-500">{t('stockDetail.retryFilterOutcome')}</span>
                             <select
                               value={retryEventOutcomeFilter}
@@ -2638,6 +2667,17 @@ export default function StockDetail() {
                               <option value="exhausted">{advisoryRetryOutcomeLabel('exhausted', t)}</option>
                               <option value="skipped_config">{advisoryRetryOutcomeLabel('skipped_config', t)}</option>
                               <option value="request_error">{advisoryRetryOutcomeLabel('request_error', t)}</option>
+                            </select>
+                            <span className="text-[11px] text-slate-500">{t('stockDetail.retryFilterReason')}</span>
+                            <select
+                              value={retryEventReasonFilter}
+                              onChange={(e) => setRetryEventReasonFilter(e.target.value)}
+                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                            >
+                              <option value="all">{t('stockDetail.retryFilterAll')}</option>
+                              {retryEventReasonOptions.map((reason) => (
+                                <option key={reason} value={reason}>{reason}</option>
+                              ))}
                             </select>
                           </div>
                         </div>
