@@ -1,16 +1,16 @@
 {
-  "baseline_timestamp": "2026-04-11T03:24:22.008957",
+  "baseline_timestamp": "2026-04-11T03:29:36.064992",
   "user": "phamvietdung",
   "symbol": "FPT",
-  "sample_count": 1,
-  "collection_period": "1 advisory generations",
+  "sample_count": 9,
+  "collection_period": "9 advisory generations",
   "latency_metrics": {
-    "p50_ms": 13.058185577392578,
-    "p95_ms": 13.058185577392578,
-    "p99_ms": 13.058185577392578,
-    "min_ms": 13.058185577392578,
-    "max_ms": 13.058185577392578,
-    "avg_ms": 13.058185577392578
+    "p50_ms": 13.225555419921875,
+    "p95_ms": 15.819311141967773,
+    "p99_ms": 15.819311141967773,
+    "min_ms": 12.431859970092773,
+    "max_ms": 15.819311141967773,
+    "avg_ms": 13.447311189439562
   },
   "token_metrics": {
     "p50": 0.0,
@@ -46,14 +46,14 @@
     "symbol_filter": "FPT",
     "operation_filter": "component_generation",
     "days": 30,
-    "limit": 50,
+    "limit": 200,
     "sampled_symbols": [
       "FPT"
     ],
     "sampled_operations": [
       "component_generation"
     ],
-    "audit_log_rows_scanned": 1,
-    "metrics_samples_used": 1
+    "audit_log_rows_scanned": 9,
+    "metrics_samples_used": 9
   }
 }
