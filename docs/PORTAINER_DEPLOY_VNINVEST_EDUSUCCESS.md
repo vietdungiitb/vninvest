@@ -36,7 +36,7 @@ Create stack with Repository mode:
 4. Repository URL:
    - https://github.com/vietdungiitb/vninvest.git
 5. Reference:
-   - refs/heads/main
+   - refs/heads/deploy
 6. Compose path:
    - portainer-stack-nginx-proxy.yml
 7. Authentication (if private repo):
@@ -124,6 +124,15 @@ WATCHLIST_SYNC_DAYS=5
 ENABLE_NEW_MARKET_VIEWS=False
 ENABLE_NEW_TRADING_VIEWS=False
 
+# P2 Advisory Features - Budget Routing & Observability
+ADVISORY_BUDGET_DOWNGRADE_THRESHOLD_PCT=20
+AI_PROVIDER_RATE_LIMIT_MAX_RETRIES=3
+AI_PROVIDER_RATELIMIT_PAUSE_SECONDS=120
+MAX_CHART_CONTEXT_BYTES=65536
+ADVISORY_PROMPT_CACHE_TTL_SECONDS=900
+VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD=3
+VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS=1800
+
 # Note: never leave integer values blank; use defaults shown here.
 
 # OpenCore quota
@@ -193,6 +202,53 @@ Expected:
 2. Homepage loads without MIME errors on CSS/JS.
 3. API health returns success.
 4. Admin path is served by Django (not redirected to frontend login route).
+
+### 5.1 P2 Advisory Metrics Endpoint (Admin Only)
+
+Test the new observability endpoint:
+
+```
+https://vninvest.edusuccess.vn/api/admin-ops/runtime-kpi/advisory-metrics/
+```
+
+Expected response (JSON with 6 sections):
+
+```json
+{
+  "latency": {
+    "p50_ms": 1200,
+    "p95_ms": 3500,
+    "sample_count": 42
+  },
+  "token_burn": {
+    "today_tokens": 15000,
+    "total_configured_budget": 100000,
+    "burn_pct": 15.0
+  },
+  "provider_distribution": {
+    "openai": 25,
+    "claude": 15,
+    "gemini": 2
+  },
+  "ratelimit_cooldowns_active": {},
+  "ratelimit_429_counts_today": {
+    "openai": 0
+  },
+  "budget_downgrade_count_today": 0,
+  "advisory_counts_today": {
+    "total": 42,
+    "by_source": {
+      "auto_generation": 35,
+      "manual_refresh": 5,
+      "whale_signal": 2
+    }
+  }
+}
+```
+
+Additional query parameters (optional):
+- `latency_window_hours=24` (default, max 168)
+- `provider_window_days=7` (default, max 30)
 
 ---
 
