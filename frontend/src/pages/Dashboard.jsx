@@ -44,10 +44,6 @@ export default function Dashboard() {
     () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
     [holdingSymbols, trackedSymbolNames],
   );
-  const monitoredQuotes = useMemo(
-    () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
-    [monitoredSymbols, quotesBySymbol],
-  );
 
   const {
     quotesBySymbol,
@@ -57,6 +53,11 @@ export default function Dashboard() {
     darkFlowAlerts,
     metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
+
+  const monitoredQuotes = useMemo(
+    () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
+    [monitoredSymbols, quotesBySymbol],
+  );
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
   const liveSummary = buildLiveSummaryFromHoldings(liveHoldings);
