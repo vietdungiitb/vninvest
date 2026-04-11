@@ -770,23 +770,6 @@ export default function WhaleAdvisory() {
         </div>
       </section>
 
-      <section className="card-section px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-label">{t('whaleAdvisory.providerConfig')}</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-100">
-              {t('settings.movedTitle')}
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              {t('settings.movedDescription')}
-            </p>
-          </div>
-          <Link to="/settings" className="btn-primary">
-            {t('layout.nav.settings')}
-          </Link>
-        </div>
-      </section>
-
       {error && (
         <section className="rounded-2xl border border-rose-800/60 bg-rose-950/20 px-5 py-4 text-sm text-rose-200">
           {error}
