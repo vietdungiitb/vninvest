@@ -17,6 +17,43 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function toFiniteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveQuoteScale(rawPrice, references = []) {
+  const price = toFiniteNumber(rawPrice);
+  if (!price || price <= 0) {
+    return 1;
+  }
+
+  const validRefs = references.filter((item) => Number.isFinite(item) && item > 0);
+  const candidates = [1, 0.001, 1000];
+
+  if (!validRefs.length) {
+    // Dashboard quy ước hiển thị đơn vị nghìn VNĐ; giá lớn bất thường thường là VND.
+    return price >= 2000 ? 0.001 : 1;
+  }
+
+  const score = (factor) => {
+    const normalized = price * factor;
+    return validRefs.reduce((sum, ref) => sum + Math.abs(Math.log(normalized / ref)), 0);
+  };
+
+  let bestFactor = 1;
+  let bestScore = score(bestFactor);
+  for (let index = 1; index < candidates.length; index += 1) {
+    const factor = candidates[index];
+    const nextScore = score(factor);
+    if (nextScore < bestScore) {
+      bestScore = nextScore;
+      bestFactor = factor;
+    }
+  }
+  return bestFactor;
+}
+
 function fmtBil(value, formatNumberFn) {
   const v = Number(value) || 0;
   if (v >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)}N`;
@@ -346,10 +383,52 @@ export default function DashboardRealtimePanel({
     return combined.slice(0, 8);
   }, [alerts, snapshotAlerts]);
 
-  const quoteList = useMemo(
-    () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
-    [monitoredSymbols, quotesBySymbol],
-  );
+  const quoteList = useMemo(() => {
+    const holdingsBySymbol = new Map(
+      (holdings || []).map((item) => [
+        String(item?.symbol || '').toUpperCase(),
+        item,
+      ]),
+    );
+
+    return monitoredSymbols.map((symbol) => {
+      const rawQuote = quotesBySymbol[symbol] || { symbol };
+      const holding = holdingsBySymbol.get(String(symbol || '').toUpperCase());
+
+      const avgCostRef = toFiniteNumber(holding?.avg_cost);
+      const holdingCurrentRef = toFiniteNumber(holding?.current_price);
+      const factor = resolveQuoteScale(rawQuote.current_price, [avgCostRef, holdingCurrentRef]);
+
+      const currentPrice = toFiniteNumber(rawQuote.current_price);
+      const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
+      const normalizedCurrent = currentPrice === null ? null : currentPrice * factor;
+      const normalizedPrev = prevPriceRaw === null ? null : prevPriceRaw * factor;
+
+      const normalizedChangeValue = (
+        normalizedCurrent !== null
+        && normalizedPrev !== null
+        && normalizedPrev > 0
+      )
+        ? normalizedCurrent - normalizedPrev
+        : toFiniteNumber(rawQuote.change_value);
+
+      const normalizedChangePct = (
+        normalizedCurrent !== null
+        && normalizedPrev !== null
+        && normalizedPrev > 0
+      )
+        ? ((normalizedCurrent - normalizedPrev) / normalizedPrev) * 100
+        : toFiniteNumber(rawQuote.change_pct);
+
+      return {
+        ...rawQuote,
+        current_price: normalizedCurrent,
+        prev_price: normalizedPrev,
+        change_value: normalizedChangeValue,
+        change_pct: normalizedChangePct,
+      };
+    });
+  }, [holdings, monitoredSymbols, quotesBySymbol]);
 
   const unifiedAlerts = useMemo(() => {
     const whaleAlerts = mergedAlerts.map((alert) => {
