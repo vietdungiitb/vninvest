@@ -261,21 +261,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_1fr_0.8fr_1fr_0.8fr_1fr] gap-3">
-        <div className="rounded-xl border border-blue-900/60 bg-blue-950/20 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-blue-300">{t('dashboardRealtime.liveValue')}</p>
-          <p className="text-xl font-bold text-gray-100 mt-1">{Math.round(Number(liveSummary.totalMarketValue || 0)).toLocaleString('vi-VN')}</p>
-          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.liveValueHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.liveUnrealized')}</p>
-          <p className={`text-xl font-bold mt-1 ${Number(liveSummary.totalUnrealizedPL || 0) > 0 ? 'text-emerald-300' : Number(liveSummary.totalUnrealizedPL || 0) < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {Math.round(Number(liveSummary.totalUnrealizedPL || 0)).toLocaleString('vi-VN')}
-          </p>
-          <p className={`text-[11px] mt-1 ${Number(liveSummary.totalUnrealizedPL || 0) > 0 ? 'text-emerald-300' : Number(liveSummary.totalUnrealizedPL || 0) < 0 ? 'text-red-300' : 'text-gray-500'}`}>
-            {Number(liveSummary.totalUnrealizedPLPct || 0) > 0 ? '+' : ''}{Number(liveSummary.totalUnrealizedPLPct || 0).toFixed(2)}%
-          </p>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
           <p className="text-xl font-bold text-gray-100 mt-1">{monitoredSymbols.length}</p>
