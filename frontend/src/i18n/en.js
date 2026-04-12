@@ -147,6 +147,7 @@ const en = {
     unrealizedPL: 'Unrealized P/L',
     realizedPL: 'Realized P/L',
     dividends: 'Dividends received',
+    thousandVndUnitShort: 'thousand VND',
     holdings: 'Current holdings',
   },
   dashboardRealtime: {
@@ -1617,6 +1618,16 @@ const en = {
     loginNotice: 'By registering, you agree to our',
     and: 'and',
     ofUs: '.',
+  },
+  stockNews: {
+    sectionLabel: 'News',
+    noData: 'No recent news available.',
+    fetchFailed: 'Failed to load news.',
+    readMore: 'Read more',
+    cachedLabel: 'Cached',
+    updatedAt: 'Updated',
+    source: 'Source',
+    unavailable: 'News source temporarily unavailable.',
   },
 };
 

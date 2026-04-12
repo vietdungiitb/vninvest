@@ -50,6 +50,7 @@ urlpatterns = [
     path("stocks/<str:symbol>/overview/", _toggle_market_view('StockWorkspaceOverviewView'), name="stock-workspace-overview"),
     path("stocks/<str:symbol>/chart/", _toggle_market_view('StockWorkspaceChartView'), name="stock-workspace-chart"),
     path("stocks/<str:symbol>/financials/", _toggle_market_view('FinancialMetricsView'), name="stock-financials"),
+    path("stocks/<str:symbol>/news/", views.stock_news_api, name="stock-news"),
     path("stocks/<str:symbol>/order-flow/", views.stock_order_flow_api, name="stock-order-flow"),
     path("stocks/<str:symbol>/ai-advisory-session/", views.stock_ai_advisory_session_api, name="stock-ai-advisory-session"),
     path("stocks/<str:symbol>/ai-advisory-trace/", views.stock_ai_advisory_trace_api, name="stock-ai-advisory-trace"),

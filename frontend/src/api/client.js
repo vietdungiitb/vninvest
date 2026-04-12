@@ -167,6 +167,7 @@ export const getStockPriceChart = (symbol, days = 180, timeframe = '1H') =>
     params: { days, timeframe },
   });
 export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
+export const getStockNews = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/`);
 export const getStockAIAdvisorySession = (symbol, params = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-session/`, { params });
 export const getStockAIAdvisoryObservability = (symbol, params = {}) =>

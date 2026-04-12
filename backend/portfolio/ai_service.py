@@ -255,6 +255,7 @@ def generate_whale_text(
     deep: bool,
     user=None,
     output_language: str | None = None,
+    news_hint: str = '',
 ) -> dict[str, Any]:
     provider_key = str(provider or 'openclaw').strip().lower()
     model_id = str(model or '').strip()
@@ -267,11 +268,13 @@ def generate_whale_text(
     resolved_language = output_language or _resolve_output_language(getattr(user, 'userconfig', user))
     language_instruction = _language_instruction(resolved_language)
     intro_text = _build_signal_prompt_intro(symbol, matched_value_vnd, side, context_payload)
+    news_block = f'\n\n{news_hint}' if news_hint and news_hint.strip() else ''
     prompt = (
         f"{intro_text} "
         f"Viết khoảng {mode_text}, nêu ý nghĩa tín hiệu, rủi ro và điểm cần theo dõi."
         f" {language_instruction}"
         f"{context_block}"
+        f"{news_block}"
     )
 
     if not api_key:

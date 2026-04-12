@@ -38,7 +38,9 @@ import {
   restoreStockAIAdvisoryComponent,
   refreshStockAIAdvisoryComponent,
   toggleStockAIAdvisoryComponentInclude,
+  getStockNews,
 } from '../api/client';
+import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
@@ -3440,6 +3442,8 @@ export default function StockDetail() {
         selectedYear={financialsYear}
         onYearChange={setFinancialsYear}
       />
+      {/* Sprint 34: Tin tức theo mã */}
+      <StockNewsPanel symbol={normalizedSymbol} />
     </div>
   );
 }

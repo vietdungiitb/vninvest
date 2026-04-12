@@ -147,6 +147,7 @@ const vi = {
     unrealizedPL: 'Lãi/Lỗ chưa chốt',
     realizedPL: 'Lãi/Lỗ đã chốt',
     dividends: 'Cổ tức đã nhận',
+    thousandVndUnitShort: 'nghìn đồng',
     holdings: 'Vị thế đang nắm giữ',
   },
   dashboardRealtime: {
@@ -1627,6 +1628,16 @@ const vi = {
     loginNotice: 'Bằng cách đăng ký, bạn đồng ý với',
     and: 'và',
     ofUs: 'của chúng tôi.',
+  },
+  stockNews: {
+    sectionLabel: 'Tin tức',
+    noData: 'Không có tin tức gần đây.',
+    fetchFailed: 'Không tải được tin tức.',
+    readMore: 'Đọc thêm',
+    cachedLabel: 'Dữ liệu cache',
+    updatedAt: 'Cập nhật',
+    source: 'Nguồn',
+    unavailable: 'Nguồn tin tức tạm thời không khả dụng.',
   },
 };
 

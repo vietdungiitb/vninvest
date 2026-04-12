@@ -5155,6 +5155,82 @@ def _persist_component_generation_metrics_audit_log(
         logger.warning('Component generation metrics audit log persistence failed for %s: %s', symbol, exc)
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def stock_news_api(request, symbol: str):
+    """
+    GET /api/stock-management/stocks/<symbol>/news/
+    Sprint34 Layer 1: Trả về danh sách tin tức gần đây theo mã từ vnstock.
+    Cache Redis 30 phút. Graceful degradation khi vnstock không khả dụng.
+    """
+    from .adapters.vnstock_adapter import _build_stock_client, _run_with_timeout
+    from .adapters.cache_adapter import get_cache, set_cache
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol or len(normalized_symbol) > 10:
+        return Response({'detail': 'Mã chứng khoán không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    cache_key = f'stock:news:{normalized_symbol}'
+    cached = get_cache(cache_key)
+    if cached is not None:
+        cached['cached'] = True
+        return Response(cached)
+
+    def _fetch():
+        stock_client = _build_stock_client(symbol=normalized_symbol, source='VCI')
+        return stock_client.company.news()
+
+    items = []
+    unavailable = False
+    try:
+        raw = _run_with_timeout(_fetch, timeout=8)
+        if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
+            import pandas as _pd
+            if hasattr(raw, 'to_dict'):
+                rows = raw.to_dict(orient='records')
+            elif isinstance(raw, list):
+                rows = raw
+            else:
+                rows = []
+            for row in rows[:20]:
+                title = str(
+                    row.get('title') or row.get('subject') or row.get('headline') or ''
+                ).strip()
+                url = str(row.get('url') or row.get('link') or row.get('href') or '').strip()
+                # Only include http/https URLs — prevent link injection
+                if url and not url.startswith(('http://', 'https://')):
+                    url = ''
+                source_name = str(
+                    row.get('source') or row.get('publisher') or row.get('author') or ''
+                ).strip()
+                raw_date = row.get('published_date') or row.get('publishedDate') or row.get('date') or row.get('time') or ''
+                try:
+                    published_at = str(_pd.Timestamp(raw_date).isoformat()) if raw_date else None
+                except Exception:
+                    published_at = str(raw_date) if raw_date else None
+                if title:
+                    items.append({
+                        'title': title,
+                        'url': url or None,
+                        'source': source_name or None,
+                        'published_at': published_at,
+                    })
+    except Exception:
+        logger.warning('stock_news_api: không lấy được tin tức cho %s', normalized_symbol)
+        unavailable = True
+
+    result = {
+        'symbol': normalized_symbol,
+        'items': items,
+        'fetched_at': timezone.now().isoformat(),
+        'cached': False,
+        'unavailable': unavailable,
+    }
+    if not unavailable:
+        set_cache(cache_key, result, timeout=1800)
+    return Response(result)
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_order_flow_api(request, symbol: str):
