@@ -232,5 +232,6 @@ Tien do moi nhat:
 - Da harden compatibility facade cho test patch cu: giu duoc patch target portfolio.views.sync_stock_profiles + generate_whale_advisory_task + detect_dark_flow sau khi tach module.
 - Da bat dau chia test_api_routes theo cum domain (slice 1): tach 2 test admin-sync/stock-groups sang backend/portfolio/tests/test_api_routes_admin_sync_groups.py, test moi pass 2/2.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 2): tach 4 test symbol-investigation sang backend/portfolio/tests/test_api_routes_symbol_investigation.py, test moi pass 4/4.
+- Da tiep tuc chia test_api_routes theo cum domain (slice 3): tach 2 test auth co ban (jwt token + register) sang backend/portfolio/tests/test_api_routes_auth_basic.py, test moi pass 2/2.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
