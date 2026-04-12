@@ -5375,7 +5375,7 @@ def stock_news_ai_summary_api(request, symbol: str):
     Body options:
       - force_refresh: bool (bỏ cache tin tức khi true)
     """
-    from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_provider
+    from .ai_options import ADVISORY_CAPABILITY, get_model_entry, is_valid_provider
     from .ai_service import generate_portfolio_digest
     from .adapters.cache_adapter import get_cache, set_cache
     from .models import UserConfig
@@ -5428,6 +5428,7 @@ def stock_news_ai_summary_api(request, symbol: str):
             {
                 'detail': 'Bạn chưa cấu hình AI API key cá nhân. Vui lòng vào UserConfig để thiết lập trước khi dùng AI News.',
                 'reason': 'missing_user_ai_api_key',
+                'username': request.user.username,
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
@@ -5437,15 +5438,30 @@ def stock_news_ai_summary_api(request, symbol: str):
             {
                 'detail': 'AI provider trong UserConfig không hợp lệ.',
                 'reason': 'invalid_user_ai_provider',
+                'username': request.user.username,
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not user_model or not is_model_allowed_for_capability(user_provider, user_model, ADVISORY_CAPABILITY):
+    if not user_model:
         return Response(
             {
-                'detail': 'AI model trong UserConfig không hợp lệ cho AI News.',
-                'reason': 'invalid_user_ai_model',
+                'detail': 'AI model trong UserConfig đang để trống.',
+                'reason': 'missing_user_ai_model',
+                'username': request.user.username,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    # If model exists in catalog, enforce capability gate.
+    # If not present in catalog, allow pass-through for custom provider models.
+    model_entry = get_model_entry(user_provider, user_model)
+    if model_entry is not None and ADVISORY_CAPABILITY not in list(model_entry.get('capabilities') or []):
+        return Response(
+            {
+                'detail': 'AI model trong UserConfig chưa được bật capability AI News.',
+                'reason': 'user_ai_model_capability_blocked',
+                'username': request.user.username,
             },
             status=status.HTTP_400_BAD_REQUEST,
         )

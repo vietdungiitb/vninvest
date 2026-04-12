@@ -102,7 +102,14 @@ export default function StockNewsPanel({ symbol }) {
       const res = await generateStockNewsAISummary(symbol, { force });
       setAiSummary(res.data || null);
     } catch (err) {
-      setAiError(err?.response?.data?.detail || t('stockNews.aiSummaryFailed'));
+      const detail = err?.response?.data?.detail || t('stockNews.aiSummaryFailed');
+      const reason = err?.response?.data?.reason;
+      const username = err?.response?.data?.username;
+      const diagnostics = [
+        reason ? `reason=${reason}` : null,
+        username ? `user=${username}` : null,
+      ].filter(Boolean).join(' | ');
+      setAiError(diagnostics ? `${detail} (${diagnostics})` : detail);
     } finally {
       setAiLoading(false);
     }
