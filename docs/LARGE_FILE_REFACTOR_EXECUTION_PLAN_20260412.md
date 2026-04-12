@@ -230,5 +230,6 @@ Tien do moi nhat:
 - Da hoan tat PR-3d (phan 1): tach sync_stockprofile_api + sync_market_groups_api sang backend/portfolio/views_admin_sync.py va re-export qua facade views.py de giu compatibility.
 - Da hoan tat PR-3d (phan 2): tach StockProfileListView + SecuritiesGroupListView + SecuritiesItemListView sang backend/portfolio/views_stock_catalog.py va re-export qua facade views.py de giu compatibility.
 - Da harden compatibility facade cho test patch cu: giu duoc patch target portfolio.views.sync_stock_profiles + generate_whale_advisory_task + detect_dark_flow sau khi tach module.
+- Da bat dau chia test_api_routes theo cum domain (slice 1): tach 2 test admin-sync/stock-groups sang backend/portfolio/tests/test_api_routes_admin_sync_groups.py, test moi pass 2/2.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
