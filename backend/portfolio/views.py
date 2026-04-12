@@ -2,24 +2,9 @@
 # --- Stock Management Modular Views ---
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework import generics, filters as rest_framework_filters
-from .models import StockProfile
-from .serializers import StockProfileSerializer, SecuritiesGroupDetailSerializer, SecuritiesItemSerializer
-
-# StockProfile List API
-class StockProfileListView(generics.ListAPIView):
-    serializer_class = StockProfileSerializer
-    permission_classes = [AllowAny]
-    filter_backends = [rest_framework_filters.SearchFilter]
-    search_fields = ['symbol', 'company_name']
-
-    def get_queryset(self):
-        qs = StockProfile.objects.filter(is_active=True)
-        return qs
-
-# StockProfile Detail đã có
 
 from .views_admin_sync import sync_market_groups_api, sync_stockprofile_api
+from .views_stock_catalog import SecuritiesGroupListView, SecuritiesItemListView, StockProfileListView
 
 
 from .runtime_policy_helpers import (
@@ -41,23 +26,6 @@ from .runtime_policy_helpers import (
     _set_runtime_prefetch_time_policy,
 )
 
-
-# SecuritiesGroup List API
-class SecuritiesGroupListView(generics.ListAPIView):
-    serializer_class = SecuritiesGroupDetailSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        return SecuritiesGroup.objects.all()
-
-# SecuritiesItem List API (liệt kê các mã trong group)
-class SecuritiesItemListView(generics.ListAPIView):
-    serializer_class = SecuritiesItemSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        group_id = self.kwargs['pk']
-        return SecuritiesItem.objects.filter(group_id=group_id)
 """
 views.py — DRF API Views.
 

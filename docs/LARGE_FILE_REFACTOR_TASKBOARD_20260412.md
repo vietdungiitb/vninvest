@@ -61,6 +61,8 @@ Cap nhat: 2026-04-12
 - [x] Tach whale_symbol_summary_api khoi facade views.py theo boundary realtime
 - [x] Tao module moi: backend/portfolio/views_admin_sync.py
 - [x] Tach sync_stockprofile_api + sync_market_groups_api khoi facade views.py theo boundary admin-sync
+- [x] Tao module moi: backend/portfolio/views_stock_catalog.py
+- [x] Tach StockProfileListView + SecuritiesGroupListView + SecuritiesItemListView khoi facade views.py theo boundary stock-catalog
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -87,7 +89,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 698
+- views.py lines: 666
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate: 241/241 targeted route+ai-config; 18/18 system-ai-admin-api; 4/4 symbol-investigation

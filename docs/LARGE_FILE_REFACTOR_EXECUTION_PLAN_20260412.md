@@ -223,10 +223,11 @@ Tien do moi nhat:
 - Da giam backend/portfolio/views.py tu ~6839 dong xuong ~1135 dong (vuot muc tieu <1500 dong).
 - Da hoan tat PR-3c (phan 8): tach runtime policy helper sang backend/portfolio/runtime_policy_helpers.py va re-export qua facade views.py de giu compatibility.
 - Da chay smoke regression cho system-ai-admin-api: 18 test pass.
-- Da giam backend/portfolio/views.py xuong ~698 dong.
+- Da giam backend/portfolio/views.py xuong ~666 dong.
 - Da hoan tat PR-3b (phan 4): tach symbol_investigation_api sang backend/portfolio/views_realtime_symbol_investigation.py va re-export qua facade views.py de giu compatibility.
 - Da chay smoke regression symbol-investigation routes: 4 test pass.
 - Da hoan tat PR-3b (phan 5): tach whale_symbol_summary_api sang backend/portfolio/views_realtime_whale_symbol_summary.py va re-export qua facade views.py de giu compatibility.
 - Da hoan tat PR-3d (phan 1): tach sync_stockprofile_api + sync_market_groups_api sang backend/portfolio/views_admin_sync.py va re-export qua facade views.py de giu compatibility.
+- Da hoan tat PR-3d (phan 2): tach StockProfileListView + SecuritiesGroupListView + SecuritiesItemListView sang backend/portfolio/views_stock_catalog.py va re-export qua facade views.py de giu compatibility.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
