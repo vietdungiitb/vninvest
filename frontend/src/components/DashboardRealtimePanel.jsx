@@ -62,6 +62,50 @@ function severityWeight(severity) {
   return 1;
 }
 
+function localizeUnifiedHeadline(headline, t) {
+  const normalized = String(headline || '').trim().toLowerCase();
+  if (!normalized) return headline;
+
+  const mappings = [
+    {
+      key: 'dashboardRealtime.unifiedHeadlineWhaleBuy',
+      aliases: ['large buy flow detected', 'phat hien dong tien mua lon', 'phát hiện dòng tiền mua lớn'],
+    },
+    {
+      key: 'dashboardRealtime.unifiedHeadlineWhaleSell',
+      aliases: ['large sell flow detected', 'phat hien dong tien ban lon', 'phát hiện dòng tiền bán lớn'],
+    },
+    {
+      key: 'dashboardRealtime.unifiedHeadlineDarkFlow',
+      aliases: ['dark flow anomaly detected', 'phat hien bat thuong dong tien toi', 'phát hiện bất thường dòng tiền tối'],
+    },
+    {
+      key: 'dashboardRealtime.unifiedHeadlinePriceJump',
+      aliases: ['price jump detected', 'gia tang dot bien', 'giá tăng đột biến'],
+    },
+    {
+      key: 'dashboardRealtime.unifiedHeadlinePriceDrop',
+      aliases: ['price drop detected', 'gia giam dot bien', 'giá giảm đột biến'],
+    },
+    {
+      key: 'dashboardRealtime.unifiedHeadlineStaleQuote',
+      aliases: ['stale quote warning', 'bao gia cham cap nhat', 'báo giá chậm cập nhật'],
+    },
+  ];
+
+  for (const item of mappings) {
+    const translated = String(t(item.key) || '').trim().toLowerCase();
+    if (translated && normalized === translated) {
+      return t(item.key);
+    }
+    if (item.aliases.includes(normalized)) {
+      return t(item.key);
+    }
+  }
+
+  return headline;
+}
+
 export default function DashboardRealtimePanel({
   holdings,
   trackedSymbolNames = [],
@@ -391,7 +435,7 @@ export default function DashboardRealtimePanel({
       ts: item.ts,
       source: item.source,
       severity: item.severity,
-      headline: item.headline,
+      headline: localizeUnifiedHeadline(item.headline, t),
       detail: item.detail,
       confidence: item.confidence ?? null,
       to: item.to || (item.source === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
@@ -886,7 +930,7 @@ export default function DashboardRealtimePanel({
       {activeWorkspaceTab === 'alerts' ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
-            <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4 min-h-[460px] h-full flex flex-col">
+            <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-4 h-[460px] flex flex-col overflow-hidden">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-100">{t('dashboardRealtime.unifiedAlertStripTitle')}</h3>
@@ -898,23 +942,23 @@ export default function DashboardRealtimePanel({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div className="rounded-lg border border-rose-700/60 bg-rose-950/35 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wider text-rose-300">Critical</p>
+                  <p className="text-[11px] uppercase tracking-wider text-rose-300">{t('dashboardRealtime.severityCritical')}</p>
                   <p className="text-lg font-bold text-rose-100 mt-1">{formatNumber(alertSummary.critical)}</p>
                 </div>
                 <div className="rounded-lg border border-amber-700/60 bg-amber-950/35 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wider text-amber-300">High</p>
+                  <p className="text-[11px] uppercase tracking-wider text-amber-300">{t('dashboardRealtime.severityHigh')}</p>
                   <p className="text-lg font-bold text-amber-100 mt-1">{formatNumber(alertSummary.high)}</p>
                 </div>
                 <div className="rounded-lg border border-yellow-700/60 bg-yellow-950/25 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wider text-yellow-300">Medium</p>
+                  <p className="text-[11px] uppercase tracking-wider text-yellow-300">{t('dashboardRealtime.severityMedium')}</p>
                   <p className="text-lg font-bold text-yellow-100 mt-1">{formatNumber(alertSummary.medium)}</p>
                 </div>
                 <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
-                  <p className="text-[11px] uppercase tracking-wider text-slate-300">Low</p>
+                  <p className="text-[11px] uppercase tracking-wider text-slate-300">{t('dashboardRealtime.severityLow')}</p>
                   <p className="text-lg font-bold text-slate-100 mt-1">{formatNumber(alertSummary.low)}</p>
                 </div>
               </div>
-              <div className="rounded-xl border border-amber-700/30 bg-gradient-to-br from-amber-950/45 via-rose-950/20 to-gray-950/90 p-4 flex-1">
+              <div className="rounded-xl border border-amber-700/30 bg-gradient-to-br from-amber-950/45 via-rose-950/20 to-gray-950/90 p-4 flex-1 min-h-0 overflow-y-auto">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t('dashboardRealtime.hotSymbols')}</span>
@@ -960,7 +1004,7 @@ export default function DashboardRealtimePanel({
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-800 overflow-hidden min-h-[460px] h-full flex flex-col">
+            <div className="rounded-xl border border-gray-800 overflow-hidden h-[460px] flex flex-col">
               <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70 flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.unifiedCenterTitle')}</h3>
