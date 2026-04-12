@@ -14,10 +14,11 @@ module.exports = function(app) {
     })
   );
 
-  // WebSocket realtime
+  // WebSocket realtime — QUAN TRỌNG: chỉ proxy /ws/realtime (Django),
+  // KHÔNG dùng /ws (sẽ chặn webpack HMR WebSocket → "Invalid frame header").
   app.use(
     createProxyMiddleware({
-      pathFilter: '/ws',
+      pathFilter: '/ws/realtime',
       target: 'http://localhost:8000',
       ws: true,
       changeOrigin: true,
