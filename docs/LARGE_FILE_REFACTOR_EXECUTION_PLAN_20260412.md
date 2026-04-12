@@ -235,5 +235,6 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 3): tach 2 test auth co ban (jwt token + register) sang backend/portfolio/tests/test_api_routes_auth_basic.py, test moi pass 2/2.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 4): tach 8 test auth password-reset sang backend/portfolio/tests/test_api_routes_auth_password_reset.py, test moi pass 8/8.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 5): tach 3 test auth verify-email/resend-verification sang backend/portfolio/tests/test_api_routes_auth_email_verification.py, test moi pass 3/3.
+- Da tiep tuc chia test_api_routes theo cum domain (slice 6): tach 8 test auth register validation/onboarding sang backend/portfolio/tests/test_api_routes_auth_register.py, test moi pass 8/8.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
