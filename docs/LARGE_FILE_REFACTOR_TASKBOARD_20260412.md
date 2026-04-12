@@ -41,17 +41,22 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_ai_advisory_management.py
 - [x] Tach whale advisory list/canonical/auto-refresh/refresh/current-delete khoi monolith views.py
 - [x] Chay test muc tieu whale-advisory list-management (22 test pass)
+- [x] Tao module moi: backend/portfolio/views_admin_runtime.py
+- [x] Tach admin runtime KPI + system-ai-settings + vnstock runtime config + warm prefetch khoi monolith views.py
+- [x] Chay test muc tieu admin-runtime/system-ai/vnstock-admin-ops (48 test pass)
+- [x] Tao module moi: backend/portfolio/views_ai_runtime_stats.py
+- [x] Tach ai-options/ai-config/ai-test-connection + whale-advisory-symbol-stats khoi monolith views.py
+- [x] Chay test muc tieu ai-config + patch-compat (12 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
-- [ ] Tach whale_advisory_symbol_stats + helper advisory con lai
+- [ ] Don dep helper runtime/advisory con lai trong views.py
 - [ ] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
 
 ### Backlog uu tien cao
 - [ ] Tach views_ai_advisory.py
-- [ ] Tach views_admin_runtime.py
 - [ ] Di chuyen helper runtime policy sang module rieng
 
 ### Backlog uu tien trung binh
@@ -68,7 +73,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 2332
+- views.py lines: 1487
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate:
