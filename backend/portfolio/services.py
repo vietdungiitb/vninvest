@@ -43,6 +43,35 @@ from .whale_scoring import resolve_whale_score_config
 
 logger = logging.getLogger(__name__)
 
+_VNSTOCK_PRICE_UNIT_VND = 'VND'
+_VNSTOCK_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
+_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_THOUSAND
+
+
+def _resolve_vnstock_price_unit(dataframe) -> str | None:
+    attrs = getattr(dataframe, 'attrs', None)
+    if not isinstance(attrs, dict):
+        return None
+    unit = str(attrs.get('price_unit') or '').strip().upper()
+    if unit in {_VNSTOCK_PRICE_UNIT_VND, _VNSTOCK_PRICE_UNIT_THOUSAND}:
+        return unit
+    return None
+
+
+def _resolve_price_scale_to_system_unit(price_unit: str | None) -> Decimal:
+    if price_unit == _VNSTOCK_PRICE_UNIT_VND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_THOUSAND:
+        return Decimal('0.001')
+    if price_unit == _VNSTOCK_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_VND:
+        return Decimal('1000')
+    return Decimal('1')
+
+
+def _apply_price_scale(value, scale: Decimal) -> Decimal | None:
+    decimal_value = _to_decimal(value)
+    if decimal_value is None:
+        return None
+    return decimal_value * scale
+
 
 def _coerce_float(value, default: float | None = None) -> float | None:
     try:
@@ -1388,20 +1417,20 @@ def build_whale_config_runtime_preview(
 # Hàm nội bộ: ánh xạ DataFrame của vnstock sang dict chuẩn hoá
 # ---------------------------------------------------------------------------
 
-def _normalise_ohlcv(row) -> dict | None:
+def _normalise_ohlcv(row, price_scale: Decimal = Decimal('1')) -> dict | None:
     """
     Chuyển một row DataFrame (vnstock3) thành dict chuẩn.
     vnstock3 trả về các cột: time, open, high, low, close, volume
     Trả về None nếu dữ liệu không hợp lệ.
     """
     try:
-        close = Decimal(str(row['close']))
+        close = Decimal(str(row['close'])) * price_scale
         if close <= 0:
             return None
         return {
-            'open_price':  _to_decimal(row.get('open')),
-            'high_price':  _to_decimal(row.get('high')),
-            'low_price':   _to_decimal(row.get('low')),
+            'open_price':  _apply_price_scale(row.get('open'), price_scale),
+            'high_price':  _apply_price_scale(row.get('high'), price_scale),
+            'low_price':   _apply_price_scale(row.get('low'), price_scale),
             'close_price': close,
             'volume':      _to_int(row.get('volume')),
         }
@@ -1452,7 +1481,7 @@ def fetch_and_save_daily_prices(
     symbol = symbol.upper().strip()
     result = {'symbol': symbol, 'created': 0, 'updated': 0, 'errors': 0}
 
-    # --- Gọi vnstock (>=3.5.0) với source VCI (trả về giá nghìn VNĐ, nhất quán với toàn hệ thống) ---
+    # --- Gọi vnstock (>=3.5.0) với source VCI; đơn vị sẽ được normalize theo metadata/fallback bên dưới ---
     try:
         from vnstock import Vnstock  # import trễ để tránh lỗi nếu chưa cài
 
@@ -1475,6 +1504,24 @@ def fetch_and_save_daily_prices(
         logger.warning('vnstock3 không trả về dữ liệu cho %s (%s → %s)', symbol, start_date, end_date)
         return result
 
+    detected_unit = _resolve_vnstock_price_unit(df)
+    price_scale = _resolve_price_scale_to_system_unit(detected_unit)
+
+    # Safety net: old/new providers can miss attrs metadata, but absolute VND values are typically > 2000.
+    if detected_unit is None:
+        first_close = _to_decimal(df.iloc[0].get('close')) if not df.empty else None
+        if first_close is not None and first_close >= Decimal('2000'):
+            price_scale = Decimal('0.001')
+
+    if price_scale != Decimal('1'):
+        logger.info(
+            'Normalize vnstock prices for %s: price_unit=%s, scale=%s (target=%s)',
+            symbol,
+            detected_unit or 'UNKNOWN',
+            price_scale,
+            _SYSTEM_PRICE_UNIT,
+        )
+
     # --- Lưu từng dòng vào DailyPrice (update_or_create để idempotent) ---
     with db_transaction.atomic():
         for _, row in df.iterrows():
@@ -1485,7 +1532,7 @@ def fetch_and_save_daily_prices(
                 result['errors'] += 1
                 continue
 
-            data = _normalise_ohlcv(row)
+            data = _normalise_ohlcv(row, price_scale=price_scale)
             if data is None:
                 result['errors'] += 1
                 continue
