@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
 from rest_framework_simplejwt.views import TokenRefreshView
 from .health import healthcheck, market_observability_health, prefetch_health, realtime_health, streams_health
 import portfolio.views as portfolio_views
@@ -16,8 +17,27 @@ from portfolio.auth_views import (
 )
 from portfolio.legal_views import LegalPagePublicView
 
+
+def api_root(_request):
+    return JsonResponse(
+        {
+            'ok': True,
+            'message': 'VNInvest API root',
+            'endpoints': {
+                'health': '/api/health/',
+                'auth_token': '/api/auth/token/',
+                'portfolio': '/api/portfolio/',
+                'stock_management': '/api/stock-management/',
+                'realtime': '/api/realtime/',
+                'admin_ops': '/api/admin-ops/stats/',
+                'public_legal_pages': '/api/public/legal-pages/',
+            },
+        }
+    )
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/', api_root, name='api-root'),
     path('api/auth/token/', VerifiedEmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
@@ -45,6 +65,10 @@ urlpatterns = [
     path('api/admin-ops/system-ai-settings/', portfolio_views.admin_system_ai_settings_api, name='admin-ops-system-ai-settings'),
     path('api/admin-ops/system-ai-settings/test-connection/', portfolio_views.admin_system_ai_test_connection_api, name='admin-ops-system-ai-test-connection'),
     path('api/admin-ops/system-ai-settings/audit-logs/', portfolio_views.admin_system_ai_audit_logs_api, name='admin-ops-system-ai-audit-logs'),
+    path('api/admin-ops/vnstock-config/current/', portfolio_views.admin_vnstock_runtime_config_current_api, name='admin-ops-vnstock-config-current'),
+    path('api/admin-ops/vnstock-config/update-config/', portfolio_views.admin_vnstock_runtime_config_update_api, name='admin-ops-vnstock-config-update'),
+    path('api/admin-ops/vnstock-config/reset-to-defaults/', portfolio_views.admin_vnstock_runtime_config_reset_api, name='admin-ops-vnstock-config-reset'),
+    path('api/admin-ops/vnstock-config/changelog/', portfolio_views.admin_vnstock_runtime_config_changelog_api, name='admin-ops-vnstock-config-changelog'),
     path('api/admin-ops/prefetch/warm/', portfolio_views.warm_ticker_prefetch_api, name='admin-ops-prefetch-warm'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),

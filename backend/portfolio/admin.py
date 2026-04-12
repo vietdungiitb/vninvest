@@ -34,6 +34,7 @@ from .models import (
     SubAccount,
     SystemAISettings,
     SystemAISettingsAuditLog,
+    RuntimeVnstockConfig,
     SystemEmailAccount,
     TrackedSymbol,
     Transaction,
@@ -1161,10 +1162,38 @@ class SystemAISettingsAdminForm(forms.ModelForm):
         widget=forms.PasswordInput(render_value=False),
         help_text='Để trống nếu không thay đổi key đã lưu.',
     )
+    prefetch_time_policy_json = forms.JSONField(
+        label='Prefetch Time Policy (JSON)',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 18}),
+        help_text='Quản lý policy prefetch theo khung giờ thị trường. Runtime áp dụng ngay, không cần restart.',
+    )
 
     class Meta:
         model = SystemAISettings
         exclude = ('ai_api_key',)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from .views import _get_runtime_prefetch_time_policy
+
+            self.fields['prefetch_time_policy_json'].initial = _get_runtime_prefetch_time_policy()
+        except Exception:
+            # Fail-soft: vẫn cho phép mở form kể cả khi runtime policy backend đang lỗi tạm thời.
+            self.fields['prefetch_time_policy_json'].initial = {}
+
+    def clean_prefetch_time_policy_json(self):
+        payload = self.cleaned_data.get('prefetch_time_policy_json')
+        if payload in (None, ''):
+            return None
+
+        try:
+            from .views import _coerce_prefetch_time_policy, _default_prefetch_time_policy
+
+            return _coerce_prefetch_time_policy(payload, fallback=_default_prefetch_time_policy())
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -1191,10 +1220,11 @@ class SystemAISettingsAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'ai_provider', 'allow_env_fallback')
     search_fields = ('name', 'notes')
     readonly_fields = ('api_key_status', 'created_at', 'updated_at')
-    actions = ('mark_as_active', 'test_connection_for_selected')
+    actions = ('mark_as_active', 'test_connection_for_selected', 'reset_prefetch_time_policy_to_default')
     fieldsets = (
         ('Nhận diện', {'fields': ('name', 'is_active', 'notes')}),
         ('AI runtime', {'fields': ('ai_provider', 'ai_model', 'allow_env_fallback', 'ai_api_key_raw', 'api_key_status')}),
+        ('Prefetch runtime', {'fields': ('prefetch_time_policy_json',)}),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )
 
@@ -1216,6 +1246,77 @@ class SystemAISettingsAdmin(admin.ModelAdmin):
         target.is_active = True
         target.save(update_fields=['is_active', 'updated_at'])
         self.message_user(request, f'Đã kích hoạt System AI Settings: {target.name}.', level=messages.SUCCESS)
+
+    def _build_admin_snapshot(self, obj):
+        from .views import _get_runtime_governance_delta_thresholds, _get_runtime_prefetch_settings, _get_runtime_prefetch_time_policy
+
+        if obj is None:
+            return {}
+        return {
+            'id': obj.id,
+            'name': obj.name,
+            'is_active': bool(obj.is_active),
+            'ai_provider': str(obj.ai_provider or '').strip().lower(),
+            'ai_model': str(obj.ai_model or '').strip(),
+            'effective_ai_model': obj.get_effective_ai_model(),
+            'allow_env_fallback': bool(obj.allow_env_fallback),
+            'ai_api_key_configured': obj.ai_api_key_configured,
+            'notes': str(obj.notes or ''),
+            'governance_delta_thresholds': _get_runtime_governance_delta_thresholds(),
+            'prefetch_runtime_settings': _get_runtime_prefetch_settings(),
+            'prefetch_time_policy': _get_runtime_prefetch_time_policy(),
+        }
+
+    def save_model(self, request, obj, form, change):
+        before_obj = None
+        if change and obj.pk:
+            before_obj = type(obj).objects.filter(pk=obj.pk).first()
+        before_snapshot = self._build_admin_snapshot(before_obj)
+
+        super().save_model(request, obj, form, change)
+
+        policy_payload = form.cleaned_data.get('prefetch_time_policy_json')
+        if policy_payload is not None:
+            from .views import _set_runtime_prefetch_time_policy
+
+            _set_runtime_prefetch_time_policy(policy_payload)
+
+        after_snapshot = self._build_admin_snapshot(obj)
+        if before_snapshot != after_snapshot:
+            SystemAISettingsAuditLog.objects.create(
+                settings=obj,
+                actor=request.user if request.user.is_authenticated else None,
+                action='update_settings',
+                reason='updated_via_django_admin',
+                before_json=before_snapshot,
+                after_json=after_snapshot,
+            )
+
+    @admin.action(description='Reset prefetch time policy về mặc định')
+    def reset_prefetch_time_policy_to_default(self, request, queryset):
+        target = queryset.order_by('-updated_at', '-id').first()
+        if not target:
+            self.message_user(request, 'Không có cấu hình nào được chọn.', level=messages.WARNING)
+            return
+
+        before_snapshot = self._build_admin_snapshot(target)
+
+        from .views import _default_prefetch_time_policy, _set_runtime_prefetch_time_policy
+
+        _set_runtime_prefetch_time_policy(_default_prefetch_time_policy())
+
+        after_snapshot = self._build_admin_snapshot(target)
+        if before_snapshot != after_snapshot:
+            SystemAISettingsAuditLog.objects.create(
+                settings=target,
+                actor=request.user if request.user.is_authenticated else None,
+                action='update_settings',
+                reason='reset_prefetch_time_policy_via_django_admin',
+                before_json=before_snapshot,
+                after_json=after_snapshot,
+            )
+
+        self.message_user(request, 'Đã reset prefetch time policy về mặc định.', level=messages.SUCCESS)
 
     @admin.action(description='Kiểm tra kết nối AI cho cấu hình đã chọn')
     def test_connection_for_selected(self, request, queryset):
@@ -1270,6 +1371,24 @@ class SystemAISettingsAuditLogAdmin(admin.ModelAdmin):
         return False
 
     def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(RuntimeVnstockConfig)
+class RuntimeVnstockConfigAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'max_concurrency',
+        'retry_attempts',
+        'price_board_source',
+        'enable_concurrent_limit',
+        'enable_rate_limit_detection',
+        'updated_by',
+        'updated_at',
+    )
+    readonly_fields = ('changelog', 'created_at', 'updated_at')
+
+    def has_add_permission(self, request):
         return False
 
 

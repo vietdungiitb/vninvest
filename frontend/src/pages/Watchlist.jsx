@@ -141,6 +141,7 @@ export default function WatchlistPage() {
   const [syncing, setSyncing] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+  const [syncCooldownSeconds, setSyncCooldownSeconds] = useState(0);
   const [syncingStockProfile, setSyncingStockProfile] = useState(false);
 
   // Mã Theo dõi state
@@ -174,6 +175,38 @@ export default function WatchlistPage() {
   const [trackedPageSize, setTrackedPageSize] = useState(20);
   const [trackedPage, setTrackedPage] = useState(1);
   const triggeringAlertIdsRef = useRef(new Set());
+  const syncCooldownIntervalRef = useRef(null);
+
+  const clearSyncCooldownTimer = useCallback(() => {
+    if (syncCooldownIntervalRef.current) {
+      window.clearInterval(syncCooldownIntervalRef.current);
+      syncCooldownIntervalRef.current = null;
+    }
+  }, []);
+
+  const startSyncCooldown = useCallback((seconds) => {
+    clearSyncCooldownTimer();
+    const initial = Math.max(Math.ceil(Number(seconds) || 0), 1);
+    setSyncCooldownSeconds(initial);
+    setSyncMsg(t('watchlist.syncRetryIn', { seconds: initial }));
+
+    syncCooldownIntervalRef.current = window.setInterval(() => {
+      setSyncCooldownSeconds((prev) => {
+        if (prev <= 1) {
+          clearSyncCooldownTimer();
+          return 0;
+        }
+        const next = prev - 1;
+        setSyncMsg(t('watchlist.syncRetryIn', { seconds: next }));
+        return next;
+      });
+    }, 1000);
+  }, [clearSyncCooldownTimer, t]);
+
+  useEffect(() => () => {
+    clearSyncCooldownTimer();
+  }, [clearSyncCooldownTimer]);
+
   const handleSyncStockProfile = async () => {
     setSyncingStockProfile(true);
     setSyncMsg('');
@@ -199,13 +232,13 @@ export default function WatchlistPage() {
   const [editingTrackedThresholdValue, setEditingTrackedThresholdValue] = useState('');
   const [symbolError, setSymbolError] = useState('');
 
-  const fetchGroups = useCallback(async () => {
+  const loadGroups = useCallback(async () => {
     setLoading(true);
     try {
       const res = await getSecuritiesGroups();
       setGroups(res.data);
     } catch (err) {
-      console.error('fetchGroups:', err);
+      console.error('loadGroups:', err);
     } finally {
       setLoading(false);
     }
@@ -236,10 +269,10 @@ export default function WatchlistPage() {
   }, []);
 
   useEffect(() => {
-    fetchGroups();
+    loadGroups();
     fetchTracked();
     fetchPriceAlerts();
-  }, [fetchGroups, fetchTracked, fetchPriceAlerts]);
+  }, [loadGroups, fetchTracked, fetchPriceAlerts]);
 
   const allRealtimeSymbols = useMemo(
     () => [
@@ -609,7 +642,7 @@ export default function WatchlistPage() {
     try {
       const res = await seedSecurities();
       setSyncMsg(res.data.message || t('watchlist.seedSuccess'));
-      await fetchGroups();
+      await loadGroups();
     } catch {
       setSyncMsg(t('watchlist.seedFailed'));
     } finally {
@@ -618,21 +651,35 @@ export default function WatchlistPage() {
     }
   };
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
+    if (syncCooldownSeconds > 0) {
+      setSyncMsg(t('watchlist.syncRetryIn', { seconds: syncCooldownSeconds }));
+      return;
+    }
+
     setSyncing(true);
     setSyncMsg('');
+    let shouldAutoClearMessage = true;
     try {
       const res = await syncSecuritiesPrices(5);
       setSyncMsg(t('watchlist.syncCount', { count: formatNumber(res.data.total_symbols || res.data.total_created || 0) }));
-      await fetchGroups();
+      await loadGroups();
       await fetchTracked();
-    } catch {
-      setSyncMsg(t('watchlist.syncFailed'));
+    } catch (err) {
+      const retryAfter = Number(err?.response?.data?.retry_after_seconds);
+      if (Number.isFinite(retryAfter) && retryAfter > 0) {
+        shouldAutoClearMessage = false;
+        startSyncCooldown(retryAfter);
+      } else {
+        setSyncMsg(t('watchlist.syncFailed'));
+      }
     } finally {
       setSyncing(false);
-      setTimeout(() => setSyncMsg(''), 5000);
+      if (shouldAutoClearMessage) {
+        setTimeout(() => setSyncMsg(''), 5000);
+      }
     }
-  };
+  }, [loadGroups, fetchTracked, formatNumber, startSyncCooldown, syncCooldownSeconds, t]);
 
   const handleAddTracked = async (e) => {
     e.preventDefault();
@@ -976,7 +1023,7 @@ export default function WatchlistPage() {
           )}
 
           <button
-            onClick={handleSync} disabled={syncing || groupsWithRealtime.length === 0}
+            onClick={handleSync} disabled={syncing || syncCooldownSeconds > 0 || groupsWithRealtime.length === 0}
             className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 disabled:opacity-40 border border-gray-700 text-sm text-gray-300 px-4 py-2 rounded-lg transition-colors"
           >
             {syncing ? (
@@ -984,7 +1031,7 @@ export default function WatchlistPage() {
                 <span className="w-3.5 h-3.5 border-2 border-gray-500 border-t-brand-500 rounded-full animate-spin inline-block" />
                 {t('watchlist.syncingShort')}
               </>
-            ) : t('watchlist.syncPrices')}
+            ) : syncCooldownSeconds > 0 ? t('watchlist.syncRetryInShort', { seconds: syncCooldownSeconds }) : t('watchlist.syncPrices')}
           </button>
         </div>
       </div>

@@ -1,0 +1,120 @@
+﻿{
+    "prefetch_health":  {
+                            "ok":  false,
+                            "body":  null,
+                            "status":  503
+                        },
+    "collected_at":  "2026-04-12T10:02:19.4809114+07:00",
+    "note":  "This file captures current guard config and counters. To complete S3, run with a real/simulated 429 event.",
+    "market_observability":  {
+                                 "ok":  true,
+                                 "body":  {
+                                              "enabled":  true,
+                                              "window":  {
+                                                             "latency_samples_per_endpoint":  300,
+                                                             "started_at_epoch":  1775962896
+                                                         },
+                                              "overall":  {
+                                                              "http_requests":  21,
+                                                              "http_5xx":  2,
+                                                              "http_5xx_ratio_pct":  9.52,
+                                                              "fallback_hits":  1,
+                                                              "external_timeouts":  0
+                                                          },
+                                              "ai_chart_context":  {
+                                                                       "present":  0,
+                                                                       "used":  0,
+                                                                       "usage_ratio_pct":  0.0,
+                                                                       "warnings_total":  0,
+                                                                       "ohlcv_points_total":  0,
+                                                                       "payload_bytes_total":  0,
+                                                                       "avg_ohlcv_points":  0.0,
+                                                                       "avg_payload_bytes":  0.0
+                                                                   },
+                                              "advisory_event_merge":  {
+                                                                           "scheduled":  0,
+                                                                           "merged":  0,
+                                                                           "flushed":  0,
+                                                                           "skipped":  0
+                                                                       },
+                                              "whale_pipeline":  {
+                                                                     "healthy":  true,
+                                                                     "freshness":  {
+                                                                                       "sample_size":  0,
+                                                                                       "median_seconds":  0.0,
+                                                                                       "p95_seconds":  0.0,
+                                                                                       "warn_threshold_seconds":  120
+                                                                                   },
+                                                                     "dedup":  {
+                                                                                   "total":  0,
+                                                                                   "hits":  0,
+                                                                                   "hit_ratio_pct":  0.0
+                                                                               },
+                                                                     "snapshot_recovery":  {
+                                                                                               "events_total":  0,
+                                                                                               "recovered_events":  0,
+                                                                                               "ratio_pct":  0.0
+                                                                                           },
+                                                                     "source_mix":  {
+                                                                                        "counts":  {
+
+                                                                                                   },
+                                                                                        "ratio_pct":  {
+
+                                                                                                      }
+                                                                                    }
+                                                                 },
+                                              "endpoints":  {
+                                                                "realtime-ticker":  {
+                                                                                        "requests":  17,
+                                                                                        "status_2xx":  17,
+                                                                                        "status_4xx":  0,
+                                                                                        "status_5xx":  0,
+                                                                                        "five_xx_ratio_pct":  0.0,
+                                                                                        "latency_ms":  {
+                                                                                                           "latest_window_size":  17,
+                                                                                                           "p50":  153.1,
+                                                                                                           "p95":  166.04,
+                                                                                                           "max":  233.49
+                                                                                                       }
+                                                                                    },
+                                                                "whale-feed-aggregate":  {
+                                                                                             "requests":  2,
+                                                                                             "status_2xx":  1,
+                                                                                             "status_4xx":  0,
+                                                                                             "status_5xx":  1,
+                                                                                             "five_xx_ratio_pct":  50.0,
+                                                                                             "latency_ms":  {
+                                                                                                                "latest_window_size":  2,
+                                                                                                                "p50":  86.1,
+                                                                                                                "p95":  86.1,
+                                                                                                                "max":  404.31
+                                                                                                            }
+                                                                                         },
+                                                                "unified-alerts":  {
+                                                                                       "requests":  2,
+                                                                                       "status_2xx":  1,
+                                                                                       "status_4xx":  0,
+                                                                                       "status_5xx":  1,
+                                                                                       "five_xx_ratio_pct":  50.0,
+                                                                                       "latency_ms":  {
+                                                                                                          "latest_window_size":  2,
+                                                                                                          "p50":  271.29,
+                                                                                                          "p95":  271.29,
+                                                                                                          "max":  285.17
+                                                                                                      }
+                                                                                   }
+                                                            },
+                                              "fallback_breakdown":  {
+                                                                         "whale-feed-aggregate":  {
+                                                                                                      "intraday_tick_db":  1
+                                                                                                  }
+                                                                     },
+                                              "external_timeout_breakdown":  {
+
+                                                                             }
+                                          },
+                                 "status":  200
+                             },
+    "rate_limit_guard":  null
+}

@@ -1,0 +1,3 @@
+﻿Capture app log lines that indicate fallback path during this UAT run.
+Suggested grep keywords: fallback, throttled_by_policy, rate-limited, multiplier.
+If no fallback occurred, write 'NO_FALLBACK_OBSERVED'.

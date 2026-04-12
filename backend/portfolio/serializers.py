@@ -3,7 +3,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 """
 
 from rest_framework import serializers
-from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule
+from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnstockConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 
@@ -172,6 +172,89 @@ class UserConfigSerializer(serializers.ModelSerializer):
             instance.set_ai_api_key(api_key)
             instance.save(update_fields=['ai_api_key'])
         return instance
+
+
+class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
+    updated_by_username = serializers.CharField(source='updated_by.username', read_only=True)
+
+    class Meta:
+        model = RuntimeVnstockConfig
+        fields = [
+            'id',
+            'max_concurrency',
+            'retry_attempts',
+            'retry_backoff_seconds',
+            'rate_limit_cooldown_seconds',
+            'timeout_config',
+            'price_board_source',
+            'fallback_sources',
+            'enable_caching',
+            'enable_rate_limit_detection',
+            'enable_concurrent_limit',
+            'changelog',
+            'updated_by',
+            'updated_by_username',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'changelog', 'updated_by', 'updated_by_username', 'created_at', 'updated_at']
+
+    def validate_price_board_source(self, value):
+        source = str(value or '').strip().upper()
+        allowed = {'VCI', 'KBS', 'TCBS', 'SSI'}
+        if source not in allowed:
+            raise serializers.ValidationError('price_board_source không hợp lệ.')
+        return source
+
+    def validate_fallback_sources(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError('fallback_sources phải là danh sách.')
+        allowed = {'VCI', 'KBS', 'TCBS', 'SSI'}
+        normalized = []
+        for item in value:
+            source = str(item or '').strip().upper()
+            if not source:
+                continue
+            if source not in allowed:
+                raise serializers.ValidationError(f'Provider không hợp lệ: {source}')
+            if source not in normalized:
+                normalized.append(source)
+        return normalized
+
+    def validate_timeout_config(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError('timeout_config phải là object hợp lệ.')
+        allowed_channels = {'price_board', 'intraday', 'financial_ratio', 'history', 'listing', 'general'}
+        normalized = {}
+        for channel in allowed_channels:
+            raw_timeout = value.get(channel)
+            if raw_timeout is None:
+                continue
+            try:
+                timeout_value = int(raw_timeout)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(f'timeout_config.{channel} phải là số nguyên.')
+            if timeout_value < 1 or timeout_value > 120:
+                raise serializers.ValidationError(f'timeout_config.{channel} phải nằm trong khoảng [1, 120].')
+            normalized[channel] = timeout_value
+        return normalized
+
+    def validate(self, attrs):
+        source = str(attrs.get('price_board_source') or getattr(self.instance, 'price_board_source', 'VCI')).strip().upper()
+        fallback_sources = attrs.get('fallback_sources')
+        if fallback_sources is None and self.instance is not None:
+            fallback_sources = list(self.instance.fallback_sources or [])
+        fallback_sources = fallback_sources or []
+        if source and source not in fallback_sources:
+            fallback_sources = [source] + [item for item in fallback_sources if item != source]
+            attrs['fallback_sources'] = fallback_sources
+
+        timeout_config = attrs.get('timeout_config')
+        if timeout_config is not None:
+            merged = RuntimeVnstockConfig.default_timeout_config()
+            merged.update(timeout_config)
+            attrs['timeout_config'] = merged
+        return attrs
 
 
 # ---------------------------------------------------------------------------

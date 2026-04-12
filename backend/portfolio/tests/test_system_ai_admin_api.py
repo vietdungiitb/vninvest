@@ -16,6 +16,8 @@ class SystemAIAdminApiTests(APITestCase):
 
     def setUp(self):
         cache.delete('admin_ops:holistic_governance_delta_thresholds')
+        cache.delete('admin_ops:prefetch_runtime_settings')
+        cache.delete('admin_ops:prefetch_time_policy')
         self.admin_user = User.objects.create_superuser(
             username='system-ai-admin',
             email='system-ai-admin@example.com',
@@ -40,6 +42,8 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertTrue(response.data.get('ok'))
         self.assertIn('settings', response.data)
         self.assertIn('ai_provider', response.data['settings'])
+        self.assertIn('prefetch_time_policy', response.data['settings'])
+        self.assertIn('prefetch_time_policy_rulebook', response.data['settings'])
 
     def test_put_updates_system_ai_settings(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -117,6 +121,129 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok'))
         self.assertIn('critical', str(response.data.get('message', '')).lower())
+
+    def test_put_updates_prefetch_runtime_settings(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'prefetch_runtime_settings': {
+                    'batch_size': 25,
+                    'symbol_limit': 55,
+                    'max_retries': 4,
+                    'retry_base_seconds': 15,
+                    'retry_max_seconds': 120,
+                    'rate_limit_cooldown_seconds': 30,
+                    'circuit_window_seconds': 600,
+                    'circuit_breaker_timeout_threshold': 4,
+                    'circuit_breaker_cooldown_seconds': 1800,
+                    'include_group_symbols': True,
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('ok'))
+        runtime_settings = response.data['settings']['prefetch_runtime_settings']
+        self.assertEqual(runtime_settings['batch_size'], 25)
+        self.assertEqual(runtime_settings['symbol_limit'], 55)
+        self.assertEqual(runtime_settings['max_retries'], 4)
+        self.assertEqual(runtime_settings['retry_base_seconds'], 15)
+        self.assertEqual(runtime_settings['retry_max_seconds'], 120)
+        self.assertEqual(runtime_settings['rate_limit_cooldown_seconds'], 30)
+        self.assertEqual(runtime_settings['circuit_window_seconds'], 600)
+        self.assertEqual(runtime_settings['circuit_breaker_timeout_threshold'], 4)
+        self.assertEqual(runtime_settings['circuit_breaker_cooldown_seconds'], 1800)
+        self.assertTrue(runtime_settings['include_group_symbols'])
+
+    def test_put_rejects_invalid_prefetch_runtime_settings(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'prefetch_runtime_settings': {
+                    'batch_size': 'not-an-int',
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok'))
+        self.assertIn('batch_size', str(response.data.get('message', '')).lower())
+
+    def test_put_updates_prefetch_time_policy(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'prefetch_time_policy': {
+                    'timezone': 'Asia/Ho_Chi_Minh',
+                    'market': {
+                        'open_time': '08:45',
+                        'close_time': '15:00',
+                        'pre_open_minutes': 20,
+                        'post_close_minutes': 45,
+                        'lunch_break': {
+                            'enabled': True,
+                            'start': '11:30',
+                            'end': '13:00',
+                        },
+                    },
+                    'profiles': {
+                        'market_open': {
+                            'query_enabled': True,
+                            'interval_seconds': 40,
+                            'batch_size': 16,
+                            'symbol_limit': 45,
+                            'max_retries': 3,
+                        },
+                    },
+                    'rate_limit_guard': {
+                        'jitter_percent': 12,
+                        'cooldown_multiplier_on_429': 2.5,
+                        'max_interval_seconds': 1200,
+                    },
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('ok'))
+        policy = response.data['settings']['prefetch_time_policy']
+        self.assertEqual(policy['market']['open_time'], '08:45')
+        self.assertEqual(policy['market']['pre_open_minutes'], 20)
+        self.assertEqual(policy['market']['post_close_minutes'], 45)
+        self.assertEqual(policy['profiles']['market_open']['interval_seconds'], 40)
+        self.assertEqual(policy['profiles']['market_open']['batch_size'], 16)
+        self.assertEqual(policy['rate_limit_guard']['jitter_percent'], 12.0)
+        self.assertEqual(policy['rate_limit_guard']['cooldown_multiplier_on_429'], 2.5)
+        self.assertEqual(policy['rate_limit_guard']['max_interval_seconds'], 1200)
+
+    def test_put_rejects_invalid_prefetch_time_policy(self):
+        self.client.force_authenticate(user=self.admin_user)
+
+        response = self.client.put(
+            self.URL,
+            {
+                'prefetch_time_policy': {
+                    'market': {
+                        'open_time': '15:00',
+                        'close_time': '09:00',
+                    },
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data.get('ok'))
+        self.assertIn('open_time', str(response.data.get('message', '')).lower())
 
     @patch('portfolio.ai_service.test_ai_connection')
     def test_admin_can_test_system_ai_connection(self, mock_test_ai_connection):

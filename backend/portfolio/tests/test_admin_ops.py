@@ -25,6 +25,7 @@ from rest_framework.test import APITestCase
 
 from portfolio.models import (
     Portfolio,
+    RuntimeVnstockConfig,
     TrackedSymbol,
     WatchlistGroup,
     WatchlistItem,
@@ -39,6 +40,10 @@ from portfolio.models import (
 
 URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
+VNSTOCK_CURRENT_URL = '/api/admin-ops/vnstock-config/current/'
+VNSTOCK_UPDATE_URL = '/api/admin-ops/vnstock-config/update-config/'
+VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
+VNSTOCK_CHANGELOG_URL = '/api/admin-ops/vnstock-config/changelog/'
 
 
 class AdminOpsStatsPermissionTests(APITestCase):
@@ -358,3 +363,66 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(dashboard['alerts']['last_10m_count'], 2)
         self.assertEqual(dashboard['worker_summary']['live_count'], 1)
         self.assertEqual(dashboard['propagation']['signal'], 'green')
+
+
+class AdminOpsVnstockRuntimeConfigTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username='vnstock_staff', password='Test@123456', is_staff=True)
+        self.user = User.objects.create_user(username='vnstock_user', password='Test@123456')
+
+        for account in (self.staff, self.user):
+            cfg, _ = UserConfig.objects.get_or_create(user=account)
+            if not cfg.email_verified:
+                cfg.email_verified = True
+                cfg.save(update_fields=['email_verified', 'updated_at'])
+
+    def _login(self, username, password='Test@123456'):
+        resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+
+    def test_non_staff_forbidden(self):
+        self._login('vnstock_user')
+        resp = self.client.get(VNSTOCK_CURRENT_URL)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_can_get_update_and_read_changelog(self):
+        self._login('vnstock_staff')
+
+        current_resp = self.client.get(VNSTOCK_CURRENT_URL)
+        self.assertEqual(current_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(current_resp.data['ok'])
+
+        update_payload = {
+            'max_concurrency': 9,
+            'retry_attempts': 2,
+            'retry_backoff_seconds': 0.5,
+            'price_board_source': 'VCI',
+            'fallback_sources': ['KBS', 'VCI'],
+            'timeout_config': {
+                'price_board': 9,
+                'intraday': 9,
+                'financial_ratio': 11,
+                'history': 13,
+                'listing': 13,
+                'general': 9,
+            },
+        }
+        update_resp = self.client.patch(VNSTOCK_UPDATE_URL, update_payload, format='json')
+        self.assertEqual(update_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(update_resp.data['settings']['max_concurrency'], 9)
+        self.assertEqual(update_resp.data['settings']['retry_attempts'], 2)
+
+        changelog_resp = self.client.get(VNSTOCK_CHANGELOG_URL)
+        self.assertEqual(changelog_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(changelog_resp.data['ok'])
+        self.assertGreaterEqual(changelog_resp.data['count'], 1)
+
+    def test_staff_can_reset_defaults(self):
+        self._login('vnstock_staff')
+        RuntimeVnstockConfig.get_or_create_singleton()
+
+        self.client.patch(VNSTOCK_UPDATE_URL, {'max_concurrency': 7}, format='json')
+        reset_resp = self.client.post(VNSTOCK_RESET_URL, {}, format='json')
+        self.assertEqual(reset_resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(reset_resp.data['settings']['max_concurrency'], 12)

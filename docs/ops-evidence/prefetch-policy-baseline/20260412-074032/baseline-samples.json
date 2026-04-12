@@ -1,0 +1,59 @@
+﻿[
+    {
+        "ts":  "2026-04-12T07:40:36.5007891+07:00",
+        "prefetch":  {
+                         "latency_ms":  2097.64,
+                         "body":  {
+                                      "error":  "Unable to connect to the remote server"
+                                  },
+                         "status_code":  -1
+                     },
+        "market_observability":  {
+                                     "latency_ms":  2038.74,
+                                     "body":  {
+                                                  "error":  "Unable to connect to the remote server"
+                                              },
+                                     "status_code":  -1
+                                 },
+        "admin_stats":  null,
+        "ticker_probe":  null
+    },
+    {
+        "ts":  "2026-04-12T07:40:41.5651055+07:00",
+        "prefetch":  {
+                         "latency_ms":  2034.5,
+                         "body":  {
+                                      "error":  "Unable to connect to the remote server"
+                                  },
+                         "status_code":  -1
+                     },
+        "market_observability":  {
+                                     "latency_ms":  2014.61,
+                                     "body":  {
+                                                  "error":  "Unable to connect to the remote server"
+                                              },
+                                     "status_code":  -1
+                                 },
+        "admin_stats":  null,
+        "ticker_probe":  null
+    },
+    {
+        "ts":  "2026-04-12T07:40:46.6453702+07:00",
+        "prefetch":  {
+                         "latency_ms":  2035.92,
+                         "body":  {
+                                      "error":  "Unable to connect to the remote server"
+                                  },
+                         "status_code":  -1
+                     },
+        "market_observability":  {
+                                     "latency_ms":  2025.51,
+                                     "body":  {
+                                                  "error":  "Unable to connect to the remote server"
+                                              },
+                                     "status_code":  -1
+                                 },
+        "admin_stats":  null,
+        "ticker_probe":  null
+    }
+]

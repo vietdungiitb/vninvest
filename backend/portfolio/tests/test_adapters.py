@@ -46,6 +46,11 @@ class CacheAdapterTests(SimpleTestCase):
 
 
 class VnstockAdapterTests(SimpleTestCase):
+    def test_resolve_price_board_sources_keeps_order_and_dedup(self):
+        with patch.dict('os.environ', {'VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES': 'KBS,VCI,KBS'}):
+            sources = vnstock_adapter._resolve_price_board_sources(explicit_source='VCI')
+        self.assertEqual(sources, ['VCI', 'KBS'])
+
     def test_run_with_timeout_returns_function_result(self):
         result = vnstock_adapter._run_with_timeout(lambda: {'ok': True}, timeout=2)
         self.assertEqual(result, {'ok': True})
@@ -149,3 +154,32 @@ class VnstockAdapterTests(SimpleTestCase):
 
         self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
         self.assertEqual(result[('listing', 'ref_price')].iloc[0], 61.4)
+
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    @patch('portfolio.adapters.vnstock_adapter._resolve_price_board_sources', return_value=['VCI', 'KBS'])
+    def test_fetch_price_board_dataframe_fallbacks_on_rate_limit(
+        self,
+        _mock_sources,
+        mock_build_stock,
+        mock_run_timeout,
+    ):
+        first_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
+        second_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
+        mock_build_stock.side_effect = [first_client, second_client]
+
+        mock_run_timeout.side_effect = [
+            ExternalSystemException('429 Too Many Requests', code='vnstock_rate_limited'),
+            pd.DataFrame(
+                [[63.0, 61.4]],
+                columns=pd.MultiIndex.from_tuples([
+                    ('match', 'match_price'),
+                    ('listing', 'ref_price'),
+                ]),
+            ),
+        ]
+
+        result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
+
+        self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
+        self.assertEqual(mock_build_stock.call_count, 2)

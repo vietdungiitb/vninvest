@@ -424,6 +424,17 @@ export const getAdminOpsStats = () => apiClient.get('/admin-ops/stats/');
 export const getAdminRuntimeKPI = () => apiClient.get('/admin-ops/runtime-kpi/');
 export const getAdminSystemAiSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
 export const updateAdminSystemAiSettings = (payload) => apiClient.put('/admin-ops/system-ai-settings/', payload);
+export const getAdminPrefetchRuntimeSettings = () => apiClient.get('/admin-ops/system-ai-settings/');
+export const updateAdminPrefetchRuntimeSettings = (payload) =>
+  apiClient.put('/admin-ops/system-ai-settings/', { prefetch_runtime_settings: payload });
+export const getAdminPrefetchTimePolicy = () => apiClient.get('/admin-ops/system-ai-settings/');
+export const updateAdminPrefetchTimePolicy = (payload) =>
+  apiClient.put('/admin-ops/system-ai-settings/', { prefetch_time_policy: payload });
+export const getAdminVnstockConfigCurrent = () => apiClient.get('/admin-ops/vnstock-config/current/');
+export const updateAdminVnstockConfig = (payload) => apiClient.patch('/admin-ops/vnstock-config/update-config/', payload);
+export const resetAdminVnstockConfig = () => apiClient.post('/admin-ops/vnstock-config/reset-to-defaults/');
+export const getAdminVnstockConfigChangelog = (limit = 20, offset = 0) =>
+  apiClient.get(`/admin-ops/vnstock-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
 export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>

@@ -1,0 +1,4 @@
+﻿Manual step required:
+1) Take screenshot before save.
+2) Take screenshot after save.
+3) Export/merge as s1-admin-save-before-after.png

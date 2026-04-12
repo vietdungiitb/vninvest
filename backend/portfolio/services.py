@@ -1621,17 +1621,20 @@ def get_price_changes(symbols: list) -> dict:
     return result
 
 
-def sync_watchlist_prices(user_id: int, days: int = 5) -> list[dict]:
+def sync_watchlist_prices(user_id: int, days: int = 5, include_global_groups: bool = False) -> list[dict]:
     """
-    Kéo giá EOD mới nhất cho tất cả mã CK user đang quan tâm trong market groups,
-    tracked symbols và danh sách theo dõi cá nhân.
+    Kéo giá EOD mới nhất cho các mã CK user đang quan tâm.
+    - include_global_groups=False: chỉ sync tracked symbols + watchlist cá nhân.
+    - include_global_groups=True: sync thêm market groups taxonomy dùng chung (chỉ dùng cho admin flow).
     Mặc định sync 5 ngày để cập nhật giá nhanh.
     """
-    group_symbols = list(
-        SecuritiesGroup.objects
-        .values_list('items__symbol', flat=True)
-        .distinct()
-    )
+    group_symbols = []
+    if include_global_groups:
+        group_symbols = list(
+            SecuritiesGroup.objects
+            .values_list('items__symbol', flat=True)
+            .distinct()
+        )
     tracked_symbols = list(
         TrackedSymbol.objects
         .filter(user_id=user_id)

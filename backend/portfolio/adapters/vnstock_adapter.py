@@ -7,6 +7,7 @@ import time
 import pandas as pd
 
 from portfolio.exceptions import ExternalSystemException
+from portfolio.vnstock_runtime_config import get_vnstock_runtime_settings
 
 from .cache_adapter import is_rate_limited_error
 
@@ -67,14 +68,37 @@ def _resolve_float_env(name: str, default_value: float, min_value: float = 0.0) 
     return max(value, min_value)
 
 
-# Benchmark thực tế cho thấy ngưỡng ổn định nằm quanh 12 concurrent requests.
-_VNSTOCK_MAX_CONCURRENCY = _resolve_int_env('VNSTOCK_MAX_CONCURRENCY', 12, 1)
-_VNSTOCK_RETRY_ATTEMPTS = _resolve_int_env('VNSTOCK_RETRY_ATTEMPTS', 1, 0)
-_VNSTOCK_RETRY_BACKOFF_SECONDS = _resolve_float_env('VNSTOCK_RETRY_BACKOFF_SECONDS', 0.35, 0.0)
-_VNSTOCK_GATE = threading.BoundedSemaphore(value=_VNSTOCK_MAX_CONCURRENCY)
+_VNSTOCK_GATE_BY_LIMIT: dict[int, threading.BoundedSemaphore] = {}
+_VNSTOCK_GATE_LOCK = threading.Lock()
+
+
+def _get_runtime_settings() -> dict:
+    settings_payload = get_vnstock_runtime_settings()
+    if not isinstance(settings_payload, dict):
+        settings_payload = {}
+    return settings_payload
+
+
+def _get_gate(limit: int) -> threading.BoundedSemaphore:
+    with _VNSTOCK_GATE_LOCK:
+        gate = _VNSTOCK_GATE_BY_LIMIT.get(limit)
+        if gate is None:
+            gate = threading.BoundedSemaphore(value=limit)
+            _VNSTOCK_GATE_BY_LIMIT[limit] = gate
+        return gate
 
 
 def _resolve_timeout(channel: str, default_timeout: int = 8) -> int:
+    runtime_settings = _get_runtime_settings()
+    timeout_cfg = runtime_settings.get('timeout_config') if isinstance(runtime_settings.get('timeout_config'), dict) else {}
+    configured = timeout_cfg.get(str(channel or 'general').strip().lower())
+    if configured is not None:
+        try:
+            timeout_value = int(configured)
+        except (TypeError, ValueError):
+            timeout_value = default_timeout
+        return max(timeout_value, 1)
+
     env_key = f"VNSTOCK_{str(channel or 'general').upper()}_TIMEOUT_SECONDS"
     try:
         timeout_value = int(os.getenv(env_key, default_timeout))
@@ -96,18 +120,56 @@ def _build_stock_client(symbol: str, source: str = 'VCI'):
     return vnstock_cls().stock(symbol=symbol, source=source)
 
 
+def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str]:
+    runtime_settings = _get_runtime_settings()
+
+    configured_primary = str(runtime_settings.get('price_board_source') or '').strip().upper()
+    configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
+    fallback_items = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
+
+    primary = str(explicit_source or configured_primary or os.getenv('VNSTOCK_PRICE_BOARD_SOURCE', 'VCI') or 'VCI').strip().upper()
+    if not fallback_items:
+        fallback_raw = str(os.getenv('VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES', 'KBS,VCI') or '').strip()
+        fallback_items = [item.strip().upper() for item in fallback_raw.split(',') if item.strip()]
+
+    ordered = []
+    for source in [primary] + fallback_items:
+        if source and source not in ordered:
+            ordered.append(source)
+    return ordered or ['VCI']
+
+
 def _run_with_timeout(fn, timeout=8):
-    max_attempts = _VNSTOCK_RETRY_ATTEMPTS + 1
+    runtime_settings = _get_runtime_settings()
+
+    retry_attempts = runtime_settings.get('retry_attempts')
+    if retry_attempts is None:
+        retry_attempts = _resolve_int_env('VNSTOCK_RETRY_ATTEMPTS', 1, 0)
+    retry_backoff_seconds = runtime_settings.get('retry_backoff_seconds')
+    if retry_backoff_seconds is None:
+        retry_backoff_seconds = _resolve_float_env('VNSTOCK_RETRY_BACKOFF_SECONDS', 0.35, 0.0)
+
+    max_concurrency = runtime_settings.get('max_concurrency')
+    if max_concurrency is None:
+        max_concurrency = _resolve_int_env('VNSTOCK_MAX_CONCURRENCY', 12, 1)
+    max_concurrency = max(int(max_concurrency), 1)
+
+    enable_concurrent_limit = bool(runtime_settings.get('enable_concurrent_limit', True))
+    enable_rate_limit_detection = bool(runtime_settings.get('enable_rate_limit_detection', True))
+
+    max_attempts = int(retry_attempts) + 1
     last_error = None
 
     for attempt in range(max_attempts):
-        acquired = _VNSTOCK_GATE.acquire(timeout=max(timeout, 1))
-        if not acquired:
-            last_error = ExternalSystemException(
-                'vnstock queue saturated, thử lại sau.',
-                code='vnstock_busy',
-            )
-            break
+        gate = _get_gate(max_concurrency) if enable_concurrent_limit else None
+        if gate is not None:
+            acquired = gate.acquire(timeout=max(timeout, 1))
+            if not acquired:
+                last_error = ExternalSystemException(
+                    'vnstock queue saturated, thử lại sau.',
+                    code='vnstock_busy',
+                )
+                break
 
         try:
             with cf.ThreadPoolExecutor(max_workers=1) as executor:
@@ -119,10 +181,12 @@ def _run_with_timeout(fn, timeout=8):
                 code='vnstock_timeout',
             )
         except (Exception, SystemExit) as exc:
-            code = 'vnstock_rate_limited' if is_rate_limited_error(exc) else 'vnstock_error'
+            is_rate_limited = enable_rate_limit_detection and is_rate_limited_error(exc)
+            code = 'vnstock_rate_limited' if is_rate_limited else 'vnstock_error'
             last_error = ExternalSystemException(str(exc), code=code)
         finally:
-            _VNSTOCK_GATE.release()
+            if gate is not None:
+                gate.release()
 
         should_retry = (
             attempt < max_attempts - 1
@@ -137,7 +201,7 @@ def _run_with_timeout(fn, timeout=8):
             )
         )
         if should_retry:
-            time.sleep(_VNSTOCK_RETRY_BACKOFF_SECONDS * (attempt + 1))
+            time.sleep(float(retry_backoff_seconds) * (attempt + 1))
             continue
         break
 
@@ -158,16 +222,32 @@ def fetch_intraday_dataframe(symbol: str, page_size: int):
     )
 
 
-def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str):
-    stock_client = _build_stock_client(symbol=anchor_symbol, source='VCI')
+def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
+    timeout_seconds = _resolve_timeout('price_board', 8)
+    sources = _resolve_price_board_sources(explicit_source=source)
+    last_error = None
 
-    result = _run_with_timeout(
-        lambda: stock_client.trading.price_board(
-            symbols_list=symbols_list,
-        ),
-        timeout=_resolve_timeout('price_board', 8),
-    )
-    return _normalize_price_board_dataframe(result)
+    for candidate_source in sources:
+        stock_client = _build_stock_client(symbol=anchor_symbol, source=candidate_source)
+        try:
+            result = _run_with_timeout(
+                lambda: stock_client.trading.price_board(
+                    symbols_list=symbols_list,
+                ),
+                timeout=timeout_seconds,
+            )
+            return _normalize_price_board_dataframe(result)
+        except ExternalSystemException as exc:
+            last_error = exc
+            # Fallback to next provider only on explicit rate-limit errors.
+            if exc.code == 'vnstock_rate_limited' or is_rate_limited_error(exc):
+                logger.warning('price_board source %s rate-limited, fallback to next source', candidate_source)
+                continue
+            raise
+
+    if last_error is not None:
+        raise last_error
+    raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
 def fetch_financial_ratio_dataframe(

@@ -1,8 +1,9 @@
 from django.db import models, transaction
 from django.contrib.auth.models import User
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core import signing
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 from decimal import Decimal
 
 from .ai_options import ADVISORY_CAPABILITY, PROVIDER_CHOICES, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
@@ -813,6 +814,127 @@ class UserConfig(models.Model):
 
     def get_ai_api_key(self) -> str:
         return decrypt_text(self.ai_api_key)
+
+
+class RuntimeVnstockConfig(models.Model):
+    """Singleton runtime config cho vnstock adapter, hỗ trợ cập nhật không cần restart."""
+
+    max_concurrency = models.PositiveIntegerField(
+        default=12,
+        validators=[MinValueValidator(1), MaxValueValidator(50)],
+        verbose_name='Giới hạn concurrent requests',
+    )
+    retry_attempts = models.PositiveIntegerField(
+        default=1,
+        validators=[MaxValueValidator(5)],
+        verbose_name='Số lần retry',
+    )
+    retry_backoff_seconds = models.FloatField(
+        default=0.35,
+        validators=[MinValueValidator(0.0), MaxValueValidator(5.0)],
+        verbose_name='Backoff retry (giây)',
+    )
+    rate_limit_cooldown_seconds = models.PositiveIntegerField(
+        default=20,
+        validators=[MinValueValidator(5), MaxValueValidator(120)],
+        verbose_name='Cooldown khi rate limit (giây)',
+    )
+    timeout_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Timeout theo channel',
+    )
+    price_board_source = models.CharField(
+        max_length=16,
+        default='VCI',
+        verbose_name='Provider chính cho price board',
+    )
+    fallback_sources = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name='Provider fallback',
+    )
+    enable_caching = models.BooleanField(default=True, verbose_name='Bật cache adapter')
+    enable_rate_limit_detection = models.BooleanField(default=True, verbose_name='Bật nhận diện rate limit')
+    enable_concurrent_limit = models.BooleanField(default=True, verbose_name='Bật giới hạn đồng thời')
+    changelog = models.JSONField(default=list, blank=True, verbose_name='Lịch sử thay đổi')
+    updated_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='vnstock_runtime_config_updates',
+        verbose_name='Người cập nhật gần nhất',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Runtime Vnstock Config'
+        verbose_name_plural = 'Runtime Vnstock Config'
+
+    def __str__(self):
+        return f'RuntimeVnstockConfig#{self.pk or 1} ({self.price_board_source})'
+
+    @classmethod
+    def default_timeout_config(cls):
+        return {
+            'price_board': 8,
+            'intraday': 8,
+            'financial_ratio': 10,
+            'history': 12,
+            'listing': 12,
+            'general': 8,
+        }
+
+    @classmethod
+    def default_fallback_sources(cls):
+        return ['KBS', 'VCI']
+
+    @classmethod
+    def get_or_create_singleton(cls):
+        instance, _created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'timeout_config': cls.default_timeout_config,
+                'fallback_sources': cls.default_fallback_sources,
+            },
+        )
+        return instance
+
+    def clean(self):
+        super().clean()
+        if not isinstance(self.timeout_config, dict):
+            raise ValidationError({'timeout_config': 'timeout_config phải là object.'})
+        if not isinstance(self.fallback_sources, list):
+            raise ValidationError({'fallback_sources': 'fallback_sources phải là danh sách.'})
+
+    def to_runtime_dict(self):
+        return {
+            'max_concurrency': int(self.max_concurrency),
+            'retry_attempts': int(self.retry_attempts),
+            'retry_backoff_seconds': float(self.retry_backoff_seconds),
+            'rate_limit_cooldown_seconds': int(self.rate_limit_cooldown_seconds),
+            'timeout_config': self.timeout_config if isinstance(self.timeout_config, dict) else self.default_timeout_config(),
+            'price_board_source': str(self.price_board_source or 'VCI').strip().upper(),
+            'fallback_sources': self.fallback_sources if isinstance(self.fallback_sources, list) else self.default_fallback_sources(),
+            'enable_caching': bool(self.enable_caching),
+            'enable_rate_limit_detection': bool(self.enable_rate_limit_detection),
+            'enable_concurrent_limit': bool(self.enable_concurrent_limit),
+        }
+
+    def append_changelog(self, actor=None, changes=None, reason='update_config'):
+        history = list(self.changelog or [])
+        history.insert(
+            0,
+            {
+                'timestamp': timezone.now().isoformat(),
+                'actor': getattr(actor, 'username', None),
+                'reason': str(reason or 'update_config'),
+                'changes': changes or {},
+            },
+        )
+        self.changelog = history[:100]
 
 
 class SystemAISettings(models.Model):

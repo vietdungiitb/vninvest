@@ -428,6 +428,8 @@ def admin_runtime_kpi_advisory_metrics_api(request):
 
 
 HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY = 'admin_ops:holistic_governance_delta_thresholds'
+PREFETCH_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:prefetch_runtime_settings'
+PREFETCH_TIME_POLICY_CACHE_KEY = 'admin_ops:prefetch_time_policy'
 
 
 def _default_governance_delta_thresholds():
@@ -488,6 +490,400 @@ def _set_runtime_governance_delta_thresholds(raw_payload):
     return normalized
 
 
+def _default_prefetch_runtime_settings():
+    def _int_env(name, default, minimum):
+        try:
+            value = int(os.getenv(name, str(default)))
+        except (TypeError, ValueError):
+            value = int(default)
+        return max(value, minimum)
+
+    retry_base = _int_env('TICKER_PREFETCH_RETRY_BASE_SECONDS', 8, 1)
+    return {
+        'batch_size': _int_env('TICKER_PREFETCH_BATCH_SIZE', 60, 1),
+        'symbol_limit': _int_env('TICKER_PREFETCH_SYMBOL_LIMIT', 240, 0),
+        'max_retries': _int_env('TICKER_PREFETCH_MAX_RETRIES', 6, 0),
+        'retry_base_seconds': retry_base,
+        'retry_max_seconds': max(_int_env('TICKER_PREFETCH_RETRY_MAX_SECONDS', 120, 1), retry_base),
+        'rate_limit_cooldown_seconds': _int_env('VNSTOCK_RATE_LIMIT_COOLDOWN_SECONDS', 20, 5),
+        'circuit_window_seconds': _int_env('VNSTOCK_CIRCUIT_WINDOW_SECONDS', 300, 30),
+        'circuit_breaker_timeout_threshold': _int_env('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3, 1),
+        'circuit_breaker_cooldown_seconds': _int_env('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800, 60),
+        'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
+    }
+
+
+def _coerce_prefetch_runtime_settings(raw_payload, fallback=None):
+    payload = raw_payload if isinstance(raw_payload, dict) else {}
+    base = fallback or _default_prefetch_runtime_settings()
+
+    int_fields = {
+        'batch_size': 1,
+        'symbol_limit': 0,
+        'max_retries': 0,
+        'retry_base_seconds': 1,
+        'retry_max_seconds': 1,
+        'rate_limit_cooldown_seconds': 5,
+        'circuit_window_seconds': 30,
+        'circuit_breaker_timeout_threshold': 1,
+        'circuit_breaker_cooldown_seconds': 60,
+    }
+
+    normalized = {}
+    for field, minimum in int_fields.items():
+        try:
+            value = int(payload.get(field, base[field]))
+        except (TypeError, ValueError):
+            raise ValueError(f'{field} phải là số nguyên hợp lệ.')
+        normalized[field] = max(value, minimum)
+
+    normalized['retry_max_seconds'] = max(normalized['retry_max_seconds'], normalized['retry_base_seconds'])
+    normalized['include_group_symbols'] = bool(payload.get('include_group_symbols', base['include_group_symbols']))
+    return normalized
+
+
+def _get_runtime_prefetch_settings():
+    from django.core.cache import cache
+
+    default_settings = _default_prefetch_runtime_settings()
+    cached = cache.get(PREFETCH_RUNTIME_SETTINGS_CACHE_KEY)
+    if not isinstance(cached, dict):
+        return default_settings
+    try:
+        return _coerce_prefetch_runtime_settings(cached, fallback=default_settings)
+    except ValueError:
+        return default_settings
+
+
+def _set_runtime_prefetch_settings(raw_payload):
+    from django.core.cache import cache
+
+    normalized = _coerce_prefetch_runtime_settings(raw_payload, fallback=_default_prefetch_runtime_settings())
+    cache.set(PREFETCH_RUNTIME_SETTINGS_CACHE_KEY, normalized, timeout=None)
+    return normalized
+
+
+def _default_prefetch_time_policy():
+    return {
+        'timezone': 'Asia/Ho_Chi_Minh',
+        'market': {
+            'open_time': '09:00',
+            'close_time': '15:00',
+            'pre_open_minutes': 30,
+            'post_close_minutes': 30,
+            'lunch_break': {
+                'enabled': True,
+                'start': '11:30',
+                'end': '13:00',
+            },
+            'weekend_mode': 'offhours',
+        },
+        'profiles': {
+            'pre_open': {
+                'query_enabled': True,
+                'interval_seconds': 90,
+                'batch_size': 10,
+                'symbol_limit': 20,
+                'max_retries': 2,
+            },
+            'market_open': {
+                'query_enabled': True,
+                'interval_seconds': 35,
+                'batch_size': 20,
+                'symbol_limit': 40,
+                'max_retries': 4,
+            },
+            'lunch_break': {
+                'query_enabled': True,
+                'interval_seconds': 180,
+                'batch_size': 8,
+                'symbol_limit': 20,
+                'max_retries': 1,
+            },
+            'pre_close': {
+                'query_enabled': True,
+                'interval_seconds': 60,
+                'batch_size': 12,
+                'symbol_limit': 30,
+                'max_retries': 2,
+            },
+            'post_close': {
+                'query_enabled': True,
+                'interval_seconds': 180,
+                'batch_size': 8,
+                'symbol_limit': 20,
+                'max_retries': 1,
+            },
+            'offhours': {
+                'query_enabled': False,
+                'interval_seconds': 600,
+                'batch_size': 5,
+                'symbol_limit': 10,
+                'max_retries': 0,
+            },
+        },
+        'rate_limit_guard': {
+            'jitter_percent': 15.0,
+            'cooldown_multiplier_on_429': 2.0,
+            'max_interval_seconds': 1800,
+        },
+    }
+
+
+def _prefetch_time_policy_rulebook():
+    return {
+        'timezone_required': True,
+        'time_format': 'HH:MM',
+        'market': {
+            'pre_open_minutes_min': 0,
+            'post_close_minutes_min': 0,
+            'weekend_mode_allowed': ['offhours'],
+        },
+        'profiles': {
+            'required_profiles': ['pre_open', 'market_open', 'lunch_break', 'pre_close', 'post_close', 'offhours'],
+            'interval_seconds_min': 5,
+            'batch_size_min': 1,
+            'symbol_limit_min': 0,
+            'max_retries_min': 0,
+        },
+        'rate_limit_guard': {
+            'jitter_percent_min': 0,
+            'jitter_percent_max': 50,
+            'cooldown_multiplier_on_429_min': 1,
+            'max_interval_seconds_min': 60,
+        },
+    }
+
+
+def _coerce_prefetch_time_policy(raw_payload, fallback=None):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    def _to_int(value, field, minimum=0):
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f'{field} phải là số nguyên hợp lệ.')
+        if parsed < minimum:
+            raise ValueError(f'{field} phải lớn hơn hoặc bằng {minimum}.')
+        return parsed
+
+    def _to_float(value, field):
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            raise ValueError(f'{field} phải là số hợp lệ.')
+
+    def _to_bool(value, field):
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, (int, float)):
+            return bool(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {'true', '1', 'yes', 'on'}:
+                return True
+            if lowered in {'false', '0', 'no', 'off'}:
+                return False
+        raise ValueError(f'{field} phải là boolean hợp lệ.')
+
+    def _to_hhmm(value, field):
+        candidate = str(value or '').strip()
+        try:
+            datetime.strptime(candidate, '%H:%M')
+        except ValueError:
+            raise ValueError(f'{field} phải theo định dạng HH:MM.')
+        return candidate
+
+    def _to_minutes(hhmm):
+        hh, mm = hhmm.split(':')
+        return int(hh) * 60 + int(mm)
+
+    payload = raw_payload if isinstance(raw_payload, dict) else {}
+    base = fallback or _default_prefetch_time_policy()
+
+    timezone_name = str(payload.get('timezone', base['timezone']) or '').strip()
+    if not timezone_name:
+        raise ValueError('prefetch_time_policy.timezone là bắt buộc.')
+    try:
+        ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError:
+        raise ValueError('prefetch_time_policy.timezone không hợp lệ.')
+
+    market_payload = payload.get('market', {})
+    if market_payload is None:
+        market_payload = {}
+    if not isinstance(market_payload, dict):
+        raise ValueError('prefetch_time_policy.market phải là object hợp lệ.')
+
+    market_base = base['market']
+    open_time = _to_hhmm(market_payload.get('open_time', market_base['open_time']), 'prefetch_time_policy.market.open_time')
+    close_time = _to_hhmm(market_payload.get('close_time', market_base['close_time']), 'prefetch_time_policy.market.close_time')
+    if _to_minutes(open_time) >= _to_minutes(close_time):
+        raise ValueError('prefetch_time_policy.market.open_time phải nhỏ hơn close_time.')
+
+    pre_open_minutes = _to_int(
+        market_payload.get('pre_open_minutes', market_base['pre_open_minutes']),
+        'prefetch_time_policy.market.pre_open_minutes',
+        minimum=0,
+    )
+    post_close_minutes = _to_int(
+        market_payload.get('post_close_minutes', market_base['post_close_minutes']),
+        'prefetch_time_policy.market.post_close_minutes',
+        minimum=0,
+    )
+
+    lunch_payload = market_payload.get('lunch_break', {})
+    if lunch_payload is None:
+        lunch_payload = {}
+    if not isinstance(lunch_payload, dict):
+        raise ValueError('prefetch_time_policy.market.lunch_break phải là object hợp lệ.')
+
+    lunch_base = market_base['lunch_break']
+    lunch_enabled = _to_bool(
+        lunch_payload.get('enabled', lunch_base['enabled']),
+        'prefetch_time_policy.market.lunch_break.enabled',
+    )
+    lunch_start = _to_hhmm(
+        lunch_payload.get('start', lunch_base['start']),
+        'prefetch_time_policy.market.lunch_break.start',
+    )
+    lunch_end = _to_hhmm(
+        lunch_payload.get('end', lunch_base['end']),
+        'prefetch_time_policy.market.lunch_break.end',
+    )
+    if lunch_enabled and _to_minutes(lunch_start) >= _to_minutes(lunch_end):
+        raise ValueError('prefetch_time_policy.market.lunch_break.start phải nhỏ hơn end.')
+
+    weekend_mode = str(market_payload.get('weekend_mode', market_base.get('weekend_mode', 'offhours')) or '').strip().lower()
+    if weekend_mode not in {'offhours'}:
+        raise ValueError('prefetch_time_policy.market.weekend_mode không hợp lệ.')
+
+    profiles_payload = payload.get('profiles', {})
+    if profiles_payload is None:
+        profiles_payload = {}
+    if not isinstance(profiles_payload, dict):
+        raise ValueError('prefetch_time_policy.profiles phải là object hợp lệ.')
+
+    normalized_profiles = {}
+    for profile_name, profile_base in base['profiles'].items():
+        profile_payload = profiles_payload.get(profile_name, {})
+        if profile_payload is None:
+            profile_payload = {}
+        if not isinstance(profile_payload, dict):
+            raise ValueError(f'prefetch_time_policy.profiles.{profile_name} phải là object hợp lệ.')
+
+        query_enabled = _to_bool(
+            profile_payload.get('query_enabled', profile_base['query_enabled']),
+            f'prefetch_time_policy.profiles.{profile_name}.query_enabled',
+        )
+        interval_seconds = _to_int(
+            profile_payload.get('interval_seconds', profile_base['interval_seconds']),
+            f'prefetch_time_policy.profiles.{profile_name}.interval_seconds',
+            minimum=5,
+        )
+        batch_size = _to_int(
+            profile_payload.get('batch_size', profile_base['batch_size']),
+            f'prefetch_time_policy.profiles.{profile_name}.batch_size',
+            minimum=1,
+        )
+        symbol_limit = _to_int(
+            profile_payload.get('symbol_limit', profile_base['symbol_limit']),
+            f'prefetch_time_policy.profiles.{profile_name}.symbol_limit',
+            minimum=0,
+        )
+        max_retries = _to_int(
+            profile_payload.get('max_retries', profile_base['max_retries']),
+            f'prefetch_time_policy.profiles.{profile_name}.max_retries',
+            minimum=0,
+        )
+
+        normalized_profiles[profile_name] = {
+            'query_enabled': query_enabled,
+            'interval_seconds': interval_seconds,
+            'batch_size': batch_size,
+            'symbol_limit': symbol_limit,
+            'max_retries': max_retries,
+        }
+
+    guard_payload = payload.get('rate_limit_guard', {})
+    if guard_payload is None:
+        guard_payload = {}
+    if not isinstance(guard_payload, dict):
+        raise ValueError('prefetch_time_policy.rate_limit_guard phải là object hợp lệ.')
+    guard_base = base['rate_limit_guard']
+
+    jitter_percent = _to_float(
+        guard_payload.get('jitter_percent', guard_base['jitter_percent']),
+        'prefetch_time_policy.rate_limit_guard.jitter_percent',
+    )
+    if jitter_percent < 0 or jitter_percent > 50:
+        raise ValueError('prefetch_time_policy.rate_limit_guard.jitter_percent phải trong khoảng [0, 50].')
+
+    cooldown_multiplier_on_429 = _to_float(
+        guard_payload.get('cooldown_multiplier_on_429', guard_base['cooldown_multiplier_on_429']),
+        'prefetch_time_policy.rate_limit_guard.cooldown_multiplier_on_429',
+    )
+    if cooldown_multiplier_on_429 < 1:
+        raise ValueError('prefetch_time_policy.rate_limit_guard.cooldown_multiplier_on_429 phải >= 1.')
+
+    max_interval_seconds = _to_int(
+        guard_payload.get('max_interval_seconds', guard_base['max_interval_seconds']),
+        'prefetch_time_policy.rate_limit_guard.max_interval_seconds',
+        minimum=60,
+    )
+
+    for profile_name, profile_payload in normalized_profiles.items():
+        if profile_payload['interval_seconds'] > max_interval_seconds:
+            raise ValueError(
+                f'prefetch_time_policy.profiles.{profile_name}.interval_seconds không được lớn hơn '
+                'prefetch_time_policy.rate_limit_guard.max_interval_seconds.'
+            )
+
+    return {
+        'timezone': timezone_name,
+        'market': {
+            'open_time': open_time,
+            'close_time': close_time,
+            'pre_open_minutes': pre_open_minutes,
+            'post_close_minutes': post_close_minutes,
+            'lunch_break': {
+                'enabled': lunch_enabled,
+                'start': lunch_start,
+                'end': lunch_end,
+            },
+            'weekend_mode': weekend_mode,
+        },
+        'profiles': normalized_profiles,
+        'rate_limit_guard': {
+            'jitter_percent': jitter_percent,
+            'cooldown_multiplier_on_429': cooldown_multiplier_on_429,
+            'max_interval_seconds': max_interval_seconds,
+        },
+    }
+
+
+def _get_runtime_prefetch_time_policy():
+    from django.core.cache import cache
+
+    default_policy = _default_prefetch_time_policy()
+    cached = cache.get(PREFETCH_TIME_POLICY_CACHE_KEY)
+    if not isinstance(cached, dict):
+        return default_policy
+    try:
+        return _coerce_prefetch_time_policy(cached, fallback=default_policy)
+    except ValueError:
+        return default_policy
+
+
+def _set_runtime_prefetch_time_policy(raw_payload):
+    from django.core.cache import cache
+
+    normalized = _coerce_prefetch_time_policy(raw_payload, fallback=_default_prefetch_time_policy())
+    cache.set(PREFETCH_TIME_POLICY_CACHE_KEY, normalized, timeout=None)
+    return normalized
+
+
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAdminUser])
 def admin_system_ai_settings_api(request):
@@ -505,6 +901,8 @@ def admin_system_ai_settings_api(request):
 
     def _serialize(obj):
         governance_thresholds = _get_runtime_governance_delta_thresholds()
+        prefetch_runtime_settings = _get_runtime_prefetch_settings()
+        prefetch_time_policy = _get_runtime_prefetch_time_policy()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -526,11 +924,39 @@ def admin_system_ai_settings_api(request):
                     'cooldown': 2.0,
                 },
             },
+            'prefetch_runtime_settings': prefetch_runtime_settings,
+            'prefetch_runtime_rulebook': {
+                'batch_size_min': 1,
+                'symbol_limit_min': 0,
+                'max_retries_min': 0,
+                'retry_base_seconds_min': 1,
+                'retry_max_seconds_min': 1,
+                'rate_limit_cooldown_seconds_min': 5,
+                'circuit_window_seconds_min': 30,
+                'circuit_breaker_timeout_threshold_min': 1,
+                'circuit_breaker_cooldown_seconds_min': 60,
+                'recommended': {
+                    'batch_size': 20,
+                    'symbol_limit': 40,
+                    'max_retries': 4,
+                    'retry_base_seconds': 15,
+                    'retry_max_seconds': 120,
+                    'rate_limit_cooldown_seconds': 30,
+                    'circuit_window_seconds': 300,
+                    'circuit_breaker_timeout_threshold': 3,
+                    'circuit_breaker_cooldown_seconds': 1800,
+                    'include_group_symbols': False,
+                },
+            },
+            'prefetch_time_policy': prefetch_time_policy,
+            'prefetch_time_policy_rulebook': _prefetch_time_policy_rulebook(),
             'updated_at': obj.updated_at.isoformat() if obj.updated_at else None,
         }
 
     def _snapshot(obj):
         governance_thresholds = _get_runtime_governance_delta_thresholds()
+        prefetch_runtime_settings = _get_runtime_prefetch_settings()
+        prefetch_time_policy = _get_runtime_prefetch_time_policy()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -542,6 +968,8 @@ def admin_system_ai_settings_api(request):
             'ai_api_key_configured': obj.ai_api_key_configured,
             'notes': str(obj.notes or ''),
             'governance_delta_thresholds': governance_thresholds,
+            'prefetch_runtime_settings': prefetch_runtime_settings,
+            'prefetch_time_policy': prefetch_time_policy,
         }
 
     if request.method == 'GET':
@@ -556,6 +984,8 @@ def admin_system_ai_settings_api(request):
     is_active = bool(request.data.get('is_active', settings_obj.is_active))
     raw_key = request.data.get('ai_api_key', None)
     governance_thresholds_payload = request.data.get('governance_delta_thresholds', None)
+    prefetch_runtime_settings_payload = request.data.get('prefetch_runtime_settings', None)
+    prefetch_time_policy_payload = request.data.get('prefetch_time_policy', None)
 
     if not is_valid_provider(provider):
         return Response({'ok': False, 'message': 'AI provider không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -577,6 +1007,10 @@ def admin_system_ai_settings_api(request):
     try:
         if governance_thresholds_payload is not None:
             _set_runtime_governance_delta_thresholds(governance_thresholds_payload)
+        if prefetch_runtime_settings_payload is not None:
+            _set_runtime_prefetch_settings(prefetch_runtime_settings_payload)
+        if prefetch_time_policy_payload is not None:
+            _set_runtime_prefetch_time_policy(prefetch_time_policy_payload)
         settings_obj.full_clean()
         settings_obj.save()
     except (ValidationError, ValueError) as exc:
@@ -741,6 +1175,143 @@ def admin_system_ai_audit_logs_api(request):
             'order': order,
             'has_more': (offset + len(payload)) < total,
             'results': payload,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_vnstock_runtime_config_current_api(request):
+    """GET /api/admin-ops/vnstock-config/current/"""
+    from .models import RuntimeVnstockConfig
+    from .serializers import RuntimeVnstockConfigSerializer
+    from .vnstock_runtime_config import coerce_vnstock_runtime_settings, default_vnstock_runtime_settings
+
+    config = RuntimeVnstockConfig.get_or_create_singleton()
+    defaults = default_vnstock_runtime_settings()
+    normalized = coerce_vnstock_runtime_settings(config.to_runtime_dict(), fallback=defaults)
+    for key, value in normalized.items():
+        setattr(config, key, value)
+
+    serializer = RuntimeVnstockConfigSerializer(config)
+    return Response(
+        {
+            'ok': True,
+            'settings': serializer.data,
+            'rulebook': {
+                'max_concurrency': {'min': 1, 'max': 50},
+                'retry_attempts': {'min': 0, 'max': 5},
+                'retry_backoff_seconds': {'min': 0.0, 'max': 5.0},
+                'rate_limit_cooldown_seconds': {'min': 5, 'max': 120},
+                'timeout_seconds': {'min': 1, 'max': 120},
+                'allowed_sources': ['VCI', 'KBS', 'TCBS', 'SSI'],
+            },
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAdminUser])
+def admin_vnstock_runtime_config_update_api(request):
+    """PATCH /api/admin-ops/vnstock-config/update-config/"""
+    from .models import RuntimeVnstockConfig
+    from .serializers import RuntimeVnstockConfigSerializer
+    from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
+
+    config = RuntimeVnstockConfig.get_or_create_singleton()
+    before = config.to_runtime_dict()
+
+    serializer = RuntimeVnstockConfigSerializer(config, data=request.data or {}, partial=True)
+    if not serializer.is_valid():
+        return Response(
+            {
+                'ok': False,
+                'message': 'Dữ liệu cấu hình không hợp lệ.',
+                'field_errors': serializer.errors,
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    updated_config = serializer.save(updated_by=request.user)
+    after = updated_config.to_runtime_dict()
+
+    changes = {}
+    for key, old_value in before.items():
+        new_value = after.get(key)
+        if old_value != new_value:
+            changes[key] = {'before': old_value, 'after': new_value}
+
+    if changes:
+        updated_config.append_changelog(actor=request.user, changes=changes, reason='update_config')
+        updated_config.save(update_fields=['changelog', 'updated_at'])
+
+    invalidate_vnstock_runtime_cache()
+    return Response(
+        {
+            'ok': True,
+            'message': 'Đã cập nhật Runtime Vnstock Config.',
+            'settings': RuntimeVnstockConfigSerializer(updated_config).data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_vnstock_runtime_config_reset_api(request):
+    """POST /api/admin-ops/vnstock-config/reset-to-defaults/"""
+    from .models import RuntimeVnstockConfig
+    from .serializers import RuntimeVnstockConfigSerializer
+    from .vnstock_runtime_config import default_vnstock_runtime_settings, invalidate_vnstock_runtime_cache
+
+    defaults = default_vnstock_runtime_settings()
+    config = RuntimeVnstockConfig.get_or_create_singleton()
+
+    for key, value in defaults.items():
+        setattr(config, key, value)
+    config.updated_by = request.user
+    config.full_clean()
+    config.save()
+
+    config.append_changelog(actor=request.user, changes={'reset': True}, reason='reset_to_defaults')
+    config.save(update_fields=['changelog', 'updated_at'])
+    invalidate_vnstock_runtime_cache()
+
+    return Response(
+        {
+            'ok': True,
+            'message': 'Đã reset Runtime Vnstock Config về mặc định.',
+            'settings': RuntimeVnstockConfigSerializer(config).data,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_vnstock_runtime_config_changelog_api(request):
+    """GET /api/admin-ops/vnstock-config/changelog/"""
+    from .models import RuntimeVnstockConfig
+
+    limit = max(1, min(int(request.query_params.get('limit', 30)), 200))
+    offset = max(0, int(request.query_params.get('offset', 0)))
+
+    config = RuntimeVnstockConfig.get_or_create_singleton()
+    items = list(config.changelog or [])
+    total = len(items)
+    rows = items[offset: offset + limit]
+
+    return Response(
+        {
+            'ok': True,
+            'count': len(rows),
+            'total': total,
+            'offset': offset,
+            'limit': limit,
+            'has_more': offset + len(rows) < total,
+            'results': rows,
         },
         status=status.HTTP_200_OK,
     )
@@ -1137,6 +1708,34 @@ class WatchlistSeedView(APIView):
     def post(self, request):
         return Response({'detail': 'Seed not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
+
+def _sync_cooldown_seconds_for_user(user) -> int:
+    default_non_staff = 45
+    default_staff = 10
+    env_key = 'SYNC_PRICE_COOLDOWN_SECONDS_STAFF' if getattr(user, 'is_staff', False) else 'SYNC_PRICE_COOLDOWN_SECONDS'
+    default_value = default_staff if getattr(user, 'is_staff', False) else default_non_staff
+    try:
+        parsed = int(os.getenv(env_key, str(default_value)))
+    except (TypeError, ValueError):
+        parsed = default_value
+    return max(parsed, 0)
+
+
+def _acquire_sync_cooldown(user, action: str) -> tuple[bool, int]:
+    cooldown_seconds = _sync_cooldown_seconds_for_user(user)
+    if cooldown_seconds <= 0:
+        return True, 0
+
+    now_ts = int(timezone.now().timestamp())
+    cache_key = f'sync:cooldown:{action}:user:{user.id}'
+    locked_until = cache.get(cache_key)
+    if isinstance(locked_until, int) and locked_until > now_ts:
+        return False, max(locked_until - now_ts, 1)
+
+    next_until = now_ts + cooldown_seconds
+    cache.set(cache_key, next_until, timeout=cooldown_seconds)
+    return True, 0
+
 class WatchlistSyncView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -1149,15 +1748,36 @@ class WatchlistSyncView(APIView):
         except (ValueError, TypeError):
             return Response({'detail': 'days phải là số nguyên trong khoảng [1, 90].'}, status=status.HTTP_400_BAD_REQUEST)
 
+        acquired, retry_after_seconds = _acquire_sync_cooldown(request.user, action='watchlist-sync')
+        if not acquired:
+            return Response(
+                {
+                    'detail': 'Bạn thao tác quá nhanh. Vui lòng đợi trước khi đồng bộ lại.',
+                    'retry_after_seconds': retry_after_seconds,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
         try:
-            results = sync_watchlist_prices(user_id=request.user.id, days=days)
+            include_global_groups = bool(request.user.is_staff)
+            results = sync_watchlist_prices(
+                user_id=request.user.id,
+                days=days,
+                include_global_groups=include_global_groups,
+            )
         except (Exception, SystemExit) as exc:
             logger.error('WatchlistSyncView lỗi: %s', exc, exc_info=True)
             return Response(
                 {'detail': f'Sync thất bại: {exc}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
-        return Response({'synced': len(results), 'days': days})
+        return Response(
+            {
+                'synced': len(results),
+                'days': days,
+                'scope': 'global+user' if request.user.is_staff else 'user-only',
+            }
+        )
 
 
 class RealtimeTickerView(APIView):
@@ -2995,7 +3615,7 @@ class SecuritiesSeedView(APIView):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class SecuritiesSyncView(APIView):
-    """POST /api/portfolio/Securities/sync/ — Đồng bộ giá cho toàn bộ mã trong Securities."""
+    """POST /api/portfolio/Securities/sync/ — Đồng bộ giá cho mã cá nhân; admin có thể quét toàn cục."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -3005,19 +3625,29 @@ class SecuritiesSyncView(APIView):
         except (ValueError, TypeError):
             days = 5
 
-        # Đồng bộ giá cho toàn bộ mã trong SecuritiesGroup của user.
-        all_symbols = list({
-            item.symbol
-            for group in SecuritiesGroup.objects.all().prefetch_related('items')
-            for item in group.items.all()
-        })
-        if not all_symbols:
-            return Response({'detail': 'Securities không có mã nào.'}, status=status.HTTP_200_OK)
+        acquired, retry_after_seconds = _acquire_sync_cooldown(request.user, action='securities-sync')
+        if not acquired:
+            return Response(
+                {
+                    'detail': 'Bạn thao tác quá nhanh. Vui lòng đợi trước khi đồng bộ lại.',
+                    'retry_after_seconds': retry_after_seconds,
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
 
-        results = sync_watchlist_prices(request.user.id, days=days)
+        include_global_groups = bool(request.user.is_staff)
+        results = sync_watchlist_prices(
+            request.user.id,
+            days=days,
+            include_global_groups=include_global_groups,
+        )
+        if not results:
+            return Response({'detail': 'Không có mã để đồng bộ trong phạm vi hiện tại.'}, status=status.HTTP_200_OK)
+
         return Response({
             'synced': results,
-            'total_symbols': len(all_symbols),
+            'total_symbols': len(results),
+            'scope': 'global+user' if include_global_groups else 'user-only',
         })
 
 
