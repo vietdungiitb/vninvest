@@ -5394,7 +5394,16 @@ def stock_news_ai_summary_api(request, symbol: str):
             source_payload['cached'] = True
 
     if source_payload is None:
-        news_response = stock_news_api(request, normalized_symbol)
+        # Build an internal HttpRequest instead of reusing DRF Request to avoid
+        # AssertionError in api_view wrapper.
+        from django.test import RequestFactory
+
+        rf = RequestFactory()
+        params = {'force': '1'} if force_refresh else {}
+        internal_request = rf.get(f'/api/stock-management/stocks/{normalized_symbol}/news/', data=params)
+        internal_request.user = request.user
+
+        news_response = stock_news_api(internal_request, normalized_symbol)
         if news_response.status_code >= 400:
             return news_response
         source_payload = dict(news_response.data or {})
