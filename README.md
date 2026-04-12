@@ -10,6 +10,16 @@ Portfolio Tracker cho chứng khoán Việt Nam (HOSE/HNX/UPCOM) với realtime 
 
 ## Quick Start Local
 
+### 0. Bootstrap cau hinh mac dinh an toan (khuyen nghi)
+
+```powershell
+.\scripts\dev-setup.ps1
+```
+
+- Tu dong tao `backend/.env`, `backend/.env.dev`, `frontend/.env` neu chua co.
+- Tu dong sinh `DJANGO_SECRET_KEY` an toan, giam thao tac cau hinh thu cong.
+- Tai lieu chi tiet: `docs/SAFE_DEFAULT_SETUP_GUIDE_20260412.md`.
+
 ### 1. Backend
 ```powershell
 cd backend

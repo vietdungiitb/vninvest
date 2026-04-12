@@ -52,6 +52,22 @@ if ($Down) {
     exit 0
 }
 
+# ── Bootstrap env files (tự động nếu thiếu) ─────────────────────────────────
+Write-Step "Bootstrap env files"
+$devEnvPath   = Join-Path $PSScriptRoot "backend/.env.dev"
+$setupScript  = Join-Path $PSScriptRoot "scripts/dev-setup.ps1"
+if (-not (Test-Path $devEnvPath)) {
+    Write-Host "  backend/.env.dev khong ton tai — chay bootstrap..." -ForegroundColor Yellow
+    if (Test-Path $setupScript) {
+        & $setupScript
+    } else {
+        Write-Host "  Khong tim thay scripts/dev-setup.ps1. Copy thu cong: backend/.env.example -> backend/.env.dev" -ForegroundColor Red
+        exit 1
+    }
+} else {
+    Write-Host "  backend/.env.dev da co. (Dung -Force de gen lai: .\scripts\dev-setup.ps1 -Force)" -ForegroundColor DarkGray
+}
+
 # ── Kiểm tra Docker ──────────────────────────────────────────────────────────
 Write-Step "Kiểm tra Docker"
 try {

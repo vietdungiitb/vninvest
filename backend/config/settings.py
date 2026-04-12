@@ -48,8 +48,29 @@ def _env_bool(name: str, default: bool) -> bool:
         return False
     return default
 
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-change-this-in-production-use-env-variable")
 DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
+
+_secret_key_env = os.getenv("DJANGO_SECRET_KEY", "").strip()
+if _secret_key_env:
+    SECRET_KEY = _secret_key_env
+elif DEBUG:
+    # Ephemeral key cho local dev khi chưa có .env file.
+    # Mỗi lần restart sẽ gen key mới → session/cookie không persistent.
+    # Chạy scripts/dev-setup.ps1 để tạo .env với key cố định.
+    import secrets as _secrets
+    import warnings as _warnings
+    SECRET_KEY = "dev-ephemeral-" + _secrets.token_urlsafe(40)
+    _warnings.warn(
+        "DJANGO_SECRET_KEY chua duoc set. Dang dung ephemeral key (session se mat sau restart). "
+        "Chay scripts/dev-setup.ps1 de tao backend/.env.",
+        UserWarning,
+        stacklevel=1,
+    )
+else:
+    raise ValueError(
+        "DJANGO_SECRET_KEY phai duoc set trong production. "
+        "Tao backend/.env.production tu backend/.env.production.example."
+    )
 
 # Security defaults: strict in production, permissive in local dev.
 SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
