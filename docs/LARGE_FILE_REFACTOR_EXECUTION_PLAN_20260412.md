@@ -210,6 +210,7 @@ Tien do moi nhat:
 - Da hoan tat PR-3a ky thuat: tach Realtime core (ticker/intraday/price-board/breadth) sang module backend/portfolio/views_realtime_core.py.
 - Da hoan tat PR-3b (phan 1): tach WhaleFeedView + RVOLView sang module backend/portfolio/views_realtime_advanced.py.
 - Da hoan tat PR-3b (phan 2): tach WhaleFeedAggregateView + WhaleCampaignsView sang module backend/portfolio/views_realtime_aggregate_campaigns.py.
-- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~4694 dong.
+- Da hoan tat PR-3b (phan 3): tach DepthChartView + FinancialMetricsView sang module backend/portfolio/views_realtime_depth_financial.py.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~4526 dong.
 
 Buoc tiep theo de code refactor: Sprint 1, PR-3c (ai-advisory trace split) va tach helper/runtime khoi monolith views.py.

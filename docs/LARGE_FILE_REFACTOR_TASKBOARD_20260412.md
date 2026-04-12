@@ -26,6 +26,9 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_realtime_aggregate_campaigns.py
 - [x] Tach WhaleFeedAggregateView + WhaleCampaignsView khoi monolith views.py
 - [x] Chay test muc tieu aggregate/campaigns (9 test pass)
+- [x] Tao module moi: backend/portfolio/views_realtime_depth_financial.py
+- [x] Tach DepthChartView + FinancialMetricsView khoi monolith views.py
+- [x] Chay test muc tieu depth/financial (4 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -52,7 +55,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 4694
+- views.py lines: 4526
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate:
