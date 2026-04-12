@@ -83,6 +83,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 17 test split: tach cum lon 115 test stock workspace + realtime + advisory components/observability sang backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py; giam monolith test_api_routes.py xuong <1500 lines
 - [x] Slice 18 test split: tach 26 test trading + P1-13 smoke sang backend/portfolio/tests/test_api_routes_trading_and_p1_13.py; monolith backend/portfolio/tests/test_api_routes.py chi con base helper (0 test method)
 - [x] Guardrail moi: CI fail neu backend/portfolio/tests/test_api_routes.py co them def test_ (bat buoc tao test_api_routes_*.py ngay tu dau)
+- [x] Slice 19 views cleanup: tach stock_order_flow_api + opencore stock endpoint helper + threshold/timeframe helper + whale_advisory_symbol_stats_api sang backend/portfolio/views_stock_order_flow.py va re-export qua facade views.py
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain

@@ -251,5 +251,7 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 18): tach 26 test trading + P1-13 smoke sang backend/portfolio/tests/test_api_routes_trading_and_p1_13.py, test moi pass 26/26.
 - Da hoan tat monolith split cho test_api_routes: file backend/portfolio/tests/test_api_routes.py chi con base helper (0 test method, 161 lines).
 - Da bo sung guardrail tu dong trong scripts/quality/check_large_files.ps1: fail CI neu backend/portfolio/tests/test_api_routes.py co them def test_, bat buoc tao module test_api_routes_*.py ngay tu dau.
+- Da tiep tuc don dep facade views.py (slice 19): tach stock_order_flow_api + OpenCore feature/quota/usage helper + _timeframe_to_minutes + _resolve_first_create_threshold_vnd + whale_advisory_symbol_stats_api sang backend/portfolio/views_stock_order_flow.py va re-export qua facade de giu compatibility patch target portfolio.views.*.
+- Da chay regression xac nhan slice 19: 133 test helper/order-flow related pass, split route suite 230/230 pass.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va giam kich thuoc cac file lon khac (tasks.py, StockDetail.jsx, Watchlist.jsx).

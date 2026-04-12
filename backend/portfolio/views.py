@@ -189,7 +189,6 @@ from .views_ai_advisory_components_summary import (
     _estimate_component_generation_actionability,
     _estimate_component_generation_confidence,
     _persist_component_generation_metrics_audit_log,
-    _timeframe_to_minutes,
     stock_ai_advisory_component_clear_deleted_api,
     stock_ai_advisory_component_delete_api,
     stock_ai_advisory_component_refresh_api,
@@ -239,6 +238,16 @@ from .views_ai_runtime_stats import (
     ai_config_api,
     ai_options_api,
     ai_test_connection_api,
+)
+from .views_stock_order_flow import (
+    _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS,
+    _OPENCORE_STOCK_FEATURE_KEYS,
+    _enforce_opencore_feature_for_stock_endpoint,
+    _enforce_opencore_quota_for_stock_endpoint,
+    _resolve_first_create_threshold_vnd,
+    _timeframe_to_minutes,
+    _track_opencore_stock_endpoint_usage,
+    stock_order_flow_api,
     whale_advisory_symbol_stats_api,
 )
 from .views_stock_news import (
