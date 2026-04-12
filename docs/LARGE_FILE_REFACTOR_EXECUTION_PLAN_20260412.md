@@ -201,4 +201,9 @@ Risk 3: Side-effect helper bi di chuyen sai module
 ---
 
 Trang thai hien tai: DA BAT DAU THUC THI (guardrail CI + execution plan).
-Buoc tiep theo de code refactor: Sprint 1, PR-1 (portfolio CRUD split + compatibility re-export).
+Tien do moi nhat:
+- Da hoan tat PR-1 ky thuat: tach Portfolio + Watchlist sang module backend/portfolio/views_portfolio_watchlist.py.
+- Da giu compatibility bang re-export symbol tai backend/portfolio/views.py.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~6507 dong.
+
+Buoc tiep theo de code refactor: Sprint 1, PR-2 (realtime split + test subset realtime).
