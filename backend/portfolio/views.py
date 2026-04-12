@@ -175,8 +175,10 @@ from .views_realtime_depth_financial import (
     DepthChartView,
     FinancialMetricsView,
 )
-from .views_realtime_symbol_investigation import symbol_investigation_api
-from .views_realtime_whale_symbol_summary import whale_symbol_summary_api
+from .views_realtime_symbol import (
+    symbol_investigation_api,
+    whale_symbol_summary_api,
+)
 from .views_ai_advisory_trace import (
     _build_advisory_trace_payload_for_user,
     stock_ai_advisory_observability_api,
