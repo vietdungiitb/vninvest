@@ -243,5 +243,6 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 11): tach 3 test whale-advisory delete-current sang backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py, test moi pass 3/3.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 12): tach 12 test stock ai-advisory-session (contract/gating/quota) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py, test moi pass 12/12.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 13): tach 6 test stock workspace feature-access (order-flow + advisory-components lock/admin) sang backend/portfolio/tests/test_api_routes_stock_workspace_feature_access.py, test moi pass 6/6.
+- Da tiep tuc chia test_api_routes theo cum domain (slice 14): tach 5 test ai-advisory-components chart-context validation sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_components_chart_context.py, test moi pass 5/5.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
