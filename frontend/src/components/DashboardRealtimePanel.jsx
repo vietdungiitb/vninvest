@@ -571,7 +571,12 @@ export default function DashboardRealtimePanel({
 
     const passesSeverity = (severity) => {
       if (severityFilter === 'all') return true;
-      const value = severityRank[normalizeUnifiedSeverity(severity, 'medium')];
+      const normalizedSeverity = normalizeUnifiedSeverity(severity, 'medium');
+      const value = severityRank[normalizedSeverity];
+      if (severityFilter === 'critical_only') return normalizedSeverity === 'critical';
+      if (severityFilter === 'high_only') return normalizedSeverity === 'high';
+      if (severityFilter === 'medium_only') return normalizedSeverity === 'medium';
+      if (severityFilter === 'low_only') return normalizedSeverity === 'low';
       if (severityFilter === 'critical') return value >= 4;
       if (severityFilter === 'high_plus') return value >= 3;
       if (severityFilter === 'medium_plus') return value >= 2;
@@ -614,6 +619,10 @@ export default function DashboardRealtimePanel({
       next.add(alertId);
       return next;
     });
+  };
+
+  const toggleSeverityFilterFromSummary = (targetFilter) => {
+    setSeverityFilter((prev) => (prev === targetFilter ? 'all' : targetFilter));
   };
 
   const muteSymbolFor30m = (symbol) => {
@@ -998,22 +1007,42 @@ export default function DashboardRealtimePanel({
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-rose-700/60 bg-rose-950/35 px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => toggleSeverityFilterFromSummary('critical_only')}
+                  className={`rounded-lg border bg-rose-950/35 px-3 py-2 text-left transition-colors hover:bg-rose-950/45 ${severityFilter === 'critical_only' ? 'border-rose-400' : 'border-rose-700/60'}`}
+                  title={t('dashboardRealtime.filterBySeverity')}
+                >
                   <p className="text-[11px] uppercase tracking-wider text-rose-300">{t('dashboardRealtime.severityCritical')}</p>
                   <p className="text-lg font-bold text-rose-100 mt-1">{formatNumber(alertSummary.critical)}</p>
-                </div>
-                <div className="rounded-lg border border-amber-700/60 bg-amber-950/35 px-3 py-2">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSeverityFilterFromSummary('high_only')}
+                  className={`rounded-lg border bg-amber-950/35 px-3 py-2 text-left transition-colors hover:bg-amber-950/45 ${severityFilter === 'high_only' ? 'border-amber-400' : 'border-amber-700/60'}`}
+                  title={t('dashboardRealtime.filterBySeverity')}
+                >
                   <p className="text-[11px] uppercase tracking-wider text-amber-300">{t('dashboardRealtime.severityHigh')}</p>
                   <p className="text-lg font-bold text-amber-100 mt-1">{formatNumber(alertSummary.high)}</p>
-                </div>
-                <div className="rounded-lg border border-yellow-700/60 bg-yellow-950/25 px-3 py-2">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSeverityFilterFromSummary('medium_only')}
+                  className={`rounded-lg border bg-yellow-950/25 px-3 py-2 text-left transition-colors hover:bg-yellow-950/35 ${severityFilter === 'medium_only' ? 'border-yellow-400' : 'border-yellow-700/60'}`}
+                  title={t('dashboardRealtime.filterBySeverity')}
+                >
                   <p className="text-[11px] uppercase tracking-wider text-yellow-300">{t('dashboardRealtime.severityMedium')}</p>
                   <p className="text-lg font-bold text-yellow-100 mt-1">{formatNumber(alertSummary.medium)}</p>
-                </div>
-                <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSeverityFilterFromSummary('low_only')}
+                  className={`rounded-lg border bg-slate-950 px-3 py-2 text-left transition-colors hover:bg-slate-900 ${severityFilter === 'low_only' ? 'border-slate-400' : 'border-slate-700'}`}
+                  title={t('dashboardRealtime.filterBySeverity')}
+                >
                   <p className="text-[11px] uppercase tracking-wider text-slate-300">{t('dashboardRealtime.severityLow')}</p>
                   <p className="text-lg font-bold text-slate-100 mt-1">{formatNumber(alertSummary.low)}</p>
-                </div>
+                </button>
               </div>
               <div className="rounded-xl border border-amber-700/30 bg-gradient-to-br from-amber-950/45 via-rose-950/20 to-gray-950/90 p-4 flex-1 min-h-0 overflow-y-auto">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1267,6 +1296,10 @@ export default function DashboardRealtimePanel({
             <span className="text-xs text-gray-500">{t('dashboardRealtime.filterBySeverity')}</span>
             {[
               { value: 'all', label: t('dashboardRealtime.filterAll') },
+              { value: 'critical_only', label: t('dashboardRealtime.severityCritical') },
+              { value: 'high_only', label: t('dashboardRealtime.severityHigh') },
+              { value: 'medium_only', label: t('dashboardRealtime.severityMedium') },
+              { value: 'low_only', label: t('dashboardRealtime.severityLow') },
               { value: 'critical', label: t('dashboardRealtime.filterCriticalOnly') },
               { value: 'high_plus', label: t('dashboardRealtime.filterHighPlus') },
               { value: 'medium_plus', label: t('dashboardRealtime.filterMediumPlus') },
