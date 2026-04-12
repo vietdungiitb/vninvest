@@ -246,5 +246,7 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 14): tach 5 test ai-advisory-components chart-context validation sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_components_chart_context.py, test moi pass 5/5.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 15): tach 5 test stock workspace usage-tracking + component persistence sang backend/portfolio/tests/test_api_routes_stock_workspace_usage_persistence.py, test moi pass 5/5.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 16): tach 5 test stock ai-advisory-trace (trace/list/filter/export) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py, test moi pass 5/5.
+- Da tiep tuc chia test_api_routes theo cum domain (slice 17): tach cum lon 115 test stock workspace + realtime + advisory components/observability sang backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py, test moi pass 115/115.
+- Da dat moc giam kich thuoc monolith backend/portfolio/tests/test_api_routes.py xuong 876 lines (<1500).
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.

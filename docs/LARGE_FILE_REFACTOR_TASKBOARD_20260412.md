@@ -80,6 +80,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 14 test split: tach 5 test ai-advisory-components chart-context validation sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_components_chart_context.py
 - [x] Slice 15 test split: tach 5 test stock workspace usage-tracking + component persistence sang backend/portfolio/tests/test_api_routes_stock_workspace_usage_persistence.py
 - [x] Slice 16 test split: tach 5 test stock ai-advisory-trace (trace/list/filter/export) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py
+- [x] Slice 17 test split: tach cum lon 115 test stock workspace + realtime + advisory components/observability sang backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py; giam monolith test_api_routes.py xuong <1500 lines
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
