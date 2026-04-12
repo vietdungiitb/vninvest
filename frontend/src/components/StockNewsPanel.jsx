@@ -173,6 +173,24 @@ export default function StockNewsPanel({ symbol }) {
         </div>
       </div>
 
+      {!loading && aiError && (
+        <p className="mb-3 text-xs text-red-400">{aiError}</p>
+      )}
+
+      {!loading && !aiError && aiSummary?.summary && (
+        <div className="mb-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">{t('stockNews.aiSummaryTitle')}</p>
+          <p className="mt-1 text-sm leading-relaxed text-gray-100">{aiSummary.summary}</p>
+          {aiSummary.full ? (
+            <p className="mt-2 text-xs leading-relaxed text-gray-300 whitespace-pre-wrap">{aiSummary.full}</p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-400">
+            <span>{t('stockNews.aiModel')}: {aiSummary.ai_model || '-'}</span>
+            <span>{t('stockNews.itemCount')}: {aiSummary.item_count ?? 0}</span>
+          </div>
+        </div>
+      )}
+
       {/* Body */}
       {loading && (
         <div className="space-y-3">
@@ -202,24 +220,6 @@ export default function StockNewsPanel({ symbol }) {
           {items.map((item, idx) => (
             <NewsItem key={idx} item={item} />
           ))}
-        </div>
-      )}
-
-      {!loading && aiError && (
-        <p className="mt-3 text-xs text-red-400">{aiError}</p>
-      )}
-
-      {!loading && !aiError && aiSummary?.summary && (
-        <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">{t('stockNews.aiSummaryTitle')}</p>
-          <p className="mt-1 text-sm leading-relaxed text-gray-100">{aiSummary.summary}</p>
-          {aiSummary.full ? (
-            <p className="mt-2 text-xs leading-relaxed text-gray-300 whitespace-pre-wrap">{aiSummary.full}</p>
-          ) : null}
-          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-400">
-            <span>{t('stockNews.aiModel')}: {aiSummary.ai_model || '-'}</span>
-            <span>{t('stockNews.itemCount')}: {aiSummary.item_count ?? 0}</span>
-          </div>
         </div>
       )}
     </div>
