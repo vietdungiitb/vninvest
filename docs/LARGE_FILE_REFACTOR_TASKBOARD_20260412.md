@@ -79,6 +79,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 13 test split: tach 6 test stock workspace feature-access (order-flow + advisory-components lock/admin) sang backend/portfolio/tests/test_api_routes_stock_workspace_feature_access.py
 - [x] Slice 14 test split: tach 5 test ai-advisory-components chart-context validation sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_components_chart_context.py
 - [x] Slice 15 test split: tach 5 test stock workspace usage-tracking + component persistence sang backend/portfolio/tests/test_api_routes_stock_workspace_usage_persistence.py
+- [x] Slice 16 test split: tach 5 test stock ai-advisory-trace (trace/list/filter/export) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
