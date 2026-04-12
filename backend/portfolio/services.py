@@ -1452,11 +1452,11 @@ def fetch_and_save_daily_prices(
     symbol = symbol.upper().strip()
     result = {'symbol': symbol, 'created': 0, 'updated': 0, 'errors': 0}
 
-    # --- Gọi vnstock (>=3.5.0) với source KBS ---
+    # --- Gọi vnstock (>=3.5.0) với source VCI (trả về giá nghìn VNĐ, nhất quán với toàn hệ thống) ---
     try:
         from vnstock import Vnstock  # import trễ để tránh lỗi nếu chưa cài
 
-        stock = Vnstock().stock(symbol=symbol, source='KBS')
+        stock = Vnstock().stock(symbol=symbol, source='VCI')
         df = stock.quote.history(
             start=start_date.strftime('%Y-%m-%d'),
             end=end_date.strftime('%Y-%m-%d'),
