@@ -5166,7 +5166,6 @@ def stock_news_api(request, symbol: str):
             - GET .../news/?force=1
             - POST .../news/
     """
-    from .adapters.vnstock_adapter import _build_stock_client, _run_with_timeout
     from .adapters.cache_adapter import get_cache, set_cache
 
     normalized_symbol = str(symbol or '').strip().upper()
@@ -5182,61 +5181,104 @@ def stock_news_api(request, symbol: str):
             cached['cached'] = True
             return Response(cached)
 
-    news_sources_raw = str(getattr(settings, 'VNSTOCK_NEWS_SOURCES', os.getenv('VNSTOCK_NEWS_SOURCES', 'VCI,TCBS')) or 'VCI,TCBS')
-    news_sources = [src.strip().upper() for src in news_sources_raw.split(',') if src.strip()]
-    if not news_sources:
-        news_sources = ['VCI']
+    rss_sources_raw = str(
+        getattr(settings, 'VNSTOCK_RSS_NEWS_SOURCES', os.getenv('VNSTOCK_RSS_NEWS_SOURCES', 'rss_cafef,rss_vneconomy'))
+        or 'rss_cafef,rss_vneconomy'
+    )
+    rss_sources = [src.strip() for src in rss_sources_raw.split(',') if src.strip()]
+    if not rss_sources:
+        rss_sources = ['rss_cafef', 'rss_vneconomy']
 
-    def _fetch_news_with_fallback():
+    def _fix_mojibake(text: str) -> str:
+        value = str(text or '').strip()
+        if not value:
+            return value
+        if 'Ã' not in value and 'áº' not in value and 'Ä' not in value:
+            return value
+        try:
+            repaired = value.encode('latin1', errors='ignore').decode('utf-8', errors='ignore').strip()
+            return repaired or value
+        except Exception:
+            return value
+
+    def _fetch_news_with_fallback(limit: int = 20):
+        import pandas as _pd
+        from vnstock.api.news import News
+
+        collected = []
+        seen = set()
         last_exc = None
-        for source in news_sources:
+
+        for source in rss_sources:
             try:
-                stock_client = _build_stock_client(symbol=normalized_symbol, source=source)
-                raw = _run_with_timeout(lambda: stock_client.company.news(), timeout=8)
-                if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
-                    return raw, source
+                news_client = News(source=source)
             except Exception as exc:
                 last_exc = exc
                 continue
-        if last_exc:
-            raise last_exc
-        return None, None
 
-    items = []
-    unavailable = False
-    try:
-        raw, selected_source = _fetch_news_with_fallback()
-        if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
-            import pandas as _pd
-            if hasattr(raw, 'to_dict'):
-                rows = raw.to_dict(orient='records')
-            elif isinstance(raw, list):
-                rows = raw
-            else:
-                rows = []
-            for row in rows[:20]:
-                title = str(
-                    row.get('title') or row.get('subject') or row.get('headline') or ''
-                ).strip()
-                url = str(row.get('url') or row.get('link') or row.get('href') or '').strip()
-                # Only include http/https URLs — prevent link injection
+            df = None
+            try:
+                df = news_client.by_symbol(normalized_symbol, limit=max(limit * 2, 20))
+            except Exception as exc:
+                last_exc = exc
+
+            if df is None or (hasattr(df, 'empty') and df.empty):
+                try:
+                    latest_df = news_client.latest(limit=60)
+                    if latest_df is not None and not latest_df.empty:
+                        if 'symbol' in latest_df.columns:
+                            symbol_filtered = latest_df[latest_df['symbol'].astype(str).str.upper() == normalized_symbol]
+                        else:
+                            symbol_filtered = latest_df[latest_df.get('title', _pd.Series(dtype='str')).astype(str).str.upper().str.contains(normalized_symbol)]
+                        df = symbol_filtered
+                except Exception as exc:
+                    last_exc = exc
+                    df = None
+
+            if df is None or (hasattr(df, 'empty') and df.empty):
+                continue
+
+            rows = df.to_dict(orient='records') if hasattr(df, 'to_dict') else []
+            for row in rows:
+                title = _fix_mojibake(str(row.get('title') or row.get('headline') or '').strip())
+                if not title:
+                    continue
+                url = str(row.get('url') or row.get('link') or '').strip()
                 if url and not url.startswith(('http://', 'https://')):
                     url = ''
-                source_name = str(
-                    row.get('source') or row.get('publisher') or row.get('author') or ''
-                ).strip()
-                raw_date = row.get('published_date') or row.get('publishedDate') or row.get('date') or row.get('time') or ''
+                source_name = _fix_mojibake(str(row.get('source') or source).strip())
+                raw_date = row.get('published_at') or row.get('published_date') or row.get('date') or ''
                 try:
                     published_at = str(_pd.Timestamp(raw_date).isoformat()) if raw_date else None
                 except Exception:
                     published_at = str(raw_date) if raw_date else None
-                if title:
-                    items.append({
+
+                dedup_key = (title.lower(), (url or '').lower())
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
+
+                collected.append(
+                    {
                         'title': title,
                         'url': url or None,
-                        'source': source_name or selected_source or None,
+                        'source': source_name or source,
                         'published_at': published_at,
-                    })
+                    }
+                )
+                if len(collected) >= limit:
+                    return collected
+
+        if collected:
+            return collected
+        if last_exc:
+            raise last_exc
+        return []
+
+    items = []
+    unavailable = False
+    try:
+        items = _fetch_news_with_fallback(limit=20)
     except Exception:
         logger.warning('stock_news_api: không lấy được tin tức cho %s', normalized_symbol)
         unavailable = True
