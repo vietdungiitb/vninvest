@@ -123,3 +123,59 @@ Hàm helper `_fetch_news_context_for_advisory(symbol, max_items=4)`:
 - Tóm tắt tin tức cho tất cả mã trong watchlist của user
 - AI narrative cá nhân hóa, lưu vào DB
 - WebSocket push, hiển thị trong Dashboard notification panel
+
+---
+
+## 9. Cập nhật triển khai 2026-04-12
+
+### Đã hoàn thành thêm
+
+1. **Manual refresh cho Stock News**
+- Frontend thêm nút `Lấy tin mới` tại `StockNewsPanel`.
+- Backend `stock_news_api` hỗ trợ bypass cache qua `POST` hoặc query `force=1`.
+
+2. **AI News theo mã (Phase 1)**
+- API mới: `POST /api/stock-management/stocks/<symbol>/news/ai-summary/`.
+- Runtime AI lấy từ cấu hình hiệu lực (user/system) qua `resolve_ai_runtime_config`.
+- Sinh tóm tắt bằng `generate_portfolio_digest` (đầu vào là headline của chính mã đó).
+- Cache kết quả AI 15 phút để giảm chi phí token.
+
+3. **UI AI News**
+- Thêm nút `AI News` trong `StockNewsPanel`.
+- Hiển thị block tóm tắt AI gồm:
+  - `summary`
+  - `full`
+  - model AI đang dùng
+  - số headline đã tổng hợp
+
+### API bổ sung
+
+#### `POST /api/stock-management/stocks/<symbol>/news/ai-summary/`
+
+**Request body (optional):**
+```json
+{
+  "force_refresh": true
+}
+```
+
+**Response 200:**
+```json
+{
+  "symbol": "VCB",
+  "summary": "...",
+  "full": "...",
+  "item_count": 8,
+  "ai_provider": "copilot",
+  "ai_model": "gpt-4o-mini",
+  "generated_at": "2026-04-12T...",
+  "news_fetched_at": "2026-04-12T...",
+  "cached": false
+}
+```
+
+### Bước kế tiếp (phase sau)
+
+1. RSS sources cấu hình theo user (CRUD + validate URL/feed).
+2. Pipeline ingest RSS định kỳ + deduplicate.
+3. AI News hợp nhất đa nguồn (vnstock + RSS user + curated system feeds).

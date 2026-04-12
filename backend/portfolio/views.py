@@ -5237,6 +5237,130 @@ def stock_news_api(request, symbol: str):
     return Response(result)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def stock_news_ai_summary_api(request, symbol: str):
+    """
+    POST /api/stock-management/stocks/<symbol>/news/ai-summary/
+    Tạo bản tóm tắt AI dựa trên tin tức mới nhất của 1 mã cổ phiếu.
+    Body options:
+      - force_refresh: bool (bỏ cache tin tức khi true)
+    """
+    from .ai_runtime_config import resolve_ai_runtime_config
+    from .ai_service import generate_portfolio_digest
+    from .adapters.cache_adapter import get_cache, set_cache
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol or len(normalized_symbol) > 10:
+        return Response({'detail': 'Mã chứng khoán không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    force_refresh = bool(request.data.get('force_refresh'))
+    source_payload = None
+
+    if not force_refresh:
+        cached_news = get_cache(f'stock:news:{normalized_symbol}')
+        if cached_news is not None:
+            source_payload = dict(cached_news)
+            source_payload['cached'] = True
+
+    if source_payload is None:
+        news_response = stock_news_api(request, normalized_symbol)
+        if news_response.status_code >= 400:
+            return news_response
+        source_payload = dict(news_response.data or {})
+
+    if bool(source_payload.get('unavailable')):
+        return Response(
+            {
+                'detail': 'Nguồn tin tức tạm thời không khả dụng. Vui lòng thử lại sau.',
+                'reason': 'news_unavailable',
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    items = source_payload.get('items') if isinstance(source_payload.get('items'), list) else []
+    if not items:
+        return Response(
+            {
+                'detail': 'Chưa có dữ liệu tin tức để AI tổng hợp.',
+                'reason': 'empty_news',
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    runtime_cfg = resolve_ai_runtime_config(user=request.user)
+    if not runtime_cfg.get('ready'):
+        return Response(
+            {
+                'detail': runtime_cfg.get('message') or 'AI runtime chưa sẵn sàng.',
+                'reason': runtime_cfg.get('reason') or 'runtime_not_ready',
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    lines = []
+    for item in items[:10]:
+        title = str(item.get('title') or '').strip()
+        if not title:
+            continue
+        source = str(item.get('source') or 'unknown').strip()
+        published_at = str(item.get('published_at') or '').strip()
+        lines.append(f"- {title} ({source}{', ' + published_at if published_at else ''})")
+
+    if not lines:
+        return Response(
+            {
+                'detail': 'Không đủ dữ liệu headline hợp lệ để AI tổng hợp.',
+                'reason': 'invalid_news_payload',
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    news_context_by_symbol = {
+        normalized_symbol: f"[{normalized_symbol}]\n" + "\n".join(lines),
+    }
+
+    ai_cache_key = f'stock:news:ai-summary:{normalized_symbol}'
+    if not force_refresh:
+        ai_cached = get_cache(ai_cache_key)
+        if ai_cached is not None:
+            ai_cached['cached'] = True
+            return Response(ai_cached)
+
+    try:
+        digest_payload = generate_portfolio_digest(
+            provider=str(runtime_cfg.get('provider') or ''),
+            model=str(runtime_cfg.get('model') or ''),
+            api_key=str(runtime_cfg.get('api_key') or ''),
+            symbols=[normalized_symbol],
+            news_context_by_symbol=news_context_by_symbol,
+            user=request.user,
+        )
+    except Exception as exc:
+        logger.exception('stock_news_ai_summary_api failed for %s: %s', normalized_symbol, exc)
+        return Response(
+            {
+                'detail': 'Không thể tạo AI News lúc này. Vui lòng thử lại sau.',
+                'reason': 'ai_summary_generation_failed',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    response_payload = {
+        'symbol': normalized_symbol,
+        'summary': str(digest_payload.get('summary') or '').strip(),
+        'full': str(digest_payload.get('full') or '').strip(),
+        'item_count': len(items),
+        'ai_provider': str(runtime_cfg.get('provider') or ''),
+        'ai_model': str(runtime_cfg.get('model') or ''),
+        'generated_at': timezone.now().isoformat(),
+        'news_fetched_at': source_payload.get('fetched_at'),
+        'cached': False,
+    }
+    set_cache(ai_cache_key, response_payload, timeout=900)
+    return Response(response_payload)
+
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

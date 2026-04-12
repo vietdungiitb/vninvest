@@ -213,3 +213,32 @@ Start date target: 2026-04-11
 1. KPI report before/after (formal numbers for acceptance sheet).
 2. Source parity validation sign-off across data sources.
 3. PM/QA sign-off completion for sprint closure package.
+
+## Day X (Hotfix + AI News UX) - 2026-04-12
+
+### Completed
+1. News manual refresh delivered end-to-end:
+- Frontend button "Lấy tin mới" tại `StockNewsPanel`.
+- Backend `stock_news_api` hỗ trợ bypass cache qua `?force=1` và POST.
+
+2. AI News summarization delivered (Phase 1):
+- Backend endpoint mới: `POST /api/stock-management/stocks/<symbol>/news/ai-summary/`.
+- Dùng runtime AI hiện hành (`resolve_ai_runtime_config`) + `generate_portfolio_digest` để sinh tóm tắt theo mã.
+- Có cache kết quả AI 15 phút (`stock:news:ai-summary:{SYMBOL}`).
+
+3. Frontend AI News UX:
+- Nút `AI News` ngay trên panel tin tức.
+- Hiển thị `summary`, `full`, model AI, số lượng headline dùng để tổng hợp.
+- i18n vi/en cập nhật cho toàn bộ key mới.
+
+4. Admin Ops spinner hardening (đồng thời):
+- Fail-safe timeout cho các request phụ để tránh treo loading vô hạn.
+- Redis port expose cho hybrid mode (`127.0.0.1:6379:6379`) và restart backend theo cấu hình mới.
+
+### Commits
+1. `c9d22d09` — fix Admin Ops loading + expose Redis host port.
+2. `4811427d` — manual refresh tin tức.
+3. (Current) AI News button + endpoint summarization + i18n update.
+
+### Notes
+1. Đây là phase khởi đầu cho AI News theo mã; RSS sources tùy biến user sẽ triển khai phase tiếp theo.

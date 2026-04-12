@@ -171,6 +171,10 @@ export const getStockNews = (symbol, { force = false } = {}) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/`, {
     params: force ? { force: 1 } : undefined,
   });
+export const generateStockNewsAISummary = (symbol, { force = false } = {}) =>
+  apiClient.post(`/stock-management/stocks/${encodeURIComponent(symbol)}/news/ai-summary/`, {
+    force_refresh: Boolean(force),
+  });
 export const getPortfolioNewsDigest = (params = {}) =>
   apiClient.get('/stock-management/portfolio/news-digest/', { params });
 export const getStockAIAdvisorySession = (symbol, params = {}) =>

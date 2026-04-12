@@ -4,7 +4,7 @@
  * Tự fetch dữ liệu, polling mỗi 30 phút, graceful degradation khi lỗi.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { getStockNews } from '../api/client';
+import { generateStockNewsAISummary, getStockNews } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 phút
@@ -69,6 +69,9 @@ export default function StockNewsPanel({ symbol }) {
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
   const [error, setError] = useState(null);
   const pollTimerRef = useRef(null);
 
@@ -91,10 +94,26 @@ export default function StockNewsPanel({ symbol }) {
     }
   }, [symbol, t]);
 
+  const fetchAiSummary = useCallback(async ({ force = true } = {}) => {
+    if (!symbol) return;
+    setAiLoading(true);
+    setAiError('');
+    try {
+      const res = await generateStockNewsAISummary(symbol, { force });
+      setAiSummary(res.data || null);
+    } catch (err) {
+      setAiError(err?.response?.data?.detail || t('stockNews.aiSummaryFailed'));
+    } finally {
+      setAiLoading(false);
+    }
+  }, [symbol, t]);
+
   useEffect(() => {
     setLoading(true);
     setNews(null);
     setError(null);
+    setAiSummary(null);
+    setAiError('');
     fetchNews();
 
     pollTimerRef.current = setInterval(fetchNews, POLL_INTERVAL_MS);
@@ -114,6 +133,18 @@ export default function StockNewsPanel({ symbol }) {
           {t('stockNews.sectionLabel')}
         </h2>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fetchAiSummary({ force: true })}
+            disabled={loading || refreshing || aiLoading || !symbol}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              loading || refreshing || aiLoading || !symbol
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                : 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30'
+            }`}
+          >
+            {aiLoading ? t('stockNews.aiGenerating') : t('stockNews.aiNews')}
+          </button>
           <button
             type="button"
             onClick={() => fetchNews({ force: true })}
@@ -164,6 +195,24 @@ export default function StockNewsPanel({ symbol }) {
           {items.map((item, idx) => (
             <NewsItem key={idx} item={item} />
           ))}
+        </div>
+      )}
+
+      {!loading && aiError && (
+        <p className="mt-3 text-xs text-red-400">{aiError}</p>
+      )}
+
+      {!loading && !aiError && aiSummary?.summary && (
+        <div className="mt-4 rounded-lg border border-emerald-900/40 bg-emerald-950/20 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-300">{t('stockNews.aiSummaryTitle')}</p>
+          <p className="mt-1 text-sm leading-relaxed text-gray-100">{aiSummary.summary}</p>
+          {aiSummary.full ? (
+            <p className="mt-2 text-xs leading-relaxed text-gray-300 whitespace-pre-wrap">{aiSummary.full}</p>
+          ) : null}
+          <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-gray-400">
+            <span>{t('stockNews.aiModel')}: {aiSummary.ai_model || '-'}</span>
+            <span>{t('stockNews.itemCount')}: {aiSummary.item_count ?? 0}</span>
+          </div>
         </div>
       )}
     </div>
