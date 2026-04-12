@@ -10,6 +10,9 @@ Cap nhat: 2026-04-12
 - [x] Tao allowlist baseline: scripts/quality/large_file_allowlist.txt
 - [x] Tao module moi: backend/portfolio/views_portfolio_watchlist.py
 - [x] Re-export symbol trong backend/portfolio/views.py de giu compatibility
+- [x] Tao module moi: backend/portfolio/views_stock_management.py
+- [x] Tach Securities + TrackedSymbol + PriceAlert khoi monolith views.py
+- [x] Chay smoke test stock-management endpoint (3 test pass)
 
 ### Dang lam
 - [ ] Tach views_realtime.py

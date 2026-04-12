@@ -18,7 +18,7 @@ from .analytics import (
     compute_holdings,
     compute_nav_series,
 )
-from .market_data_service import sync_portfolio_prices, sync_watchlist_prices
+from .services import sync_portfolio_prices, sync_watchlist_prices
 from .models import (
     DailyPrice,
     Portfolio,
