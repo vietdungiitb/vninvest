@@ -529,6 +529,27 @@ MISSION_CONTROL_ANOMALY_ADVISORY_SPIKE_RATIO = _env_float("MISSION_CONTROL_ANOMA
 MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND = float(
     _env_float("MISSION_CONTROL_ANOMALY_ABSOLUTE_NOTIONAL_VND", 5000000000.0)
 )
+
+# ===========================================================================
+# Logging — Trong DEBUG, chỉ show 5xx từ django.request (tắt 404 WARNING spam)
+# ===========================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            # ERROR = chỉ hiện 5xx; WARNING = cả 4xx (rất nhiễu khi debug)
+            'level': 'ERROR' if DEBUG else 'WARNING',
+            'propagate': False,
+        },
+    },
+}
 MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT = _env_int("MISSION_CONTROL_ANOMALY_SYMBOL_SCAN_LIMIT", 200)
 
 if REALTIME_CHANNEL_LAYER == "inmemory":

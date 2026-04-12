@@ -9,6 +9,9 @@ services:
       POSTGRES_DB: vninvest
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: devpassword
+    ports:
+      # Expose port 5432 lên host để backend local (hybrid mode) connect được
+      - "127.0.0.1:5432:5432"
 
   redis:
     container_name: vninvest-dev-redis
