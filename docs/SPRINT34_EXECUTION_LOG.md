@@ -242,3 +242,18 @@ Start date target: 2026-04-11
 
 ### Notes
 1. Đây là phase khởi đầu cho AI News theo mã; RSS sources tùy biến user sẽ triển khai phase tiếp theo.
+
+## Day X+1 (News reliability hotfix) - 2026-04-12
+
+### Completed
+1. News fetch reliability improved:
+- `stock_news_api` bổ sung fallback đa nguồn cho news (`VNSTOCK_NEWS_SOURCES`, mặc định `VCI,TCBS`).
+- Nếu vnstock rỗng/lỗi, fallback RSS (Google News RSS theo symbol) để tránh empty state kéo dài.
+
+2. AI News account policy enforced:
+- `stock_news_ai_summary_api` bắt buộc dùng AI config của chính user (`UserConfig`) thay vì fallback system.
+- Nếu thiếu API key user, trả lỗi rõ ràng: yêu cầu cấu hình trong UserConfig.
+
+3. Runtime validation:
+- Manual refresh endpoint trả dữ liệu có item_count > 0 với fallback RSS.
+- AI summary trả `400 missing_user_ai_api_key` đúng theo policy user-owned key.

@@ -5182,14 +5182,30 @@ def stock_news_api(request, symbol: str):
             cached['cached'] = True
             return Response(cached)
 
-    def _fetch():
-        stock_client = _build_stock_client(symbol=normalized_symbol, source='VCI')
-        return stock_client.company.news()
+    news_sources_raw = str(getattr(settings, 'VNSTOCK_NEWS_SOURCES', os.getenv('VNSTOCK_NEWS_SOURCES', 'VCI,TCBS')) or 'VCI,TCBS')
+    news_sources = [src.strip().upper() for src in news_sources_raw.split(',') if src.strip()]
+    if not news_sources:
+        news_sources = ['VCI']
+
+    def _fetch_news_with_fallback():
+        last_exc = None
+        for source in news_sources:
+            try:
+                stock_client = _build_stock_client(symbol=normalized_symbol, source=source)
+                raw = _run_with_timeout(lambda: stock_client.company.news(), timeout=8)
+                if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
+                    return raw, source
+            except Exception as exc:
+                last_exc = exc
+                continue
+        if last_exc:
+            raise last_exc
+        return None, None
 
     items = []
     unavailable = False
     try:
-        raw = _run_with_timeout(_fetch, timeout=8)
+        raw, selected_source = _fetch_news_with_fallback()
         if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
             import pandas as _pd
             if hasattr(raw, 'to_dict'):
@@ -5218,12 +5234,83 @@ def stock_news_api(request, symbol: str):
                     items.append({
                         'title': title,
                         'url': url or None,
-                        'source': source_name or None,
+                        'source': source_name or selected_source or None,
                         'published_at': published_at,
                     })
     except Exception:
         logger.warning('stock_news_api: không lấy được tin tức cho %s', normalized_symbol)
         unavailable = True
+
+    def _fetch_rss_fallback(news_symbol: str, limit: int = 12):
+        import datetime
+        import email.utils
+        import urllib.parse
+        import urllib.request
+        import xml.etree.ElementTree as ET
+
+        keyword = urllib.parse.quote_plus(f'{news_symbol} chứng khoán')
+        rss_urls = [
+            f'https://news.google.com/rss/search?q={keyword}&hl=vi&gl=VN&ceid=VN:vi',
+            f'https://news.google.com/rss/search?q={keyword}&hl=en-US&gl=US&ceid=US:en',
+        ]
+
+        normalized_items = []
+        seen = set()
+        for rss_url in rss_urls:
+            try:
+                with urllib.request.urlopen(rss_url, timeout=8) as response:
+                    payload = response.read()
+                root = ET.fromstring(payload)
+            except Exception:
+                continue
+
+            channel = root.find('channel')
+            if channel is None:
+                continue
+
+            for item_node in channel.findall('item'):
+                title = (item_node.findtext('title') or '').strip()
+                if not title:
+                    continue
+                link = (item_node.findtext('link') or '').strip()
+                if link and not link.startswith(('http://', 'https://')):
+                    link = ''
+                pub_date_raw = (item_node.findtext('pubDate') or '').strip()
+                published_at = None
+                if pub_date_raw:
+                    try:
+                        parsed_date = email.utils.parsedate_to_datetime(pub_date_raw)
+                        if parsed_date is not None:
+                            published_at = parsed_date.isoformat()
+                    except Exception:
+                        published_at = None
+
+                dedup_key = (title.lower(), link.lower())
+                if dedup_key in seen:
+                    continue
+                seen.add(dedup_key)
+
+                normalized_items.append(
+                    {
+                        'title': title,
+                        'url': link or None,
+                        'source': 'google-news-rss',
+                        'published_at': published_at or datetime.datetime.utcnow().isoformat(),
+                    }
+                )
+                if len(normalized_items) >= limit:
+                    return normalized_items
+
+        return normalized_items
+
+    if not items:
+        try:
+            rss_items = _fetch_rss_fallback(normalized_symbol, limit=12)
+            if rss_items:
+                items = rss_items
+                unavailable = False
+        except Exception as exc:
+            logger.warning('stock_news_api: rss fallback failed for %s: %s', normalized_symbol, exc)
 
     result = {
         'symbol': normalized_symbol,
@@ -5246,9 +5333,10 @@ def stock_news_ai_summary_api(request, symbol: str):
     Body options:
       - force_refresh: bool (bỏ cache tin tức khi true)
     """
-    from .ai_runtime_config import resolve_ai_runtime_config
+    from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_provider
     from .ai_service import generate_portfolio_digest
     from .adapters.cache_adapter import get_cache, set_cache
+    from .models import UserConfig
 
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol or len(normalized_symbol) > 10:
@@ -5288,12 +5376,34 @@ def stock_news_ai_summary_api(request, symbol: str):
             status=status.HTTP_409_CONFLICT,
         )
 
-    runtime_cfg = resolve_ai_runtime_config(user=request.user)
-    if not runtime_cfg.get('ready'):
+    user_cfg, _ = UserConfig.objects.get_or_create(user=request.user)
+    user_provider = str(user_cfg.ai_provider or '').strip().lower()
+    user_model = str(user_cfg.get_effective_ai_model() or '').strip()
+    user_api_key = str(user_cfg.get_ai_api_key() or '').strip()
+
+    if not user_api_key:
         return Response(
             {
-                'detail': runtime_cfg.get('message') or 'AI runtime chưa sẵn sàng.',
-                'reason': runtime_cfg.get('reason') or 'runtime_not_ready',
+                'detail': 'Bạn chưa cấu hình AI API key cá nhân. Vui lòng vào UserConfig để thiết lập trước khi dùng AI News.',
+                'reason': 'missing_user_ai_api_key',
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not is_valid_provider(user_provider):
+        return Response(
+            {
+                'detail': 'AI provider trong UserConfig không hợp lệ.',
+                'reason': 'invalid_user_ai_provider',
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    if not user_model or not is_model_allowed_for_capability(user_provider, user_model, ADVISORY_CAPABILITY):
+        return Response(
+            {
+                'detail': 'AI model trong UserConfig không hợp lệ cho AI News.',
+                'reason': 'invalid_user_ai_model',
             },
             status=status.HTTP_400_BAD_REQUEST,
         )
@@ -5329,9 +5439,9 @@ def stock_news_ai_summary_api(request, symbol: str):
 
     try:
         digest_payload = generate_portfolio_digest(
-            provider=str(runtime_cfg.get('provider') or ''),
-            model=str(runtime_cfg.get('model') or ''),
-            api_key=str(runtime_cfg.get('api_key') or ''),
+            provider=user_provider,
+            model=user_model,
+            api_key=user_api_key,
             symbols=[normalized_symbol],
             news_context_by_symbol=news_context_by_symbol,
             user=request.user,
@@ -5351,8 +5461,8 @@ def stock_news_ai_summary_api(request, symbol: str):
         'summary': str(digest_payload.get('summary') or '').strip(),
         'full': str(digest_payload.get('full') or '').strip(),
         'item_count': len(items),
-        'ai_provider': str(runtime_cfg.get('provider') or ''),
-        'ai_model': str(runtime_cfg.get('model') or ''),
+        'ai_provider': user_provider,
+        'ai_model': user_model,
         'generated_at': timezone.now().isoformat(),
         'news_fetched_at': source_payload.get('fetched_at'),
         'cached': False,
