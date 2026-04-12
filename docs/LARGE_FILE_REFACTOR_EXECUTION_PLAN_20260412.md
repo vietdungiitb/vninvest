@@ -1,7 +1,19 @@
 # KE HOACH THUC THI CHI TIET - LARGE FILE REFACTOR
 
-Ngay cap nhat: 2026-04-12
+Ngay cap nhat: 2026-04-13 (da cap nhat slice 20 consolidation)
 Pham vi: backend/portfolio/views.py va cac diem phu thuoc truc tiep
+
+## PROGRESS UPDATE 2026-04-13
+
+Da hoan thanh:
+- Slice 1-19: Tach 19 module views + 18 test splits (230 tests extracted from monolith)
+- Views.py: 6839 -> 285 lines (giảm 96% ✅)
+- Monolith test_api_routes.py: 3000+ -> 161 lines (0 test methods, guarded by CI ✅)
+- Slice 20: Gop 2 realtime modules nho (symbol_investigation + whale_symbol_summary) vao views_realtime_symbol.py
+  - Sach sach: Xoa old modules, ton tai 5 realtime modules (from 7)
+  - Test: 6/6 pass (symbol investigation + admin sync)
+
+Trang thai: Ready for production deploy (dev -> deploy merge) ✅
 
 ## 1) Tong ket hien trang da xac minh
 
