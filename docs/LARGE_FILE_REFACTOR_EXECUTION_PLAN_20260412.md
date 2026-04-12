@@ -212,6 +212,7 @@ Tien do moi nhat:
 - Da hoan tat PR-3b (phan 2): tach WhaleFeedAggregateView + WhaleCampaignsView sang module backend/portfolio/views_realtime_aggregate_campaigns.py.
 - Da hoan tat PR-3b (phan 3): tach DepthChartView + FinancialMetricsView sang module backend/portfolio/views_realtime_depth_financial.py.
 - Da hoan tat PR-3c (phan 1): tach advisory trace/trace-list/trace-export/observability sang module backend/portfolio/views_ai_advisory_trace.py.
-- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~3790 dong.
+- Da hoan tat PR-3c (phan 2): tach component generation/toggle/refresh/delete/restore + executive summary regenerate/delete sang module backend/portfolio/views_ai_advisory_components_summary.py.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~3281 dong.
 
 Buoc tiep theo de code refactor: Sprint 1, PR-3c (ai-advisory trace split) va tach helper/runtime khoi monolith views.py.

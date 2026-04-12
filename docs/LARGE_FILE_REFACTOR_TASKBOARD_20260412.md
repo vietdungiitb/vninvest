@@ -32,10 +32,13 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_ai_advisory_trace.py
 - [x] Tach Advisory trace + observability APIs khoi monolith views.py
 - [x] Chay test muc tieu advisory-trace/observability/session (8 test pass)
+- [x] Tao module moi: backend/portfolio/views_ai_advisory_components_summary.py
+- [x] Tach advisory component + summary regenerate/delete APIs khoi monolith views.py
+- [x] Chay test muc tieu advisory-components/summary (10 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
-- [ ] Tach tiep stock_ai_advisory_session + component/summarization APIs
+- [ ] Tach tiep stock_ai_advisory_session core
 - [ ] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
@@ -59,7 +62,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 3790
+- views.py lines: 3281
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate:
