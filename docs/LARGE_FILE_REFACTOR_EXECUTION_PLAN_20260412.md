@@ -248,5 +248,8 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 16): tach 5 test stock ai-advisory-trace (trace/list/filter/export) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py, test moi pass 5/5.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 17): tach cum lon 115 test stock workspace + realtime + advisory components/observability sang backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py, test moi pass 115/115.
 - Da dat moc giam kich thuoc monolith backend/portfolio/tests/test_api_routes.py xuong 876 lines (<1500).
+- Da tiep tuc chia test_api_routes theo cum domain (slice 18): tach 26 test trading + P1-13 smoke sang backend/portfolio/tests/test_api_routes_trading_and_p1_13.py, test moi pass 26/26.
+- Da hoan tat monolith split cho test_api_routes: file backend/portfolio/tests/test_api_routes.py chi con base helper (0 test method, 161 lines).
+- Da bo sung guardrail tu dong trong scripts/quality/check_large_files.ps1: fail CI neu backend/portfolio/tests/test_api_routes.py co them def test_, bat buoc tao module test_api_routes_*.py ngay tu dau.
 
-Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
+Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va giam kich thuoc cac file lon khac (tasks.py, StockDetail.jsx, Watchlist.jsx).

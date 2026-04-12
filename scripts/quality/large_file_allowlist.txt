@@ -2,7 +2,7 @@
 # Keep this list short and remove entries as files are refactored.
 backend/portfolio/views.py
 backend/portfolio/models.py
-backend/portfolio/tests/test_api_routes.py
+backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
 backend/portfolio/market_data_service.py
 backend/portfolio/tasks.py
 backend/portfolio/admin.py

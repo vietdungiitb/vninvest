@@ -1,7 +1,8 @@
 param(
     [int]$WarnLines = 800,
     [int]$FailLines = 1200,
-    [string]$AllowListPath = "scripts/quality/large_file_allowlist.txt"
+    [string]$AllowListPath = "scripts/quality/large_file_allowlist.txt",
+    [string]$MonolithTestPath = "backend/portfolio/tests/test_api_routes.py"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -72,6 +73,19 @@ foreach ($file in $files) {
 Write-Host "[large-file-guard] Thresholds: warn >= $WarnLines, fail >= $FailLines"
 Write-Host "[large-file-guard] Scanned files: $($files.Count)"
 Write-Host "[large-file-guard] Allowlist: $AllowListPath ($($allowedLargeFiles.Count) entries)"
+
+$monolithFile = Join-Path $scanRoot $MonolithTestPath
+if (Test-Path $monolithFile) {
+    $legacyTestMethods = Select-String -Path $monolithFile -Pattern '^\s{4}def\s+test_' -CaseSensitive:$false
+    if ($legacyTestMethods) {
+        Write-Host ""
+        Write-Host "[large-file-guard] Failing monolith test file check:"
+        Write-Host ("  FAIL  {0} still contains {1} test method(s)." -f $MonolithTestPath, $legacyTestMethods.Count)
+        Write-Host "  Rule: add new tests directly into dedicated module files (test_api_routes_*.py), not legacy monolith."
+        Write-Error "Large file guard failed: monolithic api routes test file still contains test methods."
+        exit 1
+    }
+}
 
 if ($violationsWarn.Count -gt 0) {
     Write-Host ""

@@ -81,11 +81,13 @@ Cap nhat: 2026-04-12
 - [x] Slice 15 test split: tach 5 test stock workspace usage-tracking + component persistence sang backend/portfolio/tests/test_api_routes_stock_workspace_usage_persistence.py
 - [x] Slice 16 test split: tach 5 test stock ai-advisory-trace (trace/list/filter/export) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_trace.py
 - [x] Slice 17 test split: tach cum lon 115 test stock workspace + realtime + advisory components/observability sang backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py; giam monolith test_api_routes.py xuong <1500 lines
+- [x] Slice 18 test split: tach 26 test trading + P1-13 smoke sang backend/portfolio/tests/test_api_routes_trading_and_p1_13.py; monolith backend/portfolio/tests/test_api_routes.py chi con base helper (0 test method)
+- [x] Guardrail moi: CI fail neu backend/portfolio/tests/test_api_routes.py co them def test_ (bat buoc tao test_api_routes_*.py ngay tu dau)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
 - [ ] Don dep helper runtime/advisory con lai trong views.py
-- [ ] Chia test_api_routes theo cum domain
+- [x] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
 
