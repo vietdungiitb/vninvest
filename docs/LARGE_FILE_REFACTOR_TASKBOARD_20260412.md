@@ -51,6 +51,9 @@ Cap nhat: 2026-04-12
 - [x] Tach stock_news_api + stock_news_ai_summary_api + portfolio_news_digest_api khoi monolith views.py
 - [x] Bo sung re-export helper compatibility cho sprint17/whale-feed/stock-workspace trong facade views.py
 - [x] Chay regression route + ai-config (241 test pass)
+- [x] Tao module moi: backend/portfolio/runtime_policy_helpers.py
+- [x] Tach helper runtime policy (governance delta + prefetch runtime + prefetch time policy) khoi facade views.py
+- [x] Chay smoke regression system-ai-admin-api (18 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -61,7 +64,7 @@ Cap nhat: 2026-04-12
 
 ### Backlog uu tien cao
 - [ ] Tach views_ai_advisory.py
-- [ ] Di chuyen helper runtime policy sang module rieng
+- [x] Di chuyen helper runtime policy sang module rieng
 
 ### Backlog uu tien trung binh
 - [ ] Chia nho frontend/src/pages/StockDetail.jsx
@@ -77,8 +80,8 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 1135
+- views.py lines: 843
 - So file >1200 lines:
 - So test patch portfolio.views.*:
-- API smoke pass rate: 241/241 targeted route+ai-config
+- API smoke pass rate: 241/241 targeted route+ai-config; 18/18 system-ai-admin-api
 - So regression issue/sprint:

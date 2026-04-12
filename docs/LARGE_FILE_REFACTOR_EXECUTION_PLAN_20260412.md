@@ -221,5 +221,8 @@ Tien do moi nhat:
 - Da bo sung compatibility facade imports cho helper sprint17/whale-feed/stock-workspace de giu patch target portfolio.views.* on dinh.
 - Da chay regression route + ai-config: 241 test pass.
 - Da giam backend/portfolio/views.py tu ~6839 dong xuong ~1135 dong (vuot muc tieu <1500 dong).
+- Da hoan tat PR-3c (phan 8): tach runtime policy helper sang backend/portfolio/runtime_policy_helpers.py va re-export qua facade views.py de giu compatibility.
+- Da chay smoke regression cho system-ai-admin-api: 18 test pass.
+- Da giam backend/portfolio/views.py xuong ~843 dong.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
