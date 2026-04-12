@@ -15,10 +15,15 @@ Cap nhat: 2026-04-12
 - [x] Chay smoke test stock-management endpoint (3 test pass)
 - [x] Tao module moi: backend/portfolio/views_screener.py
 - [x] Tach Screener views khoi monolith views.py
+- [x] Tao module moi: backend/portfolio/views_stock_workspace_admin.py
+- [x] Tach Stock Workspace + AdminOps views khoi monolith views.py
+- [x] Tao module moi: backend/portfolio/views_realtime_core.py
+- [x] Tach Realtime core views (ticker/intraday/price-board/breadth)
+- [x] Chay smoke test realtime core + stock workspace + admin_ops
 
 ### Dang lam
 - [ ] Tach views_realtime.py
-- [ ] Tach views_stock_workspace.py
+- [ ] Tach WhaleFeed/RVOL/Aggregate/Campaigns
 - [ ] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
