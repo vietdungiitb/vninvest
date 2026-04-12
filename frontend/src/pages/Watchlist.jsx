@@ -48,6 +48,62 @@ function mergeTickerIntoItem(item, update) {
   };
 }
 
+function toFiniteNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveWatchlistPriceScale(currentPrice, prevPrice) {
+  const current = toFiniteNumber(currentPrice);
+  const prev = toFiniteNumber(prevPrice);
+
+  if (current === null || current <= 0) {
+    return 1;
+  }
+
+  // Dashboard/Watchlist quy ước hiển thị nghìn VNĐ.
+  // Nếu giá snapshot ở mức VNĐ tuyệt đối (>= 2000), scale về nghìn VNĐ.
+  if (current >= 2000) {
+    return 0.001;
+  }
+
+  if (prev !== null && prev > 0 && prev >= 2000) {
+    return 0.001;
+  }
+
+  return 1;
+}
+
+function normalizeWatchlistQuoteUnit(item) {
+  const factor = resolveWatchlistPriceScale(item?.current_price, item?.prev_price);
+  if (factor === 1) {
+    return item;
+  }
+
+  const current = toFiniteNumber(item?.current_price);
+  const prev = toFiniteNumber(item?.prev_price);
+  const normalizedCurrent = current === null ? item?.current_price : current * factor;
+  const normalizedPrev = prev === null ? item?.prev_price : prev * factor;
+
+  let normalizedChangeValue = toFiniteNumber(item?.change_value);
+  let normalizedChangePct = toFiniteNumber(item?.change_pct);
+
+  if (current !== null && prev !== null && prev > 0) {
+    normalizedChangeValue = (current - prev) * factor;
+    normalizedChangePct = ((current - prev) / prev) * 100;
+  } else if (normalizedChangeValue !== null) {
+    normalizedChangeValue = normalizedChangeValue * factor;
+  }
+
+  return {
+    ...item,
+    current_price: normalizedCurrent,
+    prev_price: normalizedPrev,
+    change_value: normalizedChangeValue,
+    change_pct: normalizedChangePct,
+  };
+}
+
 function ChangeCell({ value }) {
   if (value === null || value === undefined) {
     return <span className="text-gray-600 text-xs">—</span>;
@@ -295,18 +351,22 @@ export default function WatchlistPage() {
   const groupsWithRealtime = useMemo(
     () => groups.map((group) => ({
       ...group,
-      items: group.items.map((item) => mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {})),
+      items: group.items.map((item) => normalizeWatchlistQuoteUnit(
+        mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {}),
+      )),
     })),
     [groups, quotesBySymbol],
   );
 
   const trackedSymbolsWithRealtime = useMemo(
-    () => trackedSymbols.map((item) => mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {})),
+    () => trackedSymbols.map((item) => normalizeWatchlistQuoteUnit(
+      mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {}),
+    )),
     [trackedSymbols, quotesBySymbol],
   );
 
   const priceAlertsWithRealtime = useMemo(
-    () => priceAlerts.map((rule) => ({
+    () => priceAlerts.map((rule) => normalizeWatchlistQuoteUnit({
       ...rule,
       current_price: quotesBySymbol[rule.symbol]?.current_price ?? rule.current_price,
       stale: quotesBySymbol[rule.symbol]?.stale ?? false,
