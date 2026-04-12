@@ -214,6 +214,7 @@ Tien do moi nhat:
 - Da hoan tat PR-3c (phan 1): tach advisory trace/trace-list/trace-export/observability sang module backend/portfolio/views_ai_advisory_trace.py.
 - Da hoan tat PR-3c (phan 2): tach component generation/toggle/refresh/delete/restore + executive summary regenerate/delete sang module backend/portfolio/views_ai_advisory_components_summary.py.
 - Da hoan tat PR-3c (phan 3): tach stock_ai_advisory_session core + session-v2 benchmark/observability helper + holistic rollout gate helper sang module backend/portfolio/views_ai_advisory_session.py.
-- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~2751 dong.
+- Da hoan tat PR-3c (phan 4): tach WhaleAdvisoryListView + canonical payload/api + auto refresh info + refresh/delete current sang module backend/portfolio/views_ai_advisory_management.py.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~2332 dong.
 
-Buoc tiep theo de code refactor: tiep tuc tach WhaleAdvisoryListView + ai_advisory_canonical_symbol_api + refresh_whale_advisory_api khoi monolith views.py.
+Buoc tiep theo de code refactor: tiep tuc tach whale_advisory_symbol_stats va helper/runtime advisory con lai khoi monolith views.py.

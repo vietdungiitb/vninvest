@@ -38,10 +38,13 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_ai_advisory_session.py
 - [x] Tach stock_ai_advisory_session core + session-v2 helper + rollout gate helper khoi monolith views.py
 - [x] Chay test muc tieu advisory-session/observability/pr3-threshold (28 test pass)
+- [x] Tao module moi: backend/portfolio/views_ai_advisory_management.py
+- [x] Tach whale advisory list/canonical/auto-refresh/refresh/current-delete khoi monolith views.py
+- [x] Chay test muc tieu whale-advisory list-management (22 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
-- [ ] Tach WhaleAdvisoryListView + canonical/refresh advisory endpoints
+- [ ] Tach whale_advisory_symbol_stats + helper advisory con lai
 - [ ] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
@@ -65,7 +68,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 2751
+- views.py lines: 2332
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate:
