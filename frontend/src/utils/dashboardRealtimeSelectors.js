@@ -14,16 +14,34 @@ function normalizeLivePriceUnit(rawLivePrice, { snapshotPrice, avgCost }) {
     return null;
   }
 
-  const baseline = toFiniteNumber(snapshotPrice) && Number(snapshotPrice) > 0
+  const snapshot = toFiniteNumber(snapshotPrice) && Number(snapshotPrice) > 0
     ? Number(snapshotPrice)
-    : (toFiniteNumber(avgCost) && Number(avgCost) > 0 ? Number(avgCost) : null);
+    : null;
+  const avg = toFiniteNumber(avgCost) && Number(avgCost) > 0
+    ? Number(avgCost)
+    : null;
 
-  if (!baseline) {
+  const references = [];
+  if (avg) {
+    references.push(avg);
+  }
+  if (snapshot) {
+    const ratioToAvg = avg ? Math.max(snapshot, avg) / Math.min(snapshot, avg) : 1;
+    // Snapshot can already be contaminated by wrong unit (x1000). Ignore it when too far from avg_cost.
+    if (!avg || ratioToAvg <= 50) {
+      references.push(snapshot);
+    }
+  }
+
+  if (!references.length) {
     return livePrice;
   }
 
   const candidates = [livePrice, livePrice * 1000, livePrice / 1000].filter((item) => item > 0);
-  const score = (candidate) => Math.abs(Math.log(candidate / baseline));
+  const score = (candidate) => references.reduce(
+    (sum, ref) => sum + Math.abs(Math.log(candidate / ref)),
+    0,
+  );
 
   let best = candidates[0];
   let bestScore = score(best);
