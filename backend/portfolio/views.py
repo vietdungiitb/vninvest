@@ -5506,10 +5506,21 @@ def stock_news_ai_summary_api(request, symbol: str):
         )
     except Exception as exc:
         logger.exception('stock_news_ai_summary_api failed for %s: %s', normalized_symbol, exc)
+        import httpx
+        if isinstance(exc, (httpx.ReadTimeout, httpx.ConnectTimeout, TimeoutError)):
+            return Response(
+                {
+                    'detail': 'AI provider phản hồi quá chậm (timeout). Vui lòng thử lại sau 1-2 phút.',
+                    'reason': 'ai_provider_timeout',
+                    'username': request.user.username,
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         return Response(
             {
                 'detail': 'Không thể tạo AI News lúc này. Vui lòng thử lại sau.',
                 'reason': 'ai_summary_generation_failed',
+                'username': request.user.username,
             },
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )

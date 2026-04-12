@@ -101,6 +101,7 @@ def _openai_compatible_completion(
     prompt: str,
     max_tokens: int,
     extra_headers: dict[str, str] | None = None,
+    timeout_seconds: float | None = None,
 ) -> dict[str, Any]:
     headers = {
         'Authorization': f'Bearer {api_key}',
@@ -124,13 +125,18 @@ def _openai_compatible_completion(
 
     _max_retries = int(os.getenv('AI_PROVIDER_RATE_LIMIT_MAX_RETRIES', '3'))
     _retry_base_seconds = float(os.getenv('AI_PROVIDER_RATE_LIMIT_RETRY_BASE_SECONDS', '5'))
+    _request_timeout = float(
+        timeout_seconds
+        if timeout_seconds is not None
+        else os.getenv('AI_PROVIDER_REQUEST_TIMEOUT_SECONDS', '45')
+    )
 
     for attempt in range(_max_retries + 1):
         resp = httpx.post(
             target_url,
             headers=headers,
             json=payload,
-            timeout=30.0,
+            timeout=_request_timeout,
         )
 
         # Some GitHub Models deployments expose OpenAI-compatible endpoint on
@@ -142,7 +148,7 @@ def _openai_compatible_completion(
                     fallback_url,
                     headers=headers,
                     json=payload,
-                    timeout=30.0,
+                    timeout=_request_timeout,
                 )
                 if fallback_resp.status_code < 400:
                     resp = fallback_resp
@@ -390,11 +396,13 @@ def generate_portfolio_digest(
             'copilot': os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
         }
         extra_headers = None
+        request_timeout_seconds = None
         if provider_key == 'copilot':
             extra_headers = {
                 'Accept': 'application/vnd.github+json',
                 'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
             }
+            request_timeout_seconds = float(os.getenv('COPILOT_REQUEST_TIMEOUT_SECONDS', '75'))
         raw = _openai_compatible_completion(
             base_url=base_url_map[provider_key],
             api_key=api_key,
@@ -402,6 +410,7 @@ def generate_portfolio_digest(
             prompt=prompt,
             max_tokens=max_tokens,
             extra_headers=extra_headers,
+            timeout_seconds=request_timeout_seconds,
         )
         return _split_digest_sections(raw)
 
