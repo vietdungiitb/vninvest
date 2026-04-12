@@ -12,6 +12,7 @@ from django.contrib.auth.models import User
 from decimal import Decimal
 
 from portfolio.models import WhaleAdvisory, UserConfig, TrackedSymbol
+from portfolio import views as portfolio_views
 from portfolio.views import _resolve_first_create_threshold_vnd
 
 
@@ -219,7 +220,7 @@ class TestPR3FirstCreateAdvisoryIntegration(TestCase):
         mock_resolve.return_value = (override_threshold, 'symbol_override')
 
         # Simulate resolution
-        threshold_vnd, source = _resolve_first_create_threshold_vnd(
+        threshold_vnd, source = portfolio_views._resolve_first_create_threshold_vnd(
             self.user,
             self.symbol,
             500 * 1_000_000
