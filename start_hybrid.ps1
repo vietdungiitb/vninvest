@@ -18,11 +18,11 @@ docker stop vninvest-dev-backend 2>$null
 docker stop vninvest-dev-frontend 2>$null
 Write-Host "    OK."
 
-# ── Bước 2: Recreate DB container để expose port 5432 ────────────
+# ── Bước 2: Recreate DB + Redis container để expose port host ─────
 Write-Host ""
-Write-Host "==> [2/4] Dam bao Postgres expose port 5432 tren host..."
+Write-Host "==> [2/4] Dam bao Postgres + Redis expose port tren host..."
 docker compose -f "$Root\docker-compose.yml" -f "$Root\docker-compose.dev.yml" `
-    up -d --no-deps db --force-recreate 2>&1 | Out-Null
+    up -d --no-deps db redis --force-recreate 2>&1 | Out-Null
 
 # Chờ Postgres sẵn sàng (tối đa 30s)
 $waited = 0
@@ -44,6 +44,26 @@ if ($waited -ge 30) {
     Write-Host " san sang (${waited}s)."
 }
 
+# Chờ Redis sẵn sàng (tối đa 30s)
+$waitedRedis = 0
+Write-Host -NoNewline "    Cho Redis..."
+do {
+    Start-Sleep -Seconds 1
+    $waitedRedis++
+    try {
+        $tcpRedis = New-Object System.Net.Sockets.TcpClient
+        $tcpRedis.Connect("localhost", 6379)
+        $tcpRedis.Close()
+        break
+    } catch {}
+} while ($waitedRedis -lt 30)
+
+if ($waitedRedis -ge 30) {
+    Write-Warning "Redis chua san sang sau 30s. Kiem tra lai."
+} else {
+    Write-Host " san sang (${waitedRedis}s)."
+}
+
 # ── Bước 3: Backend local – Daphne :8000 ─────────────────────────
 Write-Host ""
 Write-Host "==> [3/4] Khoi dong Backend local (Daphne :8000)..."
@@ -56,6 +76,11 @@ $backendEnvVars = @"
 `$env:POSTGRES_DB = 'vninvest'
 `$env:POSTGRES_USER = 'postgres'
 `$env:POSTGRES_PASSWORD = 'devpassword'
+`$env:CELERY_BROKER_URL = 'redis://localhost:6379/0'
+`$env:CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+`$env:CACHE_REDIS_URL = 'redis://localhost:6379/2'
+`$env:REALTIME_REDIS_URL = 'redis://localhost:6379/0'
+`$env:REALTIME_CHANNEL_LAYER = 'redis'
 `$env:CORS_ALLOWED_ORIGINS = 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080'
 `$env:CSRF_TRUSTED_ORIGINS = 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080'
 Set-Location '$Root\backend'
