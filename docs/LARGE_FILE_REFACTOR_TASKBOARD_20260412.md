@@ -20,10 +20,13 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_realtime_core.py
 - [x] Tach Realtime core views (ticker/intraday/price-board/breadth)
 - [x] Chay smoke test realtime core + stock workspace + admin_ops
+- [x] Tao module moi: backend/portfolio/views_realtime_advanced.py
+- [x] Tach WhaleFeedView + RVOLView khoi monolith views.py
+- [x] Chay test muc tieu whale-feed + rvol (3 test pass)
 
 ### Dang lam
-- [ ] Tach views_realtime.py
-- [ ] Tach WhaleFeed/RVOL/Aggregate/Campaigns
+- [ ] Tach views_realtime.py (aggregate/campaigns con lai)
+- [ ] Tach WhaleFeedAggregate/Campaigns
 - [ ] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
@@ -48,6 +51,7 @@ Cap nhat: 2026-04-12
 ## KPI tracking (dien hang ngay)
 
 - views.py lines:
+- views.py lines: 5062
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate:
