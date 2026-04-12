@@ -15,6 +15,9 @@ services:
 
   redis:
     container_name: vninvest-dev-redis
+    ports:
+      # Expose Redis cho backend local (hybrid mode) va admin stats
+      - "127.0.0.1:6379:6379"
 
   mailpit:
     container_name: vninvest-dev-mailpit

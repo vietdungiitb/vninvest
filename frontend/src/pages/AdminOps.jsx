@@ -162,6 +162,17 @@ function SyncRow({ label, log, t }) {
   );
 }
 
+function withTimeout(promise, ms = 12000, label = 'request') {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      const err = new Error(`${label} timeout`);
+      err.code = 'TIMEOUT';
+      window.setTimeout(() => reject(err), ms);
+    }),
+  ]);
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function AdminOps() {
@@ -275,16 +286,19 @@ export default function AdminOps() {
     }
     setError(null);
     try {
-      const [statsRes, settingsRes, vnstockRes, vnstockChangelogRes] = await Promise.all([
-        getAdminOpsStats(),
-        getAdminPrefetchTimePolicy(),
-        getAdminVnstockConfigCurrent(),
-        getAdminVnstockConfigChangelog(20, 0),
+      // stats la du lieu bat buoc cho trang; cac panel con lai fail-soft de tranh treo spinner.
+      const statsRes = await withTimeout(getAdminOpsStats(), 15000, 'admin-ops-stats');
+      const [settingsRes, vnstockRes, vnstockChangelogRes] = await Promise.allSettled([
+        withTimeout(getAdminPrefetchTimePolicy(), 12000, 'admin-ops-settings'),
+        withTimeout(getAdminVnstockConfigCurrent(), 12000, 'admin-ops-vnstock-current'),
+        withTimeout(getAdminVnstockConfigChangelog(20, 0), 12000, 'admin-ops-vnstock-changelog'),
       ]);
       setStats(statsRes.data);
-      const payload = settingsRes.data?.settings || null;
-      setSystemAiSettings(payload);
-      const vnstockSettings = vnstockRes.data?.settings || null;
+      const payload = settingsRes.status === 'fulfilled' ? (settingsRes.value.data?.settings || null) : null;
+      if (payload) {
+        setSystemAiSettings(payload);
+      }
+      const vnstockSettings = vnstockRes.status === 'fulfilled' ? (vnstockRes.value.data?.settings || null) : null;
       if (vnstockSettings) {
         setVnstockConfigForm({
           max_concurrency: String(vnstockSettings.max_concurrency ?? ''),
@@ -304,7 +318,9 @@ export default function AdminOps() {
           enable_concurrent_limit: Boolean(vnstockSettings.enable_concurrent_limit),
         });
       }
-      setVnstockChangelog(Array.isArray(vnstockChangelogRes.data?.results) ? vnstockChangelogRes.data.results : []);
+      if (vnstockChangelogRes.status === 'fulfilled') {
+        setVnstockChangelog(Array.isArray(vnstockChangelogRes.value.data?.results) ? vnstockChangelogRes.value.data.results : []);
+      }
       if (payload?.governance_delta_thresholds) {
         setThresholdForm({
           warning: String(payload.governance_delta_thresholds.warning ?? ''),
