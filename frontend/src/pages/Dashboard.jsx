@@ -232,12 +232,14 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label={t('dashboard.marketValue')}
+          unit={t('dashboard.thousandVndUnitShort')}
           value={marketValue}
           loading={loadingSummary}
           showInteger={true}
         />
         <StatCard
           label={t('dashboard.unrealizedPL')}
+          unit={t('dashboard.thousandVndUnitShort')}
           value={unrealizedPLValue}
           sub={summary ? `${parseFloat(unrealizedPLPctValue || 0).toFixed(2)}%` : null}
           isPositive={unrealizedPL > 0}
@@ -247,6 +249,7 @@ export default function Dashboard() {
         />
         <StatCard
           label={t('dashboard.realizedPL')}
+          unit={t('dashboard.thousandVndUnitShort')}
           value={summary?.total_realized_pl}
           isPositive={realizedPL > 0}
           isNegative={realizedPL < 0}
@@ -255,6 +258,7 @@ export default function Dashboard() {
         />
         <StatCard
           label={t('dashboard.dividends')}
+          unit={t('dashboard.thousandVndUnitShort')}
           value={summary?.total_dividends}
           loading={loadingSummary}
           showInteger={true}

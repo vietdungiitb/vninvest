@@ -13,7 +13,7 @@ function formatVND(value, showInteger = false) {
   return formatQuotePrice(value);
 }
 
-export default function StatCard({ label, value, sub, isPositive, isNegative, loading, showInteger = false }) {
+export default function StatCard({ label, value, sub, unit, isPositive, isNegative, loading, showInteger = false }) {
   const { formatQuotePrice, formatQuoteInteger } = useI18n();
   const displayValue = showInteger ? formatQuoteInteger(value) : formatQuotePrice(value);
   
@@ -28,7 +28,12 @@ export default function StatCard({ label, value, sub, isPositive, isNegative, lo
       {loading ? (
         <div className="h-7 bg-gray-800 rounded animate-pulse w-3/4" />
       ) : (
-        <p className={`text-2xl font-bold ${valueColor}`}>{displayValue}</p>
+        <p className={`text-2xl font-bold ${valueColor}`}>
+          {displayValue}
+          {unit && (
+            <span className="text-xs font-normal text-gray-500 ml-1.5">{unit}</span>
+          )}
+        </p>
       )}
       {sub && !loading && (
         <p className={`text-xs mt-1 ${isPositive ? 'text-brand-500' : isNegative ? 'text-red-400' : 'text-gray-500'}`}>
