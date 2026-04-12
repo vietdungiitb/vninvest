@@ -86,16 +86,15 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
     async def dark_flow_alert(self, event):
         payload = dict(event.get('data') or event.get('payload') or {})
         payload['event_type'] = 'dark_flow_alert'
+        await self.send_json(payload)
 
-            async def news_digest(self, event):
-                """
-                Sprint35 Layer 3: Push Portfolio Daily News Digest.
-                Tất cả plan có watchlist đều nhận (thêm giá trị từ free).
-                """
-                payload = dict(event.get('payload') or {})
-                payload['event_type'] = 'news_digest'
-                await self.send_json(payload)
-
+    async def news_digest(self, event):
+        """
+        Sprint35 Layer 3: Push Portfolio Daily News Digest.
+        Tất cả plan có watchlist đều nhận (thêm giá trị từ free).
+        """
+        payload = dict(event.get('payload') or {})
+        payload['event_type'] = 'news_digest'
         await self.send_json(payload)
 
     @database_sync_to_async
