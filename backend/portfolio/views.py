@@ -5397,11 +5397,12 @@ def stock_news_ai_summary_api(request, symbol: str):
         # Build an internal HttpRequest instead of reusing DRF Request to avoid
         # AssertionError in api_view wrapper.
         from django.test import RequestFactory
+        from rest_framework.test import force_authenticate
 
         rf = RequestFactory()
         params = {'force': '1'} if force_refresh else {}
         internal_request = rf.get(f'/api/stock-management/stocks/{normalized_symbol}/news/', data=params)
-        internal_request.user = request.user
+        force_authenticate(internal_request, user=request.user)
 
         news_response = stock_news_api(internal_request, normalized_symbol)
         if news_response.status_code >= 400:
