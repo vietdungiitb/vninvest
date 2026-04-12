@@ -1623,6 +1623,8 @@ const en = {
     sectionLabel: 'News',
     noData: 'No recent news available.',
     fetchFailed: 'Failed to load news.',
+    refreshNow: 'Refresh now',
+    refreshing: 'Refreshing...',
     readMore: 'Read more',
     cachedLabel: 'Cached',
     updatedAt: 'Updated',

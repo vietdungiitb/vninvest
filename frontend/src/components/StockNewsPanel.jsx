@@ -68,18 +68,25 @@ export default function StockNewsPanel({ symbol }) {
   const { t } = useI18n();
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const pollTimerRef = useRef(null);
 
-  const fetchNews = useCallback(async () => {
+  const fetchNews = useCallback(async ({ force = false } = {}) => {
     if (!symbol) return;
+    if (force) {
+      setRefreshing(true);
+    }
     try {
-      const res = await getStockNews(symbol);
+      const res = await getStockNews(symbol, { force });
       setNews(res.data);
       setError(null);
     } catch (err) {
       setError(t('stockNews.fetchFailed'));
     } finally {
+      if (force) {
+        setRefreshing(false);
+      }
       setLoading(false);
     }
   }, [symbol, t]);
@@ -107,6 +114,18 @@ export default function StockNewsPanel({ symbol }) {
           {t('stockNews.sectionLabel')}
         </h2>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => fetchNews({ force: true })}
+            disabled={loading || refreshing || !symbol}
+            className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+              loading || refreshing || !symbol
+                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                : 'bg-brand-600/20 text-brand-400 hover:bg-brand-600/30'
+            }`}
+          >
+            {refreshing ? t('stockNews.refreshing') : t('stockNews.refreshNow')}
+          </button>
           {cachedLabel && (
             <span className="text-xs text-gray-600">{cachedLabel}</span>
           )}

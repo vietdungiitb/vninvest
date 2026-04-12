@@ -5155,13 +5155,16 @@ def _persist_component_generation_metrics_audit_log(
         logger.warning('Component generation metrics audit log persistence failed for %s: %s', symbol, exc)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_news_api(request, symbol: str):
     """
     GET /api/stock-management/stocks/<symbol>/news/
     Sprint34 Layer 1: Trả về danh sách tin tức gần đây theo mã từ vnstock.
     Cache Redis 30 phút. Graceful degradation khi vnstock không khả dụng.
+        Hỗ trợ manual refresh:
+            - GET .../news/?force=1
+            - POST .../news/
     """
     from .adapters.vnstock_adapter import _build_stock_client, _run_with_timeout
     from .adapters.cache_adapter import get_cache, set_cache
@@ -5170,11 +5173,14 @@ def stock_news_api(request, symbol: str):
     if not normalized_symbol or len(normalized_symbol) > 10:
         return Response({'detail': 'Mã chứng khoán không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    force_refresh = request.method == 'POST' or str(request.query_params.get('force', '')).strip().lower() in {'1', 'true', 'yes'}
+
     cache_key = f'stock:news:{normalized_symbol}'
-    cached = get_cache(cache_key)
-    if cached is not None:
-        cached['cached'] = True
-        return Response(cached)
+    if not force_refresh:
+        cached = get_cache(cache_key)
+        if cached is not None:
+            cached['cached'] = True
+            return Response(cached)
 
     def _fetch():
         stock_client = _build_stock_client(symbol=normalized_symbol, source='VCI')

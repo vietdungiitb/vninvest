@@ -1633,6 +1633,8 @@ const vi = {
     sectionLabel: 'Tin tức',
     noData: 'Không có tin tức gần đây.',
     fetchFailed: 'Không tải được tin tức.',
+    refreshNow: 'Lấy tin mới',
+    refreshing: 'Đang lấy...',
     readMore: 'Đọc thêm',
     cachedLabel: 'Dữ liệu cache',
     updatedAt: 'Cập nhật',
