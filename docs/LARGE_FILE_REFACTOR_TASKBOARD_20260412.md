@@ -75,6 +75,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 9 test split: tach 4 test whale-advisory access/detail/filter sang backend/portfolio/tests/test_api_routes_whale_advisory_access.py
 - [x] Slice 10 test split: tach 13 test whale-advisory refresh/auto-refresh/quota/fallback sang backend/portfolio/tests/test_api_routes_whale_advisory_refresh.py
 - [x] Slice 11 test split: tach 3 test whale-advisory delete-current sang backend/portfolio/tests/test_api_routes_whale_advisory_delete_current.py
+- [x] Slice 12 test split: tach 12 test stock ai-advisory-session (contract/gating/quota) sang backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
