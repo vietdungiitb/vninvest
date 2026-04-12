@@ -70,6 +70,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 4 test split: tach 8 test auth password-reset sang backend/portfolio/tests/test_api_routes_auth_password_reset.py
 - [x] Slice 5 test split: tach 3 test auth verify-email/resend-verification sang backend/portfolio/tests/test_api_routes_auth_email_verification.py
 - [x] Slice 6 test split: tach 8 test auth register validation/onboarding sang backend/portfolio/tests/test_api_routes_auth_register.py
+- [x] Slice 7 test split: tach 3 test auth oauth-google sang backend/portfolio/tests/test_api_routes_auth_oauth_google.py
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
