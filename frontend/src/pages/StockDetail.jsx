@@ -2815,16 +2815,6 @@ export default function StockDetail() {
                     {advisoryChartContextState.used ? 'Chart context: used' : 'Chart context: fallback'}
                   </span>
                 ) : null}
-                {activeInsightTab === 'advisory' ? (
-                  <button
-                    type="button"
-                    onClick={handleGenerateAdvisoryComponents}
-                    disabled={advisoryGeneratingComponents || advisoryLoading}
-                    className="btn-secondary"
-                  >
-                    {advisoryGeneratingComponents ? t('stockDetail.creatingTabs') : t('stockDetail.createAiTabs')}
-                  </button>
-                ) : null}
               </div>
             </div>
 
@@ -2859,6 +2849,14 @@ export default function StockDetail() {
                     </span>
                     <span className="text-slate-600">• {t('stockDetail.tabsCount', { count: advisoryComponents.length })}</span>
                     <span className="text-slate-600">• {t('stockDetail.tabsUsedCount', { count: (advisoryComponents.filter((item) => item.include_in_summary)).length })}</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerateAdvisoryComponents}
+                      disabled={advisoryGeneratingComponents || advisoryLoading}
+                      className="btn-secondary ml-auto"
+                    >
+                      {advisoryGeneratingComponents ? t('stockDetail.creatingTabs') : t('stockDetail.createAiTabs')}
+                    </button>
                   </div>
 
                   <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
