@@ -68,6 +68,7 @@ Cap nhat: 2026-04-12
 - [x] Slice 2 test split: tach 4 test symbol-investigation sang backend/portfolio/tests/test_api_routes_symbol_investigation.py
 - [x] Slice 3 test split: tach test_jwt_token_obtain_endpoint + test_register_endpoint_creates_unverified_user_and_sends_verification_email sang backend/portfolio/tests/test_api_routes_auth_basic.py
 - [x] Slice 4 test split: tach 8 test auth password-reset sang backend/portfolio/tests/test_api_routes_auth_password_reset.py
+- [x] Slice 5 test split: tach 3 test auth verify-email/resend-verification sang backend/portfolio/tests/test_api_routes_auth_email_verification.py
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
