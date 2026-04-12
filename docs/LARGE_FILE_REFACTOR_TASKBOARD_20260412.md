@@ -54,6 +54,9 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/runtime_policy_helpers.py
 - [x] Tach helper runtime policy (governance delta + prefetch runtime + prefetch time policy) khoi facade views.py
 - [x] Chay smoke regression system-ai-admin-api (18 test pass)
+- [x] Tao module moi: backend/portfolio/views_realtime_symbol_investigation.py
+- [x] Tach symbol_investigation_api khoi facade views.py theo boundary realtime
+- [x] Chay smoke regression symbol-investigation routes (4 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -80,8 +83,8 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 843
+- views.py lines: 790
 - So file >1200 lines:
 - So test patch portfolio.views.*:
-- API smoke pass rate: 241/241 targeted route+ai-config; 18/18 system-ai-admin-api
+- API smoke pass rate: 241/241 targeted route+ai-config; 18/18 system-ai-admin-api; 4/4 symbol-investigation
 - So regression issue/sprint:
