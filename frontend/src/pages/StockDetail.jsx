@@ -1385,6 +1385,7 @@ export default function StockDetail() {
   const [financialsLoading, setFinancialsLoading] = useState(true);
   const [financialsYear, setFinancialsYear] = useState(null);
   const [advisorySession, setAdvisorySession] = useState(null);
+  const [activeInsightTab, setActiveInsightTab] = useState('advisory');
   const [advisoryUserProvider, setAdvisoryUserProvider] = useState(null);
   const [advisoryComponents, setAdvisoryComponents] = useState([]);
   const [advisoryDeletedComponents, setAdvisoryDeletedComponents] = useState([]);
@@ -2771,11 +2772,39 @@ export default function StockDetail() {
           <section className="card-section p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
-                <p className="text-label">{t('stockDetail.advisorySession')}</p>
-                <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('stockDetail.aiAdvisoryFor', { symbol: normalizedSymbol })}</h2>
+                <p className="text-label">
+                  {activeInsightTab === 'advisory' ? t('stockDetail.advisorySession') : t('stockNews.sectionLabel')}
+                </p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">
+                  {activeInsightTab === 'advisory'
+                    ? t('stockDetail.aiAdvisoryFor', { symbol: normalizedSymbol })
+                    : `${t('stockNews.sectionLabel')} ${normalizedSymbol}`}
+                </h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {advisoryChartContextState.used !== null ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveInsightTab('advisory')}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    activeInsightTab === 'advisory'
+                      ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                  }`}
+                >
+                  {t('stockDetail.advisorySession')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveInsightTab('news')}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                    activeInsightTab === 'news'
+                      ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                      : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                  }`}
+                >
+                  {t('stockNews.sectionLabel')}
+                </button>
+                {activeInsightTab === 'advisory' && advisoryChartContextState.used !== null ? (
                   <span
                     className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
                       advisoryChartContextState.used
@@ -2786,18 +2815,21 @@ export default function StockDetail() {
                     {advisoryChartContextState.used ? 'Chart context: used' : 'Chart context: fallback'}
                   </span>
                 ) : null}
-                <button
-                  type="button"
-                  onClick={handleGenerateAdvisoryComponents}
-                  disabled={advisoryGeneratingComponents || advisoryLoading}
-                  className="btn-secondary"
-                >
-                  {advisoryGeneratingComponents ? t('stockDetail.creatingTabs') : t('stockDetail.createAiTabs')}
-                </button>
+                {activeInsightTab === 'advisory' ? (
+                  <button
+                    type="button"
+                    onClick={handleGenerateAdvisoryComponents}
+                    disabled={advisoryGeneratingComponents || advisoryLoading}
+                    className="btn-secondary"
+                  >
+                    {advisoryGeneratingComponents ? t('stockDetail.creatingTabs') : t('stockDetail.createAiTabs')}
+                  </button>
+                ) : null}
               </div>
             </div>
 
-            <div className="mt-3 space-y-3">
+            {activeInsightTab === 'advisory' ? (
+              <div className="mt-3 space-y-3">
               {advisoryLoading ? (
                 <div className="h-24 animate-pulse rounded-xl bg-slate-900" />
               ) : advisorySession ? (
@@ -3396,7 +3428,12 @@ export default function StockDetail() {
               {advisoryChartContextState.warnings.length > 0 ? (
                 <p className="text-xs text-amber-300">Chart context warnings: {advisoryChartContextState.warnings.join(', ')}</p>
               ) : null}
-            </div>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <StockNewsPanel symbol={normalizedSymbol} />
+              </div>
+            )}
           </section>
 
         </div>
@@ -3442,8 +3479,6 @@ export default function StockDetail() {
         selectedYear={financialsYear}
         onYearChange={setFinancialsYear}
       />
-      {/* Sprint 34: Tin tức theo mã */}
-      <StockNewsPanel symbol={normalizedSymbol} />
     </div>
   );
 }
