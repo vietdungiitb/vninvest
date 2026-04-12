@@ -19,64 +19,7 @@ class StockProfileListView(generics.ListAPIView):
 
 # StockProfile Detail đã có
 
-# Đồng bộ StockProfile từ vnstock (gọi management command hoặc service)
-from django.http import JsonResponse
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def sync_stockprofile_api(request):
-    result = sync_stock_profiles(requested_by=request.user, mode=request.query_params.get('mode', 'all'))
-    return JsonResponse(
-        {
-            'success': result['success'],
-            'message': result['message'],
-            'warning': result.get('warning'),
-            'source': result.get('source'),
-            'total_symbols': result.get('total_symbols', 0),
-            'created_symbols': result.get('created_symbols', 0),
-            'updated_symbols': result.get('updated_symbols', 0),
-            'error': result.get('error', ''),
-        },
-        status=200 if result['success'] else 500,
-    )
-
-@api_view(['POST'])
-@permission_classes([IsAdminUser])
-def sync_market_groups_api(request):
-    """
-    POST /api/admin-ops/market-groups/sync/
-    Trigger đồng bộ nhóm thị trườ ng (sectors, market caps) toàn hệ thống.
-    Yêu cầu is_staff.
-    """
-    mode = request.query_params.get('mode', 'all')
-    clear_existing = request.query_params.get('clear', 'false').lower() == 'true'
-
-    result = sync_market_groups(
-        requested_by=request.user,
-        mode=mode,
-        clear_existing=clear_existing,
-        scope=MarketGroupSyncLog.ScopeChoices.GLOBAL,
-    )
-
-    if result.get('warning') and result.get('success'):
-        resp_status = status.HTTP_207_MULTI_STATUS
-    elif result.get('success'):
-        resp_status = status.HTTP_200_OK
-    else:
-        resp_status = status.HTTP_500_INTERNAL_SERVER_ERROR
-
-    return Response(
-        {
-            'success': result.get('success', False),
-            'message': result.get('message', ''),
-            'warning': result.get('warning'),
-            'source': result.get('source'),
-            'created_groups': result.get('created_groups_count', 0),
-            'updated_groups': result.get('updated_groups_count', 0),
-            'added_symbols': result.get('added_symbols_count', 0),
-            'error': result.get('error', ''),
-        },
-        status=resp_status,
-    )
+from .views_admin_sync import sync_market_groups_api, sync_stockprofile_api
 
 
 from .runtime_policy_helpers import (
