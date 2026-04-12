@@ -13,6 +13,7 @@ import AllocationPieChart from '../components/AllocationPieChart';
 import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
+import PortfolioDigestPanel from '../components/PortfolioDigestPanel';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import {
@@ -307,6 +308,8 @@ export default function Dashboard() {
         showSummaryMetrics={false}
         portfolioId={activePortfolioId}
       />
+
+      <PortfolioDigestPanel />
 
       {/* Charts */}
       <div className="space-y-4">

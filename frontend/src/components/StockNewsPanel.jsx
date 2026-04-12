@@ -4,8 +4,8 @@
  * Tự fetch dữ liệu, polling mỗi 30 phút, graceful degradation khi lỗi.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { getStockNews } from '../api/client';
+import { useI18n } from '../context/LangContext';
 
 const POLL_INTERVAL_MS = 30 * 60 * 1000; // 30 phút
 
@@ -21,7 +21,7 @@ function formatPublishedAt(isoStr) {
 }
 
 function NewsItem({ item }) {
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const dateStr = formatPublishedAt(item.published_at);
 
   return (
@@ -65,7 +65,7 @@ function NewsItem({ item }) {
 }
 
 export default function StockNewsPanel({ symbol }) {
-  const { t } = useTranslation();
+  const { t } = useI18n();
   const [news, setNews] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

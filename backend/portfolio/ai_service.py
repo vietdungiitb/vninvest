@@ -320,6 +320,136 @@ def generate_whale_text(
     raise RuntimeError(f'Unsupported AI provider: {provider_key}')
 
 
+def generate_portfolio_digest(
+    provider: str,
+    model: str,
+    api_key: str,
+    symbols: list[str],
+    news_context_by_symbol: dict[str, str],
+    user=None,
+    output_language: str | None = None,
+) -> dict[str, Any]:
+    """
+    Sprint35 Layer 3: Tạo bản tóm tắt tin tức danh mục AI.
+    Nhận tin tức theo từng mã, trả về narrative cá nhân hóa.
+    Returns dict với 'summary' (~50 từ), 'full' (~200 từ), 'prompt_tokens', 'completion_tokens'.
+    """
+    provider_key = str(provider or 'openclaw').strip().lower()
+    model_id = str(model or '').strip()
+    if not model_id:
+        raise RuntimeError(f'generate_portfolio_digest: thiếu AI model cho provider {provider_key}')
+
+    resolved_language = output_language or _resolve_output_language(getattr(user, 'userconfig', user))
+    language_instruction = _language_instruction(resolved_language)
+
+    # Lắp ghép news context vào prompt
+    news_sections: list[str] = []
+    for sym in symbols:
+        ctx = str(news_context_by_symbol.get(sym) or '').strip()
+        if ctx:
+            news_sections.append(ctx)
+    news_block = '\n\n'.join(news_sections) if news_sections else ''
+
+    if not news_block:
+        # Không có tin tức → không gọi AI
+        raise ValueError('generate_portfolio_digest: không có tin tức để tóm tắt')
+
+    symbol_list = ', '.join(symbols[:15])
+    prompt = (
+        f"Bạn là trợ lý đầu tư chứng khoán Việt Nam. Dưới đây là tổng hợp tin tức hôm nay cho danh mục quan tâm của nhà đầu tư.\n\n"
+        f"Danh mục: {symbol_list}\n\n"
+        f"{news_block}\n\n"
+        f"Hãy viết bản tóm tắt news digest theo 2 phần:\n"
+        f"SUMMARY: Tóm tắt toàn cảnh trong 2-3 câu (khoảng 50 từ) — đề cập các điểm nổi bật nhất.\n"
+        f"FULL: Phân tích sâu hơn (150-200 từ) theo từng nhóm chủ đề hoặc từng mã, chỉ ra ý nghĩa và điểm cần theo dõi.\n\n"
+        f"{language_instruction}\n"
+        f"[Thông tin tham khảo, không phải lời khuyên đầu tư tài chính]"
+    )
+
+    if not api_key and provider_key != 'openclaw':
+        raise RuntimeError(f'generate_portfolio_digest: thiếu API key cho provider {provider_key}')
+
+    max_tokens = 500
+
+    if provider_key == 'openclaw':
+        # Dùng OpenAI-compatible openclaw endpoint
+        base_url = os.getenv('OPENCLAW_BASE_URL', 'https://api.openclaw.ai/v1')
+        return _call_provider_and_split(
+            provider_key=provider_key, base_url=base_url, api_key=api_key,
+            model_id=model_id, prompt=prompt, max_tokens=max_tokens,
+        )
+
+    if provider_key == 'claude':
+        raw = _claude_completion(api_key=api_key, model=model_id, prompt=prompt, max_tokens=max_tokens)
+        return _split_digest_sections(raw)
+
+    if provider_key in ('openai', 'gemini', 'copilot'):
+        base_url_map = {
+            'openai': os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+            'gemini': os.getenv('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta/openai'),
+            'copilot': os.getenv('COPILOT_BASE_URL', 'https://models.github.ai/inference'),
+        }
+        extra_headers = None
+        if provider_key == 'copilot':
+            extra_headers = {
+                'Accept': 'application/vnd.github+json',
+                'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),
+            }
+        raw = _openai_compatible_completion(
+            base_url=base_url_map[provider_key],
+            api_key=api_key,
+            model=model_id,
+            prompt=prompt,
+            max_tokens=max_tokens,
+            extra_headers=extra_headers,
+        )
+        return _split_digest_sections(raw)
+
+    raise RuntimeError(f'generate_portfolio_digest: provider không hỗ trợ: {provider_key}')
+
+
+def _call_provider_and_split(
+    provider_key: str,
+    base_url: str,
+    api_key: str,
+    model_id: str,
+    prompt: str,
+    max_tokens: int,
+) -> dict[str, Any]:
+    """Internal helper: gọi openclaw-compatible endpoint, tách SUMMARY/FULL."""
+    raw = _openai_compatible_completion(
+        base_url=base_url,
+        api_key=api_key,
+        model=model_id,
+        prompt=prompt,
+        max_tokens=max_tokens,
+    )
+    return _split_digest_sections(raw)
+
+
+def _split_digest_sections(raw: dict[str, Any]) -> dict[str, Any]:
+    """Tách SUMMARY: / FULL: từ text AI trả về."""
+    import re as _re
+    text = str(raw.get('text') or '')
+    summary = ''
+    full = ''
+    summary_match = _re.search(r'SUMMARY:\s*(.*?)(?=FULL:|$)', text, _re.DOTALL | _re.IGNORECASE)
+    full_match = _re.search(r'FULL:\s*(.*)', text, _re.DOTALL | _re.IGNORECASE)
+    if summary_match:
+        summary = summary_match.group(1).strip()
+    if full_match:
+        full = full_match.group(1).strip()
+    if not summary:
+        # Fallback: dùng toàn bộ text làm summary
+        summary = text[:500].strip()
+    return {
+        'summary': summary,
+        'full': full,
+        'prompt_tokens': int(raw.get('prompt_tokens') or 0),
+        'completion_tokens': int(raw.get('completion_tokens') or 0),
+    }
+
+
 def test_ai_connection(provider: str, model: str, api_key: str) -> dict[str, Any]:
     provider_key = str(provider or 'openclaw').strip().lower()
     model_id = str(model or get_default_model(provider_key)).strip()

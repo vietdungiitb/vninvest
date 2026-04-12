@@ -477,6 +477,9 @@ export default function useRealtimeFeedLegacy({
           } else if (payload.event_type === 'whale_advisory') {
             setLastEventAt(payload.ts || payload.created_at || new Date().toISOString());
             setRealtimeStatus('live');
+          } else if (payload.event_type === 'news_digest') {
+            setLastEventAt(payload.created_at || new Date().toISOString());
+            setRealtimeStatus('live');
           } else if (payload.event_type === 'heartbeat') {
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');

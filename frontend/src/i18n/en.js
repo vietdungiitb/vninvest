@@ -1629,6 +1629,17 @@ const en = {
     source: 'Source',
     unavailable: 'News source temporarily unavailable.',
   },
+  portfolioDigest: {
+    sectionLabel: 'Portfolio Digest',
+    noData: 'No portfolio digest for today yet.',
+    fetchFailed: 'Failed to load portfolio digest.',
+    summary: 'Summary',
+    full: 'Details',
+    symbols: 'Tracked symbols',
+    createdAt: 'Created at',
+    itemCount: 'Processed news items',
+    aiModel: 'AI model',
+  },
 };
 
 export default en;

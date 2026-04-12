@@ -437,6 +437,18 @@ if _OPENCORE_ENABLED:
         "schedule": crontab(hour=7, minute=0),  # Daily at 7am UTC
     }
 
+# Sprint35 Layer 3: Portfolio Daily News Digest sau 16:05 ICT (Mon-Fri)
+PORTFOLIO_NEWS_DIGEST_ENABLED = os.getenv("PORTFOLIO_NEWS_DIGEST_ENABLED", "True").lower() == "true"
+PORTFOLIO_NEWS_DIGEST_BATCH_SIZE = _env_int("PORTFOLIO_NEWS_DIGEST_BATCH_SIZE", 200)
+if PORTFOLIO_NEWS_DIGEST_ENABLED:
+    from celery.schedules import crontab as _crontab_sprint35
+    CELERY_BEAT_SCHEDULE["portfolio-daily-news-digest"] = {
+        "task": "portfolio.tasks.generate_all_portfolio_news_digests_task",
+        "schedule": _crontab_sprint35(hour=16, minute=5, day_of_week='1-5'),  # 16:05 ICT Mon-Fri
+        "kwargs": {"batch_size": PORTFOLIO_NEWS_DIGEST_BATCH_SIZE},
+        "options": {"expires": 3600},  # bỏ qua nếu task cũ vẫn đang chạy
+    }
+
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 REALTIME_DEFAULT_WHALE_THRESHOLD = _env_int("REALTIME_DEFAULT_WHALE_THRESHOLD", 500000000)

@@ -2086,3 +2086,60 @@ class AdvisoryAggregateAuditLog(models.Model):
     
     def __str__(self):
         return f'{self.user.username}:{self.symbol} {self.reason} by {self.actor}'
+
+
+class PortfolioNewsDigest(models.Model):
+    """
+    Sprint35 Layer 3: Bản tóm tắt tin tức danh mục hàng ngày.
+    Celery Beat task tạo sau 16:05 ICT (sau khi sàn đóng cửa).
+    Một bản digest/user/ngày.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='portfolio_news_digests',
+        verbose_name='Người dùng',
+    )
+    date = models.DateField(
+        db_index=True,
+        verbose_name='Ngày giao dịch',
+    )
+    symbols = models.JSONField(
+        default=list,
+        verbose_name='Danh sách mã chứng khoán',
+    )
+    digest_summary = models.TextField(
+        verbose_name='Tóm tắt ngắn (~50 từ)',
+    )
+    digest_full = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='Nội dung đầy đủ',
+    )
+    item_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name='Số tin tức đã xử lý',
+    )
+    ai_model = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='Mô hình AI được dùng',
+    )
+    prompt_tokens = models.PositiveIntegerField(default=0)
+    completion_tokens = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Portfolio News Digest'
+        verbose_name_plural = 'Portfolio News Digests'
+        ordering = ['-created_at']
+        unique_together = [('user', 'date')]
+        indexes = [
+            models.Index(fields=['user', '-date'], name='idx_digest_user_date'),
+        ]
+
+    def __str__(self):
+        symbol_count = len(self.symbols) if isinstance(self.symbols, list) else 0
+        return f'{self.user.username}: digest {self.date} ({symbol_count} mã)'

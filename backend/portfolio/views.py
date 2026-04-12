@@ -5231,6 +5231,53 @@ def stock_news_api(request, symbol: str):
     return Response(result)
 
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def portfolio_news_digest_api(request):
+    """
+    GET /api/stock-management/portfolio/news-digest/
+    Sprint35 Layer 3: Trả về bản tóm tắt tin tức danh mục mới nhất của user.
+    Query param: ?date=YYYY-MM-DD (tuỳ chọn, mặc định hôm nay)
+    """
+    from portfolio.models import PortfolioNewsDigest
+    from django.utils import timezone as _tz
+    import datetime
+
+    date_str = request.query_params.get('date', '')
+    if date_str:
+        try:
+            target_date = datetime.date.fromisoformat(date_str)
+        except ValueError:
+            return Response({'detail': 'Định dạng ngày không hợp lệ. Dùng YYYY-MM-DD.'}, status=400)
+    else:
+        target_date = None  # lấy mới nhất
+
+    qs = PortfolioNewsDigest.objects.filter(user=request.user)
+    if target_date:
+        qs = qs.filter(date=target_date)
+    digest = qs.order_by('-date').first()
+
+    if digest is None:
+        return Response({
+            'has_digest': False,
+            'date': str(target_date or _tz.localdate()),
+            'message': 'Chưa có bản tóm tắt tin tức cho ngày này.',
+        })
+
+    return Response({
+        'has_digest': True,
+        'id': digest.id,
+        'date': str(digest.date),
+        'symbols': digest.symbols,
+        'digest_summary': digest.digest_summary,
+        'digest_full': digest.digest_full,
+        'item_count': digest.item_count,
+        'ai_model': digest.ai_model,
+        'created_at': digest.created_at.isoformat(),
+    })
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def stock_order_flow_api(request, symbol: str):
