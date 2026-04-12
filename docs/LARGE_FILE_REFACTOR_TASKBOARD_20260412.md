@@ -47,6 +47,10 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_ai_runtime_stats.py
 - [x] Tach ai-options/ai-config/ai-test-connection + whale-advisory-symbol-stats khoi monolith views.py
 - [x] Chay test muc tieu ai-config + patch-compat (12 test pass)
+- [x] Tao module moi: backend/portfolio/views_stock_news.py
+- [x] Tach stock_news_api + stock_news_ai_summary_api + portfolio_news_digest_api khoi monolith views.py
+- [x] Bo sung re-export helper compatibility cho sprint17/whale-feed/stock-workspace trong facade views.py
+- [x] Chay regression route + ai-config (241 test pass)
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -73,8 +77,8 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 1487
+- views.py lines: 1135
 - So file >1200 lines:
 - So test patch portfolio.views.*:
-- API smoke pass rate:
+- API smoke pass rate: 241/241 targeted route+ai-config
 - So regression issue/sprint:

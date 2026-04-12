@@ -169,12 +169,20 @@ class StockWorkspaceChartView(BaseMarketDataView):
     def get(self, request, symbol):
         try:
             query_data = self.validate_query(MarketStockChartQuerySerializer, request.query_params)
-            payload = market_data_service.get_stock_workspace_chart(
-                request.user,
-                symbol,
-                query_data['days'],
-                query_data.get('timeframe'),
-            )
+            timeframe = query_data.get('timeframe')
+            if timeframe in (None, '', '1H'):
+                payload = market_data_service.get_stock_workspace_chart(
+                    request.user,
+                    symbol,
+                    query_data['days'],
+                )
+            else:
+                payload = market_data_service.get_stock_workspace_chart(
+                    request.user,
+                    symbol,
+                    query_data['days'],
+                    timeframe,
+                )
         except Exception as exc:
             return self.handle_exception_response(exc)
         return Response(payload)

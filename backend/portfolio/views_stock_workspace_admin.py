@@ -198,13 +198,21 @@ class StockWorkspaceChartView(APIView):
     def get(self, request, symbol):
         legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
+        timeframe = request.query_params.get('timeframe')
         try:
-            payload = market_data_service.get_stock_workspace_chart(
-                request.user,
-                normalized_symbol,
-                request.query_params.get('days', 180),
-                request.query_params.get('timeframe'),
-            )
+            if timeframe:
+                payload = market_data_service.get_stock_workspace_chart(
+                    request.user,
+                    normalized_symbol,
+                    request.query_params.get('days', 180),
+                    timeframe,
+                )
+            else:
+                payload = market_data_service.get_stock_workspace_chart(
+                    request.user,
+                    normalized_symbol,
+                    request.query_params.get('days', 180),
+                )
         except MarketDataValidationException as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:

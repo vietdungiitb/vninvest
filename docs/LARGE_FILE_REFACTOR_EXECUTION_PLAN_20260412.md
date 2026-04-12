@@ -217,6 +217,9 @@ Tien do moi nhat:
 - Da hoan tat PR-3c (phan 4): tach WhaleAdvisoryListView + canonical payload/api + auto refresh info + refresh/delete current sang module backend/portfolio/views_ai_advisory_management.py.
 - Da hoan tat PR-3c (phan 5): tach admin runtime KPI + system-ai-settings + vnstock runtime config + warm prefetch sang module backend/portfolio/views_admin_runtime.py.
 - Da hoan tat PR-3c (phan 6): tach ai-options/ai-config/ai-test-connection + whale-advisory-symbol-stats sang module backend/portfolio/views_ai_runtime_stats.py.
-- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~1487 dong (dat muc tieu <1500 dong).
+- Da hoan tat PR-3c (phan 7): tach news APIs (stock_news_api, stock_news_ai_summary_api, portfolio_news_digest_api) sang module backend/portfolio/views_stock_news.py.
+- Da bo sung compatibility facade imports cho helper sprint17/whale-feed/stock-workspace de giu patch target portfolio.views.* on dinh.
+- Da chay regression route + ai-config: 241 test pass.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~1135 dong (vuot muc tieu <1500 dong).
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
