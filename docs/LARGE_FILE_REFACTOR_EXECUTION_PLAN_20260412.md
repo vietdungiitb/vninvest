@@ -238,5 +238,6 @@ Tien do moi nhat:
 - Da tiep tuc chia test_api_routes theo cum domain (slice 6): tach 8 test auth register validation/onboarding sang backend/portfolio/tests/test_api_routes_auth_register.py, test moi pass 8/8.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 7): tach 3 test auth oauth-google sang backend/portfolio/tests/test_api_routes_auth_oauth_google.py, test moi pass 3/3.
 - Da tiep tuc chia test_api_routes theo cum domain (slice 8): tach 6 test auth profile/access (login gating + auth me + userconfig) sang backend/portfolio/tests/test_api_routes_auth_profile.py, test moi pass 6/6.
+- Da tiep tuc chia test_api_routes theo cum domain (slice 9): tach 4 test whale-advisory access/detail/filter sang backend/portfolio/tests/test_api_routes_whale_advisory_access.py, test moi pass 4/4.
 
 Buoc tiep theo de code refactor: on dinh sau moc <1500, tiep tuc don dep helper runtime con lai va chia test_api_routes theo boundary domain.
