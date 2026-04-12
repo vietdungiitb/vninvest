@@ -223,7 +223,10 @@ def _enforce_opencore_quota_for_stock_endpoint(request, endpoint_name: str):
 def _track_opencore_stock_endpoint_usage(request, endpoint_name: str, response_status_code: int):
     feature_key = _OPENCORE_STOCK_FEATURE_KEYS.get(endpoint_name, '')
     try:
-        track_api_call(
+        from . import views as legacy_views
+
+        tracker = getattr(legacy_views, 'track_api_call', track_api_call)
+        tracker(
             user=request.user,
             endpoint=request.path,
             method=request.method,
