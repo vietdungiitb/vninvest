@@ -13,6 +13,8 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_stock_management.py
 - [x] Tach Securities + TrackedSymbol + PriceAlert khoi monolith views.py
 - [x] Chay smoke test stock-management endpoint (3 test pass)
+- [x] Tao module moi: backend/portfolio/views_screener.py
+- [x] Tach Screener views khoi monolith views.py
 
 ### Dang lam
 - [ ] Tach views_realtime.py

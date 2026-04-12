@@ -205,6 +205,7 @@ Tien do moi nhat:
 - Da hoan tat PR-1 ky thuat: tach Portfolio + Watchlist sang module backend/portfolio/views_portfolio_watchlist.py.
 - Da giu compatibility bang re-export symbol tai backend/portfolio/views.py.
 - Da hoan tat PR-2 ky thuat: tach Securities + TrackedSymbol + PriceAlert sang module backend/portfolio/views_stock_management.py.
-- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~6082 dong.
+- Da hoan tat PR-2b ky thuat: tach Screener sang module backend/portfolio/views_screener.py.
+- Da giam backend/portfolio/views.py tu ~6839 dong xuong ~5955 dong.
 
 Buoc tiep theo de code refactor: Sprint 1, PR-3 (realtime split + test subset realtime).
