@@ -57,6 +57,8 @@ Cap nhat: 2026-04-12
 - [x] Tao module moi: backend/portfolio/views_realtime_symbol_investigation.py
 - [x] Tach symbol_investigation_api khoi facade views.py theo boundary realtime
 - [x] Chay smoke regression symbol-investigation routes (4 test pass)
+- [x] Tao module moi: backend/portfolio/views_realtime_whale_symbol_summary.py
+- [x] Tach whale_symbol_summary_api khoi facade views.py theo boundary realtime
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain
@@ -83,7 +85,7 @@ Cap nhat: 2026-04-12
 
 ## KPI tracking (dien hang ngay)
 
-- views.py lines: 790
+- views.py lines: 755
 - So file >1200 lines:
 - So test patch portfolio.views.*:
 - API smoke pass rate: 241/241 targeted route+ai-config; 18/18 system-ai-admin-api; 4/4 symbol-investigation

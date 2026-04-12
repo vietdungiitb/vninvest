@@ -263,6 +263,7 @@ from .views_realtime_depth_financial import (
     FinancialMetricsView,
 )
 from .views_realtime_symbol_investigation import symbol_investigation_api
+from .views_realtime_whale_symbol_summary import whale_symbol_summary_api
 from .views_ai_advisory_trace import (
     _build_advisory_trace_payload_for_user,
     stock_ai_advisory_observability_api,
@@ -356,42 +357,6 @@ from .whale_feed_helpers import (
     _resolve_user_whale_threshold_vnd,
     _resolve_whale_feed_symbols,
 )
-
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def whale_symbol_summary_api(request, symbol: str):
-    """
-    GET /api/realtime/whale-symbol-summary/<symbol>/
-    
-    Get comprehensive whale event summary for a symbol including:
-    - Latest campaign info
-    - Today's buy/sell bias
-    - Net value flow
-    - Abnormality context
-    - Baseline metrics
-    """
-    try:
-        normalized_symbol = (symbol or '').strip().upper()
-        if not normalized_symbol or len(normalized_symbol) > 10:
-            return Response(
-                {'detail': 'Thiếu mã chứng khoán.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        from .baseline_service import BaselineService
-        baseline_svc = BaselineService()
-        summary = baseline_svc.get_whale_symbol_summary(normalized_symbol, window='session')
-        
-        return Response(summary)
-    except Exception:
-        logger.exception(f'whale_symbol_summary_api error for {symbol}')
-        return Response(
-            {'detail': 'Lỗi khi lấy thông tin tóm tắt whale.'},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
 
 
 @api_view(['GET'])
