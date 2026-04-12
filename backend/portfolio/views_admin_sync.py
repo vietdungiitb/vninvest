@@ -5,13 +5,17 @@ from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
 from .models import MarketGroupSyncLog
-from .services import sync_market_groups, sync_stock_profiles
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def sync_stockprofile_api(request):
-    result = sync_stock_profiles(requested_by=request.user, mode=request.query_params.get('mode', 'all'))
+    from . import views as legacy_views
+
+    result = legacy_views.sync_stock_profiles(
+        requested_by=request.user,
+        mode=request.query_params.get('mode', 'all'),
+    )
     return JsonResponse(
         {
             'success': result['success'],
@@ -38,7 +42,9 @@ def sync_market_groups_api(request):
     mode = request.query_params.get('mode', 'all')
     clear_existing = request.query_params.get('clear', 'false').lower() == 'true'
 
-    result = sync_market_groups(
+    from . import views as legacy_views
+
+    result = legacy_views.sync_market_groups(
         requested_by=request.user,
         mode=mode,
         clear_existing=clear_existing,

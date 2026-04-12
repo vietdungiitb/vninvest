@@ -63,6 +63,7 @@ Cap nhat: 2026-04-12
 - [x] Tach sync_stockprofile_api + sync_market_groups_api khoi facade views.py theo boundary admin-sync
 - [x] Tao module moi: backend/portfolio/views_stock_catalog.py
 - [x] Tach StockProfileListView + SecuritiesGroupListView + SecuritiesItemListView khoi facade views.py theo boundary stock-catalog
+- [x] Harden compatibility facade: giu patch target portfolio.views.sync_stock_profiles + generate_whale_advisory_task + detect_dark_flow sau tach module
 
 ### Dang lam
 - [ ] Gom module realtime theo boundary domain

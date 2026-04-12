@@ -97,6 +97,7 @@ from .adapters.vnstock_adapter import (
 )
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .market_data_service import market_data_service
+from .tasks import generate_whale_advisory_task
 from .ai_advisory_helpers import (
     _sprint17_build_component_templates,
     _sprint17_compute_summary_from_components,
@@ -105,6 +106,7 @@ from .ai_advisory_helpers import (
     _sprint17_generate_executive_synthesis_with_ai,
     _sprint17_serialize_stock_advisory_session,
 )
+from portfolio.order_flow import compute_cvd_series, detect_dark_flow
 from .stock_workspace_helpers import _build_stock_workspace_overview, _compute_stock_workspace_technical
 from .views_portfolio_watchlist import (
     AllocationView,
@@ -549,8 +551,6 @@ def stock_order_flow_api(request, symbol: str):
     Query params:
       - window: 5m | 15m | 30m (default) | 1h — khung thời gian CVD và tick rate.
     """
-    from portfolio.order_flow import compute_cvd_series, detect_dark_flow
-
     denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'stock_order_flow_api')
     if denied_response is not None:
         return denied_response
