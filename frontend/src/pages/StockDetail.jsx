@@ -44,6 +44,7 @@ import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
+import { useAbility } from '../context/AbilityContext';
 import {
   getAdvisoryConflictRetryDelayMs,
   resolveAdvisoryConflictState,
@@ -1363,8 +1364,10 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 
 export default function StockDetail() {
   const { t, formatQuotePrice } = useI18n();
+  const ability = useAbility();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
+  const canViewAdvancedTab = ability.can('manage', 'all');
   const [overview, setOverview] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [technical, setTechnical] = useState(null);
@@ -2773,12 +2776,18 @@ export default function StockDetail() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <p className="text-label">
-                  {activeInsightTab === 'advisory' ? t('stockDetail.advisorySession') : t('stockNews.sectionLabel')}
+                  {activeInsightTab === 'advisory'
+                    ? t('stockDetail.advisorySession')
+                    : activeInsightTab === 'advanced'
+                      ? 'Nang cao'
+                      : t('stockNews.sectionLabel')}
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-100">
                   {activeInsightTab === 'advisory'
                     ? t('stockDetail.aiAdvisoryFor', { symbol: normalizedSymbol })
-                    : `${t('stockNews.sectionLabel')} ${normalizedSymbol}`}
+                    : activeInsightTab === 'advanced'
+                      ? `Nang cao ${normalizedSymbol}`
+                      : `${t('stockNews.sectionLabel')} ${normalizedSymbol}`}
                 </h2>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -2804,6 +2813,19 @@ export default function StockDetail() {
                 >
                   {t('stockNews.sectionLabel')}
                 </button>
+                {canViewAdvancedTab ? (
+                  <button
+                    type="button"
+                    onClick={() => setActiveInsightTab('advanced')}
+                    className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                      activeInsightTab === 'advanced'
+                        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
+                        : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
+                    }`}
+                  >
+                    Nang cao
+                  </button>
+                ) : null}
                 {activeInsightTab === 'advisory' && advisoryChartContextState.used !== null ? (
                   <span
                     className={`rounded-full border px-3 py-1 text-[11px] font-semibold ${
@@ -2859,364 +2881,7 @@ export default function StockDetail() {
                     </button>
                   </div>
 
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">H3 observability</p>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">{t('stockDetail.retryWindowHours')}</span>
-                        <select
-                          value={advisoryObservabilityWindowHours}
-                          onChange={(e) => setAdvisoryObservabilityWindowHours(Number(e.target.value) || 48)}
-                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                        >
-                          <option value={24}>24h</option>
-                          <option value={48}>48h</option>
-                          <option value={72}>72h</option>
-                          <option value={168}>7d</option>
-                        </select>
-                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceBucket')}</span>
-                        <select
-                          value={advisoryGovernanceBucket}
-                          onChange={(e) => setAdvisoryGovernanceBucket(e.target.value)}
-                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                        >
-                          <option value="hour">{t('stockDetail.governanceBucketHour')}</option>
-                          <option value="day">{t('stockDetail.governanceBucketDay')}</option>
-                        </select>
-                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceFilterEndpoint')}</span>
-                        <select
-                          value={advisoryGovernanceEndpointFilter}
-                          onChange={(e) => setAdvisoryGovernanceEndpointFilter(e.target.value)}
-                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                        >
-                          <option value="all">{t('stockDetail.retryFilterAll')}</option>
-                          {governanceEndpointOptions.map((endpoint) => (
-                            <option key={endpoint} value={endpoint}>{advisoryGovernanceEndpointLabel(endpoint, t)}</option>
-                          ))}
-                        </select>
-                        <span className="text-[11px] text-slate-500">{t('stockDetail.governanceFilterReason')}</span>
-                        <select
-                          value={advisoryGovernanceReasonFilter}
-                          onChange={(e) => setAdvisoryGovernanceReasonFilter(e.target.value)}
-                          className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                        >
-                          <option value="all">{t('stockDetail.retryFilterAll')}</option>
-                          {governanceReasonOptions.map((reason) => (
-                            <option key={reason} value={reason}>{advisoryGovernanceReasonLabel(reason, t)}</option>
-                          ))}
-                        </select>
-                        {advisoryObservabilityLoading ? (
-                          <span className="text-[11px] text-slate-500">Refreshing...</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Severity drift</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">
-                          {advisoryAggregate?.observability?.severity_drift_24h?.label || advisoryObservability?.summary?.severity_drift_label || 'stable'}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          Delta: {advisoryAggregate?.observability?.severity_drift_24h?.delta ?? advisoryObservability?.summary?.severity_delta ?? 0}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Aggregate quality</p>
-                        <p className="mt-1 text-sm font-semibold text-cyan-300">
-                          {advisoryAggregate?.observability?.aggregate_quality?.score ?? advisoryObservability?.summary?.avg_aggregate_quality_score ?? '—'}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {advisoryAggregate?.observability?.aggregate_quality?.label || 'n/a'}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Decision score</p>
-                        <p className="mt-1 text-sm font-semibold text-amber-300">
-                          {advisoryAggregate?.decision?.score ?? '—'}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {advisoryAggregate?.decision?.score_band || 'n/a'}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Benchmarks</p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-300">
-                          RVOL {advisoryAggregate?.benchmarks?.rvol ?? '—'}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {advisoryAggregate?.benchmarks?.rvol_regime || 'unknown'}
-                        </p>
-                      </div>
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.advisoryRetryTelemetry')}</p>
-                        <p className="mt-1 text-sm font-semibold text-violet-300">
-                          {t('stockDetail.retryScheduledCount')}: {advisoryObservability?.summary?.retry_scheduled_total ?? advisoryRetryTelemetry.scheduledCount}
-                        </p>
-                        <p className="text-[11px] text-emerald-300">
-                          {t('stockDetail.retryRecoveredCount')}: {advisoryObservability?.summary?.retry_recovered_total ?? advisoryRetryTelemetry.recoveredCount}
-                        </p>
-                        <p className="text-[11px] text-rose-300">
-                          {t('stockDetail.retryFailedCount')}: {advisoryObservability?.summary?.retry_failed_total ?? advisoryRetryTelemetry.failedCount}
-                        </p>
-                        <p className="mt-1 text-[11px] text-slate-500">
-                          {t('stockDetail.retryLast')}: {advisoryRetryOutcomeLabel(advisoryRetryTelemetry.lastOutcome, t)}
-                        </p>
-                        <p className="text-[11px] text-slate-500">
-                          {t('stockDetail.retryReason')}: {advisoryRetryTelemetry.lastReason || 'n/a'}
-                        </p>
-                      </div>
-                    </div>
-                    {Array.isArray(advisoryObservability?.timeline) && advisoryObservability.timeline.length > 0 ? (
-                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
-                        <p className="text-[10px] uppercase tracking-wide text-slate-500">Timeline (latest)</p>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {advisoryObservability.timeline.slice(0, 5).map((row) => (
-                            <span key={row.advisory_id} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300">
-                              #{row.advisory_id} {row.severity} q={row.aggregate_quality?.score}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {governanceTrendRows.length > 0 ? (
-                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceTrendTitle')}</p>
-                          <div className="text-[11px] text-slate-500">
-                            {t('stockDetail.governanceDenyTotal')}: {advisoryObservability?.governance?.rollout_gate_deny_total ?? 0}
-                          </div>
-                        </div>
-                        {governanceSparkline ? (
-                          <div className="mt-2 rounded-lg border border-slate-800 bg-slate-950/50 p-2">
-                            <div className="flex items-center justify-between text-[10px] text-slate-500">
-                              <span>{t('stockDetail.governanceSparklineTitle')}</span>
-                              <span>
-                                {t('stockDetail.governanceSparklineLatest')}: {governanceSparkline.latest}
-                                {' | '}
-                                {t('stockDetail.governanceSparklineRange', {
-                                  min: governanceSparkline.min,
-                                  max: governanceSparkline.max,
-                                })}
-                              </span>
-                            </div>
-                            <div className="mt-1 flex items-center gap-2">
-                              <svg
-                                width={governanceSparkline.width}
-                                height={governanceSparkline.height}
-                                viewBox={`0 0 ${governanceSparkline.width} ${governanceSparkline.height}`}
-                                className="overflow-visible"
-                                role="img"
-                                aria-label={t('stockDetail.governanceSparklineTitle')}
-                              >
-                                <polyline
-                                  fill="none"
-                                  stroke="rgba(248, 113, 113, 0.95)"
-                                  strokeWidth="2"
-                                  points={governanceSparkline.polylinePoints}
-                                />
-                                <line
-                                  x1="0"
-                                  y1={governanceSparkline.baselineY}
-                                  x2={governanceSparkline.width}
-                                  y2={governanceSparkline.baselineY}
-                                  stroke="rgba(56, 189, 248, 0.85)"
-                                  strokeWidth="1"
-                                  strokeDasharray="4 3"
-                                />
-                                {governanceSparkline.pointItems.map((point) => (
-                                  <circle
-                                    key={`spark-point-${point.bucket}`}
-                                    cx={point.x}
-                                    cy={point.y}
-                                    r="2"
-                                    fill="rgba(251, 113, 133, 0.55)"
-                                  />
-                                ))}
-                                {governanceSparkline.maxPoint ? (
-                                  <circle
-                                    cx={governanceSparkline.maxPoint.x}
-                                    cy={governanceSparkline.maxPoint.y}
-                                    r="4"
-                                    fill="rgba(251, 191, 36, 0.95)"
-                                    stroke="rgba(255, 255, 255, 0.85)"
-                                    strokeWidth="1"
-                                  >
-                                    <title>
-                                      {`${t('stockDetail.governanceSparklinePeak')}: ${governanceSparkline.maxPoint.bucket} (${governanceSparkline.maxPoint.value})`}
-                                    </title>
-                                  </circle>
-                                ) : null}
-                              </svg>
-                              <span className={`text-[11px] font-semibold ${governanceSparkline.latest > governanceSparkline.previous ? 'text-rose-300' : 'text-emerald-300'}`}>
-                                {governanceSparkline.latest > governanceSparkline.previous ? '▲' : '▼'}
-                              </span>
-                            </div>
-                            <p className="mt-1 text-[10px] text-slate-500">
-                              {t('stockDetail.governanceSparklineBaseline')}: {governanceSparkline.baseline.toFixed(2)}
-                              {' | '}
-                              {t('stockDetail.governanceSparklineDeviation')}: {governanceSparkline.latestDeltaVsBaseline > 0 ? '+' : ''}{governanceSparkline.latestDeltaVsBaseline.toFixed(2)}
-                            </p>
-                            <div className="mt-1">
-                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${governanceDeltaSeverityClass(governanceSparkline.deltaSeverity)}`}>
-                                {t('stockDetail.governanceDeltaThreshold')}: {governanceDeltaSeverityLabel(governanceSparkline.deltaSeverity, t)}
-                              </span>
-                              <span className="ml-2 text-[10px] text-slate-500">
-                                {t('stockDetail.governanceThresholdApplied')}: w={governanceSparkline.thresholds.warning} c={governanceSparkline.thresholds.critical} cd={governanceSparkline.thresholds.cooldown}
-                              </span>
-                            </div>
-                            {governanceSparkline.maxPoint ? (
-                              <p className="mt-1 text-[10px] text-slate-500">
-                                {t('stockDetail.governanceSparklinePeak')}: {governanceSparkline.maxPoint.bucket} ({governanceSparkline.maxPoint.value})
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {governanceEndpointBreakdown.length > 0 ? (
-                          <div className="mt-2">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceBreakdownEndpoint')}</p>
-                            <div className="mt-1 flex flex-wrap gap-2">
-                              {governanceEndpointBreakdown.map((item) => {
-                                const selected = advisoryGovernanceEndpointFilter === item.key;
-                                return (
-                                  <button
-                                    key={`gov-endpoint-${item.key}`}
-                                    type="button"
-                                    onClick={() => setAdvisoryGovernanceEndpointFilter(selected ? 'all' : item.key)}
-                                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
-                                      selected
-                                        ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
-                                        : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'
-                                    }`}
-                                  >
-                                    {advisoryGovernanceEndpointLabel(item.key, t)} ({item.count})
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
-                        {governanceReasonBreakdown.length > 0 ? (
-                          <div className="mt-2">
-                            <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.governanceBreakdownReason')}</p>
-                            <div className="mt-1 flex flex-wrap gap-2">
-                              {governanceReasonBreakdown.map((item) => {
-                                const selected = advisoryGovernanceReasonFilter === item.key;
-                                return (
-                                  <button
-                                    key={`gov-reason-${item.key}`}
-                                    type="button"
-                                    onClick={() => setAdvisoryGovernanceReasonFilter(selected ? 'all' : item.key)}
-                                    className={`rounded-full border px-2 py-0.5 text-[11px] transition-colors ${
-                                      selected
-                                        ? 'border-amber-500/70 bg-amber-500/10 text-amber-300'
-                                        : 'border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500'
-                                    }`}
-                                  >
-                                    {advisoryGovernanceReasonLabel(item.key, t)} ({item.count})
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
-                        <div className="mt-2 space-y-1.5">
-                          {governanceTrendRows.map((row) => (
-                            <div key={`gov-trend-${row.bucket}`} className="space-y-1" title={row.tooltipText}>
-                              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                                <span>{row.bucket}</span>
-                                <span>{t('stockDetail.governanceDenyCount')}: {row.denyTotal}</span>
-                              </div>
-                              <div className="h-2 rounded-full bg-slate-800/80">
-                                <div
-                                  className="h-2 rounded-full bg-gradient-to-r from-amber-500 to-rose-500"
-                                  style={{ width: `${row.widthPercent}%` }}
-                                />
-                              </div>
-                              <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
-                                <span>{t('stockDetail.governanceTopEndpoint')}: {advisoryGovernanceEndpointLabel(row.topEndpoint, t)}</span>
-                                <span>{t('stockDetail.governanceTopReason')}: {advisoryGovernanceReasonLabel(row.topReason, t)}</span>
-                                <span>{t('stockDetail.governanceTopCohort')}: {row.topCohort}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {Array.isArray(advisoryObservability?.retry_events) && advisoryObservability.retry_events.length > 0 ? (
-                      <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.retryEventsPersisted')}</p>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] text-slate-500">{t('stockDetail.retryFilterOutcome')}</span>
-                            <select
-                              value={retryEventOutcomeFilter}
-                              onChange={(e) => setRetryEventOutcomeFilter(e.target.value)}
-                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                            >
-                              <option value="all">{t('stockDetail.retryFilterAll')}</option>
-                              <option value="scheduled">{advisoryRetryOutcomeLabel('scheduled', t)}</option>
-                              <option value="recovered">{advisoryRetryOutcomeLabel('recovered', t)}</option>
-                              <option value="exhausted">{advisoryRetryOutcomeLabel('exhausted', t)}</option>
-                              <option value="skipped_config">{advisoryRetryOutcomeLabel('skipped_config', t)}</option>
-                              <option value="request_error">{advisoryRetryOutcomeLabel('request_error', t)}</option>
-                            </select>
-                            <span className="text-[11px] text-slate-500">{t('stockDetail.retryFilterReason')}</span>
-                            <select
-                              value={retryEventReasonFilter}
-                              onChange={(e) => setRetryEventReasonFilter(e.target.value)}
-                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                            >
-                              <option value="all">{t('stockDetail.retryFilterAll')}</option>
-                              {retryEventReasonOptions.map((reason) => (
-                                <option key={reason} value={reason}>{reason}</option>
-                              ))}
-                            </select>
-                            <span className="text-[11px] text-slate-500">{t('stockDetail.retrySort')}</span>
-                            <select
-                              value={retryEventSortMode}
-                              onChange={(e) => setRetryEventSortMode(e.target.value)}
-                              className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
-                            >
-                              <option value="newest">{t('stockDetail.retrySortNewest')}</option>
-                              <option value="oldest">{t('stockDetail.retrySortOldest')}</option>
-                              <option value="most_failed">{t('stockDetail.retrySortMostFailed')}</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
-                          <span>{t('stockDetail.retryLegend')}</span>
-                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('scheduled')}`}>
-                            {advisoryRetryOutcomeLabel('scheduled', t)}
-                          </span>
-                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('recovered')}`}>
-                            {advisoryRetryOutcomeLabel('recovered', t)}
-                          </span>
-                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('exhausted')}`}>
-                            {advisoryRetryOutcomeLabel('exhausted', t)}
-                          </span>
-                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('skipped_config')}`}>
-                            {advisoryRetryOutcomeLabel('skipped_config', t)}
-                          </span>
-                          <span className={`rounded-full border px-2 py-0.5 ${advisoryRetryOutcomeBadgeClass('request_error')}`}>
-                            {advisoryRetryOutcomeLabel('request_error', t)}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-2">
-                          {filteredPersistedRetryEvents.slice(0, 5).map((event) => (
-                            <span
-                              key={`retry-${event.log_id}`}
-                              className={`rounded-full border px-2 py-0.5 text-[11px] ${advisoryRetryOutcomeBadgeClass(event.outcome)}`}
-                            >
-                              {advisoryRetryOutcomeLabel(event.outcome, t)} r={event.reason || 'n/a'} s={event.scheduled_count} ok={event.recovered_count} f={event.failed_count}
-                            </span>
-                          ))}
-                          {filteredPersistedRetryEvents.length === 0 ? (
-                            <p className="text-[11px] text-slate-500">{t('stockDetail.retryNoEventsForFilter')}</p>
-                          ) : null}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
+                  {/* Observability moved to Advanced tab for admin/staff only. */}
 
                   {advisoryDeletedComponents.length > 0 ? (
                     <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
@@ -3426,6 +3091,81 @@ export default function StockDetail() {
               {advisoryChartContextState.warnings.length > 0 ? (
                 <p className="text-xs text-amber-300">Chart context warnings: {advisoryChartContextState.warnings.join(', ')}</p>
               ) : null}
+              </div>
+            ) : activeInsightTab === 'advanced' && canViewAdvancedTab ? (
+              <div className="mt-3 space-y-3">
+                <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">H3 observability</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-slate-500">{t('stockDetail.retryWindowHours')}</span>
+                      <select
+                        value={advisoryObservabilityWindowHours}
+                        onChange={(e) => setAdvisoryObservabilityWindowHours(Number(e.target.value) || 48)}
+                        className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300 outline-none hover:border-slate-500"
+                      >
+                        <option value={24}>24h</option>
+                        <option value={48}>48h</option>
+                        <option value={72}>72h</option>
+                        <option value={168}>7d</option>
+                      </select>
+                      {advisoryObservabilityLoading ? (
+                        <span className="text-[11px] text-slate-500">Refreshing...</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500">Severity drift</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-100">
+                        {advisoryAggregate?.observability?.severity_drift_24h?.label || advisoryObservability?.summary?.severity_drift_label || 'stable'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Delta: {advisoryAggregate?.observability?.severity_drift_24h?.delta ?? advisoryObservability?.summary?.severity_delta ?? 0}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500">Aggregate quality</p>
+                      <p className="mt-1 text-sm font-semibold text-cyan-300">
+                        {advisoryAggregate?.observability?.aggregate_quality?.score ?? advisoryObservability?.summary?.avg_aggregate_quality_score ?? '—'}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {advisoryAggregate?.observability?.aggregate_quality?.label || 'n/a'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500">Decision score</p>
+                      <p className="mt-1 text-sm font-semibold text-amber-300">{advisoryAggregate?.decision?.score ?? '—'}</p>
+                      <p className="text-[11px] text-slate-500">{advisoryAggregate?.decision?.score_band || 'n/a'}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500">{t('stockDetail.advisoryRetryTelemetry')}</p>
+                      <p className="mt-1 text-sm font-semibold text-violet-300">
+                        {t('stockDetail.retryScheduledCount')}: {advisoryObservability?.summary?.retry_scheduled_total ?? advisoryRetryTelemetry.scheduledCount}
+                      </p>
+                      <p className="text-[11px] text-emerald-300">
+                        {t('stockDetail.retryRecoveredCount')}: {advisoryObservability?.summary?.retry_recovered_total ?? advisoryRetryTelemetry.recoveredCount}
+                      </p>
+                      <p className="text-[11px] text-rose-300">
+                        {t('stockDetail.retryFailedCount')}: {advisoryObservability?.summary?.retry_failed_total ?? advisoryRetryTelemetry.failedCount}
+                      </p>
+                    </div>
+                  </div>
+
+                  {Array.isArray(advisoryObservability?.timeline) && advisoryObservability.timeline.length > 0 ? (
+                    <div className="mt-2 rounded-lg border border-slate-800 bg-slate-900/30 p-2">
+                      <p className="text-[10px] uppercase tracking-wide text-slate-500">Timeline (latest)</p>
+                      <div className="mt-1 flex flex-wrap gap-2">
+                        {advisoryObservability.timeline.slice(0, 5).map((row) => (
+                          <span key={row.advisory_id} className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 text-[11px] text-slate-300">
+                            #{row.advisory_id} {row.severity} q={row.aggregate_quality?.score}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : (
               <div className="mt-3">
