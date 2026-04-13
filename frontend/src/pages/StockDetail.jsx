@@ -790,6 +790,10 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
   const buyCount = trades.filter((t) => t.side === 'buy').length;
   const sellCount = trades.filter((t) => t.side === 'sell').length;
   const totalVol = trades.reduce((sum, t) => sum + (t.volume || 0), 0);
+  const sortedTrades = useMemo(
+    () => [...trades].sort((left, right) => String(right?.time || '').localeCompare(String(left?.time || ''))),
+    [trades],
+  );
 
   return (
     <section className="card-section p-4">
@@ -851,7 +855,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
           <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 px-3 py-2.5 text-[12px] text-rose-300">
             {error}
           </div>
-        ) : trades.length === 0 ? (
+        ) : sortedTrades.length === 0 ? (
           <p className="py-4 text-center text-[12px] text-slate-500">
             {t('stockDetail.noIntradayData')}
           </p>
@@ -865,7 +869,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
               <span className="text-right">{t('stockDetail.type')}</span>
               <span className="text-right">{t('stockDetail.buySellVolume')}</span>
             </div>
-            {trades.map((row, idx) => (
+            {sortedTrades.map((row, idx) => (
               <div
                 key={`${row.time}-${idx}`}
                 className={`grid grid-cols-[64px_1fr_80px_64px_56px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] ${
