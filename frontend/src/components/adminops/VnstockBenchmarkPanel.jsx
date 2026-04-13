@@ -109,7 +109,13 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
           try {
             const pollResp = await getAdminVnstockBenchmarkLatest();
             const newReport = pollResp.data?.report || null;
-            if (newReport && newReport.finished_at !== prevFinishedAt) {
+            if (newReport?.status === 'failed') {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+              setReport(newReport);
+              setState('error');
+              setMessage(newReport?.error || 'Benchmark thất bại trong worker.');
+            } else if (newReport && newReport.finished_at !== prevFinishedAt) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
               setReport(newReport);

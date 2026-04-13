@@ -4,6 +4,7 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,12 @@ def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict
 
     Được dispatch bất đồng bộ từ view để tránh gateway timeout.
     """
-    from portfolio.vnstock_provider_benchmark import run_price_board_provider_benchmark
+    from portfolio.vnstock_provider_benchmark import (
+        BENCHMARK_CACHE_KEY,
+        BENCHMARK_CACHE_TTL_SECONDS,
+        run_price_board_provider_benchmark,
+        _utc_now_iso,
+    )
 
     try:
         report = run_price_board_provider_benchmark(payload or {})
@@ -73,6 +79,21 @@ def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict
         return {'status': 'ok', 'finished_at': report.get('finished_at')}
     except Exception as exc:  # noqa: BLE001
         logger.warning('run_vnstock_price_board_benchmark failed: %s', exc)
+        try:
+            cache.set(
+                BENCHMARK_CACHE_KEY,
+                {
+                    'status': 'failed',
+                    'started_at': _utc_now_iso(),
+                    'finished_at': _utc_now_iso(),
+                    'results': [],
+                    'recommendation': None,
+                    'error': str(exc),
+                },
+                timeout=BENCHMARK_CACHE_TTL_SECONDS,
+            )
+        except Exception:
+            pass
         return {'status': 'error', 'reason': str(exc)}
 
 

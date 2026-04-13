@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import math
@@ -25,12 +25,16 @@ class _Counter:
     success_requests: int = 0
     rate_limited_requests: int = 0
     failed_requests: int = 0
+    timeout_errors: int = 0
+    transport_errors: int = 0
 
     def merge(self, other: '_Counter') -> None:
         self.total_requests += other.total_requests
         self.success_requests += other.success_requests
         self.rate_limited_requests += other.rate_limited_requests
         self.failed_requests += other.failed_requests
+        self.timeout_errors += other.timeout_errors
+        self.transport_errors += other.transport_errors
 
 
 def _utc_now_iso() -> str:
@@ -66,26 +70,28 @@ def _normalize_concurrency_levels(raw: Any) -> list[int]:
     return sorted(normalized) or list(DEFAULT_CONCURRENCY_LEVELS)
 
 
-def _run_worker(provider: str, symbol: str, timeout_seconds: int, deadline: float) -> _Counter:
+def _normalize_runs(raw: Any) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        value = 3
+    return max(1, min(value, 20))
+
+
+def _run_worker_once(provider: str, symbol: str) -> _Counter:
     counter = _Counter()
 
-    # Keep one client per worker thread to avoid excessive constructor overhead.
-    stock_client = _build_stock_client(symbol=symbol, source=provider)
-
-    while time.monotonic() < deadline:
-        counter.total_requests += 1
-        try:
-            stock_client.trading.price_board(symbols_list=[symbol])
-            counter.success_requests += 1
-        except Exception as exc:  # noqa: BLE001
-            if is_rate_limited_error(exc):
-                counter.rate_limited_requests += 1
-            else:
-                counter.failed_requests += 1
-
-        # Soft timeout guard: if a single call stalls, break this worker loop.
-        if timeout_seconds > 0 and time.monotonic() + timeout_seconds > deadline + timeout_seconds:
-            break
+    counter.total_requests += 1
+    try:
+        stock_client = _build_stock_client(symbol=symbol, source=provider)
+        stock_client.trading.price_board(symbols_list=[symbol])
+        counter.success_requests += 1
+    except Exception as exc:  # noqa: BLE001
+        if is_rate_limited_error(exc):
+            counter.rate_limited_requests += 1
+        else:
+            counter.failed_requests += 1
+            counter.transport_errors += 1
 
     return counter
 
@@ -94,46 +100,71 @@ def _benchmark_single_provider_concurrency(
     *,
     provider: str,
     symbol: str,
-    duration_seconds: int,
     timeout_seconds: int,
     concurrency: int,
+    runs: int,
 ) -> dict[str, Any]:
-    started = time.monotonic()
-    deadline = started + duration_seconds
-
+    started_all = time.monotonic()
     total = _Counter()
-    with ThreadPoolExecutor(max_workers=concurrency) as executor:
-        futures = [
-            executor.submit(
-                _run_worker,
-                provider,
-                symbol,
-                timeout_seconds,
-                deadline,
-            )
-            for _ in range(concurrency)
-        ]
-        for future in futures:
-            result = future.result()
-            total.merge(result)
+    run_latencies: list[float] = []
 
-    elapsed_seconds = max(time.monotonic() - started, 0.001)
+    for _ in range(runs):
+        started_run = time.monotonic()
+        executor = ThreadPoolExecutor(max_workers=concurrency)
+        futures = [executor.submit(_run_worker_once, provider, symbol) for _ in range(concurrency)]
+
+        try:
+            for future in as_completed(futures, timeout=max(timeout_seconds, 1) + 2):
+                try:
+                    result = future.result(timeout=0)
+                    total.merge(result)
+                except Exception:
+                    total.total_requests += 1
+                    total.failed_requests += 1
+                    total.transport_errors += 1
+        except FuturesTimeoutError:
+            # Mark unfinished futures as timeout failures for this run.
+            for future in futures:
+                if not future.done():
+                    total.total_requests += 1
+                    total.failed_requests += 1
+                    total.timeout_errors += 1
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        run_latencies.append(max(time.monotonic() - started_run, 0.001))
+
+    elapsed_seconds = max(time.monotonic() - started_all, 0.001)
     rpm = (total.total_requests / elapsed_seconds) * 60.0
     rate_limited_pct = (total.rate_limited_requests / total.total_requests * 100.0) if total.total_requests else 0.0
     success_pct = (total.success_requests / total.total_requests * 100.0) if total.total_requests else 0.0
 
+    sorted_latencies = sorted(run_latencies or [elapsed_seconds])
+    p50_latency = sorted_latencies[len(sorted_latencies) // 2]
+    if len(sorted_latencies) >= 2:
+        idx = min(max(math.ceil(0.95 * len(sorted_latencies)) - 1, 0), len(sorted_latencies) - 1)
+        p95_latency = sorted_latencies[idx]
+    else:
+        p95_latency = sorted_latencies[0]
+
     return {
         'provider': provider,
         'concurrency': concurrency,
-        'duration_seconds': duration_seconds,
+        'runs': runs,
         'elapsed_seconds': round(elapsed_seconds, 3),
         'total_requests': total.total_requests,
         'success_requests': total.success_requests,
         'rate_limited_requests': total.rate_limited_requests,
         'failed_requests': total.failed_requests,
+        'timeout_errors': total.timeout_errors,
+        'transport_errors': total.transport_errors,
         'requests_per_minute': round(rpm, 2),
         'rate_limited_pct': round(rate_limited_pct, 2),
         'success_pct': round(success_pct, 2),
+        'p50_latency_seconds': round(float(p50_latency), 3),
+        'p95_latency_seconds': round(float(p95_latency), 3),
+        'min_latency_seconds': round(float(min(sorted_latencies)), 3),
+        'max_latency_seconds': round(float(max(sorted_latencies)), 3),
     }
 
 
@@ -214,6 +245,15 @@ def run_price_board_provider_benchmark(payload: dict[str, Any] | None = None) ->
         duration_seconds = 30
     duration_seconds = max(5, min(duration_seconds, 180))
 
+    # Backward-compatible mapping: if runs not provided, infer a bounded runs count
+    # from duration_seconds so legacy UI field still controls workload size.
+    runs_raw = params.get('runs')
+    if runs_raw is None:
+        inferred_runs = max(1, min(duration_seconds // 10, 20))
+        runs = _normalize_runs(inferred_runs)
+    else:
+        runs = _normalize_runs(runs_raw)
+
     try:
         timeout_seconds = int(params.get('timeout_seconds', 8))
     except (TypeError, ValueError):
@@ -232,19 +272,21 @@ def run_price_board_provider_benchmark(payload: dict[str, Any] | None = None) ->
                 _benchmark_single_provider_concurrency(
                     provider=provider,
                     symbol=symbol,
-                    duration_seconds=duration_seconds,
                     timeout_seconds=timeout_seconds,
                     concurrency=concurrency,
+                    runs=runs,
                 )
             )
 
     recommendation = build_runtime_recommendation(results)
 
     report = {
+        'status': 'completed',
         'started_at': started_at,
         'finished_at': _utc_now_iso(),
         'symbol': symbol,
         'duration_seconds': duration_seconds,
+        'runs': runs,
         'timeout_seconds': timeout_seconds,
         'providers': providers,
         'concurrency_levels': concurrency_levels,
