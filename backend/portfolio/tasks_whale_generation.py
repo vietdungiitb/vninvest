@@ -16,12 +16,9 @@ from portfolio.observability import (
 )
 
 from portfolio.tasks_whale_execution import _execute_whale_generation_postprovider
-from portfolio.tasks_whale_bookkeeping import (
-    _collect_generation_language_metrics,
-    _record_generation_token_usage,
-)
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
 from portfolio.tasks_whale_preflight import _prepare_whale_generation_context
+from portfolio.tasks_whale_provider_bookkeeping_phase import _execute_whale_provider_bookkeeping_phase
 from portfolio.tasks_whale_provider_phase import _execute_whale_provider_phase
 
 
@@ -95,30 +92,23 @@ def generate_whale_advisory_task(
         model=model,
         api_key=api_key,
     )
-    summary_resp = provider_result['summary_resp']
-    deep_resp = provider_result['deep_resp']
-    provider = provider_result['provider']
-    model = provider_result['model']
-    primary_model = provider_result['primary_model']
-    failover_occurred = provider_result['failover_occurred']
-    failover_reason = provider_result['failover_reason']
-    failover_chain_attempted = provider_result['failover_chain_attempted']
-    failover_attempt_count = provider_result['failover_attempt_count']
-
-    language_mismatch = _collect_generation_language_metrics(
+    provider_bookkeeping = _execute_whale_provider_bookkeeping_phase(
         symbol=symbol,
-        provider=provider,
-        model=model,
         output_language=output_language,
-        summary_resp=summary_resp,
-        deep_resp=deep_resp,
-    )
-
-    _record_generation_token_usage(
-        summary_resp=summary_resp,
-        deep_resp=deep_resp,
         use_concise=use_concise,
+        provider_result=provider_result,
     )
+    summary_resp = provider_bookkeeping['summary_resp']
+    deep_resp = provider_bookkeeping['deep_resp']
+    provider = provider_bookkeeping['provider']
+    model = provider_bookkeeping['model']
+    primary_model = provider_bookkeeping['primary_model']
+    failover_occurred = provider_bookkeeping['failover_occurred']
+    failover_reason = provider_bookkeeping['failover_reason']
+    failover_chain_attempted = provider_bookkeeping['failover_chain_attempted']
+    failover_attempt_count = provider_bookkeeping['failover_attempt_count']
+    language_mismatch = provider_bookkeeping['language_mismatch']
+
     return _execute_whale_generation_postprovider(
         symbol=symbol,
         matched_value_vnd=matched_value_vnd,
