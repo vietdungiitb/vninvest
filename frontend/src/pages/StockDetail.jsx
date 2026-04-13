@@ -2116,6 +2116,16 @@ export default function StockDetail() {
   const overviewClosePrice = normalizeQuotePriceValue(overview?.close_price);
   const liveCurrentPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.current_price);
   const currentPrice = liveCurrentPrice ?? overviewCurrentPrice ?? overviewClosePrice ?? null;
+  const liveReferencePrice = normalizeQuotePriceValue(
+    resolvedRealtimeQuote.reference_price ?? resolvedRealtimeQuote.prev_price,
+  );
+  const referencePrice = liveReferencePrice ?? normalizeQuotePriceValue(overview?.reference_price) ?? null;
+  const liveCeilingPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.ceiling_price);
+  const ceilingPrice = liveCeilingPrice ?? normalizeQuotePriceValue(overview?.ceiling_price) ?? null;
+  const liveFloorPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.floor_price);
+  const floorPrice = liveFloorPrice ?? normalizeQuotePriceValue(overview?.floor_price) ?? null;
+  const liveAveragePrice = normalizeQuotePriceValue(resolvedRealtimeQuote.average_price);
+  const averagePrice = liveAveragePrice ?? normalizeQuotePriceValue(overview?.average_price) ?? null;
 
   const overviewChangeValue = normalizeQuoteDeltaValue(overview?.change_value, currentPrice);
   const liveChangeValue = normalizeQuoteDeltaValue(resolvedRealtimeQuote.change_value, currentPrice);
@@ -2138,17 +2148,54 @@ export default function StockDetail() {
     return 'text-slate-300';
   }, [changeValue]);
 
+  const visibleChartPoints = useMemo(() => {
+    if (!Array.isArray(chartData) || chartData.length === 0) {
+      return [];
+    }
+
+    const points = chartData
+      .map((item) => {
+        const ts = item?.date ? new Date(item.date).getTime() : null;
+        const close = normalizeQuotePriceValue(item?.close);
+        if (!Number.isFinite(ts) || !Number.isFinite(close)) {
+          return null;
+        }
+        return { ts, close };
+      })
+      .filter(Boolean);
+
+    if (!points.length) {
+      return [];
+    }
+
+    const fromTs = Number.isFinite(Number(chartVisibleRange?.from_ts)) ? Number(chartVisibleRange.from_ts) : null;
+    const toTs = Number.isFinite(Number(chartVisibleRange?.to_ts)) ? Number(chartVisibleRange.to_ts) : null;
+    if (!fromTs || !toTs) {
+      return points;
+    }
+
+    const withinRange = points.filter((point) => point.ts >= fromTs && point.ts <= toTs);
+    return withinRange.length >= 2 ? withinRange : points;
+  }, [chartData, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts]);
+
   const chartPerformance = useMemo(() => {
-    if (!chartData.length) {
+    if (!visibleChartPoints.length) {
       return null;
     }
-    const firstClose = Number(chartData[0]?.close || 0);
-    const lastClose = Number(chartData[chartData.length - 1]?.close || 0);
+    const firstClose = Number(visibleChartPoints[0]?.close || 0);
+    const lastClose = Number(visibleChartPoints[visibleChartPoints.length - 1]?.close || 0);
     if (firstClose <= 0) {
       return null;
     }
     return ((lastClose - firstClose) / firstClose) * 100;
-  }, [chartData]);
+  }, [visibleChartPoints]);
+
+  const chartWindowHint = useMemo(() => {
+    if (visibleChartPoints.length >= 2) {
+      return t('stockDetail.thisWindowHint', { timeframe: activeTimeframe });
+    }
+    return t('stockDetail.thisWindowHintFallback', { timeframe: activeTimeframe });
+  }, [activeTimeframe, t, visibleChartPoints.length]);
 
   const technicalBiasFallback = biasMeta(technical?.bias, t);
   const technicalBias = {
@@ -2697,8 +2744,8 @@ export default function StockDetail() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.refCeilFloor')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.reference_price))}</p>
-                <p className="mt-1 text-[10px] text-slate-500">{formatQuotePrice(normalizeQuotePriceValue(overview.ceiling_price))} / {formatQuotePrice(normalizeQuotePriceValue(overview.floor_price))}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(referencePrice)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{formatQuotePrice(ceilingPrice)} / {formatQuotePrice(floorPrice)}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.dayRange')}</p>
@@ -2712,7 +2759,8 @@ export default function StockDetail() {
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.average')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.average_price))}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(averagePrice)}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{t('stockDetail.averageHint')}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.bias')}</p>
@@ -2723,6 +2771,7 @@ export default function StockDetail() {
                 <p className={`mt-1 text-sm font-medium ${chartPerformance !== null && chartPerformance >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
                   {chartPerformance !== null ? `${chartPerformance >= 0 ? '+' : ''}${chartPerformance.toFixed(2)}%` : '—'}
                 </p>
+                <p className="mt-1 text-[10px] text-slate-500">{chartWindowHint}</p>
               </div>
             </div>
             <p className="mt-3 text-[12px] text-slate-400">{technicalBias.description}</p>

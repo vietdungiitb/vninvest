@@ -106,6 +106,33 @@ class RealtimeTickerView(APIView):
                             or _safe_float(row.get('ceiling_price'))
                             or _safe_float(row.get('floor_price'))
                         )
+                        ceiling_price = (
+                            _safe_float(listing.get('ceiling'))
+                            or _safe_float(match.get('ceiling_price'))
+                            or _safe_float(row.get('ceiling'))
+                            or _safe_float(row.get('ceiling_price'))
+                        )
+                        floor_price = (
+                            _safe_float(listing.get('floor'))
+                            or _safe_float(match.get('floor_price'))
+                            or _safe_float(row.get('floor'))
+                            or _safe_float(row.get('floor_price'))
+                        )
+                        open_price = _safe_float(match.get('open_price')) or _safe_float(row.get('open_price'))
+                        high_price = (
+                            _safe_float(match.get('highest'))
+                            or _safe_float(row.get('highest'))
+                            or _safe_float(row.get('high_price'))
+                        )
+                        low_price = (
+                            _safe_float(match.get('lowest'))
+                            or _safe_float(row.get('lowest'))
+                            or _safe_float(row.get('low_price'))
+                        )
+                        average_price = (
+                            _safe_float(match.get('average_price'))
+                            or _safe_float(row.get('average_price'))
+                        )
 
                         if match_price is not None:
                             explicit_change_value = (
@@ -126,15 +153,23 @@ class RealtimeTickerView(APIView):
                                 change_value = explicit_change_value
                             if explicit_change_pct is not None:
                                 change_pct = explicit_change_pct
+                            if average_price is None:
+                                prices = [value for value in [open_price, high_price, low_price, match_price] if value is not None]
+                                if len(prices) >= 2:
+                                    average_price = round(sum(prices) / len(prices), 2)
                             payload = {
                                 'symbol': normalized_symbol,
                                 'current_price': match_price,
                                 'prev_price': ref_price,
+                                'reference_price': ref_price,
+                                'ceiling_price': ceiling_price,
+                                'floor_price': floor_price,
+                                'average_price': average_price,
                                 'change_value': change_value,
                                 'change_pct': change_pct,
-                                'open_price': _safe_float(match.get('open_price')) or _safe_float(row.get('open_price')),
-                                'high_price': _safe_float(match.get('highest')) or _safe_float(row.get('highest')) or _safe_float(row.get('high_price')),
-                                'low_price': _safe_float(match.get('lowest')) or _safe_float(row.get('lowest')) or _safe_float(row.get('low_price')),
+                                'open_price': open_price,
+                                'high_price': high_price,
+                                'low_price': low_price,
                                 'volume': (
                                     _safe_int(match.get('accumulated_volume'))
                                     or _safe_int(row.get('accumulated_volume'))

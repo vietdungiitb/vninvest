@@ -2640,8 +2640,10 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'FPT')
         self.assertEqual(float(response.data['current_price']), 76000.0)
         self.assertEqual(float(response.data['prev_price']), 77700.0)
+        self.assertEqual(float(response.data['reference_price']), 77700.0)
         self.assertEqual(float(response.data['change_value']), -1700.0)
         self.assertAlmostEqual(float(response.data['change_pct']), -2.1879, places=4)
+        self.assertEqual(float(response.data['average_price']), 76450.0)
         self.assertEqual(response.data['source'], 'vnstock_on_demand')
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
@@ -2730,8 +2732,10 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'FPT')
         self.assertEqual(float(response.data['current_price']), 76000.0)
         self.assertEqual(float(response.data['prev_price']), 77700.0)
+        self.assertEqual(float(response.data['reference_price']), 77700.0)
         self.assertEqual(float(response.data['change_value']), -1700.0)
         self.assertAlmostEqual(float(response.data['change_pct']), -2.1879, places=4)
+        self.assertEqual(float(response.data['average_price']), 76450.0)
         self.assertEqual(response.data['source'], 'vnstock_on_demand')
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
