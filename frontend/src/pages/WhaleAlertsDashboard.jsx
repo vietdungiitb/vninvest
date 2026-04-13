@@ -1011,19 +1011,11 @@ export default function WhaleAlertsDashboard() {
         </div>
       </section>
 
-      {/* Main grid: left 2 cols (chart + feed + radar) | right col (RVOL + Donut + Depth) */}
+      {/* Main grid: left 2 cols (chart + radar) | right col (Feed + RVOL + Donut + Depth) */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_2fr_1fr]">
         {/* Left 2 columns — stacked vertically */}
         <div className="xl:col-span-2 space-y-4">
           <DarkMoneyMasterChart symbol={normalizedSymbol} />
-          <WhaleFeedPanel
-            symbol={normalizedSymbol}
-            realtimeAlerts={symbolAlerts}
-            feedData={feedData}
-            loading={feedLoading}
-            onRefresh={fetchFeed}
-            feedHeightClass="h-[320px] sm:h-[360px]"
-          />
           <OrderFlowRadarPanel
             symbol={normalizedSymbol}
             loading={orderFlowLoading}
@@ -1036,6 +1028,14 @@ export default function WhaleAlertsDashboard() {
 
         {/* Right column — widget stack */}
         <div className="flex flex-col gap-4">
+          <WhaleFeedPanel
+            symbol={normalizedSymbol}
+            realtimeAlerts={symbolAlerts}
+            feedData={feedData}
+            loading={feedLoading}
+            onRefresh={fetchFeed}
+            feedHeightClass="h-[320px] sm:h-[360px]"
+          />
           <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
           <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
           <DepthChartPanel symbol={normalizedSymbol} compact />
