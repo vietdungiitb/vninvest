@@ -1405,6 +1405,8 @@ const vi = {
     syncWatchlistPrices: 'Sync Watchlist Prices',
     syncMarketGroups: 'Đồng bộ Nhóm Thị trường',
     warmTickerCache: 'Trigger Prefetch thủ công',
+    triggerPrefetchAsync: 'Trigger Prefetch async',
+    triggerPrefetchSync: 'Trigger Prefetch sync (chờ kết quả)',
     missionControl: 'Mission Control',
     missionControlDescription: 'Auto-refresh mỗi 15 giây để hậu kiểm propagation, anomaly và auto-revert.',
     openVersions: 'Mở Versions',

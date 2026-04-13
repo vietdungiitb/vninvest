@@ -1063,7 +1063,8 @@ export default function AdminOps() {
           {syncBtn('stockprofile', t('adminOps.syncStockProfiles'), syncStockProfile)}
           {syncBtn('watchlist', t('adminOps.syncWatchlistPrices'), syncWatchlistPrices, 5)}
           {syncBtn('marketgroups', t('adminOps.syncMarketGroups'), syncMarketGroups)}
-          {syncBtn('prefetchwarm', t('adminOps.warmTickerCache'), warmTickerPrefetch, 'async')}
+          {syncBtn('prefetchwarmAsync', t('adminOps.triggerPrefetchAsync'), warmTickerPrefetch, 'async')}
+          {syncBtn('prefetchwarmSync', t('adminOps.triggerPrefetchSync'), warmTickerPrefetch, 'sync')}
         </div>
       </section>
       </>) : null}
