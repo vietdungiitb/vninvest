@@ -78,9 +78,13 @@ class PortfolioSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def get_transaction_count(self, obj):
+        if hasattr(obj, 'transaction_count_annotated'):
+            return obj.transaction_count_annotated
         return Transaction.objects.filter(sub_account__portfolio=obj).count()
 
     def get_subaccount_count(self, obj):
+        if hasattr(obj, 'subaccount_count_annotated'):
+            return obj.subaccount_count_annotated
         return obj.sub_accounts.count()
 
 

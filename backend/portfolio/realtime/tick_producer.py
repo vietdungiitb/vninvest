@@ -29,8 +29,8 @@ _CONSUMER_GROUPS = ["db-writer", "ws-broadcaster", "alert-engine"]
 
 
 def _get_client() -> redis.Redis:
-    url = getattr(settings, "STREAM_REDIS_URL", "redis://localhost:6379/1")
-    return redis.from_url(url, decode_responses=True)
+    from portfolio.realtime.redis_pool import get_stream_client
+    return get_stream_client()
 
 
 class TickProducer:
@@ -91,13 +91,13 @@ class TickProducer:
         pushed = 0
         pipe = self.client.pipeline(transaction=False)
 
-        for _, row in df.iterrows():
+        for record in df.to_dict('records'):
             fields = {
                 "symbol": symbol.upper(),
-                "ts": str(row.get("ts", "")),
-                "price": str(row.get("price", 0)),
-                "volume": str(int(row.get("volume", 0))),
-                "side": str(row.get("side", "UNKNOWN")),
+                "ts": str(record.get("ts", "")),
+                "price": str(record.get("price", 0)),
+                "volume": str(int(record.get("volume", 0))),
+                "side": str(record.get("side", "UNKNOWN")),
             }
             pipe.xadd(key, fields, maxlen=self._max_len, approximate=True)
             pushed += 1

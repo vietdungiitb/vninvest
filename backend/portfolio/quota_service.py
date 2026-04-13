@@ -96,10 +96,24 @@ def consume_quota(user, quota_key: str, amount: int = 1, entitlements: dict | No
 
     day_key = now_vn.date().isoformat()
     cache_key = _quota_cache_key(user.id, quota_key, day_key)
-    used = int(cache.get(cache_key, 0) or 0)
-    next_used = used + max(int(amount), 0)
+    ttl = _seconds_until_vn_midnight(now_vn)
+    increment = max(int(amount), 0) or 1
+
+    # Atomic increment: avoids race condition between concurrent requests.
+    try:
+        next_used = cache.incr(cache_key, increment)
+    except ValueError:
+        # Key does not exist yet — initialize and set TTL.
+        cache.set(cache_key, increment, timeout=ttl)
+        next_used = increment
 
     if limit <= 0 or next_used > limit:
+        # Over limit — rollback the increment so the counter stays accurate.
+        try:
+            cache.decr(cache_key, increment)
+        except (ValueError, Exception):
+            pass
+        used = max(next_used - increment, 0)
         return {
             "allowed": False,
             "enforced": True,
@@ -111,7 +125,6 @@ def consume_quota(user, quota_key: str, amount: int = 1, entitlements: dict | No
             "retry_after_seconds": _seconds_until_vn_midnight(now_vn),
         }
 
-    cache.set(cache_key, next_used, timeout=_seconds_until_vn_midnight(now_vn))
     return {
         "allowed": True,
         "enforced": True,

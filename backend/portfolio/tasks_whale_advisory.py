@@ -49,6 +49,10 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     if not state:
         return {'status': 'skipped', 'reason': 'cache_miss'}
 
+    # Atomic guard: if delete returns False, another concurrent worker already grabbed & deleted it.
+    if cache.delete(cache_key) is False:
+        return {'status': 'skipped', 'reason': 'race_lost'}
+
     threshold_vnd = _safe_float(state.get('threshold_vnd'), 100_000)
     matched_value = _safe_float(state.get('matched_value_vnd'), threshold_vnd)
     score_sum = _safe_float(state.get('score_sum'), 0)
@@ -60,7 +64,6 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     dark_flow_strength = state.get('dark_flow_strength')
     dark_flow_confidence = state.get('dark_flow_confidence')
 
-    cache.delete(cache_key)
     record_advisory_merge_observation('flushed')
 
     generate_whale_advisory_task.apply_async(

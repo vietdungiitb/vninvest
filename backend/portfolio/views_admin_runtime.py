@@ -3,11 +3,32 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
+from portfolio.tasks_whale_preflight_cache import (
+    WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
+    WHALE_PREFLIGHT_METRIC_NAMES,
+    _build_preflight_metric_rates,
+    _build_preflight_metric_summary,
+    _read_preflight_metrics,
+    _read_preflight_metrics_window,
+    _sum_preflight_metrics_window,
+)
+
 
 def _legacy_views_module():
     from . import views as legacy_views
 
     return legacy_views
+
+
+def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
+    if raw_value in (None, ''):
+        return default
+    normalized = str(raw_value).strip().lower()
+    if normalized in {'1', 'true', 'yes', 'y', 'on'}:
+        return True
+    if normalized in {'0', 'false', 'no', 'n', 'off'}:
+        return False
+    return default
 
 
 @api_view(['GET'])
@@ -104,12 +125,37 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     Admin-only: trả về counters profiling cho whale preflight cache checks.
     Query params:
       - date=YYYY-MM-DD (optional, default=today localdate)
+      - window_days=1..30 (optional, default=1)
+            - compact=true|false (optional, default=false)
     """
     from time import time as _time
-    from django.core.cache import cache
     from django.utils import timezone
 
+    sampled_at = _time()
     requested_date = str(request.query_params.get('date') or '').strip()
+    compact = _parse_bool_query_param(request.query_params.get('compact'), default=False)
+    requested_window_days = request.query_params.get('window_days')
+    if requested_window_days in (None, ''):
+        window_days = 1
+    else:
+        try:
+            window_days = int(requested_window_days)
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    'detail': 'Invalid window_days. Use an integer from 1 to 30.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if window_days < 1 or window_days > 30:
+            return Response(
+                {
+                    'detail': 'Invalid window_days. Use an integer from 1 to 30.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     target_date = timezone.localdate()
     if requested_date:
         try:
@@ -123,26 +169,35 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
             )
 
     day_key = target_date.isoformat()
-    metric_names = (
-        'existing_advisory_hit',
-        'existing_advisory_miss',
-        'cooldown_hit',
-        'cooldown_miss',
-        'cooldown_bypass_force_refresh',
-    )
-    metrics = {
-        name: int(cache.get(f'whale_preflight:metrics:{day_key}:{name}') or 0)
-        for name in metric_names
-    }
+    try:
+        metrics = _read_preflight_metrics(day_key=day_key)
+        trend = _read_preflight_metrics_window(end_date=target_date, window_days=window_days)
+        totals = _sum_preflight_metrics_window(window_rows=trend)
+        rates = _build_preflight_metric_rates(totals=totals)
+        summary = _build_preflight_metric_summary(totals=totals, rates=rates)
+    except Exception:
+        metrics = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
+        trend = [{'date': day_key, 'metrics': metrics}] if window_days == 1 else []
+        totals = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
+        rates = _build_preflight_metric_rates(totals=totals)
+        summary = _build_preflight_metric_summary(totals=totals, rates=rates)
 
-    return Response(
-        {
-            'sampled_at': _time(),
-            'date': day_key,
-            'whale_preflight_metrics': metrics,
-        },
-        status=status.HTTP_200_OK,
-    )
+    payload = {
+        'sampled_at': sampled_at,
+        'updated_at': timezone.now().isoformat(),
+        'schema_version': WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
+        'date': day_key,
+        'window_days': window_days,
+        'compact': compact,
+        'whale_preflight_metrics': metrics,
+        'whale_preflight_metrics_totals': totals,
+        'whale_preflight_metrics_rates': rates,
+        'whale_preflight_metrics_summary': summary,
+    }
+    if not compact:
+        payload['whale_preflight_metrics_trend'] = trend
+
+    return Response(payload, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

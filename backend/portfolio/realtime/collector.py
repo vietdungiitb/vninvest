@@ -20,9 +20,8 @@ def collect_symbols_for_user(user_id: int | None = None) -> list[str]:
 def collect_intraday_frame(symbol: str) -> pd.DataFrame:
     """Lấy dữ liệu khớp lệnh thực từ vnstock intraday, fallback về synthetic nếu lỗi."""
     try:
-        from vnstock import Vnstock
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
-        df = stock.quote.intraday(symbol=symbol, page_size=100)
+        from portfolio.adapters.vnstock_adapter import fetch_intraday_dataframe
+        df = fetch_intraday_dataframe(symbol=symbol, page_size=100)
         if df is not None and not df.empty:
             rows = []
             for _, row in df.iterrows():
@@ -46,10 +45,16 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 rows.append({'ts': str(raw_time), 'price': price_val, 'volume': vol_val, 'side': side})
             if rows:
                 return pd.DataFrame(rows)
-    except (Exception, SystemExit):
-        pass
+    except (Exception, SystemExit) as exc:
+        import logging as _log
+        _log.getLogger(__name__).warning(
+            "collect_intraday_frame(%s) vnstock failed, using synthetic fallback: %s",
+            symbol, exc,
+        )
 
     # Fallback: synthetic one-tick frame từ DB price
+    import logging as _log
+    _log.getLogger(__name__).info("collect_intraday_frame(%s) synthetic fallback active (volume=0)", symbol)
     changes = get_price_changes([symbol]).get(symbol.upper(), {})
     price = changes.get("current_price") or 0.0
     now = timezone.now() if hasattr(timezone, "now") else datetime.utcnow()

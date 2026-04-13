@@ -127,6 +127,8 @@ class RegisterSerializer(serializers.Serializer):
     def validate(self, data):
         if data['password'] != data['password_confirm']:
             raise serializers.ValidationError({'password_confirm': 'Mật khẩu xác nhận không khớp.'})
+        # Enforce Django password validators (min length, common, numeric, similarity)
+        validate_password(data['password'])
         return data
 
     def create(self, validated_data):
@@ -175,26 +177,31 @@ class RegisterView(CreateAPIView):
                     # Fail-soft to keep signup healthy if starter provisioning has transient issue.
                     logger.exception('Failed to provision starter portfolios for user_id=%s', user.id)
 
-            try:
-                send_verification_email(user)
-                user_config.email_verified = False
-                user_config.email_verification_sent_at = timezone.now()
-                user_config.email_verified_at = None
-            except Exception as exc:
-                if settings.DEBUG:
-                    # Dev fallback: tránh kẹt luồng đăng ký khi chưa cấu hình SMTP.
-                    user_config.email_verified = True
-                    user_config.email_verification_sent_at = None
-                    user_config.email_verified_at = timezone.now()
-                    verification_required = False
-                    response_message = (
-                        'Đăng ký thành công (DEV mode). Hệ thống chưa gửi được email xác thực '
-                        'nên tài khoản đã được kích hoạt tạm thời.'
-                    )
-                else:
-                    raise EmailDeliveryFailed(detail=f'Không thể gửi email xác thực: {exc}') from exc
-
+            # Pre-set default state
+            user_config.email_verified = False
+            user_config.email_verification_sent_at = None
+            user_config.email_verified_at = None
             user_config.save(update_fields=['email_verified', 'email_verification_sent_at', 'email_verified_at', 'updated_at'])
+
+        # End of transaction block. Send email OUTSIDE the transaction to avoid holding DB lock.
+        try:
+            send_verification_email(user)
+            user_config.email_verification_sent_at = timezone.now()
+            user_config.save(update_fields=['email_verification_sent_at', 'updated_at'])
+        except Exception as exc:
+            if settings.DEBUG:
+                # Dev fallback: tránh kẹt luồng đăng ký khi chưa cấu hình SMTP.
+                user_config.email_verified = True
+                user_config.email_verification_sent_at = None
+                user_config.email_verified_at = timezone.now()
+                user_config.save(update_fields=['email_verified', 'email_verification_sent_at', 'email_verified_at', 'updated_at'])
+                verification_required = False
+                response_message = (
+                    'Đăng ký thành công (DEV mode). Hệ thống chưa gửi được email xác thực '
+                    'nên tài khoản đã được kích hoạt tạm thời.'
+                )
+            else:
+                raise EmailDeliveryFailed(detail=f'Không thể gửi email xác thực: {exc}') from exc
 
         return Response(
             {
@@ -245,6 +252,8 @@ class ResendVerificationSerializer(serializers.Serializer):
 
 class ResendVerificationEmailView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'auth_resend_verification'
 
     def post(self, request, *args, **kwargs):
         serializer = ResendVerificationSerializer(data=request.data)
@@ -399,6 +408,21 @@ class GoogleOAuthView(APIView):
                     password=User.objects.make_random_password(),
                 )
                 created = True
+            else:
+                # Security: block auto-link if existing user was NOT originally a Google OAuth user.
+                # This prevents account takeover via email collision.
+                cfg_existing = UserConfig.objects.filter(user=user).first()
+                if cfg_existing and cfg_existing.oauth_provider != 'google':
+                    logger.warning(
+                        'google_oauth.blocked_auto_link user_id=%s email=%s existing_provider=%s ip=%s',
+                        user.id, email, cfg_existing.oauth_provider or 'password', _request_ip(request),
+                    )
+                    raise ValidationError({
+                        'access_token': (
+                            'Email này đã được đăng ký bằng mật khẩu. '
+                            'Vui lòng đăng nhập bằng mật khẩu, sau đó liên kết Google trong cài đặt tài khoản.'
+                        )
+                    })
 
             cfg, _ = UserConfig.objects.get_or_create(user=user)
             if cfg.oauth_provider != 'google' or not cfg.oauth_uid:

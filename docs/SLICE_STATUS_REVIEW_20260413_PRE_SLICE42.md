@@ -1,22 +1,26 @@
-# Đánh giá hiện trạng trước Slice 42 (2026-04-13)
+# Đánh giá hiện trạng sau Slice 55 (2026-04-13)
 
 ## 1) Tóm tắt điều hành
-- Nhánh làm việc: `dev` đã đồng bộ `origin/dev`.
-- Slice 41 đã hoàn tất và push: `c9c116c7`.
-- Trạng thái tổng thể: tiến trình tách module whale tasks đang ổn định, không ghi nhận lỗi check/import/schedule ở mốc hiện tại.
-- Side-track AdminOps benchmark KBS/VCI đã hoàn tất và merge trước đó: `b3640ab6`.
+- Nhánh kiểm tra hiện tại: `deploy` (HEAD `889d87ea`), các commit slice 49-55 đều có mặt trên cả `dev` và `deploy`.
+- Trạng thái tổng thể: luồng tách module whale tasks tiếp tục ổn định, đã dịch chuyển trọng tâm sang preflight helpers + coverage + profiling.
+- Mốc đã hoàn tất: từ Slice 42 đến Slice 55 đã có commit và không ghi nhận lỗi check/import trên test mục tiêu.
 
 ## 2) Timeline commit gần nhất (mới -> cũ)
-1. `c9c116c7` refactor(tasks): extract whale provider phase orchestration
-2. `b3640ab6` feat(admin-ops): add separated vnstock provider benchmark module
-3. `6c680532` refactor(tasks): extract whale post-provider execution pipeline
-4. `a673d349` refactor(tasks): extract whale bookkeeping helpers - slice 39
-5. `6b71152e` refactor(tasks): extract whale metrics and response tail - slice 38
-6. `6dd7209d` refactor(tasks): extract whale generation preflight gating - slice 37
-7. `fbf8989d` refactor(tasks): extract whale provider failover loop - slice 36
-8. `c8fd3b45` refactor(tasks): extract whale advisory postprocess helpers - slice 35
+1. `765d6553` feat(slice55): add lightweight whale preflight profiling and cache metrics
+2. `2725a8d4` test(slice54): add coverage for whale preflight refactor helpers
+3. `8a0b4149` refactor(slice52-53): extract cache cooldown checks and consolidate early-return pattern
+4. `bd132183` refactor(slice51): extract return context dict assembly into helper
+5. `847811ee` refactor(slice50): consolidate language and model resolution logic
+6. `1fb80309` refactor(slice49): extract AI runtime config and provider rate-limit checks
+7. `4ee82c57` refactor(tasks): extract whale preflight user-cfg guard module (slice 48)
+8. `52f495f9` refactor(tasks): extract whale AI call executor module (slice 47)
+9. `74926db1` refactor(tasks): extract whale broadcast module, retire postprocess (slice 46)
+10. `88b86ccf` refactor(tasks): extract whale persistence helpers module (slice 45)
+11. `360d26d4` refactor(tasks): extract whale quality helpers module (slice 44)
+12. `2eb9314e` refactor(tasks): extract whale provider bookkeeping phase (slice 43)
+13. `21653d9a` refactor(tasks): extract whale persist/finalize phases (slice 42)
 
-## 3) Inventory module đã tách (cụm whale/advisory)
+## 3) Inventory module đã tách (cụm whale/advisory/preflight)
 - `backend/portfolio/tasks_whale_advisory.py`
 - `backend/portfolio/tasks_whale_auto_generation.py`
 - `backend/portfolio/tasks_whale_generation.py`
@@ -27,18 +31,23 @@
 - `backend/portfolio/tasks_whale_postprocess.py`
 - `backend/portfolio/tasks_whale_metrics.py`
 - `backend/portfolio/tasks_whale_bookkeeping.py`
+- `backend/portfolio/tasks_whale_preflight_ai.py`
+- `backend/portfolio/tasks_whale_preflight_cache.py`
+- `backend/portfolio/tasks_whale_preflight_language.py`
+- `backend/portfolio/tasks_whale_preflight_guards.py`
 - `backend/portfolio/tasks_news_context.py`
 - `backend/portfolio/tasks_advisory_helpers.py`
 
 ## 4) Snapshot độ phức tạp (line count)
-- `backend/portfolio/tasks.py`: 167 lines (đã về vai trò facade/re-export)
+- `backend/portfolio/tasks.py`: 168 lines (facade/re-export)
 - `backend/portfolio/tasks_whale_advisory.py`: 77 lines (mỏng, chủ yếu flush/re-export)
 - `backend/portfolio/tasks_whale_generation.py`: 145 lines (orchestrator chính)
 - `backend/portfolio/tasks_whale_provider_phase.py`: 46 lines (mới tách ở Slice 41)
 - `backend/portfolio/tasks_whale_execution.py`: 203 lines (điểm còn dày nhất trong luồng generation)
 - `backend/portfolio/tasks_whale_postprocess.py`: 187 lines
 - `backend/portfolio/tasks_whale_provider_generation.py`: 140 lines
-- `backend/portfolio/tasks_whale_preflight.py`: 138 lines
+- `backend/portfolio/tasks_whale_preflight.py`: 157 lines
+- `backend/portfolio/tasks_whale_preflight_cache.py`: 55 lines
 - `backend/portfolio/tasks_whale_metrics.py`: 111 lines
 - `backend/portfolio/tasks_whale_bookkeeping.py`: 42 lines
 
@@ -46,21 +55,24 @@
 - `manage.py check`: pass.
 - Import smoke cho module mới: pass.
 - Celery beat schedule path resolution (`missing []`): pass.
+- Regression preflight refactor: `portfolio.tests.test_whale_preflight_refactor` pass `8/8`.
 - Mục tiêu tương thích giữ nguyên: task path cũ qua facade `portfolio.tasks.*`.
 
 ## 6) Rủi ro còn lại
-1. `tasks_whale_execution.py` vẫn gom nhiều concern trong một phase (metadata/severity/aggregate/persist/broadcast/final metrics/result).
-2. Vẫn có phụ thuộc chéo mềm qua helper modules; cần tiếp tục tách theo boundary rõ để giảm coupling.
-3. Chưa có regression test chuyên sâu cho từng helper phase mới (chủ yếu smoke/integration mức module).
+1. `tasks_whale_execution.py` vẫn là điểm hội tụ nhiều concern, dù đã tách mạnh ở slice 42-46.
+2. Preflight đã modular hơn nhưng cần theo dõi drift giữa các helper trả về dict contract.
+3. Metrics preflight mới ở mức counter nhẹ, chưa có dashboard/alert riêng cho xu hướng skip reason.
 
-## 7) Đề xuất Slice 42 (khuyến nghị)
-- Mục tiêu: tách `tasks_whale_execution.py` thành 2 phase độc lập:
-  - `tasks_whale_persist_phase.py`: chuẩn hóa metadata + aggregate snapshot + create advisory + token log + cache cooldown.
-  - `tasks_whale_finalize_phase.py`: broadcast + metrics finalize + result payload.
+## 7) Đề xuất Slice 56 (khuyến nghị)
+- Mục tiêu: chuẩn hóa observability cho preflight sau khi hoàn tất tách helper 49-55.
+- Gợi ý phạm vi:
+  - Bổ sung helper đọc metrics preflight theo ngày + reason để tái sử dụng ở API/admin-kpi.
+  - Chuẩn hóa tên metric key theo enum/hằng số để tránh typo giữa module cache/preflight.
+  - Bổ sung test contract cho bảng metric key và fallback khi Redis lỗi.
 - Kỳ vọng kết quả:
-  - `tasks_whale_execution.py` giảm còn vai trò orchestrator trung gian.
-  - Dễ test unit theo phase và giảm blast radius khi đổi logic broadcast/metrics.
+  - Giảm rủi ro sai lệch metric naming giữa các module.
+  - Tăng khả năng audit skip reason theo thời gian mà không thay đổi business flow.
 
 ## 8) Kết luận
-- Có thể tiếp tục Slice 42 ngay, nền hiện tại sạch và ổn định.
-- Quy trình đề xuất giữ nguyên: tách module nhỏ -> check/import/schedule smoke -> commit/push `dev`.
+- Chuỗi refactor đã đi qua Slice 55, trạng thái hiện tại ổn định và có test chứng thực cho cụm preflight helpers.
+- Có thể tiếp tục Slice 56 theo hướng harden observability/metrics contract, giữ nguyên nguyên tắc tách nhỏ + smoke/test sau mỗi slice.

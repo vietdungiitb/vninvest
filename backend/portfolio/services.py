@@ -1538,11 +1538,12 @@ def fetch_and_save_daily_prices(
                 continue
 
             try:
-                _, created = DailyPrice.objects.update_or_create(
-                    symbol=symbol,
-                    date=price_date,
-                    defaults=data,
-                )
+                with db_transaction.atomic():
+                    _, created = DailyPrice.objects.update_or_create(
+                        symbol=symbol,
+                        date=price_date,
+                        defaults=data,
+                    )
             except Exception as db_exc:
                 logger.warning('DB error khi lưu %s / %s: %s', symbol, price_date, db_exc)
                 result['errors'] += 1
@@ -1632,21 +1633,27 @@ def get_price_changes(symbols: list) -> dict:
     if not symbols:
         return {}
 
-    result = {}
     upper_symbols = [s.upper() for s in symbols]
+    result = {sym: {
+        'current_price': None, 'prev_price': None,
+        'change_value': None, 'change_pct': None, 'last_date': None,
+    } for sym in upper_symbols}
+
+    # Fetch last 30 days of prices for all symbols in a single query
+    cutoff_date = timezone.now().date() - timedelta(days=30)
+    qs = DailyPrice.objects.filter(
+        symbol__in=upper_symbols,
+        date__gte=cutoff_date
+    ).order_by('symbol', '-date').values('symbol', 'close_price', 'date')
+
+    from collections import defaultdict
+    prices_by_symbol = defaultdict(list)
+    for row in qs:
+        prices_by_symbol[row['symbol']].append(row)
 
     for symbol in upper_symbols:
-        prices = list(
-            DailyPrice.objects
-            .filter(symbol=symbol)
-            .order_by('-date')
-            .values('close_price', 'date')[:2]
-        )
+        prices = prices_by_symbol.get(symbol, [])
         if not prices:
-            result[symbol] = {
-                'current_price': None, 'prev_price': None,
-                'change_value': None, 'change_pct': None, 'last_date': None,
-            }
             continue
 
         current = float(prices[0]['close_price'])

@@ -207,6 +207,7 @@ REST_FRAMEWORK = {
         'auth': '10/minute',
         'auth_password_reset_request': os.getenv('DRF_AUTH_PASSWORD_RESET_REQUEST_RATE', '5/hour'),
         'auth_password_reset_confirm': os.getenv('DRF_AUTH_PASSWORD_RESET_CONFIRM_RATE', '10/hour'),
+        'auth_resend_verification': os.getenv('DRF_AUTH_RESEND_VERIFICATION_RATE', '3/hour'),
     },
 }
 

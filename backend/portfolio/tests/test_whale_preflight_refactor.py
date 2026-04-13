@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
@@ -8,13 +9,113 @@ from portfolio.tasks_whale_preflight import (
     _unwrap_or_return_skip,
 )
 from portfolio.tasks_whale_preflight_cache import (
+    METRIC_COOLDOWN_HIT,
+    METRIC_EXISTING_ADVISORY_HIT,
+    WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
+    WHALE_PREFLIGHT_METRIC_NAMES,
+    _build_preflight_metric_rates,
+    _build_preflight_metric_summary,
     _build_skip_response,
     _check_cooldown_skip,
     _check_preflight_cache_skips,
+    _increment_preflight_counter,
+    _metric_cache_key,
+    _read_preflight_metrics,
+    _read_preflight_metrics_window,
+    _sum_preflight_metrics_window,
 )
 
 
 class WhalePreflightCacheRefactorTests(SimpleTestCase):
+    def test_kpi_schema_version_is_stable_string(self):
+        self.assertEqual(WHALE_PREFLIGHT_KPI_SCHEMA_VERSION, '2026-04-13.v1')
+
+    def test_metric_cache_key_uses_prefix_and_day(self):
+        key = _metric_cache_key(day_key='2026-04-13', metric=METRIC_EXISTING_ADVISORY_HIT)
+        self.assertEqual(key, 'whale_preflight:metrics:2026-04-13:existing_advisory_hit')
+
+    @patch('portfolio.tasks_whale_preflight_cache.cache.get')
+    def test_read_preflight_metrics_returns_zero_on_cache_error(self, mock_cache_get):
+        mock_cache_get.side_effect = RuntimeError('cache unavailable')
+
+        metrics = _read_preflight_metrics(day_key='2026-04-13')
+
+        self.assertEqual(set(metrics.keys()), set(WHALE_PREFLIGHT_METRIC_NAMES))
+        self.assertTrue(all(v == 0 for v in metrics.values()))
+
+    @patch('portfolio.tasks_whale_preflight_cache.logger.warning')
+    @patch('portfolio.tasks_whale_preflight_cache.cache.incr')
+    def test_increment_preflight_counter_ignores_unknown_metric(self, mock_incr, mock_warn):
+        _increment_preflight_counter('unknown_metric')
+
+        mock_incr.assert_not_called()
+        self.assertTrue(mock_warn.called)
+
+    @patch('portfolio.tasks_whale_preflight_cache._read_preflight_metrics')
+    def test_read_preflight_metrics_window_builds_oldest_to_newest(self, mock_read):
+        mock_read.side_effect = [
+            {'existing_advisory_hit': 1},
+            {'existing_advisory_hit': 2},
+            {'existing_advisory_hit': 3},
+        ]
+
+        rows = _read_preflight_metrics_window(
+            end_date=date(2026, 4, 13),
+            window_days=3,
+        )
+
+        self.assertEqual([row['date'] for row in rows], ['2026-04-11', '2026-04-12', '2026-04-13'])
+        self.assertEqual(rows[-1]['metrics']['existing_advisory_hit'], 3)
+
+    def test_sum_preflight_metrics_window_aggregates_numeric_values(self):
+        totals = _sum_preflight_metrics_window(
+            window_rows=[
+                {'date': '2026-04-12', 'metrics': {'existing_advisory_hit': 2, 'cooldown_hit': 4}},
+                {'date': '2026-04-13', 'metrics': {'existing_advisory_hit': 3, 'cooldown_hit': 1}},
+            ]
+        )
+
+        self.assertEqual(totals['existing_advisory_hit'], 5)
+        self.assertEqual(totals['cooldown_hit'], 5)
+
+    def test_build_preflight_metric_rates_returns_expected_percentages(self):
+        rates = _build_preflight_metric_rates(
+            totals={
+                'existing_advisory_hit': 4,
+                'existing_advisory_miss': 6,
+                'cooldown_hit': 3,
+                'cooldown_miss': 1,
+                'cooldown_bypass_force_refresh': 1,
+            }
+        )
+
+        self.assertEqual(rates['existing_advisory_hit_rate_pct'], 40.0)
+        self.assertEqual(rates['cooldown_hit_rate_pct'], 75.0)
+        self.assertEqual(rates['cooldown_bypass_rate_pct'], 20.0)
+
+    def test_build_preflight_metric_summary_returns_dashboard_fields(self):
+        summary = _build_preflight_metric_summary(
+            totals={
+                'existing_advisory_hit': 4,
+                'existing_advisory_miss': 6,
+                'cooldown_hit': 8,
+                'cooldown_miss': 2,
+                'cooldown_bypass_force_refresh': 1,
+            },
+            rates={
+                'existing_advisory_hit_rate_pct': 40.0,
+                'cooldown_hit_rate_pct': 80.0,
+                'cooldown_bypass_rate_pct': 9.09,
+            },
+        )
+
+        self.assertEqual(summary['top_signal_name'], 'cooldown_hit')
+        self.assertEqual(summary['top_signal_count'], 8)
+        self.assertEqual(summary['decision_volume_total'], 21)
+        self.assertEqual(summary['existing_advisory_decisions_total'], 10)
+        self.assertEqual(summary['cooldown_decisions_total'], 10)
+        self.assertEqual(summary['force_refresh_bypass_total'], 1)
+
     def test_build_skip_response_returns_expected_shape(self):
         result = _build_skip_response(symbol='VCB', reason='cooldown')
 
@@ -55,7 +156,7 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
         )
 
         self.assertIsNotNone(skip)
-        mock_counter.assert_called_with('cooldown_hit')
+        mock_counter.assert_called_with(METRIC_COOLDOWN_HIT)
 
 
 class WhalePreflightContextAssemblyTests(SimpleTestCase):

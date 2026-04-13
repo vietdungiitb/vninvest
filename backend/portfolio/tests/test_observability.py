@@ -257,8 +257,17 @@ class AdminRuntimeKPITests(APITestCase):
 
         data = response.json()
         self.assertIn('sampled_at', data)
+        self.assertIn('updated_at', data)
+        self.assertIn('schema_version', data)
+        self.assertIn('compact', data)
         self.assertIn('date', data)
+        self.assertIn('window_days', data)
         self.assertIn('whale_preflight_metrics', data)
+        self.assertIn('whale_preflight_metrics_trend', data)
+        self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
+        self.assertIn('whale_preflight_metrics_summary', data)
+        self.assertFalse(data['compact'])
 
         metrics = data['whale_preflight_metrics']
         self.assertIn('existing_advisory_hit', metrics)
@@ -268,4 +277,108 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('cooldown_bypass_force_refresh', metrics)
         self.assertEqual(metrics['existing_advisory_hit'], 3)
         self.assertEqual(metrics['cooldown_hit'], 5)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
+        self.assertIn('existing_advisory_hit_rate_pct', data['whale_preflight_metrics_rates'])
+        self.assertIn('top_signal_name', data['whale_preflight_metrics_summary'])
+        self.assertIn('decision_volume_total', data['whale_preflight_metrics_summary'])
+
+    @patch('portfolio.views_admin_runtime._sum_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics')
+    def test_admin_runtime_kpi_whale_preflight_metrics_supports_window_days(
+        self,
+        mock_read_day,
+        mock_read_window,
+        mock_sum_window,
+    ):
+        mock_read_day.return_value = {'existing_advisory_hit': 2, 'cooldown_hit': 1}
+        mock_read_window.return_value = [
+            {'date': '2026-04-12', 'metrics': {'existing_advisory_hit': 1, 'cooldown_hit': 0}},
+            {'date': '2026-04-13', 'metrics': {'existing_advisory_hit': 2, 'cooldown_hit': 1}},
+        ]
+        mock_sum_window.return_value = {'existing_advisory_hit': 3, 'cooldown_hit': 1}
+
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=2')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertEqual(data['window_days'], 2)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
+        self.assertEqual(len(data['whale_preflight_metrics_trend']), 2)
+        self.assertEqual(data['whale_preflight_metrics_totals']['existing_advisory_hit'], 3)
+        self.assertIn('cooldown_hit_rate_pct', data['whale_preflight_metrics_rates'])
+        self.assertIn('top_signal_count', data['whale_preflight_metrics_summary'])
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_compact_mode_omits_trend(self):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?compact=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertTrue(data['compact'])
+        self.assertNotIn('whale_preflight_metrics_trend', data)
+        self.assertIn('whale_preflight_metrics_summary', data)
+        self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_rejects_invalid_date_format(self):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?date=13-04-2026')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.json())
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_rejects_non_integer_window_days(self):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=abc')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('detail', response.json())
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_rejects_window_days_out_of_range(self):
+        self._authenticate(self.admin_user)
+        response_low = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=0')
+        response_high = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=31')
+
+        self.assertEqual(response_low.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response_high.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @patch('portfolio.views_admin_runtime._sum_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics')
+    def test_admin_runtime_kpi_whale_preflight_metrics_accepts_window_days_min_max(
+        self,
+        mock_read_day,
+        mock_read_window,
+        mock_sum_window,
+    ):
+        mock_read_day.return_value = {'existing_advisory_hit': 1}
+        mock_read_window.return_value = [{'date': '2026-04-13', 'metrics': {'existing_advisory_hit': 1}}]
+        mock_sum_window.return_value = {'existing_advisory_hit': 1}
+
+        self._authenticate(self.admin_user)
+        response_min = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=1')
+        response_max = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=30')
+
+        self.assertEqual(response_min.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_max.status_code, status.HTTP_200_OK)
+        self.assertEqual(response_min.json()['window_days'], 1)
+        self.assertEqual(response_max.json()['window_days'], 30)
+
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics', side_effect=RuntimeError('cache down'))
+    def test_admin_runtime_kpi_whale_preflight_metrics_handles_metric_reader_error(self, _mock_read):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertIn('whale_preflight_metrics', data)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
+        self.assertIn('updated_at', data)
+        metrics = data['whale_preflight_metrics']
+        self.assertEqual(metrics.get('existing_advisory_hit'), 0)
+        self.assertEqual(metrics.get('cooldown_hit'), 0)
+        self.assertEqual(data.get('window_days'), 1)
+        self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
+        self.assertIn('whale_preflight_metrics_summary', data)
 
