@@ -20,6 +20,17 @@ def _legacy_views_module():
     return legacy_views
 
 
+def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
+    if raw_value in (None, ''):
+        return default
+    normalized = str(raw_value).strip().lower()
+    if normalized in {'1', 'true', 'yes', 'y', 'on'}:
+        return True
+    if normalized in {'0', 'false', 'no', 'n', 'off'}:
+        return False
+    return default
+
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def admin_runtime_kpi_api(request):
@@ -115,12 +126,14 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     Query params:
       - date=YYYY-MM-DD (optional, default=today localdate)
       - window_days=1..30 (optional, default=1)
+            - compact=true|false (optional, default=false)
     """
     from time import time as _time
     from django.utils import timezone
 
     sampled_at = _time()
     requested_date = str(request.query_params.get('date') or '').strip()
+    compact = _parse_bool_query_param(request.query_params.get('compact'), default=False)
     requested_window_days = request.query_params.get('window_days')
     if requested_window_days in (None, ''):
         window_days = 1
@@ -169,21 +182,22 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
         rates = _build_preflight_metric_rates(totals=totals)
         summary = _build_preflight_metric_summary(totals=totals, rates=rates)
 
-    return Response(
-        {
-            'sampled_at': sampled_at,
-            'updated_at': timezone.now().isoformat(),
-            'schema_version': WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
-            'date': day_key,
-            'window_days': window_days,
-            'whale_preflight_metrics': metrics,
-            'whale_preflight_metrics_trend': trend,
-            'whale_preflight_metrics_totals': totals,
-            'whale_preflight_metrics_rates': rates,
-            'whale_preflight_metrics_summary': summary,
-        },
-        status=status.HTTP_200_OK,
-    )
+    payload = {
+        'sampled_at': sampled_at,
+        'updated_at': timezone.now().isoformat(),
+        'schema_version': WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
+        'date': day_key,
+        'window_days': window_days,
+        'compact': compact,
+        'whale_preflight_metrics': metrics,
+        'whale_preflight_metrics_totals': totals,
+        'whale_preflight_metrics_rates': rates,
+        'whale_preflight_metrics_summary': summary,
+    }
+    if not compact:
+        payload['whale_preflight_metrics_trend'] = trend
+
+    return Response(payload, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

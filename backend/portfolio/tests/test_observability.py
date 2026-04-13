@@ -259,6 +259,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('sampled_at', data)
         self.assertIn('updated_at', data)
         self.assertIn('schema_version', data)
+        self.assertIn('compact', data)
         self.assertIn('date', data)
         self.assertIn('window_days', data)
         self.assertIn('whale_preflight_metrics', data)
@@ -266,6 +267,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('whale_preflight_metrics_totals', data)
         self.assertIn('whale_preflight_metrics_rates', data)
         self.assertIn('whale_preflight_metrics_summary', data)
+        self.assertFalse(data['compact'])
 
         metrics = data['whale_preflight_metrics']
         self.assertIn('existing_advisory_hit', metrics)
@@ -307,6 +309,18 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertEqual(data['whale_preflight_metrics_totals']['existing_advisory_hit'], 3)
         self.assertIn('cooldown_hit_rate_pct', data['whale_preflight_metrics_rates'])
         self.assertIn('top_signal_count', data['whale_preflight_metrics_summary'])
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_compact_mode_omits_trend(self):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?compact=true')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertTrue(data['compact'])
+        self.assertNotIn('whale_preflight_metrics_trend', data)
+        self.assertIn('whale_preflight_metrics_summary', data)
+        self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
 
     def test_admin_runtime_kpi_whale_preflight_metrics_rejects_invalid_date_format(self):
         self._authenticate(self.admin_user)
