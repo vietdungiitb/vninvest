@@ -1394,7 +1394,7 @@ const en = {
     syncStockProfiles: 'Sync Stock Profiles',
     syncWatchlistPrices: 'Sync Watchlist Prices',
     syncMarketGroups: 'Sync Market Groups',
-    warmTickerCache: 'Warm Ticker Cache',
+    warmTickerCache: 'Manual Prefetch Trigger',
     missionControl: 'Mission Control',
     missionControlDescription: 'Auto-refresh every 15 seconds to post-check propagation, anomaly, and auto-revert.',
     openVersions: 'Open Versions',
