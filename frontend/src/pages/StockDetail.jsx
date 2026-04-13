@@ -2790,20 +2790,20 @@ export default function StockDetail() {
 
         {/* Action bar: shortlist / watchlist / alert */}
         <div className="border-t border-slate-800/80 px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-stretch gap-2">
             <button
               onClick={handleToggleTracked}
               disabled={!!actionLoading}
-              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} ${!!actionLoading ? 'opacity-50' : ''}`}
+              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
             >
               {actionLoading === 'tracked' ? t('stockDetail.updating') : overview.is_tracked ? t('stockDetail.untrack') : t('stockDetail.trackRealtime')}
             </button>
 
-            <div className="flex min-w-[280px] flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto lg:min-w-[280px]">
               <select
                 value={selectedWatchlistGroupId}
                 onChange={(event) => setSelectedWatchlistGroupId(event.target.value)}
-                className="min-w-[150px] bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
+                className="min-w-[120px] flex-1 bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
               >
                 {availableWatchlistGroups.length === 0 ? (
                   <option value="">{t('stockDetail.noMoreWatchlist')}</option>
@@ -2816,23 +2816,23 @@ export default function StockDetail() {
               <button
                 onClick={handleAddToWatchlist}
                 disabled={!!actionLoading || availableWatchlistGroups.length === 0}
-                className={`btn-accent ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-accent shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'watchlist-add' ? t('stockDetail.saving') : t('stockDetail.saveToGroup')}
               </button>
             </div>
 
-            <div className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto">
               <input
                 value={alertTargetPrice}
                 onChange={(event) => setAlertTargetPrice(event.target.value)}
                 placeholder={t('stockDetail.alertPriceLevel')}
-                className="w-32 bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                className="min-w-[120px] flex-1 bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
               />
               <button
                 onClick={handleCreateAlert}
                 disabled={!!actionLoading}
-                className={`btn-success ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-success shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'alert' ? t('stockDetail.creating') : t('stockDetail.createAlert')}
               </button>
