@@ -122,6 +122,10 @@ from portfolio.tasks_news_digest import (
     _generate_news_digest_for_user,
     generate_all_portfolio_news_digests_task,
 )
+from portfolio.tasks_realtime import (
+    _whale_thresholds_for_user,
+    collect_and_publish_realtime,
+)
 
 
 def _advisory_event_merge_cache_key(user_id: int, symbol: str) -> str:
@@ -808,166 +812,6 @@ def _detect_reversal_signal(symbol: str) -> dict | None:
         buy_streak = 0
 
     return None
-
-
-def _whale_thresholds_for_user(user_id: int | None) -> list[float]:
-    default_threshold = float(getattr(settings, "REALTIME_DEFAULT_WHALE_THRESHOLD", 500_000_000))
-    if user_id is None:
-        return [default_threshold]
-
-    config = UserConfig.objects.filter(user_id=user_id).values("whale_alert_threshold").first()
-    if not config or config.get("whale_alert_threshold") is None:
-        return [default_threshold]
-
-    # whale_alert_threshold is in million VND in current domain model.
-    threshold_vnd = float(config["whale_alert_threshold"]) * 1_000_000
-    return [threshold_vnd]
-
-
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
-def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
-    if not getattr(settings, "REALTIME_ENABLED", False):
-        return {"status": "skipped", "reason": "REALTIME_ENABLED=false"}
-
-    symbols = collect_symbols_for_user(user_id=user_id)
-    if not symbols:
-        return {"status": "ok", "symbols": 0, "published": 0}
-
-    # --- Redis Streams: push ticks vào stream trước khi publish WebSocket ---
-    stream_enabled = getattr(settings, "STREAM_REDIS_URL", None)
-    producer = None
-    if stream_enabled:
-        try:
-            from portfolio.realtime.tick_producer import TickProducer
-            producer = TickProducer()
-        except Exception as exc:
-            logger.warning("TickProducer init failed: %s", exc)
-
-    publisher = RealtimePublisher()
-    worker_name = getattr(self.request, 'hostname', '') or 'collect-and-publish'
-
-    user_thresholds = _whale_thresholds_for_user(user_id)
-    symbol_threshold_overrides: dict[str, float] = {}
-    if user_id is not None and symbols:
-        override_rows = TrackedSymbol.objects.filter(
-            user_id=user_id,
-            symbol__in=symbols,
-            whale_alert_threshold_million__isnull=False,
-        ).values('symbol', 'whale_alert_threshold_million')
-        for row in override_rows:
-            normalized_symbol = _normalize_symbol(row.get('symbol'))
-            if not normalized_symbol:
-                continue
-            symbol_threshold_overrides[normalized_symbol] = resolve_user_whale_threshold_vnd(
-                row.get('whale_alert_threshold_million')
-            )
-
-    published = 0
-    for symbol in symbols:
-        normalized_symbol = _normalize_symbol(symbol)
-        runtime_config = resolve_whale_runtime_config(
-            symbol=symbol,
-            worker_name=worker_name,
-            source='collect_and_publish',
-        )
-        if user_id is not None:
-            thresholds = [
-                symbol_threshold_overrides.get(normalized_symbol, user_thresholds[0])
-            ]
-        else:
-            thresholds = runtime_config['thresholds_vnd'] or user_thresholds
-
-        # Thu thập frame một lần, tái dùng cho cả Stream push lẫn WebSocket publish
-        frame = collect_intraday_frame(symbol)
-
-        # Push ticks vào Redis Stream (nếu available) — dùng lại frame đã fetch
-        if producer is not None:
-            try:
-                producer.ensure_consumer_groups(symbol)
-                producer.push_intraday_ticks(symbol, frame)
-            except Exception as exc:
-                logger.warning("Stream push failed for %s: %s", symbol, exc)
-
-        ticker_channel = f"ticker:{symbol}"
-        ticker_seq = publisher.next_seq(ticker_channel)
-        ticker_payload = build_ticker_payload(symbol=symbol, trades_df=frame, seq=ticker_seq)
-        if publisher.publish(ticker_channel, ticker_payload):
-            published += 1
-
-        whale_channel = f"whale:{symbol}"
-        for signal in detect_whale_signals(symbol=symbol, trades_df=frame, thresholds=thresholds):
-            whale_seq = publisher.next_seq(whale_channel)
-            whale_payload = build_whale_payload(
-                signal=signal,
-                seq=whale_seq,
-                config_version=runtime_config['version_code'],
-                source=f"collect-and-publish:{runtime_config['mode']}",
-                score_config=runtime_config['score_config'],
-            )
-            # Dedup: same whale trade can appear in 100-tick snapshot on every 5s poll.
-            # Use Django cache with 5-minute TTL to suppress duplicate WS publishes.
-            event_id = whale_payload.get("event_id", "")
-            if event_id:
-                dedup_cache_key = f"whale:dedup:{event_id}"
-                if cache.get(dedup_cache_key):
-                    record_whale_dedup_observation(hit=True)
-                    continue
-                cache.set(dedup_cache_key, 1, timeout=300)
-                record_whale_dedup_observation(hit=False)
-
-            if publisher.publish(whale_channel, whale_payload):
-                published += 1
-                record_whale_event_observation(
-                    source=str(whale_payload.get('source') or 'intraday-engine'),
-                    ts=whale_payload.get('ts'),
-                    recovered=bool(whale_payload.get('recovered')),
-                )
-            if user_id is not None:
-                user_channel = f"user:{user_id}:alerts"
-                user_seq = publisher.next_seq(user_channel)
-                user_payload = {**whale_payload, "seq": user_seq}
-                if publisher.publish(user_channel, user_payload):
-                    published += 1
-            tracked_rows = list(
-                TrackedSymbol.objects.filter(symbol=signal.symbol)
-                .values('user_id', 'whale_alert_threshold_million')
-            )
-            for tracked_row in tracked_rows:
-                tracked_user_id = int(tracked_row.get('user_id') or 0)
-                if not tracked_user_id:
-                    continue
-                user_cfg = UserConfig.objects.filter(user_id=tracked_user_id).first()
-                if user_cfg is None:
-                    continue
-                if not bool(user_cfg.advisory_whale_signal_enabled):
-                    continue
-                threshold_vnd = _resolve_advisory_threshold_vnd(
-                    user_cfg,
-                    tracked_threshold_million=tracked_row.get('whale_alert_threshold_million'),
-                )
-                threshold_source = 'symbol_override' if tracked_row.get('whale_alert_threshold_million') is not None else 'user_default'
-                _accumulate_user_advisory_event(
-                    user_id=int(tracked_user_id),
-                    symbol=signal.symbol,
-                    source='whale_alert',
-                    payload={
-                        'event_score': whale_payload.get('event_score', 0),
-                        'side': whale_payload.get('side') or signal.side,
-                        'matched_value': signal.matched_value,
-                    },
-                    threshold_vnd=threshold_vnd,
-                    threshold_source=threshold_source,
-                )
-
-    if user_id is not None:
-        heartbeat_channel = f"user:{user_id}:alerts"
-        heartbeat_seq = publisher.next_seq(heartbeat_channel)
-        heartbeat_payload = build_heartbeat_payload(scope=f"user:{user_id}", seq=heartbeat_seq)
-        if publisher.publish(heartbeat_channel, heartbeat_payload):
-            published += 1
-
-    logger.info("Realtime publish completed: symbols=%d published=%d", len(symbols), published)
-    return {"status": "ok", "symbols": len(symbols), "published": published}
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
