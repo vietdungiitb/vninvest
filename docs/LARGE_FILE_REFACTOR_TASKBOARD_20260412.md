@@ -108,6 +108,9 @@ Cap nhat: 2026-04-13
 - [x] Slice 61: them schema version + updated_at de frontend cache contract an toan
 - [x] Slice 62: them compact payload mode cho dashboard polling tan suat cao
 
+### Pause point 2026-04-13
+- Dung lane preflight KPI tai day. Trang thai da production-ready tren `dev`, tham chieu them tai `docs/PREFLIGHT_KPI_HANDOFF_20260413.md`.
+
 ### Dang lam
 - [x] Hardening preflight observability contract (metrics key + read helper + fallback)
 - [x] Preflight KPI admin runtime lane dat muc production-ready cho dashboard/admin-ops
