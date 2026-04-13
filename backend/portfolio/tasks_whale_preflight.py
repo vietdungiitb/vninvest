@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 from django.conf import settings
 
@@ -22,6 +23,27 @@ def _unwrap_or_return_skip(check_result):
     if isinstance(check_result, dict) and 'skip_response' in check_result:
         return check_result, None
     return None, check_result
+
+
+def _return_with_preflight_profile(*, symbol: str, user_id: int | None, started_at: float, result: dict) -> dict:
+    elapsed_ms = (time.perf_counter() - started_at) * 1000.0
+    if 'skip_response' in result:
+        reason = str(result['skip_response'].get('reason') or 'unknown')
+        logger.info(
+            'Whale preflight profiled (skip): symbol=%s user_id=%s reason=%s elapsed_ms=%.2f',
+            symbol,
+            user_id,
+            reason,
+            elapsed_ms,
+        )
+    else:
+        logger.info(
+            'Whale preflight profiled (success): symbol=%s user_id=%s elapsed_ms=%.2f',
+            symbol,
+            user_id,
+            elapsed_ms,
+        )
+    return result
 
 
 def _build_whale_generation_context_dict(
@@ -74,6 +96,7 @@ def _prepare_whale_generation_context(
     source: str,
     force_refresh: bool,
 ) -> dict:
+    started_at = time.perf_counter()
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
     cache_key = f'whale_advisory_lock:{user_id}:{symbol}' if user_id is not None else f'whale_advisory_lock:{symbol}'
     source_key = _normalize_advisory_source(source)
@@ -90,7 +113,7 @@ def _prepare_whale_generation_context(
         symbol=symbol,
     )
     if cache_skip is not None:
-        return cache_skip
+        return _return_with_preflight_profile(symbol=symbol, user_id=user_id, started_at=started_at, result=cache_skip)
 
     target_user = None
     user_cfg = None
@@ -107,12 +130,12 @@ def _prepare_whale_generation_context(
             user_id=user_id,
         )
         if _guard_skip is not None:
-            return _guard_skip
+            return _return_with_preflight_profile(symbol=symbol, user_id=user_id, started_at=started_at, result=_guard_skip)
 
     ai_config_result = _check_ai_runtime_config(target_user=target_user, symbol=symbol, user_id=user_id)
     skip_response, ai_payload = _unwrap_or_return_skip(ai_config_result)
     if skip_response is not None:
-        return skip_response
+        return _return_with_preflight_profile(symbol=symbol, user_id=user_id, started_at=started_at, result=skip_response)
 
     # Extract config from tuple result
     runtime_cfg, _ = ai_payload
@@ -121,7 +144,7 @@ def _prepare_whale_generation_context(
 
     provider_check = _check_provider_rate_limit(provider=provider, symbol=symbol, user_id=user_id)
     if provider_check is not None:
-        return provider_check
+        return _return_with_preflight_profile(symbol=symbol, user_id=user_id, started_at=started_at, result=provider_check)
 
     total_budget = int(user_cfg.advisory_max_tokens_per_day or 0) if user_cfg is not None else None
     output_cfg = _resolve_advisory_output_config(
@@ -136,7 +159,7 @@ def _prepare_whale_generation_context(
     resolved_model = output_cfg['resolved_model']
     use_concise = output_cfg['use_concise']
 
-    return _build_whale_generation_context_dict(
+    context = _build_whale_generation_context_dict(
         cooldown=cooldown,
         cache_key=cache_key,
         source_key=source_key,
@@ -152,3 +175,4 @@ def _prepare_whale_generation_context(
         total_budget=total_budget,
         use_concise=use_concise,
     )
+    return _return_with_preflight_profile(symbol=symbol, user_id=user_id, started_at=started_at, result=context)

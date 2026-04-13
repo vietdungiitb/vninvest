@@ -4,10 +4,12 @@ from django.test import SimpleTestCase
 
 from portfolio.tasks_whale_preflight import (
     _build_whale_generation_context_dict,
+    _return_with_preflight_profile,
     _unwrap_or_return_skip,
 )
 from portfolio.tasks_whale_preflight_cache import (
     _build_skip_response,
+    _check_cooldown_skip,
     _check_preflight_cache_skips,
 )
 
@@ -42,6 +44,18 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
 
         self.assertIsNotNone(skip)
         self.assertEqual(skip['skip_response']['reason'], 'cooldown')
+
+    @patch('portfolio.tasks_whale_preflight_cache._increment_preflight_counter')
+    @patch('portfolio.tasks_whale_preflight_cache.cache.get', return_value=True)
+    def test_check_cooldown_skip_records_hit_metric(self, _mock_cache_get, mock_counter):
+        skip = _check_cooldown_skip(
+            force_refresh=False,
+            cache_key='whale_advisory_lock:1:VCB',
+            symbol='VCB',
+        )
+
+        self.assertIsNotNone(skip)
+        mock_counter.assert_called_with('cooldown_hit')
 
 
 class WhalePreflightContextAssemblyTests(SimpleTestCase):
@@ -84,3 +98,16 @@ class WhalePreflightContextAssemblyTests(SimpleTestCase):
         self.assertEqual(ctx['model'], 'gpt-4o-mini')
         self.assertEqual(ctx['primary_model'], 'gpt-4o-mini')
         self.assertTrue(ctx['use_concise'])
+
+    @patch('portfolio.tasks_whale_preflight.logger.info')
+    @patch('portfolio.tasks_whale_preflight.time.perf_counter', side_effect=[1.0, 1.01])
+    def test_return_with_preflight_profile_logs_skip(self, _mock_perf, mock_log):
+        result = _return_with_preflight_profile(
+            symbol='VCB',
+            user_id=1,
+            started_at=1.0,
+            result={'skip_response': {'status': 'skipped', 'symbol': 'VCB', 'reason': 'cooldown'}},
+        )
+
+        self.assertIn('skip_response', result)
+        self.assertTrue(mock_log.called)
