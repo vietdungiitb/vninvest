@@ -554,9 +554,8 @@ class MarketDataService:
 
         raw_reference_price = self._safe_float(match.get('reference_price'))
         raw_match_price = self._safe_float(match.get('match_price'))
-        
-    reference_price = self._normalize_quote_price(raw_reference_price, price_scale)
-    match_price = self._normalize_quote_price(raw_match_price, price_scale)
+        reference_price = self._normalize_quote_price(raw_reference_price, price_scale)
+        match_price = self._normalize_quote_price(raw_match_price, price_scale)
         
         change_pct = None
         if reference_price and match_price:
