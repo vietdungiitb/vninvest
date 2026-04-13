@@ -257,6 +257,8 @@ class AdminRuntimeKPITests(APITestCase):
 
         data = response.json()
         self.assertIn('sampled_at', data)
+        self.assertIn('updated_at', data)
+        self.assertIn('schema_version', data)
         self.assertIn('date', data)
         self.assertIn('window_days', data)
         self.assertIn('whale_preflight_metrics', data)
@@ -273,6 +275,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('cooldown_bypass_force_refresh', metrics)
         self.assertEqual(metrics['existing_advisory_hit'], 3)
         self.assertEqual(metrics['cooldown_hit'], 5)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
         self.assertIn('existing_advisory_hit_rate_pct', data['whale_preflight_metrics_rates'])
         self.assertIn('top_signal_name', data['whale_preflight_metrics_summary'])
         self.assertIn('decision_volume_total', data['whale_preflight_metrics_summary'])
@@ -299,6 +302,7 @@ class AdminRuntimeKPITests(APITestCase):
 
         data = response.json()
         self.assertEqual(data['window_days'], 2)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
         self.assertEqual(len(data['whale_preflight_metrics_trend']), 2)
         self.assertEqual(data['whale_preflight_metrics_totals']['existing_advisory_hit'], 3)
         self.assertIn('cooldown_hit_rate_pct', data['whale_preflight_metrics_rates'])
@@ -354,6 +358,8 @@ class AdminRuntimeKPITests(APITestCase):
 
         data = response.json()
         self.assertIn('whale_preflight_metrics', data)
+        self.assertEqual(data['schema_version'], '2026-04-13.v1')
+        self.assertIn('updated_at', data)
         metrics = data['whale_preflight_metrics']
         self.assertEqual(metrics.get('existing_advisory_hit'), 0)
         self.assertEqual(metrics.get('cooldown_hit'), 0)

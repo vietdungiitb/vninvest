@@ -105,6 +105,7 @@ Cap nhat: 2026-04-13
 - [x] Slice 58: validate strict query params date/window_days + bo sung boundary tests min/max/malformed
 - [x] Slice 59: bo sung preflight metrics rate (%) tu totals de dashboard doc truc tiep
 - [x] Slice 60: them summary card fields (top signal + decision volume) cho dashboard nhanh
+- [x] Slice 61: them schema version + updated_at de frontend cache contract an toan
 
 ### Dang lam
 - [x] Hardening preflight observability contract (metrics key + read helper + fallback)
@@ -118,7 +119,7 @@ Cap nhat: 2026-04-13
 ### Backlog uu tien cao
 - [ ] Tach views_ai_advisory.py
 - [x] Di chuyen helper runtime policy sang module rieng
-- [ ] Slice 61: them schema version + updated_at de frontend cache contract an toan
+- [ ] Slice 62: neu can, them compact payload mode cho dashboard polling tan suat cao
 
 ### Backlog uu tien trung binh
 - [ ] Chia nho frontend/src/pages/StockDetail.jsx
@@ -142,5 +143,5 @@ Cap nhat: 2026-04-13
 - So test monolith test_api_routes.py method: 0 (guarded by CI) 
 - API smoke pass rate: 4/4 symbol-investigation; 2/2 admin-sync; 6/6 consolidated ✅
 - Commits this session: c179478a + 4c693261 + 6c675b78 (3 commits, views refactor + realtime consolidation)
-- Preflight refactor status: den slice 60 (49-60 day du commit + KPI/admin tests 30/30 pass)
+- Preflight refactor status: den slice 61 (49-61 day du commit + KPI/admin tests 31/31 pass)
 - Production readiness: dev→deploy ready ✅

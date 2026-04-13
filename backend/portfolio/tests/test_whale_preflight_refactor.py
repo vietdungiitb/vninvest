@@ -11,6 +11,7 @@ from portfolio.tasks_whale_preflight import (
 from portfolio.tasks_whale_preflight_cache import (
     METRIC_COOLDOWN_HIT,
     METRIC_EXISTING_ADVISORY_HIT,
+    WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
     WHALE_PREFLIGHT_METRIC_NAMES,
     _build_preflight_metric_rates,
     _build_preflight_metric_summary,
@@ -26,6 +27,9 @@ from portfolio.tasks_whale_preflight_cache import (
 
 
 class WhalePreflightCacheRefactorTests(SimpleTestCase):
+    def test_kpi_schema_version_is_stable_string(self):
+        self.assertEqual(WHALE_PREFLIGHT_KPI_SCHEMA_VERSION, '2026-04-13.v1')
+
     def test_metric_cache_key_uses_prefix_and_day(self):
         key = _metric_cache_key(day_key='2026-04-13', metric=METRIC_EXISTING_ADVISORY_HIT)
         self.assertEqual(key, 'whale_preflight:metrics:2026-04-13:existing_advisory_hit')

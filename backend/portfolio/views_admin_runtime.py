@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from portfolio.tasks_whale_preflight_cache import (
+    WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
     WHALE_PREFLIGHT_METRIC_NAMES,
     _build_preflight_metric_rates,
     _build_preflight_metric_summary,
@@ -118,6 +119,7 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     from time import time as _time
     from django.utils import timezone
 
+    sampled_at = _time()
     requested_date = str(request.query_params.get('date') or '').strip()
     requested_window_days = request.query_params.get('window_days')
     if requested_window_days in (None, ''):
@@ -169,7 +171,9 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
 
     return Response(
         {
-            'sampled_at': _time(),
+            'sampled_at': sampled_at,
+            'updated_at': timezone.now().isoformat(),
+            'schema_version': WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
             'date': day_key,
             'window_days': window_days,
             'whale_preflight_metrics': metrics,

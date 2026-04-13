@@ -9,6 +9,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+WHALE_PREFLIGHT_KPI_SCHEMA_VERSION = '2026-04-13.v1'
 WHALE_PREFLIGHT_METRIC_PREFIX = 'whale_preflight:metrics'
 METRIC_EXISTING_ADVISORY_HIT = 'existing_advisory_hit'
 METRIC_EXISTING_ADVISORY_MISS = 'existing_advisory_miss'
