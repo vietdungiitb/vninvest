@@ -13,12 +13,10 @@ from django.utils import timezone
 from portfolio.domain_constants import resolve_user_whale_threshold_vnd
 from portfolio.models import AdvisoryTokenLog, AdvisoryAggregateSnapshot, UserConfig, TrackedSymbol, WhaleAdvisory
 from portfolio.observability import record_advisory_merge_observation
-from portfolio.tasks_whale_advisory import (
-    ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX,
-    flush_merged_advisory_event,
-)
 
 logger = logging.getLogger(__name__)
+
+ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX = 'advisory:event-merge'
 
 def _advisory_event_merge_cache_key(user_id: int, symbol: str) -> str:
     return f'{ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX}:{user_id}:{symbol}'
@@ -114,7 +112,11 @@ def _accumulate_user_advisory_event(
             'dark_flow_confidence': str(payload.get('confidence', 'low')) if source == 'dark_flow' else None,
         }
         cache.set(cache_key, state, timeout=cache_ttl)
-        flush_merged_advisory_event.apply_async(
+        # Resolve task via facade at runtime to keep helper module independent
+        # from whale advisory module import order.
+        from portfolio import tasks as tasks_facade
+
+        tasks_facade.flush_merged_advisory_event.apply_async(
             kwargs={'user_id': int(user_id), 'symbol': normalized_symbol},
             countdown=merge_window_seconds,
         )
