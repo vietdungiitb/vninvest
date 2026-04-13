@@ -135,6 +135,7 @@ from portfolio.tasks_maintenance import (
     cleanup_old_intraday_ticks,
     trim_streams,
 )
+from portfolio.tasks_maintenance import run_vnstock_price_board_benchmark  # noqa: F401
 from portfolio.tasks_advisory_helpers import (
     _advisory_event_merge_cache_key,
     _safe_float,

@@ -7,7 +7,6 @@ from rest_framework.response import Response
 
 from portfolio.vnstock_provider_benchmark import (
     get_latest_price_board_benchmark_report,
-    run_price_board_provider_benchmark,
 )
 
 
@@ -39,22 +38,20 @@ def admin_vnstock_price_board_benchmark_latest_api(request):
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def admin_vnstock_price_board_benchmark_run_api(request):
-    """POST /api/admin-ops/vnstock-config/benchmark-price-board/run/"""
-    try:
-        report = run_price_board_provider_benchmark(request.data if isinstance(request.data, dict) else {})
-    except Exception as exc:  # noqa: BLE001
-        return Response(
-            {
-                'ok': False,
-                'message': f'Benchmark thất bại: {exc}',
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    """POST /api/admin-ops/vnstock-config/benchmark-price-board/run/
 
+    Dispatch benchmark sang Celery để tránh gateway timeout (tác vụ có thể chạy vài phút).
+    Client poll GET /latest/ để lấy kết quả khi hoàn tất.
+    """
+    from portfolio.tasks_maintenance import run_vnstock_price_board_benchmark
+
+    payload = request.data if isinstance(request.data, dict) else {}
+    run_vnstock_price_board_benchmark.apply_async(kwargs={'payload': payload})
     return Response(
         {
             'ok': True,
-            'report': report,
+            'status': 'started',
+            'message': 'Benchmark đã được khởi động. Vui lòng đợi và reload kết quả sau vài giây.',
         },
-        status=status.HTTP_200_OK,
+        status=status.HTTP_202_ACCEPTED,
     )

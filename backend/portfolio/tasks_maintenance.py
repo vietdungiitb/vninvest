@@ -55,6 +55,27 @@ def cleanup_old_intraday_ticks(self, keep_days: int = 7) -> dict:
     return {"status": "ok", "deleted": deleted, "cutoff": str(cutoff)}
 
 
+@shared_task(bind=True, autoretry_for=(), retry_kwargs={"max_retries": 0})
+def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict:
+    """Chạy benchmark provider price board và lưu kết quả vào cache.
+
+    Được dispatch bất đồng bộ từ view để tránh gateway timeout.
+    """
+    from portfolio.vnstock_provider_benchmark import run_price_board_provider_benchmark
+
+    try:
+        report = run_price_board_provider_benchmark(payload or {})
+        logger.info(
+            'run_vnstock_price_board_benchmark completed: providers=%s results=%d',
+            report.get('providers'),
+            len(report.get('results', [])),
+        )
+        return {'status': 'ok', 'finished_at': report.get('finished_at')}
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('run_vnstock_price_board_benchmark failed: %s', exc)
+        return {'status': 'error', 'reason': str(exc)}
+
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def trim_streams(self) -> dict:
     """Trim Redis streams to configured max length."""

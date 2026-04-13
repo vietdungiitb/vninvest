@@ -32,6 +32,7 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
   const [state, setState] = useState('idle');
   const [message, setMessage] = useState('');
   const [report, setReport] = useState(null);
+  const pollingRef = React.useRef(null);
 
   const topRows = useMemo(() => {
     const rows = Array.isArray(report?.results) ? report.results : [];
@@ -57,6 +58,12 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
   useEffect(() => {
     loadLatest();
   }, [loadLatest]);
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
   const onInput = useCallback((field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -90,10 +97,40 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
     setMessage('Đang chạy benchmark online KBS/VCI...');
     try {
       const resp = await runAdminVnstockBenchmark(payload);
-      const nextReport = resp.data?.report || null;
-      setReport(nextReport);
-      setState('success');
-      setMessage('Đã hoàn tất benchmark và cập nhật khuyến nghị runtime.');
+      if (resp.status === 202 || resp.data?.status === 'started') {
+        // Async mode: poll /latest/ until a new report appears
+        const startedAt = Date.now();
+        const prevFinishedAt = report?.finished_at || null;
+        const maxWaitMs = (Number(payload.duration_seconds) * payload.providers.length * payload.concurrency_levels.length + 30) * 1000;
+        setMessage('Benchmark đang chạy nền... đang chờ kết quả.');
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        pollingRef.current = setInterval(async () => {
+          try {
+            const pollResp = await getAdminVnstockBenchmarkLatest();
+            const newReport = pollResp.data?.report || null;
+            if (newReport && newReport.finished_at !== prevFinishedAt) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+              setReport(newReport);
+              setState('success');
+              setMessage('Đã hoàn tất benchmark và cập nhật khuyến nghị runtime.');
+            } else if (Date.now() - startedAt > maxWaitMs) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+              setState('error');
+              setMessage('Benchmark timeout — không nhận được kết quả. Vui lòng thử lại.');
+            }
+          } catch {
+            // ignore transient poll errors
+          }
+        }, 3000);
+      } else {
+        // Legacy sync response (fallback)
+        const nextReport = resp.data?.report || null;
+        setReport(nextReport);
+        setState('success');
+        setMessage('Đã hoàn tất benchmark và cập nhật khuyến nghị runtime.');
+      }
     } catch (err) {
       setState('error');
       setMessage(err?.response?.data?.message || 'Benchmark thất bại.');
