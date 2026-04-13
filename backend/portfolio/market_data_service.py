@@ -1848,7 +1848,7 @@ class MarketDataService:
             except (ValueError, TypeError):
                 price_val = None
                 volume_val = None
-            if price_val is None:
+            if price_val is None or volume_val is None or volume_val <= 0:
                 continue
             
             # Scale to thousand VND
@@ -1880,7 +1880,7 @@ class MarketDataService:
                 price_val = None
                 volume_val = None
 
-            if price_val is None:
+            if price_val is None or volume_val is None or volume_val <= 0:
                 continue
 
             # Scale to thousand VND

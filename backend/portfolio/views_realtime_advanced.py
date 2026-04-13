@@ -56,12 +56,12 @@ class WhaleFeedView(APIView):
                 stream_df = pd.DataFrame(
                     [
                         {
-                            'price': float(t.get('price', 0)),
+                            'price': float(t.get('price', 0)) * 0.001,  # Scale to k VND
                             'volume': float(t.get('volume', 0)),
                             'match_type': t.get('side', 'UNKNOWN'),
                             'side': t.get('side', 'UNKNOWN'),
                         }
-                        for t in stream_ticks
+                        for t in stream_ticks if float(t.get('volume', 0)) > 0
                     ]
                 )
                 stream_has_hits = legacy_views._dataframe_has_threshold_hits(stream_df, threshold_vnd)
@@ -72,7 +72,7 @@ class WhaleFeedView(APIView):
         db_has_hits = False
         if stream_df is None or stream_df.empty or not stream_has_hits:
             db_rows = list(
-                IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=date.today())
+                IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=timezone.localdate())
                 .order_by('-trade_time', '-id')
                 .values('trade_time', 'price', 'volume', 'match_type', 'side')
             )
@@ -86,7 +86,7 @@ class WhaleFeedView(APIView):
                             'match_type': row.get('side') or row.get('match_type') or 'UNKNOWN',
                             'side': row.get('side') or row.get('match_type') or 'UNKNOWN',
                         }
-                        for row in db_rows
+                    for row in db_rows if float(row.get('volume') or 0) > 0
                     ]
                 )
                 db_has_hits = legacy_views._dataframe_has_threshold_hits(db_df, threshold_vnd)
@@ -168,7 +168,12 @@ class WhaleFeedView(APIView):
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
                 continue
-            matched_value = raw_price * raw_vol
+            
+            # Normalize price if it looks unscaled (e.g. > 1000)
+            if raw_price > 1000:
+                raw_price = round(raw_price * 0.001, 3)
+            
+            matched_value = raw_price * raw_vol * 1000  # Convert to raw VND for threshold comparison
 
             match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
             mt_lower = match_type_raw.lower()

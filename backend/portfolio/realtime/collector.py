@@ -78,13 +78,8 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
             symbol, exc,
         )
 
-    # Fallback: synthetic one-tick frame từ DB price
-    import logging as _log
-    _log.getLogger(__name__).info("collect_intraday_frame(%s) synthetic fallback active (volume=0)", symbol)
-    changes = get_price_changes([symbol]).get(symbol.upper(), {})
-    price = changes.get("current_price") or 0.0
-    now = timezone.now() if hasattr(timezone, "now") else datetime.utcnow()
-    return pd.DataFrame([{"ts": now, "price": float(price), "volume": 0.0, "side": "UNKNOWN"}])
+    # No more synthetic fallback. Return empty if both fetch and synthetic fail.
+    return pd.DataFrame()
 
 
 def collect_and_push(symbol: str, producer) -> int:
