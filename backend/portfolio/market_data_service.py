@@ -879,9 +879,21 @@ class MarketDataService:
         whale_value_total = 0.0
         small_value = 0.0
 
+        # Resolve price scale to ensure matched_value is calculated in VND.
+        price_candidates = []
+        if 'price' in df.columns:
+            price_candidates = df['price'].tolist()
+        elif 'close' in df.columns:
+            price_candidates = df['close'].tolist()
+        
+        price_scale = self._resolve_quote_price_scale(price_candidates)
+
         for _, row in df.iterrows():
             try:
-                raw_price = float(row.get('price') or row.get('close') or 0)
+                raw_price = self._normalize_quote_price(
+                    float(row.get('price') or row.get('close') or 0),
+                    price_scale
+                )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
                 continue
@@ -2105,9 +2117,21 @@ class MarketDataService:
     def _dataframe_has_threshold_hits(self, df, threshold_vnd: float) -> bool:
         if df is None or getattr(df, 'empty', True):
             return False
+            
+        price_candidates = []
+        if 'price' in df.columns:
+            price_candidates = df['price'].tolist()
+        elif 'close' in df.columns:
+            price_candidates = df['close'].tolist()
+            
+        price_scale = self._resolve_quote_price_scale(price_candidates)
+        
         for _, row in df.iterrows():
             try:
-                raw_price = float(row.get('price') or row.get('close') or 0)
+                raw_price = self._normalize_quote_price(
+                    float(row.get('price') or row.get('close') or 0),
+                    price_scale
+                )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
                 continue
@@ -2740,20 +2764,27 @@ class MarketDataService:
         synthetic_id = 1
         for symbol in symbols:
             stream_ticks = read_stream_intraday_ticks(symbol, count=150)
+            
+            # Resolve scale for the current symbol's ticks
+            price_candidates = [float(t.get('price', 0)) for t in stream_ticks]
+            price_scale = self._resolve_quote_price_scale(price_candidates)
+            
             for tick in stream_ticks:
                 try:
-                    price = float(tick.get('price') or 0)
+                    price = self._normalize_quote_price(float(tick.get('price') or 0), price_scale)
                     volume = float(tick.get('volume') or 0)
                 except (TypeError, ValueError):
                     continue
                 matched_value = price * volume
                 if matched_value < threshold_vnd:
                     continue
+                    
                 ts_raw = tick.get('ts') or tick.get('time') or tick.get('tradingDate') or timezone.now().isoformat()
                 try:
                     ts_value = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00')).isoformat()
                 except Exception:
                     ts_value = timezone.now().isoformat()
+                    
                 side = tick.get('side') or tick.get('match_type') or tick.get('matchType') or 'UNKNOWN'
                 records.append({
                     'id': synthetic_id,
@@ -2804,9 +2835,16 @@ class MarketDataService:
             if df is None or df.empty:
                 continue
 
+            # Resolve scale for the current symbol's dataframe
+            price_candidates = df['price'].tolist() if 'price' in df.columns else df['close'].tolist() if 'close' in df.columns else []
+            price_scale = self._resolve_quote_price_scale(price_candidates)
+            
             for _, row in df.iterrows():
                 try:
-                    price = float(row.get('price') or row.get('close') or 0)
+                    price = self._normalize_quote_price(
+                        float(row.get('price') or row.get('close') or 0),
+                        price_scale
+                    )
                     volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
                 except (TypeError, ValueError):
                     continue

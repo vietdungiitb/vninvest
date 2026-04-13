@@ -450,12 +450,21 @@ export function BubbleOrderChart({ orders, loading }) {
       <div className="mt-3 h-56">
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-            <XAxis dataKey="idx" type="number" name={t('whaleAlertsDashboard.axisIndex')} tick={false} axisLine={false} tickLine={false} />
+            <XAxis
+              dataKey="idx"
+              type="number"
+              name={t('whaleAlertsDashboard.axisIndex')}
+              tick={false}
+              axisLine={false}
+              tickLine={false}
+              domain={['dataMin - 1', 'dataMax + 1']}
+            />
             <YAxis
               dataKey="y"
               type="number"
               name={t('whaleAlertsDashboard.axisPrice')}
+              domain={['auto', 'auto']}
+              padding={{ top: 20, bottom: 20 }}
               tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
               tick={{ fontSize: 10, fill: '#64748b' }}
               axisLine={false}
