@@ -17,11 +17,41 @@ logger = logging.getLogger(__name__)
 
 _PRICE_BOARD_FIELDS_BY_SECTION = {
     'listing': {'ref_price', 'ceiling', 'floor'},
-    'match': {'match_price', 'reference_price', 'ceiling_price', 'floor_price', 'open_price', 'highest', 'lowest'},
-    'bid_ask': {
-        'bid_1_price', 'bid_2_price', 'bid_3_price',
-        'ask_1_price', 'ask_2_price', 'ask_3_price',
+    'match': {
+        'match_price', 'reference_price', 'ceiling_price', 'floor_price',
+        'open_price', 'highest', 'lowest', 'accumulated_volume',
+        'foreign_buy_volume', 'foreign_sell_volume',
     },
+    'bid_ask': {
+        'bid_1_price', 'bid_1_volume', 'bid_2_price', 'bid_2_volume', 'bid_3_price', 'bid_3_volume',
+        'ask_1_price', 'ask_1_volume', 'ask_2_price', 'ask_2_volume', 'ask_3_price', 'ask_3_volume',
+    },
+}
+
+_KBS_FLAT_MAPPING = {
+    'reference_price': ('match', 'reference_price'),
+    'ceiling_price': ('match', 'ceiling_price'),
+    'floor_price': ('match', 'floor_price'),
+    'open_price': ('match', 'open_price'),
+    'high_price': ('match', 'highest'),
+    'low_price': ('match', 'lowest'),
+    'close_price': ('match', 'match_price'),
+    'total_volume': ('match', 'accumulated_volume'),
+    'foreign_buy_volume': ('match', 'foreign_buy_volume'),
+    'foreign_sell_volume': ('match', 'foreign_sell_volume'),
+    # Bid/Ask Mapping
+    'bid_price_1': ('bid_ask', 'bid_1_price'),
+    'bid_vol_1': ('bid_ask', 'bid_1_volume'),
+    'bid_price_2': ('bid_ask', 'bid_2_price'),
+    'bid_vol_2': ('bid_ask', 'bid_2_volume'),
+    'bid_price_3': ('bid_ask', 'bid_3_price'),
+    'bid_vol_3': ('bid_ask', 'bid_3_volume'),
+    'ask_price_1': ('bid_ask', 'ask_1_price'),
+    'ask_vol_1': ('bid_ask', 'ask_1_volume'),
+    'ask_price_2': ('bid_ask', 'ask_2_price'),
+    'ask_vol_2': ('bid_ask', 'ask_2_volume'),
+    'ask_price_3': ('bid_ask', 'ask_3_price'),
+    'ask_vol_3': ('bid_ask', 'ask_3_volume'),
 }
 
 
@@ -32,24 +62,50 @@ def _normalize_price_board_dataframe(price_board_df):
     if not isinstance(price_board_df, pd.DataFrame):
         return price_board_df
 
-    normalized_df = price_board_df.copy()
-    columns = normalized_df.columns
-    if isinstance(columns, pd.MultiIndex):
-        for column in columns:
-            if not isinstance(column, tuple) or len(column) < 2:
-                continue
-            section = str(column[0] or '').strip().lower()
-            field = str(column[1] or '').strip().lower()
-            if field not in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
-                continue
-            normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
-        return normalized_df
+    columns = price_board_df.columns
 
-    for column in columns:
-        field = str(column or '').strip().lower()
-        if any(field in section_fields for section_fields in _PRICE_BOARD_FIELDS_BY_SECTION.values()):
-            normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
-    return normalized_df
+    # Case 1: Already MultiIndex (e.g. VCI)
+    if isinstance(columns, pd.MultiIndex):
+        # Idempotent check: if it has expected sections like 'match' or 'bid_ask', likely canonical
+        if any(sec in columns.levels[0] for sec in ('match', 'bid_ask')):
+            normalized_df = price_board_df.copy()
+            for column in columns:
+                if not isinstance(column, tuple) or len(column) < 2:
+                    continue
+                section = str(column[0] or '').strip().lower()
+                field = str(column[1] or '').strip().lower()
+                if field in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
+                    normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
+            return normalized_df
+
+    # Case 2: Flat DataFrame (e.g. KBS) or unsupported MultiIndex
+    # We attempt to reconstruct the Canonical MultiIndex structure
+    flat_data = price_board_df.iloc[0].to_dict() if not price_board_df.empty else {}
+    mapped_data = {}
+
+    for raw_col, value in flat_data.items():
+        mapping = _KBS_FLAT_MAPPING.get(str(raw_col).strip().lower())
+        if mapping:
+            mapped_data[mapping] = value
+        else:
+            # Keep as top-level if no mapping (like 'symbol', 'time')
+            mapped_data[('', raw_col)] = value
+
+    if mapped_data:
+        # Reconstruct into MultiIndex Series for iloc[0].dict behavior later in service
+        # But actually market_data_service expects df['section'].iloc[0]
+        # So we build a MultiIndex DataFrame
+        mi_df = pd.DataFrame([mapped_data])
+        mi_df.columns = pd.MultiIndex.from_tuples(mi_df.columns)
+        
+        # Numeric conversion for all configured sections
+        for section, field in mi_df.columns:
+            if field in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
+                mi_df[(section, field)] = pd.to_numeric(mi_df[(section, field)], errors='coerce')
+        
+        return mi_df
+
+    return price_board_df
 
 
 def _resolve_int_env(name: str, default_value: int, min_value: int = 0) -> int:
@@ -221,7 +277,6 @@ def fetch_intraday_dataframe(symbol: str, page_size: int):
         timeout=_resolve_timeout('intraday', 8),
     )
 
-
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
     timeout_seconds = _resolve_timeout('price_board', 8)
     sources = _resolve_price_board_sources(explicit_source=source)
@@ -248,6 +303,33 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
     if last_error is not None:
         raise last_error
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
+
+
+def fetch_price_depth_dataframe(symbol: str, source: str | None = None):
+    """Lấy dữ liệu sổ lệnh chuyên biệt từ Quote.price_depth (nếu hỗ trợ)."""
+    timeout_seconds = _resolve_timeout('price_depth', 8)
+    # Price depth thường chỉ khả dụng trên VCI hoặc các provider có capability này
+    sources = _resolve_price_board_sources(explicit_source=source)
+    
+    for candidate_source in sources:
+        stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+        try:
+            # Kiểm tra xem quote api có tồn tại không
+            if not hasattr(stock_client, 'quote'):
+                continue
+                
+            result = _run_with_timeout(
+                lambda: stock_client.quote.price_depth(symbol=symbol),
+                timeout=timeout_seconds,
+            )
+            # Quote.price_depth thường trả về flat DF với bid/ask levels
+            # Chúng ta map nó sang canonical MultiIndex shape để reuse logic
+            return _normalize_price_board_dataframe(result)
+        except (ExternalSystemException, AttributeError):
+            continue
+            
+    # Fallback về price_board board nếu depth chuyên biệt fail
+    return fetch_price_board_dataframe([symbol], anchor_symbol=symbol, source=source)
 
 
 def fetch_financial_ratio_dataframe(
