@@ -12,10 +12,6 @@ from django.utils import timezone
 from portfolio.models import WhaleAdvisory
 
 from portfolio.observability import (
-    end_advisory_phase,
-    end_advisory_session,
-    record_advisory_error_recovery,
-    start_advisory_phase,
     start_advisory_session,
 )
 
@@ -26,7 +22,7 @@ from portfolio.tasks_whale_bookkeeping import (
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
 from portfolio.tasks_whale_preflight import _prepare_whale_generation_context
-from portfolio.tasks_whale_provider_generation import _run_whale_provider_generation
+from portfolio.tasks_whale_provider_phase import _execute_whale_provider_phase
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
@@ -85,29 +81,20 @@ def generate_whale_advisory_task(
     news_hint = '' if use_concise else _fetch_news_context_for_advisory(symbol)
 
     start_advisory_session()
-    start_advisory_phase('provider_generation')
-    try:
-        provider_result = _run_whale_provider_generation(
-            symbol=symbol,
-            matched_value_vnd=matched_value_vnd,
-            side=side,
-            target_user=target_user,
-            output_language=output_language,
-            use_concise=use_concise,
-            news_hint=news_hint,
-            remaining_budget=remaining_budget,
-            total_budget=_total_budget,
-            primary_provider=primary_provider,
-            primary_model=model,
-            api_key=api_key,
-        )
-    except Exception as exc:
-        end_advisory_phase('provider_generation')
-        record_advisory_error_recovery(type(exc).__name__, 'provider_generation_failed', success=False)
-        end_advisory_session()
-        raise
-
-    end_advisory_phase('provider_generation')
+    provider_result = _execute_whale_provider_phase(
+        symbol=symbol,
+        matched_value_vnd=matched_value_vnd,
+        side=side,
+        target_user=target_user,
+        output_language=output_language,
+        use_concise=use_concise,
+        news_hint=news_hint,
+        remaining_budget=remaining_budget,
+        total_budget=_total_budget,
+        primary_provider=primary_provider,
+        model=model,
+        api_key=api_key,
+    )
     summary_resp = provider_result['summary_resp']
     deep_resp = provider_result['deep_resp']
     provider = provider_result['provider']
