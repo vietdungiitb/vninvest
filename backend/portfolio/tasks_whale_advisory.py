@@ -31,8 +31,8 @@ from portfolio.tasks_advisory_helpers import (
 from portfolio.tasks_whale_generation import (
     _fetch_news_context_for_advisory,
     generate_whale_advisory_task,
-    auto_generate_advisories_for_all_tracked,
 )
+from portfolio.tasks_whale_auto_generation import auto_generate_advisories_for_all_tracked
 
 logger = logging.getLogger(__name__)
 
