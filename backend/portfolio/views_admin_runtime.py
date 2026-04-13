@@ -111,16 +111,33 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     Admin-only: trả về counters profiling cho whale preflight cache checks.
     Query params:
       - date=YYYY-MM-DD (optional, default=today localdate)
-            - window_days=1..30 (optional, default=1)
+      - window_days=1..30 (optional, default=1)
     """
     from time import time as _time
     from django.utils import timezone
 
     requested_date = str(request.query_params.get('date') or '').strip()
-    try:
-        window_days = min(max(int(request.query_params.get('window_days', 1)), 1), 30)
-    except (TypeError, ValueError):
+    requested_window_days = request.query_params.get('window_days')
+    if requested_window_days in (None, ''):
         window_days = 1
+    else:
+        try:
+            window_days = int(requested_window_days)
+        except (TypeError, ValueError):
+            return Response(
+                {
+                    'detail': 'Invalid window_days. Use an integer from 1 to 30.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if window_days < 1 or window_days > 30:
+            return Response(
+                {
+                    'detail': 'Invalid window_days. Use an integer from 1 to 30.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     target_date = timezone.localdate()
     if requested_date:

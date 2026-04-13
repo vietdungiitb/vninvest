@@ -102,10 +102,11 @@ Cap nhat: 2026-04-13
 - [x] Slice 55: them lightweight preflight profiling + cache metrics
 - [x] Slice 56: chuan hoa metric naming contract + helper read metrics + fallback endpoint
 - [x] Slice 57: bo sung preflight metrics trend/totals theo window_days (1-30) cho admin runtime KPI
+- [x] Slice 58: validate strict query params date/window_days + bo sung boundary tests min/max/malformed
 
 ### Dang lam
 - [ ] Hardening preflight observability contract (metrics key + read helper + fallback)
-- [ ] Slice 58: bo sung API contract test cho date + window_days bi malformed va gioi han min/max
+- [ ] Slice 59: bo sung preflight metrics rate (%) tu totals de dashboard doc truc tiep
 - [ ] Tach backend/portfolio/services.py (1918 lines) - Uu tien cao
 - [ ] Tach backend/portfolio/models.py (1913 lines) - Uu tien cao
 - [x] Chia test_api_routes theo cum domain
