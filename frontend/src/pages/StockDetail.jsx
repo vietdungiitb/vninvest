@@ -101,14 +101,13 @@ function fmtVol(v) {
 function normalizeQuotePriceValue(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
-  // Chuẩn hiển thị toàn trang: VNĐ.
-  // Fallback cho payload cũ: nếu giá bị nhân 1000 thì thu nhỏ lại.
+  // Chuẩn hiển thị toàn trang StockDetail: nghìn VND.
+  // Hỗ trợ cả payload trả VND hoặc VND x1000.
   if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1000;
+    return parsed / 1_000_000;
   }
-  // Một số nguồn legacy trả đơn vị nghìn VNĐ (ví dụ 23.75), quy đổi về VNĐ.
-  if (Math.abs(parsed) > 0 && Math.abs(parsed) < 1_000) {
-    return parsed * 1000;
+  if (Math.abs(parsed) >= 1_000) {
+    return parsed / 1_000;
   }
   return parsed;
 }
@@ -117,13 +116,16 @@ function normalizeQuoteDeltaValue(value, currentPrice) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
   const current = Number(currentPrice);
-  // Nếu giá hiện tại đang ở đơn vị VNĐ, delta nhỏ dạng thập phân thường là đơn vị nghìn VNĐ.
-  if (Number.isFinite(current) && Math.abs(current) >= 1_000 && Math.abs(parsed) > 0 && Math.abs(parsed) < 100) {
-    return parsed * 1000;
-  }
-  // Fallback cho payload cũ bị nhân 1000.
+  // Chuẩn hóa delta về nghìn VND giống chuẩn hiển thị giá.
   if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1000;
+    return parsed / 1_000_000;
+  }
+  if (Math.abs(parsed) >= 1_000) {
+    return parsed / 1_000;
+  }
+  // Nếu giá hiện tại đang ở thang nghìn (20-100) mà delta quá lớn, coi như đang ở VND.
+  if (Number.isFinite(current) && Math.abs(current) < 500 && Math.abs(parsed) >= 100) {
+    return parsed / 1_000;
   }
   return parsed;
 }
@@ -890,7 +892,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
               >
                 <span className="text-slate-500">{row.time}</span>
                 <span className={`font-semibold tabular-nums ${row.side === 'buy' ? 'text-emerald-300' : row.side === 'sell' ? 'text-rose-300' : 'text-slate-200'}`}>
-                  {row.price != null ? formatQuotePrice(row.price) : '—'}
+                  {row.price != null ? formatQuotePrice(normalizeQuotePriceValue(row.price)) : '—'}
                 </span>
                 <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
                 <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
@@ -1127,8 +1129,8 @@ function PriceDepthPanel({ symbol, liveVolume }) {
             {depth.map((row) => (
               <div key={row.level} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
                 <span className="text-slate-300">{fmtVol(row.bid_volume)}</span>
-                <span className="font-semibold text-emerald-300">{formatQuotePrice(row.bid_price)}</span>
-                <span className="font-semibold text-rose-300">{formatQuotePrice(row.ask_price)}</span>
+                <span className="font-semibold text-emerald-300">{formatQuotePrice(normalizeQuotePriceValue(row.bid_price))}</span>
+                <span className="font-semibold text-rose-300">{formatQuotePrice(normalizeQuotePriceValue(row.ask_price))}</span>
                 <span className="text-right text-slate-300">{fmtVol(row.ask_volume)}</span>
               </div>
             ))}
@@ -1149,7 +1151,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
           )}
           {ref && (
             <p className="mt-2 text-right text-[10px] text-slate-600">
-              {t('stockDetail.reference')} {formatQuotePrice(ref)} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
+              {t('stockDetail.reference')} {formatQuotePrice(normalizeQuotePriceValue(ref))} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
             </p>
           )}
         </>

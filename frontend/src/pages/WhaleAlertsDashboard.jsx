@@ -436,15 +436,15 @@ export function BubbleOrderChart({ orders, loading }) {
 
   return (
     <section className="card-section p-4">
-      <div className="border-b border-slate-800 pb-3 flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3 border-b border-slate-800 pb-3 sm:items-center">
+        <div className="min-w-0">
           <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
           <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.priceVolumeBubble')}</h3>
         </div>
-        <div className="flex gap-3 text-[10px] text-slate-400">
-          <span><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />{t('whaleAlertsDashboard.buy')}</span>
-          <span><span className="inline-block w-2 h-2 rounded-full bg-rose-500 mr-1" />{t('whaleAlertsDashboard.sell')}</span>
-          <span className="text-slate-600">{t('whaleAlertsDashboard.bubbleLegend')}</span>
+        <div className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap text-[10px] text-slate-400 sm:gap-3">
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />{t('whaleAlertsDashboard.buy')}</span>
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-rose-500" />{t('whaleAlertsDashboard.sell')}</span>
+          <span className="max-w-[96px] truncate text-slate-600 sm:max-w-none">{t('whaleAlertsDashboard.bubbleLegend')}</span>
         </div>
       </div>
       <div className="mt-3 h-56">
@@ -465,7 +465,7 @@ export function BubbleOrderChart({ orders, loading }) {
               name={t('whaleAlertsDashboard.axisPrice')}
               domain={['auto', 'auto']}
               padding={{ top: 20, bottom: 20 }}
-              tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
+              tickFormatter={(v) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               tick={{ fontSize: 10, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
