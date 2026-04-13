@@ -101,7 +101,8 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
         // Async mode: poll /latest/ until a new report appears
         const startedAt = Date.now();
         const prevFinishedAt = report?.finished_at || null;
-        const maxWaitMs = (Number(payload.duration_seconds) * payload.providers.length * payload.concurrency_levels.length + 30) * 1000;
+        const estimatedRuntimeSeconds = Number(payload.duration_seconds) * payload.providers.length * payload.concurrency_levels.length;
+        const maxWaitMs = Math.min(20 * 60 * 1000, (estimatedRuntimeSeconds + 180) * 1000);
         setMessage('Benchmark đang chạy nền... đang chờ kết quả.');
         if (pollingRef.current) clearInterval(pollingRef.current);
         pollingRef.current = setInterval(async () => {
@@ -118,7 +119,7 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
               setState('error');
-              setMessage('Benchmark timeout — không nhận được kết quả. Vui lòng thử lại.');
+              setMessage('Benchmark đang chạy quá lâu hoặc worker đang nghẽn. Kiểm tra Celery trong Runtime KPI và thử lại.');
             }
           } catch {
             // ignore transient poll errors

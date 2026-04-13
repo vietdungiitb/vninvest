@@ -43,14 +43,40 @@ def admin_vnstock_price_board_benchmark_run_api(request):
     Dispatch benchmark sang Celery để tránh gateway timeout (tác vụ có thể chạy vài phút).
     Client poll GET /latest/ để lấy kết quả khi hoàn tất.
     """
+    from config.celery import app as celery_app
     from portfolio.tasks_maintenance import run_vnstock_price_board_benchmark
 
     payload = request.data if isinstance(request.data, dict) else {}
-    run_vnstock_price_board_benchmark.apply_async(kwargs={'payload': payload})
+
+    # Fail fast when Celery worker is not alive to avoid frontend waiting until timeout.
+    try:
+        inspect = celery_app.control.inspect(timeout=1.5)
+        ping_result = inspect.ping()
+        if not ping_result:
+            return Response(
+                {
+                    'ok': False,
+                    'status': 'worker_unavailable',
+                    'message': 'Celery worker đang offline. Không thể chạy benchmark nền lúc này.',
+                },
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+    except Exception:
+        return Response(
+            {
+                'ok': False,
+                'status': 'worker_unavailable',
+                'message': 'Không kiểm tra được trạng thái Celery worker. Vui lòng thử lại sau.',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    task = run_vnstock_price_board_benchmark.apply_async(kwargs={'payload': payload})
     return Response(
         {
             'ok': True,
             'status': 'started',
+            'task_id': str(task.id),
             'message': 'Benchmark đã được khởi động. Vui lòng đợi và reload kết quả sau vài giây.',
         },
         status=status.HTTP_202_ACCEPTED,
