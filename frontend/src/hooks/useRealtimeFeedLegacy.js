@@ -10,6 +10,12 @@ function readEventField(payload, key) {
 }
 
 function mergeQuote(prev, update) {
+  const eventTimestamp = update.last_date ?? update.ts;
+  const eventAgeSeconds = eventTimestamp
+    ? Math.max(0, Math.floor((Date.now() - new Date(eventTimestamp).getTime()) / 1000))
+    : null;
+  const inferredFreshness = Number.isFinite(eventAgeSeconds) ? eventAgeSeconds : null;
+
   return {
     ...prev,
     symbol: update.symbol ?? prev.symbol,
@@ -20,9 +26,9 @@ function mergeQuote(prev, update) {
     high_price: update.high_price ?? prev.high_price,
     low_price: update.low_price ?? prev.low_price,
     volume: update.volume ?? prev.volume,
-    freshness_seconds: update.freshness_seconds ?? prev.freshness_seconds,
-    stale: update.stale ?? prev.stale,
-    last_date: update.last_date ?? update.ts ?? prev.last_date,
+    freshness_seconds: update.freshness_seconds ?? inferredFreshness ?? prev.freshness_seconds,
+    stale: update.stale ?? (inferredFreshness !== null ? inferredFreshness > 30 : prev.stale),
+    last_date: eventTimestamp ?? prev.last_date,
   };
 }
 

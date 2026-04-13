@@ -97,14 +97,21 @@ def build_ticker_payload(symbol: str, trades_df: pd.DataFrame, seq: int, contrac
         price = float(pd.to_numeric(trades_df["price"], errors="coerce").fillna(0.0).iloc[-1])
         volume = float(pd.to_numeric(trades_df["volume"], errors="coerce").fillna(0.0).sum())
 
+    ts_iso = _iso_now()
+
     return {
         "event_type": "ticker_update",
         "contract_version": contract_version,
         "symbol": symbol.upper(),
         "price": price,
+        "current_price": price,
         "volume": volume,
         "vwap": compute_vwap(trades_df),
-        "ts": _iso_now(),
+        "ts": ts_iso,
+        "last_date": ts_iso,
+        "freshness_seconds": 0,
+        "stale": False,
+        "source": "ws_stream",
         "seq": seq,
     }
 

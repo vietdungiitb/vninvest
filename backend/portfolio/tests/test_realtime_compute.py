@@ -18,8 +18,14 @@ class RealtimeComputeTests(SimpleTestCase):
         self.assertEqual(payload["symbol"], "VNM")
         self.assertEqual(payload["seq"], 1)
         self.assertEqual(payload["price"], 20.0)
+        self.assertEqual(payload["current_price"], 20.0)
         self.assertEqual(payload["volume"], 200.0)
         self.assertEqual(payload["vwap"], 15.0)
+        self.assertEqual(payload["freshness_seconds"], 0)
+        self.assertEqual(payload["stale"], False)
+        self.assertEqual(payload["source"], "ws_stream")
+        self.assertTrue(payload["ts"])
+        self.assertEqual(payload["last_date"], payload["ts"])
 
     def test_detect_whale_signals_emits_threshold_hits(self):
         frame = pd.DataFrame(
