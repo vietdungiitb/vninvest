@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 
 from django.conf import settings
-from django.core.cache import cache
 
 from portfolio.models import UserConfig, WhaleAdvisory
 from portfolio.tasks_advisory_helpers import _normalize_advisory_source
@@ -13,9 +12,16 @@ from portfolio.tasks_whale_preflight_ai import (
     _check_provider_rate_limit,
     _extract_ai_config_values,
 )
+from portfolio.tasks_whale_preflight_cache import _check_preflight_cache_skips
 from portfolio.tasks_whale_preflight_language import _resolve_advisory_output_config
 
 logger = logging.getLogger(__name__)
+
+
+def _unwrap_or_return_skip(check_result):
+    if isinstance(check_result, dict) and 'skip_response' in check_result:
+        return check_result, None
+    return None, check_result
 
 
 def _build_whale_generation_context_dict(
@@ -77,13 +83,14 @@ def _prepare_whale_generation_context(
         advisory_qs = advisory_qs.filter(user_id=user_id)
     latest_existing_advisory = advisory_qs.order_by('-created_at').first()
 
-    if not force_refresh and latest_existing_advisory is not None:
-        logger.info('Whale advisory already exists — skipping auto generation for %s', symbol)
-        return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'existing_advisory'}}
-
-    if not force_refresh and cache.get(cache_key):
-        logger.info('Whale advisory cooldown active — skipping %s', symbol)
-        return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}}
+    cache_skip = _check_preflight_cache_skips(
+        force_refresh=force_refresh,
+        latest_existing_advisory=latest_existing_advisory,
+        cache_key=cache_key,
+        symbol=symbol,
+    )
+    if cache_skip is not None:
+        return cache_skip
 
     target_user = None
     user_cfg = None
@@ -103,13 +110,12 @@ def _prepare_whale_generation_context(
             return _guard_skip
 
     ai_config_result = _check_ai_runtime_config(target_user=target_user, symbol=symbol, user_id=user_id)
-    
-    # Handle skip response (AI not ready)
-    if isinstance(ai_config_result, dict) and 'skip_response' in ai_config_result:
-        return ai_config_result
-    
+    skip_response, ai_payload = _unwrap_or_return_skip(ai_config_result)
+    if skip_response is not None:
+        return skip_response
+
     # Extract config from tuple result
-    runtime_cfg, _ = ai_config_result
+    runtime_cfg, _ = ai_payload
     provider, model, api_key = _extract_ai_config_values(runtime_cfg)
     ai_source = str(runtime_cfg.get('source') or 'unknown')
 
