@@ -24,6 +24,7 @@ from .adapters.vnstock_adapter import (
     fetch_intraday_dataframe,
     fetch_listing_symbols_dataframe,
     fetch_price_board_dataframe,
+    fetch_price_depth_dataframe,
     read_stream_intraday_ticks,
 )
 from .baseline_service import BaselineService
@@ -448,7 +449,7 @@ class MarketDataService:
             }
 
         try:
-            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+            df = fetch_price_depth_dataframe(normalized_symbol)
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_rate_limited':
                 mark_vnstock_rate_limited('price_board', exc)
