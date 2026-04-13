@@ -6,17 +6,14 @@ from django.conf import settings
 from django.core.cache import cache
 
 from portfolio.models import UserConfig, WhaleAdvisory
-from portfolio.tasks_advisory_helpers import (
-    _normalize_advisory_source,
-    _should_use_concise_advisory,
-    _resolve_model_for_budget,
-)
+from portfolio.tasks_advisory_helpers import _normalize_advisory_source
 from portfolio.tasks_whale_preflight_guards import _check_user_cfg_guards
 from portfolio.tasks_whale_preflight_ai import (
     _check_ai_runtime_config,
     _check_provider_rate_limit,
     _extract_ai_config_values,
 )
+from portfolio.tasks_whale_preflight_language import _resolve_advisory_output_config
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +74,18 @@ def _prepare_whale_generation_context(
     if provider_check is not None:
         return provider_check
 
-    output_language = str(getattr(user_cfg, 'language', 'vi') if user_cfg is not None else 'vi').strip().lower()
-    if output_language not in {'vi', 'en'}:
-        output_language = 'vi'
-
     total_budget = int(user_cfg.advisory_max_tokens_per_day or 0) if user_cfg is not None else None
-    resolved_model = _resolve_model_for_budget(provider, model, remaining_budget, total_budget)
-    use_concise = _should_use_concise_advisory(source_key, remaining_budget)
+    output_cfg = _resolve_advisory_output_config(
+        user_cfg=user_cfg,
+        provider=provider,
+        model=model,
+        source_key=source_key,
+        remaining_budget=remaining_budget,
+        total_budget=total_budget,
+    )
+    output_language = output_cfg['output_language']
+    resolved_model = output_cfg['resolved_model']
+    use_concise = output_cfg['use_concise']
 
     return {
         'cooldown': cooldown,
