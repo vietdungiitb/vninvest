@@ -42,7 +42,30 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 except (ValueError, TypeError):
                     price_val = 0.0
                     vol_val = 0.0
-                rows.append({'ts': str(raw_time), 'price': price_val, 'volume': vol_val, 'side': side})
+                # Standardize timestamp to UTC ISO-8601 string
+                final_ts = str(raw_time)
+                try:
+                    raw_time_str = final_ts.strip()
+                    if raw_time_str:
+                        import zoneinfo
+                        from django.utils import timezone as dj_tz
+                        vn_tz = zoneinfo.ZoneInfo("Asia/Ho_Chi_Minh")
+                        
+                        if len(raw_time_str) <= 8 and ":" in raw_time_str:
+                            today_str = dj_tz.now().astimezone(vn_tz).date().isoformat()
+                            dt = datetime.fromisoformat(f"{today_str} {raw_time_str}").replace(tzinfo=vn_tz)
+                        else:
+                            dt = datetime.fromisoformat(raw_time_str.replace("Z", "+00:00"))
+                            if dt.tzinfo is None:
+                                dt = dt.replace(tzinfo=vn_tz)
+                        
+                        # Generate proper UTC ISO string ending in Z, e.g., 2026-04-13T07:45:00Z
+                        from datetime import timezone as py_tz
+                        final_ts = dt.astimezone(py_tz.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+                except Exception:
+                    pass
+
+                rows.append({'ts': final_ts, 'price': price_val, 'volume': vol_val, 'side': side})
             if rows:
                 return pd.DataFrame(rows)
     except (Exception, SystemExit) as exc:

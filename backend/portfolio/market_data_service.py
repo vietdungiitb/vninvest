@@ -1882,8 +1882,10 @@ class MarketDataService:
     def _format_time(self, raw_time) -> str:
         try:
             import pandas as pd
-
-            return pd.Timestamp(raw_time).strftime('%H:%M:%S')
+            ts = pd.Timestamp(raw_time)
+            if ts.tz is not None:
+                ts = ts.tz_convert('Asia/Ho_Chi_Minh')
+            return ts.strftime('%H:%M:%S')
         except Exception:
             return str(raw_time)[:8]
 
