@@ -24,13 +24,16 @@ from portfolio.observability import (
 
 from portfolio.tasks_advisory_helpers import (
     _token_log_source_for_advisory_source,
-    _persist_advisory_metrics_audit_log,
     _persist_advisory_aggregate_snapshot,
     _resolve_next_refresh_at,
     _increment_daily_counter,
     _is_language_mismatch,
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
+from portfolio.tasks_whale_metrics import (
+    _finalize_whale_generation_metrics,
+    _build_whale_generation_result,
+)
 from portfolio.tasks_whale_preflight import _prepare_whale_generation_context
 from portfolio.tasks_whale_provider_generation import _run_whale_provider_generation
 from portfolio.tasks_whale_postprocess import (
@@ -256,67 +259,53 @@ def generate_whale_advisory_task(
         record_advisory_error_recovery(type(exc).__name__, 'broadcast_failed', success=False)
         logger.warning('WebSocket push failed for whale_advisory %s: %s', symbol, exc)
 
-    metrics_payload = end_advisory_session()
-    if metrics_payload:
-        metrics_payload.update(
-            {
-                'advisory_id': advisory.id,
-                'ai_provider': provider,
-                'ai_model': model,
-                'ai_provider_primary': primary_provider,
-                'ai_model_primary': primary_model,
-                'ai_source': ai_source,
-                'output_language': output_language,
-                'language_mismatch': language_mismatch,
-                'failover_occurred': failover_occurred,
-                'failover_reason': failover_reason,
-                'failover_chain_attempted': failover_chain_attempted,
-                'failover_attempt_count': failover_attempt_count,
-                'threshold_source': normalized_threshold_source,
-                'source': source_key,
-                'merged_sources': normalized_merged_sources,
-                'primary_source': normalized_primary_source,
-                'used_concise': use_concise,
-                'snapshot_id': advisory.aggregate_snapshot_id,
-            }
-        )
-        _persist_advisory_metrics_audit_log(
-            user=target_user,
-            symbol=symbol,
-            advisory=advisory,
-            latest_existing_advisory=latest_existing_advisory,
-            source=source_key,
-            threshold_source=normalized_threshold_source,
-            merged_sources=normalized_merged_sources,
-            primary_source=normalized_primary_source,
-            metrics=metrics_payload,
-            task_id=getattr(self.request, 'id', ''),
-        )
+    _finalize_whale_generation_metrics(
+        end_session=end_advisory_session,
+        target_user=target_user,
+        symbol=symbol,
+        advisory=advisory,
+        latest_existing_advisory=latest_existing_advisory,
+        provider=provider,
+        model=model,
+        primary_provider=primary_provider,
+        primary_model=primary_model,
+        ai_source=ai_source,
+        output_language=output_language,
+        language_mismatch=language_mismatch,
+        failover_occurred=failover_occurred,
+        failover_reason=failover_reason,
+        failover_chain_attempted=failover_chain_attempted,
+        failover_attempt_count=failover_attempt_count,
+        normalized_threshold_source=normalized_threshold_source,
+        source_key=source_key,
+        normalized_merged_sources=normalized_merged_sources,
+        normalized_primary_source=normalized_primary_source,
+        use_concise=use_concise,
+        task_id=getattr(self.request, 'id', ''),
+    )
 
     logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
-    return {
-        'status': 'ok',
-        'advisory_id': advisory.id,
-        'symbol': symbol,
-        'ai_provider': provider,
-        'ai_model': model,
-        'ai_provider_primary': primary_provider,
-        'ai_model_primary': primary_model,
-        'ai_source': ai_source,
-        'output_language': output_language,
-        'language_mismatch': language_mismatch,
-        'failover_occurred': failover_occurred,
-        'failover_reason': failover_reason,
-        'failover_chain_attempted': failover_chain_attempted,
-        'failover_attempt_count': failover_attempt_count,
-        'force_refresh': bool(force_refresh),
-        'user_id': user_id,
-        'source': source_key,
-        'threshold_source': normalized_threshold_source,
-        'merged_sources': normalized_merged_sources,
-        'primary_source': normalized_primary_source,
-        'used_concise': use_concise,
-        'snapshot_id': advisory.aggregate_snapshot_id,
-    }
+    return _build_whale_generation_result(
+        advisory=advisory,
+        symbol=symbol,
+        provider=provider,
+        model=model,
+        primary_provider=primary_provider,
+        primary_model=primary_model,
+        ai_source=ai_source,
+        output_language=output_language,
+        language_mismatch=language_mismatch,
+        failover_occurred=failover_occurred,
+        failover_reason=failover_reason,
+        failover_chain_attempted=failover_chain_attempted,
+        failover_attempt_count=failover_attempt_count,
+        force_refresh=force_refresh,
+        user_id=user_id,
+        source_key=source_key,
+        normalized_threshold_source=normalized_threshold_source,
+        normalized_merged_sources=normalized_merged_sources,
+        normalized_primary_source=normalized_primary_source,
+        use_concise=use_concise,
+    )
 
 
