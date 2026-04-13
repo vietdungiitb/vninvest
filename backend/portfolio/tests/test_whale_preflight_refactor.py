@@ -1,0 +1,86 @@
+from unittest.mock import patch
+
+from django.test import SimpleTestCase
+
+from portfolio.tasks_whale_preflight import (
+    _build_whale_generation_context_dict,
+    _unwrap_or_return_skip,
+)
+from portfolio.tasks_whale_preflight_cache import (
+    _build_skip_response,
+    _check_preflight_cache_skips,
+)
+
+
+class WhalePreflightCacheRefactorTests(SimpleTestCase):
+    def test_build_skip_response_returns_expected_shape(self):
+        result = _build_skip_response(symbol='VCB', reason='cooldown')
+
+        self.assertEqual(result['skip_response']['status'], 'skipped')
+        self.assertEqual(result['skip_response']['symbol'], 'VCB')
+        self.assertEqual(result['skip_response']['reason'], 'cooldown')
+
+    def test_check_preflight_cache_skips_existing_advisory_first(self):
+        skip = _check_preflight_cache_skips(
+            force_refresh=False,
+            latest_existing_advisory=object(),
+            cache_key='whale_advisory_lock:1:VCB',
+            symbol='VCB',
+        )
+
+        self.assertIsNotNone(skip)
+        self.assertEqual(skip['skip_response']['reason'], 'existing_advisory')
+
+    @patch('portfolio.tasks_whale_preflight_cache.cache.get', return_value=True)
+    def test_check_preflight_cache_skips_cooldown(self, _mock_cache_get):
+        skip = _check_preflight_cache_skips(
+            force_refresh=False,
+            latest_existing_advisory=None,
+            cache_key='whale_advisory_lock:1:VCB',
+            symbol='VCB',
+        )
+
+        self.assertIsNotNone(skip)
+        self.assertEqual(skip['skip_response']['reason'], 'cooldown')
+
+
+class WhalePreflightContextAssemblyTests(SimpleTestCase):
+    def test_unwrap_or_return_skip_for_skip_dict(self):
+        skip_input = {'skip_response': {'status': 'skipped', 'symbol': 'VCB', 'reason': 'cooldown'}}
+
+        skip, payload = _unwrap_or_return_skip(skip_input)
+
+        self.assertEqual(skip, skip_input)
+        self.assertIsNone(payload)
+
+    def test_unwrap_or_return_skip_for_payload_tuple(self):
+        payload_input = ({'ready': True, 'source': 'env'}, None)
+
+        skip, payload = _unwrap_or_return_skip(payload_input)
+
+        self.assertIsNone(skip)
+        self.assertEqual(payload, payload_input)
+
+    def test_build_whale_generation_context_dict_keeps_legacy_aliases(self):
+        ctx = _build_whale_generation_context_dict(
+            cooldown=900,
+            cache_key='whale_advisory_lock:1:VCB',
+            source_key='periodic_job',
+            latest_existing_advisory=None,
+            target_user=None,
+            user_cfg=None,
+            remaining_budget=1200,
+            provider='openai',
+            resolved_model='gpt-4o-mini',
+            api_key='masked',
+            ai_source='env',
+            output_language='vi',
+            total_budget=5000,
+            use_concise=True,
+        )
+
+        self.assertEqual(ctx['provider'], 'openai')
+        self.assertEqual(ctx['primary_provider'], 'openai')
+        self.assertEqual(ctx['model'], 'gpt-4o-mini')
+        self.assertEqual(ctx['primary_model'], 'gpt-4o-mini')
+        self.assertTrue(ctx['use_concise'])
