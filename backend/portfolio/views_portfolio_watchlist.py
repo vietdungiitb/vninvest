@@ -105,11 +105,22 @@ def _acquire_sync_cooldown(user, action: str) -> tuple[bool, int]:
 
     now_ts = int(timezone.now().timestamp())
     cache_key = f'sync:cooldown:{action}:user:{user.id}'
-    locked_until = cache.get(cache_key)
-    if isinstance(locked_until, int) and locked_until > now_ts:
-        return False, max(locked_until - now_ts, 1)
-
     next_until = now_ts + cooldown_seconds
+    try:
+        if cache.add(cache_key, next_until, timeout=cooldown_seconds):
+            return True, 0
+    except Exception:
+        pass
+
+    locked_until = cache.get(cache_key)
+    try:
+        locked_until_int = int(locked_until)
+    except (TypeError, ValueError):
+        locked_until_int = 0
+
+    if locked_until_int > now_ts:
+        return False, max(locked_until_int - now_ts, 1)
+
     cache.set(cache_key, next_until, timeout=cooldown_seconds)
     return True, 0
 

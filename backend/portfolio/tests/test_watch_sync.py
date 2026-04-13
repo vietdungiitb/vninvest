@@ -47,7 +47,7 @@ class WatchSyncApiCooldownTests(APITestCase):
         WatchlistItem.objects.create(group=watchlist_group, symbol='HPG')
         TrackedSymbol.objects.create(user=self.user, symbol='VCB')
 
-    @patch('portfolio.views.sync_watchlist_prices')
+    @patch('portfolio.views_portfolio_watchlist.sync_watchlist_prices')
     @patch.dict('os.environ', {'SYNC_PRICE_COOLDOWN_SECONDS': '60', 'SYNC_PRICE_COOLDOWN_SECONDS_STAFF': '5'}, clear=False)
     def test_watchlist_sync_endpoint_enforces_user_cooldown(self, mock_sync_watchlist_prices):
         mock_sync_watchlist_prices.return_value = [{'symbol': 'HPG'}, {'symbol': 'VCB'}]

@@ -615,6 +615,13 @@ def _build_vnstock_aggregate_records(symbols: list[str], threshold_vnd: float) -
                 break
             logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
             continue
+        except Exception as exc:
+            if _is_rate_limited_error(exc):
+                _mark_vnstock_rate_limited('intraday', exc)
+                logger.info('Aggregate whale vnstock generic rate-limit for %s; activate cooldown.', symbol)
+                break
+            logger.debug('Aggregate whale vnstock unexpected fallback failure for %s: %s', symbol, exc)
+            continue
 
         if df is None or df.empty:
             continue

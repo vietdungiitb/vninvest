@@ -2723,6 +2723,14 @@ class MarketDataService:
                     record_market_fallback('whale-feed-aggregate', 'timeout')
                 logger.debug('Aggregate whale vnstock fallback failed for %s: %s', symbol, exc)
                 continue
+            except Exception as exc:
+                if is_rate_limited_error(exc):
+                    mark_vnstock_rate_limited('intraday', exc)
+                    record_market_fallback('whale-feed-aggregate', 'vnstock_backoff')
+                    logger.info('Aggregate whale vnstock generic rate-limited for %s; activate cooldown.', symbol)
+                    break
+                logger.debug('Aggregate whale vnstock unexpected fallback failed for %s: %s', symbol, exc)
+                continue
 
             if df is None or df.empty:
                 continue

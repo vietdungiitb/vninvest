@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timedelta
 
 from django.db.models import ExpressionWrapper, F, FloatField, Q
@@ -11,6 +12,8 @@ from rest_framework.views import APIView
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .models import IntradayTick
 from .whale_scoring import resolve_whale_score_config
+
+logger = logging.getLogger(__name__)
 
 
 def _legacy_views_module():
@@ -263,6 +266,13 @@ class WhaleFeedAggregateView(APIView):
             try:
                 vnstock_records = legacy_views._build_vnstock_aggregate_records(symbols, min_threshold_vnd)
             except ExternalSystemException:
+                vnstock_records = []
+            except Exception as exc:
+                if legacy_views._is_rate_limited_error(exc):
+                    legacy_views._mark_vnstock_rate_limited('intraday', exc)
+                    logger.info('Aggregate whale vnstock generic rate-limited; fallback to empty records.')
+                else:
+                    logger.warning('Aggregate whale vnstock unexpected fallback error: %s', exc)
                 vnstock_records = []
             if vnstock_records:
                 vnstock_records = [
