@@ -57,34 +57,12 @@ from portfolio.tasks_advisory_helpers import (
     _compute_advisory_severity,
     _compute_dark_flow_severity,
 )
+from portfolio.tasks_news_context import _fetch_news_context_for_advisory
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 logger = logging.getLogger(__name__)
-
-def _fetch_news_context_for_advisory(symbol: str, max_items: int = 4) -> str:
-    """Fetch recent news context for advisory generation prompt."""
-    try:
-        import pandas as _pd
-        from portfolio.models import StockNews
-        
-        recent_news = StockNews.objects.filter(
-            symbol=symbol,
-        ).order_by('-published_date')[:max_items]
-        
-        if not recent_news:
-            return ''
-        
-        news_items = []
-        for news in recent_news:
-            date_str = news.published_date.strftime('%Y-%m-%d') if hasattr(news.published_date, 'strftime') else str(news.published_date)
-            news_items.append(f'[{date_str}] {news.title}')
-        
-        return '\n'.join(news_items)
-    except Exception as exc:
-        logger.debug('News fetch failed for %s: %s', symbol, exc)
-        return ''
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
