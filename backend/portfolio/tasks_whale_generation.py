@@ -8,13 +8,10 @@ import os
 import random
 
 from celery import shared_task
-from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
-from portfolio.ai_runtime_config import resolve_ai_runtime_config
-
-from portfolio.models import UserConfig, WhaleAdvisory
+from portfolio.models import WhaleAdvisory
 
 from portfolio.observability import (
     end_advisory_phase,
@@ -26,20 +23,15 @@ from portfolio.observability import (
 )
 
 from portfolio.tasks_advisory_helpers import (
-    _normalize_advisory_source,
     _token_log_source_for_advisory_source,
     _persist_advisory_metrics_audit_log,
     _persist_advisory_aggregate_snapshot,
-    _get_remaining_advisory_budget,
-    _get_remaining_auto_refreshes,
     _resolve_next_refresh_at,
-    _resolve_advisory_threshold_vnd,
-    _should_use_concise_advisory,
-    _resolve_model_for_budget,
     _increment_daily_counter,
     _is_language_mismatch,
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
+from portfolio.tasks_whale_preflight import _prepare_whale_generation_context
 from portfolio.tasks_whale_provider_generation import _run_whale_provider_generation
 from portfolio.tasks_whale_postprocess import (
     _resolve_generated_advisory_severity,
@@ -80,107 +72,31 @@ def generate_whale_advisory_task(
     3. Save WhaleAdvisory to DB
     4. Push WebSocket event to user/symbol group
     """
-    cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
-    cache_key = f'whale_advisory_lock:{user_id}:{symbol}' if user_id is not None else f'whale_advisory_lock:{symbol}'
-    source_key = _normalize_advisory_source(source)
+    preflight = _prepare_whale_generation_context(
+        symbol=symbol,
+        user_id=user_id,
+        source=source,
+        force_refresh=force_refresh,
+    )
+    if preflight.get('skip_response') is not None:
+        return preflight['skip_response']
 
-    advisory_qs = WhaleAdvisory.objects.filter(symbol=symbol)
-    if user_id is not None:
-        advisory_qs = advisory_qs.filter(user_id=user_id)
-    latest_existing_advisory = advisory_qs.order_by('-created_at').first()
-
-    if not force_refresh and latest_existing_advisory is not None:
-        logger.info('Whale advisory already exists — skipping auto generation for %s', symbol)
-        return {'status': 'skipped', 'symbol': symbol, 'reason': 'existing_advisory'}
-
-    if not force_refresh and cache.get(cache_key):
-        logger.info('Whale advisory cooldown active — skipping %s', symbol)
-        return {'status': 'skipped', 'symbol': symbol, 'reason': 'cooldown'}
-
-    target_user = None
-    user_cfg = None
-    remaining_budget = None
-    if user_id is not None:
-        user_cfg = UserConfig.objects.filter(user_id=user_id).select_related('user').first()
-        target_user = getattr(user_cfg, 'user', None)
-
-    if user_cfg is not None:
-        if source_key == WhaleAdvisory.SourceChoices.WHALE_SIGNAL and not user_cfg.advisory_whale_signal_enabled:
-            return {'status': 'skipped', 'symbol': symbol, 'reason': 'whale_signal_disabled', 'user_id': user_id}
-        if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and not user_cfg.advisory_auto_generation_enabled:
-            return {'status': 'skipped', 'symbol': symbol, 'reason': 'auto_generation_disabled', 'user_id': user_id}
-        if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH and not user_cfg.advisory_manual_refresh_enabled:
-            return {'status': 'skipped', 'symbol': symbol, 'reason': 'manual_refresh_disabled', 'user_id': user_id}
-
-        _gen_lock_key = f'advisory:gen-lock:{user_id}'
-        _lock_acquired = cache.add(_gen_lock_key, 1, timeout=90)
-        if not _lock_acquired:
-            logger.info('Whale advisory generation locked (concurrent task) for user=%s symbol=%s', user_id, symbol)
-            return {'status': 'skipped', 'symbol': symbol, 'reason': 'concurrent_generation_active', 'user_id': user_id}
-
-        try:
-            remaining_budget = _get_remaining_advisory_budget(user_cfg)
-            if remaining_budget <= 0:
-                logger.info('Whale advisory budget exhausted for user=%s symbol=%s source=%s', user_id, symbol, source_key)
-                return {
-                    'status': 'skipped',
-                    'symbol': symbol,
-                    'reason': 'daily_budget_exceeded',
-                    'user_id': user_id,
-                    'source': source_key,
-                }
-            if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and _get_remaining_auto_refreshes(user_cfg) <= 0:
-                logger.info('Whale advisory auto-refresh count exhausted for user=%s symbol=%s', user_id, symbol)
-                return {
-                    'status': 'skipped',
-                    'symbol': symbol,
-                    'reason': 'daily_auto_refresh_limit_exceeded',
-                    'user_id': user_id,
-                    'source': source_key,
-                }
-        finally:
-            cache.delete(_gen_lock_key)
-
-    runtime_cfg = resolve_ai_runtime_config(user=target_user)
-    if not runtime_cfg.get('ready'):
-        logger.info(
-            'Whale advisory skipped for %s: runtime AI not ready reason=%s user_id=%s',
-            symbol,
-            runtime_cfg.get('reason'),
-            user_id,
-        )
-        return {
-            'status': 'skipped',
-            'symbol': symbol,
-            'reason': str(runtime_cfg.get('reason') or 'runtime_ai_not_ready'),
-            'user_id': user_id,
-            'ai_source': runtime_cfg.get('source'),
-        }
-
-    provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
-    model = str(runtime_cfg.get('model') or '').strip()
-    primary_provider = provider
-    primary_model = model
-    api_key = str(runtime_cfg.pop('api_key', '') or '').strip()
-    ai_source = str(runtime_cfg.get('source') or 'unknown')
-
-    if cache.get(f'advisory:provider-ratelimit:{provider}'):
-        logger.info(
-            'Whale advisory skipped — provider %s still in rate-limit cooldown symbol=%s user_id=%s',
-            provider,
-            symbol,
-            user_id,
-        )
-        return {'status': 'skipped', 'symbol': symbol, 'reason': 'provider_rate_limit_cooldown', 'user_id': user_id}
-
-    use_concise = _should_use_concise_advisory(source_key, remaining_budget)
-    output_language = str(getattr(user_cfg, 'language', 'vi') if user_cfg is not None else 'vi').strip().lower()
-    if output_language not in {'vi', 'en'}:
-        output_language = 'vi'
-
-    _total_budget = int(user_cfg.advisory_max_tokens_per_day or 0) if user_cfg is not None else None
-    model = _resolve_model_for_budget(provider, model, remaining_budget, _total_budget)
-    primary_model = model
+    cooldown = preflight['cooldown']
+    cache_key = preflight['cache_key']
+    source_key = preflight['source_key']
+    latest_existing_advisory = preflight['latest_existing_advisory']
+    target_user = preflight['target_user']
+    user_cfg = preflight['user_cfg']
+    remaining_budget = preflight['remaining_budget']
+    provider = preflight['provider']
+    model = preflight['model']
+    primary_provider = preflight['primary_provider']
+    primary_model = preflight['primary_model']
+    api_key = preflight['api_key']
+    ai_source = preflight['ai_source']
+    output_language = preflight['output_language']
+    _total_budget = preflight['total_budget']
+    use_concise = preflight['use_concise']
 
     news_hint = '' if use_concise else _fetch_news_context_for_advisory(symbol)
 
