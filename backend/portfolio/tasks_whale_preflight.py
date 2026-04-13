@@ -18,6 +18,49 @@ from portfolio.tasks_whale_preflight_language import _resolve_advisory_output_co
 logger = logging.getLogger(__name__)
 
 
+def _build_whale_generation_context_dict(
+    *,
+    cooldown: int,
+    cache_key: str,
+    source_key: str,
+    latest_existing_advisory,
+    target_user,
+    user_cfg,
+    remaining_budget,
+    provider: str,
+    resolved_model: str,
+    api_key: str,
+    ai_source: str,
+    output_language: str,
+    total_budget,
+    use_concise: bool,
+) -> dict:
+    """
+    Assemble whale advisory generation context dictionary.
+    
+    Consolidates all preflight decisions into a single context dict
+    for downstream generation tasks.
+    """
+    return {
+        'cooldown': cooldown,
+        'cache_key': cache_key,
+        'source_key': source_key,
+        'latest_existing_advisory': latest_existing_advisory,
+        'target_user': target_user,
+        'user_cfg': user_cfg,
+        'remaining_budget': remaining_budget,
+        'provider': provider,
+        'model': resolved_model,
+        'primary_provider': provider,  # Legacy alias for backward compatibility
+        'primary_model': resolved_model,  # Legacy alias for backward compatibility
+        'api_key': api_key,
+        'ai_source': ai_source,
+        'output_language': output_language,
+        'total_budget': total_budget,
+        'use_concise': use_concise,
+    }
+
+
 def _prepare_whale_generation_context(
     *,
     symbol: str,
@@ -87,21 +130,19 @@ def _prepare_whale_generation_context(
     resolved_model = output_cfg['resolved_model']
     use_concise = output_cfg['use_concise']
 
-    return {
-        'cooldown': cooldown,
-        'cache_key': cache_key,
-        'source_key': source_key,
-        'latest_existing_advisory': latest_existing_advisory,
-        'target_user': target_user,
-        'user_cfg': user_cfg,
-        'remaining_budget': remaining_budget,
-        'provider': provider,
-        'model': resolved_model,
-        'primary_provider': provider,
-        'primary_model': resolved_model,
-        'api_key': api_key,
-        'ai_source': ai_source,
-        'output_language': output_language,
-        'total_budget': total_budget,
-        'use_concise': use_concise,
-    }
+    return _build_whale_generation_context_dict(
+        cooldown=cooldown,
+        cache_key=cache_key,
+        source_key=source_key,
+        latest_existing_advisory=latest_existing_advisory,
+        target_user=target_user,
+        user_cfg=user_cfg,
+        remaining_budget=remaining_budget,
+        provider=provider,
+        resolved_model=resolved_model,
+        api_key=api_key,
+        ai_source=ai_source,
+        output_language=output_language,
+        total_budget=total_budget,
+        use_concise=use_concise,
+    )
