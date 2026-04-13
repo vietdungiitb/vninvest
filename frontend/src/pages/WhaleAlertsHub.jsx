@@ -694,7 +694,7 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
               <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
                 {t('whaleHub.campaigns')} ({campaigns.length})
               </p>
-              <div className="space-y-2">
+              <div className="space-y-2 h-[360px] overflow-y-auto pr-1 panel-scrollbar">
                 {campaigns.length === 0 ? (
                   <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
                 ) : (
@@ -722,7 +722,7 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
               <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
                 {t('whaleHub.darkFlowSignals')} ({signals.length})
               </p>
-              <div className="space-y-2">
+              <div className="space-y-2 h-[360px] overflow-y-auto pr-1 panel-scrollbar">
                 {signals.length === 0 ? (
                   <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
                 ) : (
