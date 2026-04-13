@@ -17,17 +17,11 @@ from portfolio.ai_options import get_advisory_provider_failover_chain, get_defau
 from portfolio.ai_runtime_config import resolve_ai_runtime_config
 from portfolio.ai_service import _resolve_provider_api_key, generate_advisory_concise, generate_whale_text
 
-from portfolio.models import (
-    AdvisoryTokenLog,
-    UserConfig,
-    WhaleAdvisory,
-)
+from portfolio.models import UserConfig, WhaleAdvisory
 
 from portfolio.observability import (
     end_advisory_phase,
     end_advisory_session,
-    record_advisory_actionability,
-    record_advisory_confidence,
     record_advisory_error_recovery,
     record_advisory_token_usage,
     start_advisory_phase,
@@ -37,8 +31,6 @@ from portfolio.observability import (
 from portfolio.tasks_advisory_helpers import (
     _normalize_advisory_source,
     _token_log_source_for_advisory_source,
-    _estimate_advisory_confidence,
-    _estimate_advisory_actionability,
     _persist_advisory_metrics_audit_log,
     _persist_advisory_aggregate_snapshot,
     _get_remaining_advisory_budget,
@@ -54,13 +46,16 @@ from portfolio.tasks_advisory_helpers import (
     _record_provider_attempt,
     _record_failover_event,
     _is_language_mismatch,
-    _compute_advisory_severity,
-    _compute_dark_flow_severity,
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
-
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+from portfolio.tasks_whale_postprocess import (
+    _resolve_generated_advisory_severity,
+    _normalize_generated_advisory_metadata,
+    _record_generation_quality_metrics,
+    _create_whale_advisory_record,
+    _create_advisory_token_log,
+    _broadcast_whale_advisory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -338,59 +333,34 @@ def generate_whale_advisory_task(
 
     refresh_count = (latest_existing_advisory.refresh_count + 1) if (force_refresh and latest_existing_advisory is not None) else 0
     
-    if severity_override:
-        resolved_severity = str(severity_override).strip().lower()
-    elif source == 'dark_flow' and dark_flow_strength is not None:
-        resolved_severity = _compute_dark_flow_severity(
-            strength=dark_flow_strength,
-            confidence=dark_flow_confidence or 'low',
-            cvd_change=0.0,
-        )
-    else:
-        resolved_severity = _compute_advisory_severity(matched_value_vnd, float(threshold or 0))
-    
-    if resolved_severity not in {
-        WhaleAdvisory.SeverityChoices.URGENT,
-        WhaleAdvisory.SeverityChoices.WARNING,
-        WhaleAdvisory.SeverityChoices.INFO,
-    }:
-        resolved_severity = WhaleAdvisory.SeverityChoices.INFO
-
-    advisory_type_key = str(advisory_type or WhaleAdvisory.AdvisoryTypeChoices.DEFAULT).strip().lower()
-    if advisory_type_key not in {
-        WhaleAdvisory.AdvisoryTypeChoices.DEFAULT,
-        WhaleAdvisory.AdvisoryTypeChoices.REVERSAL,
-    }:
-        advisory_type_key = WhaleAdvisory.AdvisoryTypeChoices.DEFAULT
-
-    normalized_merged_sources = sorted({str(item).strip().lower() for item in (merged_sources or []) if str(item).strip()})
-    normalized_primary_source = str(primary_source or '').strip().lower()
-    normalized_threshold_source = str(threshold_source or 'user_default').strip().lower() or 'user_default'
-    if normalized_threshold_source not in {'user_default', 'symbol_override'}:
-        normalized_threshold_source = 'user_default'
-    if not normalized_primary_source and normalized_merged_sources:
-        normalized_primary_source = normalized_merged_sources[0]
-
-    record_advisory_confidence(
-        _estimate_advisory_confidence(
-            matched_value_vnd=matched_value_vnd,
-            threshold=float(threshold or 0),
-            dark_flow_strength=dark_flow_strength,
-            merged_sources=normalized_merged_sources,
-        ),
-        source=source_key,
+    resolved_severity = _resolve_generated_advisory_severity(
+        severity_override=severity_override,
+        source=source,
+        dark_flow_strength=dark_flow_strength,
+        dark_flow_confidence=dark_flow_confidence,
+        matched_value_vnd=matched_value_vnd,
+        threshold=float(threshold or 0),
     )
-    record_advisory_actionability(
-        _estimate_advisory_actionability(
-            severity=resolved_severity,
-            use_concise=use_concise,
-            merged_sources=normalized_merged_sources,
-        ),
-        factors={
-            'severity_weight': 1.0 if resolved_severity == WhaleAdvisory.SeverityChoices.URGENT else 0.75 if resolved_severity == WhaleAdvisory.SeverityChoices.WARNING else 0.5,
-            'multi_source_bonus': 0.05 if len(normalized_merged_sources) > 1 else 0.0,
-            'concise_penalty': -0.05 if use_concise else 0.0,
-        },
+
+    metadata = _normalize_generated_advisory_metadata(
+        advisory_type=advisory_type,
+        merged_sources=merged_sources,
+        primary_source=primary_source,
+        threshold_source=threshold_source,
+    )
+    advisory_type_key = metadata['advisory_type_key']
+    normalized_merged_sources = metadata['normalized_merged_sources']
+    normalized_primary_source = metadata['normalized_primary_source']
+    normalized_threshold_source = metadata['normalized_threshold_source']
+
+    _record_generation_quality_metrics(
+        source_key=source_key,
+        matched_value_vnd=matched_value_vnd,
+        threshold=float(threshold or 0),
+        dark_flow_strength=dark_flow_strength,
+        normalized_merged_sources=normalized_merged_sources,
+        resolved_severity=resolved_severity,
+        use_concise=use_concise,
     )
 
     aggregate_snapshot = _persist_advisory_aggregate_snapshot(
@@ -409,37 +379,33 @@ def generate_whale_advisory_task(
     )
 
     start_advisory_phase('persist_advisory')
-    advisory = WhaleAdvisory.objects.create(
-        user=target_user,
+    advisory = _create_whale_advisory_record(
+        target_user=target_user,
         symbol=symbol,
-        matched_value=int(matched_value_vnd),
+        matched_value_vnd=matched_value_vnd,
         side=side,
         threshold=float(threshold or 0),
-        ai_summary=summary_resp['text'],
-        ai_detail=deep_resp['text'],
-        ai_provider=provider,
-        ai_model=model,
-        prompt_tokens=summary_resp['prompt_tokens'] + deep_resp['prompt_tokens'],
-        completion_tokens=summary_resp['completion_tokens'] + deep_resp['completion_tokens'],
+        summary_resp=summary_resp,
+        deep_resp=deep_resp,
+        provider=provider,
+        model=model,
         next_refresh_at=_resolve_next_refresh_at(user_cfg),
         refresh_count=refresh_count,
-        is_auto_generated=source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB,
+        source_key=source_key,
         aggregate_snapshot=aggregate_snapshot,
-        source=source_key,
-        merged_sources=normalized_merged_sources,
-        primary_source=normalized_primary_source,
-        advisory_type=advisory_type_key,
-        severity=resolved_severity,
+        normalized_merged_sources=normalized_merged_sources,
+        normalized_primary_source=normalized_primary_source,
+        advisory_type_key=advisory_type_key,
+        resolved_severity=resolved_severity,
     )
 
-    if target_user is not None:
-        AdvisoryTokenLog.objects.create(
-            user=target_user,
-            advisory=advisory,
-            tokens_used=advisory.prompt_tokens + advisory.completion_tokens,
-            source=_token_log_source_for_advisory_source(source_key),
-            symbol=symbol,
-        )
+    _create_advisory_token_log(
+        target_user=target_user,
+        advisory=advisory,
+        source=source_key,
+        symbol=symbol,
+        token_log_source_for_source=_token_log_source_for_advisory_source,
+    )
     end_advisory_phase('persist_advisory')
 
     if not force_refresh:
@@ -447,29 +413,14 @@ def generate_whale_advisory_task(
 
     try:
         start_advisory_phase('broadcast')
-        channel_layer = get_channel_layer()
-        target_group = f'user_{user_id}_alerts' if user_id is not None else f'whale_{symbol}'
-        async_to_sync(channel_layer.group_send)(
-            target_group,
-            {
-                'type': 'whale_advisory',
-                'payload': {
-                    'event_type': 'whale_advisory',
-                    'symbol': symbol,
-                    'side': side,
-                    'matched_value': int(matched_value_vnd),
-                    'threshold': float(threshold or 0),
-                    'threshold_source': normalized_threshold_source,
-                    'ai_summary': advisory.ai_summary,
-                    'ai_detail': advisory.ai_detail,
-                    'ai_provider': advisory.ai_provider,
-                    'ai_model': advisory.ai_model,
-                    'ts': advisory.created_at.isoformat(),
-                    'created_at': advisory.created_at.isoformat(),
-                    'id': advisory.id,
-                    'snapshot_id': advisory.aggregate_snapshot_id,
-                },
-            },
+        _broadcast_whale_advisory(
+            advisory=advisory,
+            symbol=symbol,
+            side=side,
+            matched_value_vnd=matched_value_vnd,
+            threshold=float(threshold or 0),
+            normalized_threshold_source=normalized_threshold_source,
+            user_id=user_id,
         )
         end_advisory_phase('broadcast')
     except Exception as exc:
