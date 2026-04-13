@@ -2609,6 +2609,41 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(float(response.data['current_price']), 76.20)
         self.assertEqual(response.data['source'], 'vnstock_on_demand')
 
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=100)
+    @patch('portfolio.market_data_service.fetch_price_board_dataframe')
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=False)
+    def test_realtime_ticker_refactored_on_demand_supports_flat_price_board_schema(
+        self,
+        _mock_rate_limited,
+        _mock_get_cache,
+        mock_fetch_price_board,
+    ):
+        self.authenticate()
+        mock_fetch_price_board.return_value = pd.DataFrame([
+            {
+                'symbol': 'FPT',
+                'close_price': 76000,
+                'reference_price': 77700,
+                'open_price': 76900,
+                'high_price': 77000,
+                'low_price': 75900,
+                'volume_accumulated': 9559100,
+                'price_change': -1700,
+                'percent_change': -2.1879,
+            },
+        ])
+
+        response = self.client.get('/api/realtime/ticker/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(float(response.data['current_price']), 76000.0)
+        self.assertEqual(float(response.data['prev_price']), 77700.0)
+        self.assertEqual(float(response.data['change_value']), -1700.0)
+        self.assertAlmostEqual(float(response.data['change_pct']), -2.1879, places=4)
+        self.assertEqual(response.data['source'], 'vnstock_on_demand')
+
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
     @patch('portfolio.market_views.market_data_service.get_realtime_ticker')
     @patch('portfolio.views._cache_get', return_value=None)
@@ -2659,6 +2694,44 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'FPT')
         self.assertEqual(float(response.data['current_price']), 76.20)
+        self.assertEqual(response.data['source'], 'vnstock_on_demand')
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
+    @patch('portfolio.views.fetch_price_board_dataframe')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_vnstock_rate_limited', return_value=False)
+    @patch('portfolio.views.get_price_changes')
+    def test_realtime_ticker_legacy_on_demand_supports_flat_price_board_schema(
+        self,
+        mock_get_price_changes,
+        _mock_rate_limited,
+        _mock_cache_get,
+        mock_fetch_price_board,
+    ):
+        self.authenticate()
+        mock_get_price_changes.return_value = {'FPT': {}}
+        mock_fetch_price_board.return_value = pd.DataFrame([
+            {
+                'symbol': 'FPT',
+                'close_price': 76000,
+                'reference_price': 77700,
+                'open_price': 76900,
+                'high_price': 77000,
+                'low_price': 75900,
+                'volume_accumulated': 9559100,
+                'price_change': -1700,
+                'percent_change': -2.1879,
+            },
+        ])
+
+        response = self.client.get('/api/realtime/ticker/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(float(response.data['current_price']), 76000.0)
+        self.assertEqual(float(response.data['prev_price']), 77700.0)
+        self.assertEqual(float(response.data['change_value']), -1700.0)
+        self.assertAlmostEqual(float(response.data['change_pct']), -2.1879, places=4)
         self.assertEqual(response.data['source'], 'vnstock_on_demand')
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)

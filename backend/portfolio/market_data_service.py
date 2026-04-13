@@ -198,20 +198,39 @@ class MarketDataService:
                             except (TypeError, ValueError):
                                 return None
 
-                        match_price = _safe_float(match.get('match_price')) or _safe_float(row.get('match_price'))
+                        match_price = (
+                            _safe_float(match.get('match_price'))
+                            or _safe_float(row.get('match_price'))
+                            or _safe_float(row.get('close_price'))
+                            or _safe_float(row.get('current_price'))
+                        )
                         ref_price = (
                             _safe_float(listing.get('ref_price'))
                             or _safe_float(match.get('reference_price'))
                             or _safe_float(row.get('ref_price'))
                             or _safe_float(row.get('reference_price'))
+                            or _safe_float(row.get('ceiling_price'))
+                            or _safe_float(row.get('floor_price'))
                         )
                         if match_price is not None:
+                            explicit_change_value = (
+                                _safe_float(match.get('price_change'))
+                                or _safe_float(row.get('price_change'))
+                            )
+                            explicit_change_pct = (
+                                _safe_float(match.get('percent_change'))
+                                or _safe_float(row.get('percent_change'))
+                            )
                             change_value = round(match_price - ref_price, 2) if ref_price is not None else None
                             change_pct = (
                                 round((match_price - ref_price) / ref_price * 100, 2)
                                 if ref_price not in (None, 0)
                                 else None
                             )
+                            if explicit_change_value is not None:
+                                change_value = explicit_change_value
+                            if explicit_change_pct is not None:
+                                change_pct = explicit_change_pct
                             payload = {
                                 'symbol': normalized_symbol,
                                 'current_price': match_price,
@@ -219,9 +238,13 @@ class MarketDataService:
                                 'change_value': change_value,
                                 'change_pct': change_pct,
                                 'open_price': _safe_float(match.get('open_price')) or _safe_float(row.get('open_price')),
-                                'high_price': _safe_float(match.get('highest')) or _safe_float(row.get('highest')),
-                                'low_price': _safe_float(match.get('lowest')) or _safe_float(row.get('lowest')),
-                                'volume': _safe_int(match.get('accumulated_volume')) or _safe_int(row.get('accumulated_volume')),
+                                'high_price': _safe_float(match.get('highest')) or _safe_float(row.get('highest')) or _safe_float(row.get('high_price')),
+                                'low_price': _safe_float(match.get('lowest')) or _safe_float(row.get('lowest')) or _safe_float(row.get('low_price')),
+                                'volume': (
+                                    _safe_int(match.get('accumulated_volume'))
+                                    or _safe_int(row.get('accumulated_volume'))
+                                    or _safe_int(row.get('volume_accumulated'))
+                                ),
                                 'last_date': timezone.now().isoformat(),
                                 'freshness_seconds': 0,
                                 'stale': False,
