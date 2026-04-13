@@ -5,7 +5,6 @@ import logging
 from django.conf import settings
 from django.core.cache import cache
 
-from portfolio.ai_runtime_config import resolve_ai_runtime_config
 from portfolio.models import UserConfig, WhaleAdvisory
 from portfolio.tasks_advisory_helpers import (
     _normalize_advisory_source,
@@ -13,6 +12,11 @@ from portfolio.tasks_advisory_helpers import (
     _resolve_model_for_budget,
 )
 from portfolio.tasks_whale_preflight_guards import _check_user_cfg_guards
+from portfolio.tasks_whale_preflight_ai import (
+    _check_ai_runtime_config,
+    _check_provider_rate_limit,
+    _extract_ai_config_values,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,44 +62,20 @@ def _prepare_whale_generation_context(
         if _guard_skip is not None:
             return _guard_skip
 
-    runtime_cfg = resolve_ai_runtime_config(user=target_user)
-    if not runtime_cfg.get('ready'):
-        logger.info(
-            'Whale advisory skipped for %s: runtime AI not ready reason=%s user_id=%s',
-            symbol,
-            runtime_cfg.get('reason'),
-            user_id,
-        )
-        return {
-            'skip_response': {
-                'status': 'skipped',
-                'symbol': symbol,
-                'reason': str(runtime_cfg.get('reason') or 'runtime_ai_not_ready'),
-                'user_id': user_id,
-                'ai_source': runtime_cfg.get('source'),
-            }
-        }
-
-    provider = str(runtime_cfg.get('provider') or 'openclaw').strip().lower()
-    model = str(runtime_cfg.get('model') or '').strip()
-    api_key = str(runtime_cfg.pop('api_key', '') or '').strip()
+    ai_config_result = _check_ai_runtime_config(target_user=target_user, symbol=symbol, user_id=user_id)
+    
+    # Handle skip response (AI not ready)
+    if isinstance(ai_config_result, dict) and 'skip_response' in ai_config_result:
+        return ai_config_result
+    
+    # Extract config from tuple result
+    runtime_cfg, _ = ai_config_result
+    provider, model, api_key = _extract_ai_config_values(runtime_cfg)
     ai_source = str(runtime_cfg.get('source') or 'unknown')
 
-    if cache.get(f'advisory:provider-ratelimit:{provider}'):
-        logger.info(
-            'Whale advisory skipped — provider %s still in rate-limit cooldown symbol=%s user_id=%s',
-            provider,
-            symbol,
-            user_id,
-        )
-        return {
-            'skip_response': {
-                'status': 'skipped',
-                'symbol': symbol,
-                'reason': 'provider_rate_limit_cooldown',
-                'user_id': user_id,
-            }
-        }
+    provider_check = _check_provider_rate_limit(provider=provider, symbol=symbol, user_id=user_id)
+    if provider_check is not None:
+        return provider_check
 
     output_language = str(getattr(user_cfg, 'language', 'vi') if user_cfg is not None else 'vi').strip().lower()
     if output_language not in {'vi', 'en'}:
