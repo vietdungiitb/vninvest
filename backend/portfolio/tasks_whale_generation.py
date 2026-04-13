@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-import logging
 import os
 import random
 
 from celery import shared_task
-from django.core.cache import cache
 from django.utils import timezone
 
 from portfolio.models import WhaleAdvisory
@@ -21,33 +19,14 @@ from portfolio.observability import (
     start_advisory_session,
 )
 
-from portfolio.tasks_advisory_helpers import (
-    _token_log_source_for_advisory_source,
-    _persist_advisory_aggregate_snapshot,
-    _resolve_next_refresh_at,
-)
+from portfolio.tasks_whale_execution import _execute_whale_generation_postprovider
 from portfolio.tasks_whale_bookkeeping import (
     _collect_generation_language_metrics,
     _record_generation_token_usage,
-    _resolve_generation_refresh_count,
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
-from portfolio.tasks_whale_metrics import (
-    _finalize_whale_generation_metrics,
-    _build_whale_generation_result,
-)
 from portfolio.tasks_whale_preflight import _prepare_whale_generation_context
 from portfolio.tasks_whale_provider_generation import _run_whale_provider_generation
-from portfolio.tasks_whale_postprocess import (
-    _resolve_generated_advisory_severity,
-    _normalize_generated_advisory_metadata,
-    _record_generation_quality_metrics,
-    _create_whale_advisory_record,
-    _create_advisory_token_log,
-    _broadcast_whale_advisory,
-)
-
-logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
@@ -72,7 +51,7 @@ def generate_whale_advisory_task(
     Generate whale advisory via AI provider.
     
     Steps:
-    1. Check Redis cooldown — skip if generated recently
+    1. Check Redis cooldown G�� skip if generated recently
     2. Call AI provider (summary + detail)
     3. Save WhaleAdvisory to DB
     4. Push WebSocket event to user/symbol group
@@ -153,154 +132,42 @@ def generate_whale_advisory_task(
         deep_resp=deep_resp,
         use_concise=use_concise,
     )
-
-    refresh_count = _resolve_generation_refresh_count(
-        force_refresh=force_refresh,
-        latest_existing_advisory=latest_existing_advisory,
-    )
-    
-    resolved_severity = _resolve_generated_advisory_severity(
-        severity_override=severity_override,
+    return _execute_whale_generation_postprovider(
+        symbol=symbol,
+        matched_value_vnd=matched_value_vnd,
+        side=side,
+        threshold=float(threshold or 0),
         source=source,
-        dark_flow_strength=dark_flow_strength,
-        dark_flow_confidence=dark_flow_confidence,
-        matched_value_vnd=matched_value_vnd,
-        threshold=float(threshold or 0),
-    )
-
-    metadata = _normalize_generated_advisory_metadata(
-        advisory_type=advisory_type,
-        merged_sources=merged_sources,
-        primary_source=primary_source,
-        threshold_source=threshold_source,
-    )
-    advisory_type_key = metadata['advisory_type_key']
-    normalized_merged_sources = metadata['normalized_merged_sources']
-    normalized_primary_source = metadata['normalized_primary_source']
-    normalized_threshold_source = metadata['normalized_threshold_source']
-
-    _record_generation_quality_metrics(
-        source_key=source_key,
-        matched_value_vnd=matched_value_vnd,
-        threshold=float(threshold or 0),
-        dark_flow_strength=dark_flow_strength,
-        normalized_merged_sources=normalized_merged_sources,
-        resolved_severity=resolved_severity,
-        use_concise=use_concise,
-    )
-
-    aggregate_snapshot = _persist_advisory_aggregate_snapshot(
-        user=target_user,
-        symbol=symbol,
-        matched_value_vnd=matched_value_vnd,
-        threshold=float(threshold or 0),
-        side=side,
-        source=source_key,
-        severity=resolved_severity,
-        merged_sources=normalized_merged_sources,
-        primary_source=normalized_primary_source,
-        dark_flow_strength=dark_flow_strength,
-        dark_flow_confidence=dark_flow_confidence,
-        use_concise=use_concise,
-    )
-
-    start_advisory_phase('persist_advisory')
-    advisory = _create_whale_advisory_record(
-        target_user=target_user,
-        symbol=symbol,
-        matched_value_vnd=matched_value_vnd,
-        side=side,
-        threshold=float(threshold or 0),
-        summary_resp=summary_resp,
-        deep_resp=deep_resp,
-        provider=provider,
-        model=model,
-        next_refresh_at=_resolve_next_refresh_at(user_cfg),
-        refresh_count=refresh_count,
-        source_key=source_key,
-        aggregate_snapshot=aggregate_snapshot,
-        normalized_merged_sources=normalized_merged_sources,
-        normalized_primary_source=normalized_primary_source,
-        advisory_type_key=advisory_type_key,
-        resolved_severity=resolved_severity,
-    )
-
-    _create_advisory_token_log(
-        target_user=target_user,
-        advisory=advisory,
-        source=source_key,
-        symbol=symbol,
-        token_log_source_for_source=_token_log_source_for_advisory_source,
-    )
-    end_advisory_phase('persist_advisory')
-
-    if not force_refresh:
-        cache.set(cache_key, True, timeout=cooldown)
-
-    try:
-        start_advisory_phase('broadcast')
-        _broadcast_whale_advisory(
-            advisory=advisory,
-            symbol=symbol,
-            side=side,
-            matched_value_vnd=matched_value_vnd,
-            threshold=float(threshold or 0),
-            normalized_threshold_source=normalized_threshold_source,
-            user_id=user_id,
-        )
-        end_advisory_phase('broadcast')
-    except Exception as exc:
-        end_advisory_phase('broadcast')
-        record_advisory_error_recovery(type(exc).__name__, 'broadcast_failed', success=False)
-        logger.warning('WebSocket push failed for whale_advisory %s: %s', symbol, exc)
-
-    _finalize_whale_generation_metrics(
-        end_session=end_advisory_session,
-        target_user=target_user,
-        symbol=symbol,
-        advisory=advisory,
-        latest_existing_advisory=latest_existing_advisory,
-        provider=provider,
-        model=model,
-        primary_provider=primary_provider,
-        primary_model=primary_model,
-        ai_source=ai_source,
-        output_language=output_language,
-        language_mismatch=language_mismatch,
-        failover_occurred=failover_occurred,
-        failover_reason=failover_reason,
-        failover_chain_attempted=failover_chain_attempted,
-        failover_attempt_count=failover_attempt_count,
-        normalized_threshold_source=normalized_threshold_source,
-        source_key=source_key,
-        normalized_merged_sources=normalized_merged_sources,
-        normalized_primary_source=normalized_primary_source,
-        use_concise=use_concise,
-        task_id=getattr(self.request, 'id', ''),
-    )
-
-    logger.info('WhaleAdvisory created: id=%d symbol=%s side=%s', advisory.id, symbol, side)
-    return _build_whale_generation_result(
-        advisory=advisory,
-        symbol=symbol,
-        provider=provider,
-        model=model,
-        primary_provider=primary_provider,
-        primary_model=primary_model,
-        ai_source=ai_source,
-        output_language=output_language,
-        language_mismatch=language_mismatch,
-        failover_occurred=failover_occurred,
-        failover_reason=failover_reason,
-        failover_chain_attempted=failover_chain_attempted,
-        failover_attempt_count=failover_attempt_count,
         force_refresh=force_refresh,
         user_id=user_id,
         source_key=source_key,
-        normalized_threshold_source=normalized_threshold_source,
-        normalized_merged_sources=normalized_merged_sources,
-        normalized_primary_source=normalized_primary_source,
+        advisory_type=advisory_type,
+        severity_override=severity_override,
+        threshold_source=threshold_source,
+        dark_flow_strength=dark_flow_strength,
+        dark_flow_confidence=dark_flow_confidence,
+        latest_existing_advisory=latest_existing_advisory,
+        target_user=target_user,
+        user_cfg=user_cfg,
+        provider=provider,
+        model=model,
+        primary_provider=primary_provider,
+        primary_model=primary_model,
+        ai_source=ai_source,
+        output_language=output_language,
+        language_mismatch=language_mismatch,
+        failover_occurred=failover_occurred,
+        failover_reason=failover_reason,
+        failover_chain_attempted=failover_chain_attempted,
+        failover_attempt_count=failover_attempt_count,
         use_concise=use_concise,
+        cache_key=cache_key,
+        cooldown=cooldown,
+        summary_resp=summary_resp,
+        deep_resp=deep_resp,
+        merged_sources=merged_sources,
+        primary_source=primary_source,
+        task_id=getattr(self.request, 'id', ''),
     )
 
 
