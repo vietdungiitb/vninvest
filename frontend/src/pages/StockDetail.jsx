@@ -97,6 +97,28 @@ function fmtVol(v) {
   }).format(Number(v));
 }
 
+function normalizeQuotePriceValue(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  // StockDetail hiển thị theo đơn vị nghìn VNĐ.
+  // Một số payload backend có thể trả theo VNĐ (x1000), cần quy đổi về cùng đơn vị.
+  if (Math.abs(parsed) >= 2000) {
+    return parsed / 1000;
+  }
+  return parsed;
+}
+
+function normalizeQuoteDeltaValue(value, currentPrice) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  const current = Number(currentPrice);
+  // Delta giá ở đơn vị VNĐ thường rơi vào hàng trăm (ví dụ 600 = 0.6 nghìn).
+  if (Number.isFinite(current) && Math.abs(current) < 500 && Math.abs(parsed) >= 100) {
+    return parsed / 1000;
+  }
+  return parsed;
+}
+
 function advisoryStatusLabel(status, t) {
   const map = {
     overbought: t('stockDetail.statusOverbought'),
@@ -2050,11 +2072,21 @@ export default function StockDetail() {
   }, [normalizedSymbol]);
 
   const liveQuote = quotesBySymbol[normalizedSymbol] || {};
-  const currentPrice = liveQuote.current_price ?? overview?.current_price ?? overview?.close_price ?? null;
-  const changeValue = liveQuote.change_value ?? overview?.change_value ?? null;
-  const changePct = liveQuote.change_pct ?? overview?.change_pct ?? null;
-  const liveHighPrice = liveQuote.high_price ?? overview?.high_price ?? null;
-  const liveLowPrice = liveQuote.low_price ?? overview?.low_price ?? null;
+
+  const overviewCurrentPrice = normalizeQuotePriceValue(overview?.current_price);
+  const overviewClosePrice = normalizeQuotePriceValue(overview?.close_price);
+  const liveCurrentPrice = normalizeQuotePriceValue(liveQuote.current_price);
+  const currentPrice = liveCurrentPrice ?? overviewCurrentPrice ?? overviewClosePrice ?? null;
+
+  const overviewChangeValue = normalizeQuoteDeltaValue(overview?.change_value, currentPrice);
+  const liveChangeValue = normalizeQuoteDeltaValue(liveQuote.change_value, currentPrice);
+  const changeValue = liveChangeValue ?? overviewChangeValue ?? null;
+  const changePct = Number.isFinite(Number(liveQuote.change_pct))
+    ? Number(liveQuote.change_pct)
+    : (Number.isFinite(Number(overview?.change_pct)) ? Number(overview.change_pct) : null);
+
+  const liveHighPrice = normalizeQuotePriceValue(liveQuote.high_price) ?? normalizeQuotePriceValue(overview?.high_price);
+  const liveLowPrice = normalizeQuotePriceValue(liveQuote.low_price) ?? normalizeQuotePriceValue(overview?.low_price);
   const liveVolume = liveQuote.volume ?? overview?.volume ?? null;
 
   const changeClass = useMemo(() => {
@@ -2626,8 +2658,8 @@ export default function StockDetail() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.refCeilFloor')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.reference_price)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">{formatQuotePrice(overview.ceiling_price)} / {formatQuotePrice(overview.floor_price)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.reference_price))}</p>
+                <p className="mt-1 text-[10px] text-slate-500">{formatQuotePrice(normalizeQuotePriceValue(overview.ceiling_price))} / {formatQuotePrice(normalizeQuotePriceValue(overview.floor_price))}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.dayRange')}</p>
@@ -2636,12 +2668,12 @@ export default function StockDetail() {
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.range52w')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.week52_low)}</p>
-                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(overview.week52_high)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.week52_low))}</p>
+                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(normalizeQuotePriceValue(overview.week52_high))}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.average')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(overview.average_price)}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.average_price))}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.bias')}</p>
