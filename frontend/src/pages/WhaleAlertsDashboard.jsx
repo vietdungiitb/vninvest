@@ -465,7 +465,7 @@ export function BubbleOrderChart({ orders, loading }) {
               name={t('whaleAlertsDashboard.axisPrice')}
               domain={['auto', 'auto']}
               padding={{ top: 20, bottom: 20 }}
-              tickFormatter={(v) => (v / 1000).toFixed(0) + 'K'}
+              tickFormatter={(v) => Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               tick={{ fontSize: 10, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
