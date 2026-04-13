@@ -9,11 +9,10 @@ from portfolio.ai_runtime_config import resolve_ai_runtime_config
 from portfolio.models import UserConfig, WhaleAdvisory
 from portfolio.tasks_advisory_helpers import (
     _normalize_advisory_source,
-    _get_remaining_advisory_budget,
-    _get_remaining_auto_refreshes,
     _should_use_concise_advisory,
     _resolve_model_for_budget,
 )
+from portfolio.tasks_whale_preflight_guards import _check_user_cfg_guards
 
 logger = logging.getLogger(__name__)
 
@@ -50,45 +49,14 @@ def _prepare_whale_generation_context(
         target_user = getattr(user_cfg, 'user', None)
 
     if user_cfg is not None:
-        if source_key == WhaleAdvisory.SourceChoices.WHALE_SIGNAL and not user_cfg.advisory_whale_signal_enabled:
-            return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'whale_signal_disabled', 'user_id': user_id}}
-        if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and not user_cfg.advisory_auto_generation_enabled:
-            return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'auto_generation_disabled', 'user_id': user_id}}
-        if source_key == WhaleAdvisory.SourceChoices.USER_REFRESH and not user_cfg.advisory_manual_refresh_enabled:
-            return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'manual_refresh_disabled', 'user_id': user_id}}
-
-        generation_lock_key = f'advisory:gen-lock:{user_id}'
-        lock_acquired = cache.add(generation_lock_key, 1, timeout=90)
-        if not lock_acquired:
-            logger.info('Whale advisory generation locked (concurrent task) for user=%s symbol=%s', user_id, symbol)
-            return {'skip_response': {'status': 'skipped', 'symbol': symbol, 'reason': 'concurrent_generation_active', 'user_id': user_id}}
-
-        try:
-            remaining_budget = _get_remaining_advisory_budget(user_cfg)
-            if remaining_budget <= 0:
-                logger.info('Whale advisory budget exhausted for user=%s symbol=%s source=%s', user_id, symbol, source_key)
-                return {
-                    'skip_response': {
-                        'status': 'skipped',
-                        'symbol': symbol,
-                        'reason': 'daily_budget_exceeded',
-                        'user_id': user_id,
-                        'source': source_key,
-                    }
-                }
-            if source_key == WhaleAdvisory.SourceChoices.PERIODIC_JOB and _get_remaining_auto_refreshes(user_cfg) <= 0:
-                logger.info('Whale advisory auto-refresh count exhausted for user=%s symbol=%s', user_id, symbol)
-                return {
-                    'skip_response': {
-                        'status': 'skipped',
-                        'symbol': symbol,
-                        'reason': 'daily_auto_refresh_limit_exceeded',
-                        'user_id': user_id,
-                        'source': source_key,
-                    }
-                }
-        finally:
-            cache.delete(generation_lock_key)
+        _guard_skip, remaining_budget = _check_user_cfg_guards(
+            user_cfg=user_cfg,
+            source_key=source_key,
+            symbol=symbol,
+            user_id=user_id,
+        )
+        if _guard_skip is not None:
+            return _guard_skip
 
     runtime_cfg = resolve_ai_runtime_config(user=target_user)
     if not runtime_cfg.get('ready'):
