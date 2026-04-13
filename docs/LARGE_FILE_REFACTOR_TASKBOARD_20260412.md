@@ -1,6 +1,6 @@
 # TASKBOARD THUC THI - LARGE FILE REFACTOR
 
-Cap nhat: 2026-04-12
+Cap nhat: 2026-04-13
 
 ## Sprint 1 - Dang thuc hien
 
@@ -87,11 +87,24 @@ Cap nhat: 2026-04-12
 - [x] Slice 20 realtime consolidation: Gom views_realtime_symbol_investigation.py + views_realtime_whale_symbol_summary.py vao views_realtime_symbol.py (106 lines removed, 99 lines added)
 - [x] Xoa old realtime modules khoi repository sau gop
 - [x] Chay regression realtime + symbol modules (6 test pass)
+- [x] Slice 42: tach whale persist/finalize phases khoi execution flow
+- [x] Slice 43: tach whale provider bookkeeping phase
+- [x] Slice 44: tach whale quality helpers module
+- [x] Slice 45: tach whale persistence helpers module
+- [x] Slice 46: tach whale broadcast module, retire postprocess coupling
+- [x] Slice 47: tach whale AI call executor module
+- [x] Slice 48: tach whale preflight user-cfg guard module
+- [x] Slice 49: tach AI runtime config va provider rate-limit checks ra module preflight ai
+- [x] Slice 50: consolidate language/model resolution logic
+- [x] Slice 51: tach helper assembly return context dict
+- [x] Slice 52-53: tach cache cooldown checks + gom early-return pattern
+- [x] Slice 54: bo sung test coverage cho whale preflight refactor helpers (8 test pass)
+- [x] Slice 55: them lightweight preflight profiling + cache metrics
 
 ### Dang lam
-- [ ] Tach backend/portfolio/tasks.py (2984 lines) - Uu tien cao
-- [ ] Tach backend/portfolio/services.py (2200 lines) - Uu tien cao
-- [ ] Tach backend/portfolio/models.py (2145 lines) - Uu tien cao
+- [ ] Hardening preflight observability contract (metrics key + read helper + fallback)
+- [ ] Tach backend/portfolio/services.py (1918 lines) - Uu tien cao
+- [ ] Tach backend/portfolio/models.py (1913 lines) - Uu tien cao
 - [x] Chia test_api_routes theo cum domain
 
 ## Sprint 2 - Ke tiep
@@ -99,6 +112,7 @@ Cap nhat: 2026-04-12
 ### Backlog uu tien cao
 - [ ] Tach views_ai_advisory.py
 - [x] Di chuyen helper runtime policy sang module rieng
+- [ ] Slice 56: chuan hoa metric naming contract cho preflight helpers
 
 ### Backlog uu tien trung binh
 - [ ] Chia nho frontend/src/pages/StockDetail.jsx
@@ -122,4 +136,5 @@ Cap nhat: 2026-04-12
 - So test monolith test_api_routes.py method: 0 (guarded by CI) 
 - API smoke pass rate: 4/4 symbol-investigation; 2/2 admin-sync; 6/6 consolidated ✅
 - Commits this session: c179478a + 4c693261 + 6c675b78 (3 commits, views refactor + realtime consolidation)
+- Preflight refactor status: den slice 55 (49-55 day du commit + test 8/8 pass)
 - Production readiness: dev→deploy ready ✅
