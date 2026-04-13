@@ -5,6 +5,7 @@ from rest_framework.response import Response
 
 from portfolio.tasks_whale_preflight_cache import (
     WHALE_PREFLIGHT_METRIC_NAMES,
+    _build_preflight_metric_rates,
     _read_preflight_metrics,
     _read_preflight_metrics_window,
     _sum_preflight_metrics_window,
@@ -156,10 +157,12 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
         metrics = _read_preflight_metrics(day_key=day_key)
         trend = _read_preflight_metrics_window(end_date=target_date, window_days=window_days)
         totals = _sum_preflight_metrics_window(window_rows=trend)
+        rates = _build_preflight_metric_rates(totals=totals)
     except Exception:
         metrics = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
         trend = [{'date': day_key, 'metrics': metrics}] if window_days == 1 else []
         totals = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
+        rates = _build_preflight_metric_rates(totals=totals)
 
     return Response(
         {
@@ -169,6 +172,7 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
             'whale_preflight_metrics': metrics,
             'whale_preflight_metrics_trend': trend,
             'whale_preflight_metrics_totals': totals,
+            'whale_preflight_metrics_rates': rates,
         },
         status=status.HTTP_200_OK,
     )

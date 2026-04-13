@@ -262,6 +262,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('whale_preflight_metrics', data)
         self.assertIn('whale_preflight_metrics_trend', data)
         self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
 
         metrics = data['whale_preflight_metrics']
         self.assertIn('existing_advisory_hit', metrics)
@@ -271,6 +272,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('cooldown_bypass_force_refresh', metrics)
         self.assertEqual(metrics['existing_advisory_hit'], 3)
         self.assertEqual(metrics['cooldown_hit'], 5)
+        self.assertIn('existing_advisory_hit_rate_pct', data['whale_preflight_metrics_rates'])
 
     @patch('portfolio.views_admin_runtime._sum_preflight_metrics_window')
     @patch('portfolio.views_admin_runtime._read_preflight_metrics_window')
@@ -296,6 +298,7 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertEqual(data['window_days'], 2)
         self.assertEqual(len(data['whale_preflight_metrics_trend']), 2)
         self.assertEqual(data['whale_preflight_metrics_totals']['existing_advisory_hit'], 3)
+        self.assertIn('cooldown_hit_rate_pct', data['whale_preflight_metrics_rates'])
 
     def test_admin_runtime_kpi_whale_preflight_metrics_rejects_invalid_date_format(self):
         self._authenticate(self.admin_user)
@@ -352,4 +355,5 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertEqual(metrics.get('cooldown_hit'), 0)
         self.assertEqual(data.get('window_days'), 1)
         self.assertIn('whale_preflight_metrics_totals', data)
+        self.assertIn('whale_preflight_metrics_rates', data)
 

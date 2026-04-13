@@ -12,6 +12,7 @@ from portfolio.tasks_whale_preflight_cache import (
     METRIC_COOLDOWN_HIT,
     METRIC_EXISTING_ADVISORY_HIT,
     WHALE_PREFLIGHT_METRIC_NAMES,
+    _build_preflight_metric_rates,
     _build_skip_response,
     _check_cooldown_skip,
     _check_preflight_cache_skips,
@@ -71,6 +72,21 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
 
         self.assertEqual(totals['existing_advisory_hit'], 5)
         self.assertEqual(totals['cooldown_hit'], 5)
+
+    def test_build_preflight_metric_rates_returns_expected_percentages(self):
+        rates = _build_preflight_metric_rates(
+            totals={
+                'existing_advisory_hit': 4,
+                'existing_advisory_miss': 6,
+                'cooldown_hit': 3,
+                'cooldown_miss': 1,
+                'cooldown_bypass_force_refresh': 1,
+            }
+        )
+
+        self.assertEqual(rates['existing_advisory_hit_rate_pct'], 40.0)
+        self.assertEqual(rates['cooldown_hit_rate_pct'], 75.0)
+        self.assertEqual(rates['cooldown_bypass_rate_pct'], 20.0)
 
     def test_build_skip_response_returns_expected_shape(self):
         result = _build_skip_response(symbol='VCB', reason='cooldown')

@@ -76,6 +76,26 @@ def _sum_preflight_metrics_window(
     return totals
 
 
+def _build_preflight_metric_rates(*, totals: dict) -> dict:
+    existing_hit = int(totals.get(METRIC_EXISTING_ADVISORY_HIT) or 0)
+    existing_miss = int(totals.get(METRIC_EXISTING_ADVISORY_MISS) or 0)
+    cooldown_hit = int(totals.get(METRIC_COOLDOWN_HIT) or 0)
+    cooldown_miss = int(totals.get(METRIC_COOLDOWN_MISS) or 0)
+    cooldown_bypass = int(totals.get(METRIC_COOLDOWN_BYPASS_FORCE_REFRESH) or 0)
+
+    existing_total = existing_hit + existing_miss
+    cooldown_total = cooldown_hit + cooldown_miss
+    cooldown_decisions_total = cooldown_hit + cooldown_miss + cooldown_bypass
+
+    return {
+        'existing_advisory_hit_rate_pct': round(existing_hit / existing_total * 100.0, 2) if existing_total else None,
+        'cooldown_hit_rate_pct': round(cooldown_hit / cooldown_total * 100.0, 2) if cooldown_total else None,
+        'cooldown_bypass_rate_pct': (
+            round(cooldown_bypass / cooldown_decisions_total * 100.0, 2) if cooldown_decisions_total else None
+        ),
+    }
+
+
 def _increment_preflight_counter(metric: str) -> None:
     if metric not in WHALE_PREFLIGHT_METRIC_NAMES:
         logger.warning('Unknown whale preflight metric: %s', metric)
