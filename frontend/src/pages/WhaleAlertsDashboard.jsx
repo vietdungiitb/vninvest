@@ -19,6 +19,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getDepthChart, getRVOL, getStockOrderFlow, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
+import DarkMoneyMasterChart from '../components/DarkMoneyMasterChart';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 
@@ -1010,39 +1011,34 @@ export default function WhaleAlertsDashboard() {
         </div>
       </section>
 
-      {/* Row 1: Alert Feed + (Donut + Depth stacked) */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
+      {/* Row 1: Master Chart (dominant) + Right Widget Stack */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2.2fr_0.8fr]">
+        <DarkMoneyMasterChart symbol={normalizedSymbol} />
+        <div className="flex flex-col gap-4">
+          <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
+          <DepthChartPanel symbol={normalizedSymbol} compact />
+        </div>
+      </div>
+
+      {/* Row 2: Feed + Order Flow Radar + RVOL */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <WhaleFeedPanel
           symbol={normalizedSymbol}
           realtimeAlerts={symbolAlerts}
           feedData={feedData}
           loading={feedLoading}
           onRefresh={fetchFeed}
+          feedHeightClass="h-[320px] sm:h-[360px]"
         />
-        <div className="grid h-full min-h-0 grid-rows-2 gap-4">
-          <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
-          <DepthChartPanel symbol={normalizedSymbol} compact />
-        </div>
-      </div>
-
-      {/* Row 2: Bubble Chart + RVOL */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-        <BubbleOrderChart orders={feedData?.whale_orders} loading={feedLoading} />
+        <OrderFlowRadarPanel
+          symbol={normalizedSymbol}
+          loading={orderFlowLoading}
+          orderFlowData={orderFlowData}
+          latestRealtimeAlert={symbolDarkFlowAlert}
+          window={orderFlowWindow}
+          onWindowChange={setOrderFlowWindow}
+        />
         <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
-      </div>
-
-      {/* Row 3: Order Flow Radar full width */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-3">
-          <OrderFlowRadarPanel
-            symbol={normalizedSymbol}
-            loading={orderFlowLoading}
-            orderFlowData={orderFlowData}
-            latestRealtimeAlert={symbolDarkFlowAlert}
-            window={orderFlowWindow}
-            onWindowChange={setOrderFlowWindow}
-          />
-        </div>
       </div>
     </div>
   );
