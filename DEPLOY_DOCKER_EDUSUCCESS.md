@@ -26,16 +26,100 @@ cp .env.production.example .env.production
 cp backend/.env.production.example backend/.env.production
 ```
 
-Edit both files:
-- `.env.production`: set `POSTGRES_PASSWORD`
-- `backend/.env.production`: set `DJANGO_SECRET_KEY`, `POSTGRES_PASSWORD`, domain vars
+### 3.1 One-time copy template for `.env.production`
 
-Important values in `backend/.env.production`:
-- `DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,...`
-- `CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `POSTGRES_HOST=db`
-- `CELERY_BROKER_URL=redis://redis:6379/0`
+Paste this whole block into `.env.production` at repo root:
+
+```env
+POSTGRES_DB=vninvest
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=change_me_db_password
+```
+
+### 3.2 One-time copy template for `backend/.env.production`
+
+Paste this whole block into `backend/.env.production`:
+
+```env
+DJANGO_SECRET_KEY=change-me-very-long-random-string
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1
+DJANGO_SECURE_SSL_REDIRECT=True
+DJANGO_SESSION_COOKIE_SECURE=True
+DJANGO_CSRF_COOKIE_SECURE=True
+DJANGO_SECURE_HSTS_SECONDS=31536000
+DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS=True
+DJANGO_SECURE_HSTS_PRELOAD=False
+
+DB_ENGINE=postgres
+POSTGRES_DB=vninvest
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=change_me_db_password
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
+FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+DEFAULT_FROM_EMAIL=noreply@vninvest.edusuccess.vn
+
+SYSTEM_EMAIL_FALLBACK_ENABLED=False
+SYSTEM_EMAIL_FALLBACK_HOST=
+SYSTEM_EMAIL_FALLBACK_PORT=1025
+SYSTEM_EMAIL_FALLBACK_USE_TLS=False
+SYSTEM_EMAIL_FALLBACK_USE_SSL=False
+SYSTEM_EMAIL_FALLBACK_TIMEOUT_SECONDS=20
+SYSTEM_EMAIL_FALLBACK_FROM_EMAIL=noreply@vninvest.edusuccess.vn
+SYSTEM_EMAIL_FALLBACK_FROM_NAME=VNInvest
+
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+CACHE_REDIS_URL=redis://redis:6379/2
+REALTIME_REDIS_URL=redis://redis:6379/0
+REALTIME_CHANNEL_LAYER=redis
+REALTIME_ENABLED=True
+VNSTOCK_PRICE_UNIT=THOUSAND_VND
+
+WATCHLIST_SYNC_ENABLED=True
+WATCHLIST_SYNC_MINUTES=15
+WATCHLIST_SYNC_DAYS=5
+ENABLE_NEW_MARKET_VIEWS=False
+ENABLE_NEW_TRADING_VIEWS=False
+
+OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True
+OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY=300
+OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY=0
+OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY=3000
+OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY=30
+OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY=10000
+OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY=120
+
+GOOGLE_OAUTH_REDIRECT_URI=https://vninvest.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
+WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True
+STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE=True
+STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=True
+
+ADVISORY_AUTO_GENERATION_ENABLED=True
+ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES=240
+ADVISORY_AUTO_GENERATION_BATCH_SIZE=200
+ADVISORY_AUTO_GENERATION_JOB_LOCK_SECONDS=1800
+ADVISORY_AUTO_GENERATION_QUEUE_LOCK_SECONDS=1800
+ADVISORY_AUTO_GENERATION_ESTIMATED_TOKENS=250
+ADVISORY_AUTO_GENERATION_JITTER_MIN_SECONDS=5
+ADVISORY_AUTO_GENERATION_JITTER_MAX_SECONDS=15
+ADVISORY_CONCISE_BUDGET_THRESHOLD=1200
+
+REVERSAL_DETECTION_ENABLED=True
+REVERSAL_DETECTION_INTERVAL_SECONDS=30
+REVERSAL_WINDOW_MINUTES=15
+REVERSAL_MIN_CONSECUTIVE_BUY=3
+REVERSAL_MIN_SELL_VALUE_VND=5000000000
+REVERSAL_COOLDOWN_SECONDS=300
+```
+
+Replace at least these values before deploy:
+- `POSTGRES_PASSWORD`
+- `DJANGO_SECRET_KEY`
 
 ## 4) Run deployment
 
@@ -85,30 +169,7 @@ Use stack file: `portainer-stack-https.yml`
 
 ### Required Stack Environment Variables
 
-- `DOMAIN=vninvest.edusuccess.vn`
-- `LETSENCRYPT_EMAIL=vietdung@edusuccess.vn`
-- `POSTGRES_DB=vninvest`
-- `POSTGRES_USER=postgres`
-- `POSTGRES_PASSWORD=<strong_db_password>`
-- `DJANGO_SECRET_KEY=<very_long_random_secret>`
-- `DJANGO_DEBUG=False`
-- `DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1`
-- `CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `FRONTEND_BASE_URL=https://vninvest.edusuccess.vn`
-- `REALTIME_ENABLED=True`
-- `WATCHLIST_SYNC_ENABLED=True`
-- `WATCHLIST_SYNC_MINUTES=15`
-- `WATCHLIST_SYNC_DAYS=5`
-- `ENABLE_NEW_MARKET_VIEWS=False`
-- `ENABLE_NEW_TRADING_VIEWS=False`
-- `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True`
-- `OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY=300`
-- `OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY=0`
-- `OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY=3000`
-- `OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY=30`
-- `OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY=10000`
-- `OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY=120`
+For Portainer, use the one-time copy block at section `9.3` below.
 
 ### Notes
 
@@ -139,31 +200,62 @@ In Portainer, check the exact network name used by `nginx_proxy`, then use that 
 
 ### 9.3 Required environment variables
 
-- `DOMAIN=vninvest.edusuccess.vn`
-- `LETSENCRYPT_EMAIL=vietdung@edusuccess.vn`
-- `PROXY_NETWORK=nginx-proxy_default`
-- `POSTGRES_DB=vninvest`
-- `POSTGRES_USER=postgres`
-- `POSTGRES_PASSWORD=<strong_db_password>`
-- `DJANGO_SECRET_KEY=<very_long_random_secret>`
-- `DJANGO_DEBUG=False`
-- `DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1`
-- `CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn`
-- `FRONTEND_BASE_URL=https://vninvest.edusuccess.vn`
-- `REALTIME_ENABLED=True`
-- `WATCHLIST_SYNC_ENABLED=True`
-- `WATCHLIST_SYNC_MINUTES=15`
-- `WATCHLIST_SYNC_DAYS=5`
-- `ENABLE_NEW_MARKET_VIEWS=False`
-- `ENABLE_NEW_TRADING_VIEWS=False`
-- `OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True`
-- `OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY=300`
-- `OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY=0`
-- `OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY=3000`
-- `OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY=30`
-- `OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY=10000`
-- `OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY=120`
+Paste this full block into Portainer `Environment variables` (copy one time):
+
+```env
+DOMAIN=vninvest.edusuccess.vn
+LETSENCRYPT_EMAIL=vietdung@edusuccess.vn
+PROXY_NETWORK=nginx-proxy_default
+
+POSTGRES_DB=vninvest
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=change_me_db_password
+
+DJANGO_SECRET_KEY=change-me-very-long-random-string
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=vninvest.edusuccess.vn,localhost,127.0.0.1
+
+CORS_ALLOWED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
+CSRF_TRUSTED_ORIGINS=https://vninvest.edusuccess.vn,http://vninvest.edusuccess.vn
+FRONTEND_BASE_URL=https://vninvest.edusuccess.vn
+GOOGLE_OAUTH_REDIRECT_URI=https://vninvest.edusuccess.vn/admin/portfolio/systememailaccount/google/callback/
+
+REALTIME_ENABLED=True
+WATCHLIST_SYNC_ENABLED=True
+WATCHLIST_SYNC_MINUTES=15
+WATCHLIST_SYNC_DAYS=5
+ENABLE_NEW_MARKET_VIEWS=False
+ENABLE_NEW_TRADING_VIEWS=False
+
+OPEN_CORE_QUOTA_ENFORCEMENT_ENABLED=True
+OPEN_CORE_COMMUNITY_API_CALLS_PER_DAY=300
+OPEN_CORE_COMMUNITY_AI_REGENERATE_PER_DAY=0
+OPEN_CORE_PRO_INDIVIDUAL_API_CALLS_PER_DAY=3000
+OPEN_CORE_PRO_INDIVIDUAL_AI_REGENERATE_PER_DAY=30
+OPEN_CORE_PRO_TEAM_API_CALLS_PER_DAY=10000
+OPEN_CORE_PRO_TEAM_AI_REGENERATE_PER_DAY=120
+
+ADVISORY_AUTO_GENERATION_ENABLED=True
+ADVISORY_AUTO_GENERATION_INTERVAL_MINUTES=240
+ADVISORY_AUTO_GENERATION_BATCH_SIZE=200
+ADVISORY_AUTO_GENERATION_JOB_LOCK_SECONDS=1800
+ADVISORY_AUTO_GENERATION_QUEUE_LOCK_SECONDS=1800
+ADVISORY_AUTO_GENERATION_ESTIMATED_TOKENS=250
+ADVISORY_AUTO_GENERATION_JITTER_MIN_SECONDS=5
+ADVISORY_AUTO_GENERATION_JITTER_MAX_SECONDS=15
+ADVISORY_CONCISE_BUDGET_THRESHOLD=1200
+
+REVERSAL_DETECTION_ENABLED=True
+REVERSAL_DETECTION_INTERVAL_SECONDS=30
+REVERSAL_WINDOW_MINUTES=15
+REVERSAL_MIN_CONSECUTIVE_BUY=3
+REVERSAL_MIN_SELL_VALUE_VND=5000000000
+REVERSAL_COOLDOWN_SECONDS=300
+```
+
+At minimum, replace these before deploy:
+- `POSTGRES_PASSWORD`
+- `DJANGO_SECRET_KEY`
 
 ### 9.4 Notes for nginx_proxy/acme mode
 
