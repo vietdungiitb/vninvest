@@ -1859,7 +1859,7 @@ class MarketDataService:
         }
 
     def _build_stream_trades(self, stream_ticks: list[dict]) -> list[dict]:
-        trades = []
+        parsed_rows = []
         for tick in stream_ticks:
             raw_time = tick.get('ts', '')
             time_str = self._format_time(raw_time)
@@ -1872,24 +1872,37 @@ class MarketDataService:
                 volume_val = None
             if price_val is None or volume_val is None or volume_val <= 0:
                 continue
-            
-            # Scale to thousand VND
-            price_scale = 0.001
-            price_val = round(price_val * price_scale, 3)
 
-            trades.append(
+            parsed_rows.append(
                 {
                     'time': time_str,
-                    'price': price_val,
+                    'raw_price': price_val,
                     'volume': volume_val,
                     'side': side,
                     'match_type': tick.get('side', ''),
                 }
             )
+
+        if not parsed_rows:
+            return []
+
+        price_scale = self._resolve_quote_price_scale([row.get('raw_price') for row in parsed_rows])
+        trades = []
+        for row in parsed_rows:
+            normalized_price = self._normalize_quote_price(row.get('raw_price'), price_scale)
+            trades.append(
+                {
+                    'time': row['time'],
+                    'price': normalized_price,
+                    'volume': row['volume'],
+                    'side': row['side'],
+                    'match_type': row['match_type'],
+                }
+            )
         return trades
 
     def _build_dataframe_trades(self, df) -> list[dict]:
-        trades = []
+        parsed_rows = []
         for _, row in df.iterrows():
             raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
             raw_price = row.get('price') or row.get('close') or 0
@@ -1905,17 +1918,30 @@ class MarketDataService:
             if price_val is None or volume_val is None or volume_val <= 0:
                 continue
 
-            # Scale to thousand VND
-            price_scale = 0.001
-            price_val = round(price_val * price_scale, 3)
-
-            trades.append(
+            parsed_rows.append(
                 {
                     'time': self._format_time(raw_time),
-                    'price': price_val,
+                    'raw_price': price_val,
                     'volume': volume_val,
                     'side': self._normalize_side(match_type_raw),
                     'match_type': match_type_raw,
+                }
+            )
+
+        if not parsed_rows:
+            return []
+
+        price_scale = self._resolve_quote_price_scale([row.get('raw_price') for row in parsed_rows])
+        trades = []
+        for row in parsed_rows:
+            normalized_price = self._normalize_quote_price(row.get('raw_price'), price_scale)
+            trades.append(
+                {
+                    'time': row['time'],
+                    'price': normalized_price,
+                    'volume': row['volume'],
+                    'side': row['side'],
+                    'match_type': row['match_type'],
                 }
             )
         return trades
