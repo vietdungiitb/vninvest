@@ -844,10 +844,10 @@ function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAle
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
           <p className="text-sm font-semibold text-slate-200">{t('whaleAlertsDashboard.recentSignals')}</p>
-          <div className="mt-3 space-y-2">
+          <div className="panel-scrollbar mt-3 max-h-[280px] space-y-2 overflow-y-auto overscroll-contain pr-1">
             {signals.length === 0 ? (
               <p className="text-sm text-slate-500">{t('whaleAlertsDashboard.noSignalsSaved')}</p>
-            ) : signals.slice(0, 4).map((item) => (
+            ) : signals.map((item) => (
               <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
