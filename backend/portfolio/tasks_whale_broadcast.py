@@ -3,6 +3,7 @@ from __future__ import annotations
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
+
 def _broadcast_whale_advisory(
     *,
     advisory,

@@ -12,7 +12,7 @@ from portfolio.tasks_whale_metrics import (
     _build_whale_generation_result,
     _finalize_whale_generation_metrics,
 )
-from portfolio.tasks_whale_postprocess import _broadcast_whale_advisory
+from portfolio.tasks_whale_broadcast import _broadcast_whale_advisory
 
 logger = logging.getLogger(__name__)
 
