@@ -1442,6 +1442,7 @@ export default function StockDetail() {
   const [advisorySynthesisPreference, setAdvisorySynthesisPreference] = useState('balanced');
   const [advisoryMessage, setAdvisoryMessage] = useState('');
   const [advisorySessionConflict, setAdvisorySessionConflict] = useState(false);
+  const [advisoryPollingPaused, setAdvisoryPollingPaused] = useState(false);
   const [advisoryRetryTelemetry, setAdvisoryRetryTelemetry] = useState({
     scheduledCount: 0,
     recoveredCount: 0,
@@ -1620,6 +1621,7 @@ export default function StockDetail() {
         advisoryConflictRetryTimeoutRef.current = null;
       }
       advisoryConflictRetryCountRef.current = 0;
+      setAdvisoryPollingPaused(false);
       if (retryAttemptsUsed > 0) {
         setAdvisoryRetryTelemetry((prev) => ({
           ...prev,
@@ -1682,6 +1684,7 @@ export default function StockDetail() {
 
         if (canAutoRetry && attempt <= maxRetryAttempts) {
           const retryDelayMs = getAdvisoryConflictRetryDelayMs(attempt);
+          setAdvisoryPollingPaused(false);
           advisoryConflictRetryCountRef.current = attempt;
           setAdvisoryRetryTelemetry((prev) => ({
             ...prev,
@@ -1719,6 +1722,7 @@ export default function StockDetail() {
               lastEventAt: new Date().toISOString(),
             }));
           }
+          setAdvisoryPollingPaused(true);
           setAdvisoryMessage(conflictState.message);
         }
         setAdvisorySessionConflict(true);
@@ -1760,6 +1764,7 @@ export default function StockDetail() {
       clearTimeout(advisoryConflictRetryTimeoutRef.current);
       advisoryConflictRetryTimeoutRef.current = null;
     }
+    setAdvisoryPollingPaused(false);
     advisoryRetryTelemetrySyncKeyRef.current = '';
     setRetryEventOutcomeFilter('all');
     setRetryEventReasonFilter('all');
@@ -1999,6 +2004,7 @@ export default function StockDetail() {
 
     const run = async (silent = false) => {
       if (cancelled) return;
+      if (silent && advisoryPollingPaused) return;
       await fetchAdvisorySession({ silent });
     };
 
@@ -2011,7 +2017,7 @@ export default function StockDetail() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [fetchAdvisorySession, normalizedSymbol]);
+  }, [advisoryPollingPaused, fetchAdvisorySession, normalizedSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
