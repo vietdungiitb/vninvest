@@ -96,6 +96,32 @@ def _build_preflight_metric_rates(*, totals: dict) -> dict:
     }
 
 
+def _build_preflight_metric_summary(*, totals: dict, rates: dict) -> dict:
+    signal_items = [
+        {'name': name, 'count': int(totals.get(name) or 0)}
+        for name in WHALE_PREFLIGHT_METRIC_NAMES
+    ]
+    signal_items.sort(key=lambda item: (-item['count'], item['name']))
+    top_signal = signal_items[0] if signal_items else {'name': None, 'count': 0}
+
+    existing_total = int(totals.get(METRIC_EXISTING_ADVISORY_HIT) or 0) + int(totals.get(METRIC_EXISTING_ADVISORY_MISS) or 0)
+    cooldown_total = int(totals.get(METRIC_COOLDOWN_HIT) or 0) + int(totals.get(METRIC_COOLDOWN_MISS) or 0)
+    bypass_total = int(totals.get(METRIC_COOLDOWN_BYPASS_FORCE_REFRESH) or 0)
+    decision_volume_total = existing_total + cooldown_total + bypass_total
+
+    return {
+        'top_signal_name': top_signal['name'],
+        'top_signal_count': top_signal['count'],
+        'decision_volume_total': decision_volume_total,
+        'existing_advisory_decisions_total': existing_total,
+        'cooldown_decisions_total': cooldown_total,
+        'force_refresh_bypass_total': bypass_total,
+        'existing_advisory_hit_rate_pct': rates.get('existing_advisory_hit_rate_pct'),
+        'cooldown_hit_rate_pct': rates.get('cooldown_hit_rate_pct'),
+        'cooldown_bypass_rate_pct': rates.get('cooldown_bypass_rate_pct'),
+    }
+
+
 def _increment_preflight_counter(metric: str) -> None:
     if metric not in WHALE_PREFLIGHT_METRIC_NAMES:
         logger.warning('Unknown whale preflight metric: %s', metric)

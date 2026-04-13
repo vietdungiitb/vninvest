@@ -13,6 +13,7 @@ from portfolio.tasks_whale_preflight_cache import (
     METRIC_EXISTING_ADVISORY_HIT,
     WHALE_PREFLIGHT_METRIC_NAMES,
     _build_preflight_metric_rates,
+    _build_preflight_metric_summary,
     _build_skip_response,
     _check_cooldown_skip,
     _check_preflight_cache_skips,
@@ -87,6 +88,29 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
         self.assertEqual(rates['existing_advisory_hit_rate_pct'], 40.0)
         self.assertEqual(rates['cooldown_hit_rate_pct'], 75.0)
         self.assertEqual(rates['cooldown_bypass_rate_pct'], 20.0)
+
+    def test_build_preflight_metric_summary_returns_dashboard_fields(self):
+        summary = _build_preflight_metric_summary(
+            totals={
+                'existing_advisory_hit': 4,
+                'existing_advisory_miss': 6,
+                'cooldown_hit': 8,
+                'cooldown_miss': 2,
+                'cooldown_bypass_force_refresh': 1,
+            },
+            rates={
+                'existing_advisory_hit_rate_pct': 40.0,
+                'cooldown_hit_rate_pct': 80.0,
+                'cooldown_bypass_rate_pct': 9.09,
+            },
+        )
+
+        self.assertEqual(summary['top_signal_name'], 'cooldown_hit')
+        self.assertEqual(summary['top_signal_count'], 8)
+        self.assertEqual(summary['decision_volume_total'], 21)
+        self.assertEqual(summary['existing_advisory_decisions_total'], 10)
+        self.assertEqual(summary['cooldown_decisions_total'], 10)
+        self.assertEqual(summary['force_refresh_bypass_total'], 1)
 
     def test_build_skip_response_returns_expected_shape(self):
         result = _build_skip_response(symbol='VCB', reason='cooldown')
