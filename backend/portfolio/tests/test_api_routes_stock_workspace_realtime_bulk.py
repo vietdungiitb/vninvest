@@ -2586,6 +2586,29 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_realtime_ticker.assert_called_once_with('VNM')
 
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=100)
+    @patch('portfolio.market_data_service.fetch_price_board_dataframe')
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=False)
+    def test_realtime_ticker_refactored_on_demand_selects_matching_symbol_row(
+        self,
+        _mock_rate_limited,
+        _mock_get_cache,
+        mock_fetch_price_board,
+    ):
+        self.authenticate()
+        mock_fetch_price_board.return_value = pd.DataFrame([
+            {'symbol': 'VNM', 'match_price': 115.70, 'reference_price': 115.85},
+            {'symbol': 'FPT', 'match_price': 76.20, 'reference_price': 76.35},
+        ])
+
+        response = self.client.get('/api/realtime/ticker/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(float(response.data['current_price']), 76.20)
+        self.assertEqual(response.data['source'], 'vnstock_on_demand')
+
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
     @patch('portfolio.market_views.market_data_service.get_realtime_ticker')
     @patch('portfolio.views._cache_get', return_value=None)
@@ -2611,6 +2634,32 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_realtime_ticker.assert_not_called()
         mock_get_price_changes.assert_called_once_with(['VNM'])
+
+    @override_settings(ENABLE_NEW_MARKET_VIEWS=True, MARKET_VIEWS_CANARY_PERCENT=0)
+    @patch('portfolio.views.fetch_price_board_dataframe')
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_vnstock_rate_limited', return_value=False)
+    @patch('portfolio.views.get_price_changes')
+    def test_realtime_ticker_legacy_on_demand_selects_matching_symbol_row(
+        self,
+        mock_get_price_changes,
+        _mock_rate_limited,
+        _mock_cache_get,
+        mock_fetch_price_board,
+    ):
+        self.authenticate()
+        mock_get_price_changes.return_value = {'FPT': {}}
+        mock_fetch_price_board.return_value = pd.DataFrame([
+            {'symbol': 'VNM', 'match_price': 115.70, 'reference_price': 115.85},
+            {'symbol': 'FPT', 'match_price': 76.20, 'reference_price': 76.35},
+        ])
+
+        response = self.client.get('/api/realtime/ticker/FPT/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(float(response.data['current_price']), 76.20)
+        self.assertEqual(response.data['source'], 'vnstock_on_demand')
 
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_intraday_matched')

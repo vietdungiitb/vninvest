@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
 from django.utils import timezone
 
@@ -152,7 +153,31 @@ class MarketDataService:
                 try:
                     df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
                     if df is not None and not df.empty:
-                        row = df.iloc[0]
+                        def _select_symbol_row(frame, expected_symbol):
+                            normalized_expected = str(expected_symbol or '').strip().upper()
+                            candidate_columns = ('symbol', 'ticker', 'code', 'stock_symbol')
+
+                            for column_name in candidate_columns:
+                                if column_name in frame.columns:
+                                    try:
+                                        matches = frame[
+                                            frame[column_name].astype(str).str.strip().str.upper() == normalized_expected
+                                        ]
+                                    except Exception:
+                                        matches = frame.iloc[0:0]
+                                    if not matches.empty:
+                                        return matches.iloc[0]
+
+                            try:
+                                for idx, index_value in enumerate(frame.index):
+                                    if str(index_value or '').strip().upper() == normalized_expected:
+                                        return frame.iloc[idx]
+                            except Exception:
+                                pass
+
+                            return frame.iloc[0]
+
+                        row = _select_symbol_row(df, normalized_symbol)
                         try:
                             listing = row.get('listing', {})
                             match = row.get('match', {})
