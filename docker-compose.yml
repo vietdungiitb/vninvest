@@ -44,6 +44,9 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    environment:
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
     depends_on:
       db:
         condition: service_healthy
@@ -69,6 +72,9 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    environment:
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
     depends_on:
       db:
         condition: service_healthy
@@ -92,6 +98,9 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    environment:
+      REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
+      STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
     depends_on:
       db:
         condition: service_healthy

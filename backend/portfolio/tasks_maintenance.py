@@ -9,7 +9,7 @@ from django.core.cache import cache
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={"max_retries": 0})
+@shared_task(bind=True, name='portfolio.tasks.run_stream_consumer_batch', autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={"max_retries": 0})
 def run_stream_consumer_batch(self, group: str = "all") -> dict:
     """Run one batch of realtime stream consumers for active symbols."""
     from portfolio import tasks as tasks_facade
@@ -43,7 +43,7 @@ def run_stream_consumer_batch(self, group: str = "all") -> dict:
     return {"status": "ok", "group": group, "symbols": len(symbols), "processed": total}
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.cleanup_old_intraday_ticks', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def cleanup_old_intraday_ticks(self, keep_days: int = 7) -> dict:
     """Delete old IntradayTick rows to keep database size stable."""
     from datetime import date, timedelta
@@ -56,7 +56,7 @@ def cleanup_old_intraday_ticks(self, keep_days: int = 7) -> dict:
     return {"status": "ok", "deleted": deleted, "cutoff": str(cutoff)}
 
 
-@shared_task(bind=True, autoretry_for=(), retry_kwargs={"max_retries": 0})
+@shared_task(bind=True, name='portfolio.tasks.run_vnstock_price_board_benchmark', autoretry_for=(), retry_kwargs={"max_retries": 0})
 def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict:
     """Chạy benchmark provider price board và lưu kết quả vào cache.
 
@@ -97,7 +97,7 @@ def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict
         return {'status': 'error', 'reason': str(exc)}
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.trim_streams', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def trim_streams(self) -> dict:
     """Trim Redis streams to configured max length."""
     from portfolio import tasks as tasks_facade

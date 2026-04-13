@@ -247,6 +247,20 @@ SYSTEM_EMAIL_FALLBACK_REPLY_TO = os.getenv("SYSTEM_EMAIL_FALLBACK_REPLY_TO", "")
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 
+
+def _redis_url_with_db(redis_url: str, db_index: int, fallback: str) -> str:
+    candidate = str(redis_url or "").strip()
+    if not candidate:
+        return fallback
+    prefix, separator, suffix = candidate.rpartition("/")
+    if not separator:
+        return fallback
+    db_part = suffix.split("?", 1)[0]
+    if not db_part.isdigit():
+        return fallback
+    query = suffix[len(db_part):]
+    return f"{prefix}/{db_index}{query}"
+
 # Django cache — dùng Redis db=2 (riêng, không đụng Celery db=0)
 # Nếu Redis không chạy thì tự động fallback sang LocMemCache
 _CACHE_REDIS_URL = os.getenv("CACHE_REDIS_URL", "redis://localhost:6379/2")
@@ -456,7 +470,10 @@ REALTIME_REDIS_URL = os.getenv("REALTIME_REDIS_URL", CELERY_BROKER_URL)
 REALTIME_CHANNEL_LAYER = os.getenv("REALTIME_CHANNEL_LAYER", "redis").lower()
 
 # Redis Streams — db=1 (riêng với Celery db=0 và Cache db=2)
-STREAM_REDIS_URL = os.getenv("STREAM_REDIS_URL", "redis://localhost:6379/1")
+STREAM_REDIS_URL = os.getenv(
+    "STREAM_REDIS_URL",
+    _redis_url_with_db(REALTIME_REDIS_URL, 1, "redis://localhost:6379/1"),
+)
 STREAM_MAX_LEN = _env_int("STREAM_MAX_LEN", 50000)
 STREAM_CONSUMER_BATCH = _env_int("STREAM_CONSUMER_BATCH", 100)
 STREAM_SNAPSHOT_TTL = _env_int("STREAM_SNAPSHOT_TTL", 60)

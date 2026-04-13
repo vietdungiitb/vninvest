@@ -13,7 +13,7 @@ from portfolio.services import (
 )
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.activate_due_whale_config_rollouts', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def activate_due_whale_config_rollouts(self) -> dict:
     activated = activate_due_scheduled_whale_config_rollouts()
     return {
@@ -23,7 +23,7 @@ def activate_due_whale_config_rollouts(self) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.monitor_whale_config_anomalies', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def monitor_whale_config_anomalies(self, auto_revert: bool = True) -> dict:
     results = monitor_whale_config_rollout_anomalies(auto_revert=auto_revert)
     auto_reverted = [result for result in results if result.get('auto_reverted')]
@@ -37,7 +37,7 @@ def monitor_whale_config_anomalies(self, auto_revert: bool = True) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.refresh_whale_config_rollout_status', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def refresh_whale_config_rollout_status(self, rollout_id: int) -> dict:
     rollout = WhaleConfigRollout.objects.select_related('version').get(pk=rollout_id)
     worker_result = get_live_celery_worker_names()
@@ -55,7 +55,7 @@ def refresh_whale_config_rollout_status(self, rollout_id: int) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+@shared_task(bind=True, name='portfolio.tasks.ack_whale_config_rollout', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
 def ack_whale_config_rollout(
     self,
     rollout_id: int,

@@ -11,7 +11,7 @@ from portfolio.onboarding_trial_service import process_expired_onboarding_trials
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True, name='portfolio.tasks.process_plan_lifecycle_transitions', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def process_plan_lifecycle_transitions(self) -> dict:
     """
     Daily transition flow: trial -> grace, then grace expiry -> free.
@@ -63,7 +63,7 @@ def process_plan_lifecycle_transitions(self) -> dict:
     return {'status': 'ok', **transitions}
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True, name='portfolio.tasks.process_expired_onboarding_trials_task', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def process_expired_onboarding_trials_task(self, batch_size: int = 500) -> dict:
     """Downgrade expired onboarding trials to fallback plan in bounded batches."""
     result = process_expired_onboarding_trials(batch_size=batch_size)

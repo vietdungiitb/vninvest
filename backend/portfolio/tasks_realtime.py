@@ -26,7 +26,7 @@ def _whale_thresholds_for_user(user_id: int | None) -> list[float]:
     return [threshold_vnd]
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
+@shared_task(bind=True, name='portfolio.tasks.collect_and_publish_realtime', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
 def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
     from portfolio import tasks as tasks_facade
 

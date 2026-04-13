@@ -16,7 +16,7 @@ ORDER_FLOW_COOLDOWN_SECONDS = 300
 ORDER_FLOW_MAX_SYMBOLS = 30
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
+@shared_task(bind=True, name='portfolio.tasks.detect_and_store_order_flow', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
 def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
     """Run dark-flow detection for tracked/watchlist symbols and persist alerts."""
     if not getattr(settings, 'ORDER_FLOW_DETECTION_ENABLED', True):
@@ -176,7 +176,7 @@ def detect_and_store_order_flow(self, symbol: str | None = None) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
+@shared_task(bind=True, name='portfolio.tasks.detect_whale_reversal', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 0})
 def detect_whale_reversal(self, symbol: str | None = None) -> dict:
     """Detect reversal signals and queue reversal advisories for tracked users."""
     if not getattr(settings, 'REVERSAL_DETECTION_ENABLED', True):

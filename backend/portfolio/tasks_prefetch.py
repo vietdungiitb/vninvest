@@ -537,7 +537,7 @@ def _record_vnstock_timeout(exc: Exception) -> bool:
     return False
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, name='portfolio.tasks.prefetch_ticker_price_board')
 def prefetch_ticker_price_board(self) -> dict:
     runtime_settings = _get_prefetch_runtime_settings()
     time_policy = _get_prefetch_time_policy()

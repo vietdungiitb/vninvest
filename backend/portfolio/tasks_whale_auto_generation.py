@@ -16,7 +16,7 @@ from portfolio.tasks_advisory_helpers import (
 logger = logging.getLogger(__name__)
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True, name='portfolio.tasks.auto_generate_advisories_for_all_tracked', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None) -> dict:
     """Auto-generate advisories for tracked symbols with enabled users."""
     batch_size = batch_size or int(os.getenv('ADVISORY_AUTO_GENERATE_BATCH_SIZE', '20'))

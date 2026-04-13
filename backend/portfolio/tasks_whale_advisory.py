@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY = 'advisory:auto-generation:job-lock'
 ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX = 'advisory:event-merge'
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True, name='portfolio.tasks.flush_merged_advisory_event', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     """Flush merged advisory event and trigger generation task."""
     normalized_symbol = _normalize_symbol(symbol)

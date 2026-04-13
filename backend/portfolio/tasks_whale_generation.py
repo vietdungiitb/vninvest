@@ -22,7 +22,7 @@ from portfolio.tasks_whale_provider_bookkeeping_phase import _execute_whale_prov
 from portfolio.tasks_whale_provider_phase import _execute_whale_provider_phase
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
+@shared_task(bind=True, name='portfolio.tasks.generate_whale_advisory_task', autoretry_for=(Exception,), retry_backoff=60, retry_kwargs={'max_retries': 2})
 def generate_whale_advisory_task(
     self,
     symbol: str,

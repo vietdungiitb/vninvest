@@ -120,7 +120,7 @@ def _generate_news_digest_for_user(user) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
+@shared_task(bind=True, name='portfolio.tasks.generate_all_portfolio_news_digests_task', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def generate_all_portfolio_news_digests_task(self, batch_size: int = 200) -> dict:
     """
     Sprint35 Layer 3: Celery Beat 16:05 ICT (Mon-Fri).

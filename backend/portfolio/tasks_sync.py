@@ -6,7 +6,7 @@ from django.conf import settings
 from portfolio.models import TrackedSymbol, WatchlistGroup
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
+@shared_task(bind=True, name='portfolio.tasks.sync_user_watch_assets', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
 def sync_user_watch_assets(self, user_id: int, days: int | None = None) -> dict:
     from portfolio import tasks as tasks_facade
 
@@ -21,7 +21,7 @@ def sync_user_watch_assets(self, user_id: int, days: int | None = None) -> dict:
     }
 
 
-@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
+@shared_task(bind=True, name='portfolio.tasks.sync_all_watch_assets', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
 def sync_all_watch_assets(self, days: int | None = None) -> dict:
     from portfolio import tasks as tasks_facade
 
