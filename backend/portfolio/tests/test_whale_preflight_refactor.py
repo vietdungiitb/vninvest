@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
@@ -17,6 +18,8 @@ from portfolio.tasks_whale_preflight_cache import (
     _increment_preflight_counter,
     _metric_cache_key,
     _read_preflight_metrics,
+    _read_preflight_metrics_window,
+    _sum_preflight_metrics_window,
 )
 
 
@@ -41,6 +44,33 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
 
         mock_incr.assert_not_called()
         self.assertTrue(mock_warn.called)
+
+    @patch('portfolio.tasks_whale_preflight_cache._read_preflight_metrics')
+    def test_read_preflight_metrics_window_builds_oldest_to_newest(self, mock_read):
+        mock_read.side_effect = [
+            {'existing_advisory_hit': 1},
+            {'existing_advisory_hit': 2},
+            {'existing_advisory_hit': 3},
+        ]
+
+        rows = _read_preflight_metrics_window(
+            end_date=date(2026, 4, 13),
+            window_days=3,
+        )
+
+        self.assertEqual([row['date'] for row in rows], ['2026-04-11', '2026-04-12', '2026-04-13'])
+        self.assertEqual(rows[-1]['metrics']['existing_advisory_hit'], 3)
+
+    def test_sum_preflight_metrics_window_aggregates_numeric_values(self):
+        totals = _sum_preflight_metrics_window(
+            window_rows=[
+                {'date': '2026-04-12', 'metrics': {'existing_advisory_hit': 2, 'cooldown_hit': 4}},
+                {'date': '2026-04-13', 'metrics': {'existing_advisory_hit': 3, 'cooldown_hit': 1}},
+            ]
+        )
+
+        self.assertEqual(totals['existing_advisory_hit'], 5)
+        self.assertEqual(totals['cooldown_hit'], 5)
 
     def test_build_skip_response_returns_expected_shape(self):
         result = _build_skip_response(symbol='VCB', reason='cooldown')

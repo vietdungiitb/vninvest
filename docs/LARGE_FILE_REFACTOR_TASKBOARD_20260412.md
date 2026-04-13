@@ -100,9 +100,12 @@ Cap nhat: 2026-04-13
 - [x] Slice 52-53: tach cache cooldown checks + gom early-return pattern
 - [x] Slice 54: bo sung test coverage cho whale preflight refactor helpers (8 test pass)
 - [x] Slice 55: them lightweight preflight profiling + cache metrics
+- [x] Slice 56: chuan hoa metric naming contract + helper read metrics + fallback endpoint
+- [x] Slice 57: bo sung preflight metrics trend/totals theo window_days (1-30) cho admin runtime KPI
 
 ### Dang lam
 - [ ] Hardening preflight observability contract (metrics key + read helper + fallback)
+- [ ] Slice 58: bo sung API contract test cho date + window_days bi malformed va gioi han min/max
 - [ ] Tach backend/portfolio/services.py (1918 lines) - Uu tien cao
 - [ ] Tach backend/portfolio/models.py (1913 lines) - Uu tien cao
 - [x] Chia test_api_routes theo cum domain

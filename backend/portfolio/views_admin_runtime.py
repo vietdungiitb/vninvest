@@ -3,7 +3,12 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
-from portfolio.tasks_whale_preflight_cache import WHALE_PREFLIGHT_METRIC_NAMES, _read_preflight_metrics
+from portfolio.tasks_whale_preflight_cache import (
+    WHALE_PREFLIGHT_METRIC_NAMES,
+    _read_preflight_metrics,
+    _read_preflight_metrics_window,
+    _sum_preflight_metrics_window,
+)
 
 
 def _legacy_views_module():
@@ -106,11 +111,17 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     Admin-only: trả về counters profiling cho whale preflight cache checks.
     Query params:
       - date=YYYY-MM-DD (optional, default=today localdate)
+            - window_days=1..30 (optional, default=1)
     """
     from time import time as _time
     from django.utils import timezone
 
     requested_date = str(request.query_params.get('date') or '').strip()
+    try:
+        window_days = min(max(int(request.query_params.get('window_days', 1)), 1), 30)
+    except (TypeError, ValueError):
+        window_days = 1
+
     target_date = timezone.localdate()
     if requested_date:
         try:
@@ -126,14 +137,21 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
     day_key = target_date.isoformat()
     try:
         metrics = _read_preflight_metrics(day_key=day_key)
+        trend = _read_preflight_metrics_window(end_date=target_date, window_days=window_days)
+        totals = _sum_preflight_metrics_window(window_rows=trend)
     except Exception:
         metrics = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
+        trend = [{'date': day_key, 'metrics': metrics}] if window_days == 1 else []
+        totals = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
 
     return Response(
         {
             'sampled_at': _time(),
             'date': day_key,
+            'window_days': window_days,
             'whale_preflight_metrics': metrics,
+            'whale_preflight_metrics_trend': trend,
+            'whale_preflight_metrics_totals': totals,
         },
         status=status.HTTP_200_OK,
     )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import date, timedelta
 
 from django.core.cache import cache
 from django.utils import timezone
@@ -36,6 +37,43 @@ def _read_preflight_metrics(*, day_key: str, metric_names: tuple[str, ...] = WHA
         except Exception:
             metrics[name] = 0
     return metrics
+
+
+def _read_preflight_metrics_window(
+    *,
+    end_date: date,
+    window_days: int,
+    metric_names: tuple[str, ...] = WHALE_PREFLIGHT_METRIC_NAMES,
+) -> list[dict]:
+    rows: list[dict] = []
+    for offset in reversed(range(window_days)):
+        current_day = end_date - timedelta(days=offset)
+        day_key = current_day.isoformat()
+        rows.append(
+            {
+                'date': day_key,
+                'metrics': _read_preflight_metrics(day_key=day_key, metric_names=metric_names),
+            }
+        )
+    return rows
+
+
+def _sum_preflight_metrics_window(
+    *,
+    window_rows: list[dict],
+    metric_names: tuple[str, ...] = WHALE_PREFLIGHT_METRIC_NAMES,
+) -> dict:
+    totals = {name: 0 for name in metric_names}
+    for row in window_rows:
+        metrics = row.get('metrics') if isinstance(row, dict) else None
+        if not isinstance(metrics, dict):
+            continue
+        for name in metric_names:
+            try:
+                totals[name] += int(metrics.get(name) or 0)
+            except Exception:
+                continue
+    return totals
 
 
 def _increment_preflight_counter(metric: str) -> None:

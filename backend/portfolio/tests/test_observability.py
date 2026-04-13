@@ -258,7 +258,10 @@ class AdminRuntimeKPITests(APITestCase):
         data = response.json()
         self.assertIn('sampled_at', data)
         self.assertIn('date', data)
+        self.assertIn('window_days', data)
         self.assertIn('whale_preflight_metrics', data)
+        self.assertIn('whale_preflight_metrics_trend', data)
+        self.assertIn('whale_preflight_metrics_totals', data)
 
         metrics = data['whale_preflight_metrics']
         self.assertIn('existing_advisory_hit', metrics)
@@ -268,6 +271,31 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('cooldown_bypass_force_refresh', metrics)
         self.assertEqual(metrics['existing_advisory_hit'], 3)
         self.assertEqual(metrics['cooldown_hit'], 5)
+
+    @patch('portfolio.views_admin_runtime._sum_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics_window')
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics')
+    def test_admin_runtime_kpi_whale_preflight_metrics_supports_window_days(
+        self,
+        mock_read_day,
+        mock_read_window,
+        mock_sum_window,
+    ):
+        mock_read_day.return_value = {'existing_advisory_hit': 2, 'cooldown_hit': 1}
+        mock_read_window.return_value = [
+            {'date': '2026-04-12', 'metrics': {'existing_advisory_hit': 1, 'cooldown_hit': 0}},
+            {'date': '2026-04-13', 'metrics': {'existing_advisory_hit': 2, 'cooldown_hit': 1}},
+        ]
+        mock_sum_window.return_value = {'existing_advisory_hit': 3, 'cooldown_hit': 1}
+
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/?window_days=2')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertEqual(data['window_days'], 2)
+        self.assertEqual(len(data['whale_preflight_metrics_trend']), 2)
+        self.assertEqual(data['whale_preflight_metrics_totals']['existing_advisory_hit'], 3)
 
     @patch('portfolio.views_admin_runtime._read_preflight_metrics', side_effect=RuntimeError('cache down'))
     def test_admin_runtime_kpi_whale_preflight_metrics_handles_metric_reader_error(self, _mock_read):
@@ -280,4 +308,6 @@ class AdminRuntimeKPITests(APITestCase):
         metrics = data['whale_preflight_metrics']
         self.assertEqual(metrics.get('existing_advisory_hit'), 0)
         self.assertEqual(metrics.get('cooldown_hit'), 0)
+        self.assertEqual(data.get('window_days'), 1)
+        self.assertIn('whale_preflight_metrics_totals', data)
 
