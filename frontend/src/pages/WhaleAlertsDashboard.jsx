@@ -1011,34 +1011,35 @@ export default function WhaleAlertsDashboard() {
         </div>
       </section>
 
-      {/* Row 1: Master Chart (dominant) + Right Widget Stack */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2.2fr_0.8fr]">
-        <DarkMoneyMasterChart symbol={normalizedSymbol} />
+      {/* Main grid: left 2 cols (chart + feed + radar) | right col (RVOL + Donut + Depth) */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_2fr_1fr]">
+        {/* Left 2 columns — stacked vertically */}
+        <div className="xl:col-span-2 space-y-4">
+          <DarkMoneyMasterChart symbol={normalizedSymbol} />
+          <WhaleFeedPanel
+            symbol={normalizedSymbol}
+            realtimeAlerts={symbolAlerts}
+            feedData={feedData}
+            loading={feedLoading}
+            onRefresh={fetchFeed}
+            feedHeightClass="h-[320px] sm:h-[360px]"
+          />
+          <OrderFlowRadarPanel
+            symbol={normalizedSymbol}
+            loading={orderFlowLoading}
+            orderFlowData={orderFlowData}
+            latestRealtimeAlert={symbolDarkFlowAlert}
+            window={orderFlowWindow}
+            onWindowChange={setOrderFlowWindow}
+          />
+        </div>
+
+        {/* Right column — widget stack */}
         <div className="flex flex-col gap-4">
+          <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
           <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
           <DepthChartPanel symbol={normalizedSymbol} compact />
         </div>
-      </div>
-
-      {/* Row 2: Feed + Order Flow Radar + RVOL */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <WhaleFeedPanel
-          symbol={normalizedSymbol}
-          realtimeAlerts={symbolAlerts}
-          feedData={feedData}
-          loading={feedLoading}
-          onRefresh={fetchFeed}
-          feedHeightClass="h-[320px] sm:h-[360px]"
-        />
-        <OrderFlowRadarPanel
-          symbol={normalizedSymbol}
-          loading={orderFlowLoading}
-          orderFlowData={orderFlowData}
-          latestRealtimeAlert={symbolDarkFlowAlert}
-          window={orderFlowWindow}
-          onWindowChange={setOrderFlowWindow}
-        />
-        <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
       </div>
     </div>
   );
