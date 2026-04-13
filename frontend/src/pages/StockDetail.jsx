@@ -2833,7 +2833,7 @@ export default function StockDetail() {
                 value={alertTargetPrice}
                 onChange={(event) => setAlertTargetPrice(event.target.value)}
                 placeholder={t('stockDetail.alertPriceLevel')}
-                className="min-w-[120px] flex-1 bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                className="w-[120px] min-w-[120px] bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
               />
               <button
                 onClick={handleCreateAlert}
@@ -2844,7 +2844,7 @@ export default function StockDetail() {
               </button>
             </div>
 
-            <div className="ml-auto w-full xl:w-auto xl:min-w-[406px] grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-950/75 px-3 py-2 text-[12px]">
+            <div className="ml-auto w-full xl:w-auto xl:min-w-[368px] grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-950/75 px-3 py-2 text-[12px]">
               <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2.5 py-1">
                 <p className="text-label">{t('stockDetail.shortlist')}</p>
                 <p className={`mt-0.5 font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-400'}`}>
