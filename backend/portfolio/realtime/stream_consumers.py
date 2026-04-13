@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_stream_client() -> redis.Redis:
-    url = getattr(settings, "STREAM_REDIS_URL", "redis://localhost:6379/1")
-    return redis.from_url(url, decode_responses=True)
+    from portfolio.realtime.redis_pool import get_stream_client
+    return get_stream_client()
 
 
 # ---------------------------------------------------------------------------
@@ -123,16 +123,18 @@ class DbWriterConsumer(TickConsumerBase):
                 volume_str = fields.get("volume", "0")
                 side_str = fields.get("side", "UNKNOWN")
 
-                # Parse timestamp
+                # Parse timestamp — always produce timezone-aware datetimes
                 try:
                     if " " in ts_str:
                         dt = datetime.fromisoformat(ts_str)
                     elif "T" in ts_str:
-                        dt = datetime.fromisoformat(ts_str.replace("Z", ""))
+                        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
                     else:
-                        dt = datetime.now()
+                        from django.utils import timezone as dj_tz
+                        dt = dj_tz.now()
                 except (ValueError, TypeError):
-                    dt = datetime.now()
+                    from django.utils import timezone as dj_tz
+                    dt = dj_tz.now()
 
                 trade_date = dt.date() if isinstance(dt, datetime) else date.today()
                 trade_time = dt.time() if isinstance(dt, datetime) else datetime.now().time()

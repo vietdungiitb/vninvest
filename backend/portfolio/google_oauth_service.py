@@ -95,4 +95,7 @@ def fetch_google_user_email(*, access_token: str, timeout_seconds: int = 20) -> 
     )
     response.raise_for_status()
     payload = response.json()
-    return str(payload.get('email') or '').strip()
+    email = str(payload.get('email') or '').strip()
+    if email and not payload.get('email_verified', False):
+        raise ValueError('Google email chưa được xác thực bởi Google. Vui lòng xác thực email trong tài khoản Google trước.')
+    return email

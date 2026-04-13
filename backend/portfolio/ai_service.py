@@ -167,7 +167,7 @@ def _openai_compatible_completion(
                 wait_seconds = float(retry_after_raw) if retry_after_raw else _retry_base_seconds * (2 ** attempt)
             except (TypeError, ValueError):
                 wait_seconds = _retry_base_seconds * (2 ** attempt)
-            wait_seconds = min(max(wait_seconds, 1.0), 60.0)
+            wait_seconds = min(max(wait_seconds, 1.0), 10.0)  # Capped at 10s to avoid blocking Celery worker
             logger.warning(
                 'AI provider 429 rate limit url=%s attempt=%d/%d — retrying in %.1fs',
                 target_url,
@@ -217,7 +217,7 @@ def _claude_completion(api_key: str, model: str, prompt: str, max_tokens: int) -
                 wait_seconds = float(retry_after_raw) if retry_after_raw else _retry_base_seconds * (2 ** attempt)
             except (TypeError, ValueError):
                 wait_seconds = _retry_base_seconds * (2 ** attempt)
-            wait_seconds = min(max(wait_seconds, 1.0), 60.0)
+            wait_seconds = min(max(wait_seconds, 1.0), 10.0)  # Capped at 10s to avoid blocking Celery worker
             logger.warning('Claude 429 attempt=%d/%d — retrying in %.1fs', attempt + 1, _max_retries, wait_seconds)
             time.sleep(wait_seconds)
             continue

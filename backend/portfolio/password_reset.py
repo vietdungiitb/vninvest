@@ -28,6 +28,7 @@ def generate_password_reset_token(user: User) -> str:
         {
             'user_id': user.id,
             'email': user.email,
+            'pw_hash': user.password[:20],
         },
         salt=PASSWORD_RESET_SALT,
     )
@@ -42,6 +43,10 @@ def resolve_password_reset_token(token: str) -> User:
     user = User.objects.get(pk=payload['user_id'])
     if (user.email or '').strip().lower() != (payload.get('email') or '').strip().lower():
         raise signing.BadSignature('Email does not match token payload.')
+    # Invalidate token if password has already been changed since token was generated.
+    token_pw_hash = payload.get('pw_hash', '')
+    if token_pw_hash and user.password[:20] != token_pw_hash:
+        raise signing.BadSignature('Token đã bị vô hiệu do mật khẩu đã được thay đổi.')
     return user
 
 

@@ -176,7 +176,11 @@ class PortfolioListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Portfolio.objects.filter(user=self.request.user)
+        from django.db.models import Count
+        return Portfolio.objects.filter(user=self.request.user).annotate(
+            transaction_count_annotated=Count('sub_accounts__transactions', distinct=True),
+            subaccount_count_annotated=Count('sub_accounts', distinct=True)
+        )
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

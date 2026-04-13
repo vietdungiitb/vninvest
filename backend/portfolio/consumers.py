@@ -46,11 +46,29 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
         except Exception as e:
             logger.warning("WebSocket: Disconnect error: %s", e)
 
+    MAX_SUBSCRIBED_SYMBOLS = 50
+
     async def receive_json(self, content, **kwargs):
+        import re
         action = content.get("action")
-        symbols = [str(symbol).upper() for symbol in content.get("symbols", []) if symbol]
+        raw_symbols = content.get("symbols", [])
+        # Validate symbol format: 1-10 uppercase alphanumeric chars
+        symbols = [
+            str(s).upper()
+            for s in raw_symbols
+            if s and re.match(r'^[A-Z0-9]{1,10}$', str(s).upper())
+        ]
 
         if action == "subscribe":
+            # Enforce subscription limit
+            current_count = len(self.symbol_groups) // 2  # ticker + whale per symbol
+            new_count = current_count + len(symbols)
+            if new_count > self.MAX_SUBSCRIBED_SYMBOLS:
+                await self.send_json({
+                    "event_type": "error",
+                    "detail": f"Vượt quá giới hạn {self.MAX_SUBSCRIBED_SYMBOLS} symbols. Hiện tại: {current_count}.",
+                })
+                return
             await self._subscribe_symbols(symbols)
             await self.send_json({"event_type": "subscribed", "symbols": symbols})
             return

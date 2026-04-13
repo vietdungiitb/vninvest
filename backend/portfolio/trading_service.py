@@ -10,7 +10,11 @@ class TradingService:
 
     @staticmethod
     def portfolio_queryset_for_user(user):
-        return Portfolio.objects.filter(user=user)
+        from django.db.models import Count
+        return Portfolio.objects.filter(user=user).annotate(
+            transaction_count_annotated=Count('sub_accounts__transactions', distinct=True),
+            subaccount_count_annotated=Count('sub_accounts', distinct=True)
+        )
 
     @staticmethod
     @transaction.atomic

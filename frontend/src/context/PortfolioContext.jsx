@@ -2,7 +2,7 @@
  * context/PortfolioContext.jsx
  * Global state: danh sách portfolios, portfolio đang chọn, JWT tokens, userconfig, CASL ability.
  */
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   getPortfolios,
   createPortfolio as createPortfolioRequest,
@@ -53,7 +53,7 @@ export function PortfolioProvider({ children }) {
     setAbility(createAbilityFromRules([]));
   }, []);
 
-  const saveTokens = (access, refresh) => {
+  const saveTokens = useCallback((access, refresh) => {
     const nextRefresh = refresh || localStorage.getItem('refresh_token');
     localStorage.setItem('access_token', access);
     if (nextRefresh) {
@@ -62,7 +62,7 @@ export function PortfolioProvider({ children }) {
     setAccessToken(access);
     setRefreshTokenValue(nextRefresh);
     setIsAuthenticated(true);
-  };
+  }, []);
 
   const syncAuthState = useCallback(async () => {
     const [meResult, userConfigResult] = await Promise.allSettled([
@@ -154,8 +154,8 @@ export function PortfolioProvider({ children }) {
       try {
         const res = await getPortfolios();
         setPortfolios(res.data);
-        if (res.data.length > 0 && !activePortfolioId) {
-          setActivePortfolioId(res.data[0].id);
+        if (res.data.length > 0) {
+          setActivePortfolioId((prev) => prev || res.data[0].id);
         }
       } catch (err) {
         if (err?.response?.status === 401) {
@@ -166,7 +166,7 @@ export function PortfolioProvider({ children }) {
       } finally {
         setLoading(false);
       }
-    }, [activePortfolioId, logout]);
+    }, [logout]);
 
   // ---------- Portfolio mutations ----------
   const createPortfolio = useCallback(async (data) => {
@@ -231,32 +231,40 @@ export function PortfolioProvider({ children }) {
     };
   }, [isAuthenticated, accessToken, syncAuthState, fetchPortfolios]);
 
+  const contextValue = useMemo(() => ({
+    portfolios,
+    activePortfolioId,
+    setActivePortfolioId,
+    isAuthenticated,
+    login,
+    register,
+    resendVerification,
+    logout,
+    refreshAccessToken,
+    userConfig,
+    updateUserConfig,
+    loading,
+    fetchPortfolios,
+    userPlan,
+    userIdentity,
+    ability,
+    createPortfolio,
+    updatePortfolio,
+    deletePortfolio,
+    createSubAccount,
+    updateSubAccount,
+    deleteSubAccount,
+  }), [
+    portfolios, activePortfolioId, isAuthenticated, login, register,
+    resendVerification, logout, refreshAccessToken, userConfig,
+    updateUserConfig, loading, fetchPortfolios, userPlan, userIdentity,
+    ability, createPortfolio, updatePortfolio, deletePortfolio,
+    createSubAccount, updateSubAccount, deleteSubAccount,
+  ]);
+
   return (
     <AbilityContext.Provider value={ability}>
-      <PortfolioContext.Provider value={{
-        portfolios,
-        activePortfolioId,
-        setActivePortfolioId,
-        isAuthenticated,
-        login,
-        register,
-        resendVerification,
-        logout,
-        refreshAccessToken,
-        userConfig,
-        updateUserConfig,
-        loading,
-        fetchPortfolios,
-        userPlan,
-        userIdentity,
-        ability,
-        createPortfolio,
-        updatePortfolio,
-        deletePortfolio,
-        createSubAccount,
-        updateSubAccount,
-        deleteSubAccount,
-      }}>
+      <PortfolioContext.Provider value={contextValue}>
         {children}
       </PortfolioContext.Provider>
     </AbilityContext.Provider>

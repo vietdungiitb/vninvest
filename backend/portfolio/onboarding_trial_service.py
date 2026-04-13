@@ -148,7 +148,7 @@ def apply_onboarding_trial_for_new_user(
 def process_expired_onboarding_trials(batch_size: int = 500, now=None) -> dict:
     current = now or timezone.now()
     policy = get_active_onboarding_policy(now=current)
-    fallback_plan = (policy.fallback_plan if policy else UserConfig.PlanChoices.BASIC)
+    fallback_plan = (policy.fallback_plan if policy else UserConfig.PlanChoices.FREE)
 
     qs = (
         UserConfig.objects.select_for_update(skip_locked=True)
