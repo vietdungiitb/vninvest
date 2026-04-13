@@ -3,6 +3,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
+from portfolio.tasks_whale_preflight_cache import WHALE_PREFLIGHT_METRIC_NAMES, _read_preflight_metrics
+
 
 def _legacy_views_module():
     from . import views as legacy_views
@@ -106,7 +108,6 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
       - date=YYYY-MM-DD (optional, default=today localdate)
     """
     from time import time as _time
-    from django.core.cache import cache
     from django.utils import timezone
 
     requested_date = str(request.query_params.get('date') or '').strip()
@@ -123,17 +124,10 @@ def admin_runtime_kpi_whale_preflight_metrics_api(request):
             )
 
     day_key = target_date.isoformat()
-    metric_names = (
-        'existing_advisory_hit',
-        'existing_advisory_miss',
-        'cooldown_hit',
-        'cooldown_miss',
-        'cooldown_bypass_force_refresh',
-    )
-    metrics = {
-        name: int(cache.get(f'whale_preflight:metrics:{day_key}:{name}') or 0)
-        for name in metric_names
-    }
+    try:
+        metrics = _read_preflight_metrics(day_key=day_key)
+    except Exception:
+        metrics = {name: 0 for name in WHALE_PREFLIGHT_METRIC_NAMES}
 
     return Response(
         {

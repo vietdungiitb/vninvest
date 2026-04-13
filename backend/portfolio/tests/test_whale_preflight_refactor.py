@@ -8,13 +8,40 @@ from portfolio.tasks_whale_preflight import (
     _unwrap_or_return_skip,
 )
 from portfolio.tasks_whale_preflight_cache import (
+    METRIC_COOLDOWN_HIT,
+    METRIC_EXISTING_ADVISORY_HIT,
+    WHALE_PREFLIGHT_METRIC_NAMES,
     _build_skip_response,
     _check_cooldown_skip,
     _check_preflight_cache_skips,
+    _increment_preflight_counter,
+    _metric_cache_key,
+    _read_preflight_metrics,
 )
 
 
 class WhalePreflightCacheRefactorTests(SimpleTestCase):
+    def test_metric_cache_key_uses_prefix_and_day(self):
+        key = _metric_cache_key(day_key='2026-04-13', metric=METRIC_EXISTING_ADVISORY_HIT)
+        self.assertEqual(key, 'whale_preflight:metrics:2026-04-13:existing_advisory_hit')
+
+    @patch('portfolio.tasks_whale_preflight_cache.cache.get')
+    def test_read_preflight_metrics_returns_zero_on_cache_error(self, mock_cache_get):
+        mock_cache_get.side_effect = RuntimeError('cache unavailable')
+
+        metrics = _read_preflight_metrics(day_key='2026-04-13')
+
+        self.assertEqual(set(metrics.keys()), set(WHALE_PREFLIGHT_METRIC_NAMES))
+        self.assertTrue(all(v == 0 for v in metrics.values()))
+
+    @patch('portfolio.tasks_whale_preflight_cache.logger.warning')
+    @patch('portfolio.tasks_whale_preflight_cache.cache.incr')
+    def test_increment_preflight_counter_ignores_unknown_metric(self, mock_incr, mock_warn):
+        _increment_preflight_counter('unknown_metric')
+
+        mock_incr.assert_not_called()
+        self.assertTrue(mock_warn.called)
+
     def test_build_skip_response_returns_expected_shape(self):
         result = _build_skip_response(symbol='VCB', reason='cooldown')
 
@@ -55,7 +82,7 @@ class WhalePreflightCacheRefactorTests(SimpleTestCase):
         )
 
         self.assertIsNotNone(skip)
-        mock_counter.assert_called_with('cooldown_hit')
+        mock_counter.assert_called_with(METRIC_COOLDOWN_HIT)
 
 
 class WhalePreflightContextAssemblyTests(SimpleTestCase):

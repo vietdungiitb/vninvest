@@ -269,3 +269,15 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertEqual(metrics['existing_advisory_hit'], 3)
         self.assertEqual(metrics['cooldown_hit'], 5)
 
+    @patch('portfolio.views_admin_runtime._read_preflight_metrics', side_effect=RuntimeError('cache down'))
+    def test_admin_runtime_kpi_whale_preflight_metrics_handles_metric_reader_error(self, _mock_read):
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertIn('whale_preflight_metrics', data)
+        metrics = data['whale_preflight_metrics']
+        self.assertEqual(metrics.get('existing_advisory_hit'), 0)
+        self.assertEqual(metrics.get('cooldown_hit'), 0)
+
