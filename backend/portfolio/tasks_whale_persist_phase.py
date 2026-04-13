@@ -9,12 +9,14 @@ from portfolio.tasks_advisory_helpers import (
     _token_log_source_for_advisory_source,
 )
 from portfolio.tasks_whale_bookkeeping import _resolve_generation_refresh_count
-from portfolio.tasks_whale_postprocess import (
-    _create_advisory_token_log,
-    _create_whale_advisory_record,
+from portfolio.tasks_whale_quality import (
     _normalize_generated_advisory_metadata,
     _record_generation_quality_metrics,
     _resolve_generated_advisory_severity,
+)
+from portfolio.tasks_whale_postprocess import (
+    _create_advisory_token_log,
+    _create_whale_advisory_record,
 )
 
 
