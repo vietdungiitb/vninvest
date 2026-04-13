@@ -56,6 +56,7 @@ from .whale_scoring import calculate_display_score, calculate_event_score, resol
 
 logger = logging.getLogger(__name__)
 PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
+ONDEMAND_TICKER_LOCK_PREFIX = 'ticker:ondemand:lock'
 
 
 class MarketDataService:
@@ -137,6 +138,86 @@ class MarketDataService:
         cached_ticker = get_cache(ticker_cache_key)
         if cached_ticker is not None:
             return cached_ticker
+
+        # Cache miss: attempt one-shot live price-board pull for currently viewed symbol.
+        if not is_vnstock_rate_limited('price_board'):
+            lock_key = f'{ONDEMAND_TICKER_LOCK_PREFIX}:{normalized_symbol}'
+            lock_acquired = False
+            try:
+                lock_acquired = cache.add(lock_key, 1, timeout=3)
+            except Exception:
+                lock_acquired = False
+
+            if lock_acquired:
+                try:
+                    df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+                    if df is not None and not df.empty:
+                        row = df.iloc[0]
+                        try:
+                            listing = row.get('listing', {})
+                            match = row.get('match', {})
+                        except Exception:
+                            listing = {}
+                            match = {}
+
+                        def _safe_float(value):
+                            try:
+                                number = float(value)
+                            except (TypeError, ValueError):
+                                return None
+                            return number if number == number else None
+
+                        def _safe_int(value):
+                            try:
+                                return int(float(value))
+                            except (TypeError, ValueError):
+                                return None
+
+                        match_price = _safe_float(match.get('match_price')) or _safe_float(row.get('match_price'))
+                        ref_price = (
+                            _safe_float(listing.get('ref_price'))
+                            or _safe_float(match.get('reference_price'))
+                            or _safe_float(row.get('ref_price'))
+                            or _safe_float(row.get('reference_price'))
+                        )
+                        if match_price is not None:
+                            change_value = round(match_price - ref_price, 2) if ref_price is not None else None
+                            change_pct = (
+                                round((match_price - ref_price) / ref_price * 100, 2)
+                                if ref_price not in (None, 0)
+                                else None
+                            )
+                            payload = {
+                                'symbol': normalized_symbol,
+                                'current_price': match_price,
+                                'prev_price': ref_price,
+                                'change_value': change_value,
+                                'change_pct': change_pct,
+                                'open_price': _safe_float(match.get('open_price')) or _safe_float(row.get('open_price')),
+                                'high_price': _safe_float(match.get('highest')) or _safe_float(row.get('highest')),
+                                'low_price': _safe_float(match.get('lowest')) or _safe_float(row.get('lowest')),
+                                'volume': _safe_int(match.get('accumulated_volume')) or _safe_int(row.get('accumulated_volume')),
+                                'last_date': timezone.now().isoformat(),
+                                'freshness_seconds': 0,
+                                'stale': False,
+                                'source': 'vnstock_on_demand',
+                            }
+                            set_cache(ticker_cache_key, payload, timeout=20)
+                            return payload
+                except ExternalSystemException as exc:
+                    if exc.code == 'vnstock_rate_limited':
+                        mark_vnstock_rate_limited('price_board', exc)
+                    elif exc.code == 'vnstock_timeout':
+                        record_market_external_timeout('ticker-on-demand')
+                    else:
+                        record_market_fallback('ticker-on-demand', 'vnstock_unavailable')
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug('get_realtime_ticker on-demand failed %s: %s', normalized_symbol, exc)
+                finally:
+                    try:
+                        cache.delete(lock_key)
+                    except Exception:
+                        pass
 
         try:
             from portfolio.tasks import prefetch_ticker_price_board
