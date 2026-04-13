@@ -240,6 +240,17 @@ class MarketDataService:
                             _safe_float(match.get('average_price'))
                             or _safe_float(row.get('average_price'))
                         )
+                        price_scale = self._resolve_quote_price_scale(
+                            [match_price, ref_price, ceiling_price, floor_price, open_price, high_price, low_price]
+                        )
+                        match_price = self._normalize_quote_price(match_price, price_scale)
+                        ref_price = self._normalize_quote_price(ref_price, price_scale)
+                        ceiling_price = self._normalize_quote_price(ceiling_price, price_scale)
+                        floor_price = self._normalize_quote_price(floor_price, price_scale)
+                        open_price = self._normalize_quote_price(open_price, price_scale)
+                        high_price = self._normalize_quote_price(high_price, price_scale)
+                        low_price = self._normalize_quote_price(low_price, price_scale)
+                        average_price = self._normalize_quote_price(average_price, price_scale)
                         if match_price is not None:
                             explicit_change_value = (
                                 _safe_float(match.get('price_change'))
@@ -256,7 +267,7 @@ class MarketDataService:
                                 else None
                             )
                             if explicit_change_value is not None:
-                                change_value = explicit_change_value
+                                change_value = self._normalize_quote_price(explicit_change_value, price_scale)
                             if explicit_change_pct is not None:
                                 change_pct = explicit_change_pct
                             if average_price is None:
@@ -509,14 +520,25 @@ class MarketDataService:
             }
 
         depth = []
-        price_scale = 0.001
+        raw_price_candidates = [
+            self._safe_float(match.get('reference_price')),
+            self._safe_float(match.get('match_price')),
+            self._safe_float(match.get('open_price')),
+            self._safe_float(match.get('highest')),
+            self._safe_float(match.get('lowest')),
+        ]
+        for level in range(1, 4):
+            raw_price_candidates.append(self._safe_float(bid_ask.get(f'bid_{level}_price')))
+            raw_price_candidates.append(self._safe_float(bid_ask.get(f'ask_{level}_price')))
+        price_scale = self._resolve_quote_price_scale(raw_price_candidates)
+
         for level in range(1, 4):
             raw_bid_price = self._safe_float(bid_ask.get(f'bid_{level}_price'))
-            bid_price = round(raw_bid_price * price_scale, 2) if raw_bid_price is not None else None
+            bid_price = self._normalize_quote_price(raw_bid_price, price_scale)
             bid_volume = self._safe_int(bid_ask.get(f'bid_{level}_volume'))
             
             raw_ask_price = self._safe_float(bid_ask.get(f'ask_{level}_price'))
-            ask_price = round(raw_ask_price * price_scale, 2) if raw_ask_price is not None else None
+            ask_price = self._normalize_quote_price(raw_ask_price, price_scale)
             ask_volume = self._safe_int(bid_ask.get(f'ask_{level}_volume'))
             
             if bid_price is not None or ask_price is not None:
@@ -533,8 +555,8 @@ class MarketDataService:
         raw_reference_price = self._safe_float(match.get('reference_price'))
         raw_match_price = self._safe_float(match.get('match_price'))
         
-        reference_price = round(raw_reference_price * price_scale, 2) if raw_reference_price is not None else None
-        match_price = round(raw_match_price * price_scale, 2) if raw_match_price is not None else None
+    reference_price = self._normalize_quote_price(raw_reference_price, price_scale)
+    match_price = self._normalize_quote_price(raw_match_price, price_scale)
         
         change_pct = None
         if reference_price and match_price:
@@ -545,9 +567,9 @@ class MarketDataService:
             'depth': depth,
             'match': {
                 'match_price': match_price,
-                'open_price': round(self._safe_float(match.get('open_price')) * price_scale, 2) if match.get('open_price') else None,
-                'highest': round(self._safe_float(match.get('highest')) * price_scale, 2) if match.get('highest') else None,
-                'lowest': round(self._safe_float(match.get('lowest')) * price_scale, 2) if match.get('lowest') else None,
+                'open_price': self._normalize_quote_price(self._safe_float(match.get('open_price')), price_scale),
+                'highest': self._normalize_quote_price(self._safe_float(match.get('highest')), price_scale),
+                'lowest': self._normalize_quote_price(self._safe_float(match.get('lowest')), price_scale),
                 'reference_price': reference_price,
                 'accumulated_volume': self._safe_int(match.get('accumulated_volume')),
                 'foreign_buy_volume': self._safe_int(match.get('foreign_buy_volume')),
@@ -3026,6 +3048,36 @@ class MarketDataService:
             return int(resolved) if resolved == resolved else None
         except (TypeError, ValueError):
             return None
+
+    def _resolve_quote_price_scale(self, values) -> float:
+        candidates = []
+        for value in values or []:
+            numeric = self._safe_float(value)
+            if numeric is None:
+                continue
+            magnitude = abs(numeric)
+            if magnitude > 0:
+                candidates.append(magnitude)
+
+        if not candidates:
+            return 1.0
+
+        candidates.sort()
+        pivot = candidates[len(candidates) // 2]
+
+        # Providers can return VNĐ, nghin VNĐ, or VNĐ x 1000.
+        # Normalize all outputs to VNĐ for consistent UI rendering.
+        if pivot >= 1_000_000:
+            return 0.001
+        if pivot < 1_000:
+            return 1000.0
+        return 1.0
+
+    def _normalize_quote_price(self, value, scale: float = 1.0):
+        numeric = self._safe_float(value)
+        if numeric is None:
+            return None
+        return round(numeric * (scale if scale else 1.0), 2)
 
     def _to_float(self, value):
         return float(value) if value is not None else None

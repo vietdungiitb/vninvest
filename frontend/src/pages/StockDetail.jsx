@@ -101,10 +101,14 @@ function fmtVol(v) {
 function normalizeQuotePriceValue(value) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
-  // StockDetail hiển thị theo đơn vị nghìn VNĐ.
-  // Một số payload backend có thể trả theo VNĐ (x1000), cần quy đổi về cùng đơn vị.
-  if (Math.abs(parsed) >= 2000) {
+  // Chuẩn hiển thị toàn trang: VNĐ.
+  // Fallback cho payload cũ: nếu giá bị nhân 1000 thì thu nhỏ lại.
+  if (Math.abs(parsed) >= 1_000_000) {
     return parsed / 1000;
+  }
+  // Một số nguồn legacy trả đơn vị nghìn VNĐ (ví dụ 23.75), quy đổi về VNĐ.
+  if (Math.abs(parsed) > 0 && Math.abs(parsed) < 1_000) {
+    return parsed * 1000;
   }
   return parsed;
 }
@@ -113,8 +117,12 @@ function normalizeQuoteDeltaValue(value, currentPrice) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return null;
   const current = Number(currentPrice);
-  // Delta giá ở đơn vị VNĐ thường rơi vào hàng trăm (ví dụ 600 = 0.6 nghìn).
-  if (Number.isFinite(current) && Math.abs(current) < 500 && Math.abs(parsed) >= 100) {
+  // Nếu giá hiện tại đang ở đơn vị VNĐ, delta nhỏ dạng thập phân thường là đơn vị nghìn VNĐ.
+  if (Number.isFinite(current) && Math.abs(current) >= 1_000 && Math.abs(parsed) > 0 && Math.abs(parsed) < 100) {
+    return parsed * 1000;
+  }
+  // Fallback cho payload cũ bị nhân 1000.
+  if (Math.abs(parsed) >= 1_000_000) {
     return parsed / 1000;
   }
   return parsed;
