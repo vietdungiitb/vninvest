@@ -19,6 +19,7 @@ import {
   getUserConfig,
   getIntradayMatched,
   getPriceBoard,
+  getRealtimeTicker,
   getSectorBreadth,
   getStockFinancials,
   getStockAIAdvisorySession,
@@ -1408,6 +1409,7 @@ export default function StockDetail() {
   const [whaleFeedLoading, setWhaleFeedLoading] = useState(true);
   const [financials, setFinancials] = useState(null);
   const [financialsLoading, setFinancialsLoading] = useState(true);
+  const [tickerSnapshot, setTickerSnapshot] = useState(null);
   const [financialsYear, setFinancialsYear] = useState(null);
   const [advisorySession, setAdvisorySession] = useState(null);
   const [activeInsightTab, setActiveInsightTab] = useState('advisory');
@@ -2071,23 +2073,56 @@ export default function StockDetail() {
     return () => { cancelled = true; };
   }, [normalizedSymbol]);
 
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setTickerSnapshot(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const fetchTickerSnapshot = async () => {
+      try {
+        const response = await getRealtimeTicker(normalizedSymbol);
+        if (!cancelled) {
+          setTickerSnapshot(response?.data || null);
+        }
+      } catch {
+        if (!cancelled) {
+          setTickerSnapshot((prev) => prev || null);
+        }
+      }
+    };
+
+    fetchTickerSnapshot();
+    const intervalId = window.setInterval(fetchTickerSnapshot, 15000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [normalizedSymbol]);
+
   const liveQuote = quotesBySymbol[normalizedSymbol] || {};
+  const resolvedRealtimeQuote = tickerSnapshot?.current_price != null
+    ? tickerSnapshot
+    : liveQuote;
 
   const overviewCurrentPrice = normalizeQuotePriceValue(overview?.current_price);
   const overviewClosePrice = normalizeQuotePriceValue(overview?.close_price);
-  const liveCurrentPrice = normalizeQuotePriceValue(liveQuote.current_price);
+  const liveCurrentPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.current_price);
   const currentPrice = liveCurrentPrice ?? overviewCurrentPrice ?? overviewClosePrice ?? null;
 
   const overviewChangeValue = normalizeQuoteDeltaValue(overview?.change_value, currentPrice);
-  const liveChangeValue = normalizeQuoteDeltaValue(liveQuote.change_value, currentPrice);
+  const liveChangeValue = normalizeQuoteDeltaValue(resolvedRealtimeQuote.change_value, currentPrice);
   const changeValue = liveChangeValue ?? overviewChangeValue ?? null;
-  const changePct = Number.isFinite(Number(liveQuote.change_pct))
-    ? Number(liveQuote.change_pct)
+  const changePct = Number.isFinite(Number(resolvedRealtimeQuote.change_pct))
+    ? Number(resolvedRealtimeQuote.change_pct)
     : (Number.isFinite(Number(overview?.change_pct)) ? Number(overview.change_pct) : null);
 
-  const liveHighPrice = normalizeQuotePriceValue(liveQuote.high_price) ?? normalizeQuotePriceValue(overview?.high_price);
-  const liveLowPrice = normalizeQuotePriceValue(liveQuote.low_price) ?? normalizeQuotePriceValue(overview?.low_price);
-  const liveVolume = liveQuote.volume ?? overview?.volume ?? null;
+  const liveHighPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.high_price) ?? normalizeQuotePriceValue(overview?.high_price);
+  const liveLowPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.low_price) ?? normalizeQuotePriceValue(overview?.low_price);
+  const liveVolume = resolvedRealtimeQuote.volume ?? overview?.volume ?? null;
 
   const changeClass = useMemo(() => {
     if (changeValue > 0) {
