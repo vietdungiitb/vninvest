@@ -25,6 +25,7 @@ PREFETCH_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:prefetch_runtime_settings'
 PREFETCH_TIME_POLICY_CACHE_KEY = 'admin_ops:prefetch_time_policy'
 PREFETCH_METRIC_CACHE_PREFIX = 'ticker:prefetch:metric'
 VNSTOCK_TIMEOUT_COUNTER_KEY = 'vnstock:timeout-counter:price_board'
+PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
 
 
 def _int_env(name: str, default: int) -> int:
@@ -382,6 +383,87 @@ def _is_rate_limited_error(exc: Exception) -> bool:
     )
 
 
+def _row_get_value(row, key_options: list):
+    for key in key_options:
+        try:
+            value = row.get(key)
+        except Exception:
+            value = None
+        if value is None:
+            continue
+        try:
+            if pd.isna(value):
+                continue
+        except Exception:
+            pass
+        return value
+    return None
+
+
+def _extract_row_symbol(row):
+    raw = _row_get_value(
+        row,
+        [
+            ('listing', 'symbol'),
+            ('symbol', ''),
+            ('symbol', 'symbol'),
+            'symbol',
+            'listing_symbol',
+            'ticker',
+        ],
+    )
+    value = str(raw or '').strip().upper()
+    return value or None
+
+
+def _extract_row_ref_price(row):
+    return _row_get_value(
+        row,
+        [
+            ('listing', 'ref_price'),
+            ('match', 'reference_price'),
+            'ref_price',
+            'reference_price',
+        ],
+    )
+
+
+def _extract_row_match_price(row):
+    return _row_get_value(
+        row,
+        [
+            ('match', 'match_price'),
+            'match_price',
+            'price',
+            'last_price',
+        ],
+    )
+
+
+def _extract_row_open_price(row):
+    return _row_get_value(row, [('match', 'open_price'), 'open_price'])
+
+
+def _extract_row_highest(row):
+    return _row_get_value(row, [('match', 'highest'), 'highest', 'high'])
+
+
+def _extract_row_lowest(row):
+    return _row_get_value(row, [('match', 'lowest'), 'lowest', 'low'])
+
+
+def _extract_row_volume(row):
+    return _row_get_value(
+        row,
+        [
+            ('match', 'accumulated_volume'),
+            'accumulated_volume',
+            'match_volume',
+            'volume',
+        ],
+    )
+
+
 def _prefetch_retry_countdown(retries: int) -> int:
     runtime_settings = _get_prefetch_runtime_settings()
     base = max(int(runtime_settings.get('retry_base_seconds', 8)), 1)
@@ -549,18 +631,17 @@ def prefetch_ticker_price_board(self) -> dict:
 
             for _, row in df.iterrows():
                 try:
-                    sym = str(row.get(('listing', 'symbol')) or '').upper()
+                    sym = _extract_row_symbol(row)
                     if not sym:
                         continue
-                    match_price = _f(row.get(('match', 'match_price')))
+                    match_price = _f(_extract_row_match_price(row))
                     ref_price = (
-                        _f(row.get(('listing', 'ref_price')))
-                        or _f(row.get(('match', 'reference_price')))
+                        _f(_extract_row_ref_price(row))
                     )
-                    highest = _f(row.get(('match', 'highest')))
-                    lowest = _f(row.get(('match', 'lowest')))
-                    open_price = _f(row.get(('match', 'open_price')))
-                    accum_vol = _i(row.get(('match', 'accumulated_volume')))
+                    highest = _f(_extract_row_highest(row))
+                    lowest = _f(_extract_row_lowest(row))
+                    open_price = _f(_extract_row_open_price(row))
+                    accum_vol = _i(_extract_row_volume(row))
                     change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
                     change_pct = (
                         round((match_price - ref_price) / ref_price * 100, 2)
@@ -636,8 +717,14 @@ def prefetch_ticker_price_board(self) -> dict:
         _store_prefetch_meta(payload)
         return payload
 
+    status = 'ok'
+    reason = None
+    if len(symbols) > 0 and processed_batches > 0 and cached_count == 0:
+        status = 'parse_zero_cached'
+        reason = 'no_rows_parsed_from_provider_payload'
+
     payload = {
-        'status': 'ok',
+        'status': status,
         'policy': policy_meta,
         'symbols': len(symbols),
         'cached': cached_count,
@@ -648,11 +735,14 @@ def prefetch_ticker_price_board(self) -> dict:
         'sample_symbols': symbols[:10],
         'retry_count': getattr(self.request, 'retries', 0),
     }
+    if reason:
+        payload['reason'] = reason
     _store_prefetch_meta(payload)
     logger.info(
-        'prefetch_ticker_price_board: symbols=%d cached=%d batches=%d',
+        'prefetch_ticker_price_board: symbols=%d cached=%d batches=%d status=%s',
         len(symbols),
         cached_count,
         processed_batches,
+        status,
     )
     return payload

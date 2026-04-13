@@ -49,6 +49,45 @@ class PrefetchTickerPriceBoardNormalizationTests(TestCase):
         self.assertEqual(cached_ticker['low_price'], 77.5)
         self.assertEqual(cached_ticker['open_price'], 78.1)
 
+    @patch('portfolio.tasks.fetch_price_board_dataframe')
+    def test_prefetch_parses_flat_schema_payload(self, mock_fetch_price_board_dataframe):
+        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
+            {
+                'symbol': 'FPT',
+                'ref_price': 118.0,
+                'match_price': 119.2,
+                'highest': 120.0,
+                'lowest': 117.3,
+                'open_price': 118.4,
+                'accumulated_volume': 987654,
+            }
+        ])
+
+        result = prefetch_ticker_price_board.run()
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['cached'], 1)
+        cached_ticker = cache.get('ticker:FPT')
+        self.assertIsNotNone(cached_ticker)
+        self.assertEqual(cached_ticker['current_price'], 119.2)
+        self.assertEqual(cached_ticker['prev_price'], 118.0)
+
+    @patch('portfolio.tasks.fetch_price_board_dataframe')
+    def test_prefetch_marks_parse_zero_cached_when_symbols_exist(self, mock_fetch_price_board_dataframe):
+        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
+            {
+                'foo': 'bar',
+                'unknown_price': 123.0,
+            }
+        ])
+
+        result = prefetch_ticker_price_board.run()
+
+        self.assertEqual(result['symbols'], 1)
+        self.assertEqual(result['cached'], 0)
+        self.assertEqual(result['status'], 'parse_zero_cached')
+        self.assertEqual(result['reason'], 'no_rows_parsed_from_provider_payload')
+
 
 class PrefetchTimePolicyResolverTests(SimpleTestCase):
     def test_resolve_profile_pre_open(self):

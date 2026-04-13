@@ -10,6 +10,8 @@ from rest_framework.views import APIView
 from .exceptions import ExternalSystemException
 from .models import DailyPrice, SecuritiesItem
 
+PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
+
 
 def _legacy_views_module():
     from . import views as legacy_views
@@ -35,8 +37,8 @@ class RealtimeTickerView(APIView):
 
         try:
             from portfolio.tasks import prefetch_ticker_price_board
-
-            prefetch_ticker_price_board.apply_async(countdown=0)
+            if legacy_views.cache.add(PREFETCH_ENQUEUE_LOCK_KEY, 1, timeout=15):
+                prefetch_ticker_price_board.apply_async(countdown=0)
         except Exception:
             pass
 
@@ -76,7 +78,8 @@ class RealtimeTickerView(APIView):
                 **ohlc_extra,
                 'freshness_seconds': freshness_seconds,
                 'stale': stale,
-                'source': 'db',
+                'source': 'db_fallback',
+                'fallback_reason': 'cache_miss_no_realtime_tick',
             }
         )
 

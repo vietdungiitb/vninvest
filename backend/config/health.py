@@ -11,6 +11,8 @@ def build_prefetch_health_snapshot():
         "cache_backend": settings.CACHES["default"]["BACKEND"],
         "cache_location": settings.CACHES["default"].get("LOCATION"),
         "healthy": False,
+        "status": "unknown",
+        "reason": None,
         "meta_present": False,
         "freshness_seconds": None,
         "sample_cache_hits": 0,
@@ -25,10 +27,16 @@ def build_prefetch_health_snapshot():
         return result
 
     if not meta:
+        # No prefetch metadata yet should be considered idle, not degraded.
+        result["healthy"] = True
+        result["status"] = "idle"
+        result["reason"] = "no_prefetch_meta_yet"
         return result
 
     result["meta_present"] = True
     result["prefetch"] = meta
+    prefetch_status = str(meta.get('status') or '').strip().lower()
+    result["status"] = prefetch_status or "unknown"
 
     generated_at = meta.get('generated_at')
     if generated_at:
@@ -51,11 +59,35 @@ def build_prefetch_health_snapshot():
 
     result["sample_cache_hits"] = sample_hits
     result["sample_cache_total"] = len(sample_symbols)
-    result["healthy"] = (
-        meta.get('status') == 'ok'
-        and (result["freshness_seconds"] is None or result["freshness_seconds"] <= 90)
-        and sample_hits > 0
-    )
+
+    freshness_ok = result["freshness_seconds"] is None or result["freshness_seconds"] <= 90
+    query_enabled = bool((meta.get('policy') or {}).get('query_enabled', True))
+    symbol_count = int(meta.get('symbols') or 0)
+
+    # Prefetch can be intentionally idle (offhours policy / no symbol set).
+    if prefetch_status in {'throttled_by_policy'} or not query_enabled:
+        result["healthy"] = True
+        result["reason"] = "policy_throttled"
+        return result
+
+    if prefetch_status == 'ok' and symbol_count == 0:
+        result["healthy"] = True
+        result["reason"] = "no_symbols_to_prefetch"
+        return result
+
+    if prefetch_status == 'ok':
+        has_sample = len(sample_symbols) == 0 or sample_hits > 0
+        result["healthy"] = bool(freshness_ok and has_sample)
+        if not freshness_ok:
+            result["reason"] = "stale_prefetch_meta"
+        elif not has_sample:
+            result["reason"] = "sample_cache_miss"
+        else:
+            result["reason"] = "ok"
+        return result
+
+    result["healthy"] = False
+    result["reason"] = prefetch_status or "unknown_prefetch_status"
     return result
 
 

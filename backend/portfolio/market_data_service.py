@@ -55,6 +55,7 @@ from .whale_scoring import calculate_display_score, calculate_event_score, resol
 
 
 logger = logging.getLogger(__name__)
+PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
 
 
 class MarketDataService:
@@ -139,8 +140,9 @@ class MarketDataService:
 
         try:
             from portfolio.tasks import prefetch_ticker_price_board
-
-            prefetch_ticker_price_board.apply_async(countdown=0)
+            lock_acquired = cache.add(PREFETCH_ENQUEUE_LOCK_KEY, 1, timeout=15)
+            if lock_acquired:
+                prefetch_ticker_price_board.apply_async(countdown=0)
         except Exception:
             pass
 
@@ -180,7 +182,8 @@ class MarketDataService:
             **ohlc_extra,
             'freshness_seconds': freshness_seconds,
             'stale': stale,
-            'source': 'db',
+            'source': 'db_fallback',
+            'fallback_reason': 'cache_miss_no_realtime_tick',
         }
 
     def get_intraday_matched(self, symbol: str, page_size=None) -> dict:
