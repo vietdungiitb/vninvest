@@ -1303,6 +1303,10 @@ export default function AdminOps() {
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('adminOps.prefetchSettingsTitle')}</h2>
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 space-y-4">
           <p className="text-sm text-gray-500 dark:text-gray-400">{t('adminOps.prefetchSettingsDescription')}</p>
+          <div className="flex flex-wrap gap-3">
+            {syncBtn('prefetchwarmAsync', t('adminOps.triggerPrefetchAsync'), warmTickerPrefetch, 'async')}
+            {syncBtn('prefetchwarmSync', t('adminOps.triggerPrefetchSync'), warmTickerPrefetch, 'sync')}
+          </div>
           <form onSubmit={handlePrefetchSettingsSave} className="grid gap-4 md:grid-cols-3">
             {[
               ['batch_size', t('adminOps.prefetchBatchSize')],
