@@ -509,11 +509,16 @@ class MarketDataService:
             }
 
         depth = []
+        price_scale = 0.001
         for level in range(1, 4):
-            bid_price = self._safe_float(bid_ask.get(f'bid_{level}_price'))
+            raw_bid_price = self._safe_float(bid_ask.get(f'bid_{level}_price'))
+            bid_price = round(raw_bid_price * price_scale, 2) if raw_bid_price is not None else None
             bid_volume = self._safe_int(bid_ask.get(f'bid_{level}_volume'))
-            ask_price = self._safe_float(bid_ask.get(f'ask_{level}_price'))
+            
+            raw_ask_price = self._safe_float(bid_ask.get(f'ask_{level}_price'))
+            ask_price = round(raw_ask_price * price_scale, 2) if raw_ask_price is not None else None
             ask_volume = self._safe_int(bid_ask.get(f'ask_{level}_volume'))
+            
             if bid_price is not None or ask_price is not None:
                 depth.append(
                     {
@@ -525,8 +530,12 @@ class MarketDataService:
                     }
                 )
 
-        reference_price = self._safe_float(match.get('reference_price'))
-        match_price = self._safe_float(match.get('match_price'))
+        raw_reference_price = self._safe_float(match.get('reference_price'))
+        raw_match_price = self._safe_float(match.get('match_price'))
+        
+        reference_price = round(raw_reference_price * price_scale, 2) if raw_reference_price is not None else None
+        match_price = round(raw_match_price * price_scale, 2) if raw_match_price is not None else None
+        
         change_pct = None
         if reference_price and match_price:
             change_pct = round((match_price - reference_price) / reference_price * 100, 2)
@@ -536,9 +545,9 @@ class MarketDataService:
             'depth': depth,
             'match': {
                 'match_price': match_price,
-                'open_price': self._safe_float(match.get('open_price')),
-                'highest': self._safe_float(match.get('highest')),
-                'lowest': self._safe_float(match.get('lowest')),
+                'open_price': round(self._safe_float(match.get('open_price')) * price_scale, 2) if match.get('open_price') else None,
+                'highest': round(self._safe_float(match.get('highest')) * price_scale, 2) if match.get('highest') else None,
+                'lowest': round(self._safe_float(match.get('lowest')) * price_scale, 2) if match.get('lowest') else None,
                 'reference_price': reference_price,
                 'accumulated_volume': self._safe_int(match.get('accumulated_volume')),
                 'foreign_buy_volume': self._safe_int(match.get('foreign_buy_volume')),
@@ -1841,6 +1850,11 @@ class MarketDataService:
                 volume_val = None
             if price_val is None:
                 continue
+            
+            # Scale to thousand VND
+            price_scale = 0.001
+            price_val = round(price_val * price_scale, 3)
+
             trades.append(
                 {
                     'time': time_str,
@@ -1868,6 +1882,10 @@ class MarketDataService:
 
             if price_val is None:
                 continue
+
+            # Scale to thousand VND
+            price_scale = 0.001
+            price_val = round(price_val * price_scale, 3)
 
             trades.append(
                 {
