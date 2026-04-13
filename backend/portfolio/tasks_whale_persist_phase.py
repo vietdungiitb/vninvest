@@ -14,7 +14,7 @@ from portfolio.tasks_whale_quality import (
     _record_generation_quality_metrics,
     _resolve_generated_advisory_severity,
 )
-from portfolio.tasks_whale_postprocess import (
+from portfolio.tasks_whale_persistence import (
     _create_advisory_token_log,
     _create_whale_advisory_record,
 )
