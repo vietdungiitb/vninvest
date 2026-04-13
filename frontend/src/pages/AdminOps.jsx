@@ -29,6 +29,7 @@ import {
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
+import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -236,8 +237,8 @@ export default function AdminOps() {
     retry_attempts: '1',
     retry_backoff_seconds: '0.35',
     rate_limit_cooldown_seconds: '20',
-    price_board_source: 'VCI',
-    fallback_sources: 'KBS,VCI',
+    price_board_source: 'KBS',
+    fallback_sources: 'VCI',
     timeout_price_board: '8',
     timeout_intraday: '8',
     timeout_financial_ratio: '10',
@@ -305,7 +306,7 @@ export default function AdminOps() {
           retry_attempts: String(vnstockSettings.retry_attempts ?? ''),
           retry_backoff_seconds: String(vnstockSettings.retry_backoff_seconds ?? ''),
           rate_limit_cooldown_seconds: String(vnstockSettings.rate_limit_cooldown_seconds ?? ''),
-          price_board_source: String(vnstockSettings.price_board_source || 'VCI'),
+          price_board_source: String(vnstockSettings.price_board_source || 'KBS'),
           fallback_sources: Array.isArray(vnstockSettings.fallback_sources) ? vnstockSettings.fallback_sources.join(',') : '',
           timeout_price_board: String(vnstockSettings.timeout_config?.price_board ?? ''),
           timeout_intraday: String(vnstockSettings.timeout_config?.intraday ?? ''),
@@ -847,6 +848,21 @@ export default function AdminOps() {
       setVnstockConfigMessage(err.response?.data?.message || 'Reset Runtime Vnstock Config that bai.');
     }
   }, [load]);
+
+  const handleApplyVnstockBenchmarkRecommendation = useCallback((recommendation) => {
+    const primary = String(recommendation?.primary_provider || '').trim().toUpperCase();
+    const fallback = String(recommendation?.fallback_provider || '').trim().toUpperCase();
+    if (!primary) {
+      return;
+    }
+    setVnstockConfigForm((prev) => ({
+      ...prev,
+      price_board_source: primary,
+      fallback_sources: fallback && fallback !== primary ? fallback : '',
+    }));
+    setVnstockConfigState('idle');
+    setVnstockConfigMessage('');
+  }, []);
 
   // ─── Render states ───────────────────────────────────────────────────────
 
@@ -1551,6 +1567,8 @@ export default function AdminOps() {
             Cap nhat cau hinh vnstock runtime khong can restart backend.
           </p>
         </div>
+
+        <VnstockBenchmarkPanel onApplyRecommendation={handleApplyVnstockBenchmarkRecommendation} />
 
         <form onSubmit={handleVnstockConfigSave} className="grid gap-4 md:grid-cols-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
           <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">

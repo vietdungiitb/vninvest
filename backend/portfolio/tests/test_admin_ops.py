@@ -44,6 +44,8 @@ VNSTOCK_CURRENT_URL = '/api/admin-ops/vnstock-config/current/'
 VNSTOCK_UPDATE_URL = '/api/admin-ops/vnstock-config/update-config/'
 VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
 VNSTOCK_CHANGELOG_URL = '/api/admin-ops/vnstock-config/changelog/'
+VNSTOCK_BENCHMARK_LATEST_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/latest/'
+VNSTOCK_BENCHMARK_RUN_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/run/'
 
 
 class AdminOpsStatsPermissionTests(APITestCase):
@@ -426,3 +428,54 @@ class AdminOpsVnstockRuntimeConfigTests(APITestCase):
         reset_resp = self.client.post(VNSTOCK_RESET_URL, {}, format='json')
         self.assertEqual(reset_resp.status_code, status.HTTP_200_OK)
         self.assertEqual(reset_resp.data['settings']['max_concurrency'], 12)
+
+
+class AdminOpsVnstockBenchmarkTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(username='vn_bench_staff', password='Test@123456', is_staff=True)
+        self.user = User.objects.create_user(username='vn_bench_user', password='Test@123456')
+
+        for account in (self.staff, self.user):
+            cfg, _ = UserConfig.objects.get_or_create(user=account)
+            if not cfg.email_verified:
+                cfg.email_verified = True
+                cfg.save(update_fields=['email_verified', 'updated_at'])
+
+    def _login(self, username, password='Test@123456'):
+        resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+
+    def test_non_staff_cannot_run_benchmark(self):
+        self._login('vn_bench_user')
+        resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch('portfolio.views_admin_vnstock_benchmark.run_price_board_provider_benchmark')
+    def test_staff_can_run_benchmark(self, mock_run):
+        self._login('vn_bench_staff')
+        mock_run.return_value = {
+            'symbol': 'VNM',
+            'results': [],
+            'recommendation': {'primary_provider': 'KBS', 'fallback_provider': 'VCI'},
+        }
+
+        resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {'symbol': 'VNM'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data['ok'])
+        self.assertIn('report', resp.data)
+
+    @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
+    def test_staff_can_get_latest_benchmark_report(self, mock_latest):
+        self._login('vn_bench_staff')
+        mock_latest.return_value = {
+            'symbol': 'VNM',
+            'results': [{'provider': 'KBS', 'concurrency': 8, 'requests_per_minute': 450.0}],
+            'recommendation': {'primary_provider': 'KBS', 'fallback_provider': 'VCI'},
+        }
+
+        resp = self.client.get(VNSTOCK_BENCHMARK_LATEST_URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data['ok'])
+        self.assertTrue(resp.data['has_report'])
+        self.assertEqual(resp.data['report']['symbol'], 'VNM')

@@ -846,7 +846,7 @@ class RuntimeVnstockConfig(models.Model):
     )
     price_board_source = models.CharField(
         max_length=16,
-        default='VCI',
+        default='KBS',
         verbose_name='Provider chính cho price board',
     )
     fallback_sources = models.JSONField(
@@ -889,7 +889,7 @@ class RuntimeVnstockConfig(models.Model):
 
     @classmethod
     def default_fallback_sources(cls):
-        return ['KBS', 'VCI']
+        return ['VCI']
 
     @classmethod
     def get_or_create_singleton(cls):
@@ -916,7 +916,7 @@ class RuntimeVnstockConfig(models.Model):
             'retry_backoff_seconds': float(self.retry_backoff_seconds),
             'rate_limit_cooldown_seconds': int(self.rate_limit_cooldown_seconds),
             'timeout_config': self.timeout_config if isinstance(self.timeout_config, dict) else self.default_timeout_config(),
-            'price_board_source': str(self.price_board_source or 'VCI').strip().upper(),
+            'price_board_source': str(self.price_board_source or 'KBS').strip().upper(),
             'fallback_sources': self.fallback_sources if isinstance(self.fallback_sources, list) else self.default_fallback_sources(),
             'enable_caching': bool(self.enable_caching),
             'enable_rate_limit_detection': bool(self.enable_rate_limit_detection),

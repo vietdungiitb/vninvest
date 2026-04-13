@@ -235,6 +235,10 @@ from .views_admin_runtime import (
     admin_vnstock_runtime_config_update_api,
     warm_ticker_prefetch_api,
 )
+from .views_admin_vnstock_benchmark import (
+    admin_vnstock_price_board_benchmark_latest_api,
+    admin_vnstock_price_board_benchmark_run_api,
+)
 from .views_ai_runtime_stats import (
     _get_ai_runtime_config_status,
     ai_config_api,

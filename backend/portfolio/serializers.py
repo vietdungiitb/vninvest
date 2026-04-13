@@ -240,7 +240,7 @@ class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
         return normalized
 
     def validate(self, attrs):
-        source = str(attrs.get('price_board_source') or getattr(self.instance, 'price_board_source', 'VCI')).strip().upper()
+        source = str(attrs.get('price_board_source') or getattr(self.instance, 'price_board_source', 'KBS')).strip().upper()
         fallback_sources = attrs.get('fallback_sources')
         if fallback_sources is None and self.instance is not None:
             fallback_sources = list(self.instance.fallback_sources or [])

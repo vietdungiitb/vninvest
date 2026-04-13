@@ -445,6 +445,10 @@ export const updateAdminVnstockConfig = (payload) => apiClient.patch('/admin-ops
 export const resetAdminVnstockConfig = () => apiClient.post('/admin-ops/vnstock-config/reset-to-defaults/');
 export const getAdminVnstockConfigChangelog = (limit = 20, offset = 0) =>
   apiClient.get(`/admin-ops/vnstock-config/changelog/?limit=${encodeURIComponent(limit)}&offset=${encodeURIComponent(offset)}`);
+export const getAdminVnstockBenchmarkLatest = () =>
+  apiClient.get('/admin-ops/vnstock-config/benchmark-price-board/latest/');
+export const runAdminVnstockBenchmark = (payload) =>
+  apiClient.post('/admin-ops/vnstock-config/benchmark-price-board/run/', payload || {});
 export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>

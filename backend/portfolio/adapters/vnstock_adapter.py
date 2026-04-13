@@ -127,16 +127,16 @@ def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str
     configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
     fallback_items = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
 
-    primary = str(explicit_source or configured_primary or os.getenv('VNSTOCK_PRICE_BOARD_SOURCE', 'VCI') or 'VCI').strip().upper()
+    primary = str(explicit_source or configured_primary or os.getenv('VNSTOCK_PRICE_BOARD_SOURCE', 'KBS') or 'KBS').strip().upper()
     if not fallback_items:
-        fallback_raw = str(os.getenv('VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES', 'KBS,VCI') or '').strip()
+        fallback_raw = str(os.getenv('VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES', 'VCI') or '').strip()
         fallback_items = [item.strip().upper() for item in fallback_raw.split(',') if item.strip()]
 
     ordered = []
     for source in [primary] + fallback_items:
         if source and source not in ordered:
             ordered.append(source)
-    return ordered or ['VCI']
+    return ordered or ['KBS']
 
 
 def _run_with_timeout(fn, timeout=8):
