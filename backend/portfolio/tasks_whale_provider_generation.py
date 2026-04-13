@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 
 from portfolio.ai_options import get_advisory_provider_failover_chain, get_default_model
-from portfolio.ai_service import _resolve_provider_api_key, generate_advisory_concise, generate_whale_text
+from portfolio.ai_service import _resolve_provider_api_key
+from portfolio.tasks_whale_ai_call import _execute_provider_ai_call
 from portfolio.tasks_advisory_helpers import (
     _resolve_model_for_budget,
     _classify_provider_failure,
@@ -57,43 +58,18 @@ def _run_whale_provider_generation(
             continue
 
         try:
-            if use_concise:
-                summary_resp = generate_advisory_concise(
-                    provider=attempt_provider,
-                    model=attempt_model,
-                    api_key=attempt_api_key,
-                    symbol=symbol,
-                    matched_value_vnd=matched_value_vnd,
-                    side=side,
-                    user=target_user,
-                    output_language=output_language,
-                )
-                deep_resp = {'text': '', 'prompt_tokens': 0, 'completion_tokens': 0}
-            else:
-                summary_resp = generate_whale_text(
-                    provider=attempt_provider,
-                    model=attempt_model,
-                    api_key=attempt_api_key,
-                    symbol=symbol,
-                    matched_value_vnd=matched_value_vnd,
-                    side=side,
-                    deep=False,
-                    user=target_user,
-                    output_language=output_language,
-                    news_hint=news_hint,
-                )
-                deep_resp = generate_whale_text(
-                    provider=attempt_provider,
-                    model=attempt_model,
-                    api_key=attempt_api_key,
-                    symbol=symbol,
-                    matched_value_vnd=matched_value_vnd,
-                    side=side,
-                    deep=True,
-                    user=target_user,
-                    output_language=output_language,
-                    news_hint=news_hint,
-                )
+            summary_resp, deep_resp = _execute_provider_ai_call(
+                provider=attempt_provider,
+                model=attempt_model,
+                api_key=attempt_api_key,
+                symbol=symbol,
+                matched_value_vnd=matched_value_vnd,
+                side=side,
+                target_user=target_user,
+                output_language=output_language,
+                use_concise=use_concise,
+                news_hint=news_hint,
+            )
 
             _record_provider_attempt(attempt_provider, success=True)
             if attempt_provider != primary_provider:
