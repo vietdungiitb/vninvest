@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -237,4 +238,34 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('source_mix', whale)
         self.assertEqual(whale['dedup']['total'], 2)
         self.assertEqual(whale['dedup']['hits'], 1)
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_requires_staff(self):
+        self._authenticate(self.regular_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_admin_runtime_kpi_whale_preflight_metrics_returns_structure(self):
+        from django.utils import timezone
+
+        day = timezone.localdate().isoformat()
+        cache.set(f'whale_preflight:metrics:{day}:existing_advisory_hit', 3, timeout=300)
+        cache.set(f'whale_preflight:metrics:{day}:cooldown_hit', 5, timeout=300)
+
+        self._authenticate(self.admin_user)
+        response = self.client.get('/api/admin-ops/runtime-kpi/whale-preflight-metrics/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = response.json()
+        self.assertIn('sampled_at', data)
+        self.assertIn('date', data)
+        self.assertIn('whale_preflight_metrics', data)
+
+        metrics = data['whale_preflight_metrics']
+        self.assertIn('existing_advisory_hit', metrics)
+        self.assertIn('existing_advisory_miss', metrics)
+        self.assertIn('cooldown_hit', metrics)
+        self.assertIn('cooldown_miss', metrics)
+        self.assertIn('cooldown_bypass_force_refresh', metrics)
+        self.assertEqual(metrics['existing_advisory_hit'], 3)
+        self.assertEqual(metrics['cooldown_hit'], 5)
 

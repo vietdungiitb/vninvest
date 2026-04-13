@@ -98,6 +98,55 @@ def admin_runtime_kpi_whale_pipeline_api(request):
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
+def admin_runtime_kpi_whale_preflight_metrics_api(request):
+    """
+    GET /api/admin-ops/runtime-kpi/whale-preflight-metrics/
+    Admin-only: trả về counters profiling cho whale preflight cache checks.
+    Query params:
+      - date=YYYY-MM-DD (optional, default=today localdate)
+    """
+    from time import time as _time
+    from django.core.cache import cache
+    from django.utils import timezone
+
+    requested_date = str(request.query_params.get('date') or '').strip()
+    target_date = timezone.localdate()
+    if requested_date:
+        try:
+            target_date = timezone.datetime.strptime(requested_date, '%Y-%m-%d').date()
+        except ValueError:
+            return Response(
+                {
+                    'detail': 'Invalid date format. Use YYYY-MM-DD.',
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    day_key = target_date.isoformat()
+    metric_names = (
+        'existing_advisory_hit',
+        'existing_advisory_miss',
+        'cooldown_hit',
+        'cooldown_miss',
+        'cooldown_bypass_force_refresh',
+    )
+    metrics = {
+        name: int(cache.get(f'whale_preflight:metrics:{day_key}:{name}') or 0)
+        for name in metric_names
+    }
+
+    return Response(
+        {
+            'sampled_at': _time(),
+            'date': day_key,
+            'whale_preflight_metrics': metrics,
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
 def admin_runtime_kpi_advisory_metrics_api(request):
     """
     GET /api/admin-ops/runtime-kpi/advisory-metrics/
