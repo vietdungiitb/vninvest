@@ -39,6 +39,9 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 try:
                     price_val = float(raw_price) if raw_price else 0.0
                     vol_val = float(raw_vol) if raw_vol else 0.0
+                    
+                    # Scale price to thousand VND unit
+                    price_val = round(price_val * 0.001, 3)
                 except (ValueError, TypeError):
                     price_val = 0.0
                     vol_val = 0.0
