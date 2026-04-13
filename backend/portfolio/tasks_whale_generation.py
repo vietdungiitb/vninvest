@@ -17,7 +17,6 @@ from portfolio.observability import (
     end_advisory_phase,
     end_advisory_session,
     record_advisory_error_recovery,
-    record_advisory_token_usage,
     start_advisory_phase,
     start_advisory_session,
 )
@@ -26,8 +25,11 @@ from portfolio.tasks_advisory_helpers import (
     _token_log_source_for_advisory_source,
     _persist_advisory_aggregate_snapshot,
     _resolve_next_refresh_at,
-    _increment_daily_counter,
-    _is_language_mismatch,
+)
+from portfolio.tasks_whale_bookkeeping import (
+    _collect_generation_language_metrics,
+    _record_generation_token_usage,
+    _resolve_generation_refresh_count,
 )
 from portfolio.tasks_news_context import _fetch_news_context_for_advisory
 from portfolio.tasks_whale_metrics import (
@@ -137,32 +139,25 @@ def generate_whale_advisory_task(
     failover_chain_attempted = provider_result['failover_chain_attempted']
     failover_attempt_count = provider_result['failover_attempt_count']
 
-    today_iso = timezone.localdate().isoformat()
-    _increment_daily_counter(f'advisory:language-check-count:{output_language}:{today_iso}')
-    summary_language_mismatch = _is_language_mismatch(summary_resp.get('text', ''), output_language)
-    detail_language_mismatch = _is_language_mismatch(deep_resp.get('text', ''), output_language)
-    language_mismatch = bool(summary_language_mismatch or detail_language_mismatch)
-    if language_mismatch:
-        _increment_daily_counter(f'advisory:language-mismatch-count:{output_language}:{today_iso}')
-        logger.warning(
-            'Advisory language mismatch detected symbol=%s expected=%s provider=%s model=%s',
-            symbol,
-            output_language,
-            provider,
-            model,
-        )
-
-    record_advisory_token_usage(
-        int(summary_resp.get('prompt_tokens', 0) or 0) + int(summary_resp.get('completion_tokens', 0) or 0),
-        source='summary_generation' if not use_concise else 'concise_generation',
+    language_mismatch = _collect_generation_language_metrics(
+        symbol=symbol,
+        provider=provider,
+        model=model,
+        output_language=output_language,
+        summary_resp=summary_resp,
+        deep_resp=deep_resp,
     )
-    if not use_concise:
-        record_advisory_token_usage(
-            int(deep_resp.get('prompt_tokens', 0) or 0) + int(deep_resp.get('completion_tokens', 0) or 0),
-            source='detail_generation',
-        )
 
-    refresh_count = (latest_existing_advisory.refresh_count + 1) if (force_refresh and latest_existing_advisory is not None) else 0
+    _record_generation_token_usage(
+        summary_resp=summary_resp,
+        deep_resp=deep_resp,
+        use_concise=use_concise,
+    )
+
+    refresh_count = _resolve_generation_refresh_count(
+        force_refresh=force_refresh,
+        latest_existing_advisory=latest_existing_advisory,
+    )
     
     resolved_severity = _resolve_generated_advisory_severity(
         severity_override=severity_override,
