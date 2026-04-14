@@ -1259,6 +1259,7 @@ const en = {
     durationMinutes: '{value} minutes',
     durationHours: '{value} hours',
     window: 'Window',
+    sort: 'Sort',
     window5m: '5m',
     window15m: '15m',
     window1h: '1h',

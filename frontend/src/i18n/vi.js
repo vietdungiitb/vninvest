@@ -1262,6 +1262,7 @@ const vi = {
     durationMinutes: '{value} phút',
     durationHours: '{value} giờ',
     window: 'Cửa sổ',
+    sort: 'Sắp xếp',
     window5m: '5m',
     window15m: '15m',
     window1h: '1h',

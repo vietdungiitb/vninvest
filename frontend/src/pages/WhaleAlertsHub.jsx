@@ -646,7 +646,15 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
       <div className="flex items-center justify-between gap-2 mb-4">
         <div>
           <p className="text-label">{t('whaleHub.symbolInvestigation')}</p>
-          <h3 className="mt-1 text-lg font-semibold text-slate-100">{selectedSymbol}</h3>
+          <h3 className="mt-1 text-lg font-semibold text-slate-100">
+            <Link
+              to={`/whale-alerts/${String(selectedSymbol || '').toLowerCase()}`}
+              className="hover:text-cyan-300"
+              title={t('whaleHub.openSymbolDashboard')}
+            >
+              {selectedSymbol}
+            </Link>
+          </h3>
         </div>
         <button
           type="button"
@@ -1248,9 +1256,9 @@ export default function WhaleAlertsHub() {
               <label className="text-xs text-slate-400 block mb-2">{t('whaleHub.selectSymbol')}</label>
               <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
                 {buildTrackedSymbolBuckets(trackedSymbols).map((symbol) => (
-                  <Link
+                  <button
+                    type="button"
                     key={symbol}
-                    to={`/whale-alerts/${String(symbol || '').toLowerCase()}`}
                     onClick={() => setSelectedSymbolInvestigation(symbol)}
                     className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                       selectedSymbolInvestigation === symbol
@@ -1259,7 +1267,7 @@ export default function WhaleAlertsHub() {
                     }`}
                   >
                     {symbol}
-                  </Link>
+                  </button>
                 ))}
               </div>
             </div>
