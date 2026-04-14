@@ -37,12 +37,15 @@ function mergeTickerIntoItem(item, update) {
     return item;
   }
 
+  const realtimeDate = update.last_date ?? update.ts;
+
   return {
     ...item,
-    current_price: update.price ?? item.current_price,
+    current_price: update.current_price ?? update.price ?? item.current_price,
     change_value: update.change_value ?? item.change_value,
     change_pct: update.change_pct ?? item.change_pct,
-    last_date: update.ts ?? update.last_date ?? item.last_date,
+    last_date: realtimeDate ?? item.last_date,
+    updated_at: realtimeDate ?? item.updated_at,
     freshness_seconds: update.freshness_seconds ?? item.freshness_seconds,
     stale: update.stale ?? item.stale,
   };
