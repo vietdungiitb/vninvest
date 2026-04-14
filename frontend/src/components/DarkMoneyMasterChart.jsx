@@ -438,6 +438,10 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t }) {
           </div>
         </div>
       </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <span className="font-semibold text-slate-300">Chú thích Cường độ:</span> Thang điểm 0-100 phản ánh mức độ hoạt động
+        của dòng tiền tổ chức trong phiên gần nhất. Điểm càng cao cho thấy dấu hiệu dòng tiền lớn can thiệp càng rõ.
+      </p>
 
       {/* SMFI */}
       <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3">
@@ -466,6 +470,10 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t }) {
           </div>
         )}
       </div>
+      <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <span className="font-semibold text-slate-300">Chú thích SMFI:</span> SMFI dương nghĩa là lực mua thông minh đang chiếm ưu thế,
+        SMFI âm nghĩa là lực bán đang lấn át. Dùng chỉ số này để đối chiếu với trạng thái chiến thuật 2W-4W trước khi ra quyết định.
+      </p>
     </section>
   );
 }
