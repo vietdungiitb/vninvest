@@ -20,6 +20,7 @@ function mergeQuote(prev, update) {
     ...prev,
     symbol: update.symbol ?? prev.symbol,
     current_price: update.current_price ?? update.price ?? prev.current_price,
+    prev_price: update.prev_price ?? prev.prev_price,
     change_value: update.change_value ?? prev.change_value,
     change_pct: update.change_pct ?? prev.change_pct,
     open_price: update.open_price ?? prev.open_price,
@@ -280,6 +281,7 @@ export default function useRealtimeFeedLegacy({
             applyTickerUpdate({
               symbol: data.symbol,
               current_price: data.current_price,
+              prev_price: data.prev_price,
               change_value: data.change_value,
               change_pct: data.change_pct,
               open_price: data.open_price,

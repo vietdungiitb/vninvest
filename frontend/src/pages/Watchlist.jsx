@@ -42,6 +42,7 @@ function mergeTickerIntoItem(item, update) {
   return {
     ...item,
     current_price: update.current_price ?? update.price ?? item.current_price,
+    prev_price: update.prev_price ?? item.prev_price,
     change_value: update.change_value ?? item.change_value,
     change_pct: update.change_pct ?? item.change_pct,
     last_date: realtimeDate ?? item.last_date,
