@@ -1,7 +1,7 @@
 # AI Advisory News Integration — Sprint 35
 **Date**: 2026-04-14  
 **Status**: Planning & Implementation  
-**Purpose**: Enrich AI executive summary synthesis with recent news context to improve accuracy and recommendation quality
+**Purpose**: Enrich AI executive summary synthesis with news context, long-window whale/dark-flow grounding, and 30-session technical trend context to improve accuracy and recommendation quality
 
 ---
 
@@ -9,11 +9,11 @@
 
 **Problem**: AI executive summaries at stock detail pages lack news context, leading to incomplete/inaccurate recommendations.
 
-**Solution**: Integrate AI-generated news summary into the executive synthesis prompt so the AI can factor recent events when generating 18-22 bullet point recommendations.
+**Solution**: Integrate AI-generated news summary plus grounded market context into the executive synthesis prompt so the AI can factor recent events, long-window whale/dark-flow structure, and 30-session technical trend when generating recommendations.
 
 **Impact**: 
 - Better contextual recommendations (e.g., MWG stock with recent news about store openings, earnings, regulatory changes)
-- More holistic advisory (combines: whale signals + dark flow + technical indicators + **news sentiment**)
+- More holistic advisory (combines: long-window whale signals + long-window dark flow + 30-session RSI/MACD/VOL/Bollinger + **news sentiment**)
 - Improved user trust in AI recommendations
 
 ---
@@ -513,23 +513,25 @@ Steps:
 - Frontend changes (backend-only enhancement)
 
 ---
-Dữ liệu cần thêm:
+Dữ liệu cần thêm / cập nhật phạm vi:
 
-1. **Whale context (24h gần nhất)**
+1. **Whale context (cửa sổ dài hạn, ưu tiên 180 ngày hoặc tối đa dữ liệu khả dụng)**
    - Total whale buy matches: X lệnh, Y tỷ đồng
    - Total whale sell matches: Z lệnh, W tỷ đồng
    - Buy/Sell ratio: VD 60% buy, 40% sell
-   - Whale dominance: % so với total volume
+    - Whale dominance: % so với turnover ước tính
+    - So sánh 30 ngày gần nhất với 30 ngày trước để biết whale pressure đang tăng hay giảm
 
-2. **Dark Flow trend (12-24h)**
-   - History: [(time, strength), ...] → hiển thị chiều hướng
+2. **Dark Flow trend (cửa sổ dài hạn, ưu tiên 180 ngày hoặc tối đa dữ liệu khả dụng)**
+    - History tóm tắt: [(time, strength), ...] → hiển thị chiều hướng
    - Peak strength khi nào, tăng hay giảm
+    - Phân bổ signal type gần đây: absorption / iceberg / twap_bot / mixed
 
-3. **Technical readings (current)**
-   - RSI: 35/100 (oversold) / 65/100 (overbought)
-   - MACD: histogram positive/negative, signal crossover
-   - Bollinger Bands: price gần upper/lower band
-   - Volume: current vs MA20, spike hay yếu
+3. **Technical readings (1 tháng / 30 phiên để rõ xu hướng)**
+    - RSI: current + range 30 phiên + xu hướng lên/xuống
+    - MACD: current line/signal/histogram + crossover + hướng histogram
+    - Bollinger Bands: current upper/middle/lower + vị trí giá trong band
+    - Volume: current vs MA20, ratio, xu hướng tăng/giảm trong 30 phiên
 
 4. **Market context**
    - Timestamp: "14/04/2026, 14:35:00"
