@@ -111,6 +111,13 @@ function parseTime(str) {
   return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
 }
 
+function normalizeChartTimeKey(time) {
+  if (time && typeof time === 'object' && time.year != null) {
+    return `${time.year}-${String(time.month).padStart(2, '0')}-${String(time.day).padStart(2, '0')}`;
+  }
+  return String(time);
+}
+
 function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
   if (!chart) return null;
   if (typeof chart[legacyMethod] === 'function') {
@@ -148,10 +155,10 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
       return {
         time: signal.time,
         position: isBuy ? 'belowBar' : 'aboveBar',
-        color: isBuy ? 'rgba(56, 189, 248, 0.92)' : 'rgba(251, 113, 133, 0.92)',
+        color: isBuy ? 'rgba(163, 230, 53, 0.96)' : 'rgba(251, 113, 133, 0.96)',
         shape: 'circle',
         text: showLabels ? `${isBuy ? 'BUY' : 'SELL'}` : '',
-        size: 0,
+        size: 1,
       };
     });
 }
@@ -233,7 +240,7 @@ function OhlcTooltip({ data: d }) {
           {whaleInfo.buyCount > 0 ? (
             <span>
               <span className="text-slate-500">Whale Buy </span>
-              <span className="text-cyan-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount})</span>
+              <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount})</span>
             </span>
           ) : null}
           {whaleInfo.sellCount > 0 ? (
@@ -420,6 +427,9 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const priceChartInstance = useRef(null);
   const cvdChartInstance = useRef(null);
   const darkFlowChartInstance = useRef(null);
+  const priceMainSeriesRef = useRef(null);
+  const cvdMainSeriesRef = useRef(null);
+  const darkFlowMainSeriesRef = useRef(null);
   const datasetCacheRef = useRef({});
 
   useEffect(() => {
@@ -539,6 +549,9 @@ export default function DarkMoneyMasterChart({ symbol }) {
     // Cleanup previous charts
     const cleanupCharts = () => {
       setOhlcTooltip(null);
+      priceMainSeriesRef.current = null;
+      cvdMainSeriesRef.current = null;
+      darkFlowMainSeriesRef.current = null;
       [priceChartInstance, cvdChartInstance, darkFlowChartInstance].forEach((ref) => {
         if (ref.current) {
           try { ref.current.remove(); } catch (_) {}
@@ -560,6 +573,15 @@ export default function DarkMoneyMasterChart({ symbol }) {
     const candlesByTime = {};
     data.candles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
     const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || []);
+    const priceByTime = Object.fromEntries(data.candles.map((c) => [String(c.time), Number(c.close || 0)]));
+    const cvdByTime = Object.fromEntries(
+      (data.dark_flow_series || [])
+        .filter((d) => d.cvd !== undefined && d.cvd !== null)
+        .map((d) => [String(d.time), Number(d.cvd || 0)]),
+    );
+    const darkFlowByTime = Object.fromEntries(
+      (data.dark_flow_series || []).map((d) => [String(d.time), Number(d.strength || 0)]),
+    );
 
     // A2: tick formatters — LW Charts v5 passes BusinessDay {year,month,day} for YYYY-MM-DD strings
     const tickFmtShort = (time) => {
@@ -636,6 +658,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           priceSeries = addSeriesCompat(chart1, 'addCandlestickSeries', CandlestickSeries, CANDLE_COLORS);
           priceSeries.setData(candles);
         }
+        priceMainSeriesRef.current = priceSeries;
 
         // Volume overlay
         const volumeSeries = addSeriesCompat(chart1, 'addHistogramSeries', HistogramSeries, {
@@ -749,6 +772,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             priceFormat: { type: 'custom', formatter: (v) => fmtCompact(v) },
           });
           cvdSeries.setData(cvdData);
+          cvdMainSeriesRef.current = cvdSeries;
         }
 
         chart2.timeScale().fitContent();
@@ -792,6 +816,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           lastValueVisible: true,
         });
         histSeries.setData(histData);
+        darkFlowMainSeriesRef.current = histSeries;
 
         // Mốc trung tính 50 để định lượng lực dòng tiền mạnh/yếu
         const baseline50 = addSeriesCompat(chart3, 'addLineSeries', LineSeries, {
@@ -841,6 +866,43 @@ export default function DarkMoneyMasterChart({ symbol }) {
               }
             });
             isSyncing = false;
+          });
+        });
+
+        const syncTargets = [
+          { chart: priceChartInstance.current, series: priceMainSeriesRef.current, valueMap: priceByTime },
+          { chart: cvdChartInstance.current, series: cvdMainSeriesRef.current, valueMap: cvdByTime },
+          { chart: darkFlowChartInstance.current, series: darkFlowMainSeriesRef.current, valueMap: darkFlowByTime },
+        ].filter((item) => item.chart && item.series);
+
+        let isSyncingCrosshair = false;
+        syncTargets.forEach((source) => {
+          if (typeof source.chart.subscribeCrosshairMove !== 'function') return;
+          source.chart.subscribeCrosshairMove((param) => {
+            if (isSyncingCrosshair) return;
+            isSyncingCrosshair = true;
+            try {
+              if (!param?.time || !param?.point) {
+                syncTargets.forEach((target) => {
+                  if (target.chart !== source.chart && typeof target.chart.clearCrosshairPosition === 'function') {
+                    target.chart.clearCrosshairPosition();
+                  }
+                });
+                return;
+              }
+
+              const timeKey = normalizeChartTimeKey(param.time);
+              syncTargets.forEach((target) => {
+                if (target.chart === source.chart) return;
+                if (typeof target.chart.setCrosshairPosition !== 'function') return;
+                const targetValue = target.valueMap[timeKey];
+                if (Number.isFinite(targetValue)) {
+                  target.chart.setCrosshairPosition(targetValue, param.time, target.series);
+                }
+              });
+            } finally {
+              isSyncingCrosshair = false;
+            }
           });
         });
       }
@@ -1066,8 +1128,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
                 </span>
                 {showWhaleSignals ? (
                   <>
-                    <span className="flex items-center gap-1 text-cyan-300">
-                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-300" />
+                    <span className="flex items-center gap-1 text-lime-300">
+                      <span className="inline-block h-2 w-2 rounded-full bg-lime-300" />
                       {t('darkMoneyChart.whaleBuy')}
                     </span>
                     <span className="flex items-center gap-1 text-rose-300">
