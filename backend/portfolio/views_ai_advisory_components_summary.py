@@ -597,12 +597,21 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
 
     latest = legacy_views.AIAdvisoryExecutiveSummary.objects.filter(user=request.user, symbol=normalized_symbol).order_by('-summary_version').first()
     summary_payload = legacy_views._sprint17_compute_summary_from_components(components)
+    
+    # NEW (Sprint 35): Fetch AI news summary context if available
+    news_context_str = legacy_views._fetch_news_context_for_advisory(
+        symbol=normalized_symbol,
+        user=request.user,
+        max_headlines=4,
+    )
+    
     ai_synthesis_text = legacy_views._sprint17_generate_executive_synthesis_with_ai(
         user=request.user,
         symbol=normalized_symbol,
         components=components,
         summary_payload=summary_payload,
         synthesis_preference=synthesis_preference,
+        news_context=news_context_str,  # NEW (Sprint 35): Include news context
     )
     if ai_synthesis_text:
         summary_payload['synthesis_text'] = ai_synthesis_text

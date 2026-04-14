@@ -509,6 +509,65 @@ def _sprint17_enforce_summary_narrative_policy(summary_payload: dict, components
 
 
 # ---------------------------------------------------------------------------
+# News context helper
+# ---------------------------------------------------------------------------
+
+def _fetch_news_context_for_advisory(
+    symbol: str,
+    user,
+    max_headlines: int = 4,
+    timeout_sec: float = 5.0,
+) -> str:
+    """
+    Fetch AI-summarized news for stock and format as text block for prompt injection.
+    
+    Args:
+        symbol: Stock code (e.g., 'MWG')
+        user: User object (for access to UserConfig AI settings)
+        max_headlines: Max number of headlines to include (default: 4)
+        timeout_sec: Timeout for internal API call (default: 5 sec)
+    
+    Returns:
+        Formatted news context string, or empty string if unavailable.
+        Graceful degradation: no hard failure if news unavailable.
+    """
+    try:
+        from portfolio.adapters.cache_adapter import get_cache
+        
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            return ''
+        
+        # Try cache first (from Sprint 34 AI News module)
+        ai_cache_key = f'stock:news:ai-summary:{normalized_symbol}'
+        cached_ai = get_cache(ai_cache_key)
+        
+        if cached_ai is None:
+            # Graceful degradation: news not available is OK
+            logger.debug('News context cache miss for symbol=%s', normalized_symbol)
+            return ''
+        
+        summary_text = str(cached_ai.get('summary') or '').strip()
+        item_count = int(cached_ai.get('item_count') or 0)
+        
+        if not summary_text or item_count == 0:
+            logger.debug('Empty news summary for symbol=%s', normalized_symbol)
+            return ''
+        
+        # Format for prompt injection
+        news_block = f"Tin tuc gan day ve {normalized_symbol}:\n"
+        news_block += f"- {summary_text}\n"
+        news_block += f"(Tong hop tu {item_count} tin tuc gan day)"
+        
+        logger.debug('News context fetched for symbol=%s items=%d', normalized_symbol, item_count)
+        return news_block
+    
+    except Exception as e:
+        logger.warning('Fetch news context fallback symbol=%s err=%s', symbol, e)
+        return ''
+
+
+# ---------------------------------------------------------------------------
 # Executive synthesis (AI)
 # ---------------------------------------------------------------------------
 
@@ -518,6 +577,7 @@ def _sprint17_generate_executive_synthesis_with_ai(
     components: list[AIAdvisoryComponentRecord],
     summary_payload: dict,
     synthesis_preference: str = 'balanced',
+    news_context: str = "",
 ) -> str | None:
     from portfolio.ai_service import _claude_completion, _openai_compatible_completion
     from portfolio.openclaw_client import _call as _openclaw_call
@@ -550,23 +610,29 @@ def _sprint17_generate_executive_synthesis_with_ai(
         )
     component_block = '\n'.join(component_lines) if component_lines else '- khong co component'
 
+    # Format news block if available
+    news_block = ''
+    if news_context and str(news_context).strip():
+        news_block = f"\n\nThong tin tin tuc:\n{news_context}\n"
+
     prompt = (
         "Ban la chuyen gia tu van chung khoan Viet Nam. "
         "Hay viet phan 'Thong tin tong hop' CHI TIET theo dung cac dau vao ben duoi.\n"
         "Yeu cau bat buoc:\n"
-        "1) Viet khoang 20 dong (tu 18 den 22 dong).\n"
+        "1) Viet khoang 18-20 dong (tu 18 den 20 dong).\n"
         "2) Moi dong bat dau bang '- '.\n"
         "3) Noi dung phai cu the, khong viet chung chung, khong nhac den viec ban la AI.\n"
         "4) Bao gom: tong quan xu huong, xung dot tin hieu, kich ban tang/giam, "
-        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu.\n"
+        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu, va CAC TUAN NHAN TIN TUC.\n"
         "5) Khong dua ra cam ket loi nhuan.\n\n"
         f"Input: symbol={symbol}, strategy_action={summary_payload.get('strategy_action')}, "
         f"risk_level={summary_payload.get('risk_level')}, "
         f"overall_confidence={summary_payload.get('overall_confidence')}/10.\n"
         f"So thich tong hop: {preference_instruction}\n"
+        f"{news_block}"
         "Danh sach components:\n"
         f"{component_block}\n\n"
-        "Chi tra ve noi dung 18-22 dong bat dau bang '- '."
+        "Chi tra ve noi dung 18-20 dong bat dau bang '- '."
     )
 
     try:

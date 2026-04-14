@@ -1,4 +1,4 @@
-# docker-compose.dev.yml
+Ôªø# docker-compose.dev.yml
 # Override file cho local dev testing.
 # Setup: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 
@@ -10,14 +10,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: devpassword
     ports:
-      # Expose port 5432 lÍn host d? backend local (hybrid mode) ho?c stack kh·c connect du?c.
-      # CÛ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
+      # Expose port 5432 lŒ©n host d? backend local (hybrid mode) ho?c stack kh√üc connect du?c.
+      # C‚â§ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
       - "${DEV_BIND_HOST:-127.0.0.1}:5432:5432"
 
   redis:
     container_name: vninvest-dev-redis
     ports:
-      # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack kh·c.
+      # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack kh√üc.
       - "${DEV_BIND_HOST:-127.0.0.1}:6379:6379"
 
   mailpit:
@@ -28,7 +28,7 @@ services:
     env_file:
       - ./backend/.env.dev
     environment:
-      # Override endpoint runtime d? tr·nh ph? thu?c c?ng v‡o DNS service name khi ch?y cross-stack.
+      # Override endpoint runtime d? tr√ünh ph? thu?c c?ng vŒ±o DNS service name khi ch?y cross-stack.
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
