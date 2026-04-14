@@ -1143,7 +1143,7 @@ class MarketDataService:
         queryset = (
             IntradayTick.objects
             .filter(symbol__in=symbols)
-            .annotate(matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField()))
+            .annotate(matched_value=ExpressionWrapper(F('price') * 1000 * F('volume'), output_field=FloatField()))
             .filter(matched_value__gte=min_threshold_vnd)
         )
 
