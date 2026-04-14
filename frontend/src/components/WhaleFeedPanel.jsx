@@ -72,12 +72,18 @@ export function AlertFeedCard({ order, animated }) {
         <div className="flex items-center gap-2">
           <span
             className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-              isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
+              isDarkFlow
+                ? 'bg-violet-900/60 text-violet-300'
+                : isBuy
+                ? 'bg-emerald-900/60 text-emerald-300'
+                : order.side === 'sell'
+                ? 'bg-rose-900/60 text-rose-300'
+                : 'bg-slate-800 text-slate-400'
             }`}
           >
-            {isDarkFlow
+            {order.typeLabel || (isDarkFlow
               ? t('whaleAlertsDashboard.darkFlowStrength')
-              : (isBuy ? t('whaleAlertsDashboard.bigBuy') : order.side === 'sell' ? t('whaleAlertsDashboard.bigSell') : t('whaleAlertsDashboard.neutral'))}
+              : (isBuy ? t('whaleAlertsDashboard.bigBuy') : order.side === 'sell' ? t('whaleAlertsDashboard.bigSell') : t('whaleAlertsDashboard.neutral')))}
           </span>
           {severity && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityClass}`}>
@@ -218,32 +224,67 @@ export function WhaleFeedPanel({
         </div>
       ) : (
         <div className={`panel-scrollbar mt-3 min-h-0 ${feedHeightClass} overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
-          <div className="flex flex-col gap-2">
-            {(realtimeAlerts || []).slice(0, 3).map((a, i) => (
-              <AlertFeedCard
-                key={a.event_id || `ws-${a.ts}-${i}`}
-                order={{
-                  time: a.ts ? new Date(a.ts).toLocaleTimeString(undefined) : '—',
-                  ts: a.ts || null,
-                  alert_kind: a.alert_kind || 'whale_alert',
-                  matched_value: a.matched_value,
-                  side: (a.side || '').toLowerCase(),
-                  volume: null,
-                  price: null,
-                  size_class: a.size_class ?? null,
-                  severity: a.severity ?? null,
-                  display_score: a.display_score ?? null,
-                  event_score: a.event_score ?? null,
-                  description: a.description ?? null,
-                  strength: a.strength ?? null,
-                  confidence: a.confidence ?? null,
-                }}
-                animated={i === 0}
-              />
-            ))}
-            {orders.map((o, i) => (
-              <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
-            ))}
+          <div className="flex flex-col gap-4">
+            {/* ─── Realtime Alerts Section ─── */}
+            {(realtimeAlerts?.length || 0) > 0 && (
+              <div>
+                <div className="mb-2">
+                  <h4 className="text-xs font-semibold text-slate-300">
+                    🚨 {t('whaleAlertsDashboard.realtimeAlertsTitle')}
+                  </h4>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {t('whaleAlertsDashboard.realtimeAlertsDesc')}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {(realtimeAlerts || []).slice(0, 3).map((a, i) => {
+                    const isDarkFlow = String(a.alert_kind || '').toLowerCase() === 'dark_flow_alert';
+                    return (
+                      <AlertFeedCard
+                        key={a.event_id || `ws-${a.ts}-${i}`}
+                        order={{
+                          time: a.ts ? new Date(a.ts).toLocaleTimeString(undefined) : '—',
+                          ts: a.ts || null,
+                          alert_kind: a.alert_kind || 'whale_alert',
+                          matched_value: a.matched_value,
+                          side: (a.side || '').toLowerCase(),
+                          volume: null,
+                          price: null,
+                          size_class: a.size_class ?? null,
+                          severity: a.severity ?? null,
+                          display_score: a.display_score ?? null,
+                          event_score: a.event_score ?? null,
+                          description: a.description ?? null,
+                          strength: a.strength ?? null,
+                          confidence: a.confidence ?? null,
+                          typeLabel: isDarkFlow ? t('whaleAlertsDashboard.alertTypeDarkFlow') : t('whaleAlertsDashboard.alertTypeWhale'),
+                        }}
+                        animated={i === 0}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ─── History Orders Section ─── */}
+            {orders.length > 0 && (
+              <div>
+                <div className="mb-2">
+                  <h4 className="text-xs font-semibold text-slate-300">
+                    📊 {t('whaleAlertsDashboard.historyOrdersTitle')}
+                  </h4>
+                  <p className="mt-1 text-[10px] text-slate-500">
+                    {t('whaleAlertsDashboard.historyOrdersDesc')}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {orders.map((o, i) => (
+                    <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

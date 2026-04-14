@@ -1112,6 +1112,12 @@ const en = {
     strength: 'Strength',
     tickRate: 'Tick rate',
     small: 'Small',
+    realtimeAlertsTitle: 'Realtime Alerts (Whale + Dark Flow)',
+    realtimeAlertsDesc: 'Signals detected in the last 5 minutes, including large order alerts (whale alerts) and dark money flow detection.',
+    historyOrdersTitle: 'Large Order History (Whale orders)',
+    historyOrdersDesc: 'List of large buy/sell orders from API. Note: does not include dark flow detection.',
+    alertTypeWhale: '🐋 Whale Alert',
+    alertTypeDarkFlow: '🕷️ Dark Flow',
   },
   darkMoneyChart: {
     chartLabel: 'Price Action & Dark Money Flow',

@@ -1115,6 +1115,12 @@ const vi = {
     strength: 'Strength',
     tickRate: 'Tick rate',
     small: 'Small',
+    realtimeAlertsTitle: 'Cảnh báo Realtime (Whale + Dark Flow)',
+    realtimeAlertsDesc: 'Các tín hiệu phát hiện trong 5 phút gần nhất, bao gồm cảnh báo lệnh lớn (whale alerts) và dòng tiền tối (dark flow detection).',
+    historyOrdersTitle: 'Lịch sử lệnh lớn (Whale orders)',
+    historyOrdersDesc: 'Danh sách lệnh mua/bán lớn từ API, không bao gồm dark flow detection.',
+    alertTypeWhale: '🐋 Whale Alert',
+    alertTypeDarkFlow: '🕷️ Dark Flow',
   },
   darkMoneyChart: {
     chartLabel: 'Price Action & Dark Money Flow',
