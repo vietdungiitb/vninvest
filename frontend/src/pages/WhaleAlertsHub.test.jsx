@@ -282,7 +282,7 @@ describe('WhaleAlertsHub Campaigns', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabSymbolInvestigation' }));
 
-    fireEvent.click(await screen.findByRole('button', { name: 'HPG' }));
+    fireEvent.click(await screen.findByRole('link', { name: 'HPG' }));
 
     await waitFor(() => {
       expect(getSymbolInvestigation).toHaveBeenCalledWith('HPG', {

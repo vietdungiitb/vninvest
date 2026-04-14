@@ -1248,9 +1248,9 @@ export default function WhaleAlertsHub() {
               <label className="text-xs text-slate-400 block mb-2">{t('whaleHub.selectSymbol')}</label>
               <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
                 {buildTrackedSymbolBuckets(trackedSymbols).map((symbol) => (
-                  <button
+                  <Link
                     key={symbol}
-                    type="button"
+                    to={`/whale-alerts/${String(symbol || '').toLowerCase()}`}
                     onClick={() => setSelectedSymbolInvestigation(symbol)}
                     className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                       selectedSymbolInvestigation === symbol
@@ -1259,7 +1259,7 @@ export default function WhaleAlertsHub() {
                     }`}
                   >
                     {symbol}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>
