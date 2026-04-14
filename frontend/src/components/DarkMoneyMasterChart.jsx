@@ -15,6 +15,8 @@ const PERIODS = ['1M', '3M', '6M', '1Y'];
 // 1h cần backend intraday support — xem views_dark_money_history.py
 const INTERVALS = ['1D', '1W'];
 const INTRADAY_INTERVALS = ['1h', '30m', '15m'];
+const MIN_VISIBLE_BARS = 30;
+const MAX_VISIBLE_BARS = 300;
 
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
@@ -367,6 +369,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [showWhaleLabels, setShowWhaleLabels] = useState(false);
   const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
   const [ohlcTooltip, setOhlcTooltip] = useState(null);
+  const [zoomGuardrailHint, setZoomGuardrailHint] = useState('');
   const [prefetchState, setPrefetchState] = useState({
     running: false,
     completed: 0,
@@ -489,6 +492,12 @@ export default function DarkMoneyMasterChart({ symbol }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    if (!zoomGuardrailHint) return undefined;
+    const timer = setTimeout(() => setZoomGuardrailHint(''), 1800);
+    return () => clearTimeout(timer);
+  }, [zoomGuardrailHint]);
 
   // ─── Render Charts ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -670,6 +679,47 @@ export default function DarkMoneyMasterChart({ symbol }) {
         });
 
         chart1.timeScale().fitContent();
+
+        // Guardrail: giữ khung nhìn phân tích trong khoảng 30-300 nến
+        let isAdjustingRange = false;
+        chart1.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (!range || isAdjustingRange) return;
+
+          const barsInView = Math.abs(range.to - range.from);
+          const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(MIN_VISIBLE_BARS, candles.length));
+          const minBars = Math.min(MIN_VISIBLE_BARS, maxBars);
+
+          if (barsInView >= minBars && barsInView <= maxBars) return;
+
+          const targetBars = Math.max(minBars, Math.min(maxBars, barsInView));
+          const center = (range.from + range.to) / 2;
+
+          let nextFrom = center - targetBars / 2;
+          let nextTo = center + targetBars / 2;
+
+          const minIndex = -0.5;
+          const maxIndex = Math.max(0, candles.length - 0.5);
+          if (nextFrom < minIndex) {
+            const shift = minIndex - nextFrom;
+            nextFrom += shift;
+            nextTo += shift;
+          }
+          if (nextTo > maxIndex) {
+            const shift = nextTo - maxIndex;
+            nextFrom -= shift;
+            nextTo -= shift;
+          }
+
+          isAdjustingRange = true;
+          try {
+            chart1.timeScale().setVisibleLogicalRange({ from: nextFrom, to: nextTo });
+            setZoomGuardrailHint(`Khung nhìn phân tích được giới hạn ${minBars}-${maxBars} nến`);
+          } catch (_) {
+            // no-op
+          } finally {
+            isAdjustingRange = false;
+          }
+        });
       }
 
       // ── PANE 2: CVD — trục X ẩn (pane giữa không cần lặp label) ────────
@@ -953,6 +1003,11 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
         {/* C3: Quick Signal Bar — chiến thuật đang active hiển thị ngay dưới header */}
         {data?.strategy_table && <QuickSignalBar strategyTable={data.strategy_table} />}
+        {zoomGuardrailHint ? (
+          <div className="border-b border-slate-800/80 bg-slate-900/50 px-4 py-1.5 text-[11px] text-cyan-300">
+            {zoomGuardrailHint}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="space-y-1 p-4">
