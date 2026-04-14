@@ -689,12 +689,15 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
         <div className="rounded-2xl border border-rose-800/60 bg-rose-950/20 px-4 py-3 text-sm text-rose-200">{error}</div>
       ) : (
         <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+          <div className="grid gap-4 lg:grid-cols-2 items-stretch">
+            <div className="flex h-[420px] flex-col rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs font-semibold uppercase text-slate-400">
                 {t('whaleHub.campaigns')} ({campaigns.length})
               </p>
-              <div className="space-y-2">
+              <div
+                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 panel-scrollbar"
+                style={{ scrollbarGutter: 'stable' }}
+              >
                 {campaigns.length === 0 ? (
                   <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
                 ) : (
@@ -718,11 +721,14 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-semibold uppercase text-slate-400 mb-2">
+            <div className="flex h-[420px] flex-col rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+              <p className="text-xs font-semibold uppercase text-slate-400">
                 {t('whaleHub.darkFlowSignals')} ({signals.length})
               </p>
-              <div className="space-y-2">
+              <div
+                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 panel-scrollbar"
+                style={{ scrollbarGutter: 'stable' }}
+              >
                 {signals.length === 0 ? (
                   <div className="text-xs text-slate-500">{t('whaleHub.noEvents')}</div>
                 ) : (
@@ -1242,9 +1248,9 @@ export default function WhaleAlertsHub() {
               <label className="text-xs text-slate-400 block mb-2">{t('whaleHub.selectSymbol')}</label>
               <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
                 {buildTrackedSymbolBuckets(trackedSymbols).map((symbol) => (
-                  <button
+                  <Link
                     key={symbol}
-                    type="button"
+                    to={`/whale-alerts/${String(symbol || '').toLowerCase()}`}
                     onClick={() => setSelectedSymbolInvestigation(symbol)}
                     className={`rounded-lg border px-3 py-2 text-xs font-semibold transition-colors ${
                       selectedSymbolInvestigation === symbol
@@ -1253,7 +1259,7 @@ export default function WhaleAlertsHub() {
                     }`}
                   >
                     {symbol}
-                  </button>
+                  </Link>
                 ))}
               </div>
             </div>

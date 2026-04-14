@@ -54,6 +54,7 @@ urlpatterns = [
     path("stocks/<str:symbol>/financials/", _toggle_market_view('FinancialMetricsView'), name="stock-financials"),
     path("stocks/<str:symbol>/news/", views.stock_news_api, name="stock-news"),
     path("stocks/<str:symbol>/news/ai-summary/", views.stock_news_ai_summary_api, name="stock-news-ai-summary"),
+    path("stocks/<str:symbol>/dark-money-history/", views.dark_money_history_api, name="stock-dark-money-history"),
     path("stocks/<str:symbol>/order-flow/", views.stock_order_flow_api, name="stock-order-flow"),
     path("stocks/<str:symbol>/ai-advisory-session/", views.stock_ai_advisory_session_api, name="stock-ai-advisory-session"),
     path("stocks/<str:symbol>/ai-advisory-trace/", views.stock_ai_advisory_trace_api, name="stock-ai-advisory-trace"),

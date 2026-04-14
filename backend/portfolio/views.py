@@ -257,6 +257,9 @@ from .views_stock_order_flow import (
     stock_order_flow_api,
     whale_advisory_symbol_stats_api,
 )
+from .views_dark_money_history import (
+    dark_money_history_api,
+)
 from .views_stock_news import (
     portfolio_news_digest_api,
     stock_news_ai_summary_api,

@@ -42,7 +42,9 @@ import {
   getStockNews,
 } from '../api/client';
 import StockNewsPanel from '../components/StockNewsPanel';
-import { WhaleFeedPanel, BubbleOrderChart, MoneyFlowDonut } from './WhaleAlertsDashboard';
+import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
+import { BubbleOrderChart } from '../components/BubbleOrderChart';
+import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 import { useAbility } from '../context/AbilityContext';
@@ -2800,7 +2802,7 @@ export default function StockDetail() {
             <button
               onClick={handleToggleTracked}
               disabled={!!actionLoading}
-              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
+              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
             >
               {actionLoading === 'tracked' ? t('stockDetail.updating') : overview.is_tracked ? t('stockDetail.untrack') : t('stockDetail.trackRealtime')}
             </button>
@@ -2822,7 +2824,7 @@ export default function StockDetail() {
               <button
                 onClick={handleAddToWatchlist}
                 disabled={!!actionLoading || availableWatchlistGroups.length === 0}
-                className={`btn-accent shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-accent shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'watchlist-add' ? t('stockDetail.saving') : t('stockDetail.saveToGroup')}
               </button>
@@ -2838,7 +2840,7 @@ export default function StockDetail() {
               <button
                 onClick={handleCreateAlert}
                 disabled={!!actionLoading}
-                className={`btn-success shrink-0 whitespace-nowrap ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-success shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'alert' ? t('stockDetail.creating') : t('stockDetail.createAlert')}
               </button>
@@ -2869,8 +2871,8 @@ export default function StockDetail() {
         </div>
       </section>
 
-      {/* Main content: chart + panels — 3-column equal grid at xl */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      {/* Main content: chart + panels — 3-column weighted grid like Whale Dashboard */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
         {/* 2 cột trái: Chart + Whale Alerts + BubbleOrderChart */}
         <div className="xl:col-span-2 flex flex-col gap-4">
           <section className="card-section p-4">
@@ -3311,12 +3313,11 @@ export default function StockDetail() {
           </section>
 
         </div>
-        {/* Cột phải 1/3: Depth + dòng tiền + phân bổ lệnh lớn */}
-        <div className="flex flex-col gap-3 md:gap-4 xl:gap-5 xl:min-h-0 xl:h-full">
+        {/* Right side-bar — same column ratio as Whale Alerts Dashboard */}
+        <div className="flex flex-col gap-4">
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
-          {/* Tỷ trọng dòng tiền phiên */}
-          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} />
+          <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} compact />
           <BubbleOrderChart orders={whaleFeedData?.whale_orders} loading={whaleFeedLoading} />
         </div>
         {/* Cảnh báo giá - toàn chiều rộng */}
