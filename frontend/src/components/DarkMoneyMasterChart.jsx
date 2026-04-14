@@ -488,7 +488,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [datasetCache, setDatasetCache] = useState({});
   const [loading, setLoading] = useState(true);
   const [chartError, setChartError] = useState('');
-  const [period, setPeriod] = useState('10Y');
+  const [period, setPeriod] = useState('6M');
   const [interval, setInterval] = useState('1D');
   const [showWhaleSignals, setShowWhaleSignals] = useState(true);
   const [showWhaleLabels, setShowWhaleLabels] = useState(false);
@@ -736,12 +736,10 @@ export default function DarkMoneyMasterChart({ symbol }) {
         // B1: Candle hoặc Line tùy chartType state
         let priceSeries;
         if (chartType === 'line') {
-          priceSeries = addSeriesCompat(chart1, 'addAreaSeries', AreaSeries, {
+          priceSeries = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
             lineColor: '#22d3ee',
-            topColor: 'rgba(34, 211, 238, 0.15)',
-            bottomColor: 'rgba(34, 211, 238, 0.02)',
             lineWidth: 2.5,
-            priceLineVisible: true,
+            priceLineVisible: false,
             lastValueVisible: true,
           });
           priceSeries.setData(candles.map((c) => ({ time: c.time, value: c.close })));
