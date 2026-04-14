@@ -82,6 +82,19 @@ class VnstockAdapterTests(SimpleTestCase):
 
         self.assertEqual(ctx.exception.code, 'vnstock_missing')
 
+    @patch('portfolio.adapters.vnstock_adapter._import_vnstock')
+    def test_build_stock_client_maps_rate_limit_error(self, mock_import):
+        class _VnstockStub:
+            def stock(self, symbol, source):
+                raise ConnectionError('Failed to fetch data: 429 - Too Many Requests')
+
+        mock_import.return_value = _VnstockStub
+
+        with self.assertRaises(ExternalSystemException) as ctx:
+            vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+
+        self.assertEqual(ctx.exception.code, 'vnstock_rate_limited')
+
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
     @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
     def test_fetch_financial_ratio_dataframe_uses_timeout_wrapper(self, mock_build_stock, mock_run_timeout):
