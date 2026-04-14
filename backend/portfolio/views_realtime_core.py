@@ -351,12 +351,18 @@ class IntradayMatchedView(APIView):
             stream_ticks = _reader.get_intraday_ticks(normalized_symbol, count=page_size)
             if stream_ticks:
                 trades = []
+                from portfolio.system_settings import get_zoneinfo as _get_zoneinfo
+                _display_tz = _get_zoneinfo()
                 for tick in stream_ticks:
                     raw_time = tick.get('ts', '')
                     try:
                         import pandas as _pd
 
                         ts = _pd.Timestamp(raw_time)
+                        # Stream stores UTC ('Z'). Convert to display timezone (ICT +07:00).
+                        if ts.tzinfo is None:
+                            ts = ts.tz_localize('UTC')
+                        ts = ts.tz_convert(_display_tz)
                         time_str = ts.strftime('%H:%M:%S')
                     except Exception:
                         time_str = str(raw_time)[:8]

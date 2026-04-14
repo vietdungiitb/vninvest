@@ -2064,9 +2064,11 @@ class MarketDataService:
     def _format_time(self, raw_time) -> str:
         try:
             import pandas as pd
+            from portfolio.system_settings import get_zoneinfo as _get_zoneinfo
             ts = pd.Timestamp(raw_time)
-            if ts.tz is not None:
-                ts = ts.tz_convert('Asia/Ho_Chi_Minh')
+            if ts.tzinfo is None:
+                ts = ts.tz_localize('UTC')
+            ts = ts.tz_convert(_get_zoneinfo())
             return ts.strftime('%H:%M:%S')
         except Exception:
             return str(raw_time)[:8]
