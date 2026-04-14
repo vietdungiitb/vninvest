@@ -538,6 +538,70 @@ def _format_billion(value: float) -> str:
     return f'{(_safe_float(value) / 1_000_000_000):.1f} ty'
 
 
+def _format_price_level(value: float | None) -> str:
+    if value is None:
+        return 'n/a'
+
+    numeric_value = _safe_float(value)
+    if abs(numeric_value) >= 1000:
+        return f'{numeric_value:,.0f}'
+    return f'{numeric_value:.2f}'
+
+
+def _fetch_live_price_anchor(symbol: str) -> dict:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return {}
+
+    try:
+        from .adapters.vnstock_adapter import fetch_price_board_dataframe
+
+        price_board_df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+        if price_board_df is None or getattr(price_board_df, 'empty', True):
+            return {}
+
+        listing_row = price_board_df['match'].iloc[0] if 'match' in price_board_df.columns.get_level_values(0) else None
+        if listing_row is None:
+            return {}
+
+        current_price = _safe_float(listing_row.get('match_price'))
+        reference_price = _safe_float(listing_row.get('reference_price'))
+        high_price = _safe_float(listing_row.get('highest'))
+        low_price = _safe_float(listing_row.get('lowest'))
+        return {
+            'current_price': current_price,
+            'reference_price': reference_price,
+            'high_price': high_price,
+            'low_price': low_price,
+            'source': 'live_price_board',
+        }
+    except Exception as exc:
+        logger.debug('Live price anchor fallback symbol=%s err=%s', normalized_symbol, exc)
+        return {}
+
+
+def _resolve_price_scale_factor(symbol: str, overview: dict | None, latest_close: float | None) -> tuple[float, dict]:
+    latest_close_value = _safe_float(latest_close)
+    if latest_close_value <= 0:
+        return 1.0, {}
+
+    live_anchor = _fetch_live_price_anchor(symbol)
+    anchor_price = _safe_float(
+        live_anchor.get('current_price')
+        or live_anchor.get('reference_price')
+        or (overview or {}).get('current_price')
+        or (overview or {}).get('reference_price')
+        or latest_close_value
+    )
+    if anchor_price <= 0:
+        return 1.0, live_anchor
+
+    scale_factor = anchor_price / latest_close_value
+    if 0.2 <= scale_factor <= 5.0:
+        return 1.0, live_anchor
+    return scale_factor, live_anchor
+
+
 def _market_session_label(now_local) -> str:
     weekday = getattr(now_local, 'weekday', lambda: 0)()
     if weekday >= 5:
@@ -676,7 +740,11 @@ def _build_whale_context_for_prompt(user, symbol: str, lookback_days: int = 180)
     turnover_rows = list(
         DailyPrice.objects.filter(symbol=normalized_symbol).order_by('-date').values('close_price', 'volume')[:lookback_days]
     )
-    estimated_turnover = sum(_safe_float(row.get('close_price')) * _safe_float(row.get('volume')) for row in turnover_rows)
+    latest_close = _safe_float(turnover_rows[0].get('close_price')) if turnover_rows else 0.0
+    scale_factor, _ = _resolve_price_scale_factor(symbol=normalized_symbol, overview=None, latest_close=latest_close)
+    estimated_turnover = sum(
+        (_safe_float(row.get('close_price')) * scale_factor) * _safe_float(row.get('volume')) for row in turnover_rows
+    )
     dominance_pct = (total_value / estimated_turnover * 100.0) if estimated_turnover > 0 else None
 
     recent_events = list(qs.values('created_at', 'side', 'matched_value')[:6])
@@ -766,6 +834,11 @@ def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: in
     except Exception:
         overview = {}
     technical = _compute_stock_workspace_technical(rows, overview)
+    scale_factor, live_anchor = _resolve_price_scale_factor(
+        symbol=normalized_symbol,
+        overview=overview,
+        latest_close=close_values[-1] if close_values else None,
+    )
 
     rsi_series = [value for value in _compute_rsi_series(close_values, 14) if value is not None]
     recent_rsi = rsi_series[-lookback_sessions:] if rsi_series else []
@@ -809,8 +882,8 @@ def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: in
 
     support_window_lows = low_values[-lookback_sessions:] if len(low_values) >= lookback_sessions else low_values
     resistance_window_highs = high_values[-lookback_sessions:] if len(high_values) >= lookback_sessions else high_values
-    support = min(support_window_lows) if support_window_lows else None
-    resistance = max(resistance_window_highs) if resistance_window_highs else None
+    support = (min(support_window_lows) * scale_factor) if support_window_lows else None
+    resistance = (max(resistance_window_highs) * scale_factor) if resistance_window_highs else None
 
     rsi_range_text = 'n/a'
     if recent_rsi:
@@ -827,15 +900,21 @@ def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: in
     if bollinger:
         position_text = f'{bollinger["position_pct"]:.1f}%' if bollinger.get('position_pct') is not None else 'n/a'
         boll_text = (
-            f'Bollinger 30 phien: upper={bollinger["upper"]:.2f}, middle={bollinger["middle"]:.2f}, '
-            f'lower={bollinger["lower"]:.2f}, band_pos={position_text}, state={bollinger["state"]}.'
+            f'Bollinger 30 phien: upper={_format_price_level(bollinger["upper"] * scale_factor)}, '
+            f'middle={_format_price_level(bollinger["middle"] * scale_factor)}, '
+            f'lower={_format_price_level(bollinger["lower"] * scale_factor)}, '
+            f'band_pos={position_text}, state={bollinger["state"]}.'
         )
 
-    support_text = f'{support:.2f}' if support is not None else 'n/a'
-    resistance_text = f'{resistance:.2f}' if resistance is not None else 'n/a'
+    current_price_anchor = _safe_float(
+        live_anchor.get('current_price') or overview.get('current_price') or (close_values[-1] * scale_factor if close_values else 0.0)
+    )
+    support_text = _format_price_level(support)
+    resistance_text = _format_price_level(resistance)
+    current_price_text = _format_price_level(current_price_anchor)
     current_rsi_text = f'{current_rsi:.1f}' if current_rsi is not None else 'n/a'
     return (
-        f'Technical 30 phien: bias={technical.get("bias", "NEUTRAL")}, RSI14={current_rsi_text}, '
+        f'Technical 30 phien: current_price={current_price_text}, bias={technical.get("bias", "NEUTRAL")}, RSI14={current_rsi_text}, '
         f'RSI_range_30={rsi_range_text}, RSI_trend={rsi_trend}.\n'
         f'{macd_text}\n'
         f'{boll_text}\n'
