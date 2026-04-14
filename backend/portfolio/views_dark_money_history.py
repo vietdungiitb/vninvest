@@ -14,7 +14,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from django.db.models import Avg, Count, F, FloatField, Max, Min, Q, Sum
-from django.db.models.functions import TruncDate, TruncWeek
+from django.db.models.functions import TruncDate, TruncHour, TruncWeek
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -35,7 +35,10 @@ PERIOD_DAYS_MAP = {
     '6M': 180,
     '1Y': 365,
 }
-VALID_INTERVALS = {'1D', '1W'}
+VALID_INTERVALS = {'1D', '1W', '1h'}
+INTRADAY_MAX_DAYS = {'1h': 7}
+VNSTOCK_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60'}
+TRUNC_FN_MAP = {'1D': TruncDate, '1W': TruncWeek, '1h': TruncHour}
 MA_WINDOWS = [20, 50]
 SMFI_LOOKBACK_SESSIONS = 20
 
@@ -180,13 +183,19 @@ def dark_money_history_api(request, symbol: str):
 
     period_days = _resolve_period_days(period)
     cutoff_date = date.today() - timedelta(days=period_days)
+    # Intraday: giới hạn period tối đa theo INTRADAY_MAX_DAYS
+    is_intraday = interval in INTRADAY_MAX_DAYS
+    if is_intraday:
+        max_days = INTRADAY_MAX_DAYS[interval]
+        period_days = min(_resolve_period_days(period), max_days)
+    cutoff_date = date.today() - timedelta(days=period_days)
 
     # ─── 1. Fetch OHLC candles from vnstock ───────────────────────────────
     candles = []
     try:
         from .adapters.vnstock_adapter import fetch_history_dataframe
 
-        vnstock_interval = '1D' if interval == '1D' else '1W'
+        vnstock_interval = VNSTOCK_INTERVAL_MAP.get(interval, '1D')
         end_date = date.today().strftime('%Y-%m-%d')
         start_date = cutoff_date.strftime('%Y-%m-%d')
 
@@ -205,9 +214,15 @@ def dark_money_history_api(request, symbol: str):
                         if col in row.index and row[col] is not None:
                             val = row[col]
                             if hasattr(val, 'strftime'):
-                                row_time = val.strftime('%Y-%m-%d')
+                                # Intraday: LW Charts cần Unix timestamp (int seconds)
+                                # Daily/Weekly: YYYY-MM-DD string là đủ
+                                if is_intraday and hasattr(val, 'hour'):
+                                    import calendar
+                                    row_time = calendar.timegm(val.timetuple())
+                                else:
+                                    row_time = val.strftime('%Y-%m-%d')
                             else:
-                                row_time = str(val)[:10]
+                                row_time = str(val)[:10] if not is_intraday else str(val)
                             break
 
                     if not row_time:
@@ -231,7 +246,7 @@ def dark_money_history_api(request, symbol: str):
     # ─── 2. Dark Flow Strength Series (from OrderFlowSignal DB) ───────────
     dark_flow_series = []
     try:
-        trunc_fn = TruncDate if interval == '1D' else TruncWeek
+        trunc_fn = TRUNC_FN_MAP.get(interval, TruncDate)
         qs = (
             OrderFlowSignal.objects
             .filter(
@@ -255,7 +270,11 @@ def dark_money_history_api(request, symbol: str):
             if bucket_date is None:
                 continue
             if hasattr(bucket_date, 'strftime'):
-                time_str = bucket_date.strftime('%Y-%m-%d')
+                if is_intraday and hasattr(bucket_date, 'hour'):
+                    import calendar
+                    time_str = calendar.timegm(bucket_date.timetuple())
+                else:
+                    time_str = bucket_date.strftime('%Y-%m-%d')
             else:
                 time_str = str(bucket_date)[:10]
 

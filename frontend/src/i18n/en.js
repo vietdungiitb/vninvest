@@ -1145,6 +1145,8 @@ const en = {
     risk: 'Risk',
     darkMoneyDetection: 'DARK MONEY DETECTION',
     darkMoneyTitle: 'Dark Money Detection',
+    typeCandle: 'Candle',
+    typeLine: 'Line',
     strength: 'Strength',
     smfiLabel: 'Smart Money Flow Index (SMFI)',
     whaleBuyTotal: 'Whale Buy Total',

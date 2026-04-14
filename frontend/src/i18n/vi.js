@@ -1148,6 +1148,8 @@ const vi = {
     risk: 'Rủi ro',
     darkMoneyDetection: 'NHẬN DIỆN DARK MONEY',
     darkMoneyTitle: 'Dark Money Detection',
+    typeCandle: 'Nến',
+    typeLine: 'Đường',
     strength: 'Cường độ',
     smfiLabel: 'Smart Money Flow Index (SMFI)',
     whaleBuyTotal: 'Tổng Whale Buy',
