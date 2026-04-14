@@ -47,6 +47,7 @@ function severityLabel(severity, t) {
 export function AlertFeedCard({ order, animated }) {
   const { t } = useI18n();
   if (!order) return null;
+  const isDarkFlow = String(order.alert_kind || '').toLowerCase() === 'dark_flow_alert';
   const isBuy = order.side === 'buy';
   const isBig = order.size_class === 'shark';
   const severity = typeof order.severity === 'string' ? order.severity.toLowerCase() : null;
@@ -74,7 +75,9 @@ export function AlertFeedCard({ order, animated }) {
               isBuy ? 'bg-emerald-900/60 text-emerald-300' : order.side === 'sell' ? 'bg-rose-900/60 text-rose-300' : 'bg-slate-800 text-slate-400'
             }`}
           >
-            {isBuy ? t('whaleAlertsDashboard.bigBuy') : order.side === 'sell' ? t('whaleAlertsDashboard.bigSell') : t('whaleAlertsDashboard.neutral')}
+            {isDarkFlow
+              ? t('whaleAlertsDashboard.darkFlowStrength')
+              : (isBuy ? t('whaleAlertsDashboard.bigBuy') : order.side === 'sell' ? t('whaleAlertsDashboard.bigSell') : t('whaleAlertsDashboard.neutral'))}
           </span>
           {severity && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${severityClass}`}>
@@ -83,12 +86,28 @@ export function AlertFeedCard({ order, animated }) {
           )}
         </div>
       </div>
-      <div className="mt-1 flex items-baseline gap-2">
-        <span className="text-base font-bold text-white">{fmtBil(order.matched_value)}</span>
-        <span className="text-slate-400">
-          {fmtVol(order.volume)} @ {fmtPrice(order.price)}
-        </span>
-      </div>
+      {order.matched_value != null ? (
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="text-base font-bold text-white">{fmtBil(order.matched_value)}</span>
+          <span className="text-slate-400">
+            {fmtVol(order.volume)} @ {fmtPrice(order.price)}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-300">
+          <span>{order.description || t('whaleAlertsDashboard.darkFlowStrength')}</span>
+          {order.strength != null && (
+            <span className="rounded-full border border-cyan-700/60 bg-cyan-950/30 px-2 py-0.5 text-cyan-300">
+              {t('whaleAlertsDashboard.strength')}: {Number(order.strength).toFixed(2)}
+            </span>
+          )}
+          {order.confidence && (
+            <span className="rounded-full border border-slate-700 bg-slate-900/60 px-2 py-0.5 uppercase text-slate-300">
+              {order.confidence}
+            </span>
+          )}
+        </div>
+      )}
       {(order.display_score != null || order.event_score != null) && (
         <div className="mt-1 text-[11px] text-slate-400">
           {t('whaleAlertsDashboard.score')} {order.display_score ?? '—'} / {t('whaleAlertsDashboard.event')} {order.event_score ?? '—'}
@@ -206,6 +225,7 @@ export function WhaleFeedPanel({
                 order={{
                   time: a.ts ? new Date(a.ts).toLocaleTimeString(undefined) : '—',
                   ts: a.ts || null,
+                  alert_kind: a.alert_kind || 'whale_alert',
                   matched_value: a.matched_value,
                   side: (a.side || '').toLowerCase(),
                   volume: null,
@@ -214,6 +234,9 @@ export function WhaleFeedPanel({
                   severity: a.severity ?? null,
                   display_score: a.display_score ?? null,
                   event_score: a.event_score ?? null,
+                  description: a.description ?? null,
+                  strength: a.strength ?? null,
+                  confidence: a.confidence ?? null,
                 }}
                 animated={i === 0}
               />

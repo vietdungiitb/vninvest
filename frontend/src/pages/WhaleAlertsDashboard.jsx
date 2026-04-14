@@ -139,11 +139,37 @@ export default function WhaleAlertsDashboard() {
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
 
-  const { alerts, latestWhaleAlert, latestDarkFlowAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
+  const { alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
   });
 
-  const symbolAlerts = (alerts || []).filter((a) => a.symbol === normalizedSymbol);
+  const normalizeSymbol = (value) => String(value || '').trim().toUpperCase();
+
+  const symbolAlerts = (alerts || []).filter((a) => normalizeSymbol(a?.symbol) === normalizedSymbol);
+  const symbolDarkFlowAlerts = (darkFlowAlerts || []).filter((a) => normalizeSymbol(a?.symbol) === normalizedSymbol);
+
+  const liveBoardAlerts = React.useMemo(() => {
+    const whaleItems = symbolAlerts.map((a) => ({
+      ...a,
+      alert_kind: 'whale_alert',
+    }));
+
+    const darkFlowItems = symbolDarkFlowAlerts.map((a) => ({
+      ...a,
+      alert_kind: 'dark_flow_alert',
+      side: (a.signal_type || '').toLowerCase().includes('sell') ? 'sell' : (a.signal_type || '').toLowerCase().includes('buy') ? 'buy' : null,
+      matched_value: a.matched_value ?? null,
+    }));
+
+    return [...whaleItems, ...darkFlowItems]
+      .sort((left, right) => {
+        const lt = new Date(left?.ts || 0).getTime();
+        const rt = new Date(right?.ts || 0).getTime();
+        return rt - lt;
+      })
+      .slice(0, 8);
+  }, [symbolAlerts, symbolDarkFlowAlerts]);
+
   const symbolWhaleAlert = latestWhaleAlert?.symbol === normalizedSymbol ? latestWhaleAlert : null;
   const symbolDarkFlowAlert = latestDarkFlowAlert?.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
 
@@ -298,7 +324,7 @@ export default function WhaleAlertsDashboard() {
         <div className="flex flex-col gap-4">
           <WhaleFeedPanel
             symbol={normalizedSymbol}
-            realtimeAlerts={symbolAlerts}
+            realtimeAlerts={liveBoardAlerts}
             feedData={feedData}
             loading={feedLoading}
             onRefresh={fetchFeed}
