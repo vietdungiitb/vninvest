@@ -402,30 +402,12 @@ export default function DashboardRealtimePanel({
       const currentPrice = toFiniteNumber(rawQuote.current_price);
       const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
       const normalizedCurrent = currentPrice === null ? null : currentPrice * factor;
-      const normalizedPrev = prevPriceRaw === null ? null : prevPriceRaw * factor;
-
-      const normalizedChangeValue = (
-        normalizedCurrent !== null
-        && normalizedPrev !== null
-        && normalizedPrev > 0
-      )
-        ? normalizedCurrent - normalizedPrev
-        : toFiniteNumber(rawQuote.change_value);
-
-      const normalizedChangePct = (
-        normalizedCurrent !== null
-        && normalizedPrev !== null
-        && normalizedPrev > 0
-      )
-        ? ((normalizedCurrent - normalizedPrev) / normalizedPrev) * 100
-        : toFiniteNumber(rawQuote.change_pct);
 
       return {
         ...rawQuote,
         current_price: normalizedCurrent,
-        prev_price: normalizedPrev,
-        change_value: normalizedChangeValue,
-        change_pct: normalizedChangePct,
+         prev_price: prevPriceRaw,
+         change_pct: toFiniteNumber(rawQuote.change_pct),
       };
     });
   }, [holdings, monitoredSymbols, quotesBySymbol]);
