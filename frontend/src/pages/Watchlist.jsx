@@ -173,6 +173,7 @@ function extractApiErrorMessage(error, fallbackMessage) {
 }
 
 export default function WatchlistPage() {
+  const MAX_WATCHLIST_RT_SYMBOLS = 120;
   const navigate = useNavigate();
   const { userConfig } = usePortfolio();
   const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice } = useI18n();
@@ -330,16 +331,24 @@ export default function WatchlistPage() {
     fetchPriceAlerts();
   }, [loadGroups, fetchTracked, fetchPriceAlerts]);
 
-  const allRealtimeSymbols = useMemo(
-    () => [
+  const allRealtimeSymbols = useMemo(() => {
+    const tracked = trackedSymbols.map((item) => item.symbol).filter(Boolean);
+    const alertSymbols = priceAlerts.map((rule) => rule.symbol).filter(Boolean);
+
+    const activeGroupSymbols = (() => {
+      if (view === 'tracked') return [];
+      const group = groups.find((g) => g.id === view);
+      return (group?.items || []).map((item) => item.symbol).filter(Boolean);
+    })();
+
+    return [
       ...new Set([
-        ...groups.flatMap((group) => group.items.map((item) => item.symbol)),
-        ...trackedSymbols.map((item) => item.symbol),
-        ...priceAlerts.map((rule) => rule.symbol),
-      ].filter(Boolean)),
-    ],
-    [groups, trackedSymbols, priceAlerts],
-  );
+        ...tracked,
+        ...alertSymbols,
+        ...activeGroupSymbols,
+      ]),
+    ].slice(0, MAX_WATCHLIST_RT_SYMBOLS);
+  }, [groups, trackedSymbols, priceAlerts, view]);
 
   const {
     quotesBySymbol,

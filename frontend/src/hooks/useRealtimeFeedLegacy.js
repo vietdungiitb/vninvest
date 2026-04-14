@@ -111,6 +111,7 @@ export default function useRealtimeFeedLegacy({
   enabled = true,
 }) {
   const POLL_BATCH_SIZE = 8;
+  const MAX_WS_SUB_SYMBOLS = 50;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
   const [lastEventAt, setLastEventAt] = useState(null);
@@ -159,6 +160,7 @@ export default function useRealtimeFeedLegacy({
   const pollCursorRef = useRef(0);
   const pollBackoffMsRef = useRef(0);
   const pollBackoffUntilRef = useRef(null);
+  const wsHealthyRef = useRef(false);
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
   useEffect(() => {
@@ -247,7 +249,12 @@ export default function useRealtimeFeedLegacy({
     const poll = async () => {
       const token = localStorage.getItem('access_token');
       const syms = symbolsRef.current;
-      if (!token || !syms.length || realtimeStatusRef.current === 'live') return;
+      if (!token || !syms.length) return;
+
+      const wsCoversAllSymbols = wsHealthyRef.current && syms.length <= MAX_WS_SUB_SYMBOLS;
+      if (wsCoversAllSymbols) {
+        return;
+      }
 
       if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
         return;
@@ -422,6 +429,7 @@ export default function useRealtimeFeedLegacy({
           nextWs.close(1000);
           return;
         }
+        wsHealthyRef.current = false;
         reconnectAttemptRef.current = 0;
         consecutiveFailuresRef.current = 0;
         setRealtimeStatus('live');
@@ -431,7 +439,8 @@ export default function useRealtimeFeedLegacy({
           circuitOpen: false,
           circuitOpenUntil: null,
         }));
-        sendAction(nextWs, 'subscribe', symbolsRef.current);
+        const symbolsForWs = symbolsRef.current.slice(0, MAX_WS_SUB_SYMBOLS);
+        sendAction(nextWs, 'subscribe', symbolsForWs);
       };
 
       nextWs.onmessage = (event) => {
@@ -439,6 +448,7 @@ export default function useRealtimeFeedLegacy({
         try {
           const payload = JSON.parse(event.data);
           if (payload.event_type === 'subscribed') {
+            wsHealthyRef.current = Array.isArray(payload.symbols) && payload.symbols.length > 0;
             setConnectionState((prev) => ({
               ...prev,
               subscribedSymbols: payload.symbols || [],
@@ -453,6 +463,15 @@ export default function useRealtimeFeedLegacy({
               lastUnsubscribedAt: nowIso(),
             }));
             setEventCounts((prev) => ({ ...prev, unsubscribed: prev.unsubscribed + 1 }));
+          } else if (payload.event_type === 'error') {
+            wsHealthyRef.current = false;
+            setRealtimeStatus('polling');
+            setConnectionState((prev) => ({
+              ...prev,
+              transport: 'polling',
+              lastErrorAt: nowIso(),
+              subscribedSymbols: [],
+            }));
           } else if (payload.event_type === 'ticker_update') {
             applyTickerUpdate({
               symbol: payload.symbol,
@@ -503,6 +522,7 @@ export default function useRealtimeFeedLegacy({
 
       nextWs.onerror = () => {
         if (destroyed || nextWs !== ws) return;
+        wsHealthyRef.current = false;
         setRealtimeStatus('polling');
         setConnectionState((prev) => ({
           ...prev,
@@ -513,6 +533,7 @@ export default function useRealtimeFeedLegacy({
 
       nextWs.onclose = (ev) => {
         if (destroyed || nextWs !== ws) return;
+        wsHealthyRef.current = false;
         setConnectionState((prev) => ({
           ...prev,
           transport: ev.code === 1000 ? 'idle' : 'polling',
