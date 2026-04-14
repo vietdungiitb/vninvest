@@ -504,3 +504,14 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         self.assertTrue(resp.data['ok'])
         self.assertTrue(resp.data['has_report'])
         self.assertEqual(resp.data['report']['symbol'], 'VNM')
+
+    @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
+    def test_latest_benchmark_fail_soft_when_loader_errors(self, mock_latest):
+        self._login('vn_bench_staff')
+        mock_latest.side_effect = RuntimeError('cache backend unavailable')
+
+        resp = self.client.get(VNSTOCK_BENCHMARK_LATEST_URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data['ok'])
+        self.assertFalse(resp.data['has_report'])
+        self.assertEqual(resp.data['status'], 'temporarily_unavailable')

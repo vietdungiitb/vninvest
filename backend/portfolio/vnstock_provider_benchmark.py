@@ -299,7 +299,10 @@ def run_price_board_provider_benchmark(payload: dict[str, Any] | None = None) ->
 
 
 def get_latest_price_board_benchmark_report() -> dict[str, Any] | None:
-    cached = cache.get(BENCHMARK_CACHE_KEY)
+    try:
+        cached = cache.get(BENCHMARK_CACHE_KEY)
+    except Exception:
+        return None
     if isinstance(cached, dict):
         return cached
     return None

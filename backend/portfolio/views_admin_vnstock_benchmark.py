@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
@@ -10,11 +12,27 @@ from portfolio.vnstock_provider_benchmark import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def admin_vnstock_price_board_benchmark_latest_api(request):
     """GET /api/admin-ops/vnstock-config/benchmark-price-board/latest/"""
-    report = get_latest_price_board_benchmark_report()
+    try:
+        report = get_latest_price_board_benchmark_report()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning('admin_vnstock_price_board_benchmark_latest_api: failed to load latest report: %s', exc)
+        return Response(
+            {
+                'ok': False,
+                'has_report': False,
+                'status': 'temporarily_unavailable',
+                'message': 'Tạm thời chưa đọc được dữ liệu benchmark gần nhất. Vui lòng thử lại sau vài giây.',
+            },
+            status=status.HTTP_200_OK,
+        )
+
     if report is None:
         return Response(
             {
