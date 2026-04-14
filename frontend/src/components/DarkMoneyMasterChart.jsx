@@ -144,7 +144,7 @@ function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
 }
 
 function setMarkersCompat(series, markers) {
-  if (!series || !markers?.length) return;
+  if (!series || !Array.isArray(markers)) return;
   if (typeof series.setMarkers === 'function') {
     series.setMarkers(markers);
     return;
@@ -154,13 +154,66 @@ function setMarkersCompat(series, markers) {
   }
 }
 
-function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
+function buildCompactWhaleMarkers(whaleSignals, candles, showLabels, options = {}) {
   if (!whaleSignals?.length || !candles?.length) return [];
+
+  const {
+    topPercent = 0.1,
+    visibleRange = null,
+    minMarkers = 1,
+  } = options;
 
   const candleTimes = new Set(candles.map((c) => c.time));
 
-  return whaleSignals
+  const getSignalStrength = (signal) => {
+    const matchedValue = Number(signal?.matched_value);
+    if (Number.isFinite(matchedValue)) return Math.abs(matchedValue);
+    const value = Number(signal?.value);
+    if (Number.isFinite(value)) return Math.abs(value);
+    return 0;
+  };
+
+  const normalizeSignalEpoch = (time) => toEpochSecondsFromChartTimeKey(normalizeChartTimeKey(time));
+
+  const validSignals = whaleSignals
     .filter((signal) => candleTimes.has(signal.time))
+    .map((signal, idx) => ({
+      ...signal,
+      _index: idx,
+      _strength: getSignalStrength(signal),
+      _epoch: normalizeSignalEpoch(signal.time),
+    }));
+
+  let rangeSignals = validSignals;
+  if (visibleRange?.from != null && visibleRange?.to != null) {
+    const fromEpoch = normalizeSignalEpoch(visibleRange.from);
+    const toEpoch = normalizeSignalEpoch(visibleRange.to);
+    if (Number.isFinite(fromEpoch) && Number.isFinite(toEpoch)) {
+      const minEpoch = Math.min(fromEpoch, toEpoch);
+      const maxEpoch = Math.max(fromEpoch, toEpoch);
+      rangeSignals = validSignals.filter((signal) => {
+        if (!Number.isFinite(signal._epoch)) return false;
+        return signal._epoch >= minEpoch && signal._epoch <= maxEpoch;
+      });
+    }
+  }
+
+  if (!rangeSignals.length) return [];
+
+  const targetCount = Math.max(minMarkers, Math.ceil(rangeSignals.length * topPercent));
+
+  const selectedIds = new Set(
+    [...rangeSignals]
+      .sort((left, right) => {
+        if (right._strength !== left._strength) return right._strength - left._strength;
+        return String(left.time).localeCompare(String(right.time));
+      })
+      .slice(0, targetCount)
+      .map((signal) => signal._index),
+  );
+
+  return rangeSignals
+    .filter((signal) => selectedIds.has(signal._index))
     .sort((left, right) => String(left.time).localeCompare(String(right.time)))
     .map((signal) => {
       const signalType = String(signal.type || '').toLowerCase();
@@ -718,12 +771,21 @@ export default function DarkMoneyMasterChart({ symbol }) {
           ma50Series.setData(data.moving_averages.ma50);
         }
 
-        // Whale Markers
+        // Whale Markers: top 10% trong khung thời gian đang hiển thị
         if (showWhaleSignals && data.whale_signals?.length) {
-          const markers = buildCompactWhaleMarkers(data.whale_signals, candles, showWhaleLabels);
-          if (markers.length) {
+          const renderWhaleMarkersByRange = (range) => {
+            const markers = buildCompactWhaleMarkers(data.whale_signals, candles, showWhaleLabels, {
+              topPercent: 0.1,
+              visibleRange: range,
+              minMarkers: 1,
+            });
             setMarkersCompat(priceSeries, markers);
-          }
+          };
+
+          renderWhaleMarkersByRange(chart1.timeScale().getVisibleRange?.() || null);
+          chart1.timeScale().subscribeVisibleTimeRangeChange((range) => {
+            renderWhaleMarkersByRange(range);
+          });
         }
 
         // B2: Subscribe crosshairMove → OHLC tooltip
