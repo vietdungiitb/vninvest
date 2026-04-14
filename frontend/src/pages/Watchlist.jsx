@@ -93,10 +93,32 @@ function normalizeWatchlistQuoteUnit(item) {
   const normalizedCurrent = current * factor;
   const normalizedPrev = prev !== null && prev >= 2000 ? prev * factor : item?.prev_price;
 
-  // Trust change_value from API (already pre-computed in correct units), just scale it.
-  // Do NOT recalculate from prices to avoid unit-mismatch errors.
+  // Trust change_value from API, but guard against mixed-unit payloads
+  // (e.g. current_price in nghin VND while change_value is still absolute VND).
   const changeValue = toFiniteNumber(item?.change_value);
-  const normalizedChangeValue = changeValue !== null ? changeValue * factor : null;
+  const normalizedChangeValue = (() => {
+    if (changeValue === null) return null;
+
+    const scaledByPriceFactor = changeValue * factor;
+    const pct = toFiniteNumber(item?.change_pct);
+    const expectedAbsChange = Math.abs(normalizedCurrent * (pct ?? 0) / 100);
+
+    if (!Number.isFinite(expectedAbsChange) || expectedAbsChange <= 1e-6) {
+      return scaledByPriceFactor;
+    }
+
+    const ratio = Math.abs(scaledByPriceFactor) / expectedAbsChange;
+
+    // If ratio is ~1000x too large/small, auto-correct the unit drift.
+    if (ratio > 200 && ratio < 200000) {
+      return scaledByPriceFactor * 0.001;
+    }
+    if (ratio < 0.005) {
+      return scaledByPriceFactor * 1000;
+    }
+
+    return scaledByPriceFactor;
+  })();
 
   // change_pct is a dimensionless ratio — no scaling needed.
   const normalizedChangePct = toFiniteNumber(item?.change_pct);
