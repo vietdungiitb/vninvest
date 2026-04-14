@@ -79,45 +79,34 @@ function resolveWatchlistPriceScale(currentPrice, prevPrice) {
 }
 
 function normalizeWatchlistQuoteUnit(item) {
-  // Detect price unit: realtime API returns absolute VND (>=2000), DB may store thousands VND (<2000).
-  // Only scale based on current_price magnitude; do NOT recalculate change from prices
-  // because current_price and prev_price may be in different units (mixed DB + realtime sources).
-  const current = toFiniteNumber(item?.current_price);
-  if (current === null || current <= 0 || current < 2000) {
-    return item;
-  }
+  // Detect price unit: realtime API may return VND absolute (>=2000), while DB/UI use nghin VND.
+  const currentRaw = toFiniteNumber(item?.current_price);
+  const prevRaw = toFiniteNumber(item?.prev_price);
+  const priceFactor = currentRaw !== null && currentRaw >= 2000 ? 0.001 : 1;
 
-  // current_price is in absolute VND → scale to thousands VND for display
-  const factor = 0.001;
-  const prev = toFiniteNumber(item?.prev_price);
-  const normalizedCurrent = current * factor;
-  const normalizedPrev = prev !== null && prev >= 2000 ? prev * factor : item?.prev_price;
+  const normalizedCurrent = currentRaw === null ? item?.current_price : currentRaw * priceFactor;
+  const normalizedPrev = prevRaw === null
+    ? item?.prev_price
+    : (priceFactor === 0.001 && prevRaw >= 2000 ? prevRaw * 0.001 : prevRaw);
 
-  // Trust change_value from API, but guard against mixed-unit payloads
-  // (e.g. current_price in nghin VND while change_value is still absolute VND).
-  const changeValue = toFiniteNumber(item?.change_value);
+  // Reconcile change_value unit against change_pct for both realtime and snapshot rows.
+  // This fixes mixed payloads where change_value is still absolute VND while price is nghin VND.
+  const changeValueRaw = toFiniteNumber(item?.change_value);
+  const pct = toFiniteNumber(item?.change_pct);
   const normalizedChangeValue = (() => {
-    if (changeValue === null) return null;
+    if (changeValueRaw === null) return null;
 
-    const scaledByPriceFactor = changeValue * factor;
-    const pct = toFiniteNumber(item?.change_pct);
-    const expectedAbsChange = Math.abs(normalizedCurrent * (pct ?? 0) / 100);
-
-    if (!Number.isFinite(expectedAbsChange) || expectedAbsChange <= 1e-6) {
-      return scaledByPriceFactor;
+    const hasPct = Number.isFinite(pct) && Math.abs(pct) > 1e-9;
+    const hasPrice = Number.isFinite(Number(normalizedCurrent)) && Math.abs(Number(normalizedCurrent)) > 1e-9;
+    if (hasPct && hasPrice) {
+      const expectedAbs = Math.abs(Number(normalizedCurrent) * pct / 100);
+      const candidates = [changeValueRaw, changeValueRaw * 0.001, changeValueRaw * 1000];
+      return candidates.reduce((best, next) => (
+        Math.abs(Math.abs(next) - expectedAbs) < Math.abs(Math.abs(best) - expectedAbs) ? next : best
+      ), candidates[0]);
     }
 
-    const ratio = Math.abs(scaledByPriceFactor) / expectedAbsChange;
-
-    // If ratio is ~1000x too large/small, auto-correct the unit drift.
-    if (ratio > 200 && ratio < 200000) {
-      return scaledByPriceFactor * 0.001;
-    }
-    if (ratio < 0.005) {
-      return scaledByPriceFactor * 1000;
-    }
-
-    return scaledByPriceFactor;
+    return changeValueRaw * priceFactor;
   })();
 
   // change_pct is a dimensionless ratio — no scaling needed.
