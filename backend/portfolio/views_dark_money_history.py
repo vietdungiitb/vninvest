@@ -35,6 +35,7 @@ PERIOD_DAYS_MAP = {
     '3M': 90,
     '6M': 180,
     '1Y': 365,
+    '10Y': 3650,
 }
 VALID_INTERVALS = {'1D', '1W', '1h', '30m', '15m'}
 INTERVAL_ALIASES = {
@@ -203,8 +204,8 @@ def dark_money_history_api(request, symbol: str):
       - Smart Money Flow Index
       - Strategy interpretation table
 
-    Query params:
-      - period: 1M | 3M | 6M | 1Y (default: 3M)
+        Query params:
+            - period: 1M | 3M | 6M | 1Y | 10Y (default: 3M)
     - interval: 1D | 1W | 1h | 30m | 15m (default: 1D)
     """
     normalized_symbol = str(symbol or '').strip().upper()

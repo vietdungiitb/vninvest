@@ -11,20 +11,22 @@ import {
 import { getDarkMoneyHistory } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
-const PERIODS = ['1M', '3M', '6M', '1Y'];
+const PERIODS = ['1M', '3M', '6M', '1Y', '10Y'];
 // 1h cần backend intraday support — xem views_dark_money_history.py
 const INTERVALS = ['1D', '1W'];
 const INTRADAY_INTERVALS = ['1h', '30m', '15m'];
 const MIN_VISIBLE_BARS = 30;
-const MAX_VISIBLE_BARS = 300;
+const MAX_VISIBLE_BARS = 5000;
+const PRICE_PANE_HEIGHT = 350;
+const SECONDARY_PANE_HEIGHT = 112;
 
 function computeZoomBarSpacingLimits(width, candleCount) {
   const safeWidth = Math.max(320, Number(width) || 320);
   const safeCount = Math.max(1, Number(candleCount) || 1);
-  const minBars = Math.min(MIN_VISIBLE_BARS, safeCount);
-  const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(minBars, safeCount));
+  const minBars = Math.max(1, Math.min(MIN_VISIBLE_BARS, safeCount));
+  const maxBars = Math.max(minBars, Math.min(MAX_VISIBLE_BARS, safeCount));
   return {
-    minBarSpacing: safeWidth / maxBars,
+    minBarSpacing: Math.max(0.05, safeWidth / maxBars),
     maxBarSpacing: safeWidth / minBars,
   };
 }
@@ -471,7 +473,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [datasetCache, setDatasetCache] = useState({});
   const [loading, setLoading] = useState(true);
   const [chartError, setChartError] = useState('');
-  const [period, setPeriod] = useState('3M');
+  const [period, setPeriod] = useState('10Y');
   const [interval, setInterval] = useState('1D');
   const [showWhaleSignals, setShowWhaleSignals] = useState(true);
   const [showWhaleLabels, setShowWhaleLabels] = useState(false);
@@ -695,7 +697,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         const chart1 = createChart(priceChartRef.current, {
           ...CHART_THEME,
           width: priceChartRef.current.clientWidth,
-          height: 350,
+          height: PRICE_PANE_HEIGHT,
           // A2: trục X hiển thị với format dd/MM
           timeScale: {
             ...CHART_THEME.timeScale,
@@ -817,7 +819,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         const chart2 = createChart(cvdChartRef.current, {
           ...CHART_THEME,
           width: cvdChartRef.current.clientWidth,
-          height: 140,
+          height: SECONDARY_PANE_HEIGHT,
           timeScale: {
             ...CHART_THEME.timeScale,
             visible: false,
@@ -860,7 +862,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         const chart3 = createChart(darkFlowChartRef.current, {
           ...CHART_THEME,
           width: darkFlowChartRef.current.clientWidth,
-          height: 140,
+          height: SECONDARY_PANE_HEIGHT,
           // A2: trục X pane dưới cùng — hiện ngày đầy đủ dd/MM/yy
           timeScale: {
             ...CHART_THEME.timeScale,
@@ -932,17 +934,16 @@ export default function DarkMoneyMasterChart({ symbol }) {
       if (charts.length > 1) {
         let isSyncing = false;
 
-        charts.forEach((source, i) => {
-          source.timeScale().subscribeVisibleTimeRangeChange((range) => {
-            if (isSyncing || !range) return;
-            isSyncing = true;
-            charts.forEach((target, j) => {
-              if (i !== j && target) {
-                try { target.timeScale().setVisibleRange(range); } catch (_) {}
-              }
-            });
-            isSyncing = false;
+        const primaryRangeSource = priceChartInstance.current;
+        const secondaryRangeTargets = [cvdChartInstance.current, darkFlowChartInstance.current].filter(Boolean);
+
+        primaryRangeSource?.timeScale().subscribeVisibleTimeRangeChange((range) => {
+          if (isSyncing || !range) return;
+          isSyncing = true;
+          secondaryRangeTargets.forEach((target) => {
+            try { target.timeScale().setVisibleRange(range); } catch (_) {}
           });
+          isSyncing = false;
         });
 
         const syncTargets = [
@@ -1265,8 +1266,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
         {loading ? (
           <div className="space-y-1 p-4">
             <div className="h-[350px] animate-pulse rounded-xl bg-slate-900" />
-            <div className="h-[140px] animate-pulse rounded-xl bg-slate-900" />
-            <div className="h-[140px] animate-pulse rounded-xl bg-slate-900" />
+            <div className="h-[112px] animate-pulse rounded-xl bg-slate-900" />
+            <div className="h-[112px] animate-pulse rounded-xl bg-slate-900" />
           </div>
         ) : !data?.candles?.length ? (
           <div className="flex h-[500px] items-center justify-center text-sm text-slate-500">
@@ -1309,16 +1310,16 @@ export default function DarkMoneyMasterChart({ symbol }) {
             </div>
 
             {/* Pane 2: CVD */}
-            <div className="relative mt-1 border-t border-slate-800/70 pt-1">
-              <div className="absolute left-3 top-1 z-10 text-[10px] text-slate-400">
+            <div className="relative mt-1 border-t border-slate-800/70 pt-5">
+              <div className="absolute left-3 top-0 z-20 text-[10px] text-slate-400">
                 {t('darkMoneyChart.cvdLabel')}
               </div>
               <div ref={cvdChartRef} className="lw-chart-container" />
             </div>
 
             {/* Pane 3: Dark Flow Strength */}
-            <div className="relative mt-1 border-t border-slate-800/70 pt-1">
-              <div className="absolute left-3 top-1 z-10 flex items-center gap-2 text-[10px]">
+            <div className="relative mt-1 border-t border-slate-800/70 pt-5">
+              <div className="absolute left-3 top-0 z-20 flex items-center gap-2 text-[10px]">
                 <span className="text-slate-400">{t('darkMoneyChart.darkFlowStrength')}</span>
                 <span
                   className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-600 text-[9px] text-slate-400"
