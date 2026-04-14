@@ -533,7 +533,7 @@ const vi = {
   stockDetail: {
     intradayFetchFailed: 'Không lấy được dữ liệu khớp lệnh.',
     intradayLabel: 'Khớp lệnh trong phiên',
-    intradayTitle: 'Khớp lệnh, dữ liệu không hiển thị theo thời gian thực.',
+    intradayTitle: 'Khớp lệnh',
     timeHeader: 'Giờ',
     updatedAt: 'Cập nhật',
     autoRefreshOn: '⟳ Tự làm mới',

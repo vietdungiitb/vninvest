@@ -530,7 +530,7 @@ const en = {
   stockDetail: {
     intradayFetchFailed: 'Failed to fetch intraday matched trades.',
     intradayLabel: 'Intraday matched trades',
-    intradayTitle: 'Matched trades, data is not displayed in real time.',
+    intradayTitle: 'Matched trades',
     timeHeader: 'Time',
     updatedAt: 'Updated',
     autoRefreshOn: '⟳ Auto refresh',

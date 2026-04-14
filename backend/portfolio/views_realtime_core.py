@@ -264,18 +264,6 @@ class IntradayMatchedView(APIView):
         if cached is not None:
             return Response(cached)
 
-        if legacy_views._is_vnstock_rate_limited('intraday'):
-            return Response(
-                {
-                    'symbol': normalized_symbol,
-                    'trades': [],
-                    'total': 0,
-                    'source': 'vnstock_backoff',
-                    'rate_limited': True,
-                    'fetched_at': timezone.now().isoformat(),
-                }
-            )
-
         try:
             from portfolio.realtime.stream_reader import StreamReader
 
