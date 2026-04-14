@@ -410,9 +410,10 @@ def fetch_history_dataframe(
     start,
     end,
     interval: str = '1D',
-    source: str = 'VCI',
+    source: str | None = None,
 ):
-    stock_client = _build_stock_client(symbol=symbol, source=source)
+    resolved_source = str(source or os.getenv('VNSTOCK_HISTORY_SOURCE', 'AUTO') or 'AUTO').strip().upper()
+    stock_client = _build_stock_client(symbol=symbol, source=resolved_source)
     return _run_with_timeout(
         lambda: stock_client.quote.history(
             symbol=symbol,

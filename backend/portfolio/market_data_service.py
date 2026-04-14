@@ -1814,7 +1814,6 @@ class MarketDataService:
                 start=start_date,
                 end=end_date,
                 interval='1D',
-                source='VCI',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
                 week52_high = round(float(history_df['high'].max()), 2)
@@ -1884,7 +1883,6 @@ class MarketDataService:
                 start=str(start_date),
                 end=str(end_date),
                 interval=interval,
-                source='KBS',
             )
             if df is not None and not df.empty:
                 series = []
