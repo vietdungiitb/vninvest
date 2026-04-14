@@ -46,6 +46,7 @@ class CacheAdapterTests(SimpleTestCase):
 
 
 class VnstockAdapterTests(SimpleTestCase):
+    @patch('portfolio.adapters.vnstock_adapter.get_vnstock_runtime_settings', return_value={})
     def test_resolve_price_board_sources_keeps_order_and_dedup(self):
         with patch.dict('os.environ', {'VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES': 'KBS,VCI,KBS'}):
             sources = vnstock_adapter._resolve_price_board_sources(explicit_source='VCI')
@@ -137,6 +138,37 @@ class VnstockAdapterTests(SimpleTestCase):
         self.assertEqual(result[('match', 'open_price')].iloc[0], 63.1)
         self.assertEqual(result[('match', 'accumulated_volume')].iloc[0], 100000)
 
+    def test_normalize_price_board_dataframe_maps_flat_rows_to_parseable_multiindex(self):
+        source_df = pd.DataFrame(
+            [
+                {
+                    'symbol': 'FPT',
+                    'ref_price': 118.0,
+                    'match_price': 119.2,
+                    'highest': 120.0,
+                    'lowest': 117.3,
+                    'open_price': 118.4,
+                    'accumulated_volume': 987654,
+                },
+                {
+                    'symbol': 'HPG',
+                    'ref_price': 25.1,
+                    'match_price': 25.6,
+                    'highest': 25.8,
+                    'lowest': 25.0,
+                    'open_price': 25.2,
+                    'accumulated_volume': 123456,
+                },
+            ]
+        )
+
+        result = vnstock_adapter._normalize_price_board_dataframe(source_df)
+
+        self.assertEqual(result[('listing', 'symbol')].tolist(), ['FPT', 'HPG'])
+        self.assertEqual(result[('listing', 'ref_price')].tolist(), [118.0, 25.1])
+        self.assertEqual(result[('match', 'match_price')].tolist(), [119.2, 25.6])
+        self.assertEqual(result[('match', 'accumulated_volume')].tolist(), [987654, 123456])
+
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
     @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
     def test_fetch_price_board_dataframe_keeps_raw_vnstock_price_units(self, mock_build_stock, mock_run_timeout):
@@ -181,5 +213,35 @@ class VnstockAdapterTests(SimpleTestCase):
 
         result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
 
+        self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
+        self.assertEqual(mock_build_stock.call_count, 2)
+
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    @patch('portfolio.adapters.vnstock_adapter._resolve_price_board_sources', return_value=['KBS', 'VCI'])
+    def test_fetch_price_board_dataframe_fallbacks_on_unusable_payload(
+        self,
+        _mock_sources,
+        mock_build_stock,
+        mock_run_timeout,
+    ):
+        first_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
+        second_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
+        mock_build_stock.side_effect = [first_client, second_client]
+        mock_run_timeout.side_effect = [
+            pd.DataFrame([{'foo': 'bar'}]),
+            pd.DataFrame(
+                [['VNM', 63.0, 61.4]],
+                columns=pd.MultiIndex.from_tuples([
+                    ('listing', 'symbol'),
+                    ('match', 'match_price'),
+                    ('listing', 'ref_price'),
+                ]),
+            ),
+        ]
+
+        result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
+
+        self.assertEqual(result[('listing', 'symbol')].iloc[0], 'VNM')
         self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
         self.assertEqual(mock_build_stock.call_count, 2)
