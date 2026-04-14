@@ -858,10 +858,11 @@ def warm_ticker_prefetch_api(request):
             {
                 'queued': False,
                 'mode': 'sync',
+                'ok': ok,
                 'result': result,
                 'prefetch': snapshot,
             },
-            status=status.HTTP_200_OK if ok else status.HTTP_503_SERVICE_UNAVAILABLE,
+            status=status.HTTP_200_OK,
         )
 
     task = prefetch_ticker_price_board.apply_async(countdown=0)

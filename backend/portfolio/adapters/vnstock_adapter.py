@@ -29,14 +29,28 @@ _PRICE_BOARD_FIELDS_BY_SECTION = {
 }
 
 _KBS_FLAT_MAPPING = {
+    'symbol': ('listing', 'symbol'),
+    'ticker': ('listing', 'symbol'),
+    'stock_symbol': ('listing', 'symbol'),
+    'code': ('listing', 'symbol'),
+    'ref_price': ('listing', 'ref_price'),
     'reference_price': ('match', 'reference_price'),
     'ceiling_price': ('match', 'ceiling_price'),
     'floor_price': ('match', 'floor_price'),
+    'match_price': ('match', 'match_price'),
+    'last_price': ('match', 'match_price'),
+    'price': ('match', 'match_price'),
     'open_price': ('match', 'open_price'),
+    'highest': ('match', 'highest'),
     'high_price': ('match', 'highest'),
+    'high': ('match', 'highest'),
+    'lowest': ('match', 'lowest'),
     'low_price': ('match', 'lowest'),
+    'low': ('match', 'lowest'),
+    'accumulated_volume': ('match', 'accumulated_volume'),
     'close_price': ('match', 'match_price'),
     'total_volume': ('match', 'accumulated_volume'),
+    'volume': ('match', 'accumulated_volume'),
     'foreign_buy_volume': ('match', 'foreign_buy_volume'),
     'foreign_sell_volume': ('match', 'foreign_sell_volume'),
     # Bid/Ask Mapping
@@ -55,6 +69,50 @@ _KBS_FLAT_MAPPING = {
 }
 
 
+def _normalize_price_board_column(raw_col):
+    key = str(raw_col).strip()
+    normalized_key = _KBS_FLAT_MAPPING.get(key.lower())
+    if normalized_key:
+        return normalized_key
+    return ('', key)
+
+
+def _coerce_price_board_numeric_columns(df: pd.DataFrame) -> pd.DataFrame:
+    normalized_df = df.copy()
+    for section, field in normalized_df.columns:
+        if field in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
+            normalized_df[(section, field)] = pd.to_numeric(normalized_df[(section, field)], errors='coerce')
+    return normalized_df
+
+
+def _price_board_dataframe_is_parseable(price_board_df) -> bool:
+    if price_board_df is None or getattr(price_board_df, 'empty', True):
+        return False
+
+    if not isinstance(price_board_df, pd.DataFrame):
+        return True
+
+    columns = set(price_board_df.columns.tolist())
+    symbol_candidates = {
+        ('listing', 'symbol'),
+        ('symbol', ''),
+        ('symbol', 'symbol'),
+        'symbol',
+        'ticker',
+    }
+    price_candidates = {
+        ('listing', 'ref_price'),
+        ('match', 'reference_price'),
+        ('match', 'match_price'),
+        'ref_price',
+        'reference_price',
+        'match_price',
+        'price',
+        'last_price',
+    }
+    return bool(columns.intersection(symbol_candidates) and columns.intersection(price_candidates))
+
+
 def _normalize_price_board_dataframe(price_board_df):
     if price_board_df is None or getattr(price_board_df, 'empty', True):
         return price_board_df
@@ -68,42 +126,23 @@ def _normalize_price_board_dataframe(price_board_df):
     if isinstance(columns, pd.MultiIndex):
         # Idempotent check: if it has expected sections like 'match' or 'bid_ask', likely canonical
         if any(sec in columns.levels[0] for sec in ('match', 'bid_ask')):
-            normalized_df = price_board_df.copy()
-            for column in columns:
-                if not isinstance(column, tuple) or len(column) < 2:
-                    continue
-                section = str(column[0] or '').strip().lower()
-                field = str(column[1] or '').strip().lower()
-                if field in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
-                    normalized_df[column] = pd.to_numeric(normalized_df[column], errors='coerce')
-            return normalized_df
+            return _coerce_price_board_numeric_columns(price_board_df)
 
     # Case 2: Flat DataFrame (e.g. KBS) or unsupported MultiIndex
     # We attempt to reconstruct the Canonical MultiIndex structure
-    flat_data = price_board_df.iloc[0].to_dict() if not price_board_df.empty else {}
-    mapped_data = {}
+    mapped_rows = []
 
-    for raw_col, value in flat_data.items():
-        mapping = _KBS_FLAT_MAPPING.get(str(raw_col).strip().lower())
-        if mapping:
-            mapped_data[mapping] = value
-        else:
-            # Keep as top-level if no mapping (like 'symbol', 'time')
-            mapped_data[('', raw_col)] = value
+    for _, source_row in price_board_df.iterrows():
+        mapped_row = {}
+        for raw_col, value in source_row.to_dict().items():
+            mapped_row[_normalize_price_board_column(raw_col)] = value
+        if mapped_row:
+            mapped_rows.append(mapped_row)
 
-    if mapped_data:
-        # Reconstruct into MultiIndex Series for iloc[0].dict behavior later in service
-        # But actually market_data_service expects df['section'].iloc[0]
-        # So we build a MultiIndex DataFrame
-        mi_df = pd.DataFrame([mapped_data])
+    if mapped_rows:
+        mi_df = pd.DataFrame(mapped_rows)
         mi_df.columns = pd.MultiIndex.from_tuples(mi_df.columns)
-        
-        # Numeric conversion for all configured sections
-        for section, field in mi_df.columns:
-            if field in _PRICE_BOARD_FIELDS_BY_SECTION.get(section, set()):
-                mi_df[(section, field)] = pd.to_numeric(mi_df[(section, field)], errors='coerce')
-        
-        return mi_df
+        return _coerce_price_board_numeric_columns(mi_df)
 
     return price_board_df
 
@@ -281,6 +320,7 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
     timeout_seconds = _resolve_timeout('price_board', 8)
     sources = _resolve_price_board_sources(explicit_source=source)
     last_error = None
+    last_result = None
 
     for candidate_source in sources:
         stock_client = _build_stock_client(symbol=anchor_symbol, source=candidate_source)
@@ -291,7 +331,18 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
                 ),
                 timeout=timeout_seconds,
             )
-            return _normalize_price_board_dataframe(result)
+            normalized_result = _normalize_price_board_dataframe(result)
+            last_result = normalized_result
+
+            if _price_board_dataframe_is_parseable(normalized_result):
+                return normalized_result
+
+            logger.warning(
+                'price_board source %s returned unusable payload for %d symbols; trying next source',
+                candidate_source,
+                len(symbols_list),
+            )
+            continue
         except ExternalSystemException as exc:
             last_error = exc
             # Fallback to next provider only on explicit rate-limit errors.
@@ -300,6 +351,8 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
                 continue
             raise
 
+    if last_result is not None:
+        return last_result
     if last_error is not None:
         raise last_error
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')

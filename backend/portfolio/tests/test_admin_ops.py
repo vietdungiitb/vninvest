@@ -215,6 +215,31 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertTrue(resp.data['queued'])
         self.assertEqual(resp.data['task_id'], 'task-123')
 
+    @patch('config.health.build_prefetch_health_snapshot')
+    @patch('portfolio.tasks.prefetch_ticker_price_board.run')
+    def test_sync_warm_prefetch_returns_payload_without_http_503_on_non_ok(
+        self,
+        mock_prefetch_run,
+        mock_prefetch_snapshot,
+    ):
+        mock_prefetch_run.return_value = {
+            'status': 'parse_zero_cached',
+            'reason': 'no_rows_parsed_from_provider_payload',
+            'cached': 0,
+        }
+        mock_prefetch_snapshot.return_value = {
+            'healthy': False,
+            'status': 'parse_zero_cached',
+            'reason': 'parse_zero_cached',
+        }
+
+        resp = self.client.post(f'{WARM_URL}?mode=sync')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data['ok'])
+        self.assertFalse(resp.data['queued'])
+        self.assertEqual(resp.data['result']['status'], 'parse_zero_cached')
+
     def test_user_count_includes_all_users(self):
         data = self._get_stats()
         expected = User.objects.count()
