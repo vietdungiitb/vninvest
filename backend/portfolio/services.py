@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 _VNSTOCK_PRICE_UNIT_VND = 'VND'
 _VNSTOCK_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
-_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_THOUSAND
+_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_VND
 
 
 def _resolve_vnstock_price_unit(dataframe) -> str | None:
@@ -64,6 +64,14 @@ def _resolve_price_scale_to_system_unit(price_unit: str | None) -> Decimal:
     if price_unit == _VNSTOCK_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_VND:
         return Decimal('1000')
     return Decimal('1')
+
+
+def _infer_price_unit_from_first_close(first_close: Decimal | None) -> str | None:
+    if first_close is None or first_close <= 0:
+        return None
+    if first_close >= Decimal('2000'):
+        return _VNSTOCK_PRICE_UNIT_VND
+    return _VNSTOCK_PRICE_UNIT_THOUSAND
 
 
 def _apply_price_scale(value, scale: Decimal) -> Decimal | None:
@@ -1481,20 +1489,16 @@ def fetch_and_save_daily_prices(
     symbol = symbol.upper().strip()
     result = {'symbol': symbol, 'created': 0, 'updated': 0, 'errors': 0}
 
-    # --- Gọi vnstock (>=3.5.0) với source VCI; đơn vị sẽ được normalize theo metadata/fallback bên dưới ---
+    # --- Gọi vnstock qua adapter chuẩn để dùng runtime config/fallback thống nhất ---
     try:
-        from vnstock import Vnstock  # import trễ để tránh lỗi nếu chưa cài
+        from .adapters.vnstock_adapter import fetch_history_dataframe
 
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
-        df = stock.quote.history(
+        df = fetch_history_dataframe(
+            symbol,
             start=start_date.strftime('%Y-%m-%d'),
             end=end_date.strftime('%Y-%m-%d'),
             interval='1D',
         )
-    except ImportError:
-        logger.error('vnstock chưa được cài đặt. Chạy: pip install vnstock -U')
-        result['errors'] += 1
-        return result
     except (Exception, SystemExit) as exc:
         logger.error('vnstock lỗi khi lấy dữ liệu %s: %s', symbol, exc)
         result['errors'] += 1
@@ -1505,13 +1509,10 @@ def fetch_and_save_daily_prices(
         return result
 
     detected_unit = _resolve_vnstock_price_unit(df)
-    price_scale = _resolve_price_scale_to_system_unit(detected_unit)
-
-    # Safety net: old/new providers can miss attrs metadata, but absolute VND values are typically > 2000.
+    first_close = _to_decimal(df.iloc[0].get('close')) if not df.empty else None
     if detected_unit is None:
-        first_close = _to_decimal(df.iloc[0].get('close')) if not df.empty else None
-        if first_close is not None and first_close >= Decimal('2000'):
-            price_scale = Decimal('0.001')
+        detected_unit = _infer_price_unit_from_first_close(first_close)
+    price_scale = _resolve_price_scale_to_system_unit(detected_unit)
 
     if price_scale != Decimal('1'):
         logger.info(
