@@ -476,19 +476,28 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch('portfolio.views_admin_vnstock_benchmark.run_price_board_provider_benchmark')
-    def test_staff_can_run_benchmark(self, mock_run):
+    @patch('portfolio.views_admin_vnstock_benchmark.set_latest_price_board_benchmark_report')
+    @patch('portfolio.tasks_maintenance.run_vnstock_price_board_benchmark.apply_async')
+    @patch('config.celery.app.control.inspect')
+    def test_staff_can_run_benchmark(self, mock_inspect, mock_apply_async, mock_set_latest):
         self._login('vn_bench_staff')
-        mock_run.return_value = {
-            'symbol': 'VNM',
-            'results': [],
-            'recommendation': {'primary_provider': 'KBS', 'fallback_provider': 'VCI'},
-        }
+
+        class _Task:
+            id = 'bench-task-123'
+
+        inspect_obj = mock_inspect.return_value
+        inspect_obj.ping.return_value = {'worker@local': {'ok': 'pong'}}
+        inspect_obj.active.return_value = {'worker@local': []}
+        inspect_obj.reserved.return_value = {'worker@local': []}
+        mock_apply_async.return_value = _Task()
 
         resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {'symbol': 'VNM'}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(resp.data['ok'])
-        self.assertIn('report', resp.data)
+        self.assertEqual(resp.data['status'], 'started')
+        self.assertEqual(resp.data['mode'], 'celery')
+        self.assertEqual(resp.data['task_id'], 'bench-task-123')
+        self.assertTrue(mock_set_latest.called)
 
     @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
     def test_staff_can_get_latest_benchmark_report(self, mock_latest):

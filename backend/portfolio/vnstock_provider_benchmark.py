@@ -306,3 +306,13 @@ def get_latest_price_board_benchmark_report() -> dict[str, Any] | None:
     if isinstance(cached, dict):
         return cached
     return None
+
+
+def set_latest_price_board_benchmark_report(report: dict[str, Any], ttl_seconds: int | None = None) -> None:
+    if not isinstance(report, dict):
+        return
+    timeout = BENCHMARK_CACHE_TTL_SECONDS if ttl_seconds is None else max(int(ttl_seconds), 30)
+    try:
+        cache.set(BENCHMARK_CACHE_KEY, report, timeout=timeout)
+    except Exception:
+        return
