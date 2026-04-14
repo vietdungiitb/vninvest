@@ -7,14 +7,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .exceptions import ExternalSystemException, MarketDataValidationException
+from .market_data_service import market_data_service
 
 logger = logging.getLogger(__name__)
-
-
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
 
 
 class WhaleFeedAggregateView(APIView):
@@ -28,9 +23,8 @@ class WhaleFeedAggregateView(APIView):
     throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
-        legacy_views = _legacy_views_module()
         try:
-            payload = legacy_views.market_data_service.get_whale_feed_aggregate(request.user, request.query_params)
+            payload = market_data_service.get_whale_feed_aggregate(request.user, request.query_params)
             return Response(payload)
         except MarketDataValidationException as exc:
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
@@ -53,10 +47,8 @@ class WhaleCampaignsView(APIView):
     throttle_scope = 'realtime_whale_aggregate'
 
     def get(self, request):
-        legacy_views = _legacy_views_module()
-
         try:
-            payload = legacy_views.market_data_service.get_whale_campaigns(request.user, request.query_params)
+            payload = market_data_service.get_whale_campaigns(request.user, request.query_params)
             return Response(payload)
         except MarketDataValidationException as exc:
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
@@ -64,5 +56,5 @@ class WhaleCampaignsView(APIView):
             http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
             return Response({'detail': exc.message, **exc.payload}, status=http_status)
         except Exception:
-            legacy_views.logger.exception('WhaleCampaignsView unexpected error')
+            logger.exception('WhaleCampaignsView unexpected error')
             return Response({'detail': 'Lỗi ngoài dự kiến khi tổng hợp whale campaigns.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

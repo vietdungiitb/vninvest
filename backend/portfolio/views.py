@@ -157,24 +157,6 @@ from .views_stock_workspace_admin import (
     StockWorkspaceChartView,
     StockWorkspaceOverviewView,
 )
-from .views_realtime_core import (
-    IntradayMatchedView,
-    PriceBoardView,
-    RealtimeTickerView,
-    SectorBreadthView,
-)
-from .views_realtime_advanced import (
-    RVOLView,
-    WhaleFeedView,
-)
-from .views_realtime_aggregate_campaigns import (
-    WhaleCampaignsView,
-    WhaleFeedAggregateView,
-)
-from .views_realtime_depth_financial import (
-    DepthChartView,
-    FinancialMetricsView,
-)
 from .views_realtime_symbol import (
     symbol_investigation_api,
     whale_symbol_summary_api,

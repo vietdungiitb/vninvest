@@ -1,46 +1,7 @@
-import hashlib
-
-from django.conf import settings
 from django.urls import path
 
 from . import market_views, views
 
-
-def _toggle_market_view(view_name: str):
-    legacy_view = getattr(views, view_name).as_view()
-    refactored_view = getattr(market_views, view_name).as_view()
-
-    def _resolve_canary_percent() -> int:
-        try:
-            configured = int(getattr(settings, 'MARKET_VIEWS_CANARY_PERCENT', 100))
-        except (TypeError, ValueError):
-            configured = 100
-        return max(0, min(100, configured))
-
-    def _should_use_refactored_view(request) -> bool:
-        if not getattr(settings, 'ENABLE_NEW_MARKET_VIEWS', False):
-            return False
-
-        canary_percent = _resolve_canary_percent()
-        if canary_percent >= 100:
-            return True
-        if canary_percent <= 0:
-            return False
-
-        if getattr(request, 'user', None) is not None and request.user.is_authenticated:
-            seed = f'user:{request.user.id}'
-        else:
-            remote_addr = request.META.get('REMOTE_ADDR') or 'anonymous'
-            seed = f'ip:{remote_addr}'
-
-        bucket = int(hashlib.md5(seed.encode('utf-8')).hexdigest()[:8], 16) % 100
-        return bucket < canary_percent
-
-    def _view(request, *args, **kwargs):
-        selected_view = refactored_view if _should_use_refactored_view(request) else legacy_view
-        return selected_view(request, *args, **kwargs)
-
-    return _view
 
 app_name = "portfolio_stock"
 
@@ -49,9 +10,9 @@ urlpatterns = [
     path("stocks/", views.StockProfileListView.as_view(), name="stock-list"),
         # Sprint35 Layer 3: Portfolio Daily News Digest
         path("portfolio/news-digest/", views.portfolio_news_digest_api, name="portfolio-news-digest"),
-    path("stocks/<str:symbol>/overview/", _toggle_market_view('StockWorkspaceOverviewView'), name="stock-workspace-overview"),
-    path("stocks/<str:symbol>/chart/", _toggle_market_view('StockWorkspaceChartView'), name="stock-workspace-chart"),
-    path("stocks/<str:symbol>/financials/", _toggle_market_view('FinancialMetricsView'), name="stock-financials"),
+    path("stocks/<str:symbol>/overview/", market_views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),
+    path("stocks/<str:symbol>/chart/", market_views.StockWorkspaceChartView.as_view(), name="stock-workspace-chart"),
+    path("stocks/<str:symbol>/financials/", market_views.FinancialMetricsView.as_view(), name="stock-financials"),
     path("stocks/<str:symbol>/news/", views.stock_news_api, name="stock-news"),
     path("stocks/<str:symbol>/news/ai-summary/", views.stock_news_ai_summary_api, name="stock-news-ai-summary"),
     path("stocks/<str:symbol>/dark-money-history/", views.dark_money_history_api, name="stock-dark-money-history"),

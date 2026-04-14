@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -17,7 +16,6 @@ from portfolio.observability import (
 )
 
 
-@override_settings(ENABLE_NEW_MARKET_VIEWS=True)
 class MarketObservabilityTests(APITestCase):
     def setUp(self):
         self.username = 'obs-user'

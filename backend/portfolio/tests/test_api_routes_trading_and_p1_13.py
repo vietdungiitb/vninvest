@@ -654,7 +654,6 @@ class ApiRouteTradingAndP113Tests(APITestCase):
     # P1-13: E2E smoke tests â€” campaign board, investigation modal, window filter
     # -------------------------------------------------------------------------
 
-    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     def test_p1_13_campaign_board_returns_valid_structure(self):
         """Campaign board endpoint returns paginated payload with required fields."""
         UserConfig.objects.update_or_create(
@@ -686,7 +685,6 @@ class ApiRouteTradingAndP113Tests(APITestCase):
             self.assertIn('events', first)
             self.assertIn('symbol', first)
 
-    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     def test_p1_13_symbol_investigation_modal_has_sprint31_fields(self):
         """Symbol investigation modal returns all Sprint31 P1-11 payload fields."""
         UserConfig.objects.update_or_create(
@@ -717,7 +715,6 @@ class ApiRouteTradingAndP113Tests(APITestCase):
         self.assertIn('grouped_timeline', response.data)
         self.assertIsInstance(response.data['grouped_timeline'], list)
 
-    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     def test_p1_13_window_filter_backward_compat(self):
         """Whale aggregate feed accepts all documented window values without error."""
         UserConfig.objects.update_or_create(
@@ -731,7 +728,6 @@ class ApiRouteTradingAndP113Tests(APITestCase):
             response = self.client.get(f'/api/realtime/whale-feed/aggregate/?window={window}&sort=ts')
             self.assertIn(response.status_code, (200, 403), msg=f'window={window} returned unexpected status {response.status_code}')
 
-    @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     def test_p1_13_search_symbol_investigation_rejects_unauthenticated(self):
         """Symbol investigation endpoint requires auth â€” no regression on security gate."""
         response = self.client.get('/api/realtime/symbol-investigation/VCB/')
