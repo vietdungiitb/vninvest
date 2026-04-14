@@ -251,10 +251,8 @@ export default function useRealtimeFeedLegacy({
       const syms = symbolsRef.current;
       if (!token || !syms.length) return;
 
-      const wsCoversAllSymbols = wsHealthyRef.current && syms.length <= MAX_WS_SUB_SYMBOLS;
-      if (wsCoversAllSymbols) {
-        return;
-      }
+      // Keep polling as a source of truth even when WebSocket is connected.
+      // WS can miss ticker updates under bursty sessions; polling prevents stale UI.
 
       if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
         return;

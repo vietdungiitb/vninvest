@@ -355,7 +355,7 @@ export default function WatchlistPage() {
     realtimeStatus,
     lastEventAt: lastRealtimeAt,
     latestWhaleAlert,
-  } = useRealtimeFeed({ symbols: allRealtimeSymbols });
+  } = useRealtimeFeed({ symbols: allRealtimeSymbols, pollInterval: 5000 });
 
   const groupsWithRealtime = useMemo(
     () => groups.map((group) => ({
