@@ -161,10 +161,10 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
       return {
         time: signal.time,
         position: isBuy ? 'belowBar' : 'aboveBar',
-        color: isBuy ? 'rgba(34, 211, 238, 0.95)' : 'rgba(251, 113, 133, 0.92)',
-        shape: isPriorityLabel ? (isBuy ? 'arrowUp' : 'arrowDown') : 'circle',
+        color: isBuy ? 'rgba(56, 189, 248, 0.98)' : 'rgba(251, 113, 133, 0.98)',
+        shape: isBuy ? 'arrowUp' : 'arrowDown',
         text: isPriorityLabel ? `${isBuy ? 'BUY' : 'SELL'} ${fmtCompact(matchedValue)}` : '',
-        size: isPriorityLabel ? 1 : 0,
+        size: isPriorityLabel ? 2 : 1,
       };
     });
 }
@@ -794,6 +794,17 @@ export default function DarkMoneyMasterChart({ symbol }) {
         });
         histSeries.setData(histData);
 
+        // Mốc trung tính 50 để định lượng lực dòng tiền mạnh/yếu
+        const baseline50 = addSeriesCompat(chart3, 'addLineSeries', LineSeries, {
+          color: 'rgba(148, 163, 184, 0.65)',
+          lineWidth: 1,
+          lineStyle: 2,
+          priceLineVisible: false,
+          lastValueVisible: true,
+          crosshairMarkerVisible: false,
+        });
+        baseline50.setData(histData.map((d) => ({ time: d.time, value: 50 })));
+
         if (histData.length >= 5) {
           const smaWindow = Math.min(10, Math.floor(histData.length / 2));
           const smaData = [];
@@ -1056,7 +1067,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             </div>
 
             {/* Pane 2: CVD */}
-            <div className="relative mt-1">
+            <div className="relative mt-1 border-t border-slate-800/70 pt-1">
               <div className="absolute left-3 top-1 z-10 text-[10px] text-slate-400">
                 {t('darkMoneyChart.cvdLabel')}
               </div>
@@ -1064,9 +1075,16 @@ export default function DarkMoneyMasterChart({ symbol }) {
             </div>
 
             {/* Pane 3: Dark Flow Strength */}
-            <div className="relative mt-1">
+            <div className="relative mt-1 border-t border-slate-800/70 pt-1">
               <div className="absolute left-3 top-1 z-10 flex items-center gap-2 text-[10px]">
                 <span className="text-slate-400">{t('darkMoneyChart.darkFlowStrength')}</span>
+                <span
+                  className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full border border-slate-600 text-[9px] text-slate-400"
+                  title="Chỉ số đo lường dòng tiền ngầm của các tổ chức lớn"
+                >
+                  ?
+                </span>
+                <span className="text-slate-500">Mốc 50</span>
                 <span className="flex items-center gap-1">
                   <span className="h-2 w-2 rounded-sm bg-emerald-500 inline-block" />
                   <span className="text-emerald-400">{t('darkMoneyChart.inflow')}</span>
