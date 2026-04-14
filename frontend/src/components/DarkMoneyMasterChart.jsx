@@ -122,51 +122,57 @@ function setMarkersCompat(series, markers) {
   }
 }
 
-function percentileThreshold(values, percentile) {
-  if (!values?.length) return null;
-  const sorted = [...values].filter(Number.isFinite).sort((a, b) => a - b);
-  if (!sorted.length) return null;
-  const index = Math.max(0, Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * percentile)));
-  return sorted[index];
-}
-
 function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
   if (!whaleSignals?.length || !candles?.length) return [];
 
   const candleTimes = new Set(candles.map((c) => c.time));
-  const matchedValues = whaleSignals
-    .map((item) => Number(item?.matched_value || 0))
-    .filter((value) => Number.isFinite(value) && value > 0);
-
-  const labelThreshold = percentileThreshold(matchedValues, 0.9) || 0;
-  let labeledCount = 0;
 
   return whaleSignals
     .filter((signal) => candleTimes.has(signal.time))
     .sort((left, right) => String(left.time).localeCompare(String(right.time)))
     .map((signal) => {
       const signalType = String(signal.type || '').toLowerCase();
-      const matchedValue = Number(signal.matched_value || 0);
-      const severity = String(signal.severity || '').toLowerCase();
       const isBuy = signalType === 'buy';
-      const isPriorityLabel = showLabels && (
-        severity === 'extreme'
-        || matchedValue >= labelThreshold
-      ) && labeledCount < 8;
-
-      if (isPriorityLabel) {
-        labeledCount += 1;
-      }
 
       return {
         time: signal.time,
         position: isBuy ? 'belowBar' : 'aboveBar',
-        color: isBuy ? 'rgba(56, 189, 248, 0.98)' : 'rgba(251, 113, 133, 0.98)',
-        shape: isBuy ? 'arrowUp' : 'arrowDown',
-        text: isPriorityLabel ? `${isBuy ? 'BUY' : 'SELL'} ${fmtCompact(matchedValue)}` : '',
-        size: isPriorityLabel ? 2 : 1,
+        color: isBuy ? 'rgba(56, 189, 248, 0.92)' : 'rgba(251, 113, 133, 0.92)',
+        shape: 'circle',
+        text: showLabels ? `${isBuy ? 'BUY' : 'SELL'}` : '',
+        size: 0,
       };
     });
+}
+
+function buildWhaleSignalSummaryByTime(whaleSignals) {
+  const summary = {};
+  if (!whaleSignals?.length) return summary;
+
+  whaleSignals.forEach((signal) => {
+    const timeKey = String(signal?.time ?? '');
+    if (!timeKey) return;
+    if (!summary[timeKey]) {
+      summary[timeKey] = {
+        buyCount: 0,
+        sellCount: 0,
+        buyValue: 0,
+        sellValue: 0,
+      };
+    }
+
+    const signalType = String(signal?.type || '').toLowerCase();
+    const value = Number(signal?.matched_value || 0);
+    if (signalType === 'buy') {
+      summary[timeKey].buyCount += 1;
+      summary[timeKey].buyValue += Number.isFinite(value) ? value : 0;
+    } else if (signalType === 'sell') {
+      summary[timeKey].sellCount += 1;
+      summary[timeKey].sellValue += Number.isFinite(value) ? value : 0;
+    }
+  });
+
+  return summary;
 }
 
 // ─── Quick Signal Bar ────────────────────────────────────────────────────────
@@ -197,6 +203,7 @@ function QuickSignalBar({ strategyTable }) {
 function OhlcTooltip({ data: d }) {
   if (!d) return null;
   const changeColor = d.change == null ? 'text-slate-400' : d.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+  const whaleInfo = d.whaleInfo || null;
   return (
     <div className="pointer-events-none absolute left-3 top-10 z-20 flex flex-wrap items-center gap-x-4 gap-y-0.5 rounded-lg border border-slate-700/60 bg-slate-950/90 px-3 py-2 text-[11px] backdrop-blur-sm shadow-xl">
       <span className="text-slate-500">{fmtDate(d.time)}</span>
@@ -210,6 +217,22 @@ function OhlcTooltip({ data: d }) {
         </span>
       )}
       {d.volume != null && <span><span className="text-slate-500">Vol </span><span className="text-cyan-300">{fmtVolume(d.volume)}</span></span>}
+      {whaleInfo && (whaleInfo.buyCount > 0 || whaleInfo.sellCount > 0) ? (
+        <>
+          {whaleInfo.buyCount > 0 ? (
+            <span>
+              <span className="text-slate-500">Whale Buy </span>
+              <span className="text-cyan-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount})</span>
+            </span>
+          ) : null}
+          {whaleInfo.sellCount > 0 ? (
+            <span>
+              <span className="text-slate-500">Whale Sell </span>
+              <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue)} ({whaleInfo.sellCount})</span>
+            </span>
+          ) : null}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -532,6 +555,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
     // B2: lookup map time → candle (with index for prev-close % calc)
     const candlesByTime = {};
     data.candles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
+    const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || []);
 
     // A2: tick formatters — LW Charts v5 passes BusinessDay {year,month,day} for YYYY-MM-DD strings
     const tickFmtShort = (time) => {
@@ -675,51 +699,10 @@ export default function DarkMoneyMasterChart({ symbol }) {
           if (!candle) { setOhlcTooltip(null); return; }
           const prev = candle.idx > 0 ? data.candles[candle.idx - 1] : null;
           const change = prev && prev.close > 0 ? ((candle.close - prev.close) / prev.close) * 100 : null;
-          setOhlcTooltip({ ...candle, change });
+          setOhlcTooltip({ ...candle, change, whaleInfo: whaleSignalsByTime[timeKey] || null });
         });
 
         chart1.timeScale().fitContent();
-
-        // Guardrail: giữ khung nhìn phân tích trong khoảng 30-300 nến
-        let isAdjustingRange = false;
-        chart1.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-          if (!range || isAdjustingRange) return;
-
-          const barsInView = Math.abs(range.to - range.from);
-          const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(MIN_VISIBLE_BARS, candles.length));
-          const minBars = Math.min(MIN_VISIBLE_BARS, maxBars);
-
-          if (barsInView >= minBars && barsInView <= maxBars) return;
-
-          const targetBars = Math.max(minBars, Math.min(maxBars, barsInView));
-          const center = (range.from + range.to) / 2;
-
-          let nextFrom = center - targetBars / 2;
-          let nextTo = center + targetBars / 2;
-
-          const minIndex = -0.5;
-          const maxIndex = Math.max(0, candles.length - 0.5);
-          if (nextFrom < minIndex) {
-            const shift = minIndex - nextFrom;
-            nextFrom += shift;
-            nextTo += shift;
-          }
-          if (nextTo > maxIndex) {
-            const shift = nextTo - maxIndex;
-            nextFrom -= shift;
-            nextTo -= shift;
-          }
-
-          isAdjustingRange = true;
-          try {
-            chart1.timeScale().setVisibleLogicalRange({ from: nextFrom, to: nextTo });
-            setZoomGuardrailHint(`Khung nhìn phân tích được giới hạn ${minBars}-${maxBars} nến`);
-          } catch (_) {
-            // no-op
-          } finally {
-            isAdjustingRange = false;
-          }
-        });
       }
 
       // ── PANE 2: CVD — trục X ẩn (pane giữa không cần lặp label) ────────
@@ -831,6 +814,36 @@ export default function DarkMoneyMasterChart({ symbol }) {
       const charts = [priceChartInstance.current, cvdChartInstance.current, darkFlowChartInstance.current].filter(Boolean);
       if (charts.length > 1) {
         let isSyncing = false;
+        let isClampingLogicalRange = false;
+
+        const clampLogicalRange = (range) => {
+          if (!range) return null;
+          const barsInView = Math.abs(range.to - range.from);
+          const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(1, candles.length));
+          const minBars = Math.min(MIN_VISIBLE_BARS, maxBars);
+          if (barsInView >= minBars && barsInView <= maxBars) return null;
+
+          const targetBars = barsInView < minBars ? minBars : maxBars;
+          const center = (range.from + range.to) / 2;
+          let nextFrom = center - targetBars / 2;
+          let nextTo = center + targetBars / 2;
+
+          const minIndex = -0.5;
+          const maxIndex = Math.max(0, candles.length - 0.5);
+          if (nextFrom < minIndex) {
+            const shift = minIndex - nextFrom;
+            nextFrom += shift;
+            nextTo += shift;
+          }
+          if (nextTo > maxIndex) {
+            const shift = nextTo - maxIndex;
+            nextFrom -= shift;
+            nextTo -= shift;
+          }
+
+          return { from: nextFrom, to: nextTo, minBars, maxBars };
+        };
+
         charts.forEach((source, i) => {
           source.timeScale().subscribeVisibleTimeRangeChange((range) => {
             if (isSyncing || !range) return;
@@ -841,6 +854,22 @@ export default function DarkMoneyMasterChart({ symbol }) {
               }
             });
             isSyncing = false;
+          });
+
+          source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+            if (isClampingLogicalRange || !range) return;
+            const clamped = clampLogicalRange(range);
+            if (!clamped) return;
+
+            isClampingLogicalRange = true;
+            try {
+              charts.forEach((target) => {
+                try { target.timeScale().setVisibleLogicalRange({ from: clamped.from, to: clamped.to }); } catch (_) {}
+              });
+              setZoomGuardrailHint(`Khung nhìn phân tích được giới hạn ${clamped.minBars}-${clamped.maxBars} nến`);
+            } finally {
+              isClampingLogicalRange = false;
+            }
           });
         });
       }
