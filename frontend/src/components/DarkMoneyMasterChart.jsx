@@ -1,5 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { createChart, ColorType } from 'lightweight-charts';
+import {
+  createChart,
+  ColorType,
+  CandlestickSeries,
+  HistogramSeries,
+  LineSeries,
+  AreaSeries,
+  createSeriesMarkers,
+} from 'lightweight-charts';
 import { getDarkMoneyHistory } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
@@ -59,6 +67,28 @@ function parseTime(str) {
   const parts = str.split('-');
   if (parts.length !== 3) return null;
   return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+}
+
+function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
+  if (!chart) return null;
+  if (typeof chart[legacyMethod] === 'function') {
+    return chart[legacyMethod](options);
+  }
+  if (typeof chart.addSeries === 'function') {
+    return chart.addSeries(seriesCtor, options);
+  }
+  throw new Error(`Unsupported chart API: ${legacyMethod}`);
+}
+
+function setMarkersCompat(series, markers) {
+  if (!series || !markers?.length) return;
+  if (typeof series.setMarkers === 'function') {
+    series.setMarkers(markers);
+    return;
+  }
+  if (typeof createSeriesMarkers === 'function') {
+    createSeriesMarkers(series, markers);
+  }
 }
 
 // ─── Strategy Interpretation Table ───────────────────────────────────────────
@@ -274,11 +304,11 @@ export default function DarkMoneyMasterChart({ symbol }) {
       priceChartInstance.current = chart1;
 
       // Candlestick
-      const candleSeries = chart1.addCandlestickSeries(CANDLE_COLORS);
+      const candleSeries = addSeriesCompat(chart1, 'addCandlestickSeries', CandlestickSeries, CANDLE_COLORS);
       candleSeries.setData(candles);
 
       // Volume overlay
-      const volumeSeries = chart1.addHistogramSeries({
+      const volumeSeries = addSeriesCompat(chart1, 'addHistogramSeries', HistogramSeries, {
         priceFormat: { type: 'volume' },
         priceScaleId: 'volume',
       });
@@ -295,7 +325,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
       // MA20
       if (data.moving_averages?.ma20?.length) {
-        const ma20Series = chart1.addLineSeries({
+        const ma20Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
           color: '#22d3ee',
           lineWidth: 1,
           lineStyle: 2,
@@ -307,7 +337,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
       // MA50
       if (data.moving_averages?.ma50?.length) {
-        const ma50Series = chart1.addLineSeries({
+        const ma50Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
           color: '#f59e0b',
           lineWidth: 1,
           lineStyle: 2,
@@ -332,7 +362,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           .sort((a, b) => (a.time > b.time ? 1 : -1));
 
         if (markers.length) {
-          candleSeries.setMarkers(markers);
+          setMarkersCompat(candleSeries, markers);
         }
       }
 
@@ -370,7 +400,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         .map((d) => ({ time: d.time, value: d.cvd }));
 
       if (cvdData.length) {
-        const cvdSeries = chart2.addAreaSeries({
+        const cvdSeries = addSeriesCompat(chart2, 'addAreaSeries', AreaSeries, {
           lineColor: '#22d3ee',
           topColor: 'rgba(34, 211, 238, 0.3)',
           bottomColor: 'rgba(244, 63, 94, 0.15)',
@@ -407,7 +437,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           : `rgba(244, 63, 94, ${Math.min(0.9, 0.3 + Math.abs(d.strength || 0) / 150)})`,
       }));
 
-      const histSeries = chart3.addHistogramSeries({
+      const histSeries = addSeriesCompat(chart3, 'addHistogramSeries', HistogramSeries, {
         priceFormat: { type: 'custom', formatter: (v) => v.toFixed(1) },
         priceLineVisible: false,
         lastValueVisible: true,
@@ -423,7 +453,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           const avg = windowSlice.reduce((s, d) => s + d.value, 0) / windowSlice.length;
           smaData.push({ time: histData[i].time, value: avg });
         }
-        const smaSeries = chart3.addLineSeries({
+        const smaSeries = addSeriesCompat(chart3, 'addLineSeries', LineSeries, {
           color: '#f59e0b',
           lineWidth: 2,
           priceLineVisible: false,
