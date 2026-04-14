@@ -446,7 +446,7 @@ def stock_ai_advisory_session_api(request, symbol: str):
                     'reason': 'ai_not_configured',
                     'config_issue': ai_status['reason'],
                 },
-                status.HTTP_409_CONFLICT,
+                status.HTTP_200_OK,
             )
         if legacy_views._cache_get(auto_lock_key):
             return _tracked_response(

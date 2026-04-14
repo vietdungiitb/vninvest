@@ -1618,6 +1618,32 @@ export default function StockDetail() {
       const retryAttemptsUsed = advisoryConflictRetryCountRef.current;
       const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
       const payload = response?.data || {};
+      if (payload && payload.ok === false) {
+        const conflictState = resolveAdvisoryConflictState(payload, t);
+        setAdvisorySession(conflictState.advisory);
+        setAdvisoryAggregate(conflictState.aggregate);
+        setAdvisoryUserProvider(conflictState.userAiProvider);
+        setAdvisoryComponents(conflictState.components);
+        setAdvisoryDeletedComponents(conflictState.deletedComponents);
+        setAdvisoryExecutiveSummaries(conflictState.executiveSummaries);
+        setAdvisoryExecutiveSummary(conflictState.executiveSummary || conflictState.executiveSummaries[0] || null);
+        setActiveAdvisoryComponentId((prev) => {
+          if (prev && conflictState.components.some((item) => item.id === prev)) {
+            return prev;
+          }
+          return conflictState.components[0]?.id || null;
+        });
+        setAdvisoryPollingPaused(true);
+        setAdvisorySessionConflict(true);
+        setAdvisoryMessage(conflictState.message);
+        setAdvisoryRetryTelemetry((prev) => ({
+          ...prev,
+          lastReason: conflictState.reason || 'ai_not_configured',
+          lastOutcome: 'skipped_config',
+          lastEventAt: new Date().toISOString(),
+        }));
+        return;
+      }
       if (advisoryConflictRetryTimeoutRef.current) {
         clearTimeout(advisoryConflictRetryTimeoutRef.current);
         advisoryConflictRetryTimeoutRef.current = null;
