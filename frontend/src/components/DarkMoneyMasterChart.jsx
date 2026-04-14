@@ -238,6 +238,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   // State
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chartError, setChartError] = useState('');
   const [period, setPeriod] = useState('3M');
   const [interval, setInterval] = useState('1D');
 
@@ -272,7 +273,12 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
   // ─── Render Charts ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!data || !data.candles?.length) return;
+    if (!data || !data.candles?.length) {
+      setChartError('');
+      return;
+    }
+
+    setChartError('');
 
     // Cleanup previous charts
     const cleanupCharts = () => {
@@ -293,15 +299,18 @@ export default function DarkMoneyMasterChart({ symbol }) {
       close: c.close,
     }));
 
-    // ── PANE 1: Price + Volume + Whale Markers ──────────────────────────
-    if (priceChartRef.current) {
-      const chart1 = createChart(priceChartRef.current, {
-        ...CHART_THEME,
-        width: priceChartRef.current.clientWidth,
-        height: 350,
-        timeScale: { ...CHART_THEME.timeScale, visible: false },
-      });
-      priceChartInstance.current = chart1;
+    let resizeObserver = null;
+
+    try {
+      // ── PANE 1: Price + Volume + Whale Markers ──────────────────────────
+      if (priceChartRef.current) {
+        const chart1 = createChart(priceChartRef.current, {
+          ...CHART_THEME,
+          width: priceChartRef.current.clientWidth,
+          height: 350,
+          timeScale: { ...CHART_THEME.timeScale, visible: false },
+        });
+        priceChartInstance.current = chart1;
 
       // Candlestick
       const candleSeries = addSeriesCompat(chart1, 'addCandlestickSeries', CandlestickSeries, CANDLE_COLORS);
@@ -377,22 +386,22 @@ export default function DarkMoneyMasterChart({ symbol }) {
         });
       }
 
-      chart1.timeScale().fitContent();
-    }
+        chart1.timeScale().fitContent();
+      }
 
-    // ── PANE 2: CVD ─────────────────────────────────────────────────────
-    if (cvdChartRef.current && data.dark_flow_series?.length) {
-      const chart2 = createChart(cvdChartRef.current, {
-        ...CHART_THEME,
-        width: cvdChartRef.current.clientWidth,
-        height: 140,
-        timeScale: { ...CHART_THEME.timeScale, visible: false },
-        rightPriceScale: {
-          ...CHART_THEME.rightPriceScale,
-          scaleMargins: { top: 0.1, bottom: 0.1 },
-        },
-      });
-      cvdChartInstance.current = chart2;
+      // ── PANE 2: CVD ─────────────────────────────────────────────────────
+      if (cvdChartRef.current && data.dark_flow_series?.length) {
+        const chart2 = createChart(cvdChartRef.current, {
+          ...CHART_THEME,
+          width: cvdChartRef.current.clientWidth,
+          height: 140,
+          timeScale: { ...CHART_THEME.timeScale, visible: false },
+          rightPriceScale: {
+            ...CHART_THEME.rightPriceScale,
+            scaleMargins: { top: 0.1, bottom: 0.1 },
+          },
+        });
+        cvdChartInstance.current = chart2;
 
       // CVD as area chart
       const cvdData = data.dark_flow_series
@@ -412,21 +421,21 @@ export default function DarkMoneyMasterChart({ symbol }) {
         cvdSeries.setData(cvdData);
       }
 
-      chart2.timeScale().fitContent();
-    }
+        chart2.timeScale().fitContent();
+      }
 
-    // ── PANE 3: Dark Flow Strength Histogram ────────────────────────────
-    if (darkFlowChartRef.current && data.dark_flow_series?.length) {
-      const chart3 = createChart(darkFlowChartRef.current, {
-        ...CHART_THEME,
-        width: darkFlowChartRef.current.clientWidth,
-        height: 140,
-        rightPriceScale: {
-          ...CHART_THEME.rightPriceScale,
-          scaleMargins: { top: 0.05, bottom: 0 },
-        },
-      });
-      darkFlowChartInstance.current = chart3;
+      // ── PANE 3: Dark Flow Strength Histogram ────────────────────────────
+      if (darkFlowChartRef.current && data.dark_flow_series?.length) {
+        const chart3 = createChart(darkFlowChartRef.current, {
+          ...CHART_THEME,
+          width: darkFlowChartRef.current.clientWidth,
+          height: 140,
+          rightPriceScale: {
+            ...CHART_THEME.rightPriceScale,
+            scaleMargins: { top: 0.05, bottom: 0 },
+          },
+        });
+        darkFlowChartInstance.current = chart3;
 
       // Histogram bars
       const histData = data.dark_flow_series.map((d) => ({
@@ -462,46 +471,56 @@ export default function DarkMoneyMasterChart({ symbol }) {
         smaSeries.setData(smaData);
       }
 
-      chart3.timeScale().fitContent();
-    }
+        chart3.timeScale().fitContent();
+      }
 
-    // ── Cross-chart Time Sync ───────────────────────────────────────────
-    const charts = [priceChartInstance.current, cvdChartInstance.current, darkFlowChartInstance.current].filter(Boolean);
-    if (charts.length > 1) {
-      let isSyncing = false;
-      charts.forEach((source, i) => {
-        source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-          if (isSyncing || !range) return;
-          isSyncing = true;
-          charts.forEach((target, j) => {
-            if (i !== j && target) {
-              try { target.timeScale().setVisibleLogicalRange(range); } catch (_) {}
-            }
+      // ── Cross-chart Time Sync ───────────────────────────────────────────
+      const charts = [priceChartInstance.current, cvdChartInstance.current, darkFlowChartInstance.current].filter(Boolean);
+      if (charts.length > 1) {
+        let isSyncing = false;
+        charts.forEach((source, i) => {
+          source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+            if (isSyncing || !range) return;
+            isSyncing = true;
+            charts.forEach((target, j) => {
+              if (i !== j && target) {
+                try { target.timeScale().setVisibleLogicalRange(range); } catch (_) {}
+              }
+            });
+            isSyncing = false;
           });
-          isSyncing = false;
         });
+      }
+
+      // ── Resize Observer ─────────────────────────────────────────────────
+      resizeObserver = new ResizeObserver(() => {
+        if (priceChartRef.current && priceChartInstance.current) {
+          priceChartInstance.current.applyOptions({ width: priceChartRef.current.clientWidth });
+        }
+        if (cvdChartRef.current && cvdChartInstance.current) {
+          cvdChartInstance.current.applyOptions({ width: cvdChartRef.current.clientWidth });
+        }
+        if (darkFlowChartRef.current && darkFlowChartInstance.current) {
+          darkFlowChartInstance.current.applyOptions({ width: darkFlowChartRef.current.clientWidth });
+        }
       });
+
+      if (priceChartRef.current) resizeObserver.observe(priceChartRef.current);
+      if (cvdChartRef.current) resizeObserver.observe(cvdChartRef.current);
+      if (darkFlowChartRef.current) resizeObserver.observe(darkFlowChartRef.current);
+    } catch (error) {
+      console.error('DarkMoney chart render error:', error);
+      setChartError('Biểu đồ dark money tạm thời lỗi khởi tạo. Vui lòng tải lại trang.');
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      cleanupCharts();
     }
-
-    // ── Resize Observer ─────────────────────────────────────────────────
-    const resizeObserver = new ResizeObserver(() => {
-      if (priceChartRef.current && priceChartInstance.current) {
-        priceChartInstance.current.applyOptions({ width: priceChartRef.current.clientWidth });
-      }
-      if (cvdChartRef.current && cvdChartInstance.current) {
-        cvdChartInstance.current.applyOptions({ width: cvdChartRef.current.clientWidth });
-      }
-      if (darkFlowChartRef.current && darkFlowChartInstance.current) {
-        darkFlowChartInstance.current.applyOptions({ width: darkFlowChartRef.current.clientWidth });
-      }
-    });
-
-    if (priceChartRef.current) resizeObserver.observe(priceChartRef.current);
-    if (cvdChartRef.current) resizeObserver.observe(cvdChartRef.current);
-    if (darkFlowChartRef.current) resizeObserver.observe(darkFlowChartRef.current);
 
     return () => {
-      resizeObserver.disconnect();
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
       cleanupCharts();
     };
   }, [data]);
@@ -574,6 +593,11 @@ export default function DarkMoneyMasterChart({ symbol }) {
         ) : !data?.candles?.length ? (
           <div className="flex h-[500px] items-center justify-center text-sm text-slate-500">
             {t('darkMoneyChart.noData')}
+          </div>
+        ) : chartError ? (
+          <div className="flex h-[500px] flex-col items-center justify-center gap-2 px-6 text-center">
+            <p className="text-sm font-semibold text-rose-300">Biểu đồ tạm thời gián đoạn</p>
+            <p className="text-xs text-slate-400">{chartError}</p>
           </div>
         ) : (
           <div className="p-2">
