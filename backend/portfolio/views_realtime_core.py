@@ -15,7 +15,7 @@ ONDEMAND_TICKER_LOCK_PREFIX = 'ticker:ondemand:lock'
 
 
 def _intraday_last_good_cache_key(symbol: str) -> str:
-    return f'intraday:last_good:{str(symbol or '').strip().upper()}'
+    return f"intraday:last_good:{str(symbol or '').strip().upper()}"
 
 
 def _build_intraday_trades_from_db(symbol: str, page_size: int):
