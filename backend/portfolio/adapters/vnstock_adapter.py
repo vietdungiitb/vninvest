@@ -412,7 +412,16 @@ def fetch_history_dataframe(
     interval: str = '1D',
     source: str | None = None,
 ):
-    resolved_source = str(source or os.getenv('VNSTOCK_HISTORY_SOURCE', 'KBS') or 'KBS').strip().upper()
+    if source:
+        resolved_source = str(source).strip().upper()
+    else:
+        runtime_settings = _get_runtime_settings()
+        admin_source = str(runtime_settings.get('price_board_source') or '').strip().upper()
+        resolved_source = (
+            admin_source
+            or str(os.getenv('VNSTOCK_HISTORY_SOURCE', '') or '').strip().upper()
+            or 'KBS'
+        )
     stock_client = _build_stock_client(symbol=symbol, source=resolved_source)
     return _run_with_timeout(
         lambda: stock_client.quote.history(
