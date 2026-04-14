@@ -777,7 +777,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             const markers = buildCompactWhaleMarkers(data.whale_signals, candles, showWhaleLabels, {
               topPercent: 0.1,
               visibleRange: range,
-              minMarkers: 1,
+              minMarkers: 3,
             });
             setMarkersCompat(priceSeries, markers);
           };
