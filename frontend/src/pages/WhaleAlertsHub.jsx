@@ -690,12 +690,12 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
       ) : (
         <>
           <div className="grid gap-4 lg:grid-cols-2 items-stretch">
-            <div className="flex h-[420px] flex-col rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+            <div className="flex h-[420px] max-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50 p-3" style={{ height: '420px', maxHeight: '420px' }}>
               <p className="text-xs font-semibold uppercase text-slate-400">
                 {t('whaleHub.campaigns')} ({campaigns.length})
               </p>
               <div
-                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 panel-scrollbar"
+                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 panel-scrollbar"
                 style={{ scrollbarGutter: 'stable' }}
               >
                 {campaigns.length === 0 ? (
@@ -721,12 +721,12 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
               </div>
             </div>
 
-            <div className="flex h-[420px] flex-col rounded-2xl border border-slate-800 bg-slate-950/50 p-3">
+            <div className="flex h-[420px] max-h-[420px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/50 p-3" style={{ height: '420px', maxHeight: '420px' }}>
               <p className="text-xs font-semibold uppercase text-slate-400">
                 {t('whaleHub.darkFlowSignals')} ({signals.length})
               </p>
               <div
-                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1 panel-scrollbar"
+                className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1 panel-scrollbar"
                 style={{ scrollbarGutter: 'stable' }}
               >
                 {signals.length === 0 ? (
