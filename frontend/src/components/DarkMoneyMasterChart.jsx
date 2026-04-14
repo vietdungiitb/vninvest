@@ -12,6 +12,7 @@ import { getDarkMoneyHistory } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
 const PERIODS = ['1M', '3M', '6M', '1Y', '10Y'];
+const PERIOD_EXPANSION_ORDER = ['1M', '3M', '6M', '1Y', '10Y'];
 // 1h cần backend intraday support — xem views_dark_money_history.py
 const INTERVALS = ['1D', '1W'];
 const INTRADAY_INTERVALS = ['1h', '30m', '15m'];
@@ -29,6 +30,12 @@ function computeZoomBarSpacingLimits(width, candleCount) {
     minBarSpacing: Math.max(0.05, safeWidth / maxBars),
     maxBarSpacing: safeWidth / minBars,
   };
+}
+
+function getNextExpandedPeriod(currentPeriod) {
+  const currentIndex = PERIOD_EXPANSION_ORDER.indexOf(String(currentPeriod || '').toUpperCase());
+  if (currentIndex < 0 || currentIndex >= PERIOD_EXPANSION_ORDER.length - 1) return null;
+  return PERIOD_EXPANSION_ORDER[currentIndex + 1];
 }
 
 // ─── Theme Config ────────────────────────────────────────────────────────────
@@ -500,10 +507,17 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const cvdMainSeriesRef = useRef(null);
   const darkFlowMainSeriesRef = useRef(null);
   const datasetCacheRef = useRef({});
+  const hasMovedAwayFromLeftEdgeRef = useRef(false);
+  const autoExpandInFlightRef = useRef(false);
 
   useEffect(() => {
     datasetCacheRef.current = datasetCache;
   }, [datasetCache]);
+
+  useEffect(() => {
+    hasMovedAwayFromLeftEdgeRef.current = false;
+    autoExpandInFlightRef.current = false;
+  }, [symbol, interval, period]);
 
   useEffect(() => {
     setDatasetCache({});
@@ -787,6 +801,34 @@ export default function DarkMoneyMasterChart({ symbol }) {
           renderWhaleMarkersByRange(chart1.timeScale().getVisibleRange?.() || null);
           chart1.timeScale().subscribeVisibleTimeRangeChange((range) => {
             renderWhaleMarkersByRange(range);
+          });
+        }
+
+        // Auto-expand period từng nấc khi zoom-out/pan chạm biên trái dữ liệu.
+        const firstCandleEpoch = toEpochSecondsFromChartTimeKey(String(data.candles?.[0]?.time || ''));
+        if (Number.isFinite(firstCandleEpoch)) {
+          chart1.timeScale().subscribeVisibleTimeRangeChange((range) => {
+            if (!range || autoExpandInFlightRef.current) return;
+
+            const rangeFromEpoch = toEpochSecondsFromChartTimeKey(normalizeChartTimeKey(range.from));
+            if (!Number.isFinite(rangeFromEpoch)) return;
+
+            const toleranceSeconds = interval === '1W' ? 14 * 24 * 3600 : 2 * 24 * 3600;
+            const atLeftEdge = rangeFromEpoch <= (firstCandleEpoch + toleranceSeconds);
+
+            if (!atLeftEdge) {
+              hasMovedAwayFromLeftEdgeRef.current = true;
+              return;
+            }
+
+            if (!hasMovedAwayFromLeftEdgeRef.current) return;
+
+            const nextPeriod = getNextExpandedPeriod(period);
+            if (!nextPeriod) return;
+
+            autoExpandInFlightRef.current = true;
+            hasMovedAwayFromLeftEdgeRef.current = false;
+            setPeriod(nextPeriod);
           });
         }
 
