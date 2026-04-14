@@ -18,6 +18,17 @@ const INTRADAY_INTERVALS = ['1h', '30m', '15m'];
 const MIN_VISIBLE_BARS = 30;
 const MAX_VISIBLE_BARS = 300;
 
+function computeZoomBarSpacingLimits(width, candleCount) {
+  const safeWidth = Math.max(320, Number(width) || 320);
+  const safeCount = Math.max(1, Number(candleCount) || 1);
+  const minBars = Math.min(MIN_VISIBLE_BARS, safeCount);
+  const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(minBars, safeCount));
+  return {
+    minBarSpacing: safeWidth / maxBars,
+    maxBarSpacing: safeWidth / minBars,
+  };
+}
+
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
 const CHART_THEME = {
@@ -392,7 +403,6 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [showWhaleLabels, setShowWhaleLabels] = useState(false);
   const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
   const [ohlcTooltip, setOhlcTooltip] = useState(null);
-  const [zoomGuardrailHint, setZoomGuardrailHint] = useState('');
   const [prefetchState, setPrefetchState] = useState({
     running: false,
     completed: 0,
@@ -516,12 +526,6 @@ export default function DarkMoneyMasterChart({ symbol }) {
     fetchData();
   }, [fetchData]);
 
-  useEffect(() => {
-    if (!zoomGuardrailHint) return undefined;
-    const timer = setTimeout(() => setZoomGuardrailHint(''), 1800);
-    return () => clearTimeout(timer);
-  }, [zoomGuardrailHint]);
-
   // ─── Render Charts ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!data || !data.candles?.length) {
@@ -598,6 +602,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
     try {
       // ── PANE 1: Price + Volume + Whale Markers ──────────────────────────
       if (priceChartRef.current) {
+        const priceZoomLimits = computeZoomBarSpacingLimits(priceChartRef.current.clientWidth, candles.length);
         const chart1 = createChart(priceChartRef.current, {
           ...CHART_THEME,
           width: priceChartRef.current.clientWidth,
@@ -609,6 +614,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
             timeVisible: true,
             secondsVisible: false,
             tickMarkFormatter: tickFmtShort,
+            minBarSpacing: priceZoomLimits.minBarSpacing,
+            maxBarSpacing: priceZoomLimits.maxBarSpacing,
           },
         });
         priceChartInstance.current = chart1;
@@ -707,11 +714,17 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
       // ── PANE 2: CVD — trục X ẩn (pane giữa không cần lặp label) ────────
       if (cvdChartRef.current && data.dark_flow_series?.length) {
+        const cvdZoomLimits = computeZoomBarSpacingLimits(cvdChartRef.current.clientWidth, candles.length);
         const chart2 = createChart(cvdChartRef.current, {
           ...CHART_THEME,
           width: cvdChartRef.current.clientWidth,
           height: 140,
-          timeScale: { ...CHART_THEME.timeScale, visible: false },
+          timeScale: {
+            ...CHART_THEME.timeScale,
+            visible: false,
+            minBarSpacing: cvdZoomLimits.minBarSpacing,
+            maxBarSpacing: cvdZoomLimits.maxBarSpacing,
+          },
           rightPriceScale: {
             ...CHART_THEME.rightPriceScale,
             scaleMargins: { top: 0.1, bottom: 0.1 },
@@ -743,6 +756,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
       // ── PANE 3: Dark Flow Strength — trục X hiện với full date ──────────
       if (darkFlowChartRef.current && data.dark_flow_series?.length) {
+        const darkFlowZoomLimits = computeZoomBarSpacingLimits(darkFlowChartRef.current.clientWidth, candles.length);
         const chart3 = createChart(darkFlowChartRef.current, {
           ...CHART_THEME,
           width: darkFlowChartRef.current.clientWidth,
@@ -754,6 +768,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
             timeVisible: true,
             secondsVisible: false,
             tickMarkFormatter: tickFmtFull,
+            minBarSpacing: darkFlowZoomLimits.minBarSpacing,
+            maxBarSpacing: darkFlowZoomLimits.maxBarSpacing,
           },
           rightPriceScale: {
             ...CHART_THEME.rightPriceScale,
@@ -814,35 +830,6 @@ export default function DarkMoneyMasterChart({ symbol }) {
       const charts = [priceChartInstance.current, cvdChartInstance.current, darkFlowChartInstance.current].filter(Boolean);
       if (charts.length > 1) {
         let isSyncing = false;
-        let isClampingLogicalRange = false;
-
-        const clampLogicalRange = (range) => {
-          if (!range) return null;
-          const barsInView = Math.abs(range.to - range.from);
-          const maxBars = Math.min(MAX_VISIBLE_BARS, Math.max(1, candles.length));
-          const minBars = Math.min(MIN_VISIBLE_BARS, maxBars);
-          if (barsInView >= minBars && barsInView <= maxBars) return null;
-
-          const targetBars = barsInView < minBars ? minBars : maxBars;
-          const center = (range.from + range.to) / 2;
-          let nextFrom = center - targetBars / 2;
-          let nextTo = center + targetBars / 2;
-
-          const minIndex = -0.5;
-          const maxIndex = Math.max(0, candles.length - 0.5);
-          if (nextFrom < minIndex) {
-            const shift = minIndex - nextFrom;
-            nextFrom += shift;
-            nextTo += shift;
-          }
-          if (nextTo > maxIndex) {
-            const shift = nextTo - maxIndex;
-            nextFrom -= shift;
-            nextTo -= shift;
-          }
-
-          return { from: nextFrom, to: nextTo, minBars, maxBars };
-        };
 
         charts.forEach((source, i) => {
           source.timeScale().subscribeVisibleTimeRangeChange((range) => {
@@ -855,35 +842,40 @@ export default function DarkMoneyMasterChart({ symbol }) {
             });
             isSyncing = false;
           });
-
-          source.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (isClampingLogicalRange || !range) return;
-            const clamped = clampLogicalRange(range);
-            if (!clamped) return;
-
-            isClampingLogicalRange = true;
-            try {
-              charts.forEach((target) => {
-                try { target.timeScale().setVisibleLogicalRange({ from: clamped.from, to: clamped.to }); } catch (_) {}
-              });
-              setZoomGuardrailHint(`Khung nhìn phân tích được giới hạn ${clamped.minBars}-${clamped.maxBars} nến`);
-            } finally {
-              isClampingLogicalRange = false;
-            }
-          });
         });
       }
 
       // ── Resize Observer ─────────────────────────────────────────────────
       resizeObserver = new ResizeObserver(() => {
         if (priceChartRef.current && priceChartInstance.current) {
-          priceChartInstance.current.applyOptions({ width: priceChartRef.current.clientWidth });
+          const priceZoomLimits = computeZoomBarSpacingLimits(priceChartRef.current.clientWidth, candles.length);
+          priceChartInstance.current.applyOptions({
+            width: priceChartRef.current.clientWidth,
+            timeScale: {
+              minBarSpacing: priceZoomLimits.minBarSpacing,
+              maxBarSpacing: priceZoomLimits.maxBarSpacing,
+            },
+          });
         }
         if (cvdChartRef.current && cvdChartInstance.current) {
-          cvdChartInstance.current.applyOptions({ width: cvdChartRef.current.clientWidth });
+          const cvdZoomLimits = computeZoomBarSpacingLimits(cvdChartRef.current.clientWidth, candles.length);
+          cvdChartInstance.current.applyOptions({
+            width: cvdChartRef.current.clientWidth,
+            timeScale: {
+              minBarSpacing: cvdZoomLimits.minBarSpacing,
+              maxBarSpacing: cvdZoomLimits.maxBarSpacing,
+            },
+          });
         }
         if (darkFlowChartRef.current && darkFlowChartInstance.current) {
-          darkFlowChartInstance.current.applyOptions({ width: darkFlowChartRef.current.clientWidth });
+          const darkFlowZoomLimits = computeZoomBarSpacingLimits(darkFlowChartRef.current.clientWidth, candles.length);
+          darkFlowChartInstance.current.applyOptions({
+            width: darkFlowChartRef.current.clientWidth,
+            timeScale: {
+              minBarSpacing: darkFlowZoomLimits.minBarSpacing,
+              maxBarSpacing: darkFlowZoomLimits.maxBarSpacing,
+            },
+          });
         }
       });
 
@@ -1043,11 +1035,6 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
         {/* C3: Quick Signal Bar — chiến thuật đang active hiển thị ngay dưới header */}
         {data?.strategy_table && <QuickSignalBar strategyTable={data.strategy_table} />}
-        {zoomGuardrailHint ? (
-          <div className="border-b border-slate-800/80 bg-slate-900/50 px-4 py-1.5 text-[11px] text-cyan-300">
-            {zoomGuardrailHint}
-          </div>
-        ) : null}
 
         {loading ? (
           <div className="space-y-1 p-4">
