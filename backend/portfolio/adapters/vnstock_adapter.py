@@ -212,7 +212,11 @@ def _import_vnstock():
 
 def _build_stock_client(symbol: str, source: str = 'VCI'):
     vnstock_cls = _import_vnstock()
-    return vnstock_cls().stock(symbol=symbol, source=source)
+    try:
+        return vnstock_cls().stock(symbol=symbol, source=source)
+    except (Exception, SystemExit) as exc:
+        code = 'vnstock_rate_limited' if is_rate_limited_error(exc) else 'vnstock_error'
+        raise ExternalSystemException(str(exc), code=code) from exc
 
 
 def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str]:
