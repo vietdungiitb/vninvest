@@ -10,11 +10,12 @@ Provides combined historical view of:
 """
 import logging
 import statistics
+import calendar
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
 from django.db.models import Avg, Count, F, FloatField, Max, Min, Q, Sum
-from django.db.models.functions import TruncDate, TruncHour, TruncWeek
+from django.db.models.functions import TruncDate, TruncHour, TruncMinute, TruncWeek
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -35,12 +36,52 @@ PERIOD_DAYS_MAP = {
     '6M': 180,
     '1Y': 365,
 }
-VALID_INTERVALS = {'1D', '1W', '1h'}
-INTRADAY_MAX_DAYS = {'1h': 7}
-VNSTOCK_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60'}
-TRUNC_FN_MAP = {'1D': TruncDate, '1W': TruncWeek, '1h': TruncHour}
+VALID_INTERVALS = {'1D', '1W', '1h', '30m', '15m'}
+INTERVAL_ALIASES = {
+    '1d': '1D',
+    '1w': '1W',
+    '1h': '1h',
+    '30m': '30m',
+    '15m': '15m',
+}
+INTRADAY_MAX_DAYS = {'1h': 7, '30m': 3, '15m': 2}
+VNSTOCK_INTERVAL_MAP = {'1D': '1D', '1W': '1W', '1h': '60', '30m': '30', '15m': '15'}
+TRUNC_FN_MAP = {'1D': TruncDate, '1W': TruncWeek, '1h': TruncHour, '30m': TruncMinute, '15m': TruncMinute}
 MA_WINDOWS = [20, 50]
 SMFI_LOOKBACK_SESSIONS = 20
+
+
+def _normalize_interval(value: str) -> str:
+    return INTERVAL_ALIASES.get(str(value or '').strip().lower(), '1D')
+
+
+def _to_unix_seconds(value) -> int | None:
+    if value is None:
+        return None
+    dt_val = None
+    if isinstance(value, datetime):
+        dt_val = value
+    elif hasattr(value, 'to_pydatetime'):
+        dt_val = value.to_pydatetime()
+    else:
+        text = str(value).strip()
+        if text.isdigit():
+            return int(text)
+        try:
+            dt_val = datetime.fromisoformat(text.replace('Z', '+00:00'))
+        except ValueError:
+            return None
+    return calendar.timegm(dt_val.timetuple())
+
+
+def _floor_intraday_bucket(value: datetime, interval: str):
+    if interval == '1h':
+        return value.replace(minute=0, second=0, microsecond=0)
+    if interval == '30m':
+        return value.replace(minute=(value.minute // 30) * 30, second=0, microsecond=0)
+    if interval == '15m':
+        return value.replace(minute=(value.minute // 15) * 15, second=0, microsecond=0)
+    return value
 
 
 def _resolve_period_days(period: str) -> int:
@@ -164,7 +205,7 @@ def dark_money_history_api(request, symbol: str):
 
     Query params:
       - period: 1M | 3M | 6M | 1Y (default: 3M)
-      - interval: 1D | 1W (default: 1D)
+    - interval: 1D | 1W | 1h | 30m | 15m (default: 1D)
     """
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol or len(normalized_symbol) > 10:
@@ -177,7 +218,7 @@ def dark_money_history_api(request, symbol: str):
     if period not in PERIOD_DAYS_MAP:
         period = '3M'
 
-    interval = str(request.query_params.get('interval', '1D')).strip().upper()
+    interval = _normalize_interval(request.query_params.get('interval', '1D'))
     if interval not in VALID_INTERVALS:
         interval = '1D'
 
@@ -216,13 +257,12 @@ def dark_money_history_api(request, symbol: str):
                             if hasattr(val, 'strftime'):
                                 # Intraday: LW Charts cần Unix timestamp (int seconds)
                                 # Daily/Weekly: YYYY-MM-DD string là đủ
-                                if is_intraday and hasattr(val, 'hour'):
-                                    import calendar
-                                    row_time = calendar.timegm(val.timetuple())
+                                if is_intraday:
+                                    row_time = _to_unix_seconds(val)
                                 else:
                                     row_time = val.strftime('%Y-%m-%d')
                             else:
-                                row_time = str(val)[:10] if not is_intraday else str(val)
+                                row_time = _to_unix_seconds(val) if is_intraday else str(val)[:10]
                             break
 
                     if not row_time:
@@ -269,22 +309,60 @@ def dark_money_history_api(request, symbol: str):
             bucket_date = row['bucket']
             if bucket_date is None:
                 continue
-            if hasattr(bucket_date, 'strftime'):
-                if is_intraday and hasattr(bucket_date, 'hour'):
-                    import calendar
-                    time_str = calendar.timegm(bucket_date.timetuple())
-                else:
-                    time_str = bucket_date.strftime('%Y-%m-%d')
+            if is_intraday and hasattr(bucket_date, 'replace'):
+                bucket_date = _floor_intraday_bucket(bucket_date, interval)
+
+            if is_intraday:
+                time_key = _to_unix_seconds(bucket_date)
+            elif hasattr(bucket_date, 'strftime'):
+                time_key = bucket_date.strftime('%Y-%m-%d')
             else:
-                time_str = str(bucket_date)[:10]
+                time_key = str(bucket_date)[:10]
+
+            if time_key is None:
+                continue
 
             dark_flow_series.append({
-                'time': time_str,
+                'time': time_key,
                 'strength': round(float(row['avg_strength'] or 0), 2),
                 'max_strength': round(float(row['max_strength'] or 0), 2),
                 'signal_count': int(row['signal_count'] or 0),
                 'cvd': round(float(row['avg_cvd'] or 0), 2),
             })
+
+        if is_intraday and interval in {'30m', '15m'} and dark_flow_series:
+            grouped = {}
+            for item in dark_flow_series:
+                ts = int(item['time'])
+                dt_item = datetime.utcfromtimestamp(ts)
+                dt_floor = _floor_intraday_bucket(dt_item, interval)
+                bucket_ts = calendar.timegm(dt_floor.timetuple())
+                if bucket_ts not in grouped:
+                    grouped[bucket_ts] = {
+                        'time': bucket_ts,
+                        'sum_strength': 0.0,
+                        'max_strength': float('-inf'),
+                        'signal_count': 0,
+                        'sum_cvd': 0.0,
+                        'rows': 0,
+                    }
+                g = grouped[bucket_ts]
+                g['sum_strength'] += float(item['strength'] or 0)
+                g['max_strength'] = max(g['max_strength'], float(item['max_strength'] or 0))
+                g['signal_count'] += int(item['signal_count'] or 0)
+                g['sum_cvd'] += float(item['cvd'] or 0)
+                g['rows'] += 1
+
+            dark_flow_series = []
+            for _, g in sorted(grouped.items(), key=lambda kv: kv[0]):
+                rows = max(1, g['rows'])
+                dark_flow_series.append({
+                    'time': g['time'],
+                    'strength': round(g['sum_strength'] / rows, 2),
+                    'max_strength': round(g['max_strength'], 2),
+                    'signal_count': g['signal_count'],
+                    'cvd': round(g['sum_cvd'] / rows, 2),
+                })
 
         # Also get signal_type breakdown for latest signals
         latest_signals = list(
@@ -301,9 +379,14 @@ def dark_money_history_api(request, symbol: str):
         # Enrich dark_flow_series with dominant signal_type per day
         signal_by_date = defaultdict(list)
         for sig in latest_signals:
-            sig_date = sig['created_at'].strftime('%Y-%m-%d') if sig['created_at'] else None
-            if sig_date:
-                signal_by_date[sig_date].append(sig)
+            if not sig.get('created_at'):
+                continue
+            if is_intraday:
+                sig_key = _to_unix_seconds(_floor_intraday_bucket(sig['created_at'], interval))
+            else:
+                sig_key = sig['created_at'].strftime('%Y-%m-%d')
+            if sig_key is not None:
+                signal_by_date[sig_key].append(sig)
 
         for entry in dark_flow_series:
             day_signals = signal_by_date.get(entry['time'], [])

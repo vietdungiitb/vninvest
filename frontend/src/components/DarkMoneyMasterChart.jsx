@@ -81,10 +81,14 @@ function fmtVolume(v) {
 }
 
 function fmtDate(timeStr) {
-  if (!timeStr) return '';
+  if (!timeStr && timeStr !== 0) return '';
+  if (typeof timeStr === 'number' || /^\d+$/.test(String(timeStr))) {
+    const d = new Date(Number(timeStr) * 1000);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  }
   const parts = String(timeStr).split('-');
   if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return timeStr;
+  return String(timeStr);
 }
 
 function parseTime(str) {
@@ -529,11 +533,29 @@ export default function DarkMoneyMasterChart({ symbol }) {
         const d = new Date(time * 1000);
         return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
       }
-      return String(time);
+      if (typeof time === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(time)) {
+          const [y, m, d] = time.split('-');
+          return `${d}/${m}`;
+        }
+        if (/^\d+$/.test(time)) {
+          const d = new Date(Number(time) * 1000);
+          return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+      }
+      return '';
     };
     const tickFmtFull = (time) => {
       if (time && typeof time === 'object' && time.day != null) {
         return `${String(time.day).padStart(2, '0')}/${String(time.month).padStart(2, '0')}/${String(time.year).slice(-2)}`;
+      }
+      if (typeof time === 'number' || /^\d+$/.test(String(time))) {
+        const d = new Date(Number(time) * 1000);
+        return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+      }
+      if (typeof time === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(time)) {
+        const [y, m, d] = time.split('-');
+        return `${d}/${m}/${y.slice(-2)}`;
       }
       return tickFmtShort(time);
     };
@@ -894,7 +916,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
                   {iv === '1D' ? t('darkMoneyChart.daily') : iv === '1W' ? t('darkMoneyChart.weekly') : iv}
                 </button>
               ))}
-              {INTRADAY_INTERVALS.slice(0, 1).map((iv) => (
+              {INTRADAY_INTERVALS.map((iv) => (
                 <button
                   key={iv}
                   type="button"
