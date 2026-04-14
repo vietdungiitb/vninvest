@@ -79,25 +79,27 @@ function resolveWatchlistPriceScale(currentPrice, prevPrice) {
 }
 
 function normalizeWatchlistQuoteUnit(item) {
-  const factor = resolveWatchlistPriceScale(item?.current_price, item?.prev_price);
-  if (factor === 1) {
+  // Detect price unit: realtime API returns absolute VND (>=2000), DB may store thousands VND (<2000).
+  // Only scale based on current_price magnitude; do NOT recalculate change from prices
+  // because current_price and prev_price may be in different units (mixed DB + realtime sources).
+  const current = toFiniteNumber(item?.current_price);
+  if (current === null || current <= 0 || current < 2000) {
     return item;
   }
 
-  const current = toFiniteNumber(item?.current_price);
+  // current_price is in absolute VND → scale to thousands VND for display
+  const factor = 0.001;
   const prev = toFiniteNumber(item?.prev_price);
-  const normalizedCurrent = current === null ? item?.current_price : current * factor;
-  const normalizedPrev = prev === null ? item?.prev_price : prev * factor;
+  const normalizedCurrent = current * factor;
+  const normalizedPrev = prev !== null && prev >= 2000 ? prev * factor : item?.prev_price;
 
-  let normalizedChangeValue = toFiniteNumber(item?.change_value);
-  let normalizedChangePct = toFiniteNumber(item?.change_pct);
+  // Trust change_value from API (already pre-computed in correct units), just scale it.
+  // Do NOT recalculate from prices to avoid unit-mismatch errors.
+  const changeValue = toFiniteNumber(item?.change_value);
+  const normalizedChangeValue = changeValue !== null ? changeValue * factor : null;
 
-  if (current !== null && prev !== null && prev > 0) {
-    normalizedChangeValue = (current - prev) * factor;
-    normalizedChangePct = ((current - prev) / prev) * 100;
-  } else if (normalizedChangeValue !== null) {
-    normalizedChangeValue = normalizedChangeValue * factor;
-  }
+  // change_pct is a dimensionless ratio — no scaling needed.
+  const normalizedChangePct = toFiniteNumber(item?.change_pct);
 
   return {
     ...item,
