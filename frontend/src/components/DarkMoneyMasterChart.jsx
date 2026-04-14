@@ -118,6 +118,20 @@ function normalizeChartTimeKey(time) {
   return String(time);
 }
 
+function toEpochSecondsFromChartTimeKey(timeKey) {
+  if (!timeKey) return null;
+  if (/^\d+$/.test(String(timeKey))) {
+    const n = Number(timeKey);
+    return Number.isFinite(n) ? n : null;
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(String(timeKey))) {
+    const d = new Date(`${timeKey}T00:00:00Z`);
+    const t = Math.floor(d.getTime() / 1000);
+    return Number.isFinite(t) ? t : null;
+  }
+  return null;
+}
+
 function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
   if (!chart) return null;
   if (typeof chart[legacyMethod] === 'function') {
@@ -873,9 +887,98 @@ export default function DarkMoneyMasterChart({ symbol }) {
           { chart: priceChartInstance.current, series: priceMainSeriesRef.current, valueMap: priceByTime },
           { chart: cvdChartInstance.current, series: cvdMainSeriesRef.current, valueMap: cvdByTime },
           { chart: darkFlowChartInstance.current, series: darkFlowMainSeriesRef.current, valueMap: darkFlowByTime },
-        ].filter((item) => item.chart && item.series);
+        ]
+          .filter((item) => item.chart && item.series)
+          .map((item) => {
+            const sortedTimeKeys = Object.keys(item.valueMap || {}).sort((a, b) => {
+              const ae = toEpochSecondsFromChartTimeKey(a);
+              const be = toEpochSecondsFromChartTimeKey(b);
+              if (ae != null && be != null) return ae - be;
+              return String(a).localeCompare(String(b));
+            });
+            return { ...item, sortedTimeKeys };
+          });
 
         let isSyncingCrosshair = false;
+
+        const resolveTargetPoint = (target, timeKey, fallbackTime) => {
+          const exactValue = target.valueMap[timeKey];
+          if (Number.isFinite(exactValue)) {
+            return { time: fallbackTime, value: exactValue };
+          }
+
+          if (!target.sortedTimeKeys?.length) return null;
+
+          const requestedEpoch = toEpochSecondsFromChartTimeKey(timeKey);
+          let bestKey = null;
+          let bestDistance = Number.POSITIVE_INFINITY;
+
+          target.sortedTimeKeys.forEach((key) => {
+            const value = target.valueMap[key];
+            if (!Number.isFinite(value)) return;
+
+            if (requestedEpoch == null) {
+              if (bestKey == null) bestKey = key;
+              return;
+            }
+
+            const keyEpoch = toEpochSecondsFromChartTimeKey(key);
+            if (keyEpoch == null) return;
+
+            const distance = Math.abs(keyEpoch - requestedEpoch);
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              bestKey = key;
+            }
+          });
+
+          if (!bestKey) return null;
+
+          const bestValue = target.valueMap[bestKey];
+          if (!Number.isFinite(bestValue)) return null;
+
+          let resolvedTime = bestKey;
+          if (/^\d+$/.test(String(bestKey))) {
+            resolvedTime = Number(bestKey);
+          } else if (/^\d{4}-\d{2}-\d{2}$/.test(String(bestKey))) {
+            const [year, month, day] = String(bestKey).split('-').map(Number);
+            resolvedTime = { year, month, day };
+          }
+
+          return { time: resolvedTime, value: bestValue };
+        };
+
+        const syncCrosshairAtTime = (time) => {
+          if (!time) {
+            setOhlcTooltip(null);
+            syncTargets.forEach((target) => {
+              if (typeof target.chart.clearCrosshairPosition === 'function') {
+                target.chart.clearCrosshairPosition();
+              }
+            });
+            return;
+          }
+
+          const timeKey = normalizeChartTimeKey(time);
+
+          syncTargets.forEach((target) => {
+            if (typeof target.chart.setCrosshairPosition !== 'function') return;
+            const resolvedPoint = resolveTargetPoint(target, timeKey, time);
+            if (resolvedPoint) {
+              target.chart.setCrosshairPosition(resolvedPoint.value, resolvedPoint.time, target.series);
+            }
+          });
+
+          const candle = candlesByTime[timeKey];
+          if (!candle) {
+            setOhlcTooltip(null);
+            return;
+          }
+          const prev = candle.idx > 0 ? data.candles[candle.idx - 1] : null;
+          const change = prev && prev.close > 0 ? ((candle.close - prev.close) / prev.close) * 100 : null;
+          setOhlcTooltip({ ...candle, change, whaleInfo: whaleSignalsByTime[timeKey] || null });
+        };
+
         syncTargets.forEach((source) => {
           if (typeof source.chart.subscribeCrosshairMove !== 'function') return;
           source.chart.subscribeCrosshairMove((param) => {
@@ -883,27 +986,26 @@ export default function DarkMoneyMasterChart({ symbol }) {
             isSyncingCrosshair = true;
             try {
               if (!param?.time || !param?.point) {
-                syncTargets.forEach((target) => {
-                  if (target.chart !== source.chart && typeof target.chart.clearCrosshairPosition === 'function') {
-                    target.chart.clearCrosshairPosition();
-                  }
-                });
+                syncCrosshairAtTime(null);
                 return;
               }
-
-              const timeKey = normalizeChartTimeKey(param.time);
-              syncTargets.forEach((target) => {
-                if (target.chart === source.chart) return;
-                if (typeof target.chart.setCrosshairPosition !== 'function') return;
-                const targetValue = target.valueMap[timeKey];
-                if (Number.isFinite(targetValue)) {
-                  target.chart.setCrosshairPosition(targetValue, param.time, target.series);
-                }
-              });
+              syncCrosshairAtTime(param.time);
             } finally {
               isSyncingCrosshair = false;
             }
           });
+
+          if (typeof source.chart.subscribeClick === 'function') {
+            source.chart.subscribeClick((param) => {
+              if (isSyncingCrosshair || !param?.time) return;
+              isSyncingCrosshair = true;
+              try {
+                syncCrosshairAtTime(param.time);
+              } finally {
+                isSyncingCrosshair = false;
+              }
+            });
+          }
         });
       }
 
