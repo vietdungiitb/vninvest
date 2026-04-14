@@ -94,6 +94,53 @@ function setMarkersCompat(series, markers) {
   }
 }
 
+function percentileThreshold(values, percentile) {
+  if (!values?.length) return null;
+  const sorted = [...values].filter(Number.isFinite).sort((a, b) => a - b);
+  if (!sorted.length) return null;
+  const index = Math.max(0, Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * percentile)));
+  return sorted[index];
+}
+
+function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
+  if (!whaleSignals?.length || !candles?.length) return [];
+
+  const candleTimes = new Set(candles.map((c) => c.time));
+  const matchedValues = whaleSignals
+    .map((item) => Number(item?.matched_value || 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  const labelThreshold = percentileThreshold(matchedValues, 0.9) || 0;
+  let labeledCount = 0;
+
+  return whaleSignals
+    .filter((signal) => candleTimes.has(signal.time))
+    .sort((left, right) => String(left.time).localeCompare(String(right.time)))
+    .map((signal) => {
+      const signalType = String(signal.type || '').toLowerCase();
+      const matchedValue = Number(signal.matched_value || 0);
+      const severity = String(signal.severity || '').toLowerCase();
+      const isBuy = signalType === 'buy';
+      const isPriorityLabel = showLabels && (
+        severity === 'extreme'
+        || matchedValue >= labelThreshold
+      ) && labeledCount < 8;
+
+      if (isPriorityLabel) {
+        labeledCount += 1;
+      }
+
+      return {
+        time: signal.time,
+        position: isBuy ? 'belowBar' : 'aboveBar',
+        color: isBuy ? 'rgba(34, 211, 238, 0.95)' : 'rgba(251, 113, 133, 0.92)',
+        shape: isPriorityLabel ? (isBuy ? 'arrowUp' : 'arrowDown') : 'circle',
+        text: isPriorityLabel ? `${isBuy ? 'BUY' : 'SELL'} ${fmtCompact(matchedValue)}` : '',
+        size: isPriorityLabel ? 1 : 0,
+      };
+    });
+}
+
 // ─── Strategy Interpretation Table ───────────────────────────────────────────
 
 function StrategyInterpretationTable({ strategyTable, t }) {
@@ -245,6 +292,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [chartError, setChartError] = useState('');
   const [period, setPeriod] = useState('3M');
   const [interval, setInterval] = useState('1D');
+  const [showWhaleSignals, setShowWhaleSignals] = useState(true);
+  const [showWhaleLabels, setShowWhaleLabels] = useState(false);
   const [prefetchState, setPrefetchState] = useState({
     running: false,
     completed: 0,
@@ -433,8 +482,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
       if (data.moving_averages?.ma20?.length) {
         const ma20Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
           color: '#22d3ee',
-          lineWidth: 1,
-          lineStyle: 2,
+          lineWidth: 2,
+          lineStyle: 0,
           priceLineVisible: false,
           lastValueVisible: false,
         });
@@ -445,8 +494,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
       if (data.moving_averages?.ma50?.length) {
         const ma50Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
           color: '#f59e0b',
-          lineWidth: 1,
-          lineStyle: 2,
+          lineWidth: 2,
+          lineStyle: 0,
           priceLineVisible: false,
           lastValueVisible: false,
         });
@@ -454,19 +503,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
       }
 
       // Whale Markers
-      if (data.whale_signals?.length) {
-        const markers = data.whale_signals
-          .filter((ws) => candles.some((c) => c.time === ws.time))
-          .map((ws) => ({
-            time: ws.time,
-            position: ws.type === 'buy' ? 'belowBar' : 'aboveBar',
-            color: ws.type === 'buy' ? '#22c55e' : '#f43f5e',
-            shape: ws.type === 'buy' ? 'arrowUp' : 'arrowDown',
-            text: ws.type === 'buy' ? `🦈 BUY ${fmtCompact(ws.matched_value)}` : `🦈 SELL ${fmtCompact(ws.matched_value)}`,
-            size: ws.severity === 'extreme' ? 3 : ws.severity === 'high' ? 2 : 1,
-          }))
-          .sort((a, b) => (a.time > b.time ? 1 : -1));
-
+      if (showWhaleSignals && data.whale_signals?.length) {
+        const markers = buildCompactWhaleMarkers(data.whale_signals, candles, showWhaleLabels);
         if (markers.length) {
           setMarkersCompat(candleSeries, markers);
         }
@@ -620,7 +658,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
       }
       cleanupCharts();
     };
-  }, [data]);
+  }, [data, showWhaleSignals, showWhaleLabels]);
 
   // ─── Latest dark flow for SMFI gauge ─────────────────────────────────────
   const latestDarkFlow = data?.dark_flow_series?.length
@@ -658,6 +696,29 @@ export default function DarkMoneyMasterChart({ symbol }) {
               {prefetchState.error ? (
                 <span className="text-amber-300">{prefetchState.error}</span>
               ) : null}
+              <button
+                type="button"
+                onClick={() => setShowWhaleSignals((prev) => !prev)}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${
+                  showWhaleSignals
+                    ? 'border-emerald-700/70 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/40'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                {showWhaleSignals ? t('darkMoneyChart.hideWhaleSignals') : t('darkMoneyChart.showWhaleSignals')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowWhaleLabels((prev) => !prev)}
+                disabled={!showWhaleSignals}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${
+                  showWhaleLabels && showWhaleSignals
+                    ? 'border-amber-700/70 bg-amber-950/30 text-amber-200 hover:bg-amber-900/40'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+                } disabled:cursor-not-allowed disabled:opacity-50`}
+              >
+                {showWhaleLabels ? t('darkMoneyChart.hideWhaleLabels') : t('darkMoneyChart.showWhaleLabels')}
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -719,15 +780,25 @@ export default function DarkMoneyMasterChart({ symbol }) {
             <div className="relative">
               <div className="absolute left-3 top-2 z-10 flex items-center gap-2 text-[10px]">
                 <span className="flex items-center gap-1">
-                  <span className="h-0.5 w-3 bg-cyan-400 inline-block" style={{ borderTop: '1px dashed #22d3ee' }} />
+                  <span className="h-0.5 w-3 bg-cyan-400 inline-block" />
                   <span className="text-cyan-400">MA20</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="h-0.5 w-3 bg-amber-400 inline-block" style={{ borderTop: '1px dashed #f59e0b' }} />
+                  <span className="h-0.5 w-3 bg-amber-400 inline-block" />
                   <span className="text-amber-400">MA50</span>
                 </span>
-                <span className="flex items-center gap-1 text-emerald-400">▲ {t('darkMoneyChart.whaleBuy')}</span>
-                <span className="flex items-center gap-1 text-rose-400">▼ {t('darkMoneyChart.whaleSell')}</span>
+                {showWhaleSignals ? (
+                  <>
+                    <span className="flex items-center gap-1 text-cyan-300">
+                      <span className="inline-block h-2 w-2 rounded-full bg-cyan-300" />
+                      {t('darkMoneyChart.whaleBuy')}
+                    </span>
+                    <span className="flex items-center gap-1 text-rose-300">
+                      <span className="inline-block h-2 w-2 rounded-full bg-rose-300" />
+                      {t('darkMoneyChart.whaleSell')}
+                    </span>
+                  </>
+                ) : null}
               </div>
               <div ref={priceChartRef} className="lw-chart-container" />
             </div>
