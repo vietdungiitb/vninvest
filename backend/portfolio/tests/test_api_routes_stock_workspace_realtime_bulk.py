@@ -2874,6 +2874,84 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['trades'], [])
         self.assertIn('source', response.data)
 
+    @patch('portfolio.realtime.stream_reader.StreamReader.get_intraday_ticks')
+    @patch('portfolio.views.fetch_intraday_dataframe')
+    @patch('portfolio.views._cache_get')
+    def test_intraday_legacy_uses_last_good_cache_when_provider_backoff(
+        self,
+        mock_cache_get,
+        mock_fetch_intraday,
+        mock_get_intraday_ticks,
+    ):
+        self.authenticate()
+        mock_get_intraday_ticks.return_value = []
+        mock_fetch_intraday.side_effect = ExternalSystemException('rate limited', code='vnstock_rate_limited')
+
+        stale_payload = {
+            'symbol': 'FPT',
+            'trades': [
+                {
+                    'time': '10:15:00',
+                    'price': 121.5,
+                    'volume': 1200,
+                    'side': 'buy',
+                    'match_type': 'BUY',
+                },
+            ],
+            'total': 1,
+            'source': 'stream',
+            'fetched_at': timezone.now().isoformat(),
+        }
+
+        def _cache_side_effect(key):
+            if key == 'intraday:FPT:50':
+                return None
+            if key == 'intraday:last_good:FPT':
+                return stale_payload
+            return None
+
+        mock_cache_get.side_effect = _cache_side_effect
+
+        response = self.client.get('/api/realtime/intraday/FPT/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertEqual(len(response.data['trades']), 1)
+        self.assertTrue(response.data.get('stale'))
+        self.assertTrue(str(response.data.get('source', '')).startswith('stale_cache:'))
+        self.assertTrue(response.data.get('rate_limited'))
+
+    @patch('portfolio.realtime.stream_reader.StreamReader.get_intraday_ticks')
+    @patch('portfolio.views.fetch_intraday_dataframe')
+    @patch('portfolio.views._cache_get', return_value=None)
+    def test_intraday_legacy_falls_back_to_intradaytick_db_when_provider_backoff(
+        self,
+        _mock_cache_get,
+        mock_fetch_intraday,
+        mock_get_intraday_ticks,
+    ):
+        self.authenticate()
+        mock_get_intraday_ticks.return_value = []
+        mock_fetch_intraday.side_effect = ExternalSystemException('rate limited', code='vnstock_rate_limited')
+
+        IntradayTick.objects.create(
+            symbol='FPT',
+            trade_date=timezone.localdate(),
+            trade_time=datetime.now().time().replace(microsecond=0),
+            price=Decimal('121500.00'),
+            volume=1500,
+            side='BUY',
+            match_type='BU',
+        )
+
+        response = self.client.get('/api/realtime/intraday/FPT/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'FPT')
+        self.assertGreaterEqual(len(response.data['trades']), 1)
+        self.assertTrue(response.data.get('stale'))
+        self.assertTrue(str(response.data.get('source', '')).startswith('intraday_db:'))
+
     @override_settings(ENABLE_NEW_MARKET_VIEWS=True)
     @patch('portfolio.market_views.market_data_service.get_whale_feed')
     def test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_whale_feed):

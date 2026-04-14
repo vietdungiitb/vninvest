@@ -744,8 +744,14 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
   const [fetchedAt, setFetchedAt] = useState(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [meta, setMeta] = useState(null);
   const debounceRef = useRef(null);
   const prevVolumeRef = useRef(null);
+  const tradesCountRef = useRef(0);
+
+  useEffect(() => {
+    tradesCountRef.current = trades.length;
+  }, [trades]);
 
   const fetchTrades = useCallback(async () => {
     if (!symbol) return;
@@ -753,8 +759,26 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
     setError('');
     try {
       const resp = await getIntradayMatched(symbol, 50);
-      setTrades(resp.data.trades || []);
-      setFetchedAt(resp.data.fetched_at || null);
+      const payload = resp?.data || {};
+      const incomingTrades = Array.isArray(payload.trades) ? payload.trades : [];
+      const source = String(payload.source || '').toLowerCase();
+      const isTransientEmpty = incomingTrades.length === 0 && (
+        source.includes('backoff') ||
+        source.includes('timeout') ||
+        source.includes('error') ||
+        source.includes('unavailable')
+      );
+
+      setMeta({
+        source: payload.source || null,
+        stale: Boolean(payload.stale),
+        rateLimited: Boolean(payload.rate_limited),
+      });
+
+      if (!(isTransientEmpty && tradesCountRef.current > 0)) {
+        setTrades(incomingTrades);
+      }
+      setFetchedAt(payload.fetched_at || null);
     } catch (err) {
       setError(err.response?.data?.detail || t('stockDetail.intradayFetchFailed'));
     } finally {
@@ -767,6 +791,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
   useEffect(() => {
     setTrades([]);
     setFetchedAt(null);
+    setMeta(null);
     setLoading(true);
     prevVolumeRef.current = null;
     fetchTrades();
@@ -856,6 +881,14 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
         </div>
       )}
 
+      {meta?.stale && (
+        <div className="mt-3 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
+          {meta?.rateLimited
+            ? 'Đang dùng dữ liệu cache gần nhất do nguồn realtime tạm thời bị giới hạn tần suất.'
+            : 'Đang dùng dữ liệu cache gần nhất để giữ hiển thị liên tục theo phiên giao dịch.'}
+        </div>
+      )}
+
       <div className="mt-3">
         {loading && trades.length === 0 ? (
           <div className="space-y-2">
@@ -921,19 +954,27 @@ function BreadthMiniPanel({ symbol }) {
   useEffect(() => {
     if (!symbol) return;
     let cancelled = false;
-    setLoading(true);
-    getSectorBreadth(symbol)
-      .then((resp) => {
+    const run = async (silent = false) => {
+      if (!silent) setLoading(true);
+      try {
+        const resp = await getSectorBreadth(symbol);
         if (!cancelled) {
           setGroups(resp.data?.groups || []);
           setError('');
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) setError(err.response?.data?.detail || t('stockDetail.breadthFetchFailed'));
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    run(false);
+    const timer = setInterval(() => run(true), 30000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [symbol, t]);
 
   if (loading) {
