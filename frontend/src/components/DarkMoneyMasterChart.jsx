@@ -158,7 +158,7 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels) {
         color: isBuy ? 'rgba(163, 230, 53, 0.96)' : 'rgba(251, 113, 133, 0.96)',
         shape: 'circle',
         text: showLabels ? `${isBuy ? 'BUY' : 'SELL'}` : '',
-        size: 0,
+        size: 2,
       };
     });
 }
