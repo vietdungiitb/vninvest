@@ -9,6 +9,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from . import ai_advisory_helpers as advisory_helpers
+
 
 def _legacy_views_module():
     from . import views as legacy_views
@@ -599,13 +601,13 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     summary_payload = legacy_views._sprint17_compute_summary_from_components(components)
     
     # NEW (Sprint 35): Fetch AI news summary context if available
-    news_context_str = legacy_views._fetch_news_context_for_advisory(
+    news_context_str = advisory_helpers._fetch_news_context_for_advisory(
         symbol=normalized_symbol,
         user=request.user,
         max_headlines=4,
     )
     
-    ai_synthesis_text = legacy_views._sprint17_generate_executive_synthesis_with_ai(
+    ai_synthesis_text = advisory_helpers._sprint17_generate_executive_synthesis_with_ai(
         user=request.user,
         symbol=normalized_symbol,
         components=components,
