@@ -1125,6 +1125,10 @@ const vi = {
   darkMoneyChart: {
     chartLabel: 'Price Action & Dark Money Flow',
     chartTitle: 'Biểu đồ Kết hợp — {symbol}',
+    manualLoadButton: 'Tải thủ công toàn bộ dữ liệu',
+    manualLoadRunning: 'Đang tải {completed}/{total} tập dữ liệu...',
+    manualLoadReady: 'Đã nạp đủ',
+    manualLoadPartial: 'Một phần dữ liệu chưa tải được ({count} gói).',
     daily: 'Ngày',
     weekly: 'Tuần',
     noData: 'Chưa có dữ liệu giá để hiển thị biểu đồ.',

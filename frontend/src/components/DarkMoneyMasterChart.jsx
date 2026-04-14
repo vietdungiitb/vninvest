@@ -11,6 +11,9 @@ import {
 import { getDarkMoneyHistory } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
+const PERIODS = ['1M', '3M', '6M', '1Y'];
+const INTERVALS = ['1D', '1W'];
+
 // ─── Theme Config ────────────────────────────────────────────────────────────
 
 const CHART_THEME = {
@@ -237,10 +240,18 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
   // State
   const [data, setData] = useState(null);
+  const [datasetCache, setDatasetCache] = useState({});
   const [loading, setLoading] = useState(true);
   const [chartError, setChartError] = useState('');
   const [period, setPeriod] = useState('3M');
   const [interval, setInterval] = useState('1D');
+  const [prefetchState, setPrefetchState] = useState({
+    running: false,
+    completed: 0,
+    total: 0,
+    loaded: false,
+    error: '',
+  });
 
   // Refs for chart containers
   const priceChartRef = useRef(null);
@@ -251,21 +262,107 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const priceChartInstance = useRef(null);
   const cvdChartInstance = useRef(null);
   const darkFlowChartInstance = useRef(null);
+  const datasetCacheRef = useRef({});
+
+  useEffect(() => {
+    datasetCacheRef.current = datasetCache;
+  }, [datasetCache]);
+
+  useEffect(() => {
+    setDatasetCache({});
+    datasetCacheRef.current = {};
+    setData(null);
+    setChartError('');
+    setPrefetchState({
+      running: false,
+      completed: 0,
+      total: 0,
+      loaded: false,
+      error: '',
+    });
+  }, [symbol]);
+
+  const buildDatasetKey = useCallback((targetPeriod, targetInterval) => `${targetPeriod}:${targetInterval}`, []);
+
+  const loadDataset = useCallback(async (targetPeriod, targetInterval, { force = false } = {}) => {
+    const cacheKey = buildDatasetKey(targetPeriod, targetInterval);
+    if (!force && datasetCacheRef.current[cacheKey]) {
+      return datasetCacheRef.current[cacheKey];
+    }
+
+    const resp = await getDarkMoneyHistory(symbol, { period: targetPeriod, interval: targetInterval });
+    const payload = resp?.data || null;
+    setDatasetCache((prev) => {
+      const next = { ...prev, [cacheKey]: payload };
+      datasetCacheRef.current = next;
+      return next;
+    });
+    return payload;
+  }, [buildDatasetKey, symbol]);
 
   // ─── Fetch Data ──────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     if (!symbol) return;
     setLoading(true);
     try {
-      const resp = await getDarkMoneyHistory(symbol, { period, interval });
-      setData(resp.data);
+      const payload = await loadDataset(period, interval);
+      setData(payload);
     } catch (err) {
       console.error('DarkMoneyHistory fetch error:', err);
       setData(null);
     } finally {
       setLoading(false);
     }
-  }, [symbol, period, interval]);
+  }, [symbol, period, interval, loadDataset]);
+
+  const prefetchAllDatasets = useCallback(async () => {
+    if (!symbol || prefetchState.running) return;
+
+    const combinations = INTERVALS.flatMap((targetInterval) => (
+      PERIODS.map((targetPeriod) => ({ targetPeriod, targetInterval }))
+    ));
+
+    setPrefetchState({
+      running: true,
+      completed: 0,
+      total: combinations.length,
+      loaded: false,
+      error: '',
+    });
+
+    let completed = 0;
+    const failures = [];
+
+    for (const item of combinations) {
+      try {
+        await loadDataset(item.targetPeriod, item.targetInterval, { force: true });
+      } catch (error) {
+        failures.push(`${item.targetPeriod}/${item.targetInterval}`);
+        console.error('DarkMoneyHistory prefetch error:', item, error);
+      } finally {
+        completed += 1;
+        setPrefetchState((prev) => ({
+          ...prev,
+          running: true,
+          completed,
+          total: combinations.length,
+        }));
+      }
+    }
+
+    const currentPayload = datasetCacheRef.current[buildDatasetKey(period, interval)] || null;
+    if (currentPayload) {
+      setData(currentPayload);
+    }
+
+    setPrefetchState({
+      running: false,
+      completed: combinations.length,
+      total: combinations.length,
+      loaded: failures.length === 0,
+      error: failures.length ? t('darkMoneyChart.manualLoadPartial', { count: failures.length }) : '',
+    });
+  }, [symbol, prefetchState.running, loadDataset, buildDatasetKey, period, interval, t]);
 
   useEffect(() => {
     fetchData();
@@ -531,9 +628,6 @@ export default function DarkMoneyMasterChart({ symbol }) {
     : null;
 
   // ─── Render ──────────────────────────────────────────────────────────────
-  const PERIODS = ['1M', '3M', '6M', '1Y'];
-  const INTERVALS = ['1D', '1W'];
-
   return (
     <div className="space-y-4">
       {/* Master Chart Card */}
@@ -545,6 +639,26 @@ export default function DarkMoneyMasterChart({ symbol }) {
             <h2 className="mt-0.5 text-sm font-semibold text-white">
               {t('darkMoneyChart.chartTitle', { symbol })}
             </h2>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+              <button
+                type="button"
+                onClick={prefetchAllDatasets}
+                disabled={loading || prefetchState.running}
+                className="rounded-full border border-cyan-700/70 bg-cyan-950/40 px-3 py-1.5 font-semibold text-cyan-200 transition-colors hover:bg-cyan-900/40 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {prefetchState.running
+                  ? t('darkMoneyChart.manualLoadRunning', { completed: prefetchState.completed, total: prefetchState.total })
+                  : t('darkMoneyChart.manualLoadButton')}
+              </button>
+              {prefetchState.loaded ? (
+                <span className="rounded-full border border-emerald-800/70 bg-emerald-950/30 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  {t('darkMoneyChart.manualLoadReady')}
+                </span>
+              ) : null}
+              {prefetchState.error ? (
+                <span className="text-amber-300">{prefetchState.error}</span>
+              ) : null}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             {/* Period Selector */}

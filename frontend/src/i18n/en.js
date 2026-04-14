@@ -1122,6 +1122,10 @@ const en = {
   darkMoneyChart: {
     chartLabel: 'Price Action & Dark Money Flow',
     chartTitle: 'Combined Chart — {symbol}',
+    manualLoadButton: 'Manually load all datasets',
+    manualLoadRunning: 'Loading {completed}/{total} datasets...',
+    manualLoadReady: 'Fully loaded',
+    manualLoadPartial: '{count} dataset(s) could not be loaded.',
     daily: 'Daily',
     weekly: 'Weekly',
     noData: 'No price data available to render chart.',
