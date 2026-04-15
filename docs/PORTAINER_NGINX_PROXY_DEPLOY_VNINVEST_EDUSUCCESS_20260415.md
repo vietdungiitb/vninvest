@@ -14,7 +14,9 @@ Ngày cập nhật: 2026-04-15
 Stack ứng dụng dùng file compose: `portainer-stack-nginx-proxy.yml`.
 
 Route theo path:
-- `/` -> frontend container
+- `nginx_proxy` chỉ route domain về frontend container.
+- Frontend Nginx route tiếp:
+- `/` -> frontend static app
 - `/admin` -> backend container
 - `/api` -> backend container
 - `/ws` -> backend container
@@ -22,8 +24,8 @@ Route theo path:
 
 Lợi ích:
 - Admin luôn vào đúng Django backend tại cùng domain.
-- Không phụ thuộc frontend container để chuyển tiếp admin.
-- Tránh vòng lặp route gây hiển thị trang lỗi trong frame.
+- Chỉ public một điểm vào từ internet, backend không mở trực tiếp.
+- Tránh lỗi 301 loop khi giữ nguyên `X-Forwarded-Proto=https` từ proxy ngoài.
 
 ## 3) Điều kiện trước khi deploy
 
@@ -150,7 +152,31 @@ Cách xử lý đúng:
 4. Chứng chỉ SSL đã được nginx-proxy-acme cấp thành công.
 5. Biến `DJANGO_ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS` chứa domain production.
 
-## 9) Ghi chú bảo mật
+## 9) Xử lý lỗi lặp `GET /admin/ 301`
+
+Triệu chứng trong log backend:
+
+`"GET /admin/" 301` lặp nhiều lần.
+
+Nguyên nhân phổ biến:
+- `DJANGO_SECURE_SSL_REDIRECT=True` nhưng backend nhận nhầm request là `http` thay vì `https`.
+- Header `X-Forwarded-Proto` bị mất hoặc bị ghi đè khi đi qua lớp proxy trung gian.
+
+Cách xử lý trong repo này:
+1. Dùng compose `portainer-stack-nginx-proxy.yml` mới nhất (frontend là public service duy nhất).
+2. Frontend Nginx phải forward nguyên header `X-Forwarded-Proto` từ proxy ngoài vào backend.
+3. Redeploy stack để rebuild frontend image.
+
+Kiểm tra sau fix:
+1. Vào trực tiếp: https://vninvest.edusuccess.vn/admin/
+2. Log backend không còn lặp 301 liên tục.
+3. `/api/health/` trả `200`.
+
+Hotfix tạm thời (chỉ dùng khi cần khôi phục nhanh):
+- Đặt `DJANGO_SECURE_SSL_REDIRECT=False` trong Portainer env, redeploy, xác nhận truy cập ổn định.
+- Sau khi xử lý xong forwarding header, bật lại `DJANGO_SECURE_SSL_REDIRECT=True`.
+
+## 10) Ghi chú bảo mật
 
 - Không dùng `X_FRAME_OPTIONS=ALLOWALL` trên production nếu không có nhu cầu đặc biệt.
 - Không mở port app stack trực tiếp ra internet khi đã dùng nginx-proxy.
