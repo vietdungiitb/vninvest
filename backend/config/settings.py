@@ -80,8 +80,8 @@ SECURE_HSTS_SECONDS = _env_int("DJANGO_SECURE_HSTS_SECONDS", 0 if DEBUG else 360
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
 SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 
-# X-Frame-Options: ALLOWALL cho phép admin được nhúng trong iframe (e.g., Portainer, internal tools)
-X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "ALLOWALL" if DEBUG else "ALLOWALL")
+# X-Frame-Options mặc định SAMEORIGIN để admin hoạt động an toàn trên cùng domain.
+X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "SAMEORIGIN")
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -126,9 +126,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    # Bỏ XFrameOptionsMiddleware mặc định, thay bằng custom middleware cho phép iframe
-    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'backend.config.middleware.AllowIframeMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -184,7 +182,7 @@ TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = os.getenv("DJANGO_STATIC_URL", '/static/')
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
