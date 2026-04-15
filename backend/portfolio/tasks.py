@@ -180,3 +180,22 @@ from portfolio.tasks_advisory_helpers import (
 )
 
 
+# ─── Warmup Cache Task ───────────────────────────────────────────────────────
+@shared_task(bind=True, name='portfolio.warmup_realtime_ticker_cache', max_retries=0, time_limit=300, soft_time_limit=290)
+def warmup_realtime_ticker_cache(self):
+    """
+    Async wrapper for cache warmup task.
+    
+    Initializes realtime ticker cache by prefetching hot tier symbols.
+    Can be triggered on-demand or on startup via Django AppConfig.
+    """
+    try:
+        from .warmup_cache import run_warmup_cache
+        run_warmup_cache()
+    except Exception as exc:
+        logger.exception('Warmup task failed: %s', exc)
+        return {'status': 'failed', 'error': str(exc)}
+    
+    return {'status': 'completed'}
+
+

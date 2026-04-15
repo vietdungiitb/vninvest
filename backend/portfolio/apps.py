@@ -21,3 +21,11 @@ class PortfolioConfig(AppConfig):
         except Exception:
             # Bỏ qua khi DB chưa migrate (fresh install, testing, v.v.)
             pass
+        
+        # Initialize realtime cache on startup
+        try:
+            from .warmup_cache import run_warmup_cache
+            run_warmup_cache()
+        except Exception as exc:
+            import logging
+            logging.warning('Cache warmup on startup failed: %s', exc)
