@@ -162,3 +162,19 @@ Ghi chu verify:
 - Khong con phu thuoc vao transition/render state cua client-side router o sidebar.
 - Click vao menu se reload truc tiep den route dich, noi dung trang phai doi ngay.
 - Da kiem tra khong co syntax error trong Layout.jsx.
+
+## Entry 2026-04-15 - Restore smooth SPA navigation experience
+
+Pham vi:
+- Hoan tac co che full-page reload khi click menu sidebar do gay giat manh va trai nghiem kem.
+- Tra lai dieu huong SPA mac dinh cua React Router de chuyen trang muot ma, khong reload toan bo app.
+- Giu muc tieu UX: click menu phai chuyen noi dung trang ngay va on dinh.
+
+Danh sach tep da sua:
+- frontend/src/components/Layout.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Da loai bo `window.location.assign(...)` khoi sidebar navigation.
+- Layout.jsx khong co syntax error sau cap nhat.
+- Ky vong UX: khong con giat dung do full reload, chuyen trang muot hon dang SPA.
