@@ -1,0 +1,55 @@
+# Production override for docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Hoặc trên Portainer: thêm cả 2 file hoặc dùng file này thay vì docker-compose.yml
+
+version: '3.8'
+
+services:
+  mailpit:
+    # Không expose ports trên production (chỉ dùng internal để fallback email)
+    ports: []  # Ghi đè - không expose
+    networks:
+      - default
+
+  backend:
+    env_file:
+      - ./backend/.env.production
+    networks:
+      - default
+
+  frontend:
+    env_file:
+      - .env.production
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    networks:
+      - default
+
+  celery_worker:
+    env_file:
+      - ./backend/.env.production
+    networks:
+      - default
+
+  celery_beat:
+    env_file:
+      - ./backend/.env.production
+    networks:
+      - default
+
+  db:
+    networks:
+      - default
+
+  redis:
+    networks:
+      - default
+
+networks:
+  default:
+    name: vninvest_network
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
