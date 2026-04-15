@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+from collections import defaultdict
+from datetime import datetime
 import logging
+import math
 import os
 import re
 
 from celery import shared_task
 from django.core.cache import cache
+from django.db.models import Count
 from django.utils import timezone
 
 from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
@@ -19,6 +23,11 @@ from portfolio.models import (
 
 logger = logging.getLogger(__name__)
 
+try:
+    import pandas as pd
+except Exception:  # pragma: no cover - tests use pandas, this is a runtime safety net.
+    pd = None
+
 TICKER_PREFETCH_META_CACHE_KEY = 'ticker:prefetch:meta'
 VNSTOCK_PRICE_BOARD_RATE_LIMIT_CACHE_KEY = 'vnstock:rate-limit:price_board'
 PREFETCH_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:prefetch_runtime_settings'
@@ -26,6 +35,608 @@ PREFETCH_TIME_POLICY_CACHE_KEY = 'admin_ops:prefetch_time_policy'
 PREFETCH_METRIC_CACHE_PREFIX = 'ticker:prefetch:metric'
 VNSTOCK_TIMEOUT_COUNTER_KEY = 'vnstock:timeout-counter:price_board'
 PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
+REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY = 'realtime:universe:snapshot'
+REALTIME_UNIVERSE_TIER_CACHE_PREFIX = 'realtime:universe'
+REALTIME_SHARD_CACHE_PREFIX = 'realtime:shard'
+REALTIME_SHARD_LAST_ENQUEUE_PREFIX = 'realtime:shard:last_enqueue'
+
+
+def _read_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name, 'true' if default else 'false')
+    return str(value or '').strip().lower() in {'true', '1', 'yes', 'on'}
+
+
+def _tier_shards(topology: dict, tier: str) -> int:
+    if tier == 'hot':
+        return max(int(topology.get('hot_shards', 4)), 1)
+    if tier == 'warm':
+        return max(int(topology.get('warm_shards', 6)), 1)
+    return max(int(topology.get('cold_shards', 6)), 1)
+
+
+def _tier_interval_seconds(topology: dict, tier: str) -> int:
+    if tier == 'hot':
+        return max(int(topology.get('hot_interval_seconds', 3)), 1)
+    if tier == 'warm':
+        return max(int(topology.get('warm_interval_seconds', 5)), 1)
+    return max(int(topology.get('cold_interval_seconds', 15)), 1)
+
+
+def _tier_batch_size(topology: dict, tier: str) -> int:
+    if tier == 'hot':
+        return max(int(topology.get('batch_size_hot', 50)), 1)
+    if tier == 'warm':
+        return max(int(topology.get('batch_size_warm', 60)), 1)
+    return max(int(topology.get('batch_size_cold', 60)), 1)
+
+
+def _tier_enabled(topology: dict, tier: str) -> bool:
+    if tier == 'cold':
+        return bool(topology.get('enable_cold_tier', True))
+    if tier == 'warm':
+        return bool(topology.get('enable_warm_tier', True))
+    return True
+
+
+def _resolve_prefetch_topology(runtime_settings: dict | None = None) -> dict:
+    runtime_settings = runtime_settings or _get_prefetch_runtime_settings()
+
+    def _override_int(env_name: str, default_value: int, key_name: str | None = None, min_value: int = 0) -> int:
+        value = _int_env(env_name, default_value)
+        override_key = key_name or env_name.lower()
+        if override_key in runtime_settings:
+            try:
+                value = int(runtime_settings.get(override_key))
+            except (TypeError, ValueError):
+                pass
+        return max(value, min_value)
+
+    topology = {
+        'universe_refresh_seconds': _override_int('TICKER_UNIVERSE_REFRESH_SECONDS', 60, min_value=10),
+        'universe_symbol_limit': _override_int('TICKER_UNIVERSE_SYMBOL_LIMIT', 1800, min_value=0),
+        'hot_limit': _override_int('TICKER_PREFETCH_HOT_LIMIT', 200, min_value=0),
+        'warm_limit': _override_int('TICKER_PREFETCH_WARM_LIMIT', 600, min_value=0),
+        'hot_interval_seconds': _override_int('TICKER_PREFETCH_HOT_INTERVAL_SECONDS', 3, min_value=1),
+        'warm_interval_seconds': _override_int('TICKER_PREFETCH_WARM_INTERVAL_SECONDS', 5, min_value=1),
+        'cold_interval_seconds': _override_int('TICKER_PREFETCH_COLD_INTERVAL_SECONDS', 15, min_value=1),
+        'hot_shards': _override_int('TICKER_PREFETCH_HOT_SHARDS', 4, min_value=1),
+        'warm_shards': _override_int('TICKER_PREFETCH_WARM_SHARDS', 6, min_value=1),
+        'cold_shards': _override_int('TICKER_PREFETCH_COLD_SHARDS', 6, min_value=1),
+        'batch_size_hot': _override_int('TICKER_PREFETCH_BATCH_SIZE_HOT', 50, min_value=1),
+        'batch_size_warm': _override_int('TICKER_PREFETCH_BATCH_SIZE_WARM', 60, min_value=1),
+        'batch_size_cold': _override_int('TICKER_PREFETCH_BATCH_SIZE_COLD', 60, min_value=1),
+        'upstream_soft_cap_per_minute': _override_int('TICKER_UPSTREAM_SOFT_CAP_PER_MINUTE', 400, min_value=1),
+        'upstream_warning_cap_per_minute': _override_int('TICKER_UPSTREAM_WARNING_CAP_PER_MINUTE', 500, min_value=1),
+        'upstream_hard_cap_per_minute': _override_int('TICKER_UPSTREAM_HARD_CAP_PER_MINUTE', 600, min_value=1),
+        'enable_cold_tier': _read_bool_env('TICKER_PREFETCH_ENABLE_COLD_TIER', True),
+        'enable_warm_tier': _read_bool_env('TICKER_PREFETCH_ENABLE_WARM_TIER', True),
+        'emergency_override_enabled': _read_bool_env('TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED', False),
+        'emergency_disable_cold': _read_bool_env('TICKER_PREFETCH_EMERGENCY_DISABLE_COLD', True),
+    }
+
+    try:
+        emergency_multiplier = float(os.getenv('TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER', '2.0'))
+    except (TypeError, ValueError):
+        emergency_multiplier = 2.0
+    topology['emergency_interval_multiplier'] = max(emergency_multiplier, 1.0)
+    return topology
+
+
+def _stable_shard_id(symbol: str, shard_count: int) -> int:
+    if shard_count <= 1:
+        return 0
+    total = sum(ord(ch) for ch in str(symbol or '').upper())
+    return int(total % shard_count)
+
+
+def _safe_cache_delete(cache_key: str) -> None:
+    try:
+        cache.delete(cache_key)
+    except Exception:
+        pass
+
+
+def _acquire_lock(lock_key: str, timeout_seconds: int) -> bool:
+    try:
+        return bool(cache.add(lock_key, timezone.now().isoformat(), timeout=timeout_seconds))
+    except Exception:
+        return False
+
+
+def _build_symbol_count_map(queryset, symbol_field: str, count_field: str) -> dict[str, int]:
+    payload = {}
+    for row in queryset:
+        symbol = str(row.get(symbol_field) or '').strip().upper()
+        if not symbol:
+            continue
+        payload[symbol] = int(row.get(count_field) or 0)
+    return payload
+
+
+def _compute_heat_score(
+    *,
+    watchlist_users: int,
+    alert_users: int,
+    holding_users: int,
+    is_system_symbol: bool,
+) -> int:
+    return (
+        5 * max(int(watchlist_users), 0)
+        + 3 * max(int(alert_users), 0)
+        + 2 * max(int(holding_users), 0)
+        + (1 if is_system_symbol else 0)
+    )
+
+
+def _estimate_upstream_calls_per_minute(tier_symbols: int, interval_seconds: int, batch_size: int) -> int:
+    if tier_symbols <= 0:
+        return 0
+    return int(math.ceil(float(tier_symbols) / float(max(batch_size, 1))) * (60.0 / float(max(interval_seconds, 1))))
+
+
+def _collect_realtime_symbol_universe(topology: dict, runtime_settings: dict) -> tuple[list[dict], dict]:
+    tracked_users = _build_symbol_count_map(
+        TrackedSymbol.objects.values('symbol').annotate(user_count=Count('user', distinct=True)),
+        'symbol',
+        'user_count',
+    )
+    watchlist_users = _build_symbol_count_map(
+        WatchlistItem.objects.values('symbol').annotate(user_count=Count('group__user', distinct=True)),
+        'symbol',
+        'user_count',
+    )
+    alert_users = _build_symbol_count_map(
+        PriceAlertRule.objects.filter(is_active=True).values('symbol').annotate(user_count=Count('user', distinct=True)),
+        'symbol',
+        'user_count',
+    )
+    holding_users = _build_symbol_count_map(
+        Transaction.objects.values('symbol').annotate(user_count=Count('sub_account__portfolio__user', distinct=True)),
+        'symbol',
+        'user_count',
+    )
+    include_group_symbols = bool(runtime_settings.get('include_group_symbols', False))
+    system_symbols = set()
+    if include_group_symbols:
+        system_symbols = {
+            str(symbol).strip().upper()
+            for symbol in SecuritiesItem.objects.values_list('symbol', flat=True).distinct()
+            if symbol and str(symbol).strip()
+        }
+
+    all_symbols = set(tracked_users) | set(watchlist_users) | set(alert_users) | set(holding_users) | set(system_symbols)
+
+    universe_rows = []
+    for symbol in all_symbols:
+        watchlist_count = int(watchlist_users.get(symbol, 0))
+        alert_count = int(alert_users.get(symbol, 0))
+        holding_count = int(holding_users.get(symbol, 0))
+        tracked_count = int(tracked_users.get(symbol, 0))
+        is_system_symbol = symbol in system_symbols
+
+        heat_score = _compute_heat_score(
+            watchlist_users=watchlist_count,
+            alert_users=alert_count,
+            holding_users=holding_count,
+            is_system_symbol=is_system_symbol,
+        )
+        universe_rows.append(
+            {
+                'symbol': symbol,
+                'subscriber_count': max(watchlist_count, tracked_count),
+                'tracked_by_watchlist_users': watchlist_count,
+                'tracked_by_alert_rules': alert_count,
+                'tracked_by_portfolio_holders': holding_count,
+                'is_system_symbol': is_system_symbol,
+                'heat_score': heat_score,
+            }
+        )
+
+    universe_rows.sort(key=lambda item: (-int(item.get('heat_score', 0)), item.get('symbol', '')))
+    symbol_limit = max(int(topology.get('universe_symbol_limit', 1800)), 0)
+    if symbol_limit:
+        universe_rows = universe_rows[:symbol_limit]
+
+    hot_limit = max(int(topology.get('hot_limit', 200)), 0)
+    warm_limit = max(int(topology.get('warm_limit', 600)), 0)
+    for idx, row in enumerate(universe_rows):
+        if idx < hot_limit:
+            tier = 'hot'
+        elif idx < hot_limit + warm_limit:
+            tier = 'warm'
+        else:
+            tier = 'cold'
+        shard_id = _stable_shard_id(row.get('symbol'), _tier_shards(topology, tier))
+        row['tier'] = tier
+        row['shard_id'] = shard_id
+        row['computed_at'] = timezone.now().isoformat()
+
+    source_counts = {
+        'tracked_symbols': len(tracked_users),
+        'watchlist_items': len(watchlist_users),
+        'price_alerts': len(alert_users),
+        'portfolio_transactions': len(holding_users),
+        'market_group_items': len(system_symbols),
+    }
+    return universe_rows, source_counts
+
+
+def _group_universe_by_tier(rows: list[dict]) -> dict[str, list[dict]]:
+    grouped = {'hot': [], 'warm': [], 'cold': []}
+    for row in rows:
+        tier = str(row.get('tier') or '').lower()
+        if tier in grouped:
+            grouped[tier].append(row)
+    return grouped
+
+
+def _group_tier_by_shard(rows: list[dict], shard_count: int) -> dict[int, list[str]]:
+    grouped = defaultdict(list)
+    for row in rows:
+        symbol = str(row.get('symbol') or '').strip().upper()
+        if not symbol:
+            continue
+        shard_id = int(row.get('shard_id', _stable_shard_id(symbol, shard_count)) or 0)
+        grouped[shard_id].append(symbol)
+
+    for shard_id in range(max(shard_count, 1)):
+        grouped.setdefault(shard_id, [])
+    return dict(grouped)
+
+
+def _store_universe_snapshot(rows: list[dict], source_counts: dict, topology: dict) -> dict:
+    grouped = _group_universe_by_tier(rows)
+    computed_at = timezone.now().isoformat()
+
+    snapshot = {
+        'computed_at': computed_at,
+        'generated_at': computed_at,
+        'source_counts': source_counts,
+        'totals': {
+            'all': len(rows),
+            'hot': len(grouped['hot']),
+            'warm': len(grouped['warm']),
+            'cold': len(grouped['cold']),
+        },
+        'topology': {
+            'hot_shards': _tier_shards(topology, 'hot'),
+            'warm_shards': _tier_shards(topology, 'warm'),
+            'cold_shards': _tier_shards(topology, 'cold'),
+        },
+        'rows': rows,
+    }
+    cache.set(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY, snapshot, timeout=max(int(topology.get('universe_refresh_seconds', 60)), 10) * 3)
+    cache.set(f'{REALTIME_UNIVERSE_TIER_CACHE_PREFIX}:hot', grouped['hot'], timeout=60 * 15)
+    cache.set(f'{REALTIME_UNIVERSE_TIER_CACHE_PREFIX}:warm', grouped['warm'], timeout=60 * 15)
+    cache.set(f'{REALTIME_UNIVERSE_TIER_CACHE_PREFIX}:cold', grouped['cold'], timeout=60 * 15)
+
+    for tier in ('hot', 'warm', 'cold'):
+        shard_map = _group_tier_by_shard(grouped[tier], _tier_shards(topology, tier))
+        for shard_id, symbols in shard_map.items():
+            cache.set(
+                f'{REALTIME_SHARD_CACHE_PREFIX}:{tier}:{int(shard_id)}',
+                symbols,
+                timeout=60 * 15,
+            )
+    return snapshot
+
+
+def _resolve_scheduler_plan(snapshot: dict, topology: dict) -> tuple[dict, dict]:
+    tier_counts = {
+        'hot': int((snapshot.get('totals') or {}).get('hot', 0)),
+        'warm': int((snapshot.get('totals') or {}).get('warm', 0)),
+        'cold': int((snapshot.get('totals') or {}).get('cold', 0)),
+    }
+    plan = {
+        'hot': {
+            'enabled': True,
+            'interval_seconds': _tier_interval_seconds(topology, 'hot'),
+            'batch_size': _tier_batch_size(topology, 'hot'),
+            'shards': _tier_shards(topology, 'hot'),
+        },
+        'warm': {
+            'enabled': _tier_enabled(topology, 'warm'),
+            'interval_seconds': _tier_interval_seconds(topology, 'warm'),
+            'batch_size': _tier_batch_size(topology, 'warm'),
+            'shards': _tier_shards(topology, 'warm'),
+        },
+        'cold': {
+            'enabled': _tier_enabled(topology, 'cold'),
+            'interval_seconds': _tier_interval_seconds(topology, 'cold'),
+            'batch_size': _tier_batch_size(topology, 'cold'),
+            'shards': _tier_shards(topology, 'cold'),
+        },
+    }
+
+    if topology.get('emergency_override_enabled'):
+        multiplier = float(topology.get('emergency_interval_multiplier', 2.0) or 2.0)
+        for tier_name in ('hot', 'warm', 'cold'):
+            plan[tier_name]['interval_seconds'] = max(int(plan[tier_name]['interval_seconds'] * multiplier), 1)
+        if topology.get('emergency_disable_cold'):
+            plan['cold']['enabled'] = False
+
+    def _compute_total_calls_per_minute(local_plan: dict) -> int:
+        total = 0
+        for tier_name in ('hot', 'warm', 'cold'):
+            if not local_plan[tier_name].get('enabled'):
+                continue
+            total += _estimate_upstream_calls_per_minute(
+                tier_symbols=tier_counts.get(tier_name, 0),
+                interval_seconds=int(local_plan[tier_name].get('interval_seconds', 1)),
+                batch_size=int(local_plan[tier_name].get('batch_size', 1)),
+            )
+        return total
+
+    hard_cap = max(int(topology.get('upstream_hard_cap_per_minute', 600)), 1)
+    if _compute_total_calls_per_minute(plan) > hard_cap and plan['cold'].get('enabled'):
+        plan['cold']['enabled'] = False
+    if _compute_total_calls_per_minute(plan) > hard_cap and plan['warm'].get('enabled'):
+        plan['warm']['interval_seconds'] = max(int(plan['warm']['interval_seconds']) * 2, 1)
+    if _compute_total_calls_per_minute(plan) > hard_cap:
+        plan['hot']['interval_seconds'] = max(int(plan['hot']['interval_seconds']) * 2, 1)
+
+    metrics = {
+        'estimated_upstream_calls_per_minute': _compute_total_calls_per_minute(plan),
+        'soft_cap': int(topology.get('upstream_soft_cap_per_minute', 400)),
+        'warning_cap': int(topology.get('upstream_warning_cap_per_minute', 500)),
+        'hard_cap': hard_cap,
+    }
+    return plan, metrics
+
+
+@shared_task(bind=True, name='portfolio.tasks.build_realtime_symbol_universe_snapshot')
+def build_realtime_symbol_universe_snapshot(self) -> dict:
+    runtime_settings = _get_prefetch_runtime_settings()
+    topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
+    lock_key = 'lock:realtime_universe:snapshot'
+    lock_ttl = max(int(topology.get('universe_refresh_seconds', 60)), 10)
+
+    if not _acquire_lock(lock_key, timeout_seconds=lock_ttl):
+        skipped_total = _increment_prefetch_metric('universe_lock_skipped_total')
+        return {
+            'status': 'skipped_lock',
+            'reason': 'universe_snapshot_lock_held',
+            'metrics': {'universe_lock_skipped_total': skipped_total},
+            'generated_at': timezone.now().isoformat(),
+        }
+
+    try:
+        rows, source_counts = _collect_realtime_symbol_universe(topology=topology, runtime_settings=runtime_settings)
+        snapshot = _store_universe_snapshot(rows, source_counts=source_counts, topology=topology)
+        return {
+            'status': 'ok',
+            'snapshot_key': REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY,
+            'total_symbols': int((snapshot.get('totals') or {}).get('all', 0)),
+            'hot_symbols': int((snapshot.get('totals') or {}).get('hot', 0)),
+            'warm_symbols': int((snapshot.get('totals') or {}).get('warm', 0)),
+            'cold_symbols': int((snapshot.get('totals') or {}).get('cold', 0)),
+            'source_counts': source_counts,
+            'generated_at': snapshot.get('generated_at'),
+        }
+    finally:
+        _safe_cache_delete(lock_key)
+
+
+def _snapshot_is_stale(snapshot: dict, refresh_seconds: int) -> bool:
+    if not isinstance(snapshot, dict):
+        return True
+    raw_computed_at = snapshot.get('computed_at') or snapshot.get('generated_at')
+    if not raw_computed_at:
+        return True
+    try:
+        computed_dt = datetime.fromisoformat(str(raw_computed_at))
+    except ValueError:
+        return True
+    if timezone.is_naive(computed_dt):
+        computed_dt = timezone.make_aware(computed_dt, timezone.get_current_timezone())
+    return (timezone.now() - computed_dt).total_seconds() > max(int(refresh_seconds), 1)
+
+
+@shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards')
+def schedule_realtime_prefetch_shards(self) -> dict:
+    runtime_settings = _get_prefetch_runtime_settings()
+    topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
+    lock_key = 'lock:realtime_prefetch_scheduler'
+    if not _acquire_lock(lock_key, timeout_seconds=10):
+        skipped_total = _increment_prefetch_metric('scheduler_lock_skipped_total')
+        return {
+            'status': 'skipped_lock',
+            'reason': 'scheduler_lock_held',
+            'metrics': {'scheduler_lock_skipped_total': skipped_total},
+            'generated_at': timezone.now().isoformat(),
+        }
+
+    try:
+        refresh_seconds = int(topology.get('universe_refresh_seconds', 60))
+        snapshot = cache.get(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY)
+        if _snapshot_is_stale(snapshot, refresh_seconds=refresh_seconds):
+            build_realtime_symbol_universe_snapshot.run()
+            snapshot = cache.get(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY)
+
+        if not isinstance(snapshot, dict):
+            return {
+                'status': 'no_snapshot',
+                'reason': 'universe_snapshot_missing',
+                'generated_at': timezone.now().isoformat(),
+            }
+
+        plan, budget_metrics = _resolve_scheduler_plan(snapshot=snapshot, topology=topology)
+        now_epoch = int(timezone.now().timestamp())
+        enqueued = []
+        skipped_due_to_interval = 0
+
+        for tier in ('hot', 'warm', 'cold'):
+            tier_plan = plan[tier]
+            if not tier_plan.get('enabled'):
+                continue
+
+            shard_count = int(tier_plan.get('shards', 1))
+            interval_seconds = max(int(tier_plan.get('interval_seconds', 1)), 1)
+            for shard_id in range(shard_count):
+                shard_symbols = cache.get(f'{REALTIME_SHARD_CACHE_PREFIX}:{tier}:{shard_id}') or []
+                if not shard_symbols:
+                    continue
+
+                last_key = f'{REALTIME_SHARD_LAST_ENQUEUE_PREFIX}:{tier}:{shard_id}'
+                last_epoch = int(cache.get(last_key) or 0)
+                if now_epoch - last_epoch < interval_seconds:
+                    skipped_due_to_interval += 1
+                    continue
+
+                prefetch_realtime_ticker_shard.apply_async(kwargs={'tier': tier, 'shard_id': int(shard_id)})
+                cache.set(last_key, now_epoch, timeout=max(interval_seconds * 5, 30))
+                enqueued.append({'tier': tier, 'shard_id': int(shard_id), 'symbols': len(shard_symbols)})
+
+        _increment_prefetch_metric('scheduler_runs_total')
+        _increment_prefetch_metric('realtime_upstream_calls_per_minute', amount=max(int(budget_metrics.get('estimated_upstream_calls_per_minute', 0)), 0))
+
+        return {
+            'status': 'ok',
+            'enqueued_total': len(enqueued),
+            'skipped_due_to_interval': skipped_due_to_interval,
+            'enqueued': enqueued,
+            'plan': plan,
+            'budget': budget_metrics,
+            'snapshot_totals': snapshot.get('totals', {}),
+            'generated_at': timezone.now().isoformat(),
+        }
+    finally:
+        _safe_cache_delete(lock_key)
+
+
+def _cache_ticker_rows_from_dataframe(df, *, tier: str, shard_id: int, now_iso: str) -> int:
+    cached_count = 0
+    for _, row in df.iterrows():
+        try:
+            sym = _extract_row_symbol(row)
+            if not sym:
+                continue
+            match_price = _f(_extract_row_match_price(row))
+            ref_price = _f(_extract_row_ref_price(row))
+            highest = _f(_extract_row_highest(row))
+            lowest = _f(_extract_row_lowest(row))
+            open_price = _f(_extract_row_open_price(row))
+            accum_vol = _i(_extract_row_volume(row))
+            change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
+            change_pct = round((match_price - ref_price) / ref_price * 100, 2) if match_price and ref_price else None
+            cache.set(
+                f'ticker:{sym}',
+                {
+                    'symbol': sym,
+                    'current_price': match_price,
+                    'prev_price': ref_price,
+                    'change_value': change_value,
+                    'change_pct': change_pct,
+                    'high_price': highest,
+                    'low_price': lowest,
+                    'open_price': open_price,
+                    'volume': accum_vol,
+                    'last_date': now_iso,
+                    'freshness_seconds': 0,
+                    'stale': False,
+                    'source': 'prefetch',
+                },
+                timeout=60,
+            )
+            cache.set(
+                f'ticker:meta:{sym}',
+                {
+                    'tier': tier,
+                    'shard_id': int(shard_id),
+                    'upstream_source': 'vnstock',
+                    'fetched_at': now_iso,
+                    'last_success_at': now_iso,
+                    'failure_count': 0,
+                    'last_error': None,
+                },
+                timeout=60 * 60,
+            )
+            cached_count += 1
+        except Exception as exc:
+            logger.warning('prefetch_realtime_ticker_shard parse error row: %s', exc)
+    return cached_count
+
+
+def _f(val):
+    try:
+        v = float(val)
+        return v if v == v and v != 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _i(val):
+    try:
+        v = float(val)
+        return int(v) if v == v else None
+    except (TypeError, ValueError):
+        return None
+
+
+@shared_task(bind=True, name='portfolio.tasks.prefetch_realtime_ticker_shard')
+def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
+    normalized_tier = str(tier or '').strip().lower()
+    if normalized_tier not in {'hot', 'warm', 'cold'}:
+        return {
+            'status': 'invalid_tier',
+            'tier': normalized_tier,
+            'generated_at': timezone.now().isoformat(),
+        }
+
+    lock_key = f'lock:realtime_prefetch:{normalized_tier}:{int(shard_id)}'
+    if not _acquire_lock(lock_key, timeout_seconds=30):
+        skipped_total = _increment_prefetch_metric('realtime_shard_skipped_lock_total', suffix=normalized_tier)
+        return {
+            'status': 'skipped_lock',
+            'tier': normalized_tier,
+            'shard_id': int(shard_id),
+            'metrics': {'realtime_shard_skipped_lock_total': skipped_total},
+            'generated_at': timezone.now().isoformat(),
+        }
+
+    try:
+        topology = _resolve_prefetch_topology(runtime_settings=_get_prefetch_runtime_settings())
+        batch_size = _tier_batch_size(topology, normalized_tier)
+        symbols = cache.get(f'{REALTIME_SHARD_CACHE_PREFIX}:{normalized_tier}:{int(shard_id)}') or []
+        symbols = [str(symbol).strip().upper() for symbol in symbols if symbol and str(symbol).strip()]
+        if not symbols:
+            return {
+                'status': 'ok',
+                'tier': normalized_tier,
+                'shard_id': int(shard_id),
+                'symbols': 0,
+                'cached': 0,
+                'generated_at': timezone.now().isoformat(),
+            }
+
+        now_iso = timezone.now().isoformat()
+        cached_count = 0
+        batches = 0
+        for start in range(0, len(symbols), batch_size):
+            batch_symbols = symbols[start:start + batch_size]
+            if not batch_symbols:
+                continue
+            df = fetch_price_board_dataframe(batch_symbols, anchor_symbol=batch_symbols[0])
+            batches += 1
+            if df is None or df.empty:
+                continue
+            cached_count += _cache_ticker_rows_from_dataframe(df, tier=normalized_tier, shard_id=int(shard_id), now_iso=now_iso)
+
+        _increment_prefetch_metric('realtime_prefetch_rows_cached_total', suffix=normalized_tier, amount=cached_count)
+        return {
+            'status': 'ok',
+            'tier': normalized_tier,
+            'shard_id': int(shard_id),
+            'symbols': len(symbols),
+            'cached': cached_count,
+            'batches': batches,
+            'generated_at': now_iso,
+        }
+    except Exception as exc:
+        _increment_prefetch_metric('realtime_shard_error_total', suffix=normalized_tier)
+        raise exc
+    finally:
+        _safe_cache_delete(lock_key)
 
 
 def _int_env(name: str, default: int) -> int:

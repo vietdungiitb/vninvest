@@ -5,19 +5,51 @@ from django.test import TestCase, SimpleTestCase
 from django.utils import timezone
 from unittest.mock import patch
 
-from portfolio.models import TrackedSymbol
+from portfolio.models import TrackedSymbol, WatchlistGroup, WatchlistItem, PriceAlertRule
 from portfolio.tasks import (
     prefetch_ticker_price_board,
     _resolve_prefetch_time_profile,
     _resolve_effective_prefetch_settings,
     _prefetch_retry_countdown_with_policy,
     _increment_prefetch_metric,
+    _collect_realtime_symbol_universe,
+    _resolve_scheduler_plan,
+    schedule_realtime_prefetch_shards,
 )
 
 
 class PrefetchTickerPriceBoardNormalizationTests(TestCase):
     def setUp(self):
         cache.clear()
+        # Keep query enabled in tests regardless of local time profile.
+        cache.set(
+            'admin_ops:prefetch_time_policy',
+            {
+                'timezone': 'Asia/Ho_Chi_Minh',
+                'market': {
+                    'open_time': '00:00',
+                    'close_time': '23:59',
+                    'pre_open_minutes': 0,
+                    'post_close_minutes': 0,
+                    'lunch_break': {'enabled': False, 'start': '11:30', 'end': '13:00'},
+                    'weekend_mode': 'offhours',
+                },
+                'profiles': {
+                    'pre_open': {'query_enabled': True, 'interval_seconds': 90, 'batch_size': 10, 'symbol_limit': 20, 'max_retries': 2},
+                    'market_open': {'query_enabled': True, 'interval_seconds': 30, 'batch_size': 20, 'symbol_limit': 40, 'max_retries': 4},
+                    'lunch_break': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
+                    'pre_close': {'query_enabled': True, 'interval_seconds': 60, 'batch_size': 12, 'symbol_limit': 30, 'max_retries': 2},
+                    'post_close': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
+                    'offhours': {'query_enabled': True, 'interval_seconds': 600, 'batch_size': 5, 'symbol_limit': 10, 'max_retries': 0},
+                },
+                'rate_limit_guard': {
+                    'jitter_percent': 15.0,
+                    'cooldown_multiplier_on_429': 2.0,
+                    'max_interval_seconds': 1800,
+                },
+            },
+            timeout=300,
+        )
         self.user = User.objects.create_user(username='prefetch-user', password='Test@123456')
         TrackedSymbol.objects.create(user=self.user, symbol='FPT')
 
@@ -218,3 +250,156 @@ class PrefetchPolicyGuardAndMetricTests(SimpleTestCase):
 
         self.assertEqual(value1, 1)
         self.assertEqual(value2, 2)
+
+
+class RealtimeUniverseAndShardSchedulerTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(username='universe-user', password='Test@123456')
+
+    def test_collect_realtime_symbol_universe_assigns_tier_and_stable_shard(self):
+        TrackedSymbol.objects.create(user=self.user, symbol='AAA')
+        TrackedSymbol.objects.create(user=self.user, symbol='BBB')
+        TrackedSymbol.objects.create(user=self.user, symbol='CCC')
+
+        group = WatchlistGroup.objects.create(user=self.user, name='Theo doi chinh')
+        WatchlistItem.objects.create(group=group, symbol='AAA')
+        PriceAlertRule.objects.create(
+            user=self.user,
+            symbol='AAA',
+            condition=PriceAlertRule.Condition.ABOVE,
+            target_price=100,
+            is_active=True,
+        )
+
+        topology = {
+            'universe_symbol_limit': 10,
+            'hot_limit': 1,
+            'warm_limit': 1,
+            'hot_shards': 2,
+            'warm_shards': 2,
+            'cold_shards': 2,
+        }
+        runtime_settings = {'include_group_symbols': False}
+
+        rows, source_counts = _collect_realtime_symbol_universe(topology=topology, runtime_settings=runtime_settings)
+
+        self.assertEqual(source_counts['tracked_symbols'], 3)
+        self.assertEqual(source_counts['watchlist_items'], 1)
+        self.assertEqual(source_counts['price_alerts'], 1)
+        self.assertEqual(rows[0]['symbol'], 'AAA')
+        self.assertEqual(rows[0]['tier'], 'hot')
+        self.assertEqual(rows[1]['tier'], 'warm')
+        self.assertEqual(rows[2]['tier'], 'cold')
+        self.assertIn(rows[0]['shard_id'], {0, 1})
+
+    def test_resolve_scheduler_plan_degrades_cold_before_warm(self):
+        snapshot = {
+            'totals': {
+                'hot': 200,
+                'warm': 600,
+                'cold': 1000,
+            }
+        }
+        topology = {
+            'hot_interval_seconds': 3,
+            'warm_interval_seconds': 5,
+            'cold_interval_seconds': 15,
+            'batch_size_hot': 50,
+            'batch_size_warm': 60,
+            'batch_size_cold': 60,
+            'hot_shards': 4,
+            'warm_shards': 6,
+            'cold_shards': 6,
+            'enable_warm_tier': True,
+            'enable_cold_tier': True,
+            'upstream_soft_cap_per_minute': 10,
+            'upstream_warning_cap_per_minute': 20,
+            'upstream_hard_cap_per_minute': 30,
+            'emergency_override_enabled': False,
+            'emergency_interval_multiplier': 2.0,
+            'emergency_disable_cold': True,
+        }
+
+        plan, budget = _resolve_scheduler_plan(snapshot=snapshot, topology=topology)
+
+        self.assertFalse(plan['cold']['enabled'])
+        self.assertGreaterEqual(plan['warm']['interval_seconds'], 5)
+        self.assertIn('estimated_upstream_calls_per_minute', budget)
+
+    def test_resolve_scheduler_plan_emergency_override_relaxes_cadence(self):
+        snapshot = {
+            'totals': {
+                'hot': 200,
+                'warm': 300,
+                'cold': 400,
+            }
+        }
+        topology = {
+            'hot_interval_seconds': 3,
+            'warm_interval_seconds': 5,
+            'cold_interval_seconds': 15,
+            'batch_size_hot': 50,
+            'batch_size_warm': 60,
+            'batch_size_cold': 60,
+            'hot_shards': 4,
+            'warm_shards': 6,
+            'cold_shards': 6,
+            'enable_warm_tier': True,
+            'enable_cold_tier': True,
+            'upstream_soft_cap_per_minute': 400,
+            'upstream_warning_cap_per_minute': 500,
+            'upstream_hard_cap_per_minute': 600,
+            'emergency_override_enabled': True,
+            'emergency_interval_multiplier': 3.0,
+            'emergency_disable_cold': True,
+        }
+
+        plan, _ = _resolve_scheduler_plan(snapshot=snapshot, topology=topology)
+
+        self.assertEqual(plan['hot']['interval_seconds'], 9)
+        self.assertEqual(plan['warm']['interval_seconds'], 15)
+        self.assertFalse(plan['cold']['enabled'])
+
+    @patch('portfolio.tasks_prefetch.prefetch_realtime_ticker_shard.apply_async')
+    @patch('portfolio.tasks_prefetch._resolve_prefetch_topology')
+    def test_schedule_realtime_prefetch_shards_enqueues_due_shards(self, mock_topology, mock_apply_async):
+        now_iso = timezone.now().isoformat()
+        cache.set(
+            'realtime:universe:snapshot',
+            {
+                'computed_at': now_iso,
+                'totals': {'hot': 2, 'warm': 1, 'cold': 0},
+            },
+            timeout=120,
+        )
+        cache.set('realtime:shard:hot:0', ['AAA'], timeout=120)
+        cache.set('realtime:shard:hot:1', ['BBB'], timeout=120)
+        cache.set('realtime:shard:warm:0', ['CCC'], timeout=120)
+
+        mock_topology.return_value = {
+            'universe_refresh_seconds': 60,
+            'hot_interval_seconds': 1,
+            'warm_interval_seconds': 1,
+            'cold_interval_seconds': 5,
+            'hot_shards': 2,
+            'warm_shards': 1,
+            'cold_shards': 1,
+            'batch_size_hot': 50,
+            'batch_size_warm': 60,
+            'batch_size_cold': 60,
+            'enable_warm_tier': True,
+            'enable_cold_tier': True,
+            'upstream_soft_cap_per_minute': 400,
+            'upstream_warning_cap_per_minute': 500,
+            'upstream_hard_cap_per_minute': 600,
+            'emergency_override_enabled': False,
+            'emergency_interval_multiplier': 2.0,
+            'emergency_disable_cold': True,
+        }
+
+        result = schedule_realtime_prefetch_shards.run()
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['enqueued_total'], 3)
+        self.assertEqual(mock_apply_async.call_count, 3)

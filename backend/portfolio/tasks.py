@@ -76,6 +76,12 @@ from portfolio.tasks_whale_advisory import (
 )
 from portfolio.tasks_prefetch import (
     prefetch_ticker_price_board,
+    build_realtime_symbol_universe_snapshot,
+    schedule_realtime_prefetch_shards,
+    prefetch_realtime_ticker_shard,
+    _resolve_prefetch_topology,
+    _collect_realtime_symbol_universe,
+    _resolve_scheduler_plan,
     _prefetch_runtime_defaults,
     _get_prefetch_runtime_settings,
     _prefetch_time_policy_defaults,
