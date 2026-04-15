@@ -109,3 +109,20 @@ Ghi chu verify:
 - Dashboard.jsx: remove defensive if(!isAuthenticated) return truoc hooks - ProtectedLayout da bao ve route.
 - LoginPage: chi redirect /dashboard khi BOTH isAuthenticated=true AND hasStoredTokens=true.
 - Phan tich 404 stocks/MBS/: la data issue (stock chua duoc seed) - da co error handling trong Transactions.jsx.
+
+## Entry 2026-04-15 - Fix menu navigation not updating page content
+
+Pham vi:
+- Sua loi: khi user click vao menu (Giao dich, Quan ly danh muc, Settings...) thi URL thay doi nhung noi dung trang khong thay doi.
+- Root cause: React Router Outlet component khong re-render khi route thay doi.
+- Solution: Them key={location.pathname} vao Outlet component de force re-mount.
+
+Danh sach tep da sua:
+- frontend/src/components/Layout.jsx (import useLocation, add key prop to Outlet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend build: success
+- Route change behavior: URL updates and page content re-renders properly
+- Each page's useEffect hooks fire when navigated to
+- No stale state carries over between page transitions
