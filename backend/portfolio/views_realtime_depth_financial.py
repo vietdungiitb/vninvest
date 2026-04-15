@@ -1,3 +1,4 @@
+import logging
 import re
 
 from django.utils import timezone
@@ -7,12 +8,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .exceptions import ExternalSystemException
+from .services_realtime_cache import (
+    _cache_get,
+    _cache_set,
+)
+from .services_realtime_adapter import (
+    fetch_price_board_dataframe,
+    fetch_financial_ratio_dataframe,
+)
 
-
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
+logger = logging.getLogger(__name__)
 
 
 class DepthChartView(APIView):
@@ -24,15 +29,14 @@ class DepthChartView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            df = legacy_views.fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
         except ExternalSystemException as exc:
-            legacy_views.logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('DepthChartView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
@@ -126,18 +130,17 @@ class FinancialMetricsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'financials:{normalized_symbol}'
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
         try:
-            df = legacy_views.fetch_financial_ratio_dataframe(
+            df = fetch_financial_ratio_dataframe(
                 normalized_symbol,
                 period='year',
                 lang='vi',
@@ -145,7 +148,7 @@ class FinancialMetricsView(APIView):
                 source='VCI',
             )
         except ExternalSystemException as exc:
-            legacy_views.logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
             if exc.code == 'vnstock_missing':
                 return Response({'detail': str(exc.message)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             return Response(
@@ -157,7 +160,7 @@ class FinancialMetricsView(APIView):
                 }
             )
         except Exception as exc:
-            legacy_views.logger.exception('FinancialMetricsView unexpected lỗi %s: %s', normalized_symbol, exc)
+            logger.exception('FinancialMetricsView unexpected lỗi %s: %s', normalized_symbol, exc)
             return Response(
                 {
                     'symbol': normalized_symbol,
@@ -213,7 +216,7 @@ class FinancialMetricsView(APIView):
                     }
                 )
         except Exception as exc:
-            legacy_views.logger.exception('FinancialMetricsView parse lỗi %s: %s', normalized_symbol, exc)
+            logger.exception('FinancialMetricsView parse lỗi %s: %s', normalized_symbol, exc)
             return Response({'detail': 'Không parse được dữ liệu tài chính từ nguồn realtime.'}, status=status.HTTP_502_BAD_GATEWAY)
 
         result = {
@@ -221,5 +224,5 @@ class FinancialMetricsView(APIView):
             'years': years,
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=21600)
+        _cache_set(cache_key, result, timeout=21600)
         return Response(result)

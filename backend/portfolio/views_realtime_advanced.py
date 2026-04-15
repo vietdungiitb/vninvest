@@ -1,4 +1,5 @@
 from datetime import date
+import logging
 
 from django.utils import timezone
 from rest_framework import status
@@ -10,12 +11,22 @@ from rest_framework.views import APIView
 from .exceptions import ExternalSystemException
 from .models import IntradayTick
 from .whale_scoring import resolve_whale_score_config
+from .services_realtime_cache import (
+    _cache_get,
+    _cache_set,
+    _is_vnstock_rate_limited,
+    _mark_vnstock_rate_limited,
+)
+from .services_realtime_adapter import (
+    fetch_intraday_dataframe,
+)
+from .whale_feed_helpers import (
+    _build_whale_order_payload,
+    _dataframe_has_threshold_hits,
+    _resolve_user_whale_threshold_vnd,
+)
 
-
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
+logger = logging.getLogger(__name__)
 
 
 class WhaleFeedView(APIView):
@@ -31,17 +42,16 @@ class WhaleFeedView(APIView):
     def get(self, request, symbol):
         import pandas as pd
 
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        threshold_vnd, threshold_source = legacy_views._resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
+        threshold_vnd, threshold_source = _resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 
         cache_key = f'whale_feed:{request.user.id}:{normalized_symbol}:{int(threshold_vnd)}'
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
@@ -64,9 +74,9 @@ class WhaleFeedView(APIView):
                         for t in stream_ticks if float(t.get('volume', 0)) > 0
                     ]
                 )
-                stream_has_hits = legacy_views._dataframe_has_threshold_hits(stream_df, threshold_vnd)
+                stream_has_hits = _dataframe_has_threshold_hits(stream_df, threshold_vnd)
         except (Exception, SystemExit) as exc:
-            legacy_views.logger.debug('WhaleFeed stream fallback failed for %s: %s', normalized_symbol, exc)
+            logger.debug('WhaleFeed stream fallback failed for %s: %s', normalized_symbol, exc)
 
         db_df = None
         db_has_hits = False
@@ -89,7 +99,7 @@ class WhaleFeedView(APIView):
                     for row in db_rows if float(row.get('volume') or 0) > 0
                     ]
                 )
-                db_has_hits = legacy_views._dataframe_has_threshold_hits(db_df, threshold_vnd)
+                db_has_hits = _dataframe_has_threshold_hits(db_df, threshold_vnd)
 
         try:
             if stream_df is not None and not stream_df.empty and stream_has_hits:
@@ -106,24 +116,24 @@ class WhaleFeedView(APIView):
                 data_source = 'intraday_tick_db'
             else:
                 try:
-                    df = legacy_views.fetch_intraday_dataframe(symbol=normalized_symbol, page_size=100)
+                    df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=100)
                     data_source = 'vnstock'
                 except ExternalSystemException as exc:
                     if exc.code == 'vnstock_timeout':
-                        legacy_views.logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                        logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
                         df = None
                         data_source = 'timeout'
                     elif exc.code == 'vnstock_rate_limited':
-                        legacy_views._mark_vnstock_rate_limited('intraday', exc)
-                        legacy_views.logger.info('WhaleFeedView vnstock rate-limited %s - activate cooldown', normalized_symbol)
+                        _mark_vnstock_rate_limited('intraday', exc)
+                        logger.info('WhaleFeedView vnstock rate-limited %s - activate cooldown', normalized_symbol)
                         data_source = 'vnstock_backoff'
                         df = None
                     else:
-                        legacy_views.logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
+                        logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
                         data_source = 'unavailable'
                         df = None
         except Exception as exc:
-            legacy_views.logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
+            logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
             df = None
             data_source = 'error'
 
@@ -198,7 +208,7 @@ class WhaleFeedView(APIView):
             if matched_value >= threshold_vnd:
                 raw_time = row.get('time') or row.get('tradingDate') or ''
                 orders.append(
-                    legacy_views._build_whale_order_payload(
+                    _build_whale_order_payload(
                         raw_time=raw_time,
                         raw_price=raw_price,
                         raw_vol=raw_vol,
@@ -235,7 +245,7 @@ class WhaleFeedView(APIView):
             },
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=20)
+        _cache_set(cache_key, result, timeout=20)
         return Response(result)
 
 
@@ -252,17 +262,16 @@ class RVOLView(APIView):
     def get(self, request, symbol):
         import pandas as pd
 
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'rvol:{normalized_symbol}'
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        if legacy_views._is_vnstock_rate_limited('intraday'):
+        if _is_vnstock_rate_limited('intraday'):
             return Response(
                 {
                     'symbol': normalized_symbol,
@@ -274,10 +283,10 @@ class RVOLView(APIView):
             )
 
         try:
-            df = legacy_views.fetch_intraday_dataframe(symbol=normalized_symbol, page_size=500)
+            df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=500)
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_rate_limited':
-                legacy_views._mark_vnstock_rate_limited('intraday', exc)
+                _mark_vnstock_rate_limited('intraday', exc)
                 return Response(
                     {
                         'symbol': normalized_symbol,
@@ -287,7 +296,7 @@ class RVOLView(APIView):
                         'fetched_at': timezone.now().isoformat(),
                     }
                 )
-            legacy_views.logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('RVOLView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'detail': f'Không lấy được dữ liệu: {exc.message}'}, status=status.HTTP_502_BAD_GATEWAY)
 
         if df is None or df.empty:
@@ -342,5 +351,5 @@ class RVOLView(APIView):
             'buckets': buckets,
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=20)
+        _cache_set(cache_key, result, timeout=20)
         return Response(result)

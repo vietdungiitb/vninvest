@@ -1,6 +1,8 @@
 from datetime import date, datetime
+import logging
 
 from django.utils import timezone
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,6 +11,23 @@ from rest_framework.views import APIView
 
 from .exceptions import ExternalSystemException
 from .models import DailyPrice, IntradayTick, SecuritiesItem
+from .services_realtime_cache import (
+    _cache_get,
+    _cache_set,
+    _is_vnstock_rate_limited,
+    _mark_vnstock_rate_limited,
+)
+from .services_realtime_adapter import (
+    fetch_price_board_dataframe,
+    fetch_intraday_dataframe,
+    normalize_symbol,
+    resolve_user_whale_threshold_vnd,
+    dataframe_has_threshold_hits,
+)
+from .services import get_price_changes
+from .tasks import prefetch_ticker_price_board
+
+logger = logging.getLogger(__name__)
 
 PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
 ONDEMAND_TICKER_LOCK_PREFIX = 'ticker:ondemand:lock'
@@ -61,38 +80,31 @@ def _build_intraday_trades_from_db(symbol: str, page_size: int):
     return trades
 
 
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
-
-
 class RealtimeTickerView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'realtime_ticker'
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
-        normalized_symbol = (symbol or '').strip().upper()
+        normalized_symbol = normalize_symbol(symbol)
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         ticker_cache_key = f'ticker:{normalized_symbol}'
-        cached_ticker = legacy_views._cache_get(ticker_cache_key)
+        cached_ticker = _cache_get(ticker_cache_key)
         if cached_ticker is not None:
             return Response(cached_ticker)
 
-        if not legacy_views._is_vnstock_rate_limited('price_board'):
+        if not _is_vnstock_rate_limited('price_board'):
             lock_key = f'{ONDEMAND_TICKER_LOCK_PREFIX}:{normalized_symbol}'
             try:
-                lock_acquired = legacy_views.cache.add(lock_key, 1, timeout=3)
+                lock_acquired = cache.add(lock_key, 1, timeout=3)
             except Exception:
                 lock_acquired = False
 
             if lock_acquired:
                 try:
-                    df = legacy_views.fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+                    df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
                     if df is not None and not df.empty:
                         def _select_symbol_row(frame, expected_symbol):
                             normalized_expected = str(expected_symbol or '').strip().upper()
@@ -227,27 +239,27 @@ class RealtimeTickerView(APIView):
                                 'stale': False,
                                 'source': 'vnstock_on_demand',
                             }
-                            legacy_views._cache_set(ticker_cache_key, payload, timeout=20)
+                            _cache_set(ticker_cache_key, payload, timeout=20)
                             return Response(payload)
                 except ExternalSystemException as exc:
                     if exc.code == 'vnstock_rate_limited':
-                        legacy_views._mark_vnstock_rate_limited('price_board', exc)
+                        _mark_vnstock_rate_limited('price_board', exc)
                 except Exception:
                     pass
                 finally:
                     try:
-                        legacy_views.cache.delete(lock_key)
+                        cache.delete(lock_key)
                     except Exception:
                         pass
 
         try:
             from portfolio.tasks import prefetch_ticker_price_board
-            if legacy_views.cache.add(PREFETCH_ENQUEUE_LOCK_KEY, 1, timeout=15):
+            if cache.add(PREFETCH_ENQUEUE_LOCK_KEY, 1, timeout=15):
                 prefetch_ticker_price_board.apply_async(countdown=0)
         except Exception:
             pass
 
-        price_info = legacy_views.get_price_changes([normalized_symbol]).get(normalized_symbol, {})
+        price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
         freshness_seconds = None
         stale = True
@@ -295,7 +307,6 @@ class IntradayMatchedView(APIView):
     throttle_scope = 'realtime_intraday'
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -308,12 +319,12 @@ class IntradayMatchedView(APIView):
 
         cache_key = f'intraday:{normalized_symbol}:{page_size}'
         last_good_key = _intraday_last_good_cache_key(normalized_symbol)
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
         def _response_from_last_good(reason: str):
-            last_good = legacy_views._cache_get(last_good_key)
+            last_good = _cache_get(last_good_key)
             if isinstance(last_good, dict) and (last_good.get('trades') or []):
                 stale_payload = {
                     **last_good,
@@ -323,7 +334,7 @@ class IntradayMatchedView(APIView):
                     'fallback_reason': reason,
                     'fetched_at': timezone.now().isoformat(),
                 }
-                legacy_views._cache_set(cache_key, stale_payload, timeout=5)
+                _cache_set(cache_key, stale_payload, timeout=5)
                 return stale_payload
             return None
 
@@ -340,8 +351,8 @@ class IntradayMatchedView(APIView):
                 'fallback_reason': reason,
                 'fetched_at': timezone.now().isoformat(),
             }
-            legacy_views._cache_set(cache_key, payload, timeout=8)
-            legacy_views._cache_set(last_good_key, payload, timeout=900)
+            _cache_set(cache_key, payload, timeout=8)
+            _cache_set(last_good_key, payload, timeout=900)
             return payload
 
         try:
@@ -394,19 +405,19 @@ class IntradayMatchedView(APIView):
                         'stale': False,
                         'fetched_at': timezone.now().isoformat(),
                     }
-                    legacy_views._cache_set(cache_key, result, timeout=8)
-                    legacy_views._cache_set(last_good_key, result, timeout=900)
+                    _cache_set(cache_key, result, timeout=8)
+                    _cache_set(last_good_key, result, timeout=900)
                     return Response(result)
         except (Exception, SystemExit) as exc:
-            legacy_views.logger.debug('Stream fallback failed for %s: %s', normalized_symbol, exc)
+            logger.debug('Stream fallback failed for %s: %s', normalized_symbol, exc)
 
         try:
-            df = legacy_views.fetch_intraday_dataframe(symbol=normalized_symbol, page_size=page_size)
+            df = fetch_intraday_dataframe(symbol=normalized_symbol, page_size=page_size)
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_missing':
                 return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             if exc.code == 'vnstock_rate_limited':
-                legacy_views._mark_vnstock_rate_limited('intraday', exc)
+                _mark_vnstock_rate_limited('intraday', exc)
                 cached_payload = _response_from_last_good('vnstock_backoff')
                 if cached_payload is not None:
                     cached_payload['rate_limited'] = True
@@ -441,7 +452,7 @@ class IntradayMatchedView(APIView):
                         'fetched_at': timezone.now().isoformat(),
                     }
                 )
-            legacy_views.logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
             cached_payload = _response_from_last_good('vnstock_unavailable')
             if cached_payload is not None:
                 return Response(cached_payload)
@@ -458,7 +469,7 @@ class IntradayMatchedView(APIView):
                 }
             )
         except Exception as exc:
-            legacy_views.logger.exception('IntradayMatchedView unexpected error %s: %s', normalized_symbol, exc)
+            logger.exception('IntradayMatchedView unexpected error %s: %s', normalized_symbol, exc)
             cached_payload = _response_from_last_good('error')
             if cached_payload is not None:
                 return Response(cached_payload)
@@ -535,8 +546,8 @@ class IntradayMatchedView(APIView):
             'stale': False,
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=8)
-        legacy_views._cache_set(last_good_key, result, timeout=900)
+        _cache_set(cache_key, result, timeout=8)
+        _cache_set(last_good_key, result, timeout=900)
         return Response(result)
 
 
@@ -546,33 +557,32 @@ class PriceBoardView(APIView):
     throttle_scope = 'realtime_price_board'
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'price_board:{normalized_symbol}'
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        if legacy_views._is_vnstock_rate_limited('price_board'):
+        if _is_vnstock_rate_limited('price_board'):
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
 
         try:
-            df = legacy_views.fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+            df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_missing':
                 return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             if exc.code == 'vnstock_rate_limited':
-                legacy_views._mark_vnstock_rate_limited('price_board', exc)
+                _mark_vnstock_rate_limited('price_board', exc)
                 return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_backoff', 'rate_limited': True})
             if exc.code == 'vnstock_timeout':
                 return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'timeout', 'fetched_at': timezone.now().isoformat()})
-            legacy_views.logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
+            logger.warning('PriceBoardView lỗi vnstock %s: %s', normalized_symbol, exc)
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'vnstock_unavailable', 'fetched_at': timezone.now().isoformat()})
         except Exception as exc:
-            legacy_views.logger.exception('PriceBoardView unexpected fetch error %s: %s', normalized_symbol, exc)
+            logger.exception('PriceBoardView unexpected fetch error %s: %s', normalized_symbol, exc)
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'error', 'fetched_at': timezone.now().isoformat()})
 
         if df is None or df.empty:
@@ -596,7 +606,7 @@ class PriceBoardView(APIView):
             ba = df['bid_ask'].iloc[0]
             mt = df['match'].iloc[0]
         except Exception as exc:
-            legacy_views.logger.warning('PriceBoardView malformed payload %s: %s', normalized_symbol, exc)
+            logger.warning('PriceBoardView malformed payload %s: %s', normalized_symbol, exc)
             return Response({'symbol': normalized_symbol, 'depth': [], 'match': {}, 'source': 'payload_invalid', 'fetched_at': timezone.now().isoformat()})
 
         depth = []
@@ -630,7 +640,7 @@ class PriceBoardView(APIView):
             'match': match_data,
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=8)
+        _cache_set(cache_key, result, timeout=8)
         return Response(result)
 
 
@@ -640,13 +650,12 @@ class SectorBreadthView(APIView):
     throttle_scope = 'realtime_breadth'
 
     def get(self, request, symbol):
-        legacy_views = _legacy_views_module()
         normalized_symbol = (symbol or '').strip().upper()
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
         cache_key = f'breadth:{normalized_symbol}'
-        cached = legacy_views._cache_get(cache_key)
+        cached = _cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
@@ -674,7 +683,7 @@ class SectorBreadthView(APIView):
         price_map = {}
         missing_syms = []
         for sym in all_symbols:
-            cached_t = legacy_views._cache_get(f'ticker:{sym}')
+            cached_t = _cache_get(f'ticker:{sym}')
             if cached_t:
                 match_price = cached_t.get('current_price')
                 ref_price = cached_t.get('prev_price')
@@ -690,12 +699,12 @@ class SectorBreadthView(APIView):
         if missing_syms:
             df = None
             try:
-                df = legacy_views.fetch_price_board_dataframe(missing_syms, anchor_symbol=normalized_symbol)
+                df = fetch_price_board_dataframe(missing_syms, anchor_symbol=normalized_symbol)
             except ExternalSystemException as exc:
                 if exc.code == 'vnstock_timeout':
-                    legacy_views.logger.warning('SectorBreadthView timeout fetching %d missing syms for %s', len(missing_syms), normalized_symbol)
+                    logger.warning('SectorBreadthView timeout fetching %d missing syms for %s', len(missing_syms), normalized_symbol)
                 else:
-                    legacy_views.logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
+                    logger.warning('SectorBreadthView lỗi vnstock %s: %s', normalized_symbol, exc)
 
             if df is not None and not df.empty:
                 for _, row in df.iterrows():
@@ -733,5 +742,5 @@ class SectorBreadthView(APIView):
             'groups': result_groups,
             'fetched_at': timezone.now().isoformat(),
         }
-        legacy_views._cache_set(cache_key, result, timeout=30)
+        _cache_set(cache_key, result, timeout=30)
         return Response(result)
