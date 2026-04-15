@@ -215,6 +215,31 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertTrue(resp.data['queued'])
         self.assertEqual(resp.data['task_id'], 'task-123')
 
+    @patch('config.health.build_prefetch_health_snapshot')
+    @patch('portfolio.tasks.prefetch_ticker_price_board.run')
+    def test_sync_warm_prefetch_returns_payload_without_http_503_on_non_ok(
+        self,
+        mock_prefetch_run,
+        mock_prefetch_snapshot,
+    ):
+        mock_prefetch_run.return_value = {
+            'status': 'parse_zero_cached',
+            'reason': 'no_rows_parsed_from_provider_payload',
+            'cached': 0,
+        }
+        mock_prefetch_snapshot.return_value = {
+            'healthy': False,
+            'status': 'parse_zero_cached',
+            'reason': 'parse_zero_cached',
+        }
+
+        resp = self.client.post(f'{WARM_URL}?mode=sync')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data['ok'])
+        self.assertFalse(resp.data['queued'])
+        self.assertEqual(resp.data['result']['status'], 'parse_zero_cached')
+
     def test_user_count_includes_all_users(self):
         data = self._get_stats()
         expected = User.objects.count()
@@ -451,19 +476,28 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    @patch('portfolio.views_admin_vnstock_benchmark.run_price_board_provider_benchmark')
-    def test_staff_can_run_benchmark(self, mock_run):
+    @patch('portfolio.views_admin_vnstock_benchmark.set_latest_price_board_benchmark_report')
+    @patch('portfolio.tasks_maintenance.run_vnstock_price_board_benchmark.apply_async')
+    @patch('config.celery.app.control.inspect')
+    def test_staff_can_run_benchmark(self, mock_inspect, mock_apply_async, mock_set_latest):
         self._login('vn_bench_staff')
-        mock_run.return_value = {
-            'symbol': 'VNM',
-            'results': [],
-            'recommendation': {'primary_provider': 'KBS', 'fallback_provider': 'VCI'},
-        }
+
+        class _Task:
+            id = 'bench-task-123'
+
+        inspect_obj = mock_inspect.return_value
+        inspect_obj.ping.return_value = {'worker@local': {'ok': 'pong'}}
+        inspect_obj.active.return_value = {'worker@local': []}
+        inspect_obj.reserved.return_value = {'worker@local': []}
+        mock_apply_async.return_value = _Task()
 
         resp = self.client.post(VNSTOCK_BENCHMARK_RUN_URL, {'symbol': 'VNM'}, format='json')
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
         self.assertTrue(resp.data['ok'])
-        self.assertIn('report', resp.data)
+        self.assertEqual(resp.data['status'], 'started')
+        self.assertEqual(resp.data['mode'], 'celery')
+        self.assertEqual(resp.data['task_id'], 'bench-task-123')
+        self.assertTrue(mock_set_latest.called)
 
     @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
     def test_staff_can_get_latest_benchmark_report(self, mock_latest):
@@ -479,3 +513,14 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         self.assertTrue(resp.data['ok'])
         self.assertTrue(resp.data['has_report'])
         self.assertEqual(resp.data['report']['symbol'], 'VNM')
+
+    @patch('portfolio.views_admin_vnstock_benchmark.get_latest_price_board_benchmark_report')
+    def test_latest_benchmark_fail_soft_when_loader_errors(self, mock_latest):
+        self._login('vn_bench_staff')
+        mock_latest.side_effect = RuntimeError('cache backend unavailable')
+
+        resp = self.client.get(VNSTOCK_BENCHMARK_LATEST_URL)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data['ok'])
+        self.assertFalse(resp.data['has_report'])
+        self.assertEqual(resp.data['status'], 'temporarily_unavailable')

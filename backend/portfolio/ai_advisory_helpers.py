@@ -5,22 +5,26 @@ S23-04 views decomposition — extracted from views.py.
 """
 from __future__ import annotations
 
+from datetime import timedelta
 import hashlib
 import json
 import logging
 import os
 import re
+from statistics import pstdev
 
 from django.core.cache import cache
+from django.db.models import Sum
 from django.utils import timezone
 
 from .ai_runtime_config import resolve_ai_runtime_config
-from .models import AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, WhaleAdvisory
+from .models import AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, DailyPrice, OrderFlowSignal, WhaleAdvisory
 from .serializers import (
     AIAdvisoryComponentRecordSerializer,
     AIAdvisoryExecutiveSummarySerializer,
     WhaleAdvisorySerializer,
 )
+from .stock_workspace_helpers import _build_stock_workspace_overview, _compute_rsi, _compute_stock_workspace_technical
 
 logger = logging.getLogger(__name__)
 
@@ -508,6 +512,504 @@ def _sprint17_enforce_summary_narrative_policy(summary_payload: dict, components
     return payload
 
 
+def _safe_float(value, default: float = 0.0) -> float:
+    try:
+        if value is None:
+            return float(default)
+        return float(value)
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _format_dt_short(value) -> str:
+    if value is None:
+        return 'n/a'
+    try:
+        local_value = timezone.localtime(value)
+    except Exception:
+        local_value = value
+    try:
+        return local_value.strftime('%d/%m %H:%M')
+    except Exception:
+        return str(value)
+
+
+def _format_billion(value: float) -> str:
+    return f'{(_safe_float(value) / 1_000_000_000):.1f} ty'
+
+
+def _format_price_level(value: float | None) -> str:
+    if value is None:
+        return 'n/a'
+
+    numeric_value = _safe_float(value)
+    if abs(numeric_value) >= 1000:
+        return f'{numeric_value:,.0f}'
+    return f'{numeric_value:.2f}'
+
+
+def _fetch_live_price_anchor(symbol: str) -> dict:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return {}
+
+    try:
+        from .adapters.vnstock_adapter import fetch_price_board_dataframe
+
+        price_board_df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
+        if price_board_df is None or getattr(price_board_df, 'empty', True):
+            return {}
+
+        listing_row = price_board_df['match'].iloc[0] if 'match' in price_board_df.columns.get_level_values(0) else None
+        if listing_row is None:
+            return {}
+
+        current_price = _safe_float(listing_row.get('match_price'))
+        reference_price = _safe_float(listing_row.get('reference_price'))
+        high_price = _safe_float(listing_row.get('highest'))
+        low_price = _safe_float(listing_row.get('lowest'))
+        return {
+            'current_price': current_price,
+            'reference_price': reference_price,
+            'high_price': high_price,
+            'low_price': low_price,
+            'source': 'live_price_board',
+        }
+    except Exception as exc:
+        logger.debug('Live price anchor fallback symbol=%s err=%s', normalized_symbol, exc)
+        return {}
+
+
+def _resolve_price_scale_factor(symbol: str, overview: dict | None, latest_close: float | None) -> tuple[float, dict]:
+    latest_close_value = _safe_float(latest_close)
+    if latest_close_value <= 0:
+        return 1.0, {}
+
+    live_anchor = _fetch_live_price_anchor(symbol)
+    anchor_price = _safe_float(
+        live_anchor.get('current_price')
+        or live_anchor.get('reference_price')
+        or (overview or {}).get('current_price')
+        or (overview or {}).get('reference_price')
+        or latest_close_value
+    )
+    if anchor_price <= 0:
+        return 1.0, live_anchor
+
+    scale_factor = anchor_price / latest_close_value
+    if 0.2 <= scale_factor <= 5.0:
+        return 1.0, live_anchor
+    return scale_factor, live_anchor
+
+
+def _market_session_label(now_local) -> str:
+    weekday = getattr(now_local, 'weekday', lambda: 0)()
+    if weekday >= 5:
+        return 'off_market_weekend'
+
+    minutes = (now_local.hour * 60) + now_local.minute
+    if minutes < 9 * 60:
+        return 'pre_market'
+    if 9 * 60 <= minutes < 11 * 60 + 30:
+        return 'in_market_morning'
+    if 11 * 60 + 30 <= minutes < 13 * 60:
+        return 'midday_break'
+    if 13 * 60 <= minutes < 15 * 60:
+        return 'in_market_afternoon'
+    return 'post_market'
+
+
+def _compute_rsi_series(values: list[float], window: int = 14) -> list[float | None]:
+    series: list[float | None] = []
+    for idx in range(len(values)):
+        if idx < window:
+            series.append(None)
+            continue
+        series.append(_compute_rsi(values[: idx + 1], window))
+    return series
+
+
+def _compute_macd_series(values: list[float]) -> list[dict]:
+    if len(values) < 35:
+        return []
+
+    k12 = 2.0 / 13.0
+    k26 = 2.0 / 27.0
+    k9 = 2.0 / 10.0
+
+    ema12 = None
+    ema26 = None
+    signal = None
+    macd_values: list[float] = []
+    output: list[dict] = []
+
+    for idx, value in enumerate(values):
+        if idx == 11:
+            ema12 = sum(values[:12]) / 12.0
+        elif idx > 11 and ema12 is not None:
+            ema12 = value * k12 + ema12 * (1 - k12)
+
+        if idx == 25:
+            ema26 = sum(values[:26]) / 26.0
+        elif idx > 25 and ema26 is not None:
+            ema26 = value * k26 + ema26 * (1 - k26)
+
+        if ema12 is None or ema26 is None:
+            continue
+
+        macd = ema12 - ema26
+        macd_values.append(macd)
+        if len(macd_values) == 9:
+            signal = sum(macd_values[:9]) / 9.0
+        elif len(macd_values) > 9 and signal is not None:
+            signal = macd * k9 + signal * (1 - k9)
+
+        if signal is None:
+            continue
+
+        output.append(
+            {
+                'macd': macd,
+                'signal': signal,
+                'hist': macd - signal,
+            }
+        )
+
+    return output
+
+
+def _compute_bollinger_snapshot(close_values: list[float], window: int = 20) -> dict | None:
+    if len(close_values) < window:
+        return None
+
+    recent_values = close_values[-window:]
+    middle = sum(recent_values) / window
+    std_dev = pstdev(recent_values) if len(recent_values) >= 2 else 0.0
+    upper = middle + (2.0 * std_dev)
+    lower = middle - (2.0 * std_dev)
+    latest_close = close_values[-1]
+    band_span = upper - lower
+    band_position_pct = ((latest_close - lower) / band_span * 100.0) if band_span > 0 else None
+
+    state = 'mid_band'
+    if band_position_pct is not None:
+        if band_position_pct >= 80:
+            state = 'near_upper_band'
+        elif band_position_pct <= 20:
+            state = 'near_lower_band'
+
+    return {
+        'middle': middle,
+        'upper': upper,
+        'lower': lower,
+        'position_pct': band_position_pct,
+        'state': state,
+    }
+
+
+def _build_whale_context_for_prompt(user, symbol: str, lookback_days: int = 180) -> str:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol or user is None:
+        return ''
+
+    since = timezone.now() - timedelta(days=max(int(lookback_days), 30))
+    qs = WhaleAdvisory.objects.filter(user=user, symbol=normalized_symbol, created_at__gte=since).order_by('-created_at')
+    if not qs.exists():
+        return f'Whale context {lookback_days}d: khong co whale advisory du lieu luu tru.'
+
+    buy_value = _safe_float(qs.filter(side='BUY').aggregate(total=Sum('matched_value')).get('total'))
+    sell_value = _safe_float(qs.filter(side='SELL').aggregate(total=Sum('matched_value')).get('total'))
+    buy_count = qs.filter(side='BUY').count()
+    sell_count = qs.filter(side='SELL').count()
+    total_value = buy_value + sell_value
+    buy_ratio_pct = (buy_value / total_value * 100.0) if total_value > 0 else 0.0
+    sell_ratio_pct = (sell_value / total_value * 100.0) if total_value > 0 else 0.0
+
+    recent_30d_since = timezone.now() - timedelta(days=30)
+    previous_30d_since = timezone.now() - timedelta(days=60)
+    recent_30d_value = _safe_float(qs.filter(created_at__gte=recent_30d_since).aggregate(total=Sum('matched_value')).get('total'))
+    previous_30d_value = _safe_float(
+        qs.filter(created_at__gte=previous_30d_since, created_at__lt=recent_30d_since).aggregate(total=Sum('matched_value')).get('total')
+    )
+    whale_trend = 'on_dinh'
+    if recent_30d_value > previous_30d_value * 1.15:
+        whale_trend = 'tang'
+    elif previous_30d_value > 0 and recent_30d_value < previous_30d_value * 0.85:
+        whale_trend = 'giam'
+
+    turnover_rows = list(
+        DailyPrice.objects.filter(symbol=normalized_symbol).order_by('-date').values('close_price', 'volume')[:lookback_days]
+    )
+    latest_close = _safe_float(turnover_rows[0].get('close_price')) if turnover_rows else 0.0
+    scale_factor, _ = _resolve_price_scale_factor(symbol=normalized_symbol, overview=None, latest_close=latest_close)
+    estimated_turnover = sum(
+        (_safe_float(row.get('close_price')) * scale_factor) * _safe_float(row.get('volume')) for row in turnover_rows
+    )
+    dominance_pct = (total_value / estimated_turnover * 100.0) if estimated_turnover > 0 else None
+
+    recent_events = list(qs.values('created_at', 'side', 'matched_value')[:6])
+    recent_block = '; '.join(
+        f"{_format_dt_short(row.get('created_at'))} {str(row.get('side') or 'UNK').upper()} {_format_billion(row.get('matched_value'))}"
+        for row in recent_events
+    ) or 'n/a'
+
+    dominance_text = f'{dominance_pct:.2f}%' if dominance_pct is not None else 'n/a'
+    return (
+        f'Whale context {lookback_days}d: BUY={buy_count} lenh/{_format_billion(buy_value)}, '
+        f'SELL={sell_count} lenh/{_format_billion(sell_value)}, '
+        f'buy_ratio={buy_ratio_pct:.1f}%, sell_ratio={sell_ratio_pct:.1f}%, '
+        f'dominance_uoc_tinh_vs_turnover={dominance_text}.\n'
+        f'Whale trend 30d: {whale_trend}; 30d_gan_nhat={_format_billion(recent_30d_value)} vs 30d_truoc={_format_billion(previous_30d_value)}.\n'
+        f'Whale recent: {recent_block}'
+    )
+
+
+def _build_dark_flow_context_for_prompt(symbol: str, lookback_days: int = 180) -> str:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return ''
+
+    since = timezone.now() - timedelta(days=max(int(lookback_days), 30))
+    qs = OrderFlowSignal.objects.filter(symbol=normalized_symbol, created_at__gte=since).order_by('-created_at')
+    if not qs.exists():
+        return f'Dark flow {lookback_days}d: khong co OrderFlowSignal du lieu luu tru.'
+
+    recent_rows = list(qs.values('created_at', 'signal_type', 'strength', 'confidence')[:12])
+    peak_row = qs.order_by('-strength', '-created_at').values('created_at', 'signal_type', 'strength').first() or {}
+    latest_row = recent_rows[0] if recent_rows else {}
+
+    latest_cluster = [_safe_float(row.get('strength')) for row in recent_rows[:4]]
+    previous_cluster = [_safe_float(row.get('strength')) for row in recent_rows[4:8]]
+    latest_avg = sum(latest_cluster) / len(latest_cluster) if latest_cluster else 0.0
+    previous_avg = sum(previous_cluster) / len(previous_cluster) if previous_cluster else 0.0
+    trend = 'on_dinh'
+    if latest_avg > previous_avg + 5:
+        trend = 'manh_len'
+    elif previous_avg > latest_avg + 5:
+        trend = 'yeu_di'
+
+    type_counts: dict[str, int] = {}
+    for row in recent_rows:
+        key = str(row.get('signal_type') or 'none').lower()
+        type_counts[key] = type_counts.get(key, 0) + 1
+    type_mix = ', '.join(f'{key}={value}' for key, value in sorted(type_counts.items(), key=lambda item: (-item[1], item[0]))[:4]) or 'n/a'
+    history_block = '; '.join(
+        f"{_format_dt_short(row.get('created_at'))} {str(row.get('signal_type') or 'none')}:{_safe_float(row.get('strength')):.1f}"
+        for row in recent_rows[:8]
+    ) or 'n/a'
+
+    return (
+        f'Dark flow {lookback_days}d: so_tin_hieu={qs.count()}, latest={str(latest_row.get("signal_type") or "none")} '
+        f'{_safe_float(latest_row.get("strength")):.1f} @ {_format_dt_short(latest_row.get("created_at"))}, '
+        f'peak={str(peak_row.get("signal_type") or "none")} {_safe_float(peak_row.get("strength")):.1f} @ {_format_dt_short(peak_row.get("created_at"))}, '
+        f'trend={trend}.\n'
+        f'Dark flow mix gan day: {type_mix}.\n'
+        f'Dark flow recent history: {history_block}'
+    )
+
+
+def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: int = 30) -> str:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return ''
+
+    rows_desc = list(
+        DailyPrice.objects.filter(symbol=normalized_symbol)
+        .order_by('-date')
+        .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')[:90]
+    )
+    if not rows_desc:
+        return ''
+
+    rows = list(reversed(rows_desc))
+    close_values = [_safe_float(row.get('close_price')) for row in rows if row.get('close_price') is not None]
+    volume_values = [_safe_float(row.get('volume')) for row in rows if row.get('volume') is not None]
+    high_values = [_safe_float(row.get('high_price')) for row in rows if row.get('high_price') is not None]
+    low_values = [_safe_float(row.get('low_price')) for row in rows if row.get('low_price') is not None]
+    if not close_values:
+        return ''
+
+    try:
+        overview = _build_stock_workspace_overview(normalized_symbol, user)
+    except Exception:
+        overview = {}
+    technical = _compute_stock_workspace_technical(rows, overview)
+    scale_factor, live_anchor = _resolve_price_scale_factor(
+        symbol=normalized_symbol,
+        overview=overview,
+        latest_close=close_values[-1] if close_values else None,
+    )
+
+    rsi_series = [value for value in _compute_rsi_series(close_values, 14) if value is not None]
+    recent_rsi = rsi_series[-lookback_sessions:] if rsi_series else []
+    current_rsi = recent_rsi[-1] if recent_rsi else technical.get('rsi14')
+    rsi_trend = 'on_dinh'
+    if len(recent_rsi) >= 6:
+        rsi_delta = current_rsi - recent_rsi[-6]
+        if rsi_delta >= 4:
+            rsi_trend = 'di_len'
+        elif rsi_delta <= -4:
+            rsi_trend = 'di_xuong'
+
+    macd_series = _compute_macd_series(close_values)
+    recent_macd = macd_series[-lookback_sessions:] if macd_series else []
+    current_macd = recent_macd[-1] if recent_macd else None
+    previous_macd = recent_macd[-2] if len(recent_macd) >= 2 else None
+    crossover = 'khong_ro'
+    hist_trend = 'on_dinh'
+    if current_macd and previous_macd:
+        if previous_macd['macd'] <= previous_macd['signal'] and current_macd['macd'] > current_macd['signal']:
+            crossover = 'bullish_cross'
+        elif previous_macd['macd'] >= previous_macd['signal'] and current_macd['macd'] < current_macd['signal']:
+            crossover = 'bearish_cross'
+        if current_macd['hist'] > previous_macd['hist']:
+            hist_trend = 'hist_tang'
+        elif current_macd['hist'] < previous_macd['hist']:
+            hist_trend = 'hist_giam'
+
+    bollinger = _compute_bollinger_snapshot(close_values, 20)
+    avg_volume_20 = _safe_float(technical.get('avg_volume_20'))
+    current_volume = volume_values[-1] if volume_values else 0.0
+    volume_ratio = (current_volume / avg_volume_20) if avg_volume_20 > 0 else 0.0
+    volume_trend = 'on_dinh'
+    if len(volume_values) >= 10:
+        recent_vol = sum(volume_values[-5:]) / 5.0
+        previous_vol = sum(volume_values[-10:-5]) / 5.0
+        if recent_vol > previous_vol * 1.15:
+            volume_trend = 'tang'
+        elif previous_vol > 0 and recent_vol < previous_vol * 0.85:
+            volume_trend = 'giam'
+
+    support_window_lows = low_values[-lookback_sessions:] if len(low_values) >= lookback_sessions else low_values
+    resistance_window_highs = high_values[-lookback_sessions:] if len(high_values) >= lookback_sessions else high_values
+    support = (min(support_window_lows) * scale_factor) if support_window_lows else None
+    resistance = (max(resistance_window_highs) * scale_factor) if resistance_window_highs else None
+
+    rsi_range_text = 'n/a'
+    if recent_rsi:
+        rsi_range_text = f'{min(recent_rsi):.1f}-{max(recent_rsi):.1f}'
+
+    macd_text = 'MACD 30 phien: khong du du lieu.'
+    if current_macd:
+        macd_text = (
+            f'MACD 30 phien: macd={current_macd["macd"]:.2f}, signal={current_macd["signal"]:.2f}, '
+            f'hist={current_macd["hist"]:.2f}, crossover={crossover}, hist_trend={hist_trend}.'
+        )
+
+    boll_text = 'Bollinger 30 phien: khong du du lieu.'
+    if bollinger:
+        position_text = f'{bollinger["position_pct"]:.1f}%' if bollinger.get('position_pct') is not None else 'n/a'
+        boll_text = (
+            f'Bollinger 30 phien: upper={_format_price_level(bollinger["upper"] * scale_factor)}, '
+            f'middle={_format_price_level(bollinger["middle"] * scale_factor)}, '
+            f'lower={_format_price_level(bollinger["lower"] * scale_factor)}, '
+            f'band_pos={position_text}, state={bollinger["state"]}.'
+        )
+
+    current_price_anchor = _safe_float(
+        live_anchor.get('current_price') or overview.get('current_price') or (close_values[-1] * scale_factor if close_values else 0.0)
+    )
+    support_text = _format_price_level(support)
+    resistance_text = _format_price_level(resistance)
+    current_price_text = _format_price_level(current_price_anchor)
+    current_rsi_text = f'{current_rsi:.1f}' if current_rsi is not None else 'n/a'
+    return (
+        f'Technical 30 phien: current_price={current_price_text}, bias={technical.get("bias", "NEUTRAL")}, RSI14={current_rsi_text}, '
+        f'RSI_range_30={rsi_range_text}, RSI_trend={rsi_trend}.\n'
+        f'{macd_text}\n'
+        f'{boll_text}\n'
+        f'Volume 30 phien: current={current_volume:,.0f}, avg20={avg_volume_20:,.0f}, ratio={volume_ratio:.2f}x, '
+        f'volume_trend={volume_trend}, support={support_text}, resistance={resistance_text}.'
+    )
+
+
+def _build_market_context_for_prompt(user, symbol: str) -> str:
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol or user is None:
+        return ''
+
+    now_local = timezone.localtime(timezone.now())
+    latest_summaries = list(
+        AIAdvisoryExecutiveSummary.objects.filter(user=user, symbol=normalized_symbol)
+        .order_by('-summary_version', '-created_at')[:3]
+    )
+    if not latest_summaries:
+        previous_line = 'Previous advisory sentiment: chua co lich su.'
+    else:
+        actions = ' -> '.join(str(item.strategy_action or 'HOLD') for item in reversed(latest_summaries))
+        latest_item = latest_summaries[0]
+        previous_line = (
+            f'Previous advisory sentiment: latest={latest_item.strategy_action}/{latest_item.risk_level}/'
+            f'{int(latest_item.overall_confidence or 0)}/10 @ {_format_dt_short(latest_item.created_at)}, '
+            f'history={actions}.'
+        )
+
+    return (
+        f'Market context: timestamp={now_local.strftime("%d/%m/%Y %H:%M:%S")}, '
+        f'session={_market_session_label(now_local)}.\n'
+        f'{previous_line}'
+    )
+
+
+# ---------------------------------------------------------------------------
+# News context helper
+# ---------------------------------------------------------------------------
+
+def _fetch_news_context_for_advisory(
+    symbol: str,
+    user,
+    max_headlines: int = 4,
+    timeout_sec: float = 5.0,
+) -> str:
+    """
+    Fetch AI-summarized news for stock and format as text block for prompt injection.
+    
+    Args:
+        symbol: Stock code (e.g., 'MWG')
+        user: User object (for access to UserConfig AI settings)
+        max_headlines: Max number of headlines to include (default: 4)
+        timeout_sec: Timeout for internal API call (default: 5 sec)
+    
+    Returns:
+        Formatted news context string, or empty string if unavailable.
+        Graceful degradation: no hard failure if news unavailable.
+    """
+    try:
+        from portfolio.adapters.cache_adapter import get_cache
+        
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            return ''
+        
+        # Try cache first (from Sprint 34 AI News module)
+        ai_cache_key = f'stock:news:ai-summary:{normalized_symbol}'
+        cached_ai = get_cache(ai_cache_key)
+        
+        if cached_ai is None:
+            # Graceful degradation: news not available is OK
+            logger.debug('News context cache miss for symbol=%s', normalized_symbol)
+            return ''
+        
+        summary_text = str(cached_ai.get('summary') or '').strip()
+        item_count = int(cached_ai.get('item_count') or 0)
+        
+        if not summary_text or item_count == 0:
+            logger.debug('Empty news summary for symbol=%s', normalized_symbol)
+            return ''
+        
+        # Format for prompt injection
+        news_block = f"Tin tuc gan day ve {normalized_symbol}:\n"
+        news_block += f"- {summary_text}\n"
+        news_block += f"(Tong hop tu {item_count} tin tuc gan day)"
+        
+        logger.debug('News context fetched for symbol=%s items=%d', normalized_symbol, item_count)
+        return news_block
+    
+    except Exception as e:
+        logger.warning('Fetch news context fallback symbol=%s err=%s', symbol, e)
+        return ''
+
+
 # ---------------------------------------------------------------------------
 # Executive synthesis (AI)
 # ---------------------------------------------------------------------------
@@ -518,6 +1020,7 @@ def _sprint17_generate_executive_synthesis_with_ai(
     components: list[AIAdvisoryComponentRecord],
     summary_payload: dict,
     synthesis_preference: str = 'balanced',
+    news_context: str = "",
 ) -> str | None:
     from portfolio.ai_service import _claude_completion, _openai_compatible_completion
     from portfolio.openclaw_client import _call as _openclaw_call
@@ -550,37 +1053,63 @@ def _sprint17_generate_executive_synthesis_with_ai(
         )
     component_block = '\n'.join(component_lines) if component_lines else '- khong co component'
 
+    whale_context_block = _build_whale_context_for_prompt(user=user, symbol=symbol, lookback_days=180)
+    dark_flow_context_block = _build_dark_flow_context_for_prompt(symbol=symbol, lookback_days=180)
+    technical_context_block = _build_technical_context_for_prompt(user=user, symbol=symbol, lookback_sessions=30)
+    market_context_block = _build_market_context_for_prompt(user=user, symbol=symbol)
+
+    grounding_sections = []
+    if whale_context_block:
+        grounding_sections.append(f'Whale / whale alert context:\n{whale_context_block}')
+    if dark_flow_context_block:
+        grounding_sections.append(f'Dark money / order-flow context:\n{dark_flow_context_block}')
+    if technical_context_block:
+        grounding_sections.append(f'Technical context 30 phien (RSI/MACD/VOL/BOLL):\n{technical_context_block}')
+    if market_context_block:
+        grounding_sections.append(f'Market context:\n{market_context_block}')
+
+    # Format news block if available
+    news_block = ''
+    if news_context and str(news_context).strip():
+        news_block = f"\n\nThong tin tin tuc:\n{news_context}\n"
+
+    grounding_block = ''
+    if grounding_sections:
+        grounding_block = '\n\n'.join(grounding_sections) + '\n\n'
+
     prompt = (
         "Ban la chuyen gia tu van chung khoan Viet Nam. "
         "Hay viet phan 'Thong tin tong hop' CHI TIET theo dung cac dau vao ben duoi.\n"
         "Yeu cau bat buoc:\n"
-        "1) Viet khoang 20 dong (tu 18 den 22 dong).\n"
+        "1) Viet khoang 18-20 dong (tu 18 den 20 dong).\n"
         "2) Moi dong bat dau bang '- '.\n"
         "3) Noi dung phai cu the, khong viet chung chung, khong nhac den viec ban la AI.\n"
         "4) Bao gom: tong quan xu huong, xung dot tin hieu, kich ban tang/giam, "
-        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu.\n"
+        "vung gia quan sat, quan tri rui ro, dieu kien vo hieu, whale context dai han, dark money flow dai han, technical trend 30 phien va CAC TUAN NHAN TIN TUC.\n"
         "5) Khong dua ra cam ket loi nhuan.\n\n"
         f"Input: symbol={symbol}, strategy_action={summary_payload.get('strategy_action')}, "
         f"risk_level={summary_payload.get('risk_level')}, "
         f"overall_confidence={summary_payload.get('overall_confidence')}/10.\n"
         f"So thich tong hop: {preference_instruction}\n"
+        f"{grounding_block}"
+        f"{news_block}"
         "Danh sach components:\n"
         f"{component_block}\n\n"
-        "Chi tra ve noi dung 18-22 dong bat dau bang '- '."
+        "Chi tra ve noi dung 18-20 dong bat dau bang '- '."
     )
 
     try:
         if provider == 'openclaw':
-            ai_response = _openclaw_call(prompt, max_tokens=780)
+            ai_response = _openclaw_call(prompt, max_tokens=980)
         elif provider == 'claude':
-            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=780)
+            ai_response = _claude_completion(api_key=api_key, model=model, prompt=prompt, max_tokens=980)
         elif provider == 'openai':
             ai_response = _openai_compatible_completion(
                 base_url=os.getenv('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
                 api_key=api_key,
                 model=model,
                 prompt=prompt,
-                max_tokens=780,
+                max_tokens=980,
             )
         elif provider == 'gemini':
             ai_response = _openai_compatible_completion(
@@ -588,7 +1117,7 @@ def _sprint17_generate_executive_synthesis_with_ai(
                 api_key=api_key,
                 model=model,
                 prompt=prompt,
-                max_tokens=780,
+                max_tokens=980,
             )
         elif provider == 'copilot':
             ai_response = _openai_compatible_completion(
@@ -596,7 +1125,7 @@ def _sprint17_generate_executive_synthesis_with_ai(
                 api_key=api_key,
                 model=model,
                 prompt=prompt,
-                max_tokens=780,
+                max_tokens=980,
                 extra_headers={
                     'Accept': 'application/vnd.github+json',
                     'X-GitHub-Api-Version': os.getenv('COPILOT_API_VERSION', '2026-03-10'),

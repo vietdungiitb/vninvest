@@ -2238,6 +2238,59 @@ class WhaleAdvisoryAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return False
 
+
+# ---------------------------------------------------------------------------
+# SystemSetting Admin
+# ---------------------------------------------------------------------------
+from .models import SystemSetting  # noqa: E402
+
+
+@admin.register(SystemSetting)
+class SystemSettingAdmin(admin.ModelAdmin):
+    list_display = ('key', 'value', 'description_short', 'updated_by', 'updated_at')
+    search_fields = ('key', 'value', 'description')
+    readonly_fields = ('updated_at', 'created_at')
+    ordering = ('key',)
+
+    fieldsets = (
+        ('Cấu hình', {
+            'fields': ('key', 'value', 'description'),
+            'description': (
+                'Thay đổi giá trị xong nhấn Lưu — hệ thống áp dụng ngay sau tối đa 5 phút '
+                '(thời gian cache Redis TTL). Để áp dụng ngay lập tức, reload backend container.'
+            ),
+        }),
+        ('Thông tin', {
+            'fields': ('updated_by', 'updated_at', 'created_at'),
+            'classes': ('collapse',),
+        }),
+    )
+
+    def description_short(self, obj):
+        return (obj.description or '')[:80] + ('…' if len(obj.description or '') > 80 else '')
+    description_short.short_description = 'Mô tả'
+
+    def save_model(self, request, obj, form, change):
+        obj.updated_by = request.user
+        super().save_model(request, obj, form, change)
+        try:
+            from django.core.cache import cache
+            cache.delete(f'system_setting:{obj.key}')
+        except Exception:
+            pass
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
     def has_change_permission(self, request, obj=None):
         return False
 

@@ -37,12 +37,16 @@ function mergeTickerIntoItem(item, update) {
     return item;
   }
 
+  const realtimeDate = update.last_date ?? update.ts;
+
   return {
     ...item,
-    current_price: update.price ?? item.current_price,
+    current_price: update.current_price ?? update.price ?? item.current_price,
+    prev_price: update.prev_price ?? item.prev_price,
     change_value: update.change_value ?? item.change_value,
     change_pct: update.change_pct ?? item.change_pct,
-    last_date: update.ts ?? update.last_date ?? item.last_date,
+    last_date: realtimeDate ?? item.last_date,
+    updated_at: realtimeDate ?? item.updated_at,
     freshness_seconds: update.freshness_seconds ?? item.freshness_seconds,
     stale: update.stale ?? item.stale,
   };
@@ -75,25 +79,38 @@ function resolveWatchlistPriceScale(currentPrice, prevPrice) {
 }
 
 function normalizeWatchlistQuoteUnit(item) {
-  const factor = resolveWatchlistPriceScale(item?.current_price, item?.prev_price);
-  if (factor === 1) {
-    return item;
-  }
+  // Detect price unit: realtime API may return VND absolute (>=2000), while DB/UI use nghin VND.
+  const currentRaw = toFiniteNumber(item?.current_price);
+  const prevRaw = toFiniteNumber(item?.prev_price);
+  const priceFactor = currentRaw !== null && currentRaw >= 2000 ? 0.001 : 1;
 
-  const current = toFiniteNumber(item?.current_price);
-  const prev = toFiniteNumber(item?.prev_price);
-  const normalizedCurrent = current === null ? item?.current_price : current * factor;
-  const normalizedPrev = prev === null ? item?.prev_price : prev * factor;
+  const normalizedCurrent = currentRaw === null ? item?.current_price : currentRaw * priceFactor;
+  const normalizedPrev = prevRaw === null
+    ? item?.prev_price
+    : (priceFactor === 0.001 && prevRaw >= 2000 ? prevRaw * 0.001 : prevRaw);
 
-  let normalizedChangeValue = toFiniteNumber(item?.change_value);
-  let normalizedChangePct = toFiniteNumber(item?.change_pct);
+  // Reconcile change_value unit against change_pct for both realtime and snapshot rows.
+  // This fixes mixed payloads where change_value is still absolute VND while price is nghin VND.
+  const changeValueRaw = toFiniteNumber(item?.change_value);
+  const pct = toFiniteNumber(item?.change_pct);
+  const normalizedChangeValue = (() => {
+    if (changeValueRaw === null) return null;
 
-  if (current !== null && prev !== null && prev > 0) {
-    normalizedChangeValue = (current - prev) * factor;
-    normalizedChangePct = ((current - prev) / prev) * 100;
-  } else if (normalizedChangeValue !== null) {
-    normalizedChangeValue = normalizedChangeValue * factor;
-  }
+    const hasPct = Number.isFinite(pct) && Math.abs(pct) > 1e-9;
+    const hasPrice = Number.isFinite(Number(normalizedCurrent)) && Math.abs(Number(normalizedCurrent)) > 1e-9;
+    if (hasPct && hasPrice) {
+      const expectedAbs = Math.abs(Number(normalizedCurrent) * pct / 100);
+      const candidates = [changeValueRaw, changeValueRaw * 0.001, changeValueRaw * 1000];
+      return candidates.reduce((best, next) => (
+        Math.abs(Math.abs(next) - expectedAbs) < Math.abs(Math.abs(best) - expectedAbs) ? next : best
+      ), candidates[0]);
+    }
+
+    return changeValueRaw * priceFactor;
+  })();
+
+  // change_pct is a dimensionless ratio — no scaling needed.
+  const normalizedChangePct = toFiniteNumber(item?.change_pct);
 
   return {
     ...item,
@@ -173,6 +190,7 @@ function extractApiErrorMessage(error, fallbackMessage) {
 }
 
 export default function WatchlistPage() {
+  const MAX_WATCHLIST_RT_SYMBOLS = 120;
   const navigate = useNavigate();
   const { userConfig } = usePortfolio();
   const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice } = useI18n();
@@ -330,23 +348,31 @@ export default function WatchlistPage() {
     fetchPriceAlerts();
   }, [loadGroups, fetchTracked, fetchPriceAlerts]);
 
-  const allRealtimeSymbols = useMemo(
-    () => [
+  const allRealtimeSymbols = useMemo(() => {
+    const tracked = trackedSymbols.map((item) => item.symbol).filter(Boolean);
+    const alertSymbols = priceAlerts.map((rule) => rule.symbol).filter(Boolean);
+
+    const activeGroupSymbols = (() => {
+      if (view === 'tracked') return [];
+      const group = groups.find((g) => g.id === view);
+      return (group?.items || []).map((item) => item.symbol).filter(Boolean);
+    })();
+
+    return [
       ...new Set([
-        ...groups.flatMap((group) => group.items.map((item) => item.symbol)),
-        ...trackedSymbols.map((item) => item.symbol),
-        ...priceAlerts.map((rule) => rule.symbol),
-      ].filter(Boolean)),
-    ],
-    [groups, trackedSymbols, priceAlerts],
-  );
+        ...tracked,
+        ...alertSymbols,
+        ...activeGroupSymbols,
+      ]),
+    ].slice(0, MAX_WATCHLIST_RT_SYMBOLS);
+  }, [groups, trackedSymbols, priceAlerts, view]);
 
   const {
     quotesBySymbol,
     realtimeStatus,
     lastEventAt: lastRealtimeAt,
     latestWhaleAlert,
-  } = useRealtimeFeed({ symbols: allRealtimeSymbols });
+  } = useRealtimeFeed({ symbols: allRealtimeSymbols, pollInterval: 5000 });
 
   const groupsWithRealtime = useMemo(
     () => groups.map((group) => ({

@@ -2143,3 +2143,45 @@ class PortfolioNewsDigest(models.Model):
     def __str__(self):
         symbol_count = len(self.symbols) if isinstance(self.symbols, list) else 0
         return f'{self.user.username}: digest {self.date} ({symbol_count} mã)'
+
+
+# ---------------------------------------------------------------------------
+# SystemSetting: Cấu hình hệ thống (Admin-configurable key-value store)
+# ---------------------------------------------------------------------------
+class SystemSetting(models.Model):
+    """
+    Bảng cấu hình hệ thống dạng key-value.
+    Admin có thể thay đổi từ Django Admin mà không cần deploy lại.
+
+    Các key mặc định:
+    - system_timezone  : Múi giờ hiển thị toàn hệ thống (mặc định Asia/Ho_Chi_Minh)
+    """
+    key = models.CharField(
+        max_length=100, unique=True,
+        verbose_name='Khóa cấu hình',
+        help_text='Ví dụ: system_timezone, market_open_hour, …',
+    )
+    value = models.TextField(
+        verbose_name='Giá trị',
+        help_text='Giá trị dạng văn bản. Với timezone, nhập IANA name, ví dụ: Asia/Ho_Chi_Minh',
+    )
+    description = models.TextField(
+        blank=True, default='',
+        verbose_name='Mô tả',
+        help_text='Giải thích ý nghĩa và các giá trị hợp lệ của cấu hình này.',
+    )
+    updated_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='system_settings_updated',
+        verbose_name='Người cập nhật',
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật lúc')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Tạo lúc')
+
+    class Meta:
+        verbose_name = 'Cấu hình hệ thống'
+        verbose_name_plural = 'Cấu hình hệ thống'
+        ordering = ['key']
+
+    def __str__(self):
+        return f'{self.key} = {self.value}'

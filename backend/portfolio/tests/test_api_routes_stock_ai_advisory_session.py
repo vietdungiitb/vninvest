@@ -82,7 +82,7 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
         },
         clear=False,
     )
-    def test_stock_ai_advisory_session_get_returns_409_when_ai_model_missing(self):
+    def test_stock_ai_advisory_session_get_returns_200_with_config_issue_when_ai_model_missing(self):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': '', 'ai_api_key': ''},
@@ -91,7 +91,7 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
 
-        self.assertEqual(response.status_code, status.HTTP_409_CONFLICT)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertFalse(response.data['ok'])
         self.assertEqual(response.data['reason'], 'ai_not_configured')
         self.assertTrue(response.data.get('config_issue'))

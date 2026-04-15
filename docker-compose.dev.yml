@@ -10,14 +10,14 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: devpassword
     ports:
-      # Expose port 5432 lên host để backend local (hybrid mode) hoặc stack khác connect được.
-      # Có thể set DEV_BIND_HOST=0.0.0.0 khi cần cross-stack qua host.docker.internal.
+      # Expose port 5432 lΩn host d? backend local (hybrid mode) ho?c stack khßc connect du?c.
+      # C≤ th? set DEV_BIND_HOST=0.0.0.0 khi c?n cross-stack qua host.docker.internal.
       - "${DEV_BIND_HOST:-127.0.0.1}:5432:5432"
 
   redis:
     container_name: vninvest-dev-redis
     ports:
-      # Expose Redis cho backend local (hybrid mode), admin stats, hoặc stack khác.
+      # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack khßc.
       - "${DEV_BIND_HOST:-127.0.0.1}:6379:6379"
 
   mailpit:
@@ -28,7 +28,7 @@ services:
     env_file:
       - ./backend/.env.dev
     environment:
-      # Override endpoint runtime để tránh phụ thuộc cứng vào DNS service name khi chạy cross-stack.
+      # Override endpoint runtime d? trßnh ph? thu?c c?ng vαo DNS service name khi ch?y cross-stack.
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-vninvest}
@@ -39,6 +39,7 @@ services:
       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://redis:6379/2}
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      VNSTOCK_HISTORY_SOURCE: ${VNSTOCK_HISTORY_SOURCE:-KBS}
     ports:
       - "8000:8000"
     extra_hosts:
@@ -66,6 +67,7 @@ services:
       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://redis:6379/2}
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      VNSTOCK_HISTORY_SOURCE: ${VNSTOCK_HISTORY_SOURCE:-KBS}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"
@@ -85,6 +87,7 @@ services:
       CACHE_REDIS_URL: ${CACHE_REDIS_URL:-redis://redis:6379/2}
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
+      VNSTOCK_HISTORY_SOURCE: ${VNSTOCK_HISTORY_SOURCE:-KBS}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"

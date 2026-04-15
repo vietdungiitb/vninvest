@@ -109,18 +109,25 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
           try {
             const pollResp = await getAdminVnstockBenchmarkLatest();
             const newReport = pollResp.data?.report || null;
-            if (newReport?.status === 'failed') {
+            const reportStatus = String(newReport?.status || '').toLowerCase();
+            const isFailed = reportStatus === 'failed';
+            const isRunning = reportStatus === 'running';
+            const isCompleted = reportStatus === 'completed' || reportStatus === 'ok';
+
+            if (isFailed) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
               setReport(newReport);
               setState('error');
               setMessage(newReport?.error || 'Benchmark thất bại trong worker.');
-            } else if (newReport && newReport.finished_at !== prevFinishedAt) {
+            } else if (isCompleted && newReport?.finished_at && newReport.finished_at !== prevFinishedAt) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;
               setReport(newReport);
               setState('success');
               setMessage('Đã hoàn tất benchmark và cập nhật khuyến nghị runtime.');
+            } else if (isRunning) {
+              setReport(newReport);
             } else if (Date.now() - startedAt > maxWaitMs) {
               clearInterval(pollingRef.current);
               pollingRef.current = null;

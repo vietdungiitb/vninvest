@@ -105,27 +105,23 @@ class WhaleFeedView(APIView):
                 df = db_df
                 data_source = 'intraday_tick_db'
             else:
-                if legacy_views._is_vnstock_rate_limited('intraday'):
-                    df = None
-                    data_source = 'vnstock_backoff'
-                else:
-                    try:
-                        df = legacy_views.fetch_intraday_dataframe(symbol=normalized_symbol, page_size=500)
-                        data_source = 'vnstock'
-                    except ExternalSystemException as exc:
-                        if exc.code == 'vnstock_timeout':
-                            legacy_views.logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
-                            df = None
-                            data_source = 'timeout'
-                        elif exc.code == 'vnstock_rate_limited':
-                            legacy_views._mark_vnstock_rate_limited('intraday', exc)
-                            legacy_views.logger.info('WhaleFeedView vnstock rate-limited %s - activate cooldown', normalized_symbol)
-                            data_source = 'vnstock_backoff'
-                            df = None
-                        else:
-                            legacy_views.logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
-                            data_source = 'unavailable'
-                            df = None
+                try:
+                    df = legacy_views.fetch_intraday_dataframe(symbol=normalized_symbol, page_size=100)
+                    data_source = 'vnstock'
+                except ExternalSystemException as exc:
+                    if exc.code == 'vnstock_timeout':
+                        legacy_views.logger.warning('WhaleFeedView timeout vnstock fallback %s', normalized_symbol)
+                        df = None
+                        data_source = 'timeout'
+                    elif exc.code == 'vnstock_rate_limited':
+                        legacy_views._mark_vnstock_rate_limited('intraday', exc)
+                        legacy_views.logger.info('WhaleFeedView vnstock rate-limited %s - activate cooldown', normalized_symbol)
+                        data_source = 'vnstock_backoff'
+                        df = None
+                    else:
+                        legacy_views.logger.warning('WhaleFeedView lỗi vnstock %s: %s', normalized_symbol, exc)
+                        data_source = 'unavailable'
+                        df = None
         except Exception as exc:
             legacy_views.logger.warning('WhaleFeedView data-source selection error %s: %s', normalized_symbol, exc)
             df = None

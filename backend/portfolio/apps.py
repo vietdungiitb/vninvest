@@ -13,3 +13,11 @@ class PortfolioConfig(AppConfig):
 
         patch_vnstock_finance_init()
         disable_vnstock_upgrade_notice()
+
+        # Khởi tạo các giá trị SystemSetting mặc định (chỉ insert nếu chưa có)
+        try:
+            from .system_settings import ensure_defaults
+            ensure_defaults()
+        except Exception:
+            # Bỏ qua khi DB chưa migrate (fresh install, testing, v.v.)
+            pass

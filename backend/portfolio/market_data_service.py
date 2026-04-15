@@ -134,6 +134,69 @@ class MarketDataService:
             resolved_page_size = 50
         return max(10, min(200, resolved_page_size))
 
+    def _intraday_last_good_cache_key(self, symbol: str) -> str:
+        return f'intraday:last_good:{self.normalize_symbol(symbol)}'
+
+    def _build_intraday_stale_payload(self, payload: dict, symbol: str, reason: str) -> dict:
+        return {
+            **payload,
+            'symbol': self.normalize_symbol(symbol),
+            'source': f'stale_cache:{reason}',
+            'stale': True,
+            'fallback_reason': reason,
+            'fetched_at': timezone.now().isoformat(),
+        }
+
+    def _build_intraday_db_fallback(self, symbol: str, page_size: int, reason: str) -> dict | None:
+        normalized_symbol = self.normalize_symbol(symbol)
+        today = timezone.localdate()
+        rows = list(
+            IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=today)
+            .order_by('-trade_time', '-id')[:page_size]
+        )
+
+        if not rows:
+            latest = (
+                IntradayTick.objects.filter(symbol=normalized_symbol)
+                .order_by('-trade_date', '-trade_time', '-id')
+                .values('trade_date')
+                .first()
+            )
+            latest_trade_date = latest.get('trade_date') if latest else None
+            if latest_trade_date is None:
+                return None
+            rows = list(
+                IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=latest_trade_date)
+                .order_by('-trade_time', '-id')[:page_size]
+            )
+
+        trades = []
+        for row in rows:
+            side_raw = str(row.side or '').upper()
+            side = 'buy' if side_raw == 'BUY' else ('sell' if side_raw == 'SELL' else 'neutral')
+            trades.append(
+                {
+                    'time': row.trade_time.strftime('%H:%M:%S') if row.trade_time else '',
+                    'price': float(row.price) if row.price is not None else None,
+                    'volume': int(row.volume) if row.volume is not None else None,
+                    'side': side,
+                    'match_type': row.match_type or side_raw,
+                }
+            )
+
+        if not trades:
+            return None
+
+        return {
+            'symbol': normalized_symbol,
+            'trades': trades,
+            'total': len(trades),
+            'source': f'intraday_db:{reason}',
+            'stale': True,
+            'fallback_reason': reason,
+            'fetched_at': timezone.now().isoformat(),
+        }
+
     def get_realtime_ticker(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
         ticker_cache_key = f'ticker:{normalized_symbol}'
@@ -366,12 +429,33 @@ class MarketDataService:
         normalized_symbol = self.normalize_symbol(symbol)
         resolved_page_size = self.normalize_page_size(page_size)
         cache_key = f'intraday:{normalized_symbol}:{resolved_page_size}'
+        last_good_key = self._intraday_last_good_cache_key(normalized_symbol)
         cached = get_cache(cache_key)
         if cached is not None:
             return cached
 
+        def _fallback_payload(reason: str, rate_limited: bool = False) -> dict | None:
+            last_good = get_cache(last_good_key)
+            if isinstance(last_good, dict) and (last_good.get('trades') or []):
+                stale_payload = self._build_intraday_stale_payload(last_good, normalized_symbol, reason)
+                if rate_limited:
+                    stale_payload['rate_limited'] = True
+                set_cache(cache_key, stale_payload, timeout=5)
+                return stale_payload
+            db_payload = self._build_intraday_db_fallback(normalized_symbol, resolved_page_size, reason)
+            if db_payload is not None:
+                if rate_limited:
+                    db_payload['rate_limited'] = True
+                set_cache(cache_key, db_payload, timeout=8)
+                set_cache(last_good_key, db_payload, timeout=900)
+                return db_payload
+            return None
+
         if is_vnstock_rate_limited('intraday'):
             record_market_fallback('intraday-matched', 'vnstock_backoff')
+            fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
+            if fallback is not None:
+                return fallback
             return self._build_intraday_backoff_response(normalized_symbol)
 
         stream_ticks = read_stream_intraday_ticks(normalized_symbol, count=resolved_page_size)
@@ -382,9 +466,11 @@ class MarketDataService:
                 'trades': trades,
                 'total': len(trades),
                 'source': 'stream',
+                'stale': False,
                 'fetched_at': timezone.now().isoformat(),
             }
             set_cache(cache_key, result, timeout=8)
+            set_cache(last_good_key, result, timeout=900)
             return result
 
         try:
@@ -393,9 +479,15 @@ class MarketDataService:
             if exc.code == 'vnstock_rate_limited':
                 mark_vnstock_rate_limited('intraday', exc)
                 record_market_fallback('intraday-matched', 'vnstock_backoff')
+                fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
+                if fallback is not None:
+                    return fallback
                 return self._build_intraday_backoff_response(normalized_symbol)
             if exc.code == 'vnstock_timeout':
                 record_market_external_timeout('intraday-matched')
+                fallback = _fallback_payload('timeout')
+                if fallback is not None:
+                    return fallback
                 return {
                     'symbol': normalized_symbol,
                     'trades': [],
@@ -406,6 +498,9 @@ class MarketDataService:
             if exc.code == 'vnstock_missing':
                 raise exc
             record_market_fallback('intraday-matched', 'vnstock_unavailable')
+            fallback = _fallback_payload('vnstock_unavailable')
+            if fallback is not None:
+                return fallback
             return {
                 'symbol': normalized_symbol,
                 'trades': [],
@@ -416,6 +511,9 @@ class MarketDataService:
         except Exception as exc:
             logger.warning('get_intraday_matched unexpected error %s: %s', normalized_symbol, exc)
             record_market_fallback('intraday-matched', 'error')
+            fallback = _fallback_payload('error')
+            if fallback is not None:
+                return fallback
             return {
                 'symbol': normalized_symbol,
                 'trades': [],
@@ -425,6 +523,9 @@ class MarketDataService:
             }
 
         if df is None or df.empty:
+            fallback = _fallback_payload('empty')
+            if fallback is not None:
+                return fallback
             return {
                 'symbol': normalized_symbol,
                 'trades': [],
@@ -437,9 +538,12 @@ class MarketDataService:
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
+            'source': 'vnstock',
+            'stale': False,
             'fetched_at': timezone.now().isoformat(),
         }
         set_cache(cache_key, result, timeout=8)
+        set_cache(last_good_key, result, timeout=900)
         return result
 
     def get_price_board(self, symbol: str) -> dict:
@@ -1039,7 +1143,7 @@ class MarketDataService:
         queryset = (
             IntradayTick.objects
             .filter(symbol__in=symbols)
-            .annotate(matched_value=ExpressionWrapper(F('price') * F('volume'), output_field=FloatField()))
+            .annotate(matched_value=ExpressionWrapper(F('price') * 1000 * F('volume'), output_field=FloatField()))
             .filter(matched_value__gte=min_threshold_vnd)
         )
 
@@ -1710,7 +1814,6 @@ class MarketDataService:
                 start=start_date,
                 end=end_date,
                 interval='1D',
-                source='VCI',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
                 week52_high = round(float(history_df['high'].max()), 2)
@@ -1780,7 +1883,6 @@ class MarketDataService:
                 start=str(start_date),
                 end=str(end_date),
                 interval=interval,
-                source='KBS',
             )
             if df is not None and not df.empty:
                 series = []
@@ -1960,9 +2062,11 @@ class MarketDataService:
     def _format_time(self, raw_time) -> str:
         try:
             import pandas as pd
+            from portfolio.system_settings import get_zoneinfo as _get_zoneinfo
             ts = pd.Timestamp(raw_time)
-            if ts.tz is not None:
-                ts = ts.tz_convert('Asia/Ho_Chi_Minh')
+            if ts.tzinfo is None:
+                ts = ts.tz_localize('UTC')
+            ts = ts.tz_convert(_get_zoneinfo())
             return ts.strftime('%H:%M:%S')
         except Exception:
             return str(raw_time)[:8]

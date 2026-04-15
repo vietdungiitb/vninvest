@@ -156,7 +156,6 @@ class StockWorkspaceOverviewView(APIView):
                 start=_start,
                 end=_end,
                 interval='1D',
-                source='VCI',
             )
             if hist_df is not None and not hist_df.empty and 'high' in hist_df.columns:
                 w52_high = round(float(hist_df['high'].max()), 2)

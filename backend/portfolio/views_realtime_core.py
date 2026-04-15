@@ -8,10 +8,57 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .exceptions import ExternalSystemException
-from .models import DailyPrice, SecuritiesItem
+from .models import DailyPrice, IntradayTick, SecuritiesItem
 
 PREFETCH_ENQUEUE_LOCK_KEY = 'ticker:prefetch:enqueue:lock'
 ONDEMAND_TICKER_LOCK_PREFIX = 'ticker:ondemand:lock'
+
+
+def _intraday_last_good_cache_key(symbol: str) -> str:
+    return f"intraday:last_good:{str(symbol or '').strip().upper()}"
+
+
+def _build_intraday_trades_from_db(symbol: str, page_size: int):
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return []
+
+    today = timezone.localdate()
+    queryset = (
+        IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=today)
+        .order_by('-trade_time', '-id')[:page_size]
+    )
+
+    rows = list(queryset)
+    if not rows:
+        latest = (
+            IntradayTick.objects.filter(symbol=normalized_symbol)
+            .order_by('-trade_date', '-trade_time', '-id')
+            .values('trade_date')
+            .first()
+        )
+        latest_trade_date = latest.get('trade_date') if latest else None
+        if latest_trade_date is not None:
+            rows = list(
+                IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=latest_trade_date)
+                .order_by('-trade_time', '-id')[:page_size]
+            )
+
+    trades = []
+    for row in rows:
+        side_raw = str(row.side or '').upper()
+        side = 'buy' if side_raw == 'BUY' else ('sell' if side_raw == 'SELL' else 'neutral')
+        trades.append(
+            {
+                'time': row.trade_time.strftime('%H:%M:%S') if row.trade_time else '',
+                'price': float(row.price) if row.price is not None else None,
+                'volume': int(row.volume) if row.volume is not None else None,
+                'side': side,
+                'match_type': row.match_type or side_raw,
+            }
+        )
+
+    return trades
 
 
 def _legacy_views_module():
@@ -260,21 +307,42 @@ class IntradayMatchedView(APIView):
             page_size = 50
 
         cache_key = f'intraday:{normalized_symbol}:{page_size}'
+        last_good_key = _intraday_last_good_cache_key(normalized_symbol)
         cached = legacy_views._cache_get(cache_key)
         if cached is not None:
             return Response(cached)
 
-        if legacy_views._is_vnstock_rate_limited('intraday'):
-            return Response(
-                {
+        def _response_from_last_good(reason: str):
+            last_good = legacy_views._cache_get(last_good_key)
+            if isinstance(last_good, dict) and (last_good.get('trades') or []):
+                stale_payload = {
+                    **last_good,
                     'symbol': normalized_symbol,
-                    'trades': [],
-                    'total': 0,
-                    'source': 'vnstock_backoff',
-                    'rate_limited': True,
+                    'source': f"stale_cache:{reason}",
+                    'stale': True,
+                    'fallback_reason': reason,
                     'fetched_at': timezone.now().isoformat(),
                 }
-            )
+                legacy_views._cache_set(cache_key, stale_payload, timeout=5)
+                return stale_payload
+            return None
+
+        def _response_from_intraday_db(reason: str):
+            trades = _build_intraday_trades_from_db(normalized_symbol, page_size)
+            if not trades:
+                return None
+            payload = {
+                'symbol': normalized_symbol,
+                'trades': trades,
+                'total': len(trades),
+                'source': f"intraday_db:{reason}",
+                'stale': True,
+                'fallback_reason': reason,
+                'fetched_at': timezone.now().isoformat(),
+            }
+            legacy_views._cache_set(cache_key, payload, timeout=8)
+            legacy_views._cache_set(last_good_key, payload, timeout=900)
+            return payload
 
         try:
             from portfolio.realtime.stream_reader import StreamReader
@@ -283,12 +351,18 @@ class IntradayMatchedView(APIView):
             stream_ticks = _reader.get_intraday_ticks(normalized_symbol, count=page_size)
             if stream_ticks:
                 trades = []
+                from portfolio.system_settings import get_zoneinfo as _get_zoneinfo
+                _display_tz = _get_zoneinfo()
                 for tick in stream_ticks:
                     raw_time = tick.get('ts', '')
                     try:
                         import pandas as _pd
 
                         ts = _pd.Timestamp(raw_time)
+                        # Stream stores UTC ('Z'). Convert to display timezone (ICT +07:00).
+                        if ts.tzinfo is None:
+                            ts = ts.tz_localize('UTC')
+                        ts = ts.tz_convert(_display_tz)
                         time_str = ts.strftime('%H:%M:%S')
                     except Exception:
                         time_str = str(raw_time)[:8]
@@ -317,9 +391,11 @@ class IntradayMatchedView(APIView):
                         'trades': trades,
                         'total': len(trades),
                         'source': 'stream',
+                        'stale': False,
                         'fetched_at': timezone.now().isoformat(),
                     }
                     legacy_views._cache_set(cache_key, result, timeout=8)
+                    legacy_views._cache_set(last_good_key, result, timeout=900)
                     return Response(result)
         except (Exception, SystemExit) as exc:
             legacy_views.logger.debug('Stream fallback failed for %s: %s', normalized_symbol, exc)
@@ -331,6 +407,14 @@ class IntradayMatchedView(APIView):
                 return Response({'detail': 'vnstock chưa được cài đặt.'}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
             if exc.code == 'vnstock_rate_limited':
                 legacy_views._mark_vnstock_rate_limited('intraday', exc)
+                cached_payload = _response_from_last_good('vnstock_backoff')
+                if cached_payload is not None:
+                    cached_payload['rate_limited'] = True
+                    return Response(cached_payload)
+                db_payload = _response_from_intraday_db('vnstock_backoff')
+                if db_payload is not None:
+                    db_payload['rate_limited'] = True
+                    return Response(db_payload)
                 return Response(
                     {
                         'symbol': normalized_symbol,
@@ -342,6 +426,12 @@ class IntradayMatchedView(APIView):
                     }
                 )
             if exc.code == 'vnstock_timeout':
+                cached_payload = _response_from_last_good('timeout')
+                if cached_payload is not None:
+                    return Response(cached_payload)
+                db_payload = _response_from_intraday_db('timeout')
+                if db_payload is not None:
+                    return Response(db_payload)
                 return Response(
                     {
                         'symbol': normalized_symbol,
@@ -352,6 +442,12 @@ class IntradayMatchedView(APIView):
                     }
                 )
             legacy_views.logger.warning('IntradayMatchedView lỗi vnstock %s: %s', normalized_symbol, exc)
+            cached_payload = _response_from_last_good('vnstock_unavailable')
+            if cached_payload is not None:
+                return Response(cached_payload)
+            db_payload = _response_from_intraday_db('vnstock_unavailable')
+            if db_payload is not None:
+                return Response(db_payload)
             return Response(
                 {
                     'symbol': normalized_symbol,
@@ -363,6 +459,12 @@ class IntradayMatchedView(APIView):
             )
         except Exception as exc:
             legacy_views.logger.exception('IntradayMatchedView unexpected error %s: %s', normalized_symbol, exc)
+            cached_payload = _response_from_last_good('error')
+            if cached_payload is not None:
+                return Response(cached_payload)
+            db_payload = _response_from_intraday_db('error')
+            if db_payload is not None:
+                return Response(db_payload)
             return Response(
                 {
                     'symbol': normalized_symbol,
@@ -374,6 +476,12 @@ class IntradayMatchedView(APIView):
             )
 
         if df is None or df.empty:
+            cached_payload = _response_from_last_good('empty')
+            if cached_payload is not None:
+                return Response(cached_payload)
+            db_payload = _response_from_intraday_db('empty')
+            if db_payload is not None:
+                return Response(db_payload)
             return Response({'symbol': normalized_symbol, 'trades': [], 'total': 0, 'fetched_at': timezone.now().isoformat()})
 
         trades = []
@@ -423,9 +531,12 @@ class IntradayMatchedView(APIView):
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
+            'source': 'vnstock',
+            'stale': False,
             'fetched_at': timezone.now().isoformat(),
         }
         legacy_views._cache_set(cache_key, result, timeout=8)
+        legacy_views._cache_set(last_good_key, result, timeout=900)
         return Response(result)
 
 

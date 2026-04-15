@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework_simplejwt.views import TokenRefreshView
 from .health import healthcheck, market_observability_health, prefetch_health, realtime_health, streams_health
 import portfolio.views as portfolio_views
@@ -38,8 +39,8 @@ def api_root(_request):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', api_root, name='api-root'),
-    path('api/auth/token/', VerifiedEmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/token/', csrf_exempt(VerifiedEmailTokenObtainPairView.as_view()), name='token_obtain_pair'),
+    path('api/auth/token/refresh/', csrf_exempt(TokenRefreshView.as_view()), name='token_refresh'),
     path('api/auth/me/', UserMeView.as_view(), name='auth-me'),
     path('api/auth/register/', RegisterView.as_view(), name='auth-register'),
     path('api/auth/oauth/google/', GoogleOAuthView.as_view(), name='auth-oauth-google'),
