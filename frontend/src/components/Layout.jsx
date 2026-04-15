@@ -3,13 +3,12 @@
  * Sidebar + Header bao ngoài tất cả các trang.
  */
 import React, { useState, useEffect, useCallback } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import { fetchLegalPages } from '../api/client';
 
 export default function Layout() {
-  const location = useLocation();
   const { t, locale, setLanguage } = useI18n();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     try {
@@ -255,9 +254,7 @@ export default function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-gray-950">
-        <div key={location.key}>
-          <Outlet />
-        </div>
+        <Outlet />
       </main>
 
       {/* Legal content modal */}

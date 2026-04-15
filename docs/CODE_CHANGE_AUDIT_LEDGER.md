@@ -114,15 +114,15 @@ Ghi chu verify:
 
 Pham vi:
 - Sua loi: khi user click vao menu (Giao dich, Quan ly danh muc, Settings...) thi URL thay doi nhung noi dung trang khong thay doi.
-- Root cause: React Router Outlet component khong re-render khi route thay doi.
-- Solution: Them key={location.pathname} vao Outlet component de force re-mount.
+- Root cause: BrowserRouter dang bat `v7_startTransition`, lam navigation bi dua vao low-priority transition.
+- Khi Dashboard co nhieu realtime update lien tuc, transition route bi tre/bi doi, nen URL doi nhung noi dung trang khong doi cho den khi reload/Enter.
+- Solution: bo future flag nay de route navigation tro lai synchronous va on dinh.
 
 Danh sach tep da sua:
-- frontend/src/components/Layout.jsx (import useLocation, add key prop to Outlet)
+- frontend/src/App.jsx (bo BrowserRouter future flag v7_startTransition)
+- frontend/src/components/Layout.jsx (hoan tac workaround key wrapper tren Outlet)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md
 
 Ghi chu verify:
-- Frontend build: success
-- Route change behavior: URL updates and page content re-renders properly
-- Each page's useEffect hooks fire when navigated to
-- No stale state carries over between page transitions
+- Can test truc tiep bang click sidebar trong luc Dashboard dang co realtime updates.
+- Ky vong: click menu doi noi dung ngay, khong can bam Enter o thanh dia chi.
