@@ -70,3 +70,25 @@ Ghi chu verify:
 - Co lock nhe theo key trong fallback increment path.
 - Endpoint metrics ops co throttle scope rieng: realtime_ops_metrics.
 - Test bo sung cover 429 throttle va fallback increment path.
+
+## Entry 2026-04-15 - Fix redirect loop va React hooks violation
+
+Pham vi:
+- Xac dinh va sua 2 bug nghiem trong gay ra ERR_TOO_MANY_REDIRECTS + Network Error tren Watchlist:
+  1. React hooks violation: Dashboard.jsx co conditional return TRUOC cac hooks useState/useMemo/useEffect
+	  -> vi pham Rules of Hooks, co the gay crash React tree.
+  2. Redirect loop: LoginPage chi check isAuthenticated state (co the stale) ma khong check localStorage.
+	  Khi Axios interceptor xoa tokens khoi localStorage nhung React state con true: ProtectedLayout
+	  redirect /login -> LoginPage redirect /dashboard -> lap vo han -> tat ca API call bi cancel
+	  -> ERR_TOO_MANY_REDIRECTS + AxiosError Network Error.
+
+Danh sach tep da sua:
+- frontend/src/pages/Dashboard.jsx (xoa conditional return vi pham hooks, xoa unused Navigate import)
+- frontend/src/App.jsx (LoginPage kiem tra ca hasStoredTokens truoc khi redirect /dashboard)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend build: Compiled successfully (npm run build).
+- Dashboard.jsx: remove defensive if(!isAuthenticated) return truoc hooks - ProtectedLayout da bao ve route.
+- LoginPage: chi redirect /dashboard khi BOTH isAuthenticated=true AND hasStoredTokens=true.
+- Phan tich 404 stocks/MBS/: la data issue (stock chua duoc seed) - da co error handling trong Transactions.jsx.

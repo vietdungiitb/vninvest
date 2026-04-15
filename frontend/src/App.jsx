@@ -24,8 +24,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 function LoginPage() {
   const navigate = useNavigate();
   const { isAuthenticated } = usePortfolio();
+  const hasStoredTokens = Boolean(
+    localStorage.getItem('access_token') && localStorage.getItem('refresh_token'),
+  );
 
-  if (isAuthenticated) {
+  if (isAuthenticated && hasStoredTokens) {
     return <Navigate to="/dashboard" replace />;
   }
 
