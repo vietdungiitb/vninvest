@@ -18,6 +18,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY . /app
 
+# NOTE: .env files are NOT copied into image (in .gitignore)
+# They MUST be mounted at runtime via docker-compose volumes
+# See: docker-compose.yml - volumes section with ./backend/.env.production:/app/.env.production:ro
+
 EXPOSE 8000
 
 CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]

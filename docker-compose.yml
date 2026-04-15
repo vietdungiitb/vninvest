@@ -44,6 +44,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    volumes:
+      # Mount .env.production từ host vào container (Docker build không có access tới .env files)
+      - ./backend/.env.production:/app/.env.production:ro
+      - ./backend/.env:/app/.env:ro
     environment:
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
@@ -72,6 +76,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    volumes:
+      # Mount .env.production từ host vào container
+      - ./backend/.env.production:/app/.env.production:ro
+      - ./backend/.env:/app/.env:ro
     environment:
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
@@ -98,6 +106,10 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env.production
+    volumes:
+      # Mount .env.production từ host vào container
+      - ./backend/.env.production:/app/.env.production:ro
+      - ./backend/.env:/app/.env:ro
     environment:
       REALTIME_REDIS_URL: ${REALTIME_REDIS_URL:-redis://redis:6379/0}
       STREAM_REDIS_URL: ${STREAM_REDIS_URL:-redis://redis:6379/1}
