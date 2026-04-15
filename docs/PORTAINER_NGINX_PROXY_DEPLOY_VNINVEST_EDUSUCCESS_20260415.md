@@ -81,6 +81,24 @@ Bắt buộc thay giá trị thật trước khi deploy:
 - `POSTGRES_PASSWORD`
 - `DJANGO_SECRET_KEY`
 
+### Trường hợp mật khẩu DB trong Portainer khác env production
+
+- Với stack Portainer này, giá trị trong Environment Variables của Stack là nguồn ưu tiên cao nhất cho container backend và db.
+- Nếu bạn để `POSTGRES_PASSWORD=change_me_db_password` trong Portainer nhưng database đã khởi tạo bằng mật khẩu khác, backend sẽ lỗi kết nối do xác thực sai.
+- Nếu env production ở chỗ khác có mật khẩu khác, hệ thống vẫn lấy giá trị từ Portainer cho stack này.
+
+Cách xử lý an toàn:
+
+1. Chọn một mật khẩu chuẩn duy nhất cho production.
+2. Cập nhật cùng một giá trị đó tại Portainer Stack Environment.
+3. Redeploy stack.
+4. Kiểm tra lại endpoint health sau deploy: https://vninvest.edusuccess.vn/api/health/
+
+Lưu ý quan trọng:
+
+- Nếu volume Postgres đã tồn tại từ lần chạy trước, đổi mật khẩu trong env không tự đổi mật khẩu user trong DB cũ.
+- Khi đó cần đổi password user ngay trong Postgres hoặc tạo lại volume dữ liệu theo quy trình migration/backup phù hợp.
+
 ## 5) Triển khai stack trên Portainer
 
 1. Vào Stacks -> Add stack.
