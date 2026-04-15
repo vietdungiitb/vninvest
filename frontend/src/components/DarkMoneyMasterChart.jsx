@@ -113,6 +113,11 @@ function fmtDate(timeStr) {
   return String(timeStr);
 }
 
+function toFiniteNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function parseTime(str) {
   if (!str) return null;
   const parts = str.split('-');
@@ -170,6 +175,7 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels, options = {
     topPercent = 0.1,
     visibleRange = null,
     minMarkers = 1,
+    chartType = 'candle',
   } = options;
 
   const candleTimes = new Set(candles.map((c) => c.time));
@@ -230,7 +236,7 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels, options = {
 
       return {
         time: signal.time,
-        position: isBuy ? 'belowBar' : 'aboveBar',
+        position: chartType === 'line' ? 'inBar' : (isBuy ? 'belowBar' : 'aboveBar'),
         color: isBuy ? 'rgba(163, 230, 53, 0.96)' : 'rgba(251, 113, 133, 0.96)',
         shape: 'circle',
         text: showLabels ? `${isBuy ? 'BUY' : 'SELL'}` : '',
@@ -294,17 +300,18 @@ function QuickSignalBar({ strategyTable }) {
 }
 
 // ─── OHLC Crosshair Tooltip ───────────────────────────────────────────────────
-function OhlcTooltip({ data: d }) {
+function OhlcTooltip({ data: d, chartType = 'candle' }) {
   if (!d) return null;
   const changeColor = d.change == null ? 'text-slate-400' : d.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
   const whaleInfo = d.whaleInfo || null;
+  const isLine = chartType === 'line';
   return (
     <div className="pointer-events-none absolute left-3 top-10 z-20 flex flex-wrap items-center gap-x-4 gap-y-0.5 rounded-lg border border-slate-700/60 bg-slate-950/90 px-3 py-2 text-[11px] backdrop-blur-sm shadow-xl">
       <span className="text-slate-500">{fmtDate(d.time)}</span>
-      {d.open  != null && <span><span className="text-slate-500">O </span><span className="text-slate-200">{fmtPrice(d.open)}</span></span>}
-      {d.high  != null && <span><span className="text-slate-500">H </span><span className="text-emerald-300">{fmtPrice(d.high)}</span></span>}
-      {d.low   != null && <span><span className="text-slate-500">L </span><span className="text-rose-300">{fmtPrice(d.low)}</span></span>}
-      {d.close != null && <span><span className="text-slate-500">C </span><span className="font-bold text-white">{fmtPrice(d.close)}</span></span>}
+      {!isLine && d.open  != null && <span><span className="text-slate-500">O </span><span className="text-slate-200">{fmtPrice(d.open)}</span></span>}
+      {!isLine && d.high  != null && <span><span className="text-slate-500">H </span><span className="text-emerald-300">{fmtPrice(d.high)}</span></span>}
+      {!isLine && d.low   != null && <span><span className="text-slate-500">L </span><span className="text-rose-300">{fmtPrice(d.low)}</span></span>}
+      {d.close != null && <span><span className="text-slate-500">{isLine ? 'Giá ' : 'C '}</span><span className="font-bold text-white">{fmtPrice(d.close)}</span></span>}
       {d.change != null && (
         <span className={`font-semibold ${changeColor}`}>
           {d.change >= 0 ? '+' : ''}{d.change.toFixed(2)}%
@@ -654,11 +661,15 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
     const candles = data.candles.map((c) => ({
       time: c.time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
+      open: toFiniteNumber(c.open),
+      high: toFiniteNumber(c.high),
+      low: toFiniteNumber(c.low),
+      close: toFiniteNumber(c.close),
     }));
+
+    const lineData = candles
+      .filter((c) => c.close != null)
+      .map((c) => ({ time: c.time, value: c.close }));
 
     // B2: lookup map time → candle (with index for prev-close % calc)
     const candlesByTime = {};
@@ -737,12 +748,14 @@ export default function DarkMoneyMasterChart({ symbol }) {
         let priceSeries;
         if (chartType === 'line') {
           priceSeries = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
-            lineColor: '#22d3ee',
+            lineColor: '#2ea8ff',
             lineWidth: 2.5,
             priceLineVisible: false,
             lastValueVisible: true,
+            crosshairMarkerVisible: true,
+            crosshairMarkerRadius: 3,
           });
-          priceSeries.setData(candles.map((c) => ({ time: c.time, value: c.close })));
+          priceSeries.setData(lineData);
         } else {
           priceSeries = addSeriesCompat(chart1, 'addCandlestickSeries', CandlestickSeries, CANDLE_COLORS);
           priceSeries.setData(candles);
@@ -800,6 +813,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
               topPercent: 0.1,
               visibleRange: range,
               minMarkers: 3,
+              chartType,
             });
             setMarkersCompat(priceSeries, markers);
           };
@@ -1354,7 +1368,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
               </div>
               <div ref={priceChartRef} className="lw-chart-container" />
                           {/* B2: OHLC Crosshair Tooltip */}
-                          <OhlcTooltip data={ohlcTooltip} t={t} />
+                          <OhlcTooltip data={ohlcTooltip} chartType={chartType} t={t} />
             </div>
 
             {/* Pane 2: CVD */}
