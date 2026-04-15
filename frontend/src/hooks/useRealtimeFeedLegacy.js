@@ -86,6 +86,31 @@ function computeNextBackoffMs(currentBackoffMs) {
   return Math.min(currentBackoffMs * 2, 120000);
 }
 
+function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
+  const normalizedQuotes = quotesBySymbol || {};
+  const staleOrMissing = [];
+  const fresh = [];
+
+  (symbols || []).forEach((symbol) => {
+    const quote = normalizedQuotes[symbol] || {};
+    const isMissing = quote.current_price == null;
+    const freshnessSeconds = Number(quote.freshness_seconds);
+    const isStale = quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20);
+
+    if (isMissing || isStale) {
+      staleOrMissing.push(symbol);
+    } else {
+      fresh.push(symbol);
+    }
+  });
+
+  if (!wsHealthy) {
+    return [...staleOrMissing, ...fresh];
+  }
+
+  return staleOrMissing;
+}
+
 function pickPollBatch(symbols, cursor, batchSize) {
   if (!symbols?.length) {
     return { batch: [], nextCursor: 0 };
@@ -111,7 +136,9 @@ export default function useRealtimeFeedLegacy({
   maxAlerts = 5,
   enabled = true,
 }) {
-  const POLL_BATCH_SIZE = 8;
+  const POLL_BATCH_SIZE = 4;
+  const WS_HEALTHY_POLL_BATCH_SIZE = 2;
+  const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
   const MAX_WS_SUB_SYMBOLS = 50;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
@@ -153,6 +180,7 @@ export default function useRealtimeFeedLegacy({
   );
 
   const symbolsRef = useRef(normalizedSymbols);
+  const quotesBySymbolRef = useRef(quotesBySymbol);
   const realtimeStatusRef = useRef(realtimeStatus);
   const pollIntervalRef = useRef(pollInterval);
   const reconnectAttemptRef = useRef(0);
@@ -161,13 +189,16 @@ export default function useRealtimeFeedLegacy({
   const pollCursorRef = useRef(0);
   const pollBackoffMsRef = useRef(0);
   const pollBackoffUntilRef = useRef(null);
+  const lastPollAtRef = useRef(0);
   const wsHealthyRef = useRef(false);
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
+  useEffect(() => { quotesBySymbolRef.current = quotesBySymbol; }, [quotesBySymbol]);
   useEffect(() => {
     pollCursorRef.current = 0;
     pollBackoffMsRef.current = 0;
     pollBackoffUntilRef.current = null;
+    lastPollAtRef.current = 0;
   }, [normalizedSymbols]);
   useEffect(() => { realtimeStatusRef.current = realtimeStatus; }, [realtimeStatus]);
   useEffect(() => { pollIntervalRef.current = pollInterval; }, [pollInterval]);
@@ -252,17 +283,35 @@ export default function useRealtimeFeedLegacy({
       const syms = symbolsRef.current;
       if (!token || !syms.length) return;
 
-      // Keep polling as a source of truth even when WebSocket is connected.
-      // WS can miss ticker updates under bursty sessions; polling prevents stale UI.
+      const wsHealthy = wsHealthyRef.current;
+      const effectiveIntervalMs = wsHealthy
+        ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
+        : Math.max(pollIntervalRef.current, 5000);
+
+      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < effectiveIntervalMs) {
+        return;
+      }
 
       if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
         return;
       }
 
-      const { batch: pollBatch, nextCursor } = pickPollBatch(
+      const pollCandidates = normalizePollSymbolCandidates(
         syms,
+        quotesBySymbolRef.current,
+        wsHealthy,
+      );
+
+      if (!pollCandidates.length) {
+        return;
+      }
+
+      lastPollAtRef.current = Date.now();
+
+      const { batch: pollBatch, nextCursor } = pickPollBatch(
+        pollCandidates,
         pollCursorRef.current,
-        POLL_BATCH_SIZE,
+        wsHealthy ? WS_HEALTHY_POLL_BATCH_SIZE : POLL_BATCH_SIZE,
       );
 
       if (!pollBatch.length) {

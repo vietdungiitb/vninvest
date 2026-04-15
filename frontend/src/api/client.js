@@ -7,6 +7,24 @@ import axios from 'axios';
 
 const apiBaseURL = process.env.REACT_APP_API_BASE_URL || '/api';
 
+function normalizeChartTimeframe(timeframe) {
+  const value = String(timeframe || '1H').trim();
+  const upperValue = value.toUpperCase();
+  const aliasMap = {
+    '1M': '1m',
+    '5M': '5m',
+    '15M': '15m',
+    '1H': '1H',
+    '2H': '2H',
+    '4H': '4H',
+    D: 'D',
+    W: 'W',
+    M: 'M',
+    Y: 'Y',
+  };
+  return aliasMap[upperValue] || '1H';
+}
+
 const apiClient = axios.create({
   baseURL: apiBaseURL,
   headers: { 'Content-Type': 'application/json' },
@@ -164,7 +182,7 @@ export const getStockProfile = (symbol) => apiClient.get(`/stock-management/stoc
 export const getStockWorkspaceOverview = (symbol) => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/overview/`);
 export const getStockPriceChart = (symbol, days = 180, timeframe = '1H') =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/chart/`, {
-    params: { days, timeframe },
+    params: { days, timeframe: normalizeChartTimeframe(timeframe) },
   });
 export const getStockOrderFlow = (symbol, window = '30m') => apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/order-flow/`, { params: { window } });
 export const getStockNews = (symbol, { force = false } = {}) =>

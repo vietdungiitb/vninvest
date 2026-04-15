@@ -1748,10 +1748,45 @@ class MarketDataService:
         try:
             payload = self._build_stock_workspace_overview_base(normalized_symbol, user)
         except Exception as exc:
-            raise ExternalSystemException(
-                'Không tạo được dữ liệu tổng quan cổ phiếu.',
-                code='overview_payload_failed',
-            ) from exc
+            logger.warning('StockWorkspaceOverview base payload lỗi %s: %s', normalized_symbol, exc)
+            profile = StockProfile.objects.filter(symbol=normalized_symbol).first()
+            if not profile:
+                raise ExternalSystemException(
+                    'Không tạo được dữ liệu tổng quan cổ phiếu.',
+                    code='overview_payload_failed',
+                ) from exc
+            payload = {
+                'tracked_symbol_id': None,
+                'symbol': profile.symbol,
+                'company_name': profile.company_name or '',
+                'industry': profile.industry or '',
+                'exchange': profile.exchange or '',
+                'listed_date': profile.listed_date,
+                'is_active': profile.is_active,
+                'updated_at': profile.updated_at,
+                'current_price': None,
+                'prev_price': None,
+                'change_value': None,
+                'change_pct': None,
+                'last_date': None,
+                'open_price': None,
+                'high_price': None,
+                'low_price': None,
+                'close_price': None,
+                'volume': None,
+                'average_price': None,
+                'reference_price': None,
+                'ceiling_price': None,
+                'floor_price': None,
+                'week52_high': None,
+                'week52_low': None,
+                'is_tracked': False,
+                'source_group_name': None,
+                'market_groups': [],
+                'watchlist_groups': [],
+                'market_group_refs': [],
+                'watchlist_memberships': [],
+            }
 
         try:
             df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
