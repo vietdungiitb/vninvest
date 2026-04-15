@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from django.conf import settings
 
 from .exceptions import ExternalSystemException, MarketDataValidationException
 from .serializers import MarketIntradayQuerySerializer, MarketStockChartQuerySerializer
@@ -20,7 +21,11 @@ class BaseMarketDataView(APIView):
         if isinstance(exc, MarketDataValidationException):
             return Response({'detail': exc.message}, status=status.HTTP_400_BAD_REQUEST)
         if isinstance(exc, ExternalSystemException):
-            http_status = status.HTTP_503_SERVICE_UNAVAILABLE if exc.code == 'vnstock_missing' else status.HTTP_502_BAD_GATEWAY
+            if exc.code in {'vnstock_missing', 'ticker_cache_miss'}:
+                configured_status = int(getattr(settings, 'TICKER_CACHE_MISS_STATUS_CODE', 503) or 503)
+                http_status = configured_status if configured_status in {200, 503} else status.HTTP_503_SERVICE_UNAVAILABLE
+            else:
+                http_status = status.HTTP_502_BAD_GATEWAY
             return Response({'detail': exc.message, **exc.payload}, status=http_status)
         return Response(
             {'detail': 'Lỗi ngoài dự kiến từ dịch vụ dữ liệu thị trường.'},

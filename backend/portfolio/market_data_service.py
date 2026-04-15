@@ -202,188 +202,35 @@ class MarketDataService:
         ticker_cache_key = f'ticker:{normalized_symbol}'
         cached_ticker = get_cache(ticker_cache_key)
         if cached_ticker is not None:
-            return cached_ticker
+            freshness_threshold = max(int(getattr(settings, 'TICKER_FRESHNESS_SECONDS', 15) or 15), 1)
+            stale_serve_seconds = max(int(getattr(settings, 'TICKER_STALE_SERVE_SECONDS', 90) or 90), 1)
+            served_at = timezone.now().isoformat()
 
-        # Cache miss: attempt one-shot live price-board pull for currently viewed symbol.
-        if not is_vnstock_rate_limited('price_board'):
-            lock_key = f'{ONDEMAND_TICKER_LOCK_PREFIX}:{normalized_symbol}'
-            lock_acquired = False
-            try:
-                lock_acquired = cache.add(lock_key, 1, timeout=3)
-            except Exception:
-                lock_acquired = False
+            payload = dict(cached_ticker)
+            last_date = payload.get('last_date')
+            freshness_seconds = None
 
-            if lock_acquired:
+            if last_date:
                 try:
-                    df = fetch_price_board_dataframe([normalized_symbol], anchor_symbol=normalized_symbol)
-                    if df is not None and not df.empty:
-                        def _select_symbol_row(frame, expected_symbol):
-                            normalized_expected = str(expected_symbol or '').strip().upper()
-                            candidate_columns = ('symbol', 'ticker', 'code', 'stock_symbol')
-
-                            for column_name in candidate_columns:
-                                if column_name in frame.columns:
-                                    try:
-                                        matches = frame[
-                                            frame[column_name].astype(str).str.strip().str.upper() == normalized_expected
-                                        ]
-                                    except Exception:
-                                        matches = frame.iloc[0:0]
-                                    if not matches.empty:
-                                        return matches.iloc[0]
-
-                            try:
-                                for idx, index_value in enumerate(frame.index):
-                                    if str(index_value or '').strip().upper() == normalized_expected:
-                                        return frame.iloc[idx]
-                            except Exception:
-                                pass
-
-                            return frame.iloc[0]
-
-                        row = _select_symbol_row(df, normalized_symbol)
-                        try:
-                            listing = row.get('listing', {})
-                            match = row.get('match', {})
-                        except Exception:
-                            listing = {}
-                            match = {}
-
-                        def _safe_float(value):
-                            try:
-                                number = float(value)
-                            except (TypeError, ValueError):
-                                return None
-                            return number if number == number else None
-
-                        def _safe_int(value):
-                            try:
-                                return int(float(value))
-                            except (TypeError, ValueError):
-                                return None
-
-                        match_price = (
-                            _safe_float(match.get('match_price'))
-                            or _safe_float(row.get('match_price'))
-                            or _safe_float(row.get('close_price'))
-                            or _safe_float(row.get('current_price'))
-                        )
-                        ref_price = (
-                            _safe_float(listing.get('ref_price'))
-                            or _safe_float(match.get('reference_price'))
-                            or _safe_float(row.get('ref_price'))
-                            or _safe_float(row.get('reference_price'))
-                            or _safe_float(row.get('ceiling_price'))
-                            or _safe_float(row.get('floor_price'))
-                        )
-                        ceiling_price = (
-                            _safe_float(listing.get('ceiling'))
-                            or _safe_float(match.get('ceiling_price'))
-                            or _safe_float(row.get('ceiling'))
-                            or _safe_float(row.get('ceiling_price'))
-                        )
-                        floor_price = (
-                            _safe_float(listing.get('floor'))
-                            or _safe_float(match.get('floor_price'))
-                            or _safe_float(row.get('floor'))
-                            or _safe_float(row.get('floor_price'))
-                        )
-                        open_price = _safe_float(match.get('open_price')) or _safe_float(row.get('open_price'))
-                        high_price = (
-                            _safe_float(match.get('highest'))
-                            or _safe_float(row.get('highest'))
-                            or _safe_float(row.get('high_price'))
-                        )
-                        low_price = (
-                            _safe_float(match.get('lowest'))
-                            or _safe_float(row.get('lowest'))
-                            or _safe_float(row.get('low_price'))
-                        )
-                        average_price = (
-                            _safe_float(match.get('average_price'))
-                            or _safe_float(row.get('average_price'))
-                        )
-                        price_scale = self._resolve_quote_price_scale(
-                            [match_price, ref_price, ceiling_price, floor_price, open_price, high_price, low_price]
-                        )
-                        match_price = self._normalize_quote_price(match_price, price_scale)
-                        ref_price = self._normalize_quote_price(ref_price, price_scale)
-                        ceiling_price = self._normalize_quote_price(ceiling_price, price_scale)
-                        floor_price = self._normalize_quote_price(floor_price, price_scale)
-                        open_price = self._normalize_quote_price(open_price, price_scale)
-                        high_price = self._normalize_quote_price(high_price, price_scale)
-                        low_price = self._normalize_quote_price(low_price, price_scale)
-                        average_price = self._normalize_quote_price(average_price, price_scale)
-                        if match_price is not None:
-                            explicit_change_value = (
-                                _safe_float(match.get('price_change'))
-                                or _safe_float(row.get('price_change'))
-                            )
-                            explicit_change_pct = (
-                                _safe_float(match.get('percent_change'))
-                                or _safe_float(row.get('percent_change'))
-                            )
-                            change_value = round(match_price - ref_price, 2) if ref_price is not None else None
-                            change_pct = (
-                                round((match_price - ref_price) / ref_price * 100, 2)
-                                if ref_price not in (None, 0)
-                                else None
-                            )
-                            if explicit_change_value is not None:
-                                change_value = self._normalize_quote_price(explicit_change_value, price_scale)
-                            if explicit_change_pct is not None:
-                                change_pct = explicit_change_pct
-                            if average_price is None:
-                                prices = [value for value in [open_price, high_price, low_price, match_price] if value is not None]
-                                if len(prices) >= 2:
-                                    average_price = round(sum(prices) / len(prices), 2)
-                            payload = {
-                                'symbol': normalized_symbol,
-                                'current_price': match_price,
-                                'prev_price': ref_price,
-                                'reference_price': ref_price,
-                                'ceiling_price': ceiling_price,
-                                'floor_price': floor_price,
-                                'average_price': average_price,
-                                'change_value': change_value,
-                                'change_pct': change_pct,
-                                'open_price': open_price,
-                                'high_price': high_price,
-                                'low_price': low_price,
-                                'volume': (
-                                    _safe_int(match.get('accumulated_volume'))
-                                    or _safe_int(row.get('accumulated_volume'))
-                                    or _safe_int(row.get('volume_accumulated'))
-                                ),
-                                'last_date': timezone.now().isoformat(),
-                                'freshness_seconds': 0,
-                                'stale': False,
-                                'source': 'vnstock_on_demand',
-                            }
-                            set_cache(ticker_cache_key, payload, timeout=20)
-                            return payload
-                except ExternalSystemException as exc:
-                    if exc.code == 'vnstock_rate_limited':
-                        mark_vnstock_rate_limited('price_board', exc)
-                    elif exc.code == 'vnstock_timeout':
-                        record_market_external_timeout('ticker-on-demand')
+                    last_dt = datetime.fromisoformat(str(last_date))
+                    if last_dt.tzinfo is not None:
+                        now_dt = timezone.now().astimezone(last_dt.tzinfo)
                     else:
-                        record_market_fallback('ticker-on-demand', 'vnstock_unavailable')
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug('get_realtime_ticker on-demand failed %s: %s', normalized_symbol, exc)
-                finally:
-                    try:
-                        cache.delete(lock_key)
-                    except Exception:
-                        pass
+                        now_dt = datetime.now()
+                    freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
+                except ValueError:
+                    freshness_seconds = None
 
-        try:
-            from portfolio.tasks import prefetch_ticker_price_board
-            lock_acquired = cache.add(PREFETCH_ENQUEUE_LOCK_KEY, 1, timeout=15)
-            if lock_acquired:
-                prefetch_ticker_price_board.apply_async(countdown=0)
-        except Exception:
-            pass
+            if freshness_seconds is None:
+                freshness_seconds = stale_serve_seconds + 1
+
+            is_stale = freshness_seconds > freshness_threshold
+            payload['freshness_seconds'] = freshness_seconds
+            payload['stale'] = is_stale
+            payload['source'] = 'stale_cache' if is_stale else 'cache'
+            payload['cache_state'] = 'stale' if is_stale else 'fresh'
+            payload['served_at'] = served_at
+            return payload
 
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
@@ -415,15 +262,28 @@ class MarketDataService:
                 'volume': int(latest_dp['volume']) if latest_dp['volume'] is not None else None,
             }
 
-        return {
+        degraded_payload = {
             'symbol': normalized_symbol,
             **price_info,
             **ohlc_extra,
             'freshness_seconds': freshness_seconds,
             'stale': stale,
-            'source': 'db_fallback',
+            'source': 'cache_miss_degraded',
+            'cache_state': 'miss',
             'fallback_reason': 'cache_miss_no_realtime_tick',
+            'served_at': timezone.now().isoformat(),
         }
+
+        allow_degraded = bool(getattr(settings, 'TICKER_CACHE_MISS_ALLOW_DEGRADED', False))
+        if allow_degraded:
+            return degraded_payload
+
+        record_market_fallback('ticker-cache-only', 'cache_miss')
+        raise ExternalSystemException(
+            'Không có snapshot ticker trong cache. Vui lòng thử lại sau vài giây.',
+            code='ticker_cache_miss',
+            payload=degraded_payload,
+        )
 
     def get_intraday_matched(self, symbol: str, page_size=None) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)

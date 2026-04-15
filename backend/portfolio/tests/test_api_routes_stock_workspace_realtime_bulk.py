@@ -2552,7 +2552,16 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     def test_realtime_ticker_fallback_endpoint(self):
         self.authenticate()
-        DailyPrice.objects.create(symbol='VNM', date=date.today(), close_price=100000)
+        cache.set(
+            'ticker:VNM',
+            {
+                'symbol': 'VNM',
+                'current_price': 100000,
+                'last_date': timezone.now().isoformat(),
+                'source': 'prefetch',
+            },
+            timeout=60,
+        )
 
         response = self.client.get('/api/realtime/ticker/VNM/')
 
@@ -2561,6 +2570,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('current_price', response.data)
         self.assertIn('freshness_seconds', response.data)
         self.assertIn('stale', response.data)
+        self.assertEqual(response.data['source'], 'cache')
 
     @patch('portfolio.market_views.market_data_service.get_realtime_ticker')
     def test_realtime_ticker_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_realtime_ticker):
@@ -2581,61 +2591,40 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @patch('portfolio.market_data_service.fetch_price_board_dataframe')
     @patch('portfolio.market_data_service.get_cache', return_value=None)
-    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=False)
-    def test_realtime_ticker_refactored_on_demand_selects_matching_symbol_row(
+    @override_settings(TICKER_CACHE_MISS_ALLOW_DEGRADED=True)
+    def test_realtime_ticker_cache_miss_does_not_call_on_demand_fetch_and_can_serve_degraded(
         self,
-        _mock_rate_limited,
         _mock_get_cache,
         mock_fetch_price_board,
     ):
         self.authenticate()
-        mock_fetch_price_board.return_value = pd.DataFrame([
-            {'symbol': 'VNM', 'match_price': 115.70, 'reference_price': 115.85},
-            {'symbol': 'FPT', 'match_price': 76.20, 'reference_price': 76.35},
-        ])
+        DailyPrice.objects.create(symbol='FPT', date=date.today(), close_price=Decimal('76000'))
 
         response = self.client.get('/api/realtime/ticker/FPT/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['symbol'], 'FPT')
-        self.assertEqual(float(response.data['current_price']), 76200.0)
-        self.assertEqual(response.data['source'], 'vnstock_on_demand')
+        self.assertEqual(response.data['source'], 'cache_miss_degraded')
+        self.assertEqual(response.data['cache_state'], 'miss')
+        mock_fetch_price_board.assert_not_called()
 
     @patch('portfolio.market_data_service.fetch_price_board_dataframe')
     @patch('portfolio.market_data_service.get_cache', return_value=None)
-    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=False)
-    def test_realtime_ticker_refactored_on_demand_supports_flat_price_board_schema(
+    def test_realtime_ticker_cache_miss_returns_503_by_default(
         self,
-        _mock_rate_limited,
         _mock_get_cache,
         mock_fetch_price_board,
     ):
         self.authenticate()
-        mock_fetch_price_board.return_value = pd.DataFrame([
-            {
-                'symbol': 'FPT',
-                'close_price': 76000,
-                'reference_price': 77700,
-                'open_price': 76900,
-                'high_price': 77000,
-                'low_price': 75900,
-                'volume_accumulated': 9559100,
-                'price_change': -1700,
-                'percent_change': -2.1879,
-            },
-        ])
+        DailyPrice.objects.create(symbol='FPT', date=date.today(), close_price=Decimal('76000'))
 
         response = self.client.get('/api/realtime/ticker/FPT/')
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
         self.assertEqual(response.data['symbol'], 'FPT')
-        self.assertEqual(float(response.data['current_price']), 76000.0)
-        self.assertEqual(float(response.data['prev_price']), 77700.0)
-        self.assertEqual(float(response.data['reference_price']), 77700.0)
-        self.assertEqual(float(response.data['change_value']), -1700.0)
-        self.assertAlmostEqual(float(response.data['change_pct']), -2.1879, places=4)
-        self.assertEqual(float(response.data['average_price']), 76450.0)
-        self.assertEqual(response.data['source'], 'vnstock_on_demand')
+        self.assertEqual(response.data['source'], 'cache_miss_degraded')
+        self.assertEqual(response.data['cache_state'], 'miss')
+        mock_fetch_price_board.assert_not_called()
 
     @patch('portfolio.market_views.market_data_service.get_intraday_matched')
     def test_realtime_intraday_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_intraday_matched):
