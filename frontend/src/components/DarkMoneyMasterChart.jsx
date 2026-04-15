@@ -146,6 +146,33 @@ function toEpochSecondsFromChartTimeKey(timeKey) {
   return null;
 }
 
+function sortTimeKeysAsc(left, right) {
+  const leftEpoch = toEpochSecondsFromChartTimeKey(left);
+  const rightEpoch = toEpochSecondsFromChartTimeKey(right);
+  if (leftEpoch != null && rightEpoch != null) return leftEpoch - rightEpoch;
+  return String(left).localeCompare(String(right));
+}
+
+function normalizeCandlesForChart(rawCandles) {
+  if (!Array.isArray(rawCandles) || !rawCandles.length) return [];
+
+  const dedupedByTime = new Map();
+  rawCandles.forEach((candle) => {
+    const time = String(candle?.time || '');
+    if (!time) return;
+    dedupedByTime.set(time, {
+      time,
+      open: toFiniteNumber(candle?.open),
+      high: toFiniteNumber(candle?.high),
+      low: toFiniteNumber(candle?.low),
+      close: toFiniteNumber(candle?.close),
+      volume: toFiniteNumber(candle?.volume),
+    });
+  });
+
+  return [...dedupedByTime.values()].sort((left, right) => sortTimeKeysAsc(left.time, right.time));
+}
+
 function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
   if (!chart) return null;
   if (typeof chart[legacyMethod] === 'function') {
@@ -659,12 +686,13 @@ export default function DarkMoneyMasterChart({ symbol }) {
     };
     cleanupCharts();
 
-    const candles = data.candles.map((c) => ({
+    const normalizedCandles = normalizeCandlesForChart(data.candles);
+    const candles = normalizedCandles.map((c) => ({
       time: c.time,
-      open: toFiniteNumber(c.open),
-      high: toFiniteNumber(c.high),
-      low: toFiniteNumber(c.low),
-      close: toFiniteNumber(c.close),
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
     }));
 
     const lineData = candles
@@ -673,9 +701,9 @@ export default function DarkMoneyMasterChart({ symbol }) {
 
     // B2: lookup map time → candle (with index for prev-close % calc)
     const candlesByTime = {};
-    data.candles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
+    normalizedCandles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
     const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || []);
-    const priceByTime = Object.fromEntries(data.candles.map((c) => [String(c.time), Number(c.close || 0)]));
+    const priceByTime = Object.fromEntries(normalizedCandles.map((c) => [String(c.time), Number(c.close || 0)]));
     const cvdByTime = Object.fromEntries(
       (data.dark_flow_series || [])
         .filter((d) => d.cvd !== undefined && d.cvd !== null)
@@ -771,7 +799,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           scaleMargins: { top: 0.85, bottom: 0 },
         });
         volumeSeries.setData(
-          data.candles.map((c) => ({
+          normalizedCandles.map((c) => ({
             time: c.time,
             value: c.volume,
             color: c.close >= c.open ? 'rgba(34, 197, 94, 0.2)' : 'rgba(244, 63, 94, 0.2)',
@@ -867,7 +895,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
           }
           const candle = candlesByTime[timeKey];
           if (!candle) { setOhlcTooltip(null); return; }
-          const prev = candle.idx > 0 ? data.candles[candle.idx - 1] : null;
+          const prev = candle.idx > 0 ? normalizedCandles[candle.idx - 1] : null;
           const change = prev && prev.close > 0 ? ((candle.close - prev.close) / prev.close) * 100 : null;
           setOhlcTooltip({ ...candle, change, whaleInfo: whaleSignalsByTime[timeKey] || null });
         });
@@ -1099,7 +1127,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             setOhlcTooltip(null);
             return;
           }
-          const prev = candle.idx > 0 ? data.candles[candle.idx - 1] : null;
+          const prev = candle.idx > 0 ? normalizedCandles[candle.idx - 1] : null;
           const change = prev && prev.close > 0 ? ((candle.close - prev.close) / prev.close) * 100 : null;
           setOhlcTooltip({ ...candle, change, whaleInfo: whaleSignalsByTime[timeKey] || null });
         };
