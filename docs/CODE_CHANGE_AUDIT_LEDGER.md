@@ -7,6 +7,10 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - Moi entry phai co: thoi gian, pham vi, danh sach tep da sua, ghi chu test/verify.
 - Khong thay the bang nhat ky tong quan.
 - Muc tieu: truy vet nhanh va audit-friendly, khong phai tim trong toan bo codebase.
+- Bat buoc co implementation plan truoc khi sua doi lon hoac xay dung tinh nang moi.
+- KHONG bao gio tu y code ngay khi chua co ke hoach chi tiet duoc thong nhat.
+- File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
+- Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
 ## Entry 2026-04-15 - Fix realtime ticker API 500 errors (cache fallback)
 
@@ -126,3 +130,19 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Can test truc tiep bang click sidebar trong luc Dashboard dang co realtime updates.
 - Ky vong: click menu doi noi dung ngay, khong can bam Enter o thanh dia chi.
+
+## Entry 2026-04-15 - Add mandatory implementation planning governance
+
+Pham vi:
+- Ban hanh quy dinh chuan cho toan team: phai lap ke hoach chi tiet truoc khi sua doi lon hoac lam tinh nang moi.
+- Chuan hoa mau plan, Definition of Ready/Done, rollout, rollback, testing, observability, governance.
+- Dua quy dinh "khong code truoc khi co plan" vao tai lieu audit trung tam de enforce.
+
+Danh sach tep da sua:
+- docs/IMPLEMENTATION_PLANNING_POLICY.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Da bo sung policy tai lieu governance voi checklist co the follow truc tiep.
+- Da cap nhat muc "Quy dinh" cua audit ledger de enforce mandatory planning gate.
+- Tu nay, cac task sua doi lon/tinh nang moi phai co file plan truoc khi bat dau code.
