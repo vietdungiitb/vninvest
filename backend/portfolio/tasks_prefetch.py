@@ -14,6 +14,7 @@ from django.utils import timezone
 
 from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
 from portfolio.models import (
+    DailyPrice,
     PriceAlertRule,
     SecuritiesItem,
     TrackedSymbol,
@@ -1357,3 +1358,132 @@ def prefetch_ticker_price_board(self) -> dict:
         status,
     )
     return payload
+
+
+@shared_task(bind=True, name='portfolio.tasks.offpeak_vnstock_ingest')
+def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | None = None, trigger: str = 'manual') -> dict:
+    """
+    Off-peak ingest pipeline:
+    1) Pull OHLCV into DailyPrice (DB)
+    2) Refresh ticker cache from latest DB rows (Redis)
+    """
+    from datetime import timedelta
+
+    from portfolio.services import fetch_and_save_daily_prices
+
+    resolved_days = max(int(days or os.getenv('OFFPEAK_VNSTOCK_INGEST_DAYS', '5')), 1)
+    resolved_max_symbols = max(int(max_symbols or os.getenv('OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS', '300')), 1)
+    runtime_settings = _get_prefetch_runtime_settings()
+    symbols, source_counts = _collect_prefetch_symbols(runtime_settings=runtime_settings)
+    symbols = symbols[:resolved_max_symbols]
+
+    if not symbols:
+        return {
+            'status': 'ok',
+            'trigger': str(trigger or 'manual'),
+            'days': resolved_days,
+            'max_symbols': resolved_max_symbols,
+            'symbols_total': 0,
+            'symbols_ingested': 0,
+            'db_created': 0,
+            'db_updated': 0,
+            'db_errors': 0,
+            'cache_refreshed': 0,
+            'source_counts': source_counts,
+            'generated_at': timezone.now().isoformat(),
+        }
+
+    end_date = timezone.localdate()
+    start_date = end_date - timedelta(days=max(resolved_days - 1, 0))
+    db_created = 0
+    db_updated = 0
+    db_errors = 0
+    symbols_ingested = 0
+    cache_refreshed = 0
+    failed_symbols: list[str] = []
+
+    for symbol in symbols:
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol:
+            continue
+
+        try:
+            ingest_result = fetch_and_save_daily_prices(
+                normalized_symbol,
+                start_date=start_date,
+                end_date=end_date,
+            )
+            db_created += int(ingest_result.get('created', 0) or 0)
+            db_updated += int(ingest_result.get('updated', 0) or 0)
+            symbol_errors = int(ingest_result.get('errors', 0) or 0)
+            db_errors += symbol_errors
+            if symbol_errors > 0:
+                failed_symbols.append(normalized_symbol)
+            symbols_ingested += 1
+        except Exception as exc:
+            logger.warning('offpeak_vnstock_ingest failed for %s: %s', normalized_symbol, exc)
+            db_errors += 1
+            failed_symbols.append(normalized_symbol)
+            continue
+
+        latest = DailyPrice.objects.filter(symbol=normalized_symbol).order_by('-date').first()
+        if latest is None:
+            continue
+
+        prev = (
+            DailyPrice.objects.filter(symbol=normalized_symbol, date__lt=latest.date)
+            .order_by('-date')
+            .first()
+        )
+
+        try:
+            current_price = float(latest.close_price)
+        except (TypeError, ValueError):
+            current_price = None
+        try:
+            prev_price = float(prev.close_price) if prev is not None and prev.close_price is not None else None
+        except (TypeError, ValueError):
+            prev_price = None
+
+        if current_price is not None and prev_price not in (None, 0):
+            change_value = round(current_price - prev_price, 2)
+            change_pct = round((change_value / prev_price) * 100, 2)
+        else:
+            change_value = None
+            change_pct = None
+
+        cache_payload = {
+            'symbol': normalized_symbol,
+            'current_price': current_price,
+            'prev_price': prev_price,
+            'change_value': change_value,
+            'change_pct': change_pct,
+            'high_price': float(latest.high_price) if latest.high_price is not None else None,
+            'low_price': float(latest.low_price) if latest.low_price is not None else None,
+            'open_price': float(latest.open_price) if latest.open_price is not None else None,
+            'volume': int(latest.volume) if latest.volume is not None else None,
+            'last_date': timezone.now().isoformat(),
+            'freshness_seconds': 0,
+            'stale': False,
+            'source': 'offpeak_db_ingest',
+            'price_date': latest.date.isoformat(),
+        }
+        cache.set(f'ticker:{normalized_symbol}', cache_payload, timeout=60 * 60)
+        cache_refreshed += 1
+
+    status = 'ok' if not failed_symbols else 'partial'
+    return {
+        'status': status,
+        'trigger': str(trigger or 'manual'),
+        'days': resolved_days,
+        'max_symbols': resolved_max_symbols,
+        'symbols_total': len(symbols),
+        'symbols_ingested': symbols_ingested,
+        'db_created': db_created,
+        'db_updated': db_updated,
+        'db_errors': db_errors,
+        'cache_refreshed': cache_refreshed,
+        'failed_symbols': sorted(set(failed_symbols))[:30],
+        'source_counts': source_counts,
+        'generated_at': timezone.now().isoformat(),
+    }

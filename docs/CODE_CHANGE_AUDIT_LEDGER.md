@@ -178,3 +178,31 @@ Ghi chu verify:
 - Da loai bo `window.location.assign(...)` khoi sidebar navigation.
 - Layout.jsx khong co syntax error sau cap nhat.
 - Ky vong UX: khong con giat dung do full reload, chuyen trang muot hon dang SPA.
+
+## Entry 2026-04-16 - Trien khai off-peak vnstock ingest (DB + Redis, auto + manual)
+
+Plan tham chieu:
+- docs/OFFPEAK_VNSTOCK_INGEST_IMPLEMENTATION_PLAN_20260416.md
+
+Pham vi:
+- Trien khai task Celery moi de ingest du lieu vnstock vao DailyPrice (DB) trong off-peak.
+- Refresh Redis ticker cache tu DB moi nhat sau ingest de API fallback phuc vu nhanh hon.
+- Bo sung schedule Celery Beat qua env vars va endpoint admin trigger mode sync/async.
+- Bo sung test cho endpoint admin off-peak ingest.
+
+Danh sach tep da sua:
+- docs/OFFPEAK_VNSTOCK_INGEST_IMPLEMENTATION_PLAN_20260416.md
+- backend/portfolio/tasks_prefetch.py
+- backend/portfolio/tasks.py
+- backend/config/settings.py
+- backend/portfolio/views_admin_runtime.py
+- backend/portfolio/views.py
+- backend/config/urls.py
+- backend/portfolio/tests/test_admin_ops.py
+- compose.dev.env
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Da bo sung endpoint: POST /api/admin-ops/prefetch/offpeak-ingest/ (mode=sync|async).
+- Da bo sung Celery Beat task: portfolio.tasks.offpeak_vnstock_ingest.
+- Da bo sung test API cho async queue va sync execution payload.

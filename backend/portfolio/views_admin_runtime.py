@@ -31,6 +31,18 @@ def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     return default
 
 
+def _parse_optional_positive_int(raw_value, field_name: str):
+    if raw_value in (None, ''):
+        return None
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        raise ValueError(f'{field_name} phai la so nguyen duong.')
+    if value < 1:
+        raise ValueError(f'{field_name} phai la so nguyen duong.')
+    return value
+
+
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def admin_runtime_kpi_api(request):
@@ -871,6 +883,65 @@ def warm_ticker_prefetch_api(request):
             'queued': True,
             'mode': 'async',
             'task_id': task.id,
+            'prefetch': build_prefetch_health_snapshot(),
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def offpeak_vnstock_ingest_api(request):
+    """
+    POST /api/admin-ops/prefetch/offpeak-ingest/
+    Trigger ingest du lieu off-peak vao DB + refresh ticker cache Redis.
+
+    Query/body:
+      - mode=async (mac dinh) | sync
+      - days (optional, int >= 1)
+      - max_symbols (optional, int >= 1)
+    """
+    from config.health import build_prefetch_health_snapshot
+    from portfolio.tasks import offpeak_vnstock_ingest
+
+    mode = str(request.query_params.get('mode') or request.data.get('mode') or 'async').strip().lower()
+    try:
+        days = _parse_optional_positive_int(request.query_params.get('days', request.data.get('days')), 'days')
+        max_symbols = _parse_optional_positive_int(
+            request.query_params.get('max_symbols', request.data.get('max_symbols')),
+            'max_symbols',
+        )
+    except ValueError as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    task_kwargs = {
+        'days': days,
+        'max_symbols': max_symbols,
+        'trigger': 'admin_manual',
+    }
+    task_kwargs = {key: value for key, value in task_kwargs.items() if value is not None}
+
+    if mode == 'sync':
+        result = offpeak_vnstock_ingest.run(**task_kwargs)
+        ok = str(result.get('status') or '').lower() in {'ok', 'partial'}
+        return Response(
+            {
+                'queued': False,
+                'mode': 'sync',
+                'ok': ok,
+                'result': result,
+                'prefetch': build_prefetch_health_snapshot(),
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    task = offpeak_vnstock_ingest.apply_async(kwargs=task_kwargs)
+    return Response(
+        {
+            'queued': True,
+            'mode': 'async',
+            'task_id': task.id,
+            'kwargs': task_kwargs,
             'prefetch': build_prefetch_health_snapshot(),
         },
         status=status.HTTP_202_ACCEPTED,

@@ -40,6 +40,7 @@ from portfolio.models import (
 
 URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
+OFFPEAK_INGEST_URL = '/api/admin-ops/prefetch/offpeak-ingest/'
 VNSTOCK_CURRENT_URL = '/api/admin-ops/vnstock-config/current/'
 VNSTOCK_UPDATE_URL = '/api/admin-ops/vnstock-config/update-config/'
 VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
@@ -201,6 +202,11 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         resp = self.client.post(WARM_URL)
         self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
+    def test_offpeak_ingest_requires_auth(self):
+        self.client.credentials()
+        resp = self.client.post(OFFPEAK_INGEST_URL)
+        self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+
     @patch('config.health.build_prefetch_health_snapshot')
     @patch('portfolio.tasks.prefetch_ticker_price_board.apply_async')
     def test_staff_can_queue_async_prefetch_warm(self, mock_apply_async, mock_prefetch_snapshot):
@@ -239,6 +245,44 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertFalse(resp.data['ok'])
         self.assertFalse(resp.data['queued'])
         self.assertEqual(resp.data['result']['status'], 'parse_zero_cached')
+
+    @patch('config.health.build_prefetch_health_snapshot')
+    @patch('portfolio.tasks.offpeak_vnstock_ingest.apply_async')
+    def test_staff_can_queue_async_offpeak_ingest(self, mock_apply_async, mock_prefetch_snapshot):
+        class _Task:
+            id = 'offpeak-task-123'
+
+        mock_apply_async.return_value = _Task()
+        mock_prefetch_snapshot.return_value = {'healthy': True}
+
+        resp = self.client.post(f'{OFFPEAK_INGEST_URL}?days=3&max_symbols=120')
+
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(resp.data['queued'])
+        self.assertEqual(resp.data['task_id'], 'offpeak-task-123')
+        self.assertEqual(resp.data['kwargs']['days'], 3)
+        self.assertEqual(resp.data['kwargs']['max_symbols'], 120)
+
+    @patch('config.health.build_prefetch_health_snapshot')
+    @patch('portfolio.tasks.offpeak_vnstock_ingest.run')
+    def test_sync_offpeak_ingest_returns_payload(self, mock_offpeak_run, mock_prefetch_snapshot):
+        mock_offpeak_run.return_value = {
+            'status': 'ok',
+            'symbols_total': 5,
+            'symbols_ingested': 5,
+            'db_created': 10,
+            'db_updated': 2,
+            'cache_refreshed': 5,
+        }
+        mock_prefetch_snapshot.return_value = {'healthy': True}
+
+        resp = self.client.post(f'{OFFPEAK_INGEST_URL}?mode=sync&days=2')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(resp.data['queued'])
+        self.assertTrue(resp.data['ok'])
+        self.assertEqual(resp.data['result']['status'], 'ok')
+        self.assertEqual(resp.data['result']['symbols_ingested'], 5)
 
     def test_user_count_includes_all_users(self):
         data = self._get_stats()

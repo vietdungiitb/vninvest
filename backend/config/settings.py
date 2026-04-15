@@ -336,6 +336,11 @@ TICKER_UPSTREAM_HARD_CAP_PER_MINUTE = _env_int("TICKER_UPSTREAM_HARD_CAP_PER_MIN
 TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED = os.getenv("TICKER_PREFETCH_EMERGENCY_OVERRIDE_ENABLED", "False").lower() == "true"
 TICKER_PREFETCH_EMERGENCY_DISABLE_COLD = os.getenv("TICKER_PREFETCH_EMERGENCY_DISABLE_COLD", "True").lower() == "true"
 TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER = max(_env_float("TICKER_PREFETCH_EMERGENCY_INTERVAL_MULTIPLIER", 2.0), 1.0)
+OFFPEAK_VNSTOCK_INGEST_ENABLED = os.getenv("OFFPEAK_VNSTOCK_INGEST_ENABLED", "True").lower() == "true"
+OFFPEAK_VNSTOCK_INGEST_CRON_HOUR = _env_int("OFFPEAK_VNSTOCK_INGEST_CRON_HOUR", 18)
+OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE = _env_int("OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE", 10)
+OFFPEAK_VNSTOCK_INGEST_DAYS = _env_int("OFFPEAK_VNSTOCK_INGEST_DAYS", 5)
+OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS = _env_int("OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS", 300)
 
 CELERY_BEAT_SCHEDULE = {}
 # Realtime ticker scheduler theo universe + shard (pha 2).
@@ -357,6 +362,24 @@ else:
     CELERY_BEAT_SCHEDULE["prefetch-ticker-price-board"] = {
         "task": "portfolio.tasks.prefetch_ticker_price_board",
         "schedule": timedelta(seconds=max(_TICKER_PREFETCH_INTERVAL, 10)),
+    }
+
+if OFFPEAK_VNSTOCK_INGEST_ENABLED:
+    from celery.schedules import crontab as _crontab_offpeak
+
+    CELERY_BEAT_SCHEDULE["offpeak-vnstock-ingest"] = {
+        "task": "portfolio.tasks.offpeak_vnstock_ingest",
+        "schedule": _crontab_offpeak(
+            hour=max(0, min(23, OFFPEAK_VNSTOCK_INGEST_CRON_HOUR)),
+            minute=max(0, min(59, OFFPEAK_VNSTOCK_INGEST_CRON_MINUTE)),
+            day_of_week='1-5',
+        ),
+        "kwargs": {
+            "days": max(OFFPEAK_VNSTOCK_INGEST_DAYS, 1),
+            "max_symbols": max(OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS, 1),
+            "trigger": "beat",
+        },
+        "options": {"expires": 3600},
     }
 ORDER_FLOW_DETECTION_ENABLED = os.getenv("ORDER_FLOW_DETECTION_ENABLED", "True").lower() == "true"
 ORDER_FLOW_DETECTION_INTERVAL_SECONDS = _env_int("ORDER_FLOW_DETECTION_INTERVAL_SECONDS", 30)
