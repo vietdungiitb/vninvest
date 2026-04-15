@@ -5,6 +5,7 @@
 services:
   db:
     container_name: vninvest-dev-db
+    image: postgres:15-alpine
     environment:
       POSTGRES_DB: vninvest
       POSTGRES_USER: postgres
@@ -16,15 +17,20 @@ services:
 
   redis:
     container_name: vninvest-dev-redis
+    image: redis:7-alpine
     ports:
       # Expose Redis cho backend local (hybrid mode), admin stats, ho?c stack khßc.
       - "${DEV_BIND_HOST:-127.0.0.1}:6379:6379"
 
   mailpit:
     container_name: vninvest-dev-mailpit
+    image: axllent/mailpit:latest
 
   backend:
     container_name: vninvest-dev-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     env_file:
       - ./backend/.env.dev
     environment:
@@ -54,6 +60,9 @@ services:
 
   celery_worker:
     container_name: vninvest-dev-celery-worker
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     env_file:
       - ./backend/.env.dev
     environment:
@@ -74,6 +83,9 @@ services:
 
   celery_beat:
     container_name: vninvest-dev-celery-beat
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     env_file:
       - ./backend/.env.dev
     environment:

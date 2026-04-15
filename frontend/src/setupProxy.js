@@ -7,8 +7,8 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 module.exports = function(app) {
   // API REST — giữ nguyên /api prefix khi forward đến Django
   app.use(
+    '/api',
     createProxyMiddleware({
-      pathFilter: '/api',
       target: 'http://localhost:8000',
       changeOrigin: true,
     })
@@ -17,8 +17,8 @@ module.exports = function(app) {
   // WebSocket realtime — QUAN TRỌNG: chỉ proxy /ws/realtime (Django),
   // KHÔNG dùng /ws (sẽ chặn webpack HMR WebSocket → "Invalid frame header").
   app.use(
+    '/ws/realtime',
     createProxyMiddleware({
-      pathFilter: '/ws/realtime',
       target: 'http://localhost:8000',
       ws: true,
       changeOrigin: true,
