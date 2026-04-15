@@ -80,6 +80,9 @@ SECURE_HSTS_SECONDS = _env_int("DJANGO_SECURE_HSTS_SECONDS", 0 if DEBUG else 360
 SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", not DEBUG)
 SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", False)
 
+# X-Frame-Options: ALLOWALL cho phép admin được nhúng trong iframe (e.g., Portainer, internal tools)
+X_FRAME_OPTIONS = os.getenv("X_FRAME_OPTIONS", "ALLOWALL" if DEBUG else "ALLOWALL")
+
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.getenv(
