@@ -126,7 +126,9 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Bỏ XFrameOptionsMiddleware mặc định, thay bằng custom middleware cho phép iframe
+    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'backend.config.middleware.AllowIframeMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
