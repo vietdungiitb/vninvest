@@ -2,7 +2,7 @@
 Realtime data adapter helpers extraction from legacy views.
 
 This module provides common adapters and utilities for realtime endpoints,
-extracted from legacy views.py.
+extracted from legacy views.py. All fetch operations emit observability metrics.
 """
 import logging
 from decimal import Decimal
@@ -15,6 +15,7 @@ from .adapters.vnstock_adapter import (
 )
 from .services import get_price_changes
 from .exceptions import ExternalSystemException
+from .services_realtime_metrics import increment_realtime_metric
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
     """
     Wrapper around vnstock adapter to fetch price board data with consistent error handling.
+    Emits metrics: realtime_upstream_calls_total (suffix: price_board), realtime_upstream_errors_total
     
     Args:
         symbols_list: List of stock symbols to fetch
@@ -35,10 +37,13 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
         ExternalSystemException: If fetch fails
     """
     try:
+        increment_realtime_metric('realtime_upstream_calls_total', suffix='price_board')
         return _adapter_fetch_price_board(symbols_list, anchor_symbol=anchor_symbol, source=source)
     except ExternalSystemException:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='price_board')
         raise
     except Exception as exc:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='price_board')
         logger.warning('fetch_price_board_dataframe error for %s: %s', anchor_symbol, exc)
         raise ExternalSystemException(str(exc), code='vnstock_error')
 
@@ -46,6 +51,7 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
 def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
     """
     Wrapper around vnstock adapter to fetch intraday tick data.
+    Emits metrics: realtime_upstream_calls_total (suffix: intraday), realtime_upstream_errors_total
     
     Args:
         symbol: Stock symbol
@@ -58,10 +64,13 @@ def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
         ExternalSystemException: If fetch fails
     """
     try:
+        increment_realtime_metric('realtime_upstream_calls_total', suffix='intraday')
         return _adapter_fetch_intraday(symbol=symbol, page_size=page_size)
     except ExternalSystemException:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='intraday')
         raise
     except Exception as exc:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='intraday')
         logger.warning('fetch_intraday_dataframe error for %s: %s', symbol, exc)
         raise ExternalSystemException(str(exc), code='vnstock_error')
 
@@ -69,6 +78,7 @@ def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
 def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: str = 'vi', dropna: bool = True, source: str = 'VCI'):
     """
     Wrapper around vnstock adapter to fetch financial ratio data.
+    Emits metrics: realtime_upstream_calls_total (suffix: financial_ratio), realtime_upstream_errors_total
     
     Args:
         symbol: Stock symbol
@@ -84,6 +94,7 @@ def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: 
         ExternalSystemException: If fetch fails
     """
     try:
+        increment_realtime_metric('realtime_upstream_calls_total', suffix='financial_ratio')
         return _adapter_fetch_financial_ratio(
             symbol,
             period=period,
@@ -92,8 +103,10 @@ def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: 
             source=source,
         )
     except ExternalSystemException:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='financial_ratio')
         raise
     except Exception as exc:
+        increment_realtime_metric('realtime_upstream_errors_total', suffix='financial_ratio')
         logger.warning('fetch_financial_ratio_dataframe error for %s: %s', symbol, exc)
         raise ExternalSystemException(str(exc), code='vnstock_error')
 
