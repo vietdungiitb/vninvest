@@ -8,6 +8,23 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - Khong thay the bang nhat ky tong quan.
 - Muc tieu: truy vet nhanh va audit-friendly, khong phai tim trong toan bo codebase.
 
+## Entry 2026-04-15 - Fix realtime ticker API 500 errors (cache fallback)
+
+Pham vi:
+- Fix HTTP 500 errors khi realtime ticker cache rong.
+- Enable degraded mode fallback to fetch db data thanh HTTP 200 thay vi 503.
+- Config env var TICKER_CACHE_MISS_ALLOW_DEGRADED cho dev stack.
+
+Danh sach tep da sua:
+- backend/.env.dev (added TICKER_CACHE_MISS_ALLOW_DEGRADED=True)
+- compose.dev.env (documented TICKER_CACHE_MISS_ALLOW_DEGRADED setting)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Tested: API returns HTTP 200 with cache_miss_degraded source (pricing fallback from DB).
+- All test symbols return: BID, PVT, HPG, MSN, MWG, BCM.
+- Response includes: current_price, cache_state=miss, source=cache_miss_degraded.
+
 ## Entry 2026-04-15 - Phase 5/6/7 + Governance hardening
 
 Pham vi:
