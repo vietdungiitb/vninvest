@@ -41,6 +41,7 @@ from portfolio.models import (
 URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
 OFFPEAK_INGEST_URL = '/api/admin-ops/prefetch/offpeak-ingest/'
+OFFPEAK_INGEST_HISTORY_URL = '/api/admin-ops/prefetch/offpeak-ingest/history/'
 VNSTOCK_CURRENT_URL = '/api/admin-ops/vnstock-config/current/'
 VNSTOCK_UPDATE_URL = '/api/admin-ops/vnstock-config/update-config/'
 VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
@@ -207,6 +208,11 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         resp = self.client.post(OFFPEAK_INGEST_URL)
         self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
+    def test_offpeak_ingest_history_requires_auth(self):
+        self.client.credentials()
+        resp = self.client.get(OFFPEAK_INGEST_HISTORY_URL)
+        self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
+
     @patch('config.health.build_prefetch_health_snapshot')
     @patch('portfolio.tasks.prefetch_ticker_price_board.apply_async')
     def test_staff_can_queue_async_prefetch_warm(self, mock_apply_async, mock_prefetch_snapshot):
@@ -283,6 +289,26 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertTrue(resp.data['ok'])
         self.assertEqual(resp.data['result']['status'], 'ok')
         self.assertEqual(resp.data['result']['symbols_ingested'], 5)
+
+    @patch('portfolio.views_admin_runtime._read_offpeak_ingest_history')
+    def test_offpeak_ingest_history_returns_latest_and_list(self, mock_history):
+        mock_history.return_value = {
+            'latest': {'status': 'ok', 'generated_at': '2026-04-16T00:00:00+07:00'},
+            'history': [
+                {'status': 'ok', 'generated_at': '2026-04-16T00:00:00+07:00'},
+                {'status': 'partial', 'generated_at': '2026-04-15T18:10:00+07:00'},
+            ],
+            'total_entries': 2,
+            'limit': 10,
+        }
+
+        resp = self.client.get(f'{OFFPEAK_INGEST_HISTORY_URL}?limit=10')
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data['ok'])
+        self.assertEqual(resp.data['total_entries'], 2)
+        self.assertEqual(len(resp.data['history']), 2)
+        self.assertEqual(resp.data['latest']['status'], 'ok')
 
     def test_user_count_includes_all_users(self):
         data = self._get_stats()

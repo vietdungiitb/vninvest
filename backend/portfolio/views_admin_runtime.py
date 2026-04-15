@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
+from portfolio.tasks_prefetch import _read_offpeak_ingest_history
 from portfolio.tasks_whale_preflight_cache import (
     WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
     WHALE_PREFLIGHT_METRIC_NAMES,
@@ -945,4 +946,30 @@ def offpeak_vnstock_ingest_api(request):
             'prefetch': build_prefetch_health_snapshot(),
         },
         status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def offpeak_vnstock_ingest_history_api(request):
+    """
+    GET /api/admin-ops/prefetch/offpeak-ingest/history/
+    Tra ve latest run va history gan day cua offpeak ingest task.
+    """
+    limit_raw = request.query_params.get('limit', 20)
+    try:
+        limit = max(int(limit_raw), 1)
+    except (TypeError, ValueError):
+        return Response({'detail': 'limit phai la so nguyen duong.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = _read_offpeak_ingest_history(limit=limit)
+    return Response(
+        {
+            'ok': True,
+            'latest': payload.get('latest'),
+            'history': payload.get('history', []),
+            'total_entries': int(payload.get('total_entries', 0) or 0),
+            'limit': int(payload.get('limit', limit) or limit),
+        },
+        status=status.HTTP_200_OK,
     )

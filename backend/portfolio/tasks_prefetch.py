@@ -40,6 +40,9 @@ REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY = 'realtime:universe:snapshot'
 REALTIME_UNIVERSE_TIER_CACHE_PREFIX = 'realtime:universe'
 REALTIME_SHARD_CACHE_PREFIX = 'realtime:shard'
 REALTIME_SHARD_LAST_ENQUEUE_PREFIX = 'realtime:shard:last_enqueue'
+OFFPEAK_INGEST_LATEST_META_CACHE_KEY = 'ticker:offpeak:ingest:latest'
+OFFPEAK_INGEST_HISTORY_CACHE_KEY = 'ticker:offpeak:ingest:history'
+OFFPEAK_INGEST_HISTORY_MAX_ITEMS = 20
 
 
 def _read_bool_env(name: str, default: bool) -> bool:
@@ -960,6 +963,36 @@ def _store_prefetch_meta(payload: dict, timeout: int = 600) -> None:
         pass
 
 
+def _store_offpeak_ingest_meta(payload: dict, timeout_seconds: int = 60 * 60 * 24 * 7) -> None:
+    try:
+        cache.set(OFFPEAK_INGEST_LATEST_META_CACHE_KEY, payload, timeout=timeout_seconds)
+        history = cache.get(OFFPEAK_INGEST_HISTORY_CACHE_KEY)
+        if not isinstance(history, list):
+            history = []
+        history.insert(0, payload)
+        cache.set(
+            OFFPEAK_INGEST_HISTORY_CACHE_KEY,
+            history[:OFFPEAK_INGEST_HISTORY_MAX_ITEMS],
+            timeout=timeout_seconds,
+        )
+    except Exception:
+        pass
+
+
+def _read_offpeak_ingest_history(limit: int = OFFPEAK_INGEST_HISTORY_MAX_ITEMS) -> dict:
+    safe_limit = max(int(limit or OFFPEAK_INGEST_HISTORY_MAX_ITEMS), 1)
+    latest = cache.get(OFFPEAK_INGEST_LATEST_META_CACHE_KEY)
+    history = cache.get(OFFPEAK_INGEST_HISTORY_CACHE_KEY)
+    if not isinstance(history, list):
+        history = []
+    return {
+        'latest': latest if isinstance(latest, dict) else None,
+        'history': history[:safe_limit],
+        'total_entries': len(history),
+        'limit': safe_limit,
+    }
+
+
 def _metric_cache_key(name: str, suffix: str | None = None) -> str:
     if suffix:
         return f'{PREFETCH_METRIC_CACHE_PREFIX}:{name}:{suffix}'
@@ -1378,7 +1411,7 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
     symbols = symbols[:resolved_max_symbols]
 
     if not symbols:
-        return {
+        payload = {
             'status': 'ok',
             'trigger': str(trigger or 'manual'),
             'days': resolved_days,
@@ -1392,6 +1425,8 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             'source_counts': source_counts,
             'generated_at': timezone.now().isoformat(),
         }
+        _store_offpeak_ingest_meta(payload)
+        return payload
 
     end_date = timezone.localdate()
     start_date = end_date - timedelta(days=max(resolved_days - 1, 0))
@@ -1472,7 +1507,7 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
         cache_refreshed += 1
 
     status = 'ok' if not failed_symbols else 'partial'
-    return {
+    payload = {
         'status': status,
         'trigger': str(trigger or 'manual'),
         'days': resolved_days,
@@ -1487,3 +1522,5 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
         'source_counts': source_counts,
         'generated_at': timezone.now().isoformat(),
     }
+    _store_offpeak_ingest_meta(payload)
+    return payload

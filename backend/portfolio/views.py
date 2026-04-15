@@ -217,6 +217,7 @@ from .views_admin_runtime import (
     admin_vnstock_runtime_config_reset_api,
     admin_vnstock_runtime_config_update_api,
     offpeak_vnstock_ingest_api,
+    offpeak_vnstock_ingest_history_api,
     warm_ticker_prefetch_api,
 )
 from .views_admin_vnstock_benchmark import (

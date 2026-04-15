@@ -206,3 +206,27 @@ Ghi chu verify:
 - Da bo sung endpoint: POST /api/admin-ops/prefetch/offpeak-ingest/ (mode=sync|async).
 - Da bo sung Celery Beat task: portfolio.tasks.offpeak_vnstock_ingest.
 - Da bo sung test API cho async queue va sync execution payload.
+
+## Entry 2026-04-16 - Step 2: Bo sung history API cho off-peak ingest
+
+Plan tham chieu:
+- docs/OFFPEAK_VNSTOCK_INGEST_HISTORY_STEP2_PLAN_20260416.md
+
+Pham vi:
+- Luu latest run va lich su run gan day cua offpeak_vnstock_ingest vao cache.
+- Bo sung endpoint GET /api/admin-ops/prefetch/offpeak-ingest/history/ cho admin.
+- Bo sung test auth va payload cho history endpoint.
+
+Danh sach tep da sua:
+- docs/OFFPEAK_VNSTOCK_INGEST_HISTORY_STEP2_PLAN_20260416.md
+- backend/portfolio/tasks_prefetch.py
+- backend/portfolio/views_admin_runtime.py
+- backend/portfolio/views.py
+- backend/config/urls.py
+- backend/portfolio/tests/test_admin_ops.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Da bo sung cache keys: latest/history cho offpeak ingest metadata.
+- Da bo sung endpoint history ho tro query param limit.
+- Da bo sung test cho unauthorized access va payload success.

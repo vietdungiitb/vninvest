@@ -75,6 +75,7 @@ urlpatterns = [
     path('api/admin-ops/vnstock-config/benchmark-price-board/run/', portfolio_views.admin_vnstock_price_board_benchmark_run_api, name='admin-ops-vnstock-config-benchmark-run'),
     path('api/admin-ops/prefetch/warm/', portfolio_views.warm_ticker_prefetch_api, name='admin-ops-prefetch-warm'),
     path('api/admin-ops/prefetch/offpeak-ingest/', portfolio_views.offpeak_vnstock_ingest_api, name='admin-ops-prefetch-offpeak-ingest'),
+    path('api/admin-ops/prefetch/offpeak-ingest/history/', portfolio_views.offpeak_vnstock_ingest_history_api, name='admin-ops-prefetch-offpeak-ingest-history'),
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
     path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),
