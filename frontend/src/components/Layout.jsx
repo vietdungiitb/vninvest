@@ -63,6 +63,12 @@ export default function Layout() {
   const toolItems = ability.can('manage', 'all') ? toolItemsSeed : [];
   const currentPlanLabel = t(`plans.${userPlan || 'free'}`);
 
+  const hardNavigate = useCallback((event, to) => {
+    event.preventDefault();
+    // Force a full navigation so content always follows URL immediately.
+    window.location.assign(to);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
@@ -140,6 +146,7 @@ export default function Layout() {
               key={to}
               to={to}
               title={label}
+              onClick={(event) => hardNavigate(event, to)}
               className={({ isActive }) =>
                 `flex items-center rounded-md text-sm font-medium transition-colors ${
                   isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'
@@ -165,6 +172,7 @@ export default function Layout() {
               key={to}
               to={to}
               title={label}
+              onClick={(event) => hardNavigate(event, to)}
               className={({ isActive }) =>
                 `flex items-center rounded-md text-sm font-medium transition-colors ${
                   isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'
@@ -190,6 +198,7 @@ export default function Layout() {
                   key={to}
                   to={to}
                   title={label}
+                  onClick={(event) => hardNavigate(event, to)}
                   className={({ isActive }) =>
                     `flex items-center rounded-md text-sm font-medium transition-colors ${
                       isSidebarCollapsed ? 'justify-center px-2 py-2.5' : 'px-3 py-2'

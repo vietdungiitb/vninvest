@@ -146,3 +146,19 @@ Ghi chu verify:
 - Da bo sung policy tai lieu governance voi checklist co the follow truc tiep.
 - Da cap nhat muc "Quy dinh" cua audit ledger de enforce mandatory planning gate.
 - Tu nay, cac task sua doi lon/tinh nang moi phai co file plan truoc khi bat dau code.
+
+## Entry 2026-04-15 - Hard-fix sidebar navigation stale-content bug
+
+Pham vi:
+- Fix triet de loi: click vao menu sidebar thi URL thay doi nhung noi dung page khong doi ngay.
+- Ap dung hard navigation cho menu sidebar de dam bao route va noi dung dong bo tuc thi.
+- Chuyen tu SPA navigation sang full navigation tai cac menu item cua sidebar.
+
+Danh sach tep da sua:
+- frontend/src/components/Layout.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Khong con phu thuoc vao transition/render state cua client-side router o sidebar.
+- Click vao menu se reload truc tiep den route dich, noi dung trang phai doi ngay.
+- Da kiem tra khong co syntax error trong Layout.jsx.
