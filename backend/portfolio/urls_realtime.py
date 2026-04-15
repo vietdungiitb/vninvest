@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import market_views, views
+from .views_realtime_ops import realtime_metrics_ops_api
 
 
 app_name = "portfolio_realtime"
@@ -18,4 +19,5 @@ urlpatterns = [
     path("whale-feed/<str:symbol>/", market_views.WhaleFeedView.as_view(), name="whale-feed"),
     path("rvol/<str:symbol>/", market_views.RVOLView.as_view(), name="rvol"),
     path("depth-chart/<str:symbol>/", market_views.DepthChartView.as_view(), name="depth-chart"),
+    path("ops/metrics/", realtime_metrics_ops_api, name="realtime-ops-metrics"),
 ]

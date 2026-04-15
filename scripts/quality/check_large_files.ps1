@@ -1,6 +1,6 @@
 param(
-    [int]$WarnLines = 800,
-    [int]$FailLines = 1200,
+    [int]$WarnLines = 700,
+    [int]$FailLines = 1000,
     [string]$AllowListPath = "scripts/quality/large_file_allowlist.txt",
     [string]$MonolithTestPath = "backend/portfolio/tests/test_api_routes.py"
 )

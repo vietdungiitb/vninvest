@@ -147,6 +147,31 @@ cd frontend
 npm run build   # → build/ ready, 0 errors
 ```
 
+## Quy Dinh Bat Buoc: Anti-Fat-File
+
+Quy dinh nay la bat buoc cho toan bo backend/frontend de tranh tai dien monolith va refactor lon ve sau.
+
+- Muc canh bao: file >= 700 dong.
+- Muc chan merge: file >= 1000 dong (neu khong nam trong allowlist da duoc phe duyet).
+- Khong them logic moi vao file da vuot nguong, bat buoc tach module truoc.
+- File vuot nguong tam thoi chi duoc phep khi co ghi chu ro ly do trong `scripts/quality/large_file_allowlist.txt`.
+
+Kiem tra local truoc khi push:
+
+```powershell
+./scripts/quality/check_large_files.ps1 -WarnLines 700 -FailLines 1000 -AllowListPath scripts/quality/large_file_allowlist.txt
+```
+
+CI dang enforce quy dinh nay tai workflow `large-file-guard`.
+
+## Quy Dinh Bat Buoc: Audit Danh Sach Tep Da Sua
+
+- Sau moi cong viec hoan tat, ngoai nhat ky tien do, bat buoc cap nhat danh sach tep da sua vao tai lieu audit tap trung.
+- Danh sach nay duoc dung de truy vet pham vi thay doi nhanh khi review, incident response, va compliance audit.
+- Neu thieu file list, cong viec duoc xem la chua dong vong ban giao.
+
+Tai lieu audit tap trung hien tai: `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
+
 ---
 
 ## Tài Liệu Kỹ Thuật

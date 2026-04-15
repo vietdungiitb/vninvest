@@ -1,0 +1,54 @@
+{
+  "title": "VNInvest Realtime Ops",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "tags": ["vninvest", "realtime", "ops"],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Cache Hit Ratio",
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 0},
+      "targets": [
+        {"expr": "vninvest_realtime_cache_hit_ratio", "legendFormat": "hit_ratio"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Upstream Calls by Endpoint",
+      "gridPos": {"h": 8, "w": 12, "x": 6, "y": 0},
+      "targets": [
+        {"expr": "sum by(endpoint) (rate(vninvest_realtime_upstream_calls_total[5m]))", "legendFormat": "{{endpoint}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Upstream Errors by Endpoint",
+      "gridPos": {"h": 8, "w": 12, "x": 18, "y": 0},
+      "targets": [
+        {"expr": "sum by(endpoint) (rate(vninvest_realtime_upstream_errors_total[5m]))", "legendFormat": "{{endpoint}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate-limit Events by Endpoint",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [
+        {"expr": "sum by(endpoint) (increase(vninvest_realtime_rate_limit_events_total[15m]))", "legendFormat": "{{endpoint}}"}
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Warmup Lifecycle",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "targets": [
+        {"expr": "increase(vninvest_realtime_warmup_started_total[1h])", "legendFormat": "started"},
+        {"expr": "increase(vninvest_realtime_warmup_completed_total[1h])", "legendFormat": "completed"},
+        {"expr": "increase(vninvest_realtime_warmup_errors_total[1h])", "legendFormat": "errors"}
+      ]
+    }
+  ],
+  "templating": {"list": []},
+  "time": {"from": "now-6h", "to": "now"}
+}
