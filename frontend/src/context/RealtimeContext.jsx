@@ -3,9 +3,6 @@ import useRealtimeFeedLegacy from '../hooks/useRealtimeFeedLegacy';
 
 const RealtimeContext = createContext(null);
 
-const ENABLE_REALTIME_CONNECTION_MANAGER =
-  String(process.env.REACT_APP_ENABLE_REALTIME_CONNECTION_MANAGER || '').toLowerCase() === 'true';
-
 function toUniqueSymbols(symbols) {
   return [...new Set((symbols || []).filter(Boolean).map((s) => String(s).trim().toUpperCase()))];
 }
@@ -22,7 +19,6 @@ export function RealtimeProvider({ children }) {
   const [subscriptions, setSubscriptions] = useState({});
 
   const aggregatedSymbols = useMemo(() => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return [];
     const union = new Set();
     Object.values(subscriptions).forEach((sub) => {
       (sub.symbols || []).forEach((symbol) => union.add(symbol));
@@ -31,13 +27,11 @@ export function RealtimeProvider({ children }) {
   }, [subscriptions]);
 
   const maxAlerts = useMemo(() => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return 5;
     const values = Object.values(subscriptions).map((sub) => Number(sub.maxAlerts) || 5);
     return values.length ? Math.max(...values) : 5;
   }, [subscriptions]);
 
   const pollInterval = useMemo(() => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return 15000;
     const values = Object.values(subscriptions).map((sub) => Number(sub.pollInterval) || 15000);
     return values.length ? Math.max(3000, Math.min(...values)) : 15000;
   }, [subscriptions]);
@@ -46,11 +40,10 @@ export function RealtimeProvider({ children }) {
     symbols: aggregatedSymbols,
     maxAlerts,
     pollInterval,
-    enabled: ENABLE_REALTIME_CONNECTION_MANAGER && aggregatedSymbols.length > 0,
+    enabled: aggregatedSymbols.length > 0,
   });
 
   const register = (consumerId, nextConfig) => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return;
     setSubscriptions((prev) => ({
       ...prev,
       [consumerId]: {
@@ -62,7 +55,6 @@ export function RealtimeProvider({ children }) {
   };
 
   const update = (consumerId, nextConfig) => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return;
     setSubscriptions((prev) => {
       if (!prev[consumerId]) return prev;
       return {
@@ -77,7 +69,6 @@ export function RealtimeProvider({ children }) {
   };
 
   const unregister = (consumerId) => {
-    if (!ENABLE_REALTIME_CONNECTION_MANAGER) return;
     setSubscriptions((prev) => {
       if (!prev[consumerId]) return prev;
       const next = { ...prev };
@@ -91,7 +82,7 @@ export function RealtimeProvider({ children }) {
     const requestedSymbolCount = Object.values(subscriptions).reduce((acc, sub) => acc + (sub.symbols?.length || 0), 0);
     const dedupSavedSymbols = Math.max(0, requestedSymbolCount - aggregatedSymbols.length);
     return {
-      enabled: ENABLE_REALTIME_CONNECTION_MANAGER,
+      enabled: true,
       register,
       update,
       unregister,
