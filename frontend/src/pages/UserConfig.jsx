@@ -8,6 +8,7 @@ import {
   updatePortfolioUserConfig,
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
+import { usePortfolio } from '../context/PortfolioContext';
 
 const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
@@ -33,6 +34,7 @@ function buildFallbackModelCatalog(providerMap) {
 
 export default function UserConfig() {
   const { t, setLanguage } = useI18n();
+  const { isAuthenticated } = usePortfolio();
 
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -67,6 +69,8 @@ export default function UserConfig() {
   });
 
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     let mounted = true;
 
     async function loadData() {
@@ -120,7 +124,7 @@ export default function UserConfig() {
     return () => {
       mounted = false;
     };
-  }, [t]);
+  }, [t, isAuthenticated]);
 
   const modelOptions = useMemo(() => {
     const provider = form.ai_provider;

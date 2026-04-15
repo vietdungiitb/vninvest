@@ -192,7 +192,7 @@ function extractApiErrorMessage(error, fallbackMessage) {
 export default function WatchlistPage() {
   const MAX_WATCHLIST_RT_SYMBOLS = 120;
   const navigate = useNavigate();
-  const { userConfig } = usePortfolio();
+  const { userConfig, isAuthenticated } = usePortfolio();
   const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice } = useI18n();
   const realtimeLabels = useMemo(() => ({
     idle: t('watchlist.statusIdle'),
@@ -307,6 +307,7 @@ export default function WatchlistPage() {
   const [symbolError, setSymbolError] = useState('');
 
   const loadGroups = useCallback(async () => {
+    if (!isAuthenticated) return;
     setLoading(true);
     try {
       const res = await getSecuritiesGroups();
@@ -316,9 +317,10 @@ export default function WatchlistPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchTracked = useCallback(async () => {
+    if (!isAuthenticated) return;
     setTrackedLoading(true);
     try {
       const res = await getTrackedSymbols();
@@ -328,9 +330,10 @@ export default function WatchlistPage() {
     } finally {
       setTrackedLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const fetchPriceAlerts = useCallback(async () => {
+    if (!isAuthenticated) return;
     setPriceAlertsLoading(true);
     try {
       const res = await getPriceAlerts();
@@ -340,7 +343,7 @@ export default function WatchlistPage() {
     } finally {
       setPriceAlertsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadGroups();

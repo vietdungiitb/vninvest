@@ -101,7 +101,7 @@ export default function Dashboard() {
     : parseFloat(summary?.total_unrealized_pl_pct ?? 0);
 
   const fetchData = useCallback(async () => {
-    if (!activePortfolioId) return;
+    if (!isAuthenticated || !activePortfolioId) return;
     setLoadingSummary(true);
     setLoadingHoldings(true);
 
@@ -118,7 +118,7 @@ export default function Dashboard() {
       setLoadingSummary(false);
       setLoadingHoldings(false);
     }
-  }, [activePortfolioId]);
+  }, [isAuthenticated, activePortfolioId]);
 
   useEffect(() => {
     fetchData();
