@@ -1,8 +1,10 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
+from unittest.mock import patch
 from rest_framework.test import APIClient
 
-from portfolio.services_realtime_metrics import increment_realtime_metric, reset_realtime_metrics_for_test
+from portfolio.services_realtime_metrics import increment_realtime_metric, get_realtime_metric, reset_realtime_metrics_for_test
+from portfolio.throttles import RealtimeOpsMetricsRateThrottle
 
 
 class RealtimeOpsMetricsApiTests(TestCase):
@@ -45,3 +47,23 @@ class RealtimeOpsMetricsApiTests(TestCase):
 
         self.assertIn('vninvest_realtime_cache_hits_total 5', content)
         self.assertIn('vninvest_realtime_upstream_errors_total{endpoint="intraday"} 1', content)
+
+    def test_realtime_ops_metrics_throttle_enforced(self):
+        self.client.force_authenticate(user=self.staff_user)
+        with patch.object(RealtimeOpsMetricsRateThrottle, 'THROTTLE_RATES', {'realtime_ops_metrics': '2/minute'}):
+            first = self.client.get('/api/realtime/ops/metrics/?output=json')
+            second = self.client.get('/api/realtime/ops/metrics/?output=json')
+            third = self.client.get('/api/realtime/ops/metrics/?output=json')
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(third.status_code, 429)
+
+    def test_increment_realtime_metric_fallback_path_updates_value(self):
+        increment_realtime_metric('cache_hits_total', amount=1)
+
+        with patch('portfolio.services_realtime_metrics.cache.incr', side_effect=Exception('incr_failed')):
+            updated = increment_realtime_metric('cache_hits_total', amount=2)
+
+        self.assertGreaterEqual(updated, 3)
+        self.assertGreaterEqual(get_realtime_metric('cache_hits_total'), 3)

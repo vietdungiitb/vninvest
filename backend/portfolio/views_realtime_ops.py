@@ -1,14 +1,16 @@
 from django.http import HttpResponse
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .services_realtime_metrics import build_prometheus_metrics_text, build_realtime_metrics_snapshot
+from .throttles import RealtimeOpsMetricsRateThrottle
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([RealtimeOpsMetricsRateThrottle])
 def realtime_metrics_ops_api(request):
     """
     GET /api/realtime/ops/metrics/

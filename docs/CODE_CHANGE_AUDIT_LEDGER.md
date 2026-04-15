@@ -50,3 +50,23 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Route guard logic da kiem tra ca state xac thuc va token luu tru.
 - Dashboard them defensive redirect khi khong xac thuc.
+
+## Entry 2026-04-15 - P1 hardening cho metrics atomicity + throttle
+
+Pham vi:
+- Giam race-condition o fallback path khi increment metrics trong cache backend khong on dinh atomic incr.
+- Them throttle scope rieng cho realtime ops metrics endpoint.
+- Bo sung test cho throttle va fallback increment path.
+
+Danh sach tep da sua:
+- backend/portfolio/services_realtime_metrics.py
+- backend/config/settings.py
+- backend/portfolio/throttles.py
+- backend/portfolio/views_realtime_ops.py
+- backend/portfolio/tests/test_realtime_ops_metrics_api.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Co lock nhe theo key trong fallback increment path.
+- Endpoint metrics ops co throttle scope rieng: realtime_ops_metrics.
+- Test bo sung cover 429 throttle va fallback increment path.

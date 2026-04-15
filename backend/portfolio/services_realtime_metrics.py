@@ -14,6 +14,7 @@ Metrics tracked:
 - realtime_upstream_errors_total: #errors from upstream calls (suffix: endpoint name)
 """
 import logging
+import time
 from django.core.cache import cache
 from django.utils import timezone
 
@@ -74,7 +75,28 @@ def increment_realtime_metric(
         return int(value)
     except Exception as exc:  # pragma: no cover - cache.incr may not support all backends
         try:
-            # Fallback: manual increment
+            # Fallback path with lightweight lock to reduce race conditions.
+            # Some cache backends may not support atomic incr consistently.
+            lock_key = f'{key}:lock'
+            lock_timeout = 2
+            retries = 5
+            wait_seconds = 0.01
+
+            for attempt in range(retries):
+                if cache.add(lock_key, 1, timeout=lock_timeout):
+                    try:
+                        current = int(cache.get(key) or 0)
+                        current += int(amount)
+                        cache.set(key, current, timeout=timeout)
+                        return current
+                    finally:
+                        try:
+                            cache.delete(lock_key)
+                        except Exception:
+                            pass
+                time.sleep(wait_seconds * (attempt + 1))
+
+            # Last resort: best effort set when lock acquisition fails repeatedly.
             current = int(cache.get(key) or 0)
             current += int(amount)
             cache.set(key, current, timeout=timeout)

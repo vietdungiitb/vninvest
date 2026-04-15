@@ -212,6 +212,7 @@ REST_FRAMEWORK = {
         'realtime_whale_aggregate': os.getenv('DRF_REALTIME_WHALE_AGG_RATE', '120/minute'),
         'realtime_rvol': os.getenv('DRF_REALTIME_RVOL_RATE', '60/minute'),
         'realtime_chart': os.getenv('DRF_REALTIME_CHART_RATE', '90/minute'),
+        'realtime_ops_metrics': os.getenv('DRF_REALTIME_OPS_METRICS_RATE', '30/minute'),
         'auth': '10/minute',
         'auth_password_reset_request': os.getenv('DRF_AUTH_PASSWORD_RESET_REQUEST_RATE', '5/hour'),
         'auth_password_reset_confirm': os.getenv('DRF_AUTH_PASSWORD_RESET_CONFIRM_RATE', '10/hour'),
