@@ -8,11 +8,6 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import { fetchLegalPages } from '../api/client';
 
-// Wrapper component để force re-mount khi route thay đổi
-function PageWrapper({ children, key }) {
-  return <div key={key}>{children}</div>;
-}
-
 export default function Layout() {
   const location = useLocation();
   const { t, locale, setLanguage } = useI18n();
@@ -260,9 +255,9 @@ export default function Layout() {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto bg-gray-950">
-        <PageWrapper key={location.pathname}>
+        <div key={location.key}>
           <Outlet />
-        </PageWrapper>
+        </div>
       </main>
 
       {/* Legal content modal */}
