@@ -33,5 +33,20 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Syntax compile: done for new/updated Python files.
 - Realtime ticker regression tests: pass (4/4).
-- Realtime ops metrics tests: to be re-run after output query-param fix in this entry.
+- Realtime ops metrics tests: pass (3/3) after output query-param fix.
 - Large-file guard local command updated for Windows PowerShell compatibility.
+
+## Entry 2026-04-15 - Fix unauthenticated dashboard redirect
+
+Pham vi:
+- Sua route guard de nguoi dung chua dang nhap khi vao /dashboard se bi chuyen huong ve /login.
+- Bo sung defensive redirect tai Dashboard page de tranh hien thi sai trang thai.
+
+Danh sach tep da sua:
+- frontend/src/App.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Route guard logic da kiem tra ca state xac thuc va token luu tru.
+- Dashboard them defensive redirect khi khong xac thuc.

@@ -3,7 +3,7 @@
  * Trang chính: StatCards + HoldingsTable + (Charts ở Bước 5).
  */
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import { getSummary, getHoldings, syncPrices, getTrackedSymbols } from '../api/client';
 import StatCard from '../components/StatCard';
@@ -24,6 +24,10 @@ import {
 export default function Dashboard() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatDateTime } = useI18n();
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
 
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);

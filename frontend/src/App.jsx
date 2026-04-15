@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
 import LoginModal from './components/LoginModal';
 import Dashboard from './pages/Dashboard';
@@ -33,10 +33,14 @@ function LoginPage() {
 }
 
 function ProtectedLayout() {
+  const location = useLocation();
   const { isAuthenticated } = usePortfolio();
+  const hasStoredTokens = Boolean(
+    localStorage.getItem('access_token') && localStorage.getItem('refresh_token'),
+  );
 
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated || !hasStoredTokens) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
   return <Layout />;
