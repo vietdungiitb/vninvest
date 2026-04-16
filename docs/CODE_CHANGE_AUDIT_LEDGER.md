@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17c - Realtime ticker hardening for malformed cache payload and unexpected exceptions
+
+Muc tieu:
+- Loai bo tinh trang endpoint `/api/realtime/ticker/<symbol>/` van tra 500 trong mot so truong hop du da fix timezone.
+
+Trieu chung runtime:
+- Frontend van nhan hang loat loi `Bootstrap quote fetch failed ... status code 500` va `Polling failed ... status code 500`.
+
+Nguyen nhan goc:
+- Payload cache ticker co the bi sai schema/type (khong phai dict), gay crash khi ep `dict(cached_ticker)`.
+- Ngoai ra van ton tai cac loi noi bo khac khong thuoc nhom `ExternalSystemException`, dan den uncaught runtime error.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `get_realtime_ticker()` hardening:
+  - Validate `cached_ticker` phai la `dict`; neu sai type thi bo qua cache va fallback.
+  - Mo rong parse `last_date` o nhanh cache-hit: catch `(TypeError, ValueError)`.
+  - Boc logic bang `try/except` tong:
+    - Giu nguyen hanh vi voi `ExternalSystemException`.
+    - Moi exception ngoai du kien se duoc log va tra payload degraded (`source=realtime_ticker_error_degraded`) thay vi 500.
+
+Ket qua verify:
+- `get_errors` cho `backend/portfolio/market_data_service.py`: khong co loi.
+
+---
+
 ## Entry 2026-04-17b - Realtime ticker 500 fix for timezone-aware freshness math
 
 Muc tieu:

@@ -422,16 +422,65 @@ class MarketDataService:
         market_code = market_clock.get('market_code')
         supported_timezones = market_clock.get('supported_timezones') or [market_clock.get('timezone')]
         is_offhours_like = market_phase in {'offhours', 'post_close', 'pre_open'}
-        ticker_cache_key = f'ticker:{normalized_symbol}'
-        cached_ticker = get_cache(ticker_cache_key)
-        if cached_ticker is not None:
-            freshness_threshold = max(int(getattr(settings, 'TICKER_FRESHNESS_SECONDS', 15) or 15), 1)
-            stale_serve_seconds = max(int(getattr(settings, 'TICKER_STALE_SERVE_SECONDS', 90) or 90), 1)
-            served_at = timezone.now().isoformat()
+        try:
+            ticker_cache_key = f'ticker:{normalized_symbol}'
+            cached_ticker = get_cache(ticker_cache_key)
+            if cached_ticker is not None:
+                if not isinstance(cached_ticker, dict):
+                    logger.warning('ticker cache payload invalid type for %s: %s', normalized_symbol, type(cached_ticker).__name__)
+                    cached_ticker = None
 
-            payload = dict(cached_ticker)
-            last_date = payload.get('last_date')
+            if cached_ticker is not None:
+                freshness_threshold = max(int(getattr(settings, 'TICKER_FRESHNESS_SECONDS', 15) or 15), 1)
+                stale_serve_seconds = max(int(getattr(settings, 'TICKER_STALE_SERVE_SECONDS', 90) or 90), 1)
+                served_at = timezone.now().isoformat()
+
+                payload = dict(cached_ticker)
+                last_date = payload.get('last_date')
+                freshness_seconds = None
+
+                if last_date:
+                    try:
+                        last_dt = datetime.fromisoformat(str(last_date))
+                        if last_dt.tzinfo is not None:
+                            now_dt = timezone.now().astimezone(last_dt.tzinfo)
+                        else:
+                            now_dt = datetime.now()
+                        freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
+                    except (TypeError, ValueError):
+                        freshness_seconds = None
+
+                if freshness_seconds is None:
+                    freshness_seconds = stale_serve_seconds + 1
+
+                is_stale = False if is_offhours_like and payload.get('current_price') is not None else (freshness_seconds > freshness_threshold)
+                payload['freshness_seconds'] = freshness_seconds
+                payload['stale'] = is_stale
+                current_source = str(payload.get('source') or '').strip().lower()
+                if not current_source or current_source == 'prefetch':
+                    current_source = 'stale_cache' if is_stale else 'cache'
+                payload['source'] = current_source
+                payload['cache_state'] = 'stale' if is_stale else ('session_close' if is_offhours_like else 'fresh')
+                payload['served_at'] = served_at
+                payload['market_phase'] = payload.get('market_phase') or market_phase
+                payload['market_code'] = payload.get('market_code') or market_code
+                payload['supported_timezones'] = supported_timezones
+                return payload
+
+            if is_offhours_like:
+                session_close_payload = self._resolve_latest_session_close(normalized_symbol, market_code)
+                if session_close_payload is not None:
+                    session_close_payload['served_at'] = timezone.now().isoformat()
+                    session_close_payload['market_phase'] = market_phase
+                    session_close_payload['market_code'] = market_code
+                    session_close_payload['supported_timezones'] = supported_timezones
+                    session_close_payload['data_semantic'] = 'last_session_close'
+                    return session_close_payload
+
+            price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
+            last_date = price_info.get('last_date')
             freshness_seconds = None
+            stale = not is_offhours_like
 
             if last_date:
                 try:
@@ -441,96 +490,76 @@ class MarketDataService:
                     else:
                         now_dt = datetime.now()
                     freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
-                except ValueError:
+                    stale = freshness_seconds > 30
+                except (TypeError, ValueError):
                     freshness_seconds = None
+                    stale = True
 
-            if freshness_seconds is None:
-                freshness_seconds = stale_serve_seconds + 1
+            latest_dp = (
+                DailyPrice.objects
+                .filter(symbol=normalized_symbol)
+                .order_by('-date')
+                .values('open_price', 'high_price', 'low_price', 'volume')
+                .first()
+            )
+            ohlc_extra = {}
+            if latest_dp:
+                ohlc_extra = {
+                    'open_price': float(latest_dp['open_price']) if latest_dp['open_price'] is not None else None,
+                    'high_price': float(latest_dp['high_price']) if latest_dp['high_price'] is not None else None,
+                    'low_price': float(latest_dp['low_price']) if latest_dp['low_price'] is not None else None,
+                    'volume': int(latest_dp['volume']) if latest_dp['volume'] is not None else None,
+                }
 
-            is_stale = False if is_offhours_like and payload.get('current_price') is not None else (freshness_seconds > freshness_threshold)
-            payload['freshness_seconds'] = freshness_seconds
-            payload['stale'] = is_stale
-            current_source = str(payload.get('source') or '').strip().lower()
-            if not current_source or current_source == 'prefetch':
-                current_source = 'stale_cache' if is_stale else 'cache'
-            payload['source'] = current_source
-            payload['cache_state'] = 'stale' if is_stale else ('session_close' if is_offhours_like else 'fresh')
-            payload['served_at'] = served_at
-            payload['market_phase'] = payload.get('market_phase') or market_phase
-            payload['market_code'] = payload.get('market_code') or market_code
-            payload['supported_timezones'] = supported_timezones
-            return payload
-
-        if is_offhours_like:
-            session_close_payload = self._resolve_latest_session_close(normalized_symbol, market_code)
-            if session_close_payload is not None:
-                session_close_payload['served_at'] = timezone.now().isoformat()
-                session_close_payload['market_phase'] = market_phase
-                session_close_payload['market_code'] = market_code
-                session_close_payload['supported_timezones'] = supported_timezones
-                session_close_payload['data_semantic'] = 'last_session_close'
-                return session_close_payload
-
-        price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
-        last_date = price_info.get('last_date')
-        freshness_seconds = None
-        stale = not is_offhours_like
-
-        if last_date:
-            try:
-                last_dt = datetime.fromisoformat(str(last_date))
-                if last_dt.tzinfo is not None:
-                    now_dt = timezone.now().astimezone(last_dt.tzinfo)
-                else:
-                    now_dt = datetime.now()
-                freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
-                stale = freshness_seconds > 30
-            except (TypeError, ValueError):
-                freshness_seconds = None
-                stale = True
-
-        latest_dp = (
-            DailyPrice.objects
-            .filter(symbol=normalized_symbol)
-            .order_by('-date')
-            .values('open_price', 'high_price', 'low_price', 'volume')
-            .first()
-        )
-        ohlc_extra = {}
-        if latest_dp:
-            ohlc_extra = {
-                'open_price': float(latest_dp['open_price']) if latest_dp['open_price'] is not None else None,
-                'high_price': float(latest_dp['high_price']) if latest_dp['high_price'] is not None else None,
-                'low_price': float(latest_dp['low_price']) if latest_dp['low_price'] is not None else None,
-                'volume': int(latest_dp['volume']) if latest_dp['volume'] is not None else None,
+            degraded_payload = {
+                'symbol': normalized_symbol,
+                **price_info,
+                **ohlc_extra,
+                'freshness_seconds': freshness_seconds,
+                'stale': stale,
+                'source': 'cache_miss_degraded',
+                'cache_state': 'miss',
+                'fallback_reason': 'cache_miss_no_realtime_tick',
+                'served_at': timezone.now().isoformat(),
+                'market_phase': market_phase,
+                'market_code': market_code,
+                'supported_timezones': supported_timezones,
+                'data_semantic': 'last_session_close' if is_offhours_like else 'realtime_or_stale',
             }
 
-        degraded_payload = {
-            'symbol': normalized_symbol,
-            **price_info,
-            **ohlc_extra,
-            'freshness_seconds': freshness_seconds,
-            'stale': stale,
-            'source': 'cache_miss_degraded',
-            'cache_state': 'miss',
-            'fallback_reason': 'cache_miss_no_realtime_tick',
-            'served_at': timezone.now().isoformat(),
-            'market_phase': market_phase,
-            'market_code': market_code,
-            'supported_timezones': supported_timezones,
-            'data_semantic': 'last_session_close' if is_offhours_like else 'realtime_or_stale',
-        }
+            allow_degraded = bool(getattr(settings, 'TICKER_CACHE_MISS_ALLOW_DEGRADED', False))
+            if allow_degraded:
+                return degraded_payload
 
-        allow_degraded = bool(getattr(settings, 'TICKER_CACHE_MISS_ALLOW_DEGRADED', False))
-        if allow_degraded:
-            return degraded_payload
-
-        record_market_fallback('ticker-cache-only', 'cache_miss')
-        raise ExternalSystemException(
-            'Không có snapshot ticker trong cache. Vui lòng thử lại sau vài giây.',
-            code='ticker_cache_miss',
-            payload=degraded_payload,
-        )
+            record_market_fallback('ticker-cache-only', 'cache_miss')
+            raise ExternalSystemException(
+                'Không có snapshot ticker trong cache. Vui lòng thử lại sau vài giây.',
+                code='ticker_cache_miss',
+                payload=degraded_payload,
+            )
+        except ExternalSystemException:
+            raise
+        except Exception as exc:
+            logger.exception('Unexpected realtime ticker failure for %s: %s', normalized_symbol, exc)
+            return {
+                'symbol': normalized_symbol,
+                'current_price': None,
+                'prev_price': None,
+                'change_value': None,
+                'change_pct': None,
+                'last_date': None,
+                'freshness_seconds': None,
+                'stale': True,
+                'source': 'realtime_ticker_error_degraded',
+                'cache_state': 'error',
+                'fallback_reason': 'unexpected_internal_error',
+                'served_at': timezone.now().isoformat(),
+                'market_phase': market_phase,
+                'market_code': market_code,
+                'supported_timezones': supported_timezones,
+                'data_semantic': 'realtime_or_stale',
+                'detail': 'ticker_internal_error_degraded',
+            }
 
     def get_intraday_matched(self, symbol: str, page_size=None) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
