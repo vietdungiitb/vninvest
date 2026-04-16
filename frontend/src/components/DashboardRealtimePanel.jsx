@@ -4,6 +4,7 @@ import { getAggregateWhaleFeed, getRealtimeHealth, getUnifiedAlerts } from '../a
 import RealtimeDebugPanel from './RealtimeDebugPanel';
 import AllocationPieChart from './AllocationPieChart';
 import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
+import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 import { useI18n } from '../context/LangContext';
 
 function formatNumberSafe(value, formatNumberFn) {
@@ -16,11 +17,6 @@ function formatNumberSafe(value, formatNumberFn) {
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toFiniteNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function fmtBil(value, formatNumberFn) {
@@ -364,27 +360,10 @@ export default function DashboardRealtimePanel({
   }, [alerts, snapshotAlerts]);
 
   const quoteList = useMemo(() => {
-    const holdingsBySymbol = new Map(
-      (holdings || []).map((item) => [
-        String(item?.symbol || '').trim().toUpperCase(),
-        item,
-      ]),
-    );
-
-    return monitoredSymbols.map((symbol) => {
-      const normalizedSymbol = String(symbol || '').trim().toUpperCase();
-      const rawQuote = quotesBySymbol[symbol] || quotesBySymbol[normalizedSymbol] || { symbol: normalizedSymbol || symbol };
-      const holding = holdingsBySymbol.get(normalizedSymbol);
-      const currentPrice = toFiniteNumber(rawQuote.current_price);
-      const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
-
-      return {
-        ...rawQuote,
-        symbol: normalizedSymbol || rawQuote.symbol || symbol,
-        current_price: currentPrice,
-        prev_price: prevPriceRaw,
-        change_pct: toFiniteNumber(rawQuote.change_pct),
-      };
+    return buildDashboardRealtimeQuoteList({
+      monitoredSymbols,
+      quotesBySymbol,
+      holdings,
     });
   }, [holdings, monitoredSymbols, quotesBySymbol]);
 

@@ -40,6 +40,41 @@ Tac dong mong doi:
 - Bang "Trang thai thi truong theo ma" nhan duoc du lieu quote dung key, giam tinh trang hien thi `—` keo dai.
 - Sau F5, quotes duoc hydrate dung symbol key va cap nhat theo feed moi thay vi tiep tuc bieu hien stale state.
 
+## Entry 2026-04-16 - Dashboard Realtime ViewModel fallback refactor
+
+Pham vi:
+- Tien hanh refactor theo huong tap trung ViewModel cho khu vuc "Trang thai thi truong theo ma".
+- Muc tieu giai quyet tan goc tinh trang current_price rong trong pre-open/offhours va F5 van hien thi dau gach.
+- Khong va UI tung cho: dua toan bo quy tac fallback gia vao mot lop chuan hoa du lieu.
+
+Root cause:
+- Dashboard table dang doc truc tiep quote current_price.
+- Trong nhieu khung gio (last_session_close/offhours), current_price co the null nhung prev_price/holding gia tri hop le van ton tai.
+- Khong co view-model trung gian nen UI khong co gia hien thi huu ich.
+
+Danh sach tep da sua:
+- frontend/src/utils/dashboardRealtimeViewModel.js (new)
+- frontend/src/components/DashboardRealtimePanel.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend build: `npm run build` pass.
+- DashboardRealtimePanel da su dung `buildDashboardRealtimeQuoteList(...)` thay vi map quote truc tiep.
+- Quy tac fallback gia trong ViewModel:
+  1) current_price
+  2) prev_price
+  3) holding.live_current_price
+  4) holding.current_price
+- Quy tac semantic hien thi:
+  - realtime
+  - last_session_close
+  - stale_fallback
+
+Tac dong mong doi:
+- Bang "Trang thai thi truong theo ma" khong con hien thi toan dau gach khi current_price null nhung co du lieu fallback.
+- Sau F5, neu co prev_price/holding price thi van hien thi gia huu ich thay vi mat du lieu.
+- Dong bo nghiep vu hien thi ngoai gio giao dich voi nhan semantic ro rang.
+
 ## Entry 2026-04-16 - Unified Realtime Table + Polling Optimization (Phase 1-4)
 
 Pham vi:
