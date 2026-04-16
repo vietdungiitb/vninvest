@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Ticker Hardening: No 500 Fallback (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - harden cache payload type + catch unexpected errors va tra degraded payload thay vi 500)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Ticker 500 Timezone Fix (2026-04-17)
 - backend/portfolio/market_data_service.py (MODIFIED - tinh freshness timezone-safe trong fallback ticker, tranh TypeError aware/naive datetime gay 500)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17b)
