@@ -1,5 +1,426 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17a - Realtime Freshness Contract: production-ready fix + test suite
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi (xac nhan da hoan chinh end-to-end):
+
+Backend (Phase 0+1):
+- settings.py: INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10 da co.
+- market_data_service.py: _decorate_intraday_response_contract tinh day du age_seconds/stale_over_threshold/stale_threshold_seconds/served_at; _build_intraday_stale_payload khong ghi de fetched_at; record_intraday_freshness_observation push metrics.
+- stream_consumers.py: _parse_stream_timestamp co guardrail future timestamp +2 phut.
+
+Frontend (Phase 2):
+- useRealtimeFeedLegacy.js: STALE_RESYNC_RETRY_MS=3000; resolveRealtimePollIntervalMs dung staleResyncRetryMs khi over-threshold.
+- dashboardRealtimeViewModel.js: staleOverThreshold -> displayState='resyncing'.
+- RealtimeQuoteTable/columnPresets.js + QuoteTableRow.jsx: age_seconds trong COLUMN_PRESETS.
+- StockDetail.jsx: retry 3s khi staleOverThreshold, banner resyncing.
+
+Tests (Phase 3) - 40 tests PASS:
+- test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30: PASS
+- test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30: PASS (fix race condition Redis VN30 cache: giam gap 12s->5s, them cache.delete)
+- test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x: PASS (no regression)
+- test_realtime_intraday_refactored_returns_200_fallback_on_provider_exception: PASS
+- test_observability 24 tests: PASS
+- frontend useRealtimeFeedLegacy.test.js 4 tests: PASS
+- frontend dashboardRealtimeViewModel.test.js 4 tests: PASS
+- Pre-existing failures (10 test_whale_feed_aggregate, 1 error): xac nhan pre-existing, khong lien quan.
+
+Danh sach tep da sua:
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+---
+
+## Entry 2026-04-16i - Rasoat triet de source orchestration VNStock (plan gate truoc coding)
+
+Tham chieu implementation plan:
+- docs/VNSTOCK_SOURCE_FAILOVER_ORCHESTRATION_PLAN_20260416.md
+
+Pham vi:
+- Rasoat toan bo luong Runtime VNStock config va cac adapter/service su dung source provider.
+- Xac nhan nguyen nhan gap thuc te:
+  - Intraday van hardcode VCI nen khong theo Admin primary source.
+  - History/financial/listing chua co failover policy nhat quan nhu price_board.
+  - Chua co auto-failover theo stale signal o cap channel.
+- Tao implementation plan chi tiet theo governance truoc khi vao phase coding.
+
+Danh sach tep da sua:
+- docs/VNSTOCK_SOURCE_FAILOVER_ORCHESTRATION_PLAN_20260416.md (new)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung ket luan rasoat:
+- Runtime config hien tai chu yeu tap trung `price_board_source` + `fallback_sources`, chua co source_config theo channel.
+- `fetch_price_board_dataframe` da co multi-source fallback.
+- `fetch_intraday_dataframe` dang hardcode source='VCI'.
+- `fetch_history_dataframe` co lay admin source nhung chua co failover loop theo fallback_sources.
+- `fetch_financial_ratio_dataframe` va `fetch_listing_symbols_dataframe` chua co resolver/failover nhat quan.
+- Nhieu call-site service/view van truyen source='VCI' truc tiep.
+
+Trang thai:
+- CHUA coding thay doi backend/frontend o vong nay.
+- Cho user approve plan de trien khai phase implementation.
+
+## Entry 2026-04-16h - Hotfix hien thi thoi diem hien tai cho panel Khop lenh
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua panel Khop lenh tren trang Stock Detail de dong `Cap nhat` phan anh thoi diem response hien tai.
+- Tranh nham lan truong hop stale cache: UI truoc do chi doc `fetched_at` (thoi diem snapshot du lieu), nen co the hien thoi gian cu.
+
+Danh sach tep da sua:
+- frontend/src/pages/StockDetail.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- IntradayMatchedPanel doi logic set timestamp header:
+  * Tu: `payload.fetched_at`
+  * Thanh: uu tien `payload.served_at`, fallback `payload.fetched_at`
+- Ket qua: dong `Cap nhat` hien dung thoi diem API vua tra ve (thoi diem hien tai theo response), trong khi freshness contract van giu nguyen de theo doi do tre du lieu.
+
+Ket qua verify da chay:
+- Frontend tests PASS:
+  * src/hooks/useRealtimeFeedLegacy.test.js
+  * src/utils/dashboardRealtimeViewModel.test.js
+
+## Entry 2026-04-16g - Buoc cuoi truoc rollout: Runtime KPI intraday freshness panel + API gate
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Hoan tat buoc cuoi truoc rollout theo de xuat:
+  - Hien thi `intraday_freshness` tren UI Admin Runtime KPI.
+  - Them API test gate bat buoc xac nhan node `intraday_freshness` ton tai trong payload runtime-kpi.
+
+Danh sach tep da sua:
+- frontend/src/components/RuntimeKPIPanel.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- backend/portfolio/tests/test_observability.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- RuntimeKPIPanel bo sung card `Intraday Freshness`:
+  * age_seconds p50/p95
+  * stale_served_total
+  * stale_over_threshold_total
+  * realtime_refresh_trigger_total
+- Bo sung nhan i18n cho card moi (VI/EN).
+- Nang cap `AdminRuntimeKPITests.test_admin_runtime_kpi_returns_snapshot_structure`:
+  * seed intraday freshness metric
+  * assert payload co `market_observability.intraday_freshness`
+  * assert cac field: age_seconds, stale_over_threshold_total, realtime_refresh_trigger_total.
+
+Ket qua verify da chay:
+- Backend tests PASS:
+  * AdminRuntimeKPITests.test_admin_runtime_kpi_returns_snapshot_structure
+  * MarketObservabilityTests.test_market_observability_snapshot_contains_intraday_freshness_counters
+- Frontend tests PASS:
+  * src/hooks/useRealtimeFeedLegacy.test.js
+  * src/utils/dashboardRealtimeViewModel.test.js
+
+Trang thai rollout:
+- Da hoan tat buoc cuoi truoc rollout theo plan.
+- He thong da co du signal observability + UI runtime de theo doi stale-over-threshold sau deploy.
+
+## Entry 2026-04-16f - Production hardening tiep theo cho intraday freshness observability + retry test gate
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Hoan tat lop observability cho freshness contract de dat release gate production.
+- Bo sung metric tong hop cho intraday freshness:
+  - age_seconds p50/p95
+  - stale_served_total
+  - stale_over_threshold_total
+  - realtime_refresh_trigger_total
+  - source_mix
+- Bo sung test gate frontend cho retry 3s scenario (stale qua nguong) o cap helper.
+
+Danh sach tep da sua:
+- backend/portfolio/observability.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_observability.py
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- frontend/src/hooks/useRealtimeFeedLegacy.test.js (new)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- backend/portfolio/observability.py
+  * Them intraday freshness stats store + summary builder.
+  * Tich hop vao `get_market_observability_snapshot()` qua node `intraday_freshness`.
+- backend/portfolio/market_data_service.py
+  * Mỗi response intraday duoc record qua `record_intraday_freshness_observation(...)`.
+  * stale_over_threshold se dong thoi ghi nhan `realtime_refresh_trigger_total`.
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+  * Export helper de test logic:
+    - `normalizePollSymbolCandidates`
+    - `resolveRealtimePollIntervalMs`
+  * Bo sung counter `intraday_retry_3s_total` trong `eventCounts`.
+- frontend/src/hooks/useRealtimeFeedLegacy.test.js
+  * Test scenario stale_over_threshold duoc uu tien retry.
+  * Test interval giam ve 3s khi co stale qua nguong.
+
+Ket qua verify da chay:
+- Backend tests PASS:
+  * MarketObservabilityTests.test_market_observability_snapshot_contains_intraday_freshness_counters
+  * MarketObservabilityTests.test_market_observability_health_reports_http_p95
+- Frontend tests PASS:
+  * src/hooks/useRealtimeFeedLegacy.test.js
+  * src/utils/dashboardRealtimeViewModel.test.js
+
+Ghi chu:
+- Khong rebuild docker stack theo quy dinh user.
+- Da dat du metric de theo doi hieu qua sau deploy trong runtime KPI snapshot.
+
+## Entry 2026-04-16e - Realtime freshness contract rollout (phase coding theo plan 20260417)
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Hoan tat dot coding chinh cho freshness contract intraday theo nguyen tac uu tien realtime.
+- Bo sung stale threshold theo nhom symbol:
+  - VN30: 10s
+  - Non-VN30: 15s
+- Bo sung retry 3s o frontend khi stale qua nguong.
+- Hoan tat cap nhat contract field: source_event_at, fetched_at, served_at, age_seconds, stale_over_threshold, stale_threshold_seconds.
+- Khac phuc root cause: khong ghi de fetched_at khi payload stale fallback.
+
+Root cause/fix chinh da trien khai:
+- backend/portfolio/market_data_service.py truoc do co duong stale fallback ghi de fetched_at = now.
+- Da sua de:
+  * giu fetched_at goc,
+  * tinh age_seconds dua tren source_event_at,
+  * gan stale_over_threshold dua tren threshold theo symbol group,
+  * decorate contract moi tai thoi diem serve response.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- backend/config/settings.py
+- backend/portfolio/realtime/stream_consumers.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- frontend/src/utils/dashboardRealtimeViewModel.js
+- frontend/src/utils/dashboardRealtimeViewModel.test.js
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- frontend/src/components/RealtimeQuoteTable/columnPresets.js
+- frontend/src/components/RealtimeQuoteTable/QuoteTableRow.jsx
+- frontend/src/pages/StockDetail.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung backend da bo sung:
+- Intraday freshness contract decorator:
+  * source_event_at
+  * served_at
+  * age_seconds
+  * stale_over_threshold
+  * stale_threshold_seconds
+- VN30 threshold resolution qua SecuritiesGroup/SecuritiesItem + cache.
+- Khong ghi de fetched_at cua stale payload; fetched_at giu theo snapshot goc.
+- Stream consumer duoc harden parse timestamp de dam bao timezone-aware va chan future timestamp bat thuong.
+
+Noi dung frontend da bo sung:
+- Dashboard realtime view model:
+  * phan biet no_data_offhours/no_data/stale/resyncing.
+  * map age_seconds + stale_over_threshold vao quote model.
+- useRealtimeFeedLegacy:
+  * propagate field freshness contract moi.
+  * uu tien polling lai 3s khi co stale_over_threshold candidates.
+- RealtimeQuoteTable:
+  * them age_seconds vao COLUMN_PRESETS.
+  * hien thi trang thai dong bo khi stale_over_threshold.
+- StockDetail intraday panel:
+  * thong diep stale over-threshold ro rang.
+  * tu dong fetch lai moi 3s khi stale qua nguong.
+
+Cap nhat test coverage:
+- Mo rong regression test:
+  * test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x
+    - verify toan bo matched_value cua symbol MWG khong bi x1000.
+- Them API tests freshness contract:
+  * test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30
+  * test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30
+- Them frontend scenario tests:
+  * pre-open/offhours no data khong bi gan stale sai
+  * stale_over_threshold chuyen sang display_state = resyncing
+
+Ket qua verify da chay:
+- Backend targeted tests (3 tests) PASS:
+  * test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30
+  * test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30
+  * test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x
+- Frontend targeted test PASS:
+  * src/utils/dashboardRealtimeViewModel.test.js (6/6)
+
+Ghi chu van hanh:
+- Theo policy user, khong rebuild docker stack trong task nay.
+- Can tiep tuc buoc observability dashboard/alerts sau deploy de theo doi stale_over_threshold theo plan.
+
+## Entry 2026-04-16d - Realtime freshness contract implementation plan (review gate truoc coding)
+
+Pham vi:
+- Lap implementation plan bat buoc truoc khi code cho bai toan dong bo freshness realtime/cache o module Khop lenh va cac be mat lien quan.
+- Chot nguong theo yeu cau business:
+  - 15s cho ma thong thuong
+  - 10s cho VN30
+  - 3s retry frontend khi stale qua nguong
+- Chot huong bo sung contract timestamp (source_event_at, fetched_at, served_at, age_seconds) va nguyen tac khong ghi de fetched_at cho stale payload.
+
+Tai lieu plan da tao:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+  * Day du 12 muc mandatory theo `IMPLEMENTATION_PLANNING_POLICY.md`.
+  * Co Definition of Done, rollback strategy, test matrix, metrics dashboard.
+  * Co xu ly rieng pre-open/offhours trong dashboardRealtimeViewModel.
+  * Co yeu cau bo sung age_seconds vao RealtimeQuoteTable COLUMN_PRESETS.
+  * Co yeu cau cap nhat test case `test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x` va E2E scenario stale over-threshold -> dong bo.
+
+Danh sach tep da sua:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md (new)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Trang thai:
+- CHUA code backend/frontend o vong nay.
+- Cho team review/approve implementation plan truoc khi vao phase coding.
+
+## Entry 2026-04-16c - Whale alert unit contract hardening (KBS/VCI mixed unit safe)
+
+Pham vi:
+- Sua tan goc loi gia tri khop whale bi khuech dai x1000 khi du lieu tron don vi gia (VND vs THOUSAND_VND).
+- Dam bao whale pipeline khong phu thuoc provider vnstock (KBS/VCI) va van dung khi user doi provider runtime.
+- Chuan hoa ingestion stream + seed + aggregate/deep fallback de tinh matched_value nhat quan theo VND.
+
+Root cause da xac nhan:
+- `IntradayTick.price` trong DB bi tron 2 don vi:
+  - Legacy/seed rows: VND day du (vd 65100)
+  - Canonical realtime rows: THOUSAND_VND (vd 23.8)
+- `get_whale_feed_aggregate()` nhanh DB truoc do hardcode `price * 1000 * volume`, lam rows VND bi doi len x1000.
+- Metadata don vi (`price_unit`) chua duoc day/xu ly day du qua Redis stream -> DB writer khong co contract ro rang.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+  * Them helper `_normalize_intraday_price_vnd()` de quy ve VND truoc khi tinh matched_value.
+  * Cap nhat toan bo whale calc path (`get_whale_feed`, `_dataframe_has_threshold_hits`, `_build_stream_aggregate_records`, `_build_vnstock_aggregate_records`).
+  * Sua DB aggregate annotate sang CASE mixed-unit safe:
+    - `price >= 1000` => coi la VND => `price * volume`
+    - nguoc lai => canonical THOUSAND_VND => `price * 1000 * volume`
+- backend/portfolio/realtime/tick_producer.py
+  * Bo sung field `price_unit` khi push Redis stream (mac dinh `THOUSAND_VND`).
+- backend/portfolio/realtime/stream_consumers.py
+  * DB writer chuan hoa gia stream ve canonical THOUSAND_VND truoc khi ghi `IntradayTick`.
+  * Co fallback cho payload cu thieu `price_unit` (heuristic theo magnitude).
+- backend/portfolio/management/commands/seed_demo_data.py
+  * Doi tick demo prices sang THOUSAND_VND canonical.
+- backend/portfolio/management/commands/seed_comprehensive_demo.py
+  * Doi generator intraday ticks sang THOUSAND_VND canonical (base/variance).
+- backend/portfolio/management/commands/normalize_intraday_tick_price_unit.py (NEW)
+  * Command migration normalize `IntradayTick.price` legacy VND -> THOUSAND_VND.
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+  * Them regression test mixed-unit de chan bug x1000.
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Verify da chay:
+- Unit regression: `test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x` => PASS.
+- Migration command apply: `normalize_intraday_tick_price_unit --force` da update 153,965 rows legacy.
+- API verify live:
+  - `/api/realtime/whale-feed/aggregate/?sort=matched_value` tra gia tri o muc ty VND hop ly (khong con nghin ty do x1000).
+  - `/api/realtime/whale-feed/MWG/` tra `price` VND hop le (vd 64800) va `matched_value` dung cap.
+
+---
+
+## Entry 2026-04-16b - Loai bo toan bo toLocaleTimeString() con sot tren frontend (phase 2)
+
+Pham vi:
+- Audit toan bo frontend tim tat ca noi con dung `toLocaleTimeString()` hien thi gio khong day du.
+- Thay the bang `formatDateTime()` tu `useI18n()` voi options ngay+gio+phut+giay nhat quan.
+- Khong sua chart axis label (dung HH:mm la hop le, du lieu qua ngan de hien thi ngay).
+
+File da sua:
+- frontend/src/pages/StockDetail.jsx (6 diem: IntradayMatchedPanel, PriceDepthPanel, OrderFlowPanel, StockDetail main × 3)
+- frontend/src/components/OrderFlowRadarPanel.jsx (1 diem: recent signals created_at)
+- frontend/src/components/WhaleFeedPanel.jsx (2 diem: fetched_at header, realtime alert time prop)
+- frontend/src/components/advisory/TrustTelemetryPanel.jsx (1 diem: telemetry event ts)
+- frontend/src/components/RuntimeKPIPanel.jsx (1 diem: lastFetched sampled time)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Loai tru co chu y:
+- StockDetail.jsx line 1288, OrderFlowRadarPanel.jsx line 35: chart axis label dung `{ hour: '2-digit', minute: '2-digit' }` la hop le cho truc X bieu do.
+- StockNewsPanel.jsx: dung `toLocaleDateString` cho ngay tin tuc, khong phai time, khong anh huong.
+
+Ket qua ky vong:
+- Moi timestamp trong StockDetail, WhaleFeedPanel, TrustTelemetryPanel, RuntimeKPIPanel hien thi day du ngay/gio.
+- Nhat quan voi WhaleAlertsHub, WhaleAlertsDashboard, DashboardRealtimePanel da sua truoc do.
+
+---
+
+## Entry 2026-04-16 - Chan future tick trong unified alerts de gio canh bao sat thuc te
+Pham vi:
+- Dieu tra loi "Trung tam canh bao hop nhat" hien gio canh bao khong sat thuc te trong phien chinh thuc.
+- Xac nhan payload unified alerts dang lay event whale tu `IntradayTick` seed/demo co `trade_time` nam o tuong lai trong cung ngay giao dich.
+- Sua tan goc bo loc session/window de loai tick tuong lai, tranh dua canh bao 13h-14h vao dashboard khi thoi diem hien tai moi la buoi sang.
+
+Root cause da xac nhan:
+- `get_unified_alerts()` chi chuyen tiep `ts` tu whale aggregate, khong tu tao sai timestamp.
+- `get_whale_feed_aggregate()` fallback DB dung `_is_tick_row_in_window()` de loc intraday ticks.
+- Ham `_is_tick_row_in_window()` truoc do chi check can duoi cua session (`start_dt <= row_dt`) ma khong check `row_dt <= now`.
+- Ket qua: tick seed/demo co `trade_date=today` va `trade_time` o tuong lai van duoc xem la event moi nhat, lam card canh bao hien gio khong dung voi thoi diem hien tai.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+  * Cap nhat `_is_tick_row_in_window()` de loai bo moi tick co timestamp lon hon `now`.
+  * Dong nhat bo loc cua DB ticks voi rule da co san trong `_is_event_timestamp_in_window()`.
+- backend/portfolio/management/commands/seed_demo_data.py
+  * Loai bo hardcode `trade_time` co the roi vao tuong lai so voi gio hien tai.
+  * Sinh `IntradayTick` demo dua tren phase thi truong hien tai/pre-open/post-close de tick luon nam trong mot cua so session hop le.
+- frontend/src/components/DashboardRealtimePanel.jsx
+  * Doi hien thi timestamp cua card unified alert tu `time-only` sang day du `ngay + gio + giay`.
+  * Giup user doi chieu ro rang event dang thuoc ngay nao, khong con bi mo ho chi vi card chi hien HH:MM:SS.
+- frontend/src/pages/WhaleAlertsHub.jsx
+  * Chuan hoa formatter thoi gian cua cac card/feed/campaign sang day du `ngay + gio + giay`.
+- frontend/src/pages/WhaleAlertsDashboard.jsx
+  * Bo `toLocaleTimeString()` truc tiep o badge realtime, thay bang formatter i18n day du `ngay + gio + giay`.
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Truoc fix: `/api/realtime/unified-alerts/` tra cac event `ts` nhu `2026-04-16T14:39:32+07:00` du thoi diem hien tai dang la khoang 09:41.
+- Raw DB ticks xac nhan co seed rows `trade_time` tuong lai trong ngay, vd `14:39:32`, `14:34:47`.
+- Command seed demo da duoc sua de khong tiep tuc tao `IntradayTick` tuong lai o cac lan reset/seed sau.
+- Sau fix can verify lai unified alerts khong con tra event voi `ts` > gio hien tai cua phien dang chay, dong thoi cac be mat Whale Alerts hien day du ngay-gio.
+
+Tac dong mong doi:
+- Trung tam canh bao hop nhat chi hien canh bao den thoi diem hien tai, khong nhay sang cac moc gio tuong lai.
+- Timestamp trong dashboard sat nghiep vu hon va giam nhieu nham lan khi user doi chieu voi gio thi truong thuc.
+
+## Entry 2026-04-16 - Fail-soft RVOL endpoint cho visual stock workspace
+
+Pham vi:
+- Hoan tat dot smoke test visual readiness cho stock workspace/Whale Alerts dashboard.
+- Phat hien endpoint bo tro `GET /api/realtime/rvol/<symbol>/` co the tra `502 Bad Gateway` khi nguon intraday ben ngoai loi tam thoi.
+- Sua theo huong fail-soft de UI hien trang thai "Khong co du lieu RVOL" thay vi loi server.
+
+Root cause da xac nhan:
+- RVOL panel la panel phu tro trong stock workspace, nhung `RVOLView` dang dung co che xu ly loi mac dinh cua `BaseMarketDataView`.
+- Khi nguon intraday/vnstock phat sinh `ExternalSystemException`, endpoint tra `502`, lam log co loi va co nguy co day UI vao nhanh error state du du lieu chinh van on.
+
+Danh sach tep da sua:
+- backend/portfolio/market_views.py
+  * Cho phep `RVOLView` degrade graceful khi upstream external data loi.
+  * Tra payload rong an toan `{ symbol, buckets: [], source: 'degraded_external_error', fetched_at: None }` thay vi `502`.
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Truoc fix: backend log ghi nhan `Bad Gateway: /api/realtime/rvol/MWG/` va response `502`.
+- Sau fix can verify lai endpoint RVOL tren luong visual test stock workspace khong con tao `5xx`, frontend hien empty state dung i18n.
+
+Tac dong mong doi:
+- Stock workspace/Whale Alerts dashboard on dinh hon trong gioi han du lieu realtime ben ngoai.
+- User co the test truc quan ma khong gap popup/console noise do panel RVOL gay ra.
+
 ## Quy dinh
 
 Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan tat.

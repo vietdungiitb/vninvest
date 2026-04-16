@@ -1966,6 +1966,48 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
 
+    def test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='MWG')
+
+        # Legacy row (VND full price)
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:35:00', '%H:%M:%S').time(),
+            price=Decimal('65000'),
+            volume=10000,
+            side='BUY',
+            stream_id='mwg-mixed-vnd',
+        )
+        # Canonical row (THOUSAND_VND)
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:36:00', '%H:%M:%S').time(),
+            price=Decimal('65.00'),
+            volume=10000,
+            side='SELL',
+            stream_id='mwg-mixed-thousand',
+        )
+
+        self.authenticate()
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d&sort=matched_value&limit=5')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data['results']), 2)
+
+        values = [float(item['matched_value']) for item in response.data['results'] if item['symbol'] == 'MWG']
+        self.assertGreaterEqual(len(values), 2)
+
+        # 65,000 * 10,000 = 650,000,000 VND (khong duoc bi x1000 thanh nghin ty)
+        for value in values:
+            self.assertGreater(value, 500_000_000)
+            self.assertLess(value, 1_000_000_000)
+
     @patch('portfolio.realtime.stream_reader.StreamReader')
     def test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db(self, mock_stream_reader):
         UserConfig.objects.update_or_create(
@@ -2650,6 +2692,91 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         mock_get_intraday_matched.assert_not_called()
+
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    def test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30(self, _mock_rate_limited):
+        self.authenticate()
+        group = SecuritiesGroup.objects.create(name='VN30', group_type='MARKET_CAP')
+        SecuritiesItem.objects.create(group=group, symbol='VCB')
+
+        source_event_at = (timezone.now() - timedelta(seconds=14)).isoformat()
+        cache.set(
+            'intraday:last_good:VCB',
+            {
+                'symbol': 'VCB',
+                'trades': [
+                    {
+                        'time': '10:35:00',
+                        'price': 92.5,
+                        'volume': 10000,
+                        'side': 'buy',
+                        'match_type': 'BUY',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/VCB/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VCB')
+        self.assertTrue(response.data['stale'])
+        self.assertTrue(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 10)
+        self.assertIn('source_event_at', response.data)
+        self.assertIn('served_at', response.data)
+        self.assertIn('age_seconds', response.data)
+        self.assertGreaterEqual(response.data['age_seconds'], 10)
+
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    def test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30(self, _mock_rate_limited):
+        self.authenticate()
+
+        # Clear Redis VN30 cache key so MWG is never misclassified from a prior run.
+        cache.delete('intraday:is_vn30:MWG')
+
+        # Use 5s gap to give enough buffer against slow test environments,
+        # while remaining well below non-VN30 threshold (15s).
+        frozen_now = timezone.now()
+        source_event_at = (frozen_now - timedelta(seconds=5)).isoformat()
+        cache.set(
+            'intraday:last_good:MWG',
+            {
+                'symbol': 'MWG',
+                'trades': [
+                    {
+                        'time': '10:35:00',
+                        'price': 65.1,
+                        'volume': 9000,
+                        'side': 'sell',
+                        'match_type': 'SELL',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/MWG/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertTrue(response.data['stale'])
+        self.assertFalse(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 15)
+        self.assertGreaterEqual(response.data['age_seconds'], 4)
 
     @patch('portfolio.market_views.market_data_service.get_price_board')
     def test_price_board_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_price_board):
