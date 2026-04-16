@@ -1859,132 +1859,135 @@ export default function WatchlistPage() {
                       {t('watchlist.noMatchFilter')}
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <p className="px-4 py-2 text-[11px] text-gray-500">{t('watchlist.priceUnitHint')}</p>
-                      <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-800">
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            <button onClick={() => toggleGroupSort('symbol')} className="inline-flex items-center gap-1 hover:text-gray-200">
-                              {t('watchlist.stockSymbol')}
-                              <span className="text-[10px] text-gray-600">{getGroupSortIndicator('symbol')}</span>
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            <button onClick={() => toggleGroupSort('current_price')} className="inline-flex items-center gap-1 hover:text-gray-200">
-                              {t('watchlist.closePrice')}
-                              <span className="text-[10px] text-gray-600">{getGroupSortIndicator('current_price')}</span>
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            <button onClick={() => toggleGroupSort('change_value')} className="inline-flex items-center gap-1 hover:text-gray-200">
-                              {t('watchlist.tableChange')}
-                              <span className="text-[10px] text-gray-600">{getGroupSortIndicator('change_value')}</span>
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            <button onClick={() => toggleGroupSort('change_pct')} className="inline-flex items-center gap-1 hover:text-gray-200">
-                              {t('watchlist.tablePctChange')}
-                              <span className="text-[10px] text-gray-600">{getGroupSortIndicator('change_pct')}</span>
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            <button onClick={() => toggleGroupSort('last_date')} className="inline-flex items-center gap-1 hover:text-gray-200">
-                              {t('watchlist.date')}
-                              <span className="text-[10px] text-gray-600">{getGroupSortIndicator('last_date')}</span>
-                            </button>
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                            {t('watchlist.tableActions')}
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-800/60">
-                        {pagedActiveGroupItems.map((item) => (
-                          <tr 
-                            key={item.id} 
-                            className="hover:bg-gray-800/50 cursor-pointer transition-colors"
-                            onClick={() => openStockWorkspace(item.symbol)}
-                          >
-                            <td className="px-4 py-3">
-                              <span
-                                className="font-bold text-sm px-2 py-0.5 rounded"
-                                style={{
-                                  backgroundColor: activeGroup.color + '22',
-                                  color: activeGroup.color,
-                                }}
+                    <div>
+                      <RealtimeQuoteTable
+                        quotes={pagedActiveGroupItems}
+                        columns={[
+                          {
+                            key: 'symbol',
+                            label: t('watchlist.stockSymbol'),
+                            sortable: true,
+                            width: '100px',
+                            render: (item) => (
+                              <td
+                                className="px-4 py-3 cursor-pointer"
+                                onClick={() => openStockWorkspace(item.symbol)}
                               >
-                                {item.symbol}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">{formatPrice(item.current_price, formatQuotePrice)}</td>
-                            <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
-                            <td className="px-4 py-3"><PctCell pct={item.change_pct} emptyLabel={t('watchlist.notSynced')} /></td>
-                            <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                              {item.last_date || '—'}
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {trackedSymbolSet.has(item.symbol) ? (
-                                <div className="flex items-center justify-end gap-2">
-                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300">
-                                    {t('watchlist.tracked')}
-                                  </span>
+                                <span
+                                  className="font-bold text-sm px-2 py-0.5 rounded"
+                                  style={{
+                                    backgroundColor: activeGroup.color + '22',
+                                    color: activeGroup.color,
+                                  }}
+                                >
+                                  {item.symbol}
+                                </span>
+                              </td>
+                            ),
+                          },
+                          {
+                            key: 'current_price',
+                            label: t('watchlist.closePrice'),
+                            sortable: true,
+                            width: '120px',
+                          },
+                          {
+                            key: 'change_value',
+                            label: t('watchlist.tableChange'),
+                            sortable: true,
+                            width: '100px',
+                            render: (item) => (
+                              <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
+                            ),
+                          },
+                          {
+                            key: 'change_pct',
+                            label: t('watchlist.tablePctChange'),
+                            sortable: true,
+                            width: '120px',
+                          },
+                          {
+                            key: 'last_date',
+                            label: t('watchlist.date'),
+                            sortable: true,
+                            width: '120px',
+                            render: (item) => (
+                              <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
+                                {item.last_date || '—'}
+                              </td>
+                            ),
+                          },
+                          {
+                            key: 'actions',
+                            label: t('watchlist.tableActions'),
+                            sortable: false,
+                            width: '280px',
+                            render: (item) => (
+                              <td className="px-4 py-3 text-right">
+                                {trackedSymbolSet.has(item.symbol) ? (
+                                  <div className="flex items-center justify-end gap-2">
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300">
+                                      {t('watchlist.tracked')}
+                                    </span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const trackedItem = trackedSymbolMap.get(item.symbol);
+                                        if (trackedItem) {
+                                          handleDeleteTracked(trackedItem.id, item.symbol);
+                                        }
+                                      }}
+                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+                                    >
+                                      {t('watchlist.removeFromTracked')}
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const trackedItem = trackedSymbolMap.get(item.symbol);
-                                      if (trackedItem) {
-                                        handleDeleteTracked(trackedItem.id, item.symbol);
-                                      }
+                                      handleAddTrackedFromGroup(item.symbol, activeGroup.id);
                                     }}
-                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+                                    disabled={!!addingFromGroup[item.symbol]}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
                                   >
-                                    {t('watchlist.removeFromTracked')}
+                                    {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTracked')}
                                   </button>
-                                </div>
-                              ) : (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAddTrackedFromGroup(item.symbol, activeGroup.id);
-                                  }}
-                                  disabled={!!addingFromGroup[item.symbol]}
-                                  className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
-                                >
-                                  {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTracked')}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-gray-800 bg-gray-950/50 text-xs text-gray-400">
-                      <span>
-                        {t('watchlist.paginationSummary', {
-                          from: formatNumber((groupCurrentPage - 1) * groupPageSize + 1),
-                          to: formatNumber(Math.min(groupCurrentPage * groupPageSize, sortedActiveGroupItems.length)),
-                          total: formatNumber(sortedActiveGroupItems.length),
-                        })}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setGroupPage((prev) => Math.max(1, prev - 1))}
-                          disabled={groupCurrentPage <= 1}
-                          className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
-                        >
-                          {t('watchlist.prevPage')}
-                        </button>
-                        <span>{t('watchlist.pageLabel', { page: formatNumber(groupCurrentPage), total: formatNumber(groupTotalPages) })}</span>
-                        <button
-                          onClick={() => setGroupPage((prev) => Math.min(groupTotalPages, prev + 1))}
-                          disabled={groupCurrentPage >= groupTotalPages}
-                          className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
-                        >
-                          {t('watchlist.nextPage')}
-                        </button>
+                                )}
+                              </td>
+                            ),
+                          },
+                        ]}
+                        maxHeight="600px"
+                        showHint={true}
+                        emptyMessage={t('watchlist.noMatchFilter')}
+                      />
+                      <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-gray-800 bg-gray-950/50 text-xs text-gray-400">
+                        <span>
+                          {t('watchlist.paginationSummary', {
+                            from: formatNumber((groupCurrentPage - 1) * groupPageSize + 1),
+                            to: formatNumber(Math.min(groupCurrentPage * groupPageSize, sortedActiveGroupItems.length)),
+                            total: formatNumber(sortedActiveGroupItems.length),
+                          })}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setGroupPage((prev) => Math.max(1, prev - 1))}
+                            disabled={groupCurrentPage <= 1}
+                            className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
+                          >
+                            {t('watchlist.prevPage')}
+                          </button>
+                          <span>{t('watchlist.pageLabel', { page: formatNumber(groupCurrentPage), total: formatNumber(groupTotalPages) })}</span>
+                          <button
+                            onClick={() => setGroupPage((prev) => Math.min(groupTotalPages, prev + 1))}
+                            disabled={groupCurrentPage >= groupTotalPages}
+                            className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
+                          >
+                            {t('watchlist.nextPage')}
+                          </button>
+                        </div>
                       </div>
-                    </div>
                     </div>
                   )}
                 </div>
