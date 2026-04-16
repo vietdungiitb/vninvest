@@ -31,9 +31,40 @@ const apiClient = axios.create({
 });
 
 const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
+let refreshRequestPromise = null;
 
 export function isAuthPublicEndpoint(url) {
   return AUTH_PUBLIC_ENDPOINT_PATTERN.test(String(url || ''));
+}
+
+async function requestTokenRefresh() {
+  const refreshToken = localStorage.getItem('refresh_token');
+  if (!refreshToken) {
+    return null;
+  }
+
+  if (!refreshRequestPromise) {
+    refreshRequestPromise = axios.post(`${apiBaseURL}/auth/token/refresh/`, {
+      refresh: refreshToken,
+    })
+      .then(({ data }) => {
+        localStorage.setItem('access_token', data.access);
+        if (data.refresh) {
+          localStorage.setItem('refresh_token', data.refresh);
+        }
+        return data.access;
+      })
+      .catch((error) => {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        throw error;
+      })
+      .finally(() => {
+        refreshRequestPromise = null;
+      });
+  }
+
+  return refreshRequestPromise;
 }
 
 // Interceptor request: Bearer token từ localStorage
@@ -62,21 +93,17 @@ apiClient.interceptors.response.use(
       const refreshToken = localStorage.getItem('refresh_token');
       if (refreshToken) {
         try {
-          const { data } = await axios.post(`${apiBaseURL}/auth/token/refresh/`, {
-            refresh: refreshToken,
-          });
-          localStorage.setItem('access_token', data.access);
-          // Only overwrite refresh_token when server rotates it (ROTATE_REFRESH_TOKENS=True)
-          // If rotation is off, data.refresh is undefined — do NOT overwrite valid stored token
-          if (data.refresh) {
-            localStorage.setItem('refresh_token', data.refresh);
+          const nextAccessToken = await requestTokenRefresh();
+          if (!nextAccessToken) {
+            if (window.location.pathname !== '/login') {
+              window.location.href = '/login';
+            }
+            return Promise.reject(err);
           }
-          originalRequest.headers.Authorization = `Bearer ${data.access}`;
+          originalRequest.headers.Authorization = `Bearer ${nextAccessToken}`;
           return apiClient(originalRequest);
         } catch (refreshErr) {
           // Refresh fail -> logout
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
           if (window.location.pathname !== '/login') {
             window.location.href = '/login';
           }
@@ -97,20 +124,9 @@ apiClient.interceptors.response.use(
  * Returns new access token string, or null nếu refresh thất bại.
  */
 export const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem('refresh_token');
-  if (!refreshToken) return null;
   try {
-    const { data } = await axios.post(`${apiBaseURL}/auth/token/refresh/`, {
-      refresh: refreshToken,
-    });
-    localStorage.setItem('access_token', data.access);
-    if (data.refresh) {
-      localStorage.setItem('refresh_token', data.refresh);
-    }
-    return data.access;
+    return await requestTokenRefresh();
   } catch {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
     return null;
   }
 };

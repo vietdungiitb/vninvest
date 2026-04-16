@@ -1,5 +1,62 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16ac - JWT refresh single-flight to prevent concurrent rotation races
+
+Muc tieu:
+- Loai bo race condition khi nhieu request protected cung gap `401` va cung refresh token mot luc.
+
+Trieu chung runtime:
+- Whale Hub / cac trang protected co the phat sinh loi auth day chuyen khi nhieu request no cung luc.
+- He thong dung `ROTATE_REFRESH_TOKENS=True`, nen refresh token cu bi thay the sau lan refresh dau tien.
+
+Nguyen nhan goc:
+- `frontend/src/api/client.js` refresh token doc lap trong moi interceptor response `401`.
+- Khi 2+ request protected cung `401`, cac refresh request tranh chap cung mot refresh token da bi rotate.
+
+Danh sach tep da sua:
+- frontend/src/api/client.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Them helper `requestTokenRefresh()` dung co che single-flight qua `refreshRequestPromise`.
+- Tat ca response interceptor `401` dung chung mot refresh request dang chay.
+- `refreshAccessToken()` cua WebSocket/realtime hook cung dung chung helper nay.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/api/client.js`: khong co loi.
+
+---
+
+## Entry 2026-04-16ab - Whale Alerts bootstrap tolerates ancillary API failures
+
+Muc tieu:
+- Dam bao Whale Alerts Hub van render duoc neu cac API phu nhu watchlist/tracked/advisory loi.
+
+Trieu chung runtime:
+- `api/portfolio/watchlist/groups/` gap redirect/auth loi lam `Promise.all(...)` reject.
+- UI hien thong bao `Khong tai duoc Whale Alerts hub` du aggregate feed van co the tai duoc.
+
+Nguyen nhan goc:
+- Bootstrap cua `WhaleAlertsHub` gom tat ca request vao `Promise.all(...)`.
+- Bat ky request phu nao reject deu lam sap toan bo hub, ke ca khi feed aggregate chinh van kha dung.
+
+Danh sach tep da sua:
+- frontend/src/pages/WhaleAlertsHub.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Chuyen bootstrap tu `Promise.all(...)` sang `Promise.allSettled(...)`.
+- Quy uoc moi:
+  - Aggregate feed: request bat buoc, neu loi moi fail hub.
+  - Tracked symbols / watchlist groups / advisories: request phu, neu loi thi fallback `[]`.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/pages/WhaleAlertsHub.jsx`: khong co loi.
+
+---
+
 ## Entry 2026-04-16aa - Whale Alerts public bootstrap skips protected watchlist APIs
 
 Muc tieu:

@@ -65,6 +65,16 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### JWT Refresh Single-Flight Auth Fix (2026-04-16)
+- frontend/src/api/client.js (MODIFIED - nhiều request 401 dùng chung một refresh promise để tránh race khi `ROTATE_REFRESH_TOKENS=True`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Whale Alerts Resilient Bootstrap (2026-04-16)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - bootstrap dùng `Promise.allSettled`; lỗi tracked/watchlist/advisory không còn làm sập toàn bộ hub)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Whale Alerts Public Bootstrap Auth Guard (2026-04-16)
 - frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - chỉ gọi tracked/watchlist APIs khi đã đăng nhập; guest dùng mảng rỗng để tránh lỗi auth/redirect trên trang public)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16aa)
