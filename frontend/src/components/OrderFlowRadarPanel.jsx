@@ -22,7 +22,7 @@ function formatPercentDelta(value) {
 }
 
 export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, window: selectedWindow, onWindowChange }) {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const cvdSeries = orderFlowData?.cvd_series || [];
   const darkFlow = orderFlowData?.dark_flow || {};
   const latestSignal = orderFlowData?.latest_signal || null;
@@ -148,7 +148,7 @@ export function OrderFlowRadarPanel({ symbol, loading, orderFlowData, latestReal
               <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
-                  <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString(undefined) : '—'}</p>
+                  <p className="text-[11px] text-slate-500">{item.created_at ? formatDateTime(item.created_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</p>
                 </div>
                 <p className="mt-1 text-sm text-slate-200">{t('whaleAlertsDashboard.strength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || t('whaleAlertsDashboard.confidenceLow')}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{t('whaleAlertsDashboard.tickRate')} {Number(item.tick_rate || 0).toFixed(1)} • {t('whaleAlertsDashboard.small')} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>

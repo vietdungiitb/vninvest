@@ -38,10 +38,29 @@ function severityTone(severity) {
 
 function severityLabel(severity, t) {
   const normalizedSeverity = String(severity || '').toLowerCase();
-  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
-  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
-  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
-  return t('whaleHub.severityLow');
+  if (normalizedSeverity === 'extreme') return t('whaleAlertsDashboard.severityExtreme');
+  if (normalizedSeverity === 'high') return t('whaleAlertsDashboard.severityHigh');
+  if (normalizedSeverity === 'medium') return t('whaleAlertsDashboard.severityMedium');
+  return t('whaleAlertsDashboard.severityLow');
+}
+
+function normalizeEventTimestamp(value) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Date(Math.floor(parsed.getTime() / 1000) * 1000).toISOString();
+  }
+  return String(value).trim();
+}
+
+function buildFeedEventKey(item) {
+  if (!item) return '';
+  const alertKind = String(item.alert_kind || 'whale_alert').toLowerCase();
+  const side = String(item.side || '').toLowerCase();
+  const matchedValue = Number(item.matched_value || 0);
+  const roundedMatchedValue = Number.isFinite(matchedValue) ? Math.round(matchedValue) : 0;
+  const timestamp = normalizeEventTimestamp(item.ts || item.time || '');
+  return [alertKind, side, roundedMatchedValue, timestamp].join('|');
 }
 
 export function AlertFeedCard({ order, animated }) {
@@ -131,7 +150,7 @@ export function WhaleFeedPanel({
   onRefresh = null,
   feedHeightClass = 'h-[420px] sm:h-[500px] xl:h-[560px]',
 }) {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const [data, setData] = React.useState(null);
   const [internalLoading, setInternalLoading] = React.useState(true);
   const prevCountRef = React.useRef(0);
@@ -169,6 +188,22 @@ export function WhaleFeedPanel({
   const loading = isControlled ? Boolean(controlledLoading) : internalLoading;
   const orders = activeData?.whale_orders || [];
   const handleRefresh = typeof onRefresh === 'function' ? onRefresh : fetch;
+  const realtimeItems = React.useMemo(
+    () => (realtimeAlerts || []).slice(0, 3),
+    [realtimeAlerts],
+  );
+  const realtimeEventKeys = React.useMemo(() => {
+    const keys = new Set();
+    realtimeItems.forEach((item) => {
+      const key = buildFeedEventKey(item);
+      if (key) keys.add(key);
+    });
+    return keys;
+  }, [realtimeItems]);
+  const dedupedOrders = React.useMemo(
+    () => orders.filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' }))),
+    [orders, realtimeEventKeys],
+  );
 
   const sourceMeta = React.useMemo(() => {
     const src = String(activeData?.source || '').toLowerCase();
@@ -197,7 +232,7 @@ export function WhaleFeedPanel({
               {t('whaleAlertsDashboard.source')}: {sourceMeta.label}
             </span>
             <span className="rounded-full border border-slate-700 bg-slate-950/70 px-2.5 py-1">
-              {t('whaleAlertsDashboard.updated')}: {activeData?.fetched_at ? new Date(activeData.fetched_at).toLocaleTimeString(undefined) : '—'}
+              {t('whaleAlertsDashboard.updated')}: {activeData?.fetched_at ? formatDateTime(activeData.fetched_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
             </span>
           </div>
         </div>
@@ -226,7 +261,7 @@ export function WhaleFeedPanel({
         <div className={`panel-scrollbar mt-3 min-h-0 ${feedHeightClass} overflow-y-scroll overscroll-contain pr-1`} style={feedViewportStyle}>
           <div className="flex flex-col gap-4">
             {/* ─── Realtime Alerts Section ─── */}
-            {(realtimeAlerts?.length || 0) > 0 && (
+            {realtimeItems.length > 0 && (
               <div>
                 <div className="mb-2">
                   <h4 className="text-xs font-semibold text-slate-300">
@@ -237,13 +272,13 @@ export function WhaleFeedPanel({
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {(realtimeAlerts || []).slice(0, 3).map((a, i) => {
+                  {realtimeItems.map((a, i) => {
                     const isDarkFlow = String(a.alert_kind || '').toLowerCase() === 'dark_flow_alert';
                     return (
                       <AlertFeedCard
                         key={a.event_id || `ws-${a.ts}-${i}`}
                         order={{
-                          time: a.ts ? new Date(a.ts).toLocaleTimeString(undefined) : '—',
+                          time: a.ts ? formatDateTime(a.ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—',
                           ts: a.ts || null,
                           alert_kind: a.alert_kind || 'whale_alert',
                           matched_value: a.matched_value,
@@ -268,7 +303,7 @@ export function WhaleFeedPanel({
             )}
 
             {/* ─── History Orders Section ─── */}
-            {orders.length > 0 && (
+            {dedupedOrders.length > 0 && (
               <div>
                 <div className="mb-2">
                   <h4 className="text-xs font-semibold text-slate-300">
@@ -279,7 +314,7 @@ export function WhaleFeedPanel({
                   </p>
                 </div>
                 <div className="flex flex-col gap-2">
-                  {orders.map((o, i) => (
+                  {dedupedOrders.map((o, i) => (
                     <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
                   ))}
                 </div>

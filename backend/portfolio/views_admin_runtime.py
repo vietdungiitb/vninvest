@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
+from portfolio.tasks_prefetch import _read_offpeak_ingest_history
 from portfolio.tasks_whale_preflight_cache import (
     WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
     WHALE_PREFLIGHT_METRIC_NAMES,
@@ -465,6 +466,8 @@ def admin_system_ai_settings_api(request):
                 'circuit_window_seconds_min': 30,
                 'circuit_breaker_timeout_threshold_min': 1,
                 'circuit_breaker_cooldown_seconds_min': 60,
+                'offhours_cache_ttl_seconds_min': 60,
+                'session_close_retention_days_min': 1,
                 'recommended': {
                     'batch_size': 20,
                     'symbol_limit': 40,
@@ -475,7 +478,10 @@ def admin_system_ai_settings_api(request):
                     'circuit_window_seconds': 300,
                     'circuit_breaker_timeout_threshold': 3,
                     'circuit_breaker_cooldown_seconds': 1800,
+                    'offhours_cache_ttl_seconds': 3600,
+                    'session_close_retention_days': 7,
                     'include_group_symbols': False,
+                    'session_close_capture_enabled': True,
                 },
             },
             'prefetch_time_policy': prefetch_time_policy,
@@ -946,3 +952,133 @@ def offpeak_vnstock_ingest_api(request):
         },
         status=status.HTTP_202_ACCEPTED,
     )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def offpeak_vnstock_ingest_history_api(request):
+    """
+    GET /api/admin-ops/prefetch/offpeak-ingest/history/
+    Tra ve latest run va history gan day cua offpeak ingest task.
+    """
+    limit_raw = request.query_params.get('limit', 20)
+    try:
+        limit = max(int(limit_raw), 1)
+    except (TypeError, ValueError):
+        return Response({'detail': 'limit phai la so nguyen duong.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    payload = _read_offpeak_ingest_history(limit=limit)
+    return Response(
+        {
+            'ok': True,
+            'latest': payload.get('latest'),
+            'history': payload.get('history', []),
+            'total_entries': int(payload.get('total_entries', 0) or 0),
+            'limit': int(payload.get('limit', limit) or limit),
+        },
+        status=status.HTTP_200_OK,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_intraday_side_backfill_preview_api(request):
+    """
+    POST /api/admin-ops/intraday-side-backfill/preview/
+    Admin-only: dry-run xem scope/changed/transitions trước khi apply.
+
+    Body (JSON, tất cả optional):
+      symbols       - danh sách mã (list[str]), mặc định tất cả
+      start_date    - YYYY-MM-DD
+      end_date      - YYYY-MM-DD
+      threshold     - giá trị min matched_value (VND), 0 = tất cả
+      batch_size    - chunk size iterator (mặc định 2000)
+    """
+    from portfolio.services_backfill import intraday_side_backfill_preview
+
+    symbols_raw = request.data.get('symbols') or []
+    if isinstance(symbols_raw, str):
+        symbols_raw = [s.strip() for s in symbols_raw.split(',') if s.strip()]
+    symbols = [str(s).strip().upper() for s in symbols_raw if str(s).strip()]
+
+    start_date = str(request.data.get('start_date') or '').strip() or None
+    end_date = str(request.data.get('end_date') or '').strip() or None
+
+    try:
+        threshold = int(request.data.get('threshold') or 0)
+    except (TypeError, ValueError):
+        return Response({'detail': 'threshold phai la so nguyen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        batch_size = max(100, int(request.data.get('batch_size') or 2000))
+    except (TypeError, ValueError):
+        batch_size = 2000
+
+    try:
+        result = intraday_side_backfill_preview(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            threshold=threshold,
+            batch_size=batch_size,
+        )
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'ok': True, **result}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_intraday_side_backfill_apply_api(request):
+    """
+    POST /api/admin-ops/intraday-side-backfill/apply/
+    Admin-only: apply backfill IntradayTick.side vào DB.
+
+    Body (JSON):
+      confirm       - phải là true (safety gate)
+      symbols       - danh sách mã (list[str])
+      start_date    - YYYY-MM-DD
+      end_date      - YYYY-MM-DD
+      threshold     - giá trị min matched_value (VND), 0 = tất cả
+      batch_size    - chunk size (mặc định 2000)
+    """
+    from portfolio.services_backfill import intraday_side_backfill_apply
+
+    confirm = request.data.get('confirm')
+    if str(confirm).strip().lower() not in {'true', '1', 'yes'}:
+        return Response(
+            {'detail': 'Phai truyen confirm=true de thuc hien apply.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    symbols_raw = request.data.get('symbols') or []
+    if isinstance(symbols_raw, str):
+        symbols_raw = [s.strip() for s in symbols_raw.split(',') if s.strip()]
+    symbols = [str(s).strip().upper() for s in symbols_raw if str(s).strip()]
+
+    start_date = str(request.data.get('start_date') or '').strip() or None
+    end_date = str(request.data.get('end_date') or '').strip() or None
+
+    try:
+        threshold = int(request.data.get('threshold') or 0)
+    except (TypeError, ValueError):
+        return Response({'detail': 'threshold phai la so nguyen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        batch_size = max(100, int(request.data.get('batch_size') or 2000))
+    except (TypeError, ValueError):
+        batch_size = 2000
+
+    try:
+        result = intraday_side_backfill_apply(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            threshold=threshold,
+            batch_size=batch_size,
+        )
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'ok': True, **result}, status=status.HTTP_200_OK)

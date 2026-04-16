@@ -3,12 +3,13 @@ import hashlib
 import json
 import logging
 import os
+from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
+from django.db.models import Case, ExpressionWrapper, F, FloatField, Max, Min, Q, When
 from django.utils import timezone
 
 from .adapters.cache_adapter import (
@@ -35,6 +36,7 @@ from .domain_constants import (
     resolve_user_whale_threshold_vnd,
 )
 from .exceptions import ExternalSystemException, MarketDataValidationException
+from .market_calendar import resolve_market_phase
 from .models import (
     DailyPrice,
     IntradayTick,
@@ -42,17 +44,21 @@ from .models import (
     SecuritiesGroup,
     SecuritiesItem,
     StockProfile,
+    TickerSessionClose,
     TrackedSymbol,
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
 )
 from .observability import (
+    record_intraday_freshness_observation,
     record_market_external_timeout,
     record_market_fallback,
 )
 from .permissions import resolve_user_entitlements
+from .price_units import PriceSource, normalize_quote_price_to_canonical
 from .services import get_price_changes
+from .runtime_policy_helpers import _get_runtime_prefetch_time_policy
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 
 
@@ -137,15 +143,183 @@ class MarketDataService:
     def _intraday_last_good_cache_key(self, symbol: str) -> str:
         return f'intraday:last_good:{self.normalize_symbol(symbol)}'
 
+    def _intraday_vn30_cache_key(self, symbol: str) -> str:
+        return f'intraday:is_vn30:{self.normalize_symbol(symbol)}'
+
+    def _is_vn30_symbol(self, symbol: str) -> bool:
+        normalized_symbol = self.normalize_symbol(symbol)
+        cache_key = self._intraday_vn30_cache_key(normalized_symbol)
+        cached_flag = get_cache(cache_key)
+        if isinstance(cached_flag, bool):
+            return cached_flag
+
+        is_vn30 = SecuritiesItem.objects.filter(
+            symbol=normalized_symbol,
+            group__group_type=SecuritiesGroup.GroupType.MARKET_CAP,
+            group__name__icontains='VN30',
+        ).exists()
+        set_cache(cache_key, is_vn30, timeout=300)
+        return is_vn30
+
+    def _resolve_intraday_stale_threshold_seconds(self, symbol: str) -> int:
+        default_threshold = max(int(getattr(settings, 'INTRADAY_STALE_MAX_SECONDS_DEFAULT', 15) or 15), 1)
+        vn30_threshold = max(int(getattr(settings, 'INTRADAY_STALE_MAX_SECONDS_VN30', 10) or 10), 1)
+        return vn30_threshold if self._is_vn30_symbol(symbol) else default_threshold
+
+    def _parse_intraday_event_datetime(self, raw_value, fallback_date: date | None = None) -> datetime | None:
+        if raw_value is None:
+            return None
+
+        parsed_dt: datetime | None = None
+        if isinstance(raw_value, datetime):
+            parsed_dt = raw_value
+        elif isinstance(raw_value, date):
+            parsed_dt = datetime.combine(raw_value, time.min)
+        else:
+            text_value = str(raw_value).strip()
+            if not text_value:
+                return None
+
+            try:
+                parsed_dt = datetime.fromisoformat(text_value.replace('Z', '+00:00'))
+            except ValueError:
+                parsed_dt = None
+
+            if parsed_dt is None and len(text_value) <= 8 and ':' in text_value:
+                for fmt in ('%H:%M:%S', '%H:%M'):
+                    try:
+                        parsed_time = datetime.strptime(text_value, fmt).time()
+                        parsed_dt = datetime.combine(fallback_date or timezone.localdate(), parsed_time)
+                        break
+                    except ValueError:
+                        continue
+
+        if parsed_dt is None:
+            return None
+        if timezone.is_naive(parsed_dt):
+            parsed_dt = timezone.make_aware(parsed_dt, timezone.get_current_timezone())
+        return timezone.localtime(parsed_dt)
+
+    def _to_intraday_event_iso(self, raw_value, fallback_date: date | None = None) -> str | None:
+        event_dt = self._parse_intraday_event_datetime(raw_value, fallback_date=fallback_date)
+        return event_dt.isoformat() if event_dt is not None else None
+
+    def _resolve_intraday_stream_source_event_at(self, stream_ticks: list[dict]) -> str | None:
+        latest_dt = None
+        for tick in stream_ticks or []:
+            event_dt = self._parse_intraday_event_datetime(tick.get('ts'))
+            if event_dt is None:
+                continue
+            if latest_dt is None or event_dt > latest_dt:
+                latest_dt = event_dt
+        return latest_dt.isoformat() if latest_dt is not None else None
+
+    def _resolve_intraday_dataframe_source_event_at(self, df) -> str | None:
+        latest_dt = None
+        fallback_date = timezone.localdate()
+        for _, row in df.iterrows():
+            raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
+            event_dt = self._parse_intraday_event_datetime(raw_time, fallback_date=fallback_date)
+            if event_dt is None:
+                continue
+            if latest_dt is None or event_dt > latest_dt:
+                latest_dt = event_dt
+        return latest_dt.isoformat() if latest_dt is not None else None
+
+    def _decorate_intraday_response_contract(self, payload: dict, symbol: str) -> dict:
+        normalized_symbol = self.normalize_symbol(symbol)
+        enriched = dict(payload or {})
+        served_at_dt = timezone.now()
+        market_clock = self._get_market_clock_context()
+        market_phase = str(market_clock.get('profile') or 'offhours').lower()
+        is_session_hold_phase = market_phase in {'lunch_break', 'offhours', 'post_close', 'pre_open'}
+        source_event_dt = self._parse_intraday_event_datetime(enriched.get('source_event_at'))
+        if source_event_dt is None:
+            source_event_dt = self._parse_intraday_event_datetime(enriched.get('fetched_at'))
+
+        age_seconds = None
+        if source_event_dt is not None:
+            age_seconds = max(0, int((served_at_dt - source_event_dt).total_seconds()))
+
+        stale_threshold_seconds = self._resolve_intraday_stale_threshold_seconds(normalized_symbol)
+        is_stale = bool(enriched.get('stale'))
+        if is_session_hold_phase:
+            is_stale = False
+        stale_over_threshold = is_stale and age_seconds is not None and age_seconds > stale_threshold_seconds
+
+        enriched['symbol'] = normalized_symbol
+        enriched['source_event_at'] = source_event_dt.isoformat() if source_event_dt is not None else None
+        enriched['served_at'] = served_at_dt.isoformat()
+        enriched['age_seconds'] = age_seconds
+        enriched['stale_threshold_seconds'] = stale_threshold_seconds
+        enriched['stale'] = is_stale
+        enriched['stale_over_threshold'] = stale_over_threshold
+        enriched['market_phase'] = enriched.get('market_phase') or market_phase
+        if not enriched.get('fetched_at'):
+            enriched['fetched_at'] = enriched['served_at']
+
+        record_intraday_freshness_observation(
+            source=enriched.get('source'),
+            age_seconds=age_seconds,
+            stale=is_stale,
+            stale_over_threshold=stale_over_threshold,
+            realtime_refresh_trigger=stale_over_threshold,
+        )
+        return enriched
+
     def _build_intraday_stale_payload(self, payload: dict, symbol: str, reason: str) -> dict:
+        source_payload = dict(payload or {})
+        source_payload.pop('served_at', None)
+        source_payload.pop('age_seconds', None)
+        source_payload.pop('stale_over_threshold', None)
+        source_payload.pop('stale_threshold_seconds', None)
+        fetched_at = source_payload.get('fetched_at') or timezone.now().isoformat()
+        source_event_at = source_payload.get('source_event_at') or fetched_at
         return {
-            **payload,
+            **source_payload,
             'symbol': self.normalize_symbol(symbol),
             'source': f'stale_cache:{reason}',
             'stale': True,
             'fallback_reason': reason,
-            'fetched_at': timezone.now().isoformat(),
+            'fetched_at': fetched_at,
+            'source_event_at': source_event_at,
         }
+
+    def _select_preferred_intraday_fallback(self, symbol: str, last_good: dict | None, db_payload: dict | None) -> dict | None:
+        if not isinstance(last_good, dict) or not (last_good.get('trades') or []):
+            return db_payload
+        if db_payload is None:
+            return last_good
+
+        symbol_normalized = self.normalize_symbol(symbol)
+        now_dt = timezone.now()
+        threshold_seconds = self._resolve_intraday_stale_threshold_seconds(symbol_normalized)
+
+        last_good_event_dt = self._parse_intraday_event_datetime(
+            last_good.get('source_event_at') or last_good.get('fetched_at')
+        )
+        db_event_dt = self._parse_intraday_event_datetime(
+            db_payload.get('source_event_at') or db_payload.get('fetched_at')
+        )
+
+        last_good_age = None
+        if last_good_event_dt is not None:
+            last_good_age = max(0, int((now_dt - last_good_event_dt).total_seconds()))
+
+        db_age = None
+        if db_event_dt is not None:
+            db_age = max(0, int((now_dt - db_event_dt).total_seconds()))
+
+        if db_event_dt is not None and last_good_event_dt is None:
+            return db_payload
+        if db_event_dt is not None and last_good_event_dt is not None and db_event_dt > last_good_event_dt:
+            return db_payload
+        if last_good_age is not None and last_good_age > threshold_seconds:
+            if db_age is None:
+                return db_payload
+            if db_age <= threshold_seconds or db_age < last_good_age:
+                return db_payload
+        return last_good
 
     def _build_intraday_db_fallback(self, symbol: str, page_size: int, reason: str) -> dict | None:
         normalized_symbol = self.normalize_symbol(symbol)
@@ -171,9 +345,15 @@ class MarketDataService:
             )
 
         trades = []
+        latest_event_dt = None
         for row in rows:
             side_raw = str(row.side or '').upper()
             side = 'buy' if side_raw == 'BUY' else ('sell' if side_raw == 'SELL' else 'neutral')
+            event_dt = self._parse_intraday_event_datetime(
+                datetime.combine(row.trade_date, row.trade_time or time.min)
+            )
+            if event_dt is not None and (latest_event_dt is None or event_dt > latest_event_dt):
+                latest_event_dt = event_dt
             trades.append(
                 {
                     'time': row.trade_time.strftime('%H:%M:%S') if row.trade_time else '',
@@ -195,10 +375,53 @@ class MarketDataService:
             'stale': True,
             'fallback_reason': reason,
             'fetched_at': timezone.now().isoformat(),
+            'source_event_at': latest_event_dt.isoformat() if latest_event_dt is not None else None,
+        }
+
+    def _get_market_clock_context(self) -> dict:
+        policy = _get_runtime_prefetch_time_policy()
+        resolved = resolve_market_phase(policy)
+        return {
+            'profile': resolved.get('profile', 'offhours'),
+            'timezone': resolved.get('timezone', 'Asia/Ho_Chi_Minh'),
+            'market_code': resolved.get('market_code', 'VN_STOCK'),
+            'supported_timezones': list(resolved.get('supported_timezones') or [resolved.get('timezone', 'Asia/Ho_Chi_Minh')]),
+        }
+
+    def _resolve_latest_session_close(self, symbol: str, market_code: str) -> dict | None:
+        row = (
+            TickerSessionClose.objects
+            .filter(symbol=symbol, market_code=market_code)
+            .order_by('-session_date', '-captured_at')
+            .first()
+        )
+        if row is None:
+            return None
+        return {
+            'symbol': symbol,
+            'current_price': float(row.close_price) if row.close_price is not None else None,
+            'prev_price': float(row.prev_close_price) if row.prev_close_price is not None else None,
+            'change_value': float(row.change_value) if row.change_value is not None else None,
+            'change_pct': float(row.change_pct) if row.change_pct is not None else None,
+            'open_price': float(row.open_price) if row.open_price is not None else None,
+            'high_price': float(row.high_price) if row.high_price is not None else None,
+            'low_price': float(row.low_price) if row.low_price is not None else None,
+            'volume': int(row.volume) if row.volume is not None else None,
+            'last_date': row.captured_at.isoformat() if row.captured_at else None,
+            'session_date': row.session_date.isoformat(),
+            'source': 'session_close_store',
+            'cache_state': 'session_close',
+            'stale': False,
+            'freshness_seconds': 0,
         }
 
     def get_realtime_ticker(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
+        market_clock = self._get_market_clock_context()
+        market_phase = market_clock.get('profile')
+        market_code = market_clock.get('market_code')
+        supported_timezones = market_clock.get('supported_timezones') or [market_clock.get('timezone')]
+        is_offhours_like = market_phase in {'offhours', 'post_close', 'pre_open'}
         ticker_cache_key = f'ticker:{normalized_symbol}'
         cached_ticker = get_cache(ticker_cache_key)
         if cached_ticker is not None:
@@ -224,18 +447,34 @@ class MarketDataService:
             if freshness_seconds is None:
                 freshness_seconds = stale_serve_seconds + 1
 
-            is_stale = freshness_seconds > freshness_threshold
+            is_stale = False if is_offhours_like and payload.get('current_price') is not None else (freshness_seconds > freshness_threshold)
             payload['freshness_seconds'] = freshness_seconds
             payload['stale'] = is_stale
-            payload['source'] = 'stale_cache' if is_stale else 'cache'
-            payload['cache_state'] = 'stale' if is_stale else 'fresh'
+            current_source = str(payload.get('source') or '').strip().lower()
+            if not current_source or current_source == 'prefetch':
+                current_source = 'stale_cache' if is_stale else 'cache'
+            payload['source'] = current_source
+            payload['cache_state'] = 'stale' if is_stale else ('session_close' if is_offhours_like else 'fresh')
             payload['served_at'] = served_at
+            payload['market_phase'] = payload.get('market_phase') or market_phase
+            payload['market_code'] = payload.get('market_code') or market_code
+            payload['supported_timezones'] = supported_timezones
             return payload
+
+        if is_offhours_like:
+            session_close_payload = self._resolve_latest_session_close(normalized_symbol, market_code)
+            if session_close_payload is not None:
+                session_close_payload['served_at'] = timezone.now().isoformat()
+                session_close_payload['market_phase'] = market_phase
+                session_close_payload['market_code'] = market_code
+                session_close_payload['supported_timezones'] = supported_timezones
+                session_close_payload['data_semantic'] = 'last_session_close'
+                return session_close_payload
 
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
         freshness_seconds = None
-        stale = True
+        stale = not is_offhours_like
 
         if last_date:
             try:
@@ -272,6 +511,10 @@ class MarketDataService:
             'cache_state': 'miss',
             'fallback_reason': 'cache_miss_no_realtime_tick',
             'served_at': timezone.now().isoformat(),
+            'market_phase': market_phase,
+            'market_code': market_code,
+            'supported_timezones': supported_timezones,
+            'data_semantic': 'last_session_close' if is_offhours_like else 'realtime_or_stale',
         }
 
         allow_degraded = bool(getattr(settings, 'TICKER_CACHE_MISS_ALLOW_DEGRADED', False))
@@ -292,46 +535,52 @@ class MarketDataService:
         last_good_key = self._intraday_last_good_cache_key(normalized_symbol)
         cached = get_cache(cache_key)
         if cached is not None:
-            return cached
+            return self._decorate_intraday_response_contract(cached, normalized_symbol)
 
         def _fallback_payload(reason: str, rate_limited: bool = False) -> dict | None:
             last_good = get_cache(last_good_key)
-            if isinstance(last_good, dict) and (last_good.get('trades') or []):
-                stale_payload = self._build_intraday_stale_payload(last_good, normalized_symbol, reason)
+            db_payload = self._build_intraday_db_fallback(normalized_symbol, resolved_page_size, reason)
+            preferred_payload = self._select_preferred_intraday_fallback(normalized_symbol, last_good, db_payload)
+            if preferred_payload is not None:
+                if preferred_payload is db_payload:
+                    payload = dict(db_payload)
+                    if rate_limited:
+                        payload['rate_limited'] = True
+                    set_cache(cache_key, payload, timeout=8)
+                    set_cache(last_good_key, payload, timeout=900)
+                    return payload
+
+                stale_payload = self._build_intraday_stale_payload(preferred_payload, normalized_symbol, reason)
                 if rate_limited:
                     stale_payload['rate_limited'] = True
                 set_cache(cache_key, stale_payload, timeout=5)
                 return stale_payload
-            db_payload = self._build_intraday_db_fallback(normalized_symbol, resolved_page_size, reason)
-            if db_payload is not None:
-                if rate_limited:
-                    db_payload['rate_limited'] = True
-                set_cache(cache_key, db_payload, timeout=8)
-                set_cache(last_good_key, db_payload, timeout=900)
-                return db_payload
             return None
 
         if is_vnstock_rate_limited('intraday'):
             record_market_fallback('intraday-matched', 'vnstock_backoff')
             fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
             if fallback is not None:
-                return fallback
-            return self._build_intraday_backoff_response(normalized_symbol)
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
 
         stream_ticks = read_stream_intraday_ticks(normalized_symbol, count=resolved_page_size)
         trades = self._build_stream_trades(stream_ticks)
         if trades:
+            source_event_at = self._resolve_intraday_stream_source_event_at(stream_ticks)
+            fetched_at = timezone.now().isoformat()
             result = {
                 'symbol': normalized_symbol,
                 'trades': trades,
                 'total': len(trades),
                 'source': 'stream',
                 'stale': False,
-                'fetched_at': timezone.now().isoformat(),
+                'fetched_at': fetched_at,
+                'source_event_at': source_event_at or fetched_at,
             }
             set_cache(cache_key, result, timeout=8)
             set_cache(last_good_key, result, timeout=900)
-            return result
+            return self._decorate_intraday_response_contract(result, normalized_symbol)
 
         try:
             df = fetch_intraday_dataframe(normalized_symbol, resolved_page_size)
@@ -341,70 +590,77 @@ class MarketDataService:
                 record_market_fallback('intraday-matched', 'vnstock_backoff')
                 fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
                 if fallback is not None:
-                    return fallback
-                return self._build_intraday_backoff_response(normalized_symbol)
+                    return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+                return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
             if exc.code == 'vnstock_timeout':
                 record_market_external_timeout('intraday-matched')
                 fallback = _fallback_payload('timeout')
                 if fallback is not None:
-                    return fallback
-                return {
+                    return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+                return self._decorate_intraday_response_contract({
                     'symbol': normalized_symbol,
                     'trades': [],
                     'total': 0,
                     'source': 'timeout',
                     'fetched_at': timezone.now().isoformat(),
-                }
+                    'source_event_at': None,
+                }, normalized_symbol)
             if exc.code == 'vnstock_missing':
                 raise exc
             record_market_fallback('intraday-matched', 'vnstock_unavailable')
             fallback = _fallback_payload('vnstock_unavailable')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'source': 'vnstock_unavailable',
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
         except Exception as exc:
             logger.warning('get_intraday_matched unexpected error %s: %s', normalized_symbol, exc)
             record_market_fallback('intraday-matched', 'error')
             fallback = _fallback_payload('error')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'source': 'error',
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
 
         if df is None or df.empty:
             fallback = _fallback_payload('empty')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
 
         trades = self._build_dataframe_trades(df)
+        source_event_at = self._resolve_intraday_dataframe_source_event_at(df)
+        fetched_at = timezone.now().isoformat()
         result = {
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
             'source': 'vnstock',
             'stale': False,
-            'fetched_at': timezone.now().isoformat(),
+            'fetched_at': fetched_at,
+            'source_event_at': source_event_at or fetched_at,
         }
         set_cache(cache_key, result, timeout=8)
         set_cache(last_good_key, result, timeout=900)
-        return result
+        return self._decorate_intraday_response_contract(result, normalized_symbol)
 
     def get_price_board(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
@@ -647,11 +903,20 @@ class MarketDataService:
                 'buckets': [],
                 'source': 'vnstock_backoff',
                 'rate_limited': True,
+                'baseline_mode': 'same_bucket_20_sessions',
+                'baseline_sessions': 0,
+                'source_event_at': None,
                 'fetched_at': timezone.now().isoformat(),
             }
 
+        provider_error = None
+        current_source = 'vnstock'
+        source_event_at = None
+        current_bucket_map = defaultdict(float)
+
         try:
             df = fetch_intraday_dataframe(normalized_symbol, 500)
+            source_event_at = self._resolve_intraday_dataframe_source_event_at(df)
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_rate_limited':
                 mark_vnstock_rate_limited('intraday', exc)
@@ -660,78 +925,139 @@ class MarketDataService:
                     'buckets': [],
                     'source': 'vnstock_backoff',
                     'rate_limited': True,
+                    'baseline_mode': 'same_bucket_20_sessions',
+                    'baseline_sessions': 0,
+                    'source_event_at': None,
                     'fetched_at': timezone.now().isoformat(),
                 }
-            if exc.code == 'vnstock_missing':
-                raise exc
-            raise ExternalSystemException(
-                f'Không lấy được dữ liệu: {exc.message}',
-                code=exc.code,
-                payload=exc.payload,
-            ) from exc
+            provider_error = exc
+            df = None
 
-        if df is None or df.empty:
+        if df is not None and not df.empty:
+            for _, row in df.iterrows():
+                raw_time = row.get('time') or row.get('tradingDate') or ''
+                raw_volume = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
+                event_dt = self._parse_intraday_event_datetime(raw_time, fallback_date=timezone.localdate())
+                try:
+                    volume = float(raw_volume)
+                except (TypeError, ValueError):
+                    continue
+                if event_dt is None or volume <= 0:
+                    continue
+                bucket_dt = event_dt.replace(minute=(event_dt.minute // 15) * 15, second=0, microsecond=0)
+                current_bucket_map[bucket_dt] += volume
+
+        if not current_bucket_map:
+            current_source = 'intraday_tick_db'
+            db_current_rows = list(
+                IntradayTick.objects
+                .filter(symbol=normalized_symbol, trade_date=timezone.localdate())
+                .values('trade_date', 'trade_time', 'volume')
+            )
+            for row in db_current_rows:
+                event_dt = self._parse_intraday_event_datetime(
+                    row.get('trade_time'),
+                    fallback_date=row.get('trade_date') or timezone.localdate(),
+                )
+                try:
+                    volume = float(row.get('volume') or 0)
+                except (TypeError, ValueError):
+                    continue
+                if event_dt is None or volume <= 0:
+                    continue
+                bucket_dt = event_dt.replace(minute=(event_dt.minute // 15) * 15, second=0, microsecond=0)
+                current_bucket_map[bucket_dt] += volume
+
+            if current_bucket_map:
+                source_event_at = max(current_bucket_map.keys()).isoformat()
+
+        if not current_bucket_map:
+            if provider_error is not None:
+                if provider_error.code == 'vnstock_missing':
+                    raise provider_error
+                raise ExternalSystemException(
+                    f'Không lấy được dữ liệu: {provider_error.message}',
+                    code=provider_error.code,
+                    payload=provider_error.payload,
+                ) from provider_error
             return {
                 'symbol': normalized_symbol,
                 'buckets': [],
+                'source': current_source,
+                'baseline_mode': 'same_bucket_20_sessions',
+                'baseline_sessions': 0,
+                'source_event_at': source_event_at,
                 'fetched_at': timezone.now().isoformat(),
             }
 
-        rows = []
-        for _, row in df.iterrows():
-            raw_time = row.get('time') or row.get('tradingDate') or ''
-            raw_volume = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
-            try:
-                import pandas as pd
+        historical_dates = list(
+            IntradayTick.objects
+            .filter(symbol=normalized_symbol, trade_date__lt=timezone.localdate())
+            .order_by('-trade_date')
+            .values_list('trade_date', flat=True)
+            .distinct()[:20]
+        )
 
-                ts = pd.Timestamp(str(raw_time))
-                volume = float(raw_volume)
-                rows.append({'ts': ts, 'volume': volume})
-            except Exception:
+        historical_slot_totals = defaultdict(float)
+        if historical_dates:
+            historical_rows = list(
+                IntradayTick.objects
+                .filter(symbol=normalized_symbol, trade_date__in=historical_dates)
+                .values('trade_date', 'trade_time', 'volume')
+            )
+            for row in historical_rows:
+                trade_date = row.get('trade_date')
+                event_dt = self._parse_intraday_event_datetime(
+                    row.get('trade_time'),
+                    fallback_date=trade_date,
+                )
+                try:
+                    volume = float(row.get('volume') or 0)
+                except (TypeError, ValueError):
+                    continue
+                if trade_date is None or event_dt is None or volume <= 0:
+                    continue
+                bucket_dt = event_dt.replace(minute=(event_dt.minute // 15) * 15, second=0, microsecond=0)
+                slot_key = bucket_dt.strftime('%H:%M')
+                historical_slot_totals[(trade_date, slot_key)] += volume
+
+        baseline_by_slot = {}
+        slot_samples = {}
+        grouped_baselines = defaultdict(list)
+        for (_, slot_key), total_volume in historical_slot_totals.items():
+            grouped_baselines[slot_key].append(total_volume)
+
+        for slot_key, samples in grouped_baselines.items():
+            if not samples:
                 continue
-
-        if not rows:
-            return {
-                'symbol': normalized_symbol,
-                'buckets': [],
-                'fetched_at': timezone.now().isoformat(),
-            }
-
-        import pandas as pd
-
-        frame = pd.DataFrame(rows).set_index('ts').sort_index()
-        buckets_df = frame.resample('15min')['volume'].sum().reset_index()
-        buckets_df.columns = ['time', 'volume']
-
-        volumes = buckets_df['volume'].values
-        window = min(20, len(volumes))
-        sma20_values = []
-        for index in range(len(volumes)):
-            start = max(0, index - window)
-            sma20_values.append(float(volumes[start:index + 1].mean()) if index >= 0 else 0.0)
+            baseline_by_slot[slot_key] = float(sum(samples) / len(samples))
+            slot_samples[slot_key] = len(samples)
 
         buckets = []
-        for index, row in buckets_df.iterrows():
-            volume = float(row['volume'])
-            sma20 = sma20_values[index] if index < len(sma20_values) else 0.0
-            rvol = round(volume / sma20, 2) if sma20 > 0 else 0.0
-            try:
-                time_str = row['time'].strftime('%H:%M')
-            except Exception:
-                time_str = str(row['time'])[:5]
+        for bucket_dt, volume in sorted(current_bucket_map.items(), key=lambda item: item[0]):
+            time_str = bucket_dt.strftime('%H:%M')
+            baseline_avg = baseline_by_slot.get(time_str)
+            rvol = round(volume / baseline_avg, 2) if baseline_avg and baseline_avg > 0 else None
             buckets.append(
                 {
                     'time': time_str,
                     'volume': int(volume),
-                    'sma20': int(sma20),
+                    'baseline_avg': int(round(baseline_avg)) if baseline_avg is not None else None,
+                    'sma20': int(round(baseline_avg)) if baseline_avg is not None else None,
+                    'baseline_sessions': int(slot_samples.get(time_str, 0)),
                     'rvol': rvol,
-                    'is_spike': rvol >= 2.0,
+                    'is_spike': bool(rvol is not None and rvol >= 2.0),
+                    'bucket_start_at': bucket_dt.isoformat(),
                 }
             )
 
         result = {
             'symbol': normalized_symbol,
             'buckets': buckets,
+            'source': current_source,
+            'baseline_mode': 'same_bucket_20_sessions',
+            'baseline_sessions': len(historical_dates),
+            'source_event_at': source_event_at,
             'fetched_at': timezone.now().isoformat(),
         }
         set_cache(cache_key, result, timeout=20)
@@ -776,12 +1102,13 @@ class MarketDataService:
                 IntradayTick.objects
                 .filter(symbol=normalized_symbol, trade_date=timezone.localdate())
                 .order_by('-trade_time', '-id')
-                .values('trade_time', 'price', 'volume', 'match_type', 'side')
+                .values('trade_date', 'trade_time', 'price', 'volume', 'match_type', 'side')
             )
             if db_rows:
                 db_df = pd.DataFrame([
                     {
                         'time': row['trade_time'].isoformat() if row.get('trade_time') else '',
+                        'trade_date': row.get('trade_date'),
                         'price': float(row.get('price') or 0),
                         'volume': float(row.get('volume') or 0),
                         'match_type': row.get('side') or row.get('match_type') or 'UNKNOWN',
@@ -826,6 +1153,13 @@ class MarketDataService:
             df = None
             data_source = 'error'
 
+        if data_source == 'redis_stream':
+            source_event_at = self._resolve_intraday_stream_source_event_at(stream_ticks)
+        elif df is not None and not df.empty:
+            source_event_at = self._resolve_intraday_dataframe_source_event_at(df)
+        else:
+            source_event_at = None
+
         if df is None or df.empty:
             self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
             return self._build_empty_whale_feed_response(
@@ -833,6 +1167,7 @@ class MarketDataService:
                 threshold_vnd,
                 data_source,
                 threshold_source=threshold_source,
+                source_event_at=source_event_at,
             )
 
         orders = []
@@ -842,23 +1177,20 @@ class MarketDataService:
         whale_value_total = 0.0
         small_value = 0.0
 
-        # Resolve price scale to ensure matched_value is calculated in VND.
-        price_candidates = []
-        if 'price' in df.columns:
-            price_candidates = df['price'].tolist()
-        elif 'close' in df.columns:
-            price_candidates = df['close'].tolist()
-        
-        price_scale = self._resolve_quote_price_scale(price_candidates)
+        source_unit_hint = None
+        if getattr(df, 'attrs', None):
+            source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
 
         for _, row in df.iterrows():
             try:
-                raw_price = self._normalize_quote_price(
-                    float(row.get('price') or row.get('close') or 0),
-                    price_scale
+                raw_price = self._normalize_intraday_price_vnd(
+                    row.get('price') or row.get('close') or 0,
+                    source_unit=row.get('price_unit') or source_unit_hint,
                 )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
+                continue
+            if raw_price is None:
                 continue
             matched_value = raw_price * raw_vol
             side = self._normalize_side(row.get('match_type') or row.get('matchType') or row.get('side') or '')
@@ -890,11 +1222,13 @@ class MarketDataService:
                         threshold_source=threshold_source,
                         score_config=score_config,
                         now=request_now,
+                        fallback_date=row.get('trade_date'),
                     )
                 )
 
         orders.sort(key=lambda item: item['matched_value'], reverse=True)
         total_value = shark_value + whale_value_total + small_value
+        unknown_value = max(0.0, total_value - total_buy_value - total_sell_value)
         result = {
             'symbol': normalized_symbol,
             'threshold': threshold_vnd,
@@ -905,14 +1239,20 @@ class MarketDataService:
             'summary': {
                 'buy_value': total_buy_value,
                 'sell_value': total_sell_value,
+                'unknown_value': unknown_value,
+                'total_value': total_value,
                 'flow_net': total_buy_value - total_sell_value,
                 'shark_value': shark_value,
                 'whale_value': whale_value_total,
                 'small_value': small_value,
+                'buy_pct': round(total_buy_value / total_value * 100, 1) if total_value > 0 else 0,
+                'sell_pct': round(total_sell_value / total_value * 100, 1) if total_value > 0 else 0,
+                'unknown_pct': round(unknown_value / total_value * 100, 1) if total_value > 0 else 0,
                 'shark_pct': round(shark_value / total_value * 100, 1) if total_value > 0 else 0,
                 'whale_pct': round(whale_value_total / total_value * 100, 1) if total_value > 0 else 0,
                 'small_pct': round(small_value / total_value * 100, 1) if total_value > 0 else 0,
             },
+            'source_event_at': source_event_at,
             'fetched_at': timezone.now().isoformat(),
         }
         self._record_source_observability('whale-feed', data_source, primary_source='redis_stream')
@@ -1003,7 +1343,17 @@ class MarketDataService:
         queryset = (
             IntradayTick.objects
             .filter(symbol__in=symbols)
-            .annotate(matched_value=ExpressionWrapper(F('price') * 1000 * F('volume'), output_field=FloatField()))
+            .annotate(
+                matched_value=ExpressionWrapper(
+                    Case(
+                        # Legacy rows may store price in VND; canonical rows are THOUSAND_VND.
+                        When(price__gte=1000, then=F('price') * F('volume')),
+                        default=F('price') * 1000 * F('volume'),
+                        output_field=FloatField(),
+                    ),
+                    output_field=FloatField(),
+                )
+            )
             .filter(matched_value__gte=min_threshold_vnd)
         )
 
@@ -1039,13 +1389,18 @@ class MarketDataService:
                 )
             queryset = queryset.order_by('-trade_date', '-trade_time', '-id')
 
-        rows = [
-            row for row in queryset
+        # Stream rows and stop as soon as we have limit + 1 valid records.
+        # This prevents scanning/loading the whole queryset on high-volume sessions.
+        rows = []
+        for row in queryset.iterator(chunk_size=1000):
             if (
                 float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
                 and self._is_tick_row_in_window(row, window, now=request_now)
-            )
-        ]
+            ):
+                rows.append(row)
+                if len(rows) > limit:
+                    break
+
         has_more = len(rows) > limit
         page_rows = rows[:limit]
 
@@ -1524,7 +1879,7 @@ class MarketDataService:
                 period='year',
                 lang='vi',
                 dropna=True,
-                source='VCI',
+                source=None,
             )
         except ExternalSystemException as exc:
             if exc.code == 'vnstock_missing':
@@ -1591,6 +1946,7 @@ class MarketDataService:
         result = {
             'symbol': normalized_symbol,
             'years': years,
+            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnstock').strip().lower(),
             'fetched_at': timezone.now().isoformat(),
         }
         set_cache(cache_key, result, timeout=21600)
@@ -1711,8 +2067,8 @@ class MarketDataService:
                 interval='1D',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
-                week52_high = round(float(history_df['high'].max()), 2)
-                week52_low = round(float(history_df['low'].min()), 2)
+                week52_high = self._normalize_historical_quote_price(history_df['high'].max(), normalized_symbol)
+                week52_low = self._normalize_historical_quote_price(history_df['low'].min(), normalized_symbol)
                 if week52_high > 0:
                     payload['week52_high'] = week52_high
                 if week52_low > 0:
@@ -1724,7 +2080,7 @@ class MarketDataService:
 
         if not payload.get('company_name'):
             try:
-                listing_df = fetch_listing_symbols_dataframe(symbol=normalized_symbol, source='VCI')
+                listing_df = fetch_listing_symbols_dataframe(symbol=normalized_symbol)
                 if listing_df is not None and not listing_df.empty:
                     row = listing_df[listing_df['symbol'] == normalized_symbol]
                     if not row.empty:
@@ -1787,13 +2143,19 @@ class MarketDataService:
                         point_dt = self._normalize_chart_timestamp(raw_time)
                         if point_dt is None:
                             continue
+                        normalized_open = self._normalize_historical_quote_price(row.get('open'), normalized_symbol)
+                        normalized_high = self._normalize_historical_quote_price(row.get('high'), normalized_symbol)
+                        normalized_low = self._normalize_historical_quote_price(row.get('low'), normalized_symbol)
+                        normalized_close = self._normalize_historical_quote_price(row.get('close'), normalized_symbol)
+                        if normalized_close is None:
+                            continue
                         series.append(
                             {
                                 'date': point_dt.isoformat(),
-                                'open': float(row['open']) if row.get('open') is not None else None,
-                                'high': float(row['high']) if row.get('high') is not None else None,
-                                'low': float(row['low']) if row.get('low') is not None else None,
-                                'close': float(row['close']),
+                                'open': normalized_open,
+                                'high': normalized_high,
+                                'low': normalized_low,
+                                'close': normalized_close,
                                 'volume': float(row['volume']) if row.get('volume') is not None else None,
                             }
                         )
@@ -1815,15 +2177,22 @@ class MarketDataService:
             series = [
                 {
                     'date': datetime.combine(row['date'], time.min).isoformat(),
-                    'open': self._to_float(row['open_price']),
-                    'high': self._to_float(row['high_price']),
-                    'low': self._to_float(row['low_price']),
-                    'close': float(row['close_price']),
+                    'open': self._normalize_historical_quote_price(row['open_price'], normalized_symbol),
+                    'high': self._normalize_historical_quote_price(row['high_price'], normalized_symbol),
+                    'low': self._normalize_historical_quote_price(row['low_price'], normalized_symbol),
+                    'close': self._normalize_historical_quote_price(row['close_price'], normalized_symbol),
                     'volume': self._to_float(row['volume']),
                 }
                 for row in db_rows
             ]
-            technical_rows = db_rows
+            technical_rows = [
+                {
+                    'close_price': point['close'],
+                    'volume': point['volume'],
+                }
+                for point in series
+                if point.get('close') is not None
+            ]
 
         overview = self._build_stock_workspace_overview_base(normalized_symbol, user)
         payload = {
@@ -1864,6 +2233,7 @@ class MarketDataService:
             'source': 'vnstock_backoff',
             'rate_limited': True,
             'fetched_at': timezone.now().isoformat(),
+            'source_event_at': None,
         }
 
     def _build_stream_trades(self, stream_ticks: list[dict]) -> list[dict]:
@@ -1888,51 +2258,6 @@ class MarketDataService:
                     'volume': volume_val,
                     'side': side,
                     'match_type': tick.get('side', ''),
-                }
-            )
-
-        if not parsed_rows:
-            return []
-
-        price_scale = self._resolve_quote_price_scale([row.get('raw_price') for row in parsed_rows])
-        trades = []
-        for row in parsed_rows:
-            normalized_price = self._normalize_quote_price(row.get('raw_price'), price_scale)
-            trades.append(
-                {
-                    'time': row['time'],
-                    'price': normalized_price,
-                    'volume': row['volume'],
-                    'side': row['side'],
-                    'match_type': row['match_type'],
-                }
-            )
-        return trades
-
-    def _build_dataframe_trades(self, df) -> list[dict]:
-        parsed_rows = []
-        for _, row in df.iterrows():
-            raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
-            raw_price = row.get('price') or row.get('close') or 0
-            raw_volume = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
-            match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
-            try:
-                price_val = float(raw_price) if raw_price else None
-                volume_val = int(float(raw_volume)) if raw_volume else None
-            except (ValueError, TypeError):
-                price_val = None
-                volume_val = None
-
-            if price_val is None or volume_val is None or volume_val <= 0:
-                continue
-
-            parsed_rows.append(
-                {
-                    'time': self._format_time(raw_time),
-                    'raw_price': price_val,
-                    'volume': volume_val,
-                    'side': self._normalize_side(match_type_raw),
-                    'match_type': match_type_raw,
                 }
             )
 
@@ -2051,20 +2376,13 @@ class MarketDataService:
         threshold_source: str = 'user_default',
         score_config: dict | None = None,
         now=None,
+        fallback_date: date | None = None,
     ) -> dict:
-        try:
-            occurred_at = timezone.make_aware(
-                datetime.fromisoformat(str(raw_time).replace('Z', '+00:00')),
-                timezone.get_current_timezone(),
-            ).isoformat()
-        except Exception:
-            try:
-                occurred_at = timezone.make_aware(
-                    datetime.combine(timezone.localdate(), datetime.strptime(str(raw_time)[:8], '%H:%M:%S').time()),
-                    timezone.get_current_timezone(),
-                ).isoformat()
-            except Exception:
-                occurred_at = timezone.now().isoformat()
+        occurred_dt = self._parse_intraday_event_datetime(raw_time, fallback_date=fallback_date)
+        if occurred_dt is None:
+            resolved_now = now if isinstance(now, datetime) else timezone.now()
+            occurred_dt = timezone.localtime(resolved_now)
+        occurred_at = occurred_dt.isoformat()
 
         score_result = calculate_event_score(
             trade={
@@ -2085,10 +2403,7 @@ class MarketDataService:
             config=score_config,
         )
 
-        try:
-            time_str = datetime.fromisoformat(occurred_at.replace('Z', '+00:00')).strftime('%H:%M:%S')
-        except Exception:
-            time_str = str(raw_time)[:8]
+        time_str = occurred_dt.strftime('%H:%M:%S')
 
         return {
             'time': time_str,
@@ -2115,23 +2430,21 @@ class MarketDataService:
     def _dataframe_has_threshold_hits(self, df, threshold_vnd: float) -> bool:
         if df is None or getattr(df, 'empty', True):
             return False
-            
-        price_candidates = []
-        if 'price' in df.columns:
-            price_candidates = df['price'].tolist()
-        elif 'close' in df.columns:
-            price_candidates = df['close'].tolist()
-            
-        price_scale = self._resolve_quote_price_scale(price_candidates)
+
+        source_unit_hint = None
+        if getattr(df, 'attrs', None):
+            source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
         
         for _, row in df.iterrows():
             try:
-                raw_price = self._normalize_quote_price(
-                    float(row.get('price') or row.get('close') or 0),
-                    price_scale
+                raw_price = self._normalize_intraday_price_vnd(
+                    row.get('price') or row.get('close') or 0,
+                    source_unit=row.get('price_unit') or source_unit_hint,
                 )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
+                continue
+            if raw_price is None:
                 continue
             if raw_price * raw_vol >= threshold_vnd:
                 return True
@@ -2143,6 +2456,7 @@ class MarketDataService:
         threshold_vnd: float,
         data_source: str,
         threshold_source: str = 'user_default',
+        source_event_at: str | None = None,
     ) -> dict:
         return {
             'symbol': symbol,
@@ -2162,6 +2476,7 @@ class MarketDataService:
                 'whale_pct': 0,
                 'small_pct': 0,
             },
+            'source_event_at': source_event_at,
             'fetched_at': timezone.now().isoformat(),
         }
 
@@ -2463,6 +2778,7 @@ class MarketDataService:
         return start_dt <= event_dt <= resolved_now
 
     def _is_tick_row_in_window(self, row, window: str, now=None) -> bool:
+        resolved_now = now or timezone.now()
         try:
             row_dt = timezone.make_aware(
                 datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
@@ -2470,11 +2786,12 @@ class MarketDataService:
             )
         except Exception:
             return False
-        start_dt = self._window_start_datetime(window, now=now)
+        if row_dt > resolved_now:
+            return False
+        start_dt = self._window_start_datetime(window, now=resolved_now)
         if start_dt is None:
             return True
-        # DB ticks are historical records; enforce only lower-bound window check.
-        return start_dt <= row_dt
+        return start_dt <= row_dt <= resolved_now
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
         max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
@@ -2762,16 +3079,17 @@ class MarketDataService:
         synthetic_id = 1
         for symbol in symbols:
             stream_ticks = read_stream_intraday_ticks(symbol, count=150)
-            
-            # Resolve scale for the current symbol's ticks
-            price_candidates = [float(t.get('price', 0)) for t in stream_ticks]
-            price_scale = self._resolve_quote_price_scale(price_candidates)
-            
+
             for tick in stream_ticks:
                 try:
-                    price = self._normalize_quote_price(float(tick.get('price') or 0), price_scale)
+                    price = self._normalize_intraday_price_vnd(
+                        tick.get('price') or 0,
+                        source_unit=tick.get('price_unit'),
+                    )
                     volume = float(tick.get('volume') or 0)
                 except (TypeError, ValueError):
+                    continue
+                if price is None:
                     continue
                 matched_value = price * volume
                 if matched_value < threshold_vnd:
@@ -2833,18 +3151,20 @@ class MarketDataService:
             if df is None or df.empty:
                 continue
 
-            # Resolve scale for the current symbol's dataframe
-            price_candidates = df['price'].tolist() if 'price' in df.columns else df['close'].tolist() if 'close' in df.columns else []
-            price_scale = self._resolve_quote_price_scale(price_candidates)
+            source_unit_hint = None
+            if getattr(df, 'attrs', None):
+                source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
             
             for _, row in df.iterrows():
                 try:
-                    price = self._normalize_quote_price(
-                        float(row.get('price') or row.get('close') or 0),
-                        price_scale
+                    price = self._normalize_intraday_price_vnd(
+                        row.get('price') or row.get('close') or 0,
+                        source_unit=row.get('price_unit') or source_unit_hint,
                     )
                     volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
                 except (TypeError, ValueError):
+                    continue
+                if price is None:
                     continue
                 matched_value = price * volume
                 if matched_value < threshold_vnd:
@@ -3112,27 +3432,37 @@ class MarketDataService:
             return None
 
     def _resolve_quote_price_scale(self, values) -> float:
-        candidates = []
-        for value in values or []:
-            numeric = self._safe_float(value)
-            if numeric is None:
-                continue
-            magnitude = abs(numeric)
-            if magnitude > 0:
-                candidates.append(magnitude)
-
-        if not candidates:
-            return 1.0
-
-        candidates.sort()
-        pivot = candidates[len(candidates) // 2]
-
-        # Providers can return VNĐ, nghin VNĐ, or VNĐ x 1000.
-        # Normalize all outputs to VNĐ for consistent UI rendering.
-        if pivot >= 1_000_000:
-            return 0.001
-        if pivot < 1_000:
-            return 1000.0
+        """DEPRECATED: Heuristic price scale detection.
+        
+        REASON DEPRECATED:
+        - Adapter (vnstock_adapter.py) now guarantees all prices in canonical THOUSAND_VND
+        - No heuristic detection needed anymore
+        - This function is kept for backward compatibility but always returns 1.0 (no scaling)
+        
+        If you see this being called, it's safe to ignore - prices are already canonical.
+        """
+        # OLD CODE (kept for reference but NEVER EXECUTED):
+        # candidates = []
+        # for value in values or []:
+        #     numeric = self._safe_float(value)
+        #     if numeric is None:
+        #         continue
+        #     magnitude = abs(numeric)
+        #     if magnitude > 0:
+        #         candidates.append(magnitude)
+        # 
+        # if not candidates:
+        #     return 1.0
+        # 
+        # candidates.sort()
+        # pivot = candidates[len(candidates) // 2]
+        # if pivot >= 1_000_000:
+        #     return 0.001
+        # if pivot < 1_000:
+        #     return 1000.0
+        # return 1.0
+        
+        # NEW: Adapter guarantees THOUSAND_VND canonical, so always return 1.0
         return 1.0
 
     def _normalize_quote_price(self, value, scale: float = 1.0):
@@ -3140,6 +3470,46 @@ class MarketDataService:
         if numeric is None:
             return None
         return round(numeric * (scale if scale else 1.0), 2)
+
+    def _normalize_historical_quote_price(self, value, symbol: str | None = None):
+        numeric = self._safe_float(value)
+        if numeric is None:
+            return None
+
+        source_unit = 'VND' if abs(numeric) >= 1000 else 'THOUSAND_VND'
+        try:
+            canonical_quote = normalize_quote_price_to_canonical(
+                value=numeric,
+                source_unit=source_unit,
+                source=PriceSource.VNSTOCK_DAILY,
+                symbol=symbol,
+            )
+            return round(canonical_quote.value, 2)
+        except Exception:
+            return round(numeric / 1000, 2) if abs(numeric) >= 1000 else round(numeric, 2)
+
+    def _normalize_intraday_price_vnd(self, value, source_unit: str | None = None):
+        numeric = self._safe_float(value)
+        if numeric is None:
+            return None
+
+        resolved_source_unit = str(source_unit or '').strip().upper()
+        if resolved_source_unit not in {'VND', 'THOUSAND_VND'}:
+            # Fallback for legacy payloads missing unit metadata:
+            # - >= 1000: likely VND price (e.g. 65100)
+            # - < 1000: likely THOUSAND_VND canonical (e.g. 23.8)
+            resolved_source_unit = 'VND' if abs(numeric) >= 1000 else 'THOUSAND_VND'
+
+        try:
+            canonical_quote = normalize_quote_price_to_canonical(
+                value=numeric,
+                source_unit=resolved_source_unit,
+                source=PriceSource.INTRADAY_TICK,
+            )
+            return round(canonical_quote.to_vnd_for_calculation(), 2)
+        except Exception:
+            # Last-resort fallback keeps whale valuation safe in VND.
+            return round(numeric if abs(numeric) >= 1000 else numeric * 1000, 2)
 
     def _to_float(self, value):
         return float(value) if value is not None else None
@@ -3172,24 +3542,40 @@ class MarketDataService:
             .aggregate(week52_high=Max('high_price'), week52_low=Min('low_price'))
         )
 
-        average_price = None
-        if latest_daily_price:
-            numeric_prices = [
-                value
-                for value in [
-                    latest_daily_price.get('open_price'),
-                    latest_daily_price.get('high_price'),
-                    latest_daily_price.get('low_price'),
-                    latest_daily_price.get('close_price'),
-                ]
-                if value is not None
-            ]
-            if numeric_prices:
-                average_price = self._to_float(sum(numeric_prices, Decimal('0')) / Decimal(len(numeric_prices)))
+        normalized_current_price = self._normalize_historical_quote_price(price_info.get('current_price'), normalized_symbol)
+        normalized_prev_price = self._normalize_historical_quote_price(price_info.get('prev_price'), normalized_symbol)
+        normalized_open_price = self._normalize_historical_quote_price(latest_daily_price.get('open_price'), normalized_symbol) if latest_daily_price else None
+        normalized_high_price = self._normalize_historical_quote_price(latest_daily_price.get('high_price'), normalized_symbol) if latest_daily_price else None
+        normalized_low_price = self._normalize_historical_quote_price(latest_daily_price.get('low_price'), normalized_symbol) if latest_daily_price else None
+        normalized_close_price = self._normalize_historical_quote_price(latest_daily_price.get('close_price'), normalized_symbol) if latest_daily_price else None
+        normalized_week52_high = self._normalize_historical_quote_price(year_stats.get('week52_high'), normalized_symbol)
+        normalized_week52_low = self._normalize_historical_quote_price(year_stats.get('week52_low'), normalized_symbol)
 
-        reference_price = price_info.get('prev_price')
-        if reference_price is None and latest_daily_price:
-            reference_price = self._to_float(latest_daily_price.get('close_price'))
+        average_price = None
+        normalized_prices = [
+            value
+            for value in [
+                normalized_open_price,
+                normalized_high_price,
+                normalized_low_price,
+                normalized_close_price,
+            ]
+            if value is not None
+        ]
+        if normalized_prices:
+            average_price = self._to_float(sum(Decimal(str(value)) for value in normalized_prices) / Decimal(len(normalized_prices)))
+
+        reference_price = normalized_prev_price
+        if reference_price is None and normalized_close_price is not None:
+            reference_price = normalized_close_price
+
+        change_value = None
+        if normalized_current_price is not None and normalized_prev_price is not None:
+            change_value = round(normalized_current_price - normalized_prev_price, 2)
+
+        change_pct = None
+        if normalized_current_price is not None and normalized_prev_price not in (None, 0):
+            change_pct = round((normalized_current_price - normalized_prev_price) / normalized_prev_price * 100, 2)
 
         ceiling_price = None
         floor_price = None
@@ -3237,22 +3623,22 @@ class MarketDataService:
             'listed_date': profile.listed_date,
             'is_active': profile.is_active,
             'updated_at': profile.updated_at,
-            'current_price': price_info.get('current_price'),
-            'prev_price': price_info.get('prev_price'),
-            'change_value': price_info.get('change_value'),
-            'change_pct': price_info.get('change_pct'),
+            'current_price': normalized_current_price,
+            'prev_price': normalized_prev_price,
+            'change_value': change_value,
+            'change_pct': change_pct,
             'last_date': price_info.get('last_date'),
-            'open_price': self._to_float(latest_daily_price.get('open_price')) if latest_daily_price else None,
-            'high_price': self._to_float(latest_daily_price.get('high_price')) if latest_daily_price else None,
-            'low_price': self._to_float(latest_daily_price.get('low_price')) if latest_daily_price else None,
-            'close_price': self._to_float(latest_daily_price.get('close_price')) if latest_daily_price else None,
+            'open_price': normalized_open_price,
+            'high_price': normalized_high_price,
+            'low_price': normalized_low_price,
+            'close_price': normalized_close_price,
             'volume': latest_daily_price.get('volume') if latest_daily_price else None,
             'average_price': average_price,
             'reference_price': reference_price,
             'ceiling_price': ceiling_price,
             'floor_price': floor_price,
-            'week52_high': self._to_float(year_stats.get('week52_high')),
-            'week52_low': self._to_float(year_stats.get('week52_low')),
+            'week52_high': normalized_week52_high,
+            'week52_low': normalized_week52_low,
             'is_tracked': tracked_item is not None,
             'source_group_name': tracked_item.source_group.name if tracked_item and tracked_item.source_group else None,
             'market_groups': market_groups,

@@ -92,6 +92,13 @@ class RVOLView(BaseMarketDataView):
     def get(self, request, symbol):
         try:
             payload = market_data_service.get_rvol(symbol)
+        except ExternalSystemException:
+            payload = {
+                'symbol': str(symbol or '').strip().upper(),
+                'buckets': [],
+                'source': 'degraded_external_error',
+                'fetched_at': None,
+            }
         except Exception as exc:
             return self.handle_exception_response(exc)
         return Response(payload)

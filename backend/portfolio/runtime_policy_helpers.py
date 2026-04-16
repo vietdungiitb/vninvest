@@ -2,6 +2,8 @@ import os
 
 from django.conf import settings
 
+from .market_calendar import normalize_market_holiday_dates, resolve_default_market_holiday_dates
+
 
 HOLISTIC_GOVERNANCE_DELTA_CACHE_KEY = 'admin_ops:holistic_governance_delta_thresholds'
 PREFETCH_RUNTIME_SETTINGS_CACHE_KEY = 'admin_ops:prefetch_runtime_settings'
@@ -85,7 +87,10 @@ def _default_prefetch_runtime_settings():
         'circuit_window_seconds': _int_env('VNSTOCK_CIRCUIT_WINDOW_SECONDS', 300, 30),
         'circuit_breaker_timeout_threshold': _int_env('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3, 1),
         'circuit_breaker_cooldown_seconds': _int_env('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800, 60),
+        'offhours_cache_ttl_seconds': _int_env('TICKER_OFFHOURS_CACHE_TTL_SECONDS', 3600, 60),
+        'session_close_retention_days': _int_env('TICKER_SESSION_CLOSE_RETENTION_DAYS', 7, 1),
         'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
+        'session_close_capture_enabled': os.getenv('TICKER_SESSION_CLOSE_CAPTURE_ENABLED', 'True').lower() == 'true',
     }
 
 
@@ -103,6 +108,8 @@ def _coerce_prefetch_runtime_settings(raw_payload, fallback=None):
         'circuit_window_seconds': 30,
         'circuit_breaker_timeout_threshold': 1,
         'circuit_breaker_cooldown_seconds': 60,
+        'offhours_cache_ttl_seconds': 60,
+        'session_close_retention_days': 1,
     }
 
     normalized = {}
@@ -115,6 +122,9 @@ def _coerce_prefetch_runtime_settings(raw_payload, fallback=None):
 
     normalized['retry_max_seconds'] = max(normalized['retry_max_seconds'], normalized['retry_base_seconds'])
     normalized['include_group_symbols'] = bool(payload.get('include_group_symbols', base['include_group_symbols']))
+    normalized['session_close_capture_enabled'] = bool(
+        payload.get('session_close_capture_enabled', base.get('session_close_capture_enabled', True))
+    )
     return normalized
 
 
@@ -140,13 +150,17 @@ def _set_runtime_prefetch_settings(raw_payload):
 
 
 def _default_prefetch_time_policy():
+    default_holiday_dates = resolve_default_market_holiday_dates('VN_STOCK')
     return {
         'timezone': 'Asia/Ho_Chi_Minh',
+        'market_code': 'VN_STOCK',
+        'supported_timezones': ['Asia/Ho_Chi_Minh'],
         'market': {
             'open_time': '09:00',
             'close_time': '15:00',
             'pre_open_minutes': 30,
             'post_close_minutes': 30,
+            'holiday_dates': default_holiday_dates,
             'lunch_break': {
                 'enabled': True,
                 'start': '11:30',
@@ -186,16 +200,16 @@ def _default_prefetch_time_policy():
             'post_close': {
                 'query_enabled': True,
                 'interval_seconds': 180,
-                'batch_size': 8,
-                'symbol_limit': 20,
+                'batch_size': 20,
+                'symbol_limit': 60,
                 'max_retries': 1,
             },
             'offhours': {
-                'query_enabled': False,
-                'interval_seconds': 600,
-                'batch_size': 5,
-                'symbol_limit': 10,
-                'max_retries': 0,
+                'query_enabled': True,
+                'interval_seconds': 1200,
+                'batch_size': 20,
+                'symbol_limit': 60,
+                'max_retries': 1,
             },
         },
         'rate_limit_guard': {
@@ -209,11 +223,16 @@ def _default_prefetch_time_policy():
 def _prefetch_time_policy_rulebook():
     return {
         'timezone_required': True,
+        'market_code_required': True,
+        'supported_timezones_min_items': 1,
+        'supported_timezones_max_items': 12,
         'time_format': 'HH:MM',
         'market': {
             'pre_open_minutes_min': 0,
             'post_close_minutes_min': 0,
             'weekend_mode_allowed': ['offhours'],
+            'holiday_dates_max_items': 366,
+            'holiday_dates_format': 'YYYY-MM-DD',
         },
         'profiles': {
             'required_profiles': ['pre_open', 'market_open', 'lunch_break', 'pre_close', 'post_close', 'offhours'],
@@ -286,6 +305,38 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None):
     except ZoneInfoNotFoundError:
         raise ValueError('prefetch_time_policy.timezone không hợp lệ.')
 
+    market_code = str(payload.get('market_code', base.get('market_code', 'VN_STOCK')) or '').strip().upper()
+    if not market_code:
+        raise ValueError('prefetch_time_policy.market_code là bắt buộc.')
+    if len(market_code) > 32:
+        raise ValueError('prefetch_time_policy.market_code không được dài quá 32 ký tự.')
+
+    supported_timezones_raw = payload.get('supported_timezones', base.get('supported_timezones', [timezone_name]))
+    if isinstance(supported_timezones_raw, str):
+        supported_timezones_raw = [item.strip() for item in supported_timezones_raw.split(',') if item.strip()]
+    if not isinstance(supported_timezones_raw, list):
+        raise ValueError('prefetch_time_policy.supported_timezones phải là danh sách timezone hợp lệ.')
+
+    normalized_supported_timezones = []
+    for item in supported_timezones_raw:
+        candidate = str(item or '').strip()
+        if not candidate:
+            continue
+        try:
+            ZoneInfo(candidate)
+        except ZoneInfoNotFoundError:
+            raise ValueError(f'prefetch_time_policy.supported_timezones chứa timezone không hợp lệ: {candidate}.')
+        normalized_supported_timezones.append(candidate)
+
+    if timezone_name not in normalized_supported_timezones:
+        normalized_supported_timezones.insert(0, timezone_name)
+
+    normalized_supported_timezones = list(dict.fromkeys(normalized_supported_timezones))
+    if not normalized_supported_timezones:
+        raise ValueError('prefetch_time_policy.supported_timezones phải có ít nhất 1 timezone hợp lệ.')
+    if len(normalized_supported_timezones) > 12:
+        raise ValueError('prefetch_time_policy.supported_timezones không được vượt quá 12 timezone.')
+
     market_payload = payload.get('market', {})
     if market_payload is None:
         market_payload = {}
@@ -307,6 +358,11 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None):
         market_payload.get('post_close_minutes', market_base['post_close_minutes']),
         'prefetch_time_policy.market.post_close_minutes',
         minimum=0,
+    )
+    holiday_dates = normalize_market_holiday_dates(
+        market_payload.get('holiday_dates', market_base.get('holiday_dates', [])),
+        field_name='prefetch_time_policy.market.holiday_dates',
+        max_items=366,
     )
 
     lunch_payload = market_payload.get('lunch_break', {})
@@ -418,11 +474,14 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None):
 
     return {
         'timezone': timezone_name,
+        'market_code': market_code,
+        'supported_timezones': normalized_supported_timezones,
         'market': {
             'open_time': open_time,
             'close_time': close_time,
             'pre_open_minutes': pre_open_minutes,
             'post_close_minutes': post_close_minutes,
+            'holiday_dates': holiday_dates,
             'lunch_break': {
                 'enabled': lunch_enabled,
                 'start': lunch_start,

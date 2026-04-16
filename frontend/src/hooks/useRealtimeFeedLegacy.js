@@ -9,17 +9,44 @@ function readEventField(payload, key) {
   return payload?.[key] ?? payload?.data?.[key];
 }
 
+function normalizeSymbol(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function getQuoteBySymbol(quotesBySymbol, symbol) {
+  const normalized = normalizeSymbol(symbol);
+  if (!normalized) return {};
+  return (
+    quotesBySymbol?.[normalized]
+    || quotesBySymbol?.[symbol]
+    || quotesBySymbol?.[String(symbol || '').trim().toLowerCase()]
+    || {}
+  );
+}
+
+function isValidQuotePrice(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
 function mergeQuote(prev, update) {
   const eventTimestamp = update.last_date ?? update.ts;
   const eventAgeSeconds = eventTimestamp
     ? Math.max(0, Math.floor((Date.now() - new Date(eventTimestamp).getTime()) / 1000))
     : null;
   const inferredFreshness = Number.isFinite(eventAgeSeconds) ? eventAgeSeconds : null;
+  const nextAgeSeconds = Number.isFinite(Number(update.age_seconds))
+    ? Number(update.age_seconds)
+    : inferredFreshness;
+
+  const nextCurrentPrice = isValidQuotePrice(update.current_price)
+    ? Number(update.current_price)
+    : (isValidQuotePrice(update.price) ? Number(update.price) : prev.current_price);
 
   return {
     ...prev,
-    symbol: update.symbol ?? prev.symbol,
-    current_price: update.current_price ?? update.price ?? prev.current_price,
+    symbol: normalizeSymbol(update.symbol ?? prev.symbol),
+    current_price: nextCurrentPrice,
     prev_price: update.prev_price ?? prev.prev_price,
     change_value: update.change_value ?? prev.change_value,
     change_pct: update.change_pct ?? prev.change_pct,
@@ -27,9 +54,18 @@ function mergeQuote(prev, update) {
     high_price: update.high_price ?? prev.high_price,
     low_price: update.low_price ?? prev.low_price,
     volume: update.volume ?? prev.volume,
-    freshness_seconds: update.freshness_seconds ?? inferredFreshness ?? prev.freshness_seconds,
-    stale: update.stale ?? (inferredFreshness !== null ? inferredFreshness > 30 : prev.stale),
+    freshness_seconds: update.freshness_seconds ?? nextAgeSeconds ?? prev.freshness_seconds,
+    age_seconds: update.age_seconds ?? nextAgeSeconds ?? prev.age_seconds,
+    stale: update.stale ?? (nextAgeSeconds !== null ? nextAgeSeconds > 30 : prev.stale),
+    stale_over_threshold: update.stale_over_threshold ?? prev.stale_over_threshold ?? false,
+    stale_threshold_seconds: update.stale_threshold_seconds ?? prev.stale_threshold_seconds ?? null,
     last_date: eventTimestamp ?? prev.last_date,
+    source_event_at: update.source_event_at ?? prev.source_event_at,
+    served_at: update.served_at ?? prev.served_at,
+    market_phase: update.market_phase ?? prev.market_phase,
+    market_code: update.market_code ?? prev.market_code,
+    data_semantic: update.data_semantic ?? prev.data_semantic,
+    source: update.source ?? prev.source,
   };
 }
 
@@ -86,29 +122,67 @@ function computeNextBackoffMs(currentBackoffMs) {
   return Math.min(currentBackoffMs * 2, 120000);
 }
 
-function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
+export function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   const normalizedQuotes = quotesBySymbol || {};
   const staleOrMissing = [];
   const fresh = [];
+  let hasOverThreshold = false;
 
   (symbols || []).forEach((symbol) => {
-    const quote = normalizedQuotes[symbol] || {};
-    const isMissing = quote.current_price == null;
+    const normalizedSymbol = normalizeSymbol(symbol);
+    const quote = getQuoteBySymbol(normalizedQuotes, normalizedSymbol);
+    const isMissing = !isValidQuotePrice(quote.current_price);
+    const isOffhoursSessionClose = quote.data_semantic === 'last_session_close'
+      || ['offhours', 'post_close', 'pre_open'].includes(String(quote.market_phase || '').toLowerCase());
     const freshnessSeconds = Number(quote.freshness_seconds);
-    const isStale = quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20);
+    const ageSeconds = Number(quote.age_seconds);
+    const staleOverThreshold = Boolean(quote.stale_over_threshold);
+    const isStale = isOffhoursSessionClose
+      ? false
+      : (staleOverThreshold || quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20));
+
+    if (staleOverThreshold || (Number.isFinite(ageSeconds) && Number.isFinite(quote.stale_threshold_seconds) && ageSeconds > Number(quote.stale_threshold_seconds))) {
+      hasOverThreshold = true;
+    }
 
     if (isMissing || isStale) {
-      staleOrMissing.push(symbol);
+      staleOrMissing.push(normalizedSymbol);
     } else {
-      fresh.push(symbol);
+      fresh.push(normalizedSymbol);
     }
   });
 
   if (!wsHealthy) {
-    return [...staleOrMissing, ...fresh];
+    return {
+      symbols: [...staleOrMissing, ...fresh],
+      hasOverThreshold,
+    };
   }
 
-  return staleOrMissing;
+  return {
+    symbols: staleOrMissing,
+    hasOverThreshold,
+  };
+}
+
+export function resolveRealtimePollIntervalMs({
+  wsHealthy,
+  hasRecoveryCandidates,
+  pollInterval,
+  hasOverThresholdCandidates,
+  staleResyncRetryMs,
+  wsHealthyRecoveryPollIntervalMs,
+  wsHealthyMinPollIntervalMs,
+}) {
+  const effectiveIntervalMs = hasRecoveryCandidates
+    ? wsHealthyRecoveryPollIntervalMs
+    : (wsHealthy
+      ? Math.max(pollInterval, wsHealthyMinPollIntervalMs)
+      : Math.max(pollInterval, 5000));
+
+  return hasOverThresholdCandidates
+    ? Math.min(effectiveIntervalMs, staleResyncRetryMs)
+    : effectiveIntervalMs;
 }
 
 function pickPollBatch(symbols, cursor, batchSize) {
@@ -136,9 +210,13 @@ export default function useRealtimeFeedLegacy({
   maxAlerts = 5,
   enabled = true,
 }) {
+  const STALE_RESYNC_RETRY_MS = 3000;
   const POLL_BATCH_SIZE = 4;
   const WS_HEALTHY_POLL_BATCH_SIZE = 2;
+  const WS_HEALTHY_RECOVERY_BATCH_SIZE = 16; // Increased from 8 for faster recovery
   const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
+  const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 8000; // Increased from 5000 to reduce re-render frequency
+  const WS_HEALTHY_RECOVERY_MIN_CANDIDATES = 3; // Only enter recovery if >= 3 missing symbols
   const MAX_WS_SUB_SYMBOLS = 50;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
@@ -155,6 +233,7 @@ export default function useRealtimeFeedLegacy({
     unsubscribed: 0,
     polling_successes: 0,
     polling_failures: 0,
+    intraday_retry_3s_total: 0,
     circuit_breaker_trips: 0,
   });
   const [lastLatencyMs, setLastLatencyMs] = useState(null);
@@ -236,19 +315,98 @@ export default function useRealtimeFeedLegacy({
     setQuotesBySymbol((prev) => {
       const next = {};
       normalizedSymbols.forEach((symbol) => {
-        next[symbol] = prev[symbol] || { symbol };
+        const normalizedSymbol = normalizeSymbol(symbol);
+        const existing = getQuoteBySymbol(prev, normalizedSymbol);
+        next[normalizedSymbol] = existing?.symbol ? existing : { symbol: normalizedSymbol };
       });
       return next;
     });
   }, [normalizedSymbols, enabled]);
 
   const applyTickerUpdate = useCallback((update) => {
-    if (!update?.symbol) return;
+    const normalizedSymbol = normalizeSymbol(update?.symbol);
+    if (!normalizedSymbol) return;
+
     setQuotesBySymbol((prev) => ({
       ...prev,
-      [update.symbol]: mergeQuote(prev[update.symbol] || { symbol: update.symbol }, update),
+      [normalizedSymbol]: mergeQuote(
+        getQuoteBySymbol(prev, normalizedSymbol) || { symbol: normalizedSymbol },
+        { ...update, symbol: normalizedSymbol },
+      ),
     }));
   }, []);
+
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const token = localStorage.getItem('access_token');
+    if (!token || !normalizedSymbols.length) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const hydrateQuotes = async () => {
+      // Hydrate full quote set once on mount so hard refresh does not leave
+      // a subset of symbols empty while waiting for polling cursor rotation.
+      // Increased batch size from 10 -> 20 for faster sequential bootstrap without API surge
+      const bootstrapBatchSize = 20;
+
+      for (let i = 0; i < normalizedSymbols.length; i += bootstrapBatchSize) {
+        const batch = normalizedSymbols.slice(i, i + bootstrapBatchSize);
+        const results = await Promise.allSettled(batch.map((symbol) => getRealtimeTicker(symbol)));
+        if (cancelled) return;
+
+        let ok = 0;
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            ok += 1;
+            const { data } = result.value;
+            applyTickerUpdate({
+              symbol: data.symbol,
+              current_price: data.current_price,
+              prev_price: data.prev_price,
+              change_value: data.change_value,
+              change_pct: data.change_pct,
+              open_price: data.open_price,
+              high_price: data.high_price,
+              low_price: data.low_price,
+              volume: data.volume,
+              freshness_seconds: data.freshness_seconds,
+              age_seconds: data.age_seconds,
+              stale: data.stale,
+              stale_over_threshold: data.stale_over_threshold,
+              stale_threshold_seconds: data.stale_threshold_seconds,
+              last_date: data.last_date,
+              source_event_at: data.source_event_at,
+              served_at: data.served_at,
+              market_phase: data.market_phase,
+              market_code: data.market_code,
+              data_semantic: data.data_semantic,
+              source: data.source,
+            });
+          } else {
+            const status = getHttpStatus(result.reason);
+            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
+            if (status !== 429) {
+              console.warn(`Bootstrap quote fetch failed for ${batch[idx]}:`, result.reason?.message);
+            }
+          }
+        });
+
+        if (ok > 0) {
+          setLastEventAt(nowIso());
+          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
+        }
+      }
+    };
+
+    hydrateQuotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, normalizedSymbols, applyTickerUpdate]);
 
   const applyAlert = useCallback((payload) => {
     const nextAlert = normalizeAlert(payload);
@@ -284,11 +442,31 @@ export default function useRealtimeFeedLegacy({
       if (!token || !syms.length) return;
 
       const wsHealthy = wsHealthyRef.current;
-      const effectiveIntervalMs = wsHealthy
-        ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
-        : Math.max(pollIntervalRef.current, 5000);
+      const candidateResult = normalizePollSymbolCandidates(
+        syms,
+        quotesBySymbolRef.current,
+        wsHealthy,
+      );
+      const pollCandidates = candidateResult.symbols;
+      const hasOverThresholdCandidates = candidateResult.hasOverThreshold;
 
-      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < effectiveIntervalMs) {
+      if (!pollCandidates.length) {
+        return;
+      }
+
+      // Only enter recovery mode if WS healthy AND >= 3 missing symbols (reduces unnecessary recovery polling)
+      const hasRecoveryCandidates = wsHealthy && pollCandidates.length >= WS_HEALTHY_RECOVERY_MIN_CANDIDATES;
+      const targetIntervalMs = resolveRealtimePollIntervalMs({
+        wsHealthy,
+        hasRecoveryCandidates,
+        pollInterval: pollIntervalRef.current,
+        hasOverThresholdCandidates,
+        staleResyncRetryMs: STALE_RESYNC_RETRY_MS,
+        wsHealthyRecoveryPollIntervalMs: WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS,
+        wsHealthyMinPollIntervalMs: WS_HEALTHY_MIN_POLL_INTERVAL_MS,
+      });
+
+      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < targetIntervalMs) {
         return;
       }
 
@@ -296,22 +474,20 @@ export default function useRealtimeFeedLegacy({
         return;
       }
 
-      const pollCandidates = normalizePollSymbolCandidates(
-        syms,
-        quotesBySymbolRef.current,
-        wsHealthy,
-      );
-
-      if (!pollCandidates.length) {
-        return;
-      }
-
       lastPollAtRef.current = Date.now();
+      if (hasOverThresholdCandidates) {
+        setEventCounts((prev) => ({
+          ...prev,
+          intraday_retry_3s_total: prev.intraday_retry_3s_total + 1,
+        }));
+      }
 
       const { batch: pollBatch, nextCursor } = pickPollBatch(
         pollCandidates,
         pollCursorRef.current,
-        wsHealthy ? WS_HEALTHY_POLL_BATCH_SIZE : POLL_BATCH_SIZE,
+        hasRecoveryCandidates
+          ? WS_HEALTHY_RECOVERY_BATCH_SIZE
+          : (wsHealthy ? WS_HEALTHY_POLL_BATCH_SIZE : POLL_BATCH_SIZE),
       );
 
       if (!pollBatch.length) {
@@ -338,8 +514,17 @@ export default function useRealtimeFeedLegacy({
               low_price: data.low_price,
               volume: data.volume,
               freshness_seconds: data.freshness_seconds,
+              age_seconds: data.age_seconds,
               stale: data.stale,
+              stale_over_threshold: data.stale_over_threshold,
+              stale_threshold_seconds: data.stale_threshold_seconds,
               last_date: data.last_date,
+              source_event_at: data.source_event_at,
+              served_at: data.served_at,
+              market_phase: data.market_phase,
+              market_code: data.market_code,
+              data_semantic: data.data_semantic,
+              source: data.source,
             });
           } else {
             const status = getHttpStatus(r.reason);

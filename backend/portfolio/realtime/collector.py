@@ -18,30 +18,41 @@ def collect_symbols_for_user(user_id: int | None = None) -> list[str]:
 
 
 def collect_intraday_frame(symbol: str) -> pd.DataFrame:
-    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday, fallback về synthetic nếu lỗi."""
+    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday theo runtime provider config.
+    
+    PRICE UNIT GUARANTEE:
+    - Adapter (fetch_intraday_dataframe) now returns prices in canonical THOUSAND_VND
+    - No additional scaling needed here
+    - All prices are already normalized to THOUSAND_VND by adapter
+    """
     try:
         from portfolio.adapters.vnstock_adapter import fetch_intraday_dataframe
         df = fetch_intraday_dataframe(symbol=symbol, page_size=100)
         if df is not None and not df.empty:
-            rows = []
+            price_info = get_price_changes([symbol]).get(symbol.upper(), {})
+            reference_price = price_info.get('prev_price') or price_info.get('current_price') or 0
+            staged_rows = []
             for _, row in df.iterrows():
                 raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
                 raw_price = row.get('price') or row.get('close') or 0
                 raw_vol = row.get('volume') or row.get('vol') or row.get('matchVolume') or 0
                 match_type_raw = str(row.get('match_type') or row.get('matchType') or row.get('side') or '')
-                mt_lower = match_type_raw.lower()
+                mt_lower = match_type_raw.lower().strip()
                 if mt_lower in ('buy', 'bu', 'b'):
-                    side = 'BUY'
+                    source_side = 'BUY'
                 elif mt_lower in ('sell', 'sd', 's'):
-                    side = 'SELL'
+                    source_side = 'SELL'
                 else:
-                    side = 'UNKNOWN'
+                    source_side = 'UNKNOWN'
                 try:
                     price_val = float(raw_price) if raw_price else 0.0
                     vol_val = float(raw_vol) if raw_vol else 0.0
                     
-                    # Scale price to thousand VND unit
-                    price_val = round(price_val * 0.001, 3)
+                    # CANONICAL UNIT: Adapter already converted to THOUSAND_VND
+                    # Previous code had: price_val = round(price_val * 0.001, 3)
+                    # But adapter now handles this - prices are already canonical
+                    # So we just round and trust the canonical unit
+                    price_val = round(price_val, 3)  # No scale factor - already canonical THOUSAND_VND
                 except (ValueError, TypeError):
                     price_val = 0.0
                     vol_val = 0.0
@@ -68,17 +79,50 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 except Exception:
                     pass
 
-                rows.append({'ts': final_ts, 'price': price_val, 'volume': vol_val, 'side': side})
-            if rows:
-                return pd.DataFrame(rows)
+                staged_rows.append({
+                    'ts': final_ts,
+                    'price': price_val,
+                    'volume': vol_val,
+                    'source_side': source_side,
+                    'price_unit': 'THOUSAND_VND',
+                })
+            if staged_rows:
+                staged_rows.sort(key=lambda item: (str(item.get('ts') or ''), float(item.get('price') or 0)))
+                inferred_rows = []
+                prev_price = float(reference_price or 0) if reference_price else None
+                last_side = 'UNKNOWN'
+                for item in staged_rows:
+                    price_val = float(item.get('price') or 0)
+                    source_side = str(item.get('source_side') or 'UNKNOWN').upper()
+                    if prev_price is None:
+                        side = source_side
+                    elif price_val > prev_price:
+                        side = 'BUY'
+                    elif price_val < prev_price:
+                        side = 'SELL'
+                    else:
+                        side = last_side if last_side in ('BUY', 'SELL') else source_side
+                    if side not in ('BUY', 'SELL'):
+                        side = 'UNKNOWN'
+                    if side in ('BUY', 'SELL'):
+                        last_side = side
+                    prev_price = price_val if price_val > 0 else prev_price
+                    inferred_rows.append({
+                        'ts': item['ts'],
+                        'price': price_val,
+                        'volume': float(item.get('volume') or 0),
+                        'side': side,
+                        'price_unit': 'THOUSAND_VND',
+                    })
+                return pd.DataFrame(inferred_rows)
     except (Exception, SystemExit) as exc:
         import logging as _log
         _log.getLogger(__name__).warning(
-            "collect_intraday_frame(%s) vnstock failed, using synthetic fallback: %s",
+            "collect_intraday_frame(%s) vnstock failed after runtime provider fallback: %s",
             symbol, exc,
         )
 
-    # No more synthetic fallback. Return empty if both fetch and synthetic fail.
+    # Return empty only after all configured providers have been exhausted.
     return pd.DataFrame()
 
 

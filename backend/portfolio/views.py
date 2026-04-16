@@ -204,6 +204,8 @@ from .views_ai_advisory_session import (
     stock_ai_advisory_session_api,
 )
 from .views_admin_runtime import (
+    admin_intraday_side_backfill_apply_api,
+    admin_intraday_side_backfill_preview_api,
     admin_runtime_kpi_advisory_merge_api,
     admin_runtime_kpi_advisory_metrics_api,
     admin_runtime_kpi_api,
@@ -217,6 +219,7 @@ from .views_admin_runtime import (
     admin_vnstock_runtime_config_reset_api,
     admin_vnstock_runtime_config_update_api,
     offpeak_vnstock_ingest_api,
+    offpeak_vnstock_ingest_history_api,
     warm_ticker_prefetch_api,
 )
 from .views_admin_vnstock_benchmark import (

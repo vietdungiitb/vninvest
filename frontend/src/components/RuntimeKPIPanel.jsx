@@ -59,7 +59,7 @@ function toneForP95(ms) {
 }
 
 export default function RuntimeKPIPanel() {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const [kpi, setKpi] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -87,6 +87,7 @@ export default function RuntimeKPIPanel() {
 
   const obs = kpi?.market_observability;
   const overall = obs?.overall;
+  const intradayFreshness = obs?.intraday_freshness;
   const prefetch = kpi?.prefetch_health;
   const celery = kpi?.celery;
 
@@ -108,7 +109,7 @@ export default function RuntimeKPIPanel() {
           </h2>
           {lastFetched && (
             <p className="text-[11px] text-gray-600 mt-0.5">
-              {t('runtimeKPI.lastSampled', { time: lastFetched.toLocaleTimeString() })}
+              {t('runtimeKPI.lastSampled', { time: formatDateTime(lastFetched, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) })}
             </p>
           )}
         </div>
@@ -126,7 +127,7 @@ export default function RuntimeKPIPanel() {
       )}
 
       {kpi && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {/* Market Observability */}
           <div className="rounded-lg border border-gray-800 bg-gray-950 p-3 space-y-0.5">
             <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -150,6 +151,37 @@ export default function RuntimeKPIPanel() {
               label={t('runtimeKPI.externalTimeouts')}
               value={fmtCount(overall?.external_timeouts)}
               tone={(overall?.external_timeouts ?? 0) > 0 ? 'red' : 'green'}
+            />
+          </div>
+
+          {/* Intraday Freshness */}
+          <div className="rounded-lg border border-gray-800 bg-gray-950 p-3 space-y-0.5">
+            <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              {t('runtimeKPI.intradayFreshness')}
+            </p>
+            <KPIRow
+              label={t('runtimeKPI.intradayAgeP50')}
+              value={intradayFreshness?.age_seconds?.p50 != null ? `${intradayFreshness.age_seconds.p50}s` : '—'}
+              tone={toneForP95((intradayFreshness?.age_seconds?.p50 ?? 0) * 1000)}
+            />
+            <KPIRow
+              label={t('runtimeKPI.intradayAgeP95')}
+              value={intradayFreshness?.age_seconds?.p95 != null ? `${intradayFreshness.age_seconds.p95}s` : '—'}
+              tone={toneForP95((intradayFreshness?.age_seconds?.p95 ?? 0) * 1000)}
+            />
+            <KPIRow
+              label={t('runtimeKPI.intradayStaleServed')}
+              value={fmtCount(intradayFreshness?.stale_served_total)}
+              tone={(intradayFreshness?.stale_served_total ?? 0) > 0 ? 'amber' : 'green'}
+            />
+            <KPIRow
+              label={t('runtimeKPI.intradayStaleOverThreshold')}
+              value={fmtCount(intradayFreshness?.stale_over_threshold_total)}
+              tone={(intradayFreshness?.stale_over_threshold_total ?? 0) > 0 ? 'red' : 'green'}
+            />
+            <KPIRow
+              label={t('runtimeKPI.intradayRetry3s')}
+              value={fmtCount(intradayFreshness?.realtime_refresh_trigger_total)}
             />
           </div>
 

@@ -330,6 +330,42 @@ class DailyPrice(models.Model):
         return f'{self.symbol} | {self.date} | Đóng cửa: {self.close_price:,.0f}'
 
 
+class TickerSessionClose(models.Model):
+    """
+    Snapshot giá đóng cửa theo từng phiên thị trường.
+    Dùng làm fallback chuẩn ngoài giờ giao dịch và giữ lịch sử ngắn hạn.
+    """
+
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name='Mã chứng khoán')
+    market_code = models.CharField(max_length=32, default='VN_STOCK', db_index=True, verbose_name='Mã thị trường')
+    timezone_name = models.CharField(max_length=64, default='Asia/Ho_Chi_Minh', verbose_name='Múi giờ phiên')
+    session_date = models.DateField(db_index=True, verbose_name='Ngày phiên')
+    close_price = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Giá đóng cửa')
+    prev_close_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Giá đóng trước đó')
+    change_value = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Biến động giá trị')
+    change_pct = models.DecimalField(max_digits=9, decimal_places=4, null=True, blank=True, verbose_name='Biến động phần trăm')
+    open_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Giá mở cửa')
+    high_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Giá cao nhất')
+    low_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Giá thấp nhất')
+    volume = models.BigIntegerField(null=True, blank=True, verbose_name='Khối lượng')
+    source = models.CharField(max_length=64, default='prefetch', verbose_name='Nguồn ghi nhận')
+    captured_at = models.DateTimeField(auto_now=True, verbose_name='Thời điểm ghi nhận')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+
+    class Meta:
+        verbose_name = 'Snapshot đóng cửa phiên'
+        verbose_name_plural = 'Snapshot đóng cửa phiên'
+        unique_together = [('symbol', 'market_code', 'session_date')]
+        indexes = [
+            models.Index(fields=['market_code', 'session_date']),
+            models.Index(fields=['symbol', 'session_date']),
+        ]
+        ordering = ['-session_date', 'symbol']
+
+    def __str__(self):
+        return f'{self.symbol} | {self.market_code} | {self.session_date} | close={self.close_price}'
+
+
 class SecuritiesGroup(models.Model):
     """
     Nhóm theo dõi cổ phiếu (theo ngành hoặc vốn hóa).

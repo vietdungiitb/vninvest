@@ -46,11 +46,28 @@ class CacheAdapterTests(SimpleTestCase):
 
 
 class VnstockAdapterTests(SimpleTestCase):
+    databases = {'default'}
+
     @patch('portfolio.adapters.vnstock_adapter.get_vnstock_runtime_settings', return_value={})
-    def test_resolve_price_board_sources_keeps_order_and_dedup(self):
+    def test_resolve_price_board_sources_keeps_order_and_dedup(self, _mock_settings):
         with patch.dict('os.environ', {'VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES': 'KBS,VCI,KBS'}):
             sources = vnstock_adapter._resolve_price_board_sources(explicit_source='VCI')
         self.assertEqual(sources, ['VCI', 'KBS'])
+
+    @patch('portfolio.adapters.vnstock_adapter.get_vnstock_runtime_settings', return_value={})
+    def test_resolve_financial_ratio_sources_keeps_order_and_dedup(self, _mock_settings):
+        with patch.dict('os.environ', {'VNSTOCK_FINANCIAL_RATIO_FALLBACK_SOURCES': 'TCBS,VCI,TCBS'}):
+            sources = vnstock_adapter._resolve_financial_ratio_sources(explicit_source='AUTO')
+        self.assertEqual(sources, ['AUTO', 'TCBS', 'VCI'])
+
+    @patch(
+        'portfolio.adapters.vnstock_adapter.get_vnstock_runtime_settings',
+        return_value={'price_board_source': 'KBS', 'fallback_sources': ['VCI', 'KBS']},
+    )
+    def test_resolve_intraday_sources_uses_runtime_config_order(self, _mock_settings):
+        sources = vnstock_adapter._resolve_intraday_sources()
+
+        self.assertEqual(sources, ['KBS', 'VCI'])
 
     def test_run_with_timeout_returns_function_result(self):
         result = vnstock_adapter._run_with_timeout(lambda: {'ok': True}, timeout=2)
@@ -105,8 +122,30 @@ class VnstockAdapterTests(SimpleTestCase):
         result = vnstock_adapter.fetch_financial_ratio_dataframe('FPT')
 
         self.assertEqual(result, {'rows': 1})
-        mock_build_stock.assert_called_once_with(symbol='FPT', source='VCI')
+        mock_build_stock.assert_called_once_with(symbol='FPT', source='AUTO')
         self.assertEqual(mock_run_timeout.call_count, 1)
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_financial_ratio_sources', return_value=['AUTO', 'TCBS'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_financial_ratio_dataframe_fallbacks_to_next_source(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        first_client = type('StockClient', (), {'finance': type('FinanceClient', (), {'ratio': lambda *a, **k: None})()})()
+        second_client = type('StockClient', (), {'finance': type('FinanceClient', (), {'ratio': lambda *a, **k: None})()})()
+        mock_build_stock.side_effect = [first_client, second_client]
+        mock_run_timeout.side_effect = [
+            ExternalSystemException('primary failed', code='vnstock_error'),
+            pd.DataFrame([{'year': 2025, 'pe': 10.2}]),
+        ]
+
+        result = vnstock_adapter.fetch_financial_ratio_dataframe('FPT')
+
+        self.assertEqual(result.attrs.get('financial_ratio_source'), 'TCBS')
+        self.assertEqual(mock_build_stock.call_count, 2)
 
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
     @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
@@ -118,6 +157,51 @@ class VnstockAdapterTests(SimpleTestCase):
         result = vnstock_adapter.fetch_history_dataframe('HPG', start='2026-01-01', end='2026-02-01', interval='1D', source='KBS')
 
         self.assertEqual(result, {'rows': 5})
+        mock_build_stock.assert_called_once_with(symbol='HPG', source='KBS')
+        self.assertEqual(mock_run_timeout.call_count, 1)
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_intraday_sources', return_value=['VCI', 'KBS'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_intraday_dataframe_fallbacks_to_next_runtime_provider(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        first_client = type('StockClient', (), {'quote': type('QuoteClient', (), {'intraday': lambda *a, **k: None})()})()
+        second_client = type('StockClient', (), {'quote': type('QuoteClient', (), {'intraday': lambda *a, **k: None})()})()
+        mock_build_stock.side_effect = [first_client, second_client]
+        mock_run_timeout.side_effect = [
+            ExternalSystemException('provider init failed', code='vnstock_error'),
+            pd.DataFrame([
+                {'time': '2026-04-16T14:08:59+07:00', 'price': 81000, 'volume': 200, 'match_type': 'buy'},
+            ]),
+        ]
+
+        result = vnstock_adapter.fetch_intraday_dataframe('MWG', page_size=5)
+
+        self.assertEqual(mock_build_stock.call_count, 2)
+        self.assertEqual(result['price'].iloc[0], 81.0)
+        self.assertEqual(result.attrs.get('intraday_source'), 'KBS')
+        self.assertEqual(result.attrs.get('price_unit_canonical'), 'THOUSAND_VND')
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_listing_sources', return_value=['KBS'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_listing_symbols_dataframe_uses_runtime_provider_chain(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        fake_client = type('StockClient', (), {'listing': type('ListingClient', (), {'all_symbols': lambda *a, **k: {'ok': True}})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = {'rows': 1}
+
+        result = vnstock_adapter.fetch_listing_symbols_dataframe('HPG')
+
+        self.assertEqual(result, {'rows': 1})
         mock_build_stock.assert_called_once_with(symbol='HPG', source='KBS')
         self.assertEqual(mock_run_timeout.call_count, 1)
 
@@ -184,7 +268,7 @@ class VnstockAdapterTests(SimpleTestCase):
 
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
     @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
-    def test_fetch_price_board_dataframe_keeps_raw_vnstock_price_units(self, mock_build_stock, mock_run_timeout):
+    def test_fetch_price_board_dataframe_preserves_canonical_multiindex_payload(self, mock_build_stock, mock_run_timeout):
         fake_client = type('StockClient', (), {'trading': type('TradingClient', (), {'price_board': lambda *a, **k: None})()})()
         mock_build_stock.return_value = fake_client
         mock_run_timeout.return_value = pd.DataFrame(
@@ -195,7 +279,7 @@ class VnstockAdapterTests(SimpleTestCase):
             ]),
         )
 
-        result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
+        result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM', source='KBS')
 
         self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
         self.assertEqual(result[('listing', 'ref_price')].iloc[0], 61.4)
@@ -226,7 +310,7 @@ class VnstockAdapterTests(SimpleTestCase):
 
         result = vnstock_adapter.fetch_price_board_dataframe(['VNM'], anchor_symbol='VNM')
 
-        self.assertEqual(result[('match', 'match_price')].iloc[0], 63.0)
+        self.assertEqual(result[('match', 'match_price')].iloc[0], 0.063)
         self.assertEqual(mock_build_stock.call_count, 2)
 
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')

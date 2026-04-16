@@ -171,7 +171,7 @@ class StockWorkspaceOverviewView(APIView):
 
         if not payload.get('company_name'):
             try:
-                ls_df = legacy_views.fetch_listing_symbols_dataframe(symbol=normalized_symbol, source='VCI')
+                ls_df = legacy_views.fetch_listing_symbols_dataframe(symbol=normalized_symbol)
                 if ls_df is not None and not ls_df.empty:
                     row = ls_df[ls_df['symbol'] == normalized_symbol]
                     if not row.empty:

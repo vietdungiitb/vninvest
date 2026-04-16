@@ -386,6 +386,13 @@ _WHALE_PIPELINE_STATS: dict[str, object] = {
     'events_total': 0,
     'source_counts': defaultdict(int),
 }
+_INTRADAY_FRESHNESS_STATS: dict[str, object] = {
+    'age_seconds': deque(maxlen=300),
+    'stale_served_total': 0,
+    'stale_over_threshold_total': 0,
+    'realtime_refresh_trigger_total': 0,
+    'source_counts': defaultdict(int),
+}
 _STARTED_AT_EPOCH = time()
 
 
@@ -454,6 +461,11 @@ def reset_market_observability() -> None:
         _WHALE_PIPELINE_STATS['recovered_events'] = 0
         _WHALE_PIPELINE_STATS['events_total'] = 0
         _WHALE_PIPELINE_STATS['source_counts'] = defaultdict(int)
+        _INTRADAY_FRESHNESS_STATS['age_seconds'] = deque(maxlen=_latency_window_size())
+        _INTRADAY_FRESHNESS_STATS['stale_served_total'] = 0
+        _INTRADAY_FRESHNESS_STATS['stale_over_threshold_total'] = 0
+        _INTRADAY_FRESHNESS_STATS['realtime_refresh_trigger_total'] = 0
+        _INTRADAY_FRESHNESS_STATS['source_counts'] = defaultdict(int)
         _STARTED_AT_EPOCH = time()
 
 
@@ -573,6 +585,84 @@ def record_whale_event_observation(*, source: str, ts=None, recovered: bool = Fa
             freshness_window = _WHALE_PIPELINE_STATS.get('freshness_seconds')
             if isinstance(freshness_window, deque):
                 freshness_window.append(float(freshness_seconds))
+
+
+def record_intraday_freshness_observation(
+    *,
+    source: str,
+    age_seconds=None,
+    stale: bool = False,
+    stale_over_threshold: bool = False,
+    realtime_refresh_trigger: bool = False,
+) -> None:
+    if not _metrics_enabled():
+        return
+
+    source_key = str(source or 'unknown').strip() or 'unknown'
+    coerced_age = None
+    try:
+        if age_seconds is not None:
+            coerced_age = max(float(age_seconds), 0.0)
+    except (TypeError, ValueError):
+        coerced_age = None
+
+    with _LOCK:
+        source_counts = _INTRADAY_FRESHNESS_STATS.get('source_counts')
+        if isinstance(source_counts, dict):
+            source_counts[source_key] = int(source_counts.get(source_key, 0)) + 1
+
+        if bool(stale):
+            _INTRADAY_FRESHNESS_STATS['stale_served_total'] = int(
+                _INTRADAY_FRESHNESS_STATS.get('stale_served_total', 0)
+            ) + 1
+
+        if bool(stale_over_threshold):
+            _INTRADAY_FRESHNESS_STATS['stale_over_threshold_total'] = int(
+                _INTRADAY_FRESHNESS_STATS.get('stale_over_threshold_total', 0)
+            ) + 1
+
+        if bool(realtime_refresh_trigger):
+            _INTRADAY_FRESHNESS_STATS['realtime_refresh_trigger_total'] = int(
+                _INTRADAY_FRESHNESS_STATS.get('realtime_refresh_trigger_total', 0)
+            ) + 1
+
+        if coerced_age is not None:
+            age_window = _INTRADAY_FRESHNESS_STATS.get('age_seconds')
+            if isinstance(age_window, deque):
+                age_window.append(coerced_age)
+
+
+def _build_intraday_freshness_summary_from_counters(
+    *,
+    age_samples: list[float],
+    stale_served_total: int,
+    stale_over_threshold_total: int,
+    realtime_refresh_trigger_total: int,
+    source_counts: dict,
+) -> dict:
+    sample_size = len(age_samples)
+    age_p50 = round(_percentile(age_samples, 0.50), 2)
+    age_p95 = round(_percentile(age_samples, 0.95), 2)
+    stale_ratio_pct = round((stale_served_total / sample_size) * 100, 2) if sample_size else 0.0
+    over_threshold_ratio_pct = (
+        round((stale_over_threshold_total / stale_served_total) * 100, 2)
+        if stale_served_total
+        else 0.0
+    )
+
+    return {
+        'age_seconds': {
+            'sample_size': sample_size,
+            'p50': age_p50,
+            'p95': age_p95,
+        },
+        'stale_served_total': stale_served_total,
+        'stale_ratio_pct': stale_ratio_pct,
+        'stale_over_threshold_total': stale_over_threshold_total,
+        'stale_over_threshold_ratio_pct': over_threshold_ratio_pct,
+        'realtime_refresh_trigger_total': realtime_refresh_trigger_total,
+        'source_mix': source_counts,
+    }
 
 
 def get_whale_pipeline_health_summary() -> dict:
@@ -727,6 +817,11 @@ def get_market_observability_snapshot() -> dict:
         whale_dedup_total = int(_WHALE_PIPELINE_STATS.get('dedup_total', 0))
         whale_dedup_hits = int(_WHALE_PIPELINE_STATS.get('dedup_hits', 0))
         whale_source_counts = dict(_WHALE_PIPELINE_STATS.get('source_counts') or {})
+        intraday_age_samples = list(_INTRADAY_FRESHNESS_STATS.get('age_seconds') or [])
+        intraday_stale_served_total = int(_INTRADAY_FRESHNESS_STATS.get('stale_served_total', 0))
+        intraday_stale_over_threshold_total = int(_INTRADAY_FRESHNESS_STATS.get('stale_over_threshold_total', 0))
+        intraday_refresh_trigger_total = int(_INTRADAY_FRESHNESS_STATS.get('realtime_refresh_trigger_total', 0))
+        intraday_source_counts = dict(_INTRADAY_FRESHNESS_STATS.get('source_counts') or {})
 
         whale_pipeline_summary = _build_whale_pipeline_health_summary_from_counters(
             freshness_samples=whale_freshness_samples,
@@ -735,6 +830,13 @@ def get_market_observability_snapshot() -> dict:
             dedup_total=whale_dedup_total,
             dedup_hits=whale_dedup_hits,
             source_counts=whale_source_counts,
+        )
+        intraday_freshness_summary = _build_intraday_freshness_summary_from_counters(
+            age_samples=intraday_age_samples,
+            stale_served_total=intraday_stale_served_total,
+            stale_over_threshold_total=intraday_stale_over_threshold_total,
+            realtime_refresh_trigger_total=intraday_refresh_trigger_total,
+            source_counts=intraday_source_counts,
         )
 
         return {
@@ -766,6 +868,7 @@ def get_market_observability_snapshot() -> dict:
                 'flushed': advisory_merge_flushed,
                 'skipped': advisory_merge_skipped,
             },
+            'intraday_freshness': intraday_freshness_summary,
             'whale_pipeline': whale_pipeline_summary,
             'endpoints': endpoints,
             'fallback_breakdown': fallback_breakdown,

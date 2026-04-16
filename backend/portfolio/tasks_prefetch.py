@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import math
 import os
@@ -13,10 +13,19 @@ from django.db.models import Count
 from django.utils import timezone
 
 from portfolio.adapters.vnstock_adapter import fetch_price_board_dataframe
+from portfolio.market_calendar import (
+    normalize_market_holiday_dates,
+    previous_trading_day,
+    resolve_default_market_holiday_dates,
+    resolve_market_local_date,
+    resolve_market_local_now,
+    resolve_market_phase,
+)
 from portfolio.models import (
     DailyPrice,
     PriceAlertRule,
     SecuritiesItem,
+    TickerSessionClose,
     TrackedSymbol,
     Transaction,
     WatchlistItem,
@@ -40,6 +49,9 @@ REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY = 'realtime:universe:snapshot'
 REALTIME_UNIVERSE_TIER_CACHE_PREFIX = 'realtime:universe'
 REALTIME_SHARD_CACHE_PREFIX = 'realtime:shard'
 REALTIME_SHARD_LAST_ENQUEUE_PREFIX = 'realtime:shard:last_enqueue'
+OFFPEAK_INGEST_LATEST_META_CACHE_KEY = 'ticker:offpeak:ingest:latest'
+OFFPEAK_INGEST_HISTORY_CACHE_KEY = 'ticker:offpeak:ingest:history'
+OFFPEAK_INGEST_HISTORY_MAX_ITEMS = 20
 
 
 def _read_bool_env(name: str, default: bool) -> bool:
@@ -505,7 +517,16 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         _safe_cache_delete(lock_key)
 
 
-def _cache_ticker_rows_from_dataframe(df, *, tier: str, shard_id: int, now_iso: str) -> int:
+def _cache_ticker_rows_from_dataframe(
+    df,
+    *,
+    tier: str,
+    shard_id: int,
+    now_iso: str,
+    cache_timeout_seconds: int = 60,
+    market_phase: str = 'market_open',
+    market_code: str = 'VN_STOCK',
+) -> int:
     cached_count = 0
     for _, row in df.iterrows():
         try:
@@ -518,6 +539,10 @@ def _cache_ticker_rows_from_dataframe(df, *, tier: str, shard_id: int, now_iso: 
             lowest = _f(_extract_row_lowest(row))
             open_price = _f(_extract_row_open_price(row))
             accum_vol = _i(_extract_row_volume(row))
+            
+            # CANONICAL UNIT GUARANTEE:
+            # All prices (match_price, ref_price, etc.) are in THOUSAND_VND canonical format
+            # Adapter guarantees this, so calculations are safe without unit conversions
             change_value = round(match_price - ref_price, 2) if match_price and ref_price else None
             change_pct = round((match_price - ref_price) / ref_price * 100, 2) if match_price and ref_price else None
             cache.set(
@@ -536,8 +561,10 @@ def _cache_ticker_rows_from_dataframe(df, *, tier: str, shard_id: int, now_iso: 
                     'freshness_seconds': 0,
                     'stale': False,
                     'source': 'prefetch',
+                    'market_phase': market_phase,
+                    'market_code': market_code,
                 },
-                timeout=60,
+                timeout=max(int(cache_timeout_seconds or 60), 1),
             )
             cache.set(
                 f'ticker:meta:{sym}',
@@ -596,7 +623,13 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
         }
 
     try:
-        topology = _resolve_prefetch_topology(runtime_settings=_get_prefetch_runtime_settings())
+        runtime_settings = _get_prefetch_runtime_settings()
+        topology = _resolve_prefetch_topology(runtime_settings=runtime_settings)
+        time_policy = _get_prefetch_time_policy()
+        _, policy_meta = _resolve_effective_prefetch_settings(runtime_settings=runtime_settings, policy=time_policy)
+        profile = str(policy_meta.get('profile') or 'market_open').lower()
+        market_code = str(policy_meta.get('market_code') or 'VN_STOCK').strip().upper() or 'VN_STOCK'
+        cache_timeout_seconds = _resolve_ticker_cache_ttl_seconds(profile=profile, runtime_settings=runtime_settings)
         batch_size = _tier_batch_size(topology, normalized_tier)
         symbols = cache.get(f'{REALTIME_SHARD_CACHE_PREFIX}:{normalized_tier}:{int(shard_id)}') or []
         symbols = [str(symbol).strip().upper() for symbol in symbols if symbol and str(symbol).strip()]
@@ -621,7 +654,15 @@ def prefetch_realtime_ticker_shard(self, tier: str, shard_id: int) -> dict:
             batches += 1
             if df is None or df.empty:
                 continue
-            cached_count += _cache_ticker_rows_from_dataframe(df, tier=normalized_tier, shard_id=int(shard_id), now_iso=now_iso)
+            cached_count += _cache_ticker_rows_from_dataframe(
+                df,
+                tier=normalized_tier,
+                shard_id=int(shard_id),
+                now_iso=now_iso,
+                cache_timeout_seconds=cache_timeout_seconds,
+                market_phase=profile,
+                market_code=market_code,
+            )
 
         _increment_prefetch_metric('realtime_prefetch_rows_cached_total', suffix=normalized_tier, amount=cached_count)
         return {
@@ -658,7 +699,10 @@ def _prefetch_runtime_defaults() -> dict:
         'circuit_window_seconds': max(_int_env('VNSTOCK_CIRCUIT_WINDOW_SECONDS', 300), 30),
         'circuit_breaker_timeout_threshold': max(_int_env('VNSTOCK_CIRCUIT_BREAKER_TIMEOUT_THRESHOLD', 3), 1),
         'circuit_breaker_cooldown_seconds': max(_int_env('VNSTOCK_CIRCUIT_BREAKER_COOLDOWN_SECONDS', 1800), 60),
+        'offhours_cache_ttl_seconds': max(_int_env('TICKER_OFFHOURS_CACHE_TTL_SECONDS', 3600), 60),
+        'session_close_retention_days': max(_int_env('TICKER_SESSION_CLOSE_RETENTION_DAYS', 7), 1),
         'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
+        'session_close_capture_enabled': _read_bool_env('TICKER_SESSION_CLOSE_CAPTURE_ENABLED', True),
     }
 
 
@@ -679,6 +723,8 @@ def _get_prefetch_runtime_settings() -> dict:
         'circuit_window_seconds': 30,
         'circuit_breaker_timeout_threshold': 1,
         'circuit_breaker_cooldown_seconds': 60,
+        'offhours_cache_ttl_seconds': 60,
+        'session_close_retention_days': 1,
     }
     for key, min_value in int_keys.items():
         if key not in raw:
@@ -690,6 +736,8 @@ def _get_prefetch_runtime_settings() -> dict:
 
     if 'include_group_symbols' in raw:
         settings_payload['include_group_symbols'] = bool(raw.get('include_group_symbols'))
+    if 'session_close_capture_enabled' in raw:
+        settings_payload['session_close_capture_enabled'] = bool(raw.get('session_close_capture_enabled'))
 
     settings_payload['retry_max_seconds'] = max(
         settings_payload['retry_max_seconds'],
@@ -699,13 +747,17 @@ def _get_prefetch_runtime_settings() -> dict:
 
 
 def _prefetch_time_policy_defaults() -> dict:
+    default_holiday_dates = resolve_default_market_holiday_dates('VN_STOCK')
     return {
         'timezone': 'Asia/Ho_Chi_Minh',
+        'market_code': 'VN_STOCK',
+        'supported_timezones': ['Asia/Ho_Chi_Minh'],
         'market': {
             'open_time': '09:00',
             'close_time': '15:00',
             'pre_open_minutes': 30,
             'post_close_minutes': 30,
+            'holiday_dates': default_holiday_dates,
             'lunch_break': {
                 'enabled': True,
                 'start': '11:30',
@@ -718,8 +770,8 @@ def _prefetch_time_policy_defaults() -> dict:
             'market_open': {'query_enabled': True, 'interval_seconds': 35, 'batch_size': 20, 'symbol_limit': 40, 'max_retries': 4},
             'lunch_break': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
             'pre_close': {'query_enabled': True, 'interval_seconds': 60, 'batch_size': 12, 'symbol_limit': 30, 'max_retries': 2},
-            'post_close': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
-            'offhours': {'query_enabled': False, 'interval_seconds': 600, 'batch_size': 5, 'symbol_limit': 10, 'max_retries': 0},
+            'post_close': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 20, 'symbol_limit': 60, 'max_retries': 1},
+            'offhours': {'query_enabled': True, 'interval_seconds': 1200, 'batch_size': 20, 'symbol_limit': 60, 'max_retries': 1},
         },
         'rate_limit_guard': {
             'jitter_percent': 15.0,
@@ -772,6 +824,31 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None) -> dict:
     except ZoneInfoNotFoundError:
         timezone_name = base['timezone']
 
+    market_code = str(payload.get('market_code', base.get('market_code', 'VN_STOCK')) or 'VN_STOCK').strip().upper()
+    if not market_code:
+        market_code = 'VN_STOCK'
+
+    supported_timezones_raw = payload.get('supported_timezones', base.get('supported_timezones', [timezone_name]))
+    if isinstance(supported_timezones_raw, str):
+        supported_timezones_raw = [item.strip() for item in supported_timezones_raw.split(',') if item.strip()]
+    if not isinstance(supported_timezones_raw, list):
+        supported_timezones_raw = [timezone_name]
+    supported_timezones = []
+    for item in supported_timezones_raw:
+        candidate = str(item or '').strip()
+        if not candidate:
+            continue
+        try:
+            ZoneInfo(candidate)
+        except ZoneInfoNotFoundError:
+            continue
+        supported_timezones.append(candidate)
+    if timezone_name not in supported_timezones:
+        supported_timezones.insert(0, timezone_name)
+    supported_timezones = list(dict.fromkeys(supported_timezones))[:12]
+    if not supported_timezones:
+        supported_timezones = [timezone_name]
+
     market_raw = payload.get('market') if isinstance(payload.get('market'), dict) else {}
     market_base = base['market']
     lunch_raw = market_raw.get('lunch_break') if isinstance(market_raw.get('lunch_break'), dict) else {}
@@ -782,6 +859,7 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None) -> dict:
         'close_time': _time_or_default(market_raw.get('close_time'), market_base['close_time']),
         'pre_open_minutes': _to_int(market_raw.get('pre_open_minutes'), market_base['pre_open_minutes'], min_value=0),
         'post_close_minutes': _to_int(market_raw.get('post_close_minutes'), market_base['post_close_minutes'], min_value=0),
+        'holiday_dates': [],
         'lunch_break': {
             'enabled': _to_bool(lunch_raw.get('enabled'), lunch_base['enabled']),
             'start': _time_or_default(lunch_raw.get('start'), lunch_base['start']),
@@ -791,6 +869,13 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None) -> dict:
     }
     if market['weekend_mode'] not in {'offhours'}:
         market['weekend_mode'] = 'offhours'
+    try:
+        market['holiday_dates'] = normalize_market_holiday_dates(
+            market_raw.get('holiday_dates', market_base.get('holiday_dates', [])),
+            field_name='prefetch_time_policy.market.holiday_dates',
+        )
+    except ValueError:
+        market['holiday_dates'] = list(market_base.get('holiday_dates', []))
 
     profiles_raw = payload.get('profiles') if isinstance(payload.get('profiles'), dict) else {}
     profiles = {}
@@ -817,6 +902,8 @@ def _coerce_prefetch_time_policy(raw_payload, fallback=None) -> dict:
 
     return {
         'timezone': timezone_name,
+        'market_code': market_code,
+        'supported_timezones': supported_timezones,
         'market': market,
         'profiles': profiles,
         'rate_limit_guard': rate_limit_guard,
@@ -843,50 +930,9 @@ def _parse_hhmm_to_minutes(hhmm: str, fallback_minutes: int) -> int:
 
 
 def _resolve_prefetch_time_profile(now_dt=None, policy=None) -> tuple[str, str]:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
     normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
-    timezone_name = normalized_policy.get('timezone', 'Asia/Ho_Chi_Minh')
-    try:
-        tz = ZoneInfo(timezone_name)
-    except ZoneInfoNotFoundError:
-        tz = ZoneInfo('Asia/Ho_Chi_Minh')
-    local_now = (now_dt or timezone.now()).astimezone(tz)
-
-    market = normalized_policy['market']
-    open_minutes = _parse_hhmm_to_minutes(market.get('open_time'), 9 * 60)
-    close_minutes = _parse_hhmm_to_minutes(market.get('close_time'), 15 * 60)
-    if open_minutes >= close_minutes:
-        open_minutes, close_minutes = 9 * 60, 15 * 60
-
-    now_minutes = local_now.hour * 60 + local_now.minute
-    pre_open_minutes = max(int(market.get('pre_open_minutes', 30)), 0)
-    post_close_minutes = max(int(market.get('post_close_minutes', 30)), 0)
-    pre_close_minutes = max(int(market.get('pre_close_minutes', pre_open_minutes)), 0)
-
-    if local_now.weekday() >= 5 and market.get('weekend_mode') == 'offhours':
-        return 'offhours', 'weekend_offhours_mode'
-
-    lunch = market.get('lunch_break') if isinstance(market.get('lunch_break'), dict) else {}
-    lunch_enabled = bool(lunch.get('enabled', False))
-    lunch_start_minutes = _parse_hhmm_to_minutes(lunch.get('start'), 11 * 60 + 30)
-    lunch_end_minutes = _parse_hhmm_to_minutes(lunch.get('end'), 13 * 60)
-
-    pre_open_start = max(open_minutes - pre_open_minutes, 0)
-    post_close_end = min(close_minutes + post_close_minutes, 24 * 60)
-    pre_close_start = max(close_minutes - pre_close_minutes, open_minutes)
-
-    if pre_open_start <= now_minutes < open_minutes:
-        return 'pre_open', 'within_pre_open_window'
-    if open_minutes <= now_minutes < close_minutes:
-        if lunch_enabled and lunch_start_minutes <= now_minutes < lunch_end_minutes:
-            return 'lunch_break', 'within_lunch_break_window'
-        if pre_close_start <= now_minutes < close_minutes:
-            return 'pre_close', 'within_pre_close_window'
-        return 'market_open', 'within_market_open_window'
-    if close_minutes <= now_minutes < post_close_end:
-        return 'post_close', 'within_post_close_window'
-    return 'offhours', 'outside_market_windows'
+    resolved = resolve_market_phase(normalized_policy, now_dt=now_dt)
+    return str(resolved.get('profile') or 'offhours'), str(resolved.get('reason') or 'outside_market_windows')
 
 
 def _resolve_effective_prefetch_settings(runtime_settings=None, policy=None, now_dt=None) -> tuple[dict, dict]:
@@ -905,12 +951,89 @@ def _resolve_effective_prefetch_settings(runtime_settings=None, policy=None, now
 
     policy_meta = {
         'timezone': normalized_policy.get('timezone'),
+        'market_code': str(normalized_policy.get('market_code') or 'VN_STOCK').strip().upper(),
+        'supported_timezones': list(normalized_policy.get('supported_timezones') or [normalized_policy.get('timezone')]),
         'profile': profile_name,
         'reason': reason,
         'query_enabled': bool(profile_payload.get('query_enabled', True)),
         'effective_interval_seconds': int(profile_payload.get('interval_seconds', 0) or 0),
     }
     return effective_settings, policy_meta
+
+
+def _resolve_ticker_cache_ttl_seconds(*, profile: str, runtime_settings: dict | None = None) -> int:
+    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    offhours_ttl = max(int(runtime_payload.get('offhours_cache_ttl_seconds', 3600) or 3600), 60)
+    if profile in {'offhours', 'post_close'}:
+        return offhours_ttl
+    return 60
+
+
+def _resolve_session_close_date(profile: str, now_dt=None, policy=None):
+    normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
+    local_now = resolve_market_local_now(normalized_policy, now_dt=now_dt)
+    session_date = local_now.date()
+    if profile in {'offhours', 'pre_open'}:
+        session_date = session_date - timedelta(days=1)
+    return previous_trading_day(normalized_policy, session_date)
+
+
+def _upsert_session_close_snapshot(
+    *,
+    symbol: str,
+    current_price,
+    prev_price,
+    change_value,
+    change_pct,
+    open_price,
+    high_price,
+    low_price,
+    volume,
+    profile: str,
+    policy=None,
+    runtime_settings: dict | None = None,
+    source: str = 'prefetch',
+    session_date=None,
+) -> None:
+    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    if not bool(runtime_payload.get('session_close_capture_enabled', True)):
+        return
+    if current_price is None:
+        return
+    if profile not in {'post_close', 'offhours'}:
+        return
+
+    normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
+    market_code = str(normalized_policy.get('market_code') or 'VN_STOCK').strip().upper() or 'VN_STOCK'
+    timezone_name = str(normalized_policy.get('timezone') or 'Asia/Ho_Chi_Minh').strip() or 'Asia/Ho_Chi_Minh'
+    resolved_session_date = session_date or _resolve_session_close_date(profile, policy=normalized_policy)
+
+    TickerSessionClose.objects.update_or_create(
+        symbol=str(symbol or '').strip().upper(),
+        market_code=market_code,
+        session_date=resolved_session_date,
+        defaults={
+            'timezone_name': timezone_name,
+            'close_price': current_price,
+            'prev_close_price': prev_price,
+            'change_value': change_value,
+            'change_pct': change_pct,
+            'open_price': open_price,
+            'high_price': high_price,
+            'low_price': low_price,
+            'volume': volume,
+            'source': source,
+            'captured_at': timezone.now(),
+        },
+    )
+
+
+def _cleanup_session_close_retention(runtime_settings: dict | None = None, policy=None, now_dt=None) -> None:
+    runtime_payload = runtime_settings or _get_prefetch_runtime_settings()
+    retention_days = max(int(runtime_payload.get('session_close_retention_days', 7) or 7), 1)
+    normalized_policy = _coerce_prefetch_time_policy(policy, fallback=_prefetch_time_policy_defaults())
+    cutoff_date = resolve_market_local_date(normalized_policy, now_dt=now_dt) - timedelta(days=retention_days)
+    TickerSessionClose.objects.filter(session_date__lt=cutoff_date).delete()
 
 
 def _distinct_symbols(queryset) -> list[str]:
@@ -958,6 +1081,36 @@ def _store_prefetch_meta(payload: dict, timeout: int = 600) -> None:
         cache.set(TICKER_PREFETCH_META_CACHE_KEY, payload, timeout=timeout)
     except Exception:
         pass
+
+
+def _store_offpeak_ingest_meta(payload: dict, timeout_seconds: int = 60 * 60 * 24 * 7) -> None:
+    try:
+        cache.set(OFFPEAK_INGEST_LATEST_META_CACHE_KEY, payload, timeout=timeout_seconds)
+        history = cache.get(OFFPEAK_INGEST_HISTORY_CACHE_KEY)
+        if not isinstance(history, list):
+            history = []
+        history.insert(0, payload)
+        cache.set(
+            OFFPEAK_INGEST_HISTORY_CACHE_KEY,
+            history[:OFFPEAK_INGEST_HISTORY_MAX_ITEMS],
+            timeout=timeout_seconds,
+        )
+    except Exception:
+        pass
+
+
+def _read_offpeak_ingest_history(limit: int = OFFPEAK_INGEST_HISTORY_MAX_ITEMS) -> dict:
+    safe_limit = max(int(limit or OFFPEAK_INGEST_HISTORY_MAX_ITEMS), 1)
+    latest = cache.get(OFFPEAK_INGEST_LATEST_META_CACHE_KEY)
+    history = cache.get(OFFPEAK_INGEST_HISTORY_CACHE_KEY)
+    if not isinstance(history, list):
+        history = []
+    return {
+        'latest': latest if isinstance(latest, dict) else None,
+        'history': history[:safe_limit],
+        'total_entries': len(history),
+        'limit': safe_limit,
+    }
 
 
 def _metric_cache_key(name: str, suffix: str | None = None) -> str:
@@ -1159,6 +1312,9 @@ def prefetch_ticker_price_board(self) -> dict:
     )
     _increment_prefetch_metric('profile_hits_total', suffix=str(policy_meta.get('profile') or 'unknown').lower())
     batch_size = max(int(effective_settings.get('batch_size', 60)), 1)
+    profile = str(policy_meta.get('profile') or 'market_open').lower()
+    market_code = str(policy_meta.get('market_code') or 'VN_STOCK').strip().upper() or 'VN_STOCK'
+    cache_timeout_seconds = _resolve_ticker_cache_ttl_seconds(profile=profile, runtime_settings=effective_settings)
     symbols, source_counts = _collect_prefetch_symbols(runtime_settings=effective_settings)
     if not policy_meta.get('query_enabled', True):
         skip_total = _increment_prefetch_metric('skip_total', suffix='policy_disabled')
@@ -1274,8 +1430,25 @@ def prefetch_ticker_price_board(self) -> dict:
                         'freshness_seconds': 0,
                         'stale': False,
                         'source': 'prefetch',
+                        'market_phase': profile,
+                        'market_code': market_code,
                     }
-                    cache.set(f'ticker:{sym}', data, timeout=60)
+                    cache.set(f'ticker:{sym}', data, timeout=cache_timeout_seconds)
+                    _upsert_session_close_snapshot(
+                        symbol=sym,
+                        current_price=match_price,
+                        prev_price=ref_price,
+                        change_value=change_value,
+                        change_pct=change_pct,
+                        open_price=open_price,
+                        high_price=highest,
+                        low_price=lowest,
+                        volume=accum_vol,
+                        profile=profile,
+                        policy=time_policy,
+                        runtime_settings=effective_settings,
+                        source='prefetch_price_board',
+                    )
                     cached_count += 1
                 except Exception as exc:
                     logger.warning('prefetch_ticker_price_board parse error row: %s', exc)
@@ -1350,6 +1523,7 @@ def prefetch_ticker_price_board(self) -> dict:
     if reason:
         payload['reason'] = reason
     _store_prefetch_meta(payload)
+    _cleanup_session_close_retention(runtime_settings=effective_settings, policy=time_policy)
     logger.info(
         'prefetch_ticker_price_board: symbols=%d cached=%d batches=%d status=%s',
         len(symbols),
@@ -1374,11 +1548,12 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
     resolved_days = max(int(days or os.getenv('OFFPEAK_VNSTOCK_INGEST_DAYS', '5')), 1)
     resolved_max_symbols = max(int(max_symbols or os.getenv('OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS', '300')), 1)
     runtime_settings = _get_prefetch_runtime_settings()
+    time_policy = _get_prefetch_time_policy()
     symbols, source_counts = _collect_prefetch_symbols(runtime_settings=runtime_settings)
     symbols = symbols[:resolved_max_symbols]
 
     if not symbols:
-        return {
+        payload = {
             'status': 'ok',
             'trigger': str(trigger or 'manual'),
             'days': resolved_days,
@@ -1392,8 +1567,10 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             'source_counts': source_counts,
             'generated_at': timezone.now().isoformat(),
         }
+        _store_offpeak_ingest_meta(payload)
+        return payload
 
-    end_date = timezone.localdate()
+    end_date = resolve_market_local_date(time_policy)
     start_date = end_date - timedelta(days=max(resolved_days - 1, 0))
     db_created = 0
     db_updated = 0
@@ -1467,12 +1644,33 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             'stale': False,
             'source': 'offpeak_db_ingest',
             'price_date': latest.date.isoformat(),
+            'market_phase': 'offhours',
+            'market_code': 'VN_STOCK',
         }
-        cache.set(f'ticker:{normalized_symbol}', cache_payload, timeout=60 * 60)
+        cache.set(
+            f'ticker:{normalized_symbol}',
+            cache_payload,
+            timeout=_resolve_ticker_cache_ttl_seconds(profile='offhours', runtime_settings=runtime_settings),
+        )
+        _upsert_session_close_snapshot(
+            symbol=normalized_symbol,
+            current_price=current_price,
+            prev_price=prev_price,
+            change_value=change_value,
+            change_pct=change_pct,
+            open_price=cache_payload.get('open_price'),
+            high_price=cache_payload.get('high_price'),
+            low_price=cache_payload.get('low_price'),
+            volume=cache_payload.get('volume'),
+            profile='offhours',
+            runtime_settings=runtime_settings,
+            source='offpeak_db_ingest',
+            session_date=latest.date,
+        )
         cache_refreshed += 1
 
     status = 'ok' if not failed_symbols else 'partial'
-    return {
+    payload = {
         'status': status,
         'trigger': str(trigger or 'manual'),
         'days': resolved_days,
@@ -1487,3 +1685,6 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
         'source_counts': source_counts,
         'generated_at': timezone.now().isoformat(),
     }
+    _store_offpeak_ingest_meta(payload)
+    _cleanup_session_close_retention(runtime_settings=runtime_settings)
+    return payload

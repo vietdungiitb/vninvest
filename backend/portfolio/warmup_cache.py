@@ -1,5 +1,7 @@
 """Warmup task: Initialize realtime ticker cache on startup."""
 import logging
+
+from django.db.utils import OperationalError, ProgrammingError
 from django.core.cache import cache
 from django.conf import settings
 from portfolio.services_realtime_metrics import increment_realtime_metric
@@ -26,8 +28,7 @@ def run_warmup_cache():
         increment_realtime_metric('realtime_warmup_started_total')
         cache.set(WARMUP_IN_PROGRESS_KEY, True, timeout=300)
         from .tasks_prefetch import build_realtime_symbol_universe_snapshot
-        from .models import RuntimeVnstockConfig
-        
+
         universe_task = build_realtime_symbol_universe_snapshot()
         if not universe_task or not universe_task.get('symbols'):
             increment_realtime_metric('realtime_warmup_errors_total')
@@ -56,6 +57,8 @@ def run_warmup_cache():
         cache.set(WARMUP_COMPLETED_KEY, True, timeout=86400)
         increment_realtime_metric('realtime_warmup_completed_total')
         
+    except (ProgrammingError, OperationalError) as exc:
+        logger.info('Warmup skipped because database is not ready yet: %s', exc)
     except Exception as exc:
         increment_realtime_metric('realtime_warmup_errors_total')
         logger.exception('Warmup cache error: %s', exc)

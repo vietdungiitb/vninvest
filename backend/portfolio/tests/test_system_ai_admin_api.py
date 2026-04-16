@@ -44,6 +44,7 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertIn('ai_provider', response.data['settings'])
         self.assertIn('prefetch_time_policy', response.data['settings'])
         self.assertIn('prefetch_time_policy_rulebook', response.data['settings'])
+        self.assertIn('2026-04-30', response.data['settings']['prefetch_time_policy']['market']['holiday_dates'])
 
     def test_put_updates_system_ai_settings(self):
         self.client.force_authenticate(user=self.admin_user)
@@ -188,6 +189,7 @@ class SystemAIAdminApiTests(APITestCase):
                         'close_time': '15:00',
                         'pre_open_minutes': 20,
                         'post_close_minutes': 45,
+                        'holiday_dates': ['2026-04-30', '2026-05-01'],
                         'lunch_break': {
                             'enabled': True,
                             'start': '11:30',
@@ -219,6 +221,7 @@ class SystemAIAdminApiTests(APITestCase):
         self.assertEqual(policy['market']['open_time'], '08:45')
         self.assertEqual(policy['market']['pre_open_minutes'], 20)
         self.assertEqual(policy['market']['post_close_minutes'], 45)
+        self.assertEqual(policy['market']['holiday_dates'], ['2026-04-30', '2026-05-01'])
         self.assertEqual(policy['profiles']['market_open']['interval_seconds'], 40)
         self.assertEqual(policy['profiles']['market_open']['batch_size'], 16)
         self.assertEqual(policy['rate_limit_guard']['jitter_percent'], 12.0)
@@ -233,8 +236,7 @@ class SystemAIAdminApiTests(APITestCase):
             {
                 'prefetch_time_policy': {
                     'market': {
-                        'open_time': '15:00',
-                        'close_time': '09:00',
+                        'holiday_dates': ['2026-02-30'],
                     },
                 },
             },
@@ -243,7 +245,7 @@ class SystemAIAdminApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok'))
-        self.assertIn('open_time', str(response.data.get('message', '')).lower())
+        self.assertIn('holiday_dates', str(response.data.get('message', '')).lower())
 
     @patch('portfolio.ai_service.test_ai_connection')
     def test_admin_can_test_system_ai_connection(self, mock_test_ai_connection):

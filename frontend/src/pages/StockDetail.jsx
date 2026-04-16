@@ -16,9 +16,9 @@ import {
   createPriceAlert,
   deleteTrackedSymbol,
   deleteWatchlistItem,
+  getDepthChart,
   getUserConfig,
   getIntradayMatched,
-  getPriceBoard,
   getRealtimeTicker,
   getSectorBreadth,
   getStockFinancials,
@@ -100,36 +100,35 @@ function fmtVol(v) {
   }).format(Number(v));
 }
 
-function normalizeQuotePriceValue(value) {
+function finiteNumberOrNull(value) {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  // Chuẩn hiển thị toàn trang StockDetail: nghìn VND.
-  // Hỗ trợ cả payload trả VND hoặc VND x1000.
-  if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1_000_000;
-  }
-  if (Math.abs(parsed) >= 1_000) {
-    return parsed / 1_000;
-  }
-  return parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeQuoteDeltaValue(value, currentPrice) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  const current = Number(currentPrice);
-  // Chuẩn hóa delta về nghìn VND giống chuẩn hiển thị giá.
-  if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1_000_000;
+function isRealtimeQuoteScaleCompatible(candidateQuote, overview) {
+  const baselinePrice = finiteNumberOrNull(
+    overview?.current_price ?? overview?.close_price ?? overview?.reference_price,
+  );
+  const candidatePrice = finiteNumberOrNull(
+    candidateQuote?.current_price ?? candidateQuote?.reference_price ?? candidateQuote?.prev_price,
+  );
+
+  if (candidatePrice === null || baselinePrice === null || baselinePrice <= 0) {
+    return true;
   }
-  if (Math.abs(parsed) >= 1_000) {
-    return parsed / 1_000;
+
+  const ratio = Math.max(candidatePrice, baselinePrice) / Math.min(candidatePrice, baselinePrice);
+  return ratio <= 20;
+}
+
+function pickRealtimeQuoteCandidate(preferredQuote, fallbackQuote, overview) {
+  if (preferredQuote?.current_price != null && isRealtimeQuoteScaleCompatible(preferredQuote, overview)) {
+    return preferredQuote;
   }
-  // Nếu giá hiện tại đang ở thang nghìn (20-100) mà delta quá lớn, coi như đang ở VND.
-  if (Number.isFinite(current) && Math.abs(current) < 500 && Math.abs(parsed) >= 100) {
-    return parsed / 1_000;
+  if (fallbackQuote?.current_price != null && isRealtimeQuoteScaleCompatible(fallbackQuote, overview)) {
+    return fallbackQuote;
   }
-  return parsed;
+  return {};
 }
 
 function advisoryStatusLabel(status, t) {
@@ -737,7 +736,8 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
 }
 
 function IntradayMatchedPanel({ symbol, liveVolume }) {
-  const { t, formatQuotePrice } = useI18n();
+  const STALE_RESYNC_RETRY_MS = 3000;
+  const { t, formatQuotePrice, formatDateTime } = useI18n();
   const [trades, setTrades] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -773,12 +773,22 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
         source: payload.source || null,
         stale: Boolean(payload.stale),
         rateLimited: Boolean(payload.rate_limited),
+        staleOverThreshold: Boolean(payload.stale_over_threshold),
+        staleThresholdSeconds: Number.isFinite(Number(payload.stale_threshold_seconds))
+          ? Number(payload.stale_threshold_seconds)
+          : null,
+        ageSeconds: Number.isFinite(Number(payload.age_seconds))
+          ? Number(payload.age_seconds)
+          : null,
+        sourceEventAt: payload.source_event_at || null,
+        servedAt: payload.served_at || null,
       });
 
       if (!(isTransientEmpty && tradesCountRef.current > 0)) {
         setTrades(incomingTrades);
       }
-      setFetchedAt(payload.fetched_at || null);
+      // Prefer served_at so the UI reflects current response time even when data is stale-cache.
+      setFetchedAt(payload.served_at || payload.fetched_at || null);
     } catch (err) {
       setError(err.response?.data?.detail || t('stockDetail.intradayFetchFailed'));
     } finally {
@@ -803,6 +813,15 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
     const interval = setInterval(fetchTrades, 30_000);
     return () => clearInterval(interval);
   }, [autoRefresh, fetchTrades]);
+
+  // Khi stale qua ngưỡng, ưu tiên resync realtime mỗi 3s.
+  useEffect(() => {
+    if (!autoRefresh || !meta?.staleOverThreshold) return;
+    const timer = setTimeout(() => {
+      fetchTrades();
+    }, STALE_RESYNC_RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [autoRefresh, fetchTrades, meta?.staleOverThreshold]);
 
   // Trigger khi WebSocket phát hiện volume thay đổi (có giao dịch mới)
   // Dùng debounce 3s để tránh gọi API quá nhiều
@@ -841,7 +860,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
           {fetchedAt && (
             <p className="mt-0.5 text-[10px] text-slate-500">
               {refreshing && <span className="mr-1 inline-block animate-spin">⟳</span>}
-              {t('stockDetail.updatedAt')}: {new Date(fetchedAt).toLocaleTimeString(undefined)}
+              {t('stockDetail.updatedAt')}: {formatDateTime(fetchedAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </p>
           )}
         </div>
@@ -882,11 +901,19 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
       )}
 
       {meta?.stale && (
-        <div className="mt-3 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
-          {meta?.rateLimited
-            ? 'Đang dùng dữ liệu cache gần nhất do nguồn realtime tạm thời bị giới hạn tần suất.'
-            : 'Đang dùng dữ liệu cache gần nhất để giữ hiển thị liên tục theo phiên giao dịch.'}
-        </div>
+        meta?.staleOverThreshold ? (
+          <div className="mt-3 rounded-lg border border-rose-900/40 bg-rose-950/20 px-3 py-2 text-[11px] text-rose-300">
+            Dữ liệu cache đã quá ngưỡng đồng bộ ({meta?.staleThresholdSeconds ?? '—'}s).
+            Đang ưu tiên đồng bộ realtime tự động mỗi 3 giây.
+          </div>
+        ) : (
+          <div className="mt-3 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-[11px] text-amber-300">
+            {meta?.rateLimited
+              ? 'Đang dùng dữ liệu cache gần nhất do nguồn realtime tạm thời bị giới hạn tần suất.'
+              : 'Đang dùng dữ liệu cache gần nhất để giữ hiển thị liên tục theo phiên giao dịch.'}
+            {meta?.ageSeconds != null ? ` (Tuổi dữ liệu: ${meta.ageSeconds}s)` : ''}
+          </div>
+        )
       )}
 
       <div className="mt-3">
@@ -905,19 +932,18 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
             {t('stockDetail.noIntradayData')}
           </p>
         ) : (
-          <div className="space-y-1 max-h-[340px] overflow-y-auto pr-1">
+          <div className="max-h-[340px] overflow-y-auto overflow-x-hidden pr-1">
             {/* Header row */}
-            <div className="grid grid-cols-[64px_1fr_80px_64px_56px] gap-1.5 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+            <div className="sticky top-0 z-10 mb-1 grid grid-cols-[56px_1fr_82px_44px] gap-2 border-b border-slate-800 bg-slate-950/95 px-3 py-2 text-[10px] uppercase tracking-[0.12em] text-slate-500 backdrop-blur">
               <span>{t('stockDetail.timeHeader')}</span>
               <span>{t('stockDetail.price')}</span>
               <span className="text-right">{t('stockDetail.volumeShort')}</span>
-              <span className="text-right">{t('stockDetail.type')}</span>
-              <span className="text-right">{t('stockDetail.buySellVolume')}</span>
+              <span className="text-right">M/B</span>
             </div>
             {sortedTrades.map((row, idx) => (
               <div
                 key={`${row.time}-${idx}`}
-                className={`grid grid-cols-[64px_1fr_80px_64px_56px] items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[12px] ${
+                className={`mb-1 grid grid-cols-[56px_1fr_82px_44px] items-center gap-2 rounded-lg border px-3 py-1.5 text-[12px] ${
                   row.side === 'buy'
                     ? 'border-emerald-900/30 bg-emerald-950/10'
                     : row.side === 'sell'
@@ -925,16 +951,13 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
                       : 'border-slate-800/50 bg-slate-950/30'
                 }`}
               >
-                <span className="text-slate-500">{row.time}</span>
+                <span className="text-slate-500 tabular-nums">{row.time}</span>
                 <span className={`font-semibold tabular-nums ${row.side === 'buy' ? 'text-emerald-300' : row.side === 'sell' ? 'text-rose-300' : 'text-slate-200'}`}>
-                  {row.price != null ? formatQuotePrice(normalizeQuotePriceValue(row.price)) : '—'}
+                  {row.price != null ? formatQuotePrice(finiteNumberOrNull(row.price)) : '—'}
                 </span>
                 <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
-                <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
-                  {row.match_type || (row.side === 'buy' ? t('stockDetail.matchTypeBu') : row.side === 'sell' ? t('stockDetail.matchTypeSd') : '—')}
-                </span>
-                <span className={`text-right text-[10px] ${row.side === 'buy' ? 'text-emerald-500' : row.side === 'sell' ? 'text-rose-500' : 'text-slate-500'}`}>
-                  {row.side === 'buy' ? t('whaleHub.buy') : row.side === 'sell' ? t('whaleHub.sell') : t('stockDetail.volumeShort')}
+                <span className={`text-right text-[11px] font-semibold ${row.side === 'buy' ? 'text-emerald-500' : row.side === 'sell' ? 'text-rose-500' : 'text-slate-500'}`}>
+                  {row.side === 'buy' ? 'M' : row.side === 'sell' ? 'B' : '—'}
                 </span>
               </div>
             ))}
@@ -1072,7 +1095,7 @@ function biasMeta(bias, t) {
 }
 
 function PriceDepthPanel({ symbol, liveVolume }) {
-  const { t, formatQuotePrice } = useI18n();
+  const { t, formatQuotePrice, formatDateTime } = useI18n();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1094,7 +1117,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
     inFlightRef.current = true;
     if (isRefresh) setRefreshing(true);
     try {
-      const resp = await getPriceBoard(symbol);
+      const resp = await getDepthChart(symbol);
       setData(resp.data);
       setError('');
     } catch (err) {
@@ -1137,9 +1160,18 @@ function PriceDepthPanel({ symbol, liveVolume }) {
     );
   }
 
-  const depth = data?.depth || [];
-  const match = data?.match || {};
-  const ref = match.reference_price;
+  const bids = data?.bids || [];
+  const asks = data?.asks || [];
+  const depth = [0, 1, 2].map((index) => ({
+    level: index + 1,
+    bid_volume: bids[index]?.volume ?? null,
+    bid_price: bids[index]?.price ?? null,
+    ask_price: asks[index]?.price ?? null,
+    ask_volume: asks[index]?.volume ?? null,
+  })).filter((row) => (
+    row.bid_volume != null || row.bid_price != null || row.ask_price != null || row.ask_volume != null
+  ));
+  const ref = data?.reference_price;
 
   return (
     <section className="card-section p-4">
@@ -1147,6 +1179,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
         <div>
           <p className="text-label">{t('stockDetail.marketDepth')}</p>
           <h3 className="mt-1 text-base font-semibold text-white">{t('stockDetail.orderbook3Levels')}</h3>
+          <p className="mt-1 text-[11px] text-slate-500">{t('stockDetail.orderbook3LevelsDesc')}</p>
         </div>
         <button
           onClick={() => fetchData(true)}
@@ -1172,29 +1205,29 @@ function PriceDepthPanel({ symbol, liveVolume }) {
             {depth.map((row) => (
               <div key={row.level} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
                 <span className="text-slate-300">{fmtVol(row.bid_volume)}</span>
-                <span className="font-semibold text-emerald-300">{formatQuotePrice(normalizeQuotePriceValue(row.bid_price))}</span>
-                <span className="font-semibold text-rose-300">{formatQuotePrice(normalizeQuotePriceValue(row.ask_price))}</span>
+                <span className="font-semibold text-emerald-300">{formatQuotePrice(finiteNumberOrNull(row.bid_price))}</span>
+                <span className="font-semibold text-rose-300">{formatQuotePrice(finiteNumberOrNull(row.ask_price))}</span>
                 <span className="text-right text-slate-300">{fmtVol(row.ask_volume)}</span>
               </div>
             ))}
           </div>
 
           {/* Nước ngoài */}
-          {(match.foreign_buy_volume != null || match.foreign_sell_volume != null) && (
+          {(data?.foreign_buy_volume != null || data?.foreign_sell_volume != null) && (
             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-[12px]">
               <div>
                 <span className="text-slate-500">{t('stockDetail.foreignBuy')} </span>
-                <span className="font-semibold text-cyan-300">{fmtVol(match.foreign_buy_volume)}</span>
+                <span className="font-semibold text-cyan-300">{fmtVol(data.foreign_buy_volume)}</span>
               </div>
               <div className="text-right">
                 <span className="text-slate-500">{t('stockDetail.foreignSell')} </span>
-                <span className="font-semibold text-orange-300">{fmtVol(match.foreign_sell_volume)}</span>
+                <span className="font-semibold text-orange-300">{fmtVol(data.foreign_sell_volume)}</span>
               </div>
             </div>
           )}
           {ref && (
             <p className="mt-2 text-right text-[10px] text-slate-600">
-              {t('stockDetail.reference')} {formatQuotePrice(normalizeQuotePriceValue(ref))} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
+              {t('stockDetail.reference')} {formatQuotePrice(finiteNumberOrNull(ref))} · {data.fetched_at ? formatDateTime(data.fetched_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : ''}
             </p>
           )}
         </>
@@ -1236,10 +1269,15 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
 
   const years = financials?.years || [];
   if (!years.length) {
+    const isUpstreamUnavailable = financials?.source === 'vnstock_unavailable';
     return (
       <section className="card-section p-4 xl:col-span-3">
         <p className="text-label pb-2.5 border-b border-slate-800">{t('stockDetail.financialMetricsYearly')}</p>
-        <p className="mt-4 text-sm text-slate-500">{t('stockDetail.noFinancialData')}</p>
+        <p className="mt-4 text-sm text-slate-500">
+          {isUpstreamUnavailable
+            ? t('stockDetail.financialDataTemporarilyUnavailable')
+            : t('stockDetail.noFinancialData')}
+        </p>
       </section>
     );
   }
@@ -1302,7 +1340,7 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
 }
 
 function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, window: selectedWindow, onWindowChange }) {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const cvdSeries = orderFlowData?.cvd_series || [];
   const darkFlow = orderFlowData?.dark_flow || {};
   const latestSignal = orderFlowData?.latest_signal || null;
@@ -1429,7 +1467,7 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
               <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
-                  <p className="text-[11px] text-slate-500">{item.created_at ? new Date(item.created_at).toLocaleTimeString(undefined) : '—'}</p>
+                  <p className="text-[11px] text-slate-500">{item.created_at ? formatDateTime(item.created_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</p>
                 </div>
                 <p className="mt-1 text-sm text-slate-200">{t('stockDetail.signalStrength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
                 <p className="mt-1 text-[11px] text-slate-400">{t('stockDetail.signalTickRate')} {Number(item.tick_rate || 0).toFixed(1)} • {t('stockDetail.signalSmall')} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
@@ -1443,7 +1481,7 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 }
 
 export default function StockDetail() {
-  const { t, formatQuotePrice } = useI18n();
+  const { t, formatQuotePrice, formatDateTime } = useI18n();
   const ability = useAbility();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
@@ -2193,34 +2231,36 @@ export default function StockDetail() {
   }, [normalizedSymbol]);
 
   const liveQuote = quotesBySymbol[normalizedSymbol] || {};
-  const resolvedRealtimeQuote = tickerSnapshot?.current_price != null
-    ? tickerSnapshot
-    : liveQuote;
+  const resolvedRealtimeQuote = pickRealtimeQuoteCandidate(
+    tickerSnapshot,
+    liveQuote,
+    overview,
+  );
 
-  const overviewCurrentPrice = normalizeQuotePriceValue(overview?.current_price);
-  const overviewClosePrice = normalizeQuotePriceValue(overview?.close_price);
-  const liveCurrentPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.current_price);
+  const overviewCurrentPrice = finiteNumberOrNull(overview?.current_price);
+  const overviewClosePrice = finiteNumberOrNull(overview?.close_price);
+  const liveCurrentPrice = finiteNumberOrNull(resolvedRealtimeQuote.current_price);
   const currentPrice = liveCurrentPrice ?? overviewCurrentPrice ?? overviewClosePrice ?? null;
-  const liveReferencePrice = normalizeQuotePriceValue(
+  const liveReferencePrice = finiteNumberOrNull(
     resolvedRealtimeQuote.reference_price ?? resolvedRealtimeQuote.prev_price,
   );
-  const referencePrice = liveReferencePrice ?? normalizeQuotePriceValue(overview?.reference_price) ?? null;
-  const liveCeilingPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.ceiling_price);
-  const ceilingPrice = liveCeilingPrice ?? normalizeQuotePriceValue(overview?.ceiling_price) ?? null;
-  const liveFloorPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.floor_price);
-  const floorPrice = liveFloorPrice ?? normalizeQuotePriceValue(overview?.floor_price) ?? null;
-  const liveAveragePrice = normalizeQuotePriceValue(resolvedRealtimeQuote.average_price);
-  const averagePrice = liveAveragePrice ?? normalizeQuotePriceValue(overview?.average_price) ?? null;
+  const referencePrice = liveReferencePrice ?? finiteNumberOrNull(overview?.reference_price) ?? null;
+  const liveCeilingPrice = finiteNumberOrNull(resolvedRealtimeQuote.ceiling_price);
+  const ceilingPrice = liveCeilingPrice ?? finiteNumberOrNull(overview?.ceiling_price) ?? null;
+  const liveFloorPrice = finiteNumberOrNull(resolvedRealtimeQuote.floor_price);
+  const floorPrice = liveFloorPrice ?? finiteNumberOrNull(overview?.floor_price) ?? null;
+  const liveAveragePrice = finiteNumberOrNull(resolvedRealtimeQuote.average_price);
+  const averagePrice = liveAveragePrice ?? finiteNumberOrNull(overview?.average_price) ?? null;
 
-  const overviewChangeValue = normalizeQuoteDeltaValue(overview?.change_value, currentPrice);
-  const liveChangeValue = normalizeQuoteDeltaValue(resolvedRealtimeQuote.change_value, currentPrice);
+  const overviewChangeValue = finiteNumberOrNull(overview?.change_value);
+  const liveChangeValue = finiteNumberOrNull(resolvedRealtimeQuote.change_value);
   const changeValue = liveChangeValue ?? overviewChangeValue ?? null;
   const changePct = Number.isFinite(Number(resolvedRealtimeQuote.change_pct))
     ? Number(resolvedRealtimeQuote.change_pct)
     : (Number.isFinite(Number(overview?.change_pct)) ? Number(overview.change_pct) : null);
 
-  const liveHighPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.high_price) ?? normalizeQuotePriceValue(overview?.high_price);
-  const liveLowPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.low_price) ?? normalizeQuotePriceValue(overview?.low_price);
+  const liveHighPrice = finiteNumberOrNull(resolvedRealtimeQuote.high_price) ?? finiteNumberOrNull(overview?.high_price);
+  const liveLowPrice = finiteNumberOrNull(resolvedRealtimeQuote.low_price) ?? finiteNumberOrNull(overview?.low_price);
   const liveVolume = resolvedRealtimeQuote.volume ?? overview?.volume ?? null;
 
   const changeClass = useMemo(() => {
@@ -2241,7 +2281,7 @@ export default function StockDetail() {
     const points = chartData
       .map((item) => {
         const ts = item?.date ? new Date(item.date).getTime() : null;
-        const close = normalizeQuotePriceValue(item?.close);
+        const close = finiteNumberOrNull(item?.close);
         if (!Number.isFinite(ts) || !Number.isFinite(close)) {
           return null;
         }
@@ -2760,7 +2800,7 @@ export default function StockDetail() {
             <div className="flex items-center gap-2">
               <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
                 {t('stockDetail.feed')} {realtimeStatus === 'live' ? t('stockDetail.statusRealtime') : realtimeStatus === 'polling' ? t('stockDetail.statusFallback') : t('stockDetail.statusConnecting')}
-                {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString(undefined)}` : ''}
+                {lastEventAt ? ` · ${formatDateTime(lastEventAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
               </div>
               <Link
                 to={`/whale-alerts/${normalizedSymbol}`}
@@ -2839,8 +2879,8 @@ export default function StockDetail() {
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.range52w')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.week52_low))}</p>
-                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(normalizeQuotePriceValue(overview.week52_high))}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(finiteNumberOrNull(overview.week52_low))}</p>
+                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(finiteNumberOrNull(overview.week52_high))}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.average')}</p>
@@ -3404,7 +3444,7 @@ export default function StockDetail() {
                     </p>
                     {alert.ts && (
                       <p className="mt-1 text-[11px] text-slate-500">
-                        {new Date(alert.ts).toLocaleTimeString(undefined)}
+                        {formatDateTime(alert.ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </p>
                     )}
                   </div>

@@ -1966,6 +1966,48 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
 
+    def test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x(self):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='MWG')
+
+        # Legacy row (VND full price)
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:35:00', '%H:%M:%S').time(),
+            price=Decimal('65000'),
+            volume=10000,
+            side='BUY',
+            stream_id='mwg-mixed-vnd',
+        )
+        # Canonical row (THOUSAND_VND)
+        IntradayTick.objects.create(
+            symbol='MWG',
+            trade_date=date.today(),
+            trade_time=datetime.strptime('09:36:00', '%H:%M:%S').time(),
+            price=Decimal('65.00'),
+            volume=10000,
+            side='SELL',
+            stream_id='mwg-mixed-thousand',
+        )
+
+        self.authenticate()
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d&sort=matched_value&limit=5')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(len(response.data['results']), 2)
+
+        values = [float(item['matched_value']) for item in response.data['results'] if item['symbol'] == 'MWG']
+        self.assertGreaterEqual(len(values), 2)
+
+        # 65,000 * 10,000 = 650,000,000 VND (khong duoc bi x1000 thanh nghin ty)
+        for value in values:
+            self.assertGreater(value, 500_000_000)
+            self.assertLess(value, 1_000_000_000)
+
     @patch('portfolio.realtime.stream_reader.StreamReader')
     def test_whale_feed_aggregate_prefers_redis_stream_over_intraday_tick_db(self, mock_stream_reader):
         UserConfig.objects.update_or_create(
@@ -2651,6 +2693,154 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         mock_get_intraday_matched.assert_not_called()
 
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30(self, mock_resolve_market_phase, _mock_rate_limited):
+        self.authenticate()
+        mock_resolve_market_phase.return_value = {
+            'profile': 'am',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
+        group = SecuritiesGroup.objects.create(name='VN30', group_type='MARKET_CAP')
+        SecuritiesItem.objects.create(group=group, symbol='VCB')
+
+        source_event_at = (timezone.now() - timedelta(seconds=14)).isoformat()
+        cache.set(
+            'intraday:last_good:VCB',
+            {
+                'symbol': 'VCB',
+                'trades': [
+                    {
+                        'time': '10:35:00',
+                        'price': 92.5,
+                        'volume': 10000,
+                        'side': 'buy',
+                        'match_type': 'BUY',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/VCB/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VCB')
+        self.assertTrue(response.data['stale'])
+        self.assertTrue(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 10)
+        self.assertIn('source_event_at', response.data)
+        self.assertIn('served_at', response.data)
+        self.assertIn('age_seconds', response.data)
+        self.assertGreaterEqual(response.data['age_seconds'], 10)
+
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30(self, mock_resolve_market_phase, _mock_rate_limited):
+        self.authenticate()
+        mock_resolve_market_phase.return_value = {
+            'profile': 'am',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
+
+        # Clear Redis VN30 cache key so MWG is never misclassified from a prior run.
+        cache.delete('intraday:MWG:50')
+        cache.delete('intraday:is_vn30:MWG')
+
+        # Use 5s gap to give enough buffer against slow test environments,
+        # while remaining well below non-VN30 threshold (15s).
+        frozen_now = timezone.now()
+        source_event_at = (frozen_now - timedelta(seconds=5)).isoformat()
+        cache.set(
+            'intraday:last_good:MWG',
+            {
+                'symbol': 'MWG',
+                'trades': [
+                    {
+                        'time': '10:35:00',
+                        'price': 65.1,
+                        'volume': 9000,
+                        'side': 'sell',
+                        'match_type': 'SELL',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/MWG/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'MWG')
+        self.assertTrue(response.data['stale'])
+        self.assertFalse(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 15)
+        self.assertGreaterEqual(response.data['age_seconds'], 4)
+
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    @patch('portfolio.market_data_service.MarketDataService._build_intraday_db_fallback', return_value=None)
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_lunch_break_suppresses_stale_warning(self, mock_resolve_market_phase, _mock_db_fallback, _mock_rate_limited):
+        self.authenticate()
+
+        mock_resolve_market_phase.return_value = {
+            'profile': 'lunch_break',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
+        cache.delete('intraday:MWG:50')
+        cache.delete('intraday:is_vn30:MWG')
+
+        source_event_at = (timezone.now() - timedelta(minutes=45)).isoformat()
+        cache.set(
+            'intraday:last_good:MWG',
+            {
+                'symbol': 'MWG',
+                'trades': [
+                    {
+                        'time': '11:29:58',
+                        'price': 65.1,
+                        'volume': 47000,
+                        'side': 'buy',
+                        'match_type': 'ATO',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/MWG/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['market_phase'], 'lunch_break')
+        self.assertFalse(response.data['stale'])
+        self.assertFalse(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 15)
+        self.assertGreaterEqual(response.data['age_seconds'], 60)
+
     @patch('portfolio.market_views.market_data_service.get_price_board')
     def test_price_board_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_price_board):
         self.authenticate()
@@ -2723,6 +2913,40 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['symbol'], 'VNM')
         mock_get_rvol.assert_called_once_with('VNM')
 
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_rvol_endpoint_uses_same_bucket_20_session_baseline(self, mock_fetch_intraday_dataframe, _mock_get_cache):
+        self.authenticate()
+        mock_fetch_intraday_dataframe.return_value = pd.DataFrame([
+            {'time': '2026-04-03T09:31:00+07:00', 'volume': 2000},
+        ])
+
+        for offset in range(1, 21):
+            IntradayTick.objects.create(
+                symbol='VNM',
+                trade_date=date.today() - timedelta(days=offset),
+                trade_time=datetime.strptime('09:31:00', '%H:%M:%S').time(),
+                price=Decimal('102000'),
+                volume=500,
+                side='BUY',
+                stream_id=f'vnm-rvol-{offset}',
+            )
+
+        response = self.client.get('/api/realtime/rvol/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['symbol'], 'VNM')
+        self.assertEqual(response.data['baseline_mode'], 'same_bucket_20_sessions')
+        self.assertEqual(response.data['baseline_sessions'], 20)
+        self.assertEqual(response.data['source'], 'vnstock')
+        self.assertEqual(len(response.data['buckets']), 1)
+        bucket = response.data['buckets'][0]
+        self.assertEqual(bucket['time'], '09:30')
+        self.assertEqual(bucket['baseline_avg'], 500)
+        self.assertEqual(bucket['baseline_sessions'], 20)
+        self.assertEqual(bucket['rvol'], 4.0)
+        self.assertTrue(bucket['is_spike'])
+
     @patch('portfolio.market_views.market_data_service.get_whale_feed')
     def test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_whale_feed):
         self.authenticate()
@@ -2779,6 +3003,15 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('score_breakdown', order)
         self.assertEqual(order['weights_version'], response.data['weights_version'])
         self.assertLessEqual(order['display_score'], order['event_score'])
+        self.assertIn('buy_value', response.data['summary'])
+        self.assertIn('sell_value', response.data['summary'])
+        self.assertIn('unknown_value', response.data['summary'])
+        self.assertIn('buy_pct', response.data['summary'])
+        self.assertIn('sell_pct', response.data['summary'])
+        self.assertIn('unknown_pct', response.data['summary'])
+        self.assertEqual(order['time'], '09:30:00')
+        self.assertEqual(order['ts'], '2026-04-03T09:30:00+07:00')
+        self.assertEqual(response.data['source_event_at'], '2026-04-03T09:31:00+07:00')
     @patch('portfolio.market_data_service.get_cache', return_value=None)
     @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])
     @patch('portfolio.market_data_service.fetch_intraday_dataframe', side_effect=ExternalSystemException('vnstock unavailable', code='vnstock_error'))
@@ -3257,6 +3490,78 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertIn('detail', response.data)
+
+    @patch('portfolio.market_data_service.fetch_listing_symbols_dataframe')
+    @patch('portfolio.market_data_service.fetch_history_dataframe')
+    @patch('portfolio.market_data_service.fetch_price_board_dataframe')
+    @patch('portfolio.market_views.market_data_service._build_stock_workspace_overview_base')
+    def test_stock_workspace_overview_normalizes_52w_history_to_quote_unit(
+        self,
+        mock_build_base,
+        mock_fetch_price_board,
+        mock_fetch_history,
+        mock_fetch_listing,
+    ):
+        self.authenticate()
+        mock_build_base.return_value = {
+            'tracked_symbol_id': None,
+            'symbol': 'MWG',
+            'company_name': 'MWG',
+            'industry': 'Retail',
+            'exchange': 'HOSE',
+            'listed_date': '2010-01-01',
+            'is_active': True,
+            'updated_at': '2026-04-16T12:14:11+07:00',
+            'current_price': None,
+            'prev_price': None,
+            'change_value': None,
+            'change_pct': None,
+            'last_date': None,
+            'open_price': None,
+            'high_price': None,
+            'low_price': None,
+            'close_price': None,
+            'volume': None,
+            'average_price': None,
+            'reference_price': None,
+            'ceiling_price': None,
+            'floor_price': None,
+            'week52_high': None,
+            'week52_low': None,
+            'is_tracked': False,
+            'source_group_name': None,
+            'market_groups': [],
+            'watchlist_groups': [],
+            'market_group_refs': [],
+            'watchlist_memberships': [],
+        }
+        mock_fetch_price_board.return_value = pd.DataFrame(
+            [[80.0, 85.6, 74.4, 81.4, 82.0, 80.2, 80.2, 900000, 'HOSE']],
+            columns=pd.MultiIndex.from_tuples([
+                ('listing', 'ref_price'),
+                ('listing', 'ceiling'),
+                ('listing', 'floor'),
+                ('match', 'match_price'),
+                ('match', 'highest'),
+                ('match', 'lowest'),
+                ('match', 'open_price'),
+                ('match', 'accumulated_volume'),
+                ('listing', 'exchange'),
+            ]),
+        )
+        mock_fetch_history.return_value = pd.DataFrame([
+            {'high': 94400.0, 'low': 51262.43},
+            {'high': 93000.0, 'low': 60000.0},
+        ])
+        mock_fetch_listing.return_value = pd.DataFrame([])
+
+        response = self.client.get('/api/stock-management/stocks/MWG/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['current_price'], 81.4)
+        self.assertEqual(response.data['week52_high'], 94.4)
+        self.assertEqual(response.data['week52_low'], 51.26)
+
     @patch('portfolio.market_views.market_data_service.get_financial_metrics')
     def test_financial_metrics_refactored_returns_502_on_unexpected_exception(self, mock_get_financial_metrics):
         self.authenticate()
@@ -3306,6 +3611,61 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         mock_get_stock_workspace_chart.assert_not_called()
+
+    @patch('portfolio.market_views.market_data_service._build_stock_workspace_overview_base')
+    @patch('portfolio.market_data_service.fetch_history_dataframe')
+    def test_stock_workspace_chart_normalizes_history_points_to_quote_unit(
+        self,
+        mock_fetch_history,
+        mock_build_overview,
+    ):
+        self.authenticate()
+        cache.clear()
+        StockProfile.objects.create(symbol='MWG', company_name='MWG')
+        mock_build_overview.return_value = {
+            'symbol': 'MWG',
+            'current_price': 81.4,
+            'prev_price': 80.0,
+            'change_value': 1.4,
+            'change_pct': 1.75,
+            'last_date': '2026-04-16',
+            'open_price': 80.2,
+            'high_price': 82.0,
+            'low_price': 80.2,
+            'close_price': 81.4,
+            'volume': 900000,
+            'average_price': 80.95,
+            'reference_price': 80.0,
+            'ceiling_price': 85.6,
+            'floor_price': 74.4,
+            'week52_high': 94.4,
+            'week52_low': 51.26,
+            'tracked_symbol_id': None,
+            'company_name': 'MWG',
+            'industry': 'Retail',
+            'exchange': 'HOSE',
+            'listed_date': '2010-01-01',
+            'is_active': True,
+            'updated_at': '2026-04-16T12:14:11+07:00',
+            'is_tracked': False,
+            'source_group_name': None,
+            'market_groups': [],
+            'watchlist_groups': [],
+            'market_group_refs': [],
+            'watchlist_memberships': [],
+        }
+        mock_fetch_history.return_value = pd.DataFrame([
+            {'date': '2026-04-16T09:00:00', 'open': 80200.0, 'high': 80600.0, 'low': 80200.0, 'close': 80300.0, 'volume': 646400.0},
+            {'date': '2026-04-16T10:00:00', 'open': 80400.0, 'high': 82000.0, 'low': 80300.0, 'close': 81500.0, 'volume': 2276200.0},
+        ])
+
+        response = self.client.get('/api/stock-management/stocks/MWG/chart/?days=180&timeframe=1H')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['points'][0]['open'], 80.2)
+        self.assertEqual(response.data['points'][0]['close'], 80.3)
+        self.assertEqual(response.data['points'][1]['high'], 82.0)
+        self.assertEqual(response.data['points'][1]['close'], 81.5)
 
     def test_price_alert_rule_crud_and_trigger_endpoint(self):
         self.authenticate()

@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getRealtimeHealth, getUnifiedAlerts } from '../api/client';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
 import AllocationPieChart from './AllocationPieChart';
+import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
+import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 import { useI18n } from '../context/LangContext';
 
 function formatNumberSafe(value, formatNumberFn) {
@@ -15,43 +17,6 @@ function formatNumberSafe(value, formatNumberFn) {
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function toFiniteNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function resolveQuoteScale(rawPrice, references = []) {
-  const price = toFiniteNumber(rawPrice);
-  if (!price || price <= 0) {
-    return 1;
-  }
-
-  const validRefs = references.filter((item) => Number.isFinite(item) && item > 0);
-  const candidates = [1, 0.001, 1000];
-
-  if (!validRefs.length) {
-    // Dashboard quy ước hiển thị đơn vị nghìn VNĐ; giá lớn bất thường thường là VND.
-    return price >= 2000 ? 0.001 : 1;
-  }
-
-  const score = (factor) => {
-    const normalized = price * factor;
-    return validRefs.reduce((sum, ref) => sum + Math.abs(Math.log(normalized / ref)), 0);
-  };
-
-  let bestFactor = 1;
-  let bestScore = score(bestFactor);
-  for (let index = 1; index < candidates.length; index += 1) {
-    const factor = candidates[index];
-    const nextScore = score(factor);
-    if (nextScore < bestScore) {
-      bestScore = nextScore;
-      bestFactor = factor;
-    }
-  }
-  return bestFactor;
 }
 
 function fmtBil(value, formatNumberFn) {
@@ -143,6 +108,17 @@ function localizeUnifiedHeadline(headline, t) {
   return headline;
 }
 
+function toStableAlertTimestamp(...values) {
+  for (const value of values) {
+    if (!value) continue;
+    const ts = new Date(value).getTime();
+    if (Number.isFinite(ts) && ts > 0) {
+      return new Date(ts).toISOString();
+    }
+  }
+  return null;
+}
+
 export default function DashboardRealtimePanel({
   holdings,
   trackedSymbolNames = [],
@@ -158,7 +134,7 @@ export default function DashboardRealtimePanel({
   showSummaryMetrics = true,
   portfolioId = null,
 }) {
-  const { t, formatNumber, formatTime, formatQuotePrice, formatQuoteInteger } = useI18n();
+  const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice, formatQuoteInteger } = useI18n();
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [snapshotAlerts, setSnapshotAlerts] = useState([]);
   const [backendUnifiedSnapshot, setBackendUnifiedSnapshot] = useState([]);
@@ -384,31 +360,10 @@ export default function DashboardRealtimePanel({
   }, [alerts, snapshotAlerts]);
 
   const quoteList = useMemo(() => {
-    const holdingsBySymbol = new Map(
-      (holdings || []).map((item) => [
-        String(item?.symbol || '').toUpperCase(),
-        item,
-      ]),
-    );
-
-    return monitoredSymbols.map((symbol) => {
-      const rawQuote = quotesBySymbol[symbol] || { symbol };
-      const holding = holdingsBySymbol.get(String(symbol || '').toUpperCase());
-
-      const avgCostRef = toFiniteNumber(holding?.avg_cost);
-      const holdingCurrentRef = toFiniteNumber(holding?.current_price);
-      const factor = resolveQuoteScale(rawQuote.current_price, [avgCostRef, holdingCurrentRef]);
-
-      const currentPrice = toFiniteNumber(rawQuote.current_price);
-      const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
-      const normalizedCurrent = currentPrice === null ? null : currentPrice * factor;
-
-      return {
-        ...rawQuote,
-        current_price: normalizedCurrent,
-         prev_price: prevPriceRaw,
-         change_pct: toFiniteNumber(rawQuote.change_pct),
-      };
+    return buildDashboardRealtimeQuoteList({
+      monitoredSymbols,
+      quotesBySymbol,
+      holdings,
     });
   }, [holdings, monitoredSymbols, quotesBySymbol]);
 
@@ -459,10 +414,11 @@ export default function DashboardRealtimePanel({
         const pct = Number(item.change_pct || 0);
         const absPct = Math.abs(pct);
         const severity = absPct >= 7 ? 'high' : 'medium';
+        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
         return {
-          id: `price-${item.symbol}-${item.last_date || item.freshness_seconds || 'now'}`,
+          id: `price-${item.symbol}`,
           symbol: item.symbol,
-          ts: item.last_date || new Date().toISOString(),
+          ts: stableTs,
           source: 'price_shock',
           severity,
           headline: pct >= 0
@@ -477,17 +433,20 @@ export default function DashboardRealtimePanel({
     const staleUnified = quoteList
       .filter((item) => item?.symbol && item?.stale)
       .slice(0, 3)
-      .map((item) => ({
-        id: `stale-${item.symbol}-${item.freshness_seconds || 'na'}`,
+      .map((item) => {
+        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
+        return {
+        id: `stale-${item.symbol}`,
         symbol: item.symbol,
-        ts: new Date().toISOString(),
+        ts: stableTs,
         source: 'stale_quote',
         severity: 'low',
         headline: t('dashboardRealtime.unifiedHeadlineStaleQuote'),
         detail: t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: formatNumber(item.freshness_seconds ?? 0) }),
         confidence: null,
         to: `/stocks/${item.symbol}`,
-      }));
+      };
+      });
 
     const combined = [...whaleAlerts, ...darkFlowUnified, ...priceShockUnified, ...staleUnified];
     const backendNormalized = (backendUnifiedSnapshot || []).map((item) => ({
@@ -515,11 +474,13 @@ export default function DashboardRealtimePanel({
       const aScore = severityWeight(a.severity);
       const bScore = severityWeight(b.severity);
       if (aScore !== bScore) return bScore - aScore;
-      return new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime();
+      const timeDelta = new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime();
+      if (timeDelta !== 0) return timeDelta;
+      return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
     return deduped.slice(0, 50);
-  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, mergedAlerts, quoteList, t]);
+  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
 
   const alertSummary = useMemo(() => {
     return unifiedAlerts.reduce((acc, item) => {
@@ -706,7 +667,8 @@ export default function DashboardRealtimePanel({
       .sort((a, b) => {
         if (b.critical !== a.critical) return b.critical - a.critical;
         if (b.high !== a.high) return b.high - a.high;
-        return b.total - a.total;
+        if (b.total !== a.total) return b.total - a.total;
+        return String(a.symbol || '').localeCompare(String(b.symbol || ''));
       })
       .slice(0, 5);
   }, [unifiedAlerts]);
@@ -1100,7 +1062,7 @@ export default function DashboardRealtimePanel({
                         to={alert.to || `/stocks/${alert.symbol}`}
                         className="block"
                       >
-                        <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)} ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                        <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)}`}>
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold text-white text-[13px]">{alert.symbol || 'N/A'}</span>
                             <div className="flex items-center gap-2">
@@ -1119,7 +1081,15 @@ export default function DashboardRealtimePanel({
                           </div>
                           <div className="mt-1 flex items-baseline justify-between gap-2">
                             <span className="text-sm font-bold text-white">{alert.headline}</span>
-                            <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
+                            <span className="text-[11px] text-slate-500">
+                              {formatDateTime(alert.ts, {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })}
+                            </span>
                           </div>
                           <div className="mt-0.5 text-[11px] text-slate-500">
                             {alert.detail}
@@ -1172,60 +1142,20 @@ export default function DashboardRealtimePanel({
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-            <div className="rounded-xl border border-gray-800 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
-                <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
-                <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.priceUnitHint')}</p>
+            <div>
+              <div className="rounded-xl border border-gray-800 overflow-hidden bg-gray-950/40 mb-4">
+                <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
+                  <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
+                </div>
+                <RealtimeQuoteTable
+                  quotes={quoteList}
+                  columns={COLUMN_PRESETS.DASHBOARD_MARKET_STATUS}
+                  maxHeight="280px"
+                  showHint={true}
+                  emptyMessage={t('dashboardRealtime.noSymbols')}
+                  sortConfig={{ key: 'symbol', direction: 'asc' }}
+                />
               </div>
-              {quoteList.length === 0 ? (
-                <div className="px-4 py-8 text-sm text-gray-500 text-center">
-                  {t('dashboardRealtime.noSymbols')}
-                </div>
-              ) : (
-                <div className="max-h-[308px] overflow-y-auto overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableSymbol')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePrice')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePctChange')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableFreshness')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/60">
-                      {quoteList.map((item) => {
-                        const isUp = (item.change_pct ?? 0) > 0;
-                        const isDown = (item.change_pct ?? 0) < 0;
-                        return (
-                          <tr key={item.symbol} className="hover:bg-gray-800/30 transition-colors">
-                            <td className="px-4 py-3 font-bold text-brand-300">
-                              <Link
-                                to={`/stocks/${item.symbol}`}
-                                className="inline-flex items-center hover:text-cyan-300 transition-colors"
-                              >
-                                {item.symbol}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-gray-200 tabular-nums">{formatQuotePrice(item.current_price)}</td>
-                            <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
-                              {item.change_pct === null || item.change_pct === undefined
-                                ? '—'
-                                : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              {item.stale ? (
-                                <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
-                              ) : (
-                                <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
 
             <AllocationPieChart portfolioId={portfolioId} />
@@ -1358,7 +1288,10 @@ export default function DashboardRealtimePanel({
                             : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
                         </td>
                         <td className="px-4 py-3 text-xs">
-                          {item.stale ? (
+                          {(item.data_semantic === 'last_session_close'
+                            || ['offhours', 'post_close', 'pre_open'].includes(String(item.market_phase || '').toLowerCase())) ? (
+                            <span className="text-sky-300">{t('dashboardRealtime.sessionCloseLabel')}</span>
+                          ) : item.stale ? (
                             <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
                           ) : (
                             <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>

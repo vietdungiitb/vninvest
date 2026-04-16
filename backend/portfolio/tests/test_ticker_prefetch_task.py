@@ -16,6 +16,8 @@ from portfolio.tasks import (
     _resolve_scheduler_plan,
     schedule_realtime_prefetch_shards,
 )
+from portfolio.tasks_prefetch import _cleanup_session_close_retention, _resolve_session_close_date
+from portfolio.models import TickerSessionClose
 
 
 class PrefetchTickerPriceBoardNormalizationTests(TestCase):
@@ -176,6 +178,20 @@ class PrefetchTimePolicyResolverTests(SimpleTestCase):
         profile, _ = _resolve_prefetch_time_profile(now_dt=now_dt, policy={'timezone': 'Asia/Ho_Chi_Minh'})
         self.assertEqual(profile, 'offhours')
 
+    def test_resolve_profile_holiday_offhours(self):
+        now_dt = timezone.datetime(2026, 4, 14, 3, 0, tzinfo=timezone.utc)
+        profile, reason = _resolve_prefetch_time_profile(
+            now_dt=now_dt,
+            policy={
+                'timezone': 'Asia/Ho_Chi_Minh',
+                'market': {
+                    'holiday_dates': ['2026-04-14'],
+                },
+            },
+        )
+        self.assertEqual(profile, 'offhours')
+        self.assertIn('holiday', reason)
+
     def test_effective_settings_follow_active_profile(self):
         runtime = {
             'batch_size': 60,
@@ -219,6 +235,53 @@ class PrefetchTimePolicyResolverTests(SimpleTestCase):
         self.assertEqual(effective['batch_size'], 18)
         self.assertEqual(effective['symbol_limit'], 42)
         self.assertEqual(effective['max_retries'], 4)
+
+
+class SessionCloseCalendarTests(TestCase):
+    def setUp(self):
+        cache.clear()
+
+    def test_resolve_session_close_date_rolls_back_holiday_and_weekend(self):
+        now_dt = timezone.datetime(2026, 4, 13, 17, 15, tzinfo=timezone.utc)
+        session_date = _resolve_session_close_date(
+            'pre_open',
+            now_dt=now_dt,
+            policy={
+                'timezone': 'Asia/Ho_Chi_Minh',
+                'market': {
+                    'holiday_dates': ['2026-04-13'],
+                },
+            },
+        )
+
+        self.assertEqual(session_date.isoformat(), '2026-04-10')
+
+    def test_cleanup_retention_uses_market_local_date(self):
+        TickerSessionClose.objects.create(
+            symbol='FPT',
+            market_code='VN_STOCK',
+            timezone_name='Asia/Ho_Chi_Minh',
+            session_date=timezone.datetime(2026, 4, 8).date(),
+            close_price=100,
+            captured_at=timezone.now(),
+        )
+        TickerSessionClose.objects.create(
+            symbol='HPG',
+            market_code='VN_STOCK',
+            timezone_name='Asia/Ho_Chi_Minh',
+            session_date=timezone.datetime(2026, 4, 9).date(),
+            close_price=50,
+            captured_at=timezone.now(),
+        )
+
+        _cleanup_session_close_retention(
+            runtime_settings={'session_close_retention_days': 7},
+            policy={'timezone': 'Asia/Ho_Chi_Minh'},
+            now_dt=timezone.datetime(2026, 4, 15, 17, 30, tzinfo=timezone.utc),
+        )
+
+        self.assertFalse(TickerSessionClose.objects.filter(symbol='FPT').exists())
+        self.assertTrue(TickerSessionClose.objects.filter(symbol='HPG').exists())
 
 
 class PrefetchPolicyGuardAndMetricTests(SimpleTestCase):

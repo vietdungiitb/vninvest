@@ -13,13 +13,15 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from typing import Callable
 
 import redis
 
 from django.conf import settings
+from django.utils import timezone as dj_tz
+from portfolio.price_units import PriceSource, normalize_quote_price_to_canonical
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +114,29 @@ class DbWriterConsumer(TickConsumerBase):
     group_name = "db-writer"
     consumer_name = "db-writer-1"
 
+    @staticmethod
+    def _parse_stream_timestamp(ts_value: str) -> datetime:
+        now = dj_tz.now()
+        parsed = None
+        text = str(ts_value or '').strip()
+        if text:
+            try:
+                parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
+            except ValueError:
+                parsed = None
+
+        if parsed is None:
+            return now
+
+        if dj_tz.is_naive(parsed):
+            parsed = dj_tz.make_aware(parsed, dj_tz.get_current_timezone())
+        parsed = dj_tz.localtime(parsed)
+
+        # Guardrail: clamp obviously invalid future timestamps to now.
+        if parsed > now + timedelta(minutes=2):
+            return now
+        return parsed
+
     def process_batch(self, symbol: str, messages: list[tuple[str, dict]]) -> None:
         from portfolio.models import IntradayTick
 
@@ -122,18 +147,21 @@ class DbWriterConsumer(TickConsumerBase):
                 price_str = fields.get("price", "0")
                 volume_str = fields.get("volume", "0")
                 side_str = fields.get("side", "UNKNOWN")
+                price_unit = str(fields.get("price_unit", "") or "").strip().upper()
+
+                raw_price = float(price_str)
+                if price_unit not in ("VND", "THOUSAND_VND"):
+                    price_unit = "VND" if abs(raw_price) >= 1000 else "THOUSAND_VND"
+                canonical_price = normalize_quote_price_to_canonical(
+                    value=raw_price,
+                    source_unit=price_unit,
+                    source=PriceSource.INTRADAY_TICK,
+                ).value
 
                 # Parse timestamp — always produce timezone-aware datetimes
                 try:
-                    if " " in ts_str:
-                        dt = datetime.fromisoformat(ts_str)
-                    elif "T" in ts_str:
-                        dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                    else:
-                        from django.utils import timezone as dj_tz
-                        dt = dj_tz.now()
-                except (ValueError, TypeError):
-                    from django.utils import timezone as dj_tz
+                    dt = self._parse_stream_timestamp(ts_str)
+                except Exception:
                     dt = dj_tz.now()
 
                 trade_date = dt.date() if isinstance(dt, datetime) else date.today()
@@ -143,7 +171,7 @@ class DbWriterConsumer(TickConsumerBase):
                     symbol=symbol.upper(),
                     trade_date=trade_date,
                     trade_time=trade_time,
-                    price=Decimal(str(price_str)),
+                    price=Decimal(str(round(canonical_price, 3))),
                     volume=int(float(volume_str)),
                     side=side_str if side_str in ("BUY", "SELL") else "UNKNOWN",
                     stream_id=stream_id,

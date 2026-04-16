@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleAdvisories, getWhaleCampaigns, getSymbolInvestigation } from '../api/client';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -22,16 +22,14 @@ function formatTime(value, formatDateTimeFn) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return String(value);
 
-  const formatted = String(formatDateTimeFn(parsed) || '').trim();
-  const hasClock = /\b\d{1,2}:\d{2}\b/.test(formatted);
-  if (hasClock) return formatted;
-
-  const timePart = parsed.toLocaleTimeString([], {
+  return String(formatDateTimeFn(parsed, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hour12: false,
-  });
-  return `${formatted} ${timePart}`.trim();
+    second: '2-digit',
+  }) || '').trim();
 }
 
 function getSideTone(side, t) {
@@ -236,6 +234,14 @@ function getFrequencyLabel(totalValue, t) {
   if (totalValue >= 2_000_000_000) return { label: t('whaleHub.freqHigh'), color: 'text-amber-400', bg: 'bg-amber-900/40 border-amber-800/50' };
   if (totalValue >= 500_000_000) return { label: t('whaleHub.freqMedium'), color: 'text-cyan-400', bg: 'bg-cyan-900/40 border-cyan-800/50' };
   return { label: t('whaleHub.freqLow'), color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
+}
+
+const FEED_PAGE_SIZE_OPTIONS = [4, 8, 12, 16];
+
+function isRequestCanceled(err) {
+  const code = String(err?.code || '').toUpperCase();
+  const name = String(err?.name || '').toLowerCase();
+  return code === 'ERR_CANCELED' || name === 'cancelederror' || name === 'aborterror';
 }
 
 function TrackedSymbolCard({ symbol, stats, t, localeTag, formatDateTimeFn }) {
@@ -823,9 +829,11 @@ export default function WhaleAlertsHub() {
   const [campaignSideFilter, setCampaignSideFilter] = useState('all');
   const [campaignTypeFilter, setCampaignTypeFilter] = useState('all');
   const [campaignMinStrength, setCampaignMinStrength] = useState(0);
+  const [aggregatePageSize, setAggregatePageSize] = useState(8);
+  const [campaignPageSize, setCampaignPageSize] = useState(8);
+  const [campaignInitialLoading, setCampaignInitialLoading] = useState(false);
+  const [campaignsLoaded, setCampaignsLoaded] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [symbolStatsMap, setSymbolStatsMap] = useState({});
-  const [aggregateTotalSignals, setAggregateTotalSignals] = useState(0);
   const [feedSort, setFeedSort] = useState('ts');
   const [feedWindow, setFeedWindow] = useState('session');
   const [selectedFeedScope, setSelectedFeedScope] = useState('tracked');
@@ -833,6 +841,11 @@ export default function WhaleAlertsHub() {
   const [selectedSymbolInvestigation, setSelectedSymbolInvestigation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const aggregateRequestSeqRef = useRef(0);
+  const campaignRequestSeqRef = useRef(0);
+  const bootstrapRequestSeqRef = useRef(0);
+  const aggregateAbortRef = useRef(null);
+  const campaignAbortRef = useRef(null);
 
   const canReadAdvisory = ability.can('read', 'WhaleAdvisory');
 
@@ -853,28 +866,59 @@ export default function WhaleAlertsHub() {
     sort = feedSort,
     window = feedWindow,
     scope = selectedFeedScope,
+    limit = aggregatePageSize,
+    signal,
   } = {}) => {
-    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
-    const response = await getAggregateWhaleFeed({
-      cursor,
-      sort,
-      window,
-      limit: 12,
-      watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
-    });
-    const payload = response.data || {};
-    const nextItems = payload.results || [];
+    const requestSeq = ++aggregateRequestSeqRef.current;
+    let requestSignal = signal;
+    let localController = null;
 
-    setAggregateFeed((prev) => (append
-      ? mergeUniqueAggregateEvents(prev, nextItems)
-      : mergeUniqueAggregateEvents([], nextItems)));
-    setAggregateCursor(payload.next_cursor || null);
-    setAggregateHasMore(Boolean(payload.has_more));
-    setAggregateEntitlements(payload.entitlements || null);
-    setAggregateFilters(payload.filters || null);
-    setAggregateSource(payload.source || '');
-    setAggregateServerTime(payload.server_time || '');
-  }, [feedSort, feedWindow, selectedFeedScope]);
+    if (!requestSignal) {
+      if (!append && aggregateAbortRef.current) {
+        aggregateAbortRef.current.abort();
+      }
+      localController = new AbortController();
+      requestSignal = localController.signal;
+      aggregateAbortRef.current = localController;
+    }
+
+    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
+    try {
+      const response = await getAggregateWhaleFeed({
+        cursor,
+        sort,
+        window,
+        limit,
+        signal: requestSignal,
+        watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
+      });
+      if (requestSeq !== aggregateRequestSeqRef.current) {
+        return null;
+      }
+      const payload = response.data || {};
+      const nextItems = payload.results || [];
+
+      setAggregateFeed((prev) => (append
+        ? mergeUniqueAggregateEvents(prev, nextItems)
+        : mergeUniqueAggregateEvents([], nextItems)));
+      setAggregateCursor(payload.next_cursor || null);
+      setAggregateHasMore(Boolean(payload.has_more));
+      setAggregateEntitlements(payload.entitlements || null);
+      setAggregateFilters(payload.filters || null);
+      setAggregateSource(payload.source || '');
+      setAggregateServerTime(payload.server_time || '');
+      return payload;
+    } catch (err) {
+      if (isRequestCanceled(err)) {
+        return null;
+      }
+      throw err;
+    } finally {
+      if (localController && aggregateAbortRef.current === localController) {
+        aggregateAbortRef.current = null;
+      }
+    }
+  }, [aggregatePageSize, feedSort, feedWindow, selectedFeedScope]);
 
   const loadCampaigns = useCallback(async ({
     cursor = null,
@@ -882,77 +926,55 @@ export default function WhaleAlertsHub() {
     window = feedWindow,
     scope = selectedFeedScope,
     sort = campaignSort,
+    campaignLimit = campaignPageSize,
+    signal,
   } = {}) => {
-    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
-    const response = await getWhaleCampaigns({
-      window,
-      cursor,
-      campaignLimit: 18,
-      campaignSort: sort,
-      watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
-    });
-    const payload = response.data || {};
-    const nextItems = payload.results || [];
-    setCampaigns((prev) => (append ? [...prev, ...nextItems] : nextItems));
-    setCampaignHasMore(Boolean(payload.has_more));
-    setCampaignCursor(payload.next_cursor || null);
-  }, [campaignSort, feedWindow, selectedFeedScope]);
+    const requestSeq = ++campaignRequestSeqRef.current;
+    let requestSignal = signal;
+    let localController = null;
 
-  const loadSymbolStatsMap = useCallback(async ({
-    window = feedWindow,
-    scope = selectedFeedScope,
-  } = {}) => {
-    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
-    const rows = [];
-    const seenEventKeys = new Set();
-    const seenCursors = new Set();
-    let cursor = null;
-    let hasMore = true;
-    let pageCount = 0;
-    const maxPages = 20;
-
-    while (hasMore && pageCount < maxPages) {
-      const response = await getAggregateWhaleFeed({
-        cursor,
-        sort: 'ts',
-        window,
-        limit: 50,
-        watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
-      });
-      const payload = response.data || {};
-      const pageRows = payload.results || [];
-
-      for (const item of pageRows) {
-        const eventKey = item.event_id || [
-          item.id,
-          item.symbol,
-          item.ts,
-          item.side,
-          item.matched_value,
-        ].join(':');
-        if (seenEventKeys.has(eventKey)) continue;
-        seenEventKeys.add(eventKey);
-        rows.push(item);
+    if (!requestSignal) {
+      if (!append && campaignAbortRef.current) {
+        campaignAbortRef.current.abort();
       }
-
-      const nextCursor = payload.next_cursor || null;
-      hasMore = Boolean(payload.has_more && nextCursor);
-      if (!hasMore) break;
-      if (seenCursors.has(nextCursor)) break;
-      seenCursors.add(nextCursor);
-      cursor = nextCursor;
-      pageCount += 1;
+      localController = new AbortController();
+      requestSignal = localController.signal;
+      campaignAbortRef.current = localController;
     }
 
-    const statsMap = buildSymbolStatsFromFeed(rows);
-    const totalSignals = Object.values(statsMap).reduce((sum, entry) => sum + Number(entry?.count || 0), 0);
-    return {
-      statsMap,
-      totalSignals,
-    };
-  }, [feedWindow, selectedFeedScope]);
+    const watchlistGroupId = scope.startsWith('watchlist:') ? Number(scope.split(':')[1]) : null;
+    try {
+      const response = await getWhaleCampaigns({
+        window,
+        cursor,
+        campaignLimit,
+        signal: requestSignal,
+        campaignSort: sort,
+        watchlistGroupIds: Number.isFinite(watchlistGroupId) ? [watchlistGroupId] : undefined,
+      });
+      if (requestSeq !== campaignRequestSeqRef.current) {
+        return null;
+      }
+      const payload = response.data || {};
+      const nextItems = payload.results || [];
+      setCampaigns((prev) => (append ? [...prev, ...nextItems] : nextItems));
+      setCampaignHasMore(Boolean(payload.has_more));
+      setCampaignCursor(payload.next_cursor || null);
+      return payload;
+    } catch (err) {
+      if (isRequestCanceled(err)) {
+        return null;
+      }
+      throw err;
+    } finally {
+      if (localController && campaignAbortRef.current === localController) {
+        campaignAbortRef.current = null;
+      }
+    }
+  }, [campaignPageSize, campaignSort, feedWindow, selectedFeedScope]);
 
   const fetchData = useCallback(async () => {
+    const requestSeq = ++bootstrapRequestSeqRef.current;
     setLoading(true);
     setError('');
 
@@ -960,27 +982,49 @@ export default function WhaleAlertsHub() {
       const requests = [
         getTrackedSymbols(),
         getWatchlistGroups(),
-        loadAggregateFeed({ cursor: null, append: false, sort: feedSort, window: feedWindow, scope: selectedFeedScope }),
-        loadCampaigns({ cursor: null, append: false, window: feedWindow, scope: selectedFeedScope, sort: campaignSort }),
-        loadSymbolStatsMap({ window: feedWindow, scope: selectedFeedScope }),
+        loadAggregateFeed({
+          cursor: null,
+          append: false,
+          sort: feedSort,
+          window: feedWindow,
+          scope: selectedFeedScope,
+          limit: aggregatePageSize,
+        }),
       ];
 
       if (canReadAdvisory) {
         requests.push(getWhaleAdvisories());
       }
 
-      const [trackedResult, watchlistGroupsResult, _aggregateResult, _campaignResult, symbolStatsResult, advisoryResult] = await Promise.all(requests);
+      const [trackedResult, watchlistGroupsResult, _aggregateResult, advisoryResult] = await Promise.all(requests);
+      if (requestSeq !== bootstrapRequestSeqRef.current) {
+        return;
+      }
       setTrackedSymbols(trackedResult.data || []);
       setWatchlistGroups(watchlistGroupsResult.data || []);
-      setSymbolStatsMap(symbolStatsResult?.statsMap || {});
-      setAggregateTotalSignals(Number(symbolStatsResult?.totalSignals || 0));
       setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
     } catch (err) {
+      if (requestSeq !== bootstrapRequestSeqRef.current || isRequestCanceled(err)) {
+        return;
+      }
       setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
     } finally {
-      setLoading(false);
+      if (requestSeq === bootstrapRequestSeqRef.current) {
+        setLoading(false);
+      }
     }
-  }, [canReadAdvisory, campaignSort, feedSort, feedWindow, loadAggregateFeed, loadCampaigns, loadSymbolStatsMap, selectedFeedScope, t]);
+  }, [aggregatePageSize, canReadAdvisory, feedSort, feedWindow, loadAggregateFeed, selectedFeedScope, t]);
+
+  useEffect(() => {
+    return () => {
+      if (aggregateAbortRef.current) {
+        aggregateAbortRef.current.abort();
+      }
+      if (campaignAbortRef.current) {
+        campaignAbortRef.current.abort();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -988,14 +1032,54 @@ export default function WhaleAlertsHub() {
 
   useEffect(() => {
     setSelectedCampaign(null);
+    setCampaigns([]);
     setCampaignCursor(null);
-  }, [campaignSort, feedWindow, selectedFeedScope]);
+    setCampaignHasMore(false);
+    setCampaignsLoaded(false);
+  }, [campaignPageSize, campaignSort, feedWindow, selectedFeedScope]);
+
+  useEffect(() => {
+    if (activeBoardTab !== 'campaigns' || campaignsLoaded) return;
+
+    let cancelled = false;
+    const loadInitialCampaigns = async () => {
+      setCampaignInitialLoading(true);
+      try {
+        await loadCampaigns({
+          cursor: null,
+          append: false,
+          window: feedWindow,
+          scope: selectedFeedScope,
+          sort: campaignSort,
+          campaignLimit: campaignPageSize,
+        });
+        if (!cancelled) {
+          setCampaignsLoaded(true);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.response?.data?.detail || t('whaleHub.loadFailed'));
+        }
+      } finally {
+        if (!cancelled) {
+          setCampaignInitialLoading(false);
+        }
+      }
+    };
+
+    loadInitialCampaigns();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeBoardTab, campaignPageSize, campaignSort, campaignsLoaded, feedWindow, loadCampaigns, selectedFeedScope, t]);
 
   const symbolShortcuts = useMemo(() => buildTrackedSymbolBuckets(trackedSymbols), [trackedSymbols]);
 
+  const symbolStatsMap = useMemo(() => buildSymbolStatsFromFeed(aggregateFeed), [aggregateFeed]);
+
   const aggregateTotalCount = useMemo(() => (
-    Number(aggregateTotalSignals || 0)
-  ), [aggregateTotalSignals]);
+    Object.values(symbolStatsMap).reduce((sum, entry) => sum + Number(entry?.count || 0), 0)
+  ), [symbolStatsMap]);
 
   const aggregateDisplayedCount = useMemo(() => (
     (aggregateFeed || []).filter((item) => isCountableWhaleOrder(item)).length
@@ -1038,13 +1122,14 @@ export default function WhaleAlertsHub() {
         window: feedWindow,
         scope: selectedFeedScope,
         sort: campaignSort,
+        campaignLimit: campaignPageSize,
       });
     } catch (err) {
       setError(err.response?.data?.detail || t('whaleHub.loadMoreFailed'));
     } finally {
       setCampaignLoadingMore(false);
     }
-  }, [campaignCursor, campaignHasMore, campaignSort, feedWindow, loadCampaigns, selectedFeedScope, t]);
+  }, [campaignCursor, campaignHasMore, campaignPageSize, campaignSort, feedWindow, loadCampaigns, selectedFeedScope, t]);
 
   const scopeLabel = useMemo(() => {
     if (aggregateFilters?.scope === 'watchlist' && activeWatchlistGroup) {
@@ -1171,44 +1256,74 @@ export default function WhaleAlertsHub() {
               ))}
             </div>
             {activeBoardTab === 'tape' ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
-                <button
-                  type="button"
-                  onClick={() => handleSortChange('ts')}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                    feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
-                  }`}
-                >
-                  {t('whaleHub.latest')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSortChange('matched_value')}
-                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                    feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
-                  }`}
-                >
-                  {t('whaleHub.largestValue')}
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
-                {[
-                  ['strength', t('whaleHub.campaignSortStrength')],
-                  ['latest', t('whaleHub.campaignSortLatest')],
-                  ['value', t('whaleHub.campaignSortValue')],
-                ].map(([value, label]) => (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
                   <button
-                    key={value}
                     type="button"
-                    onClick={() => setCampaignSort(value)}
+                    onClick={() => handleSortChange('ts')}
                     className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
-                      campaignSort === value ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                      feedSort === 'ts' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
                     }`}
                   >
-                    {label}
+                    {t('whaleHub.latest')}
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => handleSortChange('matched_value')}
+                    className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                      feedSort === 'matched_value' ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                    }`}
+                  >
+                    {t('whaleHub.largestValue')}
+                  </button>
+                </div>
+                <label className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                  <span>{t('whaleHub.itemsPerPage')}</span>
+                  <select
+                    value={aggregatePageSize}
+                    onChange={(event) => setAggregatePageSize(Number(event.target.value || 8))}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+                    style={{ colorScheme: 'dark' }}
+                  >
+                    {FEED_PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 p-1">
+                  {[
+                    ['strength', t('whaleHub.campaignSortStrength')],
+                    ['latest', t('whaleHub.campaignSortLatest')],
+                    ['value', t('whaleHub.campaignSortValue')],
+                  ].map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setCampaignSort(value)}
+                      className={`rounded-xl px-3 py-2 text-xs font-semibold transition-colors ${
+                        campaignSort === value ? 'bg-cyan-500 text-slate-950' : 'text-slate-300 hover:text-slate-100'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <label className="flex items-center gap-2 rounded-2xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-xs text-slate-300">
+                  <span>{t('whaleHub.itemsPerPage')}</span>
+                  <select
+                    value={campaignPageSize}
+                    onChange={(event) => setCampaignPageSize(Number(event.target.value || 8))}
+                    className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
+                    style={{ colorScheme: 'dark' }}
+                  >
+                    {FEED_PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </label>
               </div>
             )}
           </div>
@@ -1323,7 +1438,13 @@ export default function WhaleAlertsHub() {
               </label>
             </div>
 
-            {filteredCampaigns.length === 0 ? (
+            {campaignInitialLoading ? (
+              <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+                {[...Array(campaignPageSize)].map((_, index) => (
+                  <div key={index} className="h-40 animate-pulse rounded-2xl bg-slate-900" />
+                ))}
+              </div>
+            ) : filteredCampaigns.length === 0 ? (
               <div className="mt-4 rounded-2xl border border-dashed border-slate-800 px-4 py-5 text-sm text-slate-500">
                 {t('whaleHub.noCampaigns')}
               </div>
@@ -1388,7 +1509,7 @@ export default function WhaleAlertsHub() {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {aggregateFeed.length > 12 && (
+                {aggregateFeed.length > aggregatePageSize && (
                   <button type="button" onClick={handleHideLess} className="btn-secondary">
                     {t('whaleHub.hideLess')}
                   </button>

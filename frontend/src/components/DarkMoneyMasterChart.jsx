@@ -143,7 +143,35 @@ function toEpochSecondsFromChartTimeKey(timeKey) {
     const t = Math.floor(d.getTime() / 1000);
     return Number.isFinite(t) ? t : null;
   }
+  // Support ISO-like timestamps from whale signals, e.g. 2026-04-16T14:19:34+07:00
+  const parsed = Date.parse(String(timeKey));
+  if (Number.isFinite(parsed)) {
+    const t = Math.floor(parsed / 1000);
+    return Number.isFinite(t) ? t : null;
+  }
   return null;
+}
+
+function normalizeSignalTimeKey(time) {
+  if (time == null) return '';
+  const raw = String(time);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  const parsed = Date.parse(raw);
+  if (Number.isFinite(parsed)) {
+    const d = new Date(parsed);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+  }
+  return raw;
+}
+
+function getWhaleMatchWindowSeconds(interval) {
+  const iv = String(interval || '').toLowerCase();
+  if (iv === '1w') return 8 * 24 * 3600;
+  if (iv === '1d') return 36 * 3600;
+  if (iv === '1h') return 2 * 3600;
+  if (iv === '30m') return 60 * 60;
+  if (iv === '15m') return 30 * 60;
+  return 36 * 3600;
 }
 
 function sortTimeKeysAsc(left, right) {
@@ -272,12 +300,40 @@ function buildCompactWhaleMarkers(whaleSignals, candles, showLabels, options = {
     });
 }
 
-function buildWhaleSignalSummaryByTime(whaleSignals) {
+function buildWhaleSignalSummaryByTime(whaleSignals, candles, interval) {
   const summary = {};
   if (!whaleSignals?.length) return summary;
 
+  const candleKeys = (candles || []).map((c) => String(c?.time || '')).filter(Boolean);
+  const candleSet = new Set(candleKeys);
+  const candleEpochs = candleKeys
+    .map((key) => ({ key, epoch: toEpochSecondsFromChartTimeKey(key) }))
+    .filter((item) => item.epoch != null)
+    .sort((a, b) => a.epoch - b.epoch);
+  const windowSeconds = getWhaleMatchWindowSeconds(interval);
+
   whaleSignals.forEach((signal) => {
-    const timeKey = String(signal?.time ?? '');
+    const rawTime = signal?.time;
+    const normalizedSignalKey = normalizeSignalTimeKey(rawTime);
+    let timeKey = normalizedSignalKey;
+
+    if (timeKey && !candleSet.has(timeKey) && candleEpochs.length) {
+      const signalEpoch = toEpochSecondsFromChartTimeKey(rawTime) ?? toEpochSecondsFromChartTimeKey(normalizedSignalKey);
+      if (signalEpoch != null) {
+        let nearest = null;
+        for (let i = 0; i < candleEpochs.length; i += 1) {
+          const candidate = candleEpochs[i];
+          const distance = Math.abs(candidate.epoch - signalEpoch);
+          if (!nearest || distance < nearest.distance) {
+            nearest = { key: candidate.key, distance };
+          }
+        }
+        if (nearest && nearest.distance <= windowSeconds) {
+          timeKey = nearest.key;
+        }
+      }
+    }
+
     if (!timeKey) return;
     if (!summary[timeKey]) {
       summary[timeKey] = {
@@ -330,7 +386,12 @@ function QuickSignalBar({ strategyTable }) {
 function OhlcTooltip({ data: d, chartType = 'candle' }) {
   if (!d) return null;
   const changeColor = d.change == null ? 'text-slate-400' : d.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
-  const whaleInfo = d.whaleInfo || null;
+  const whaleInfo = d.whaleInfo || {
+    buyCount: 0,
+    sellCount: 0,
+    buyValue: 0,
+    sellValue: 0,
+  };
   const isLine = chartType === 'line';
   return (
     <div className="pointer-events-none absolute left-3 top-10 z-20 flex flex-wrap items-center gap-x-4 gap-y-0.5 rounded-lg border border-slate-700/60 bg-slate-950/90 px-3 py-2 text-[11px] backdrop-blur-sm shadow-xl">
@@ -345,22 +406,14 @@ function OhlcTooltip({ data: d, chartType = 'candle' }) {
         </span>
       )}
       {d.volume != null && <span><span className="text-slate-500">Vol </span><span className="text-cyan-300">{fmtVolume(d.volume)}</span></span>}
-      {whaleInfo && (whaleInfo.buyCount > 0 || whaleInfo.sellCount > 0) ? (
-        <>
-          {whaleInfo.buyCount > 0 ? (
-            <span>
-              <span className="text-slate-500">Whale Buy </span>
-              <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount})</span>
-            </span>
-          ) : null}
-          {whaleInfo.sellCount > 0 ? (
-            <span>
-              <span className="text-slate-500">Whale Sell </span>
-              <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue)} ({whaleInfo.sellCount})</span>
-            </span>
-          ) : null}
-        </>
-      ) : null}
+      <span>
+        <span className="text-slate-500">Whale Buy </span>
+        <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount || 0})</span>
+      </span>
+      <span>
+        <span className="text-slate-500">Whale Sell </span>
+        <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue)} ({whaleInfo.sellCount || 0})</span>
+      </span>
     </div>
   );
 }
@@ -526,6 +579,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [interval, setInterval] = useState('1D');
   const [showWhaleSignals, setShowWhaleSignals] = useState(true);
   const [showWhaleLabels, setShowWhaleLabels] = useState(false);
+  const [showMa20, setShowMa20] = useState(true);
+  const [showMa50, setShowMa50] = useState(true);
   const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
   const [ohlcTooltip, setOhlcTooltip] = useState(null);
   const [prefetchState, setPrefetchState] = useState({
@@ -702,7 +757,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
     // B2: lookup map time → candle (with index for prev-close % calc)
     const candlesByTime = {};
     normalizedCandles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
-    const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || []);
+    const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || [], normalizedCandles, interval);
     const priceByTime = Object.fromEntries(normalizedCandles.map((c) => [String(c.time), Number(c.close || 0)]));
     const cvdByTime = Object.fromEntries(
       (data.dark_flow_series || [])
@@ -807,7 +862,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         );
 
         // A4: MA20 — lineWidth 2.5 + crosshairMarker
-        if (data.moving_averages?.ma20?.length) {
+        if (showMa20 && data.moving_averages?.ma20?.length) {
           const ma20Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
             color: '#22d3ee',
             lineWidth: 2.5,
@@ -821,7 +876,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         }
 
         // A4: MA50 — lineWidth 2.5 + crosshairMarker
-        if (data.moving_averages?.ma50?.length) {
+        if (showMa50 && data.moving_averages?.ma50?.length) {
           const ma50Series = addSeriesCompat(chart1, 'addLineSeries', LineSeries, {
             color: '#f59e0b',
             lineWidth: 2.5,
@@ -1214,7 +1269,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
       }
       cleanupCharts();
     };
-  }, [data, showWhaleSignals, showWhaleLabels, chartType]);
+  }, [data, showWhaleSignals, showWhaleLabels, showMa20, showMa50, chartType]);
 
   // ─── Latest dark flow for SMFI gauge ─────────────────────────────────────
   const latestDarkFlow = data?.dark_flow_series?.length
@@ -1278,6 +1333,28 @@ export default function DarkMoneyMasterChart({ symbol }) {
                 } disabled:cursor-not-allowed disabled:opacity-50`}
               >
                 {showWhaleLabels ? t('darkMoneyChart.hideWhaleLabels') : t('darkMoneyChart.showWhaleLabels')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMa20((prev) => !prev)}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${
+                  showMa20
+                    ? 'border-cyan-700/70 bg-cyan-950/30 text-cyan-200 hover:bg-cyan-900/40'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                {showMa20 ? t('darkMoneyChart.hideMa20') : t('darkMoneyChart.showMa20')}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowMa50((prev) => !prev)}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${
+                  showMa50
+                    ? 'border-amber-700/70 bg-amber-950/30 text-amber-200 hover:bg-amber-900/40'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+                }`}
+              >
+                {showMa50 ? t('darkMoneyChart.hideMa50') : t('darkMoneyChart.showMa50')}
               </button>
             </div>
           </div>
@@ -1373,14 +1450,18 @@ export default function DarkMoneyMasterChart({ symbol }) {
             {/* Pane 1: Price + Whale Markers */}
             <div className="relative">
               <div className="absolute left-3 top-2 z-10 flex items-center gap-2 text-[10px]">
-                <span className="flex items-center gap-1">
-                  <span className="h-0.5 w-3 bg-cyan-400 inline-block" />
-                  <span className="text-cyan-400">MA20{ma20Last != null ? `: ${fmtPrice(ma20Last)}` : ''}</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="h-0.5 w-3 bg-amber-400 inline-block" />
-                  <span className="text-amber-400">MA50{ma50Last != null ? `: ${fmtPrice(ma50Last)}` : ''}</span>
-                </span>
+                {showMa20 ? (
+                  <span className="flex items-center gap-1">
+                    <span className="h-0.5 w-3 bg-cyan-400 inline-block" />
+                    <span className="text-cyan-400">MA20{ma20Last != null ? `: ${fmtPrice(ma20Last)}` : ''}</span>
+                  </span>
+                ) : null}
+                {showMa50 ? (
+                  <span className="flex items-center gap-1">
+                    <span className="h-0.5 w-3 bg-amber-400 inline-block" />
+                    <span className="text-amber-400">MA50{ma50Last != null ? `: ${fmtPrice(ma50Last)}` : ''}</span>
+                  </span>
+                ) : null}
                 {showWhaleSignals ? (
                   <>
                     <span className="flex items-center gap-1 text-lime-300">
