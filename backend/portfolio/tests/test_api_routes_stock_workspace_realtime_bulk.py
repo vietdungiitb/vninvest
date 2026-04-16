@@ -2695,8 +2695,15 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
     @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
-    def test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30(self, _mock_rate_limited):
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_stale_contract_marks_over_threshold_for_vn30(self, mock_resolve_market_phase, _mock_rate_limited):
         self.authenticate()
+        mock_resolve_market_phase.return_value = {
+            'profile': 'am',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
         group = SecuritiesGroup.objects.create(name='VN30', group_type='MARKET_CAP')
         SecuritiesItem.objects.create(group=group, symbol='VCB')
 
@@ -2737,8 +2744,15 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
     @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
-    def test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30(self, _mock_rate_limited):
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_stale_contract_keeps_within_threshold_for_non_vn30(self, mock_resolve_market_phase, _mock_rate_limited):
         self.authenticate()
+        mock_resolve_market_phase.return_value = {
+            'profile': 'am',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
 
         # Clear Redis VN30 cache key so MWG is never misclassified from a prior run.
         cache.delete('intraday:is_vn30:MWG')
@@ -2780,8 +2794,9 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
     @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
     @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    @patch('portfolio.market_data_service.MarketDataService._build_intraday_db_fallback', return_value=None)
     @patch('portfolio.market_data_service.resolve_market_phase')
-    def test_realtime_intraday_lunch_break_suppresses_stale_warning(self, mock_resolve_market_phase, _mock_rate_limited):
+    def test_realtime_intraday_lunch_break_suppresses_stale_warning(self, mock_resolve_market_phase, _mock_db_fallback, _mock_rate_limited):
         self.authenticate()
 
         mock_resolve_market_phase.return_value = {
