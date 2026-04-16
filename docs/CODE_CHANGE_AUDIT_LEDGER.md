@@ -1,5 +1,71 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17b - Realtime ticker 500 fix for timezone-aware freshness math
+
+Muc tieu:
+- Khac phuc loi `500 Internal Server Error` hang loat tren endpoint `/api/realtime/ticker/<symbol>/`.
+
+Trieu chung runtime:
+- Frontend log:
+  - `Bootstrap quote fetch failed ... status code 500`
+  - `Polling failed ... status code 500`
+
+Nguyen nhan goc:
+- Trong `MarketDataService.get_realtime_ticker`, nhanh cache-miss fallback tinh `freshness_seconds` bang:
+  - `datetime.now() - last_dt`
+- `last_dt` duoc parse tu ISO co the timezone-aware, trong khi `datetime.now()` la naive.
+- Tru aware-naive gay `TypeError`, khong nam trong `except ValueError`, dan den 500.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Neu `last_dt` co `tzinfo`: dung `timezone.now().astimezone(last_dt.tzinfo)`.
+- Neu `last_dt` khong co `tzinfo`: giu `datetime.now()`.
+- Mo rong catch block tu `except ValueError` thanh `except (TypeError, ValueError)` de fail-safe.
+
+Ket qua verify:
+- `get_errors` cho `backend/portfolio/market_data_service.py`: khong co loi.
+
+---
+
+## Entry 2026-04-17a - Stop unauthenticated watchlist/tracked calls causing redirect loop noise
+
+Muc tieu:
+- Loai bo request protected endpoint khi nguoi dung chua dang nhap de tranh lap redirect `ERR_TOO_MANY_REDIRECTS` tren browser.
+
+Trieu chung runtime:
+- Console van xuat hien loi:
+  - `api/portfolio/watchlist/groups/: net::ERR_TOO_MANY_REDIRECTS`
+
+Nguyen nhan goc:
+- Mot so man hinh (dac biet `StockDetail`) van goi `getWatchlistGroups()` ngay khi mount.
+- Khi client dang o trang guest/het token, request den endpoint protected van duoc gui ra edge/proxy.
+
+Danh sach tep da sua:
+- frontend/src/api/client.js
+- frontend/src/pages/StockDetail.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `frontend/src/api/client.js`:
+  - Them `hasAuthTokens()`.
+  - `getWatchlistGroups()` va `getTrackedSymbols()` short-circuit tra `{ data: [] }` neu khong co cap token.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Dung `usePortfolio()` lay `isAuthenticated`.
+  - Bo qua fetch watchlist groups khi chua dang nhap; reset state ve mang rong.
+
+Ket qua verify:
+- `get_errors` cho:
+  - `frontend/src/api/client.js`
+  - `frontend/src/pages/StockDetail.jsx`
+  => khong co loi.
+
+---
+
 ## Entry 2026-04-16ad - DarkMoney CVD/SMFI panes fallback when dark_flow_series is empty
 
 Muc tieu:

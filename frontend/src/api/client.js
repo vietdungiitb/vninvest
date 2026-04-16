@@ -33,6 +33,12 @@ const apiClient = axios.create({
 const AUTH_PUBLIC_ENDPOINT_PATTERN = /\/auth\/(token\/?|token\/refresh\/?|register\/?|verify-email\/?|resend-verification\/?)$/i;
 let refreshRequestPromise = null;
 
+function hasAuthTokens() {
+  const access = localStorage.getItem('access_token');
+  const refresh = localStorage.getItem('refresh_token');
+  return Boolean(access && refresh);
+}
+
 export function isAuthPublicEndpoint(url) {
   return AUTH_PUBLIC_ENDPOINT_PATTERN.test(String(url || ''));
 }
@@ -180,7 +186,12 @@ export const syncPrices = (portfolioId, days = 30) =>
 export const syncStockProfile = () => apiClient.post('/admin-sync/stockprofile/');
 
 // --- Watchlist ---
-export const getWatchlistGroups = () => apiClient.get('/portfolio/watchlist/groups/');
+export const getWatchlistGroups = () => {
+  if (!hasAuthTokens()) {
+    return Promise.resolve({ data: [] });
+  }
+  return apiClient.get('/portfolio/watchlist/groups/');
+};
 export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchlist/groups/', data);
 export const updateWatchlistGroup = (id, data) => apiClient.patch(`/portfolio/watchlist/groups/${id}/`, data);
 export const deleteWatchlistGroup = (id) => apiClient.delete(`/portfolio/watchlist/groups/${id}/`);
@@ -423,7 +434,12 @@ export const getRealtimeWebSocketUrl = (token) => {
 };
 
 // --- Mã Theo dõi (personal tracked symbols) ---
-export const getTrackedSymbols = () => apiClient.get('/stock-management/tracked-symbols/');
+export const getTrackedSymbols = () => {
+  if (!hasAuthTokens()) {
+    return Promise.resolve({ data: [] });
+  }
+  return apiClient.get('/stock-management/tracked-symbols/');
+};
 export const addTrackedSymbol = (symbol, sourceGroupId = null, whaleAlertThresholdMillion = null) =>
   apiClient.post('/stock-management/tracked-symbols/', {
     symbol,

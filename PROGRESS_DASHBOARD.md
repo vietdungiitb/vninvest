@@ -65,6 +65,17 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Ticker 500 Timezone Fix (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - tinh freshness timezone-safe trong fallback ticker, tranh TypeError aware/naive datetime gay 500)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Watchlist Redirect Loop Mitigation (2026-04-17)
+- frontend/src/api/client.js (MODIFIED - short-circuit `getWatchlistGroups` va `getTrackedSymbols` khi chua co token)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - chi fetch watchlist groups khi `isAuthenticated=true`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### DarkMoney CVD/Strength Fallback Visibility Fix (2026-04-16)
 - frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - them fallback series khi `dark_flow_series` rong de 2 pane CVD va suc manh dong tien an khong con mat)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16ad)

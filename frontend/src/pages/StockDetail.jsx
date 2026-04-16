@@ -47,6 +47,7 @@ import { BubbleOrderChart } from '../components/BubbleOrderChart';
 import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
+import { usePortfolio } from '../context/PortfolioContext';
 import { useAbility } from '../context/AbilityContext';
 import {
   getAdvisoryConflictRetryDelayMs,
@@ -1482,6 +1483,7 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 
 export default function StockDetail() {
   const { t, formatQuotePrice, formatDateTime } = useI18n();
+  const { isAuthenticated } = usePortfolio();
   const ability = useAbility();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
@@ -1988,6 +1990,11 @@ export default function StockDetail() {
   }, [normalizedSymbol, orderFlowWindow]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      setWatchlistGroups([]);
+      return () => {};
+    }
+
     let cancelled = false;
 
     const fetchWatchlistGroups = async () => {
@@ -2008,7 +2015,7 @@ export default function StockDetail() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (!normalizedSymbol) {
