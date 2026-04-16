@@ -1,4 +1,4 @@
-# ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-6 COMPLETE ✅
+# ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-7 COMPLETE ✅
 
 **Updated**: 2026-04-16 ~16:00  
 **Status**: ALL PHASES COMPLETE (0-6) - BUG FIX VERIFIED  
@@ -33,7 +33,7 @@ Data poisoning bug (same stock showing as 26,600 | 0.00 | 23.80 in different UI 
 | **6a** | **Frontend** | `frontend/src/pages/Watchlist.jsx` (heuristic removed) | ✅ CLEANED |
 | **6b** | **Frontend** | `frontend/src/utils/dashboardRealtimeSelectors.js` (function removed) | ✅ CLEANED |
 | **6c** | **Frontend** | `frontend/src/pages/StockDetail.jsx` (normalize removed, finite helper) | ✅ CLEANED |
-| **7** | **Migration** | `backend/portfolio/management/commands/finalize_price_unit_migration.py` | 🟡 READY (dry-run) |
+| **7** | **Migration** | `backend/portfolio/management/commands/finalize_price_unit_migration.py` | ✅ EXECUTED |
 
 ---
 
@@ -107,8 +107,9 @@ File sizes after gzip:
 
 ### Phase 7 Runtime Validation
 - ✅ Command registered in Django management commands
-- ✅ Dry-run executed successfully (no DB write)
-- ✅ Scope: 71,655 rows | suspicious (>1000): 71,288 rows
+- ✅ Dry-run pre-check: 71,655 rows | suspicious (>1000): 71,288 rows
+- ✅ Force execution applied: updated 71,288 rows
+- ✅ Dry-run post-check: suspicious (>1000) = 0
 
 ---
 
@@ -187,7 +188,7 @@ PHASE 6: Complete Frontend Heuristic Removal - StockDetail.jsx Identity Function
 **Frontend Build**: 100% Success  
 **Bug Status**: RESOLVED ✅  
 
-All phases 0-6 complete. Canonical price unit standardization fully integrated from backend source through frontend display layers.
+All phases 0-7 complete. Canonical price unit standardization fully integrated from backend source through frontend display layers.
 
 **Token Budget Used**: ~150k / 200k
 

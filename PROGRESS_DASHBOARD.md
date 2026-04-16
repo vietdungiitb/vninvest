@@ -4,9 +4,9 @@
 
 ---
 
-## 🚀 LATEST UPDATE (2026-04-16 ~16:30)
+## 🚀 LATEST UPDATE (2026-04-16 ~17:15)
 
-### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-6 COMPLETE ✅
+### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-7 COMPLETE ✅
 
 **Problem Fixed:** Data poisoning from inconsistent quote prices (26,600 | 0.00 | 23.80 in same table)
 
@@ -20,7 +20,7 @@
 - Phase 4: Realtime collector - remove `* 0.001`, trust canonical price from adapter
 - Phase 5: Tasks prefetch - canonical unit guard comments and safer assumptions
 - Phase 6: Frontend cleanup - remove/neutralize heuristic normalization in Watchlist, Dashboard, StockDetail
-- Phase 7: Optional historical migration command implemented (`finalize_price_unit_migration`), dry-run validated
+- Phase 7: Optional historical migration command executed (`finalize_price_unit_migration --force`), post-check clean
 - Phase 8: Final audit documentation completed
 
 **Files Modified (Core):**
@@ -47,15 +47,16 @@
 - Phase 4: ✅ COMPLETE
 - Phase 5: ✅ COMPLETE
 - Phase 6: ✅ COMPLETE
-- Phase 7: 🟡 OPTIONAL / READY (command created, dry-run done, pending --force by operator)
+- Phase 7: ✅ COMPLETE (force migration executed, suspicious records now 0)
 - Phase 8: ✅ COMPLETE
 
 **Validation:**
 - ✅ Backend tests: 48/48 passing
 - ✅ Frontend build: success
-- ✅ Phase 7 dry-run: `manage.py finalize_price_unit_migration --limit 5` (no DB write)
-- ✅ Dry-run scope: 71,655 rows, suspicious >1000: 71,288 rows
-- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`, `f5e13a88`, `32a6c991`
+- ✅ Phase 7 dry-run (pre): scope 71,655 rows, suspicious >1000: 71,288 rows
+- ✅ Phase 7 apply: `manage.py finalize_price_unit_migration --force` updated 71,288 rows
+- ✅ Phase 7 dry-run (post): suspicious >1000: 0
+- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`, `f5e13a88`, `32a6c991`, `64f9b1a0`
 
 **Token Budget:** ~150k / 200k used
 
