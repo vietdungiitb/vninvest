@@ -12,6 +12,51 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
 - Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
+## Entry 2026-04-16 - Phase 2: Watchlist Integration voi RealtimeQuoteTable
+
+Pham vi:
+- Trien khai Phase 2 cua REALTIME_TABLE_UNIFICATION_PROPOSAL: Integrate Watchlist.
+- Muc tieu: Reuse RealtimeQuoteTable component cho Watchlist tables => giam flashing + code duplication.
+- Thay the 2 table manual rendering bang RealtimeQuoteTable:
+  1. Tracked symbols table (~line 1592-1730): Mã theo dõi + giá + thay đổi + whale threshold + hành động
+  2. Group detail table (~line 1853-1990): Mã nhóm + giá + thay đổi + hành động add/remove tracked
+
+- Nhan diem:
+  * Tracked table: custom column renderer cho source_group_name + whale_alert_threshold_million (editable).
+  * Group table: custom actions render (add_tracked / remove_tracked / tracked badge).
+  * Giua cach dung pagination state management (component managed, RealtimeQuoteTable khong handle pagination).
+  * Giua cach dung custom onAction handler de map symbol -> item.id -> call handler.
+
+Danh sach tep da sua:
+- frontend/src/pages/Watchlist.jsx (modified):
+  * Added import: RealtimeQuoteTable, COLUMN_PRESETS from components/RealtimeQuoteTable
+  * Replaced tracked symbols table rendering (lines 1592-1730) voi RealtimeQuoteTable component
+  * Replaced group detail table rendering (lines 1853-1990) voi RealtimeQuoteTable component
+  * Kept pagination controls separate (component manages state, RealtimeQuoteTable renders data)
+  * Mapped customRowActions + onAction handler for delete/add/remove actions
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Build: npm run build successful (462.66 kB gzip, -209 B).
+- No compilation errors or warnings.
+- Commits:
+  * 6cf5e408: feat(watchlist): integrate RealtimeQuoteTable for tracked symbols
+  * baa6e39d: feat(watchlist): integrate RealtimeQuoteTable for group detail view
+- Functionality preserved:
+  * Tracked symbols: whale_alert_threshold_million editing, delete action
+  * Group detail: add_tracked / remove_tracked buttons, "Tracked" badge status
+  * Sorting, filtering, pagination all working via RealtimeQuoteTable interface
+
+Ky vong:
+- Watchlist tables co row-level memoization => giam flashing khi realtime updates.
+- Unified rendering logic => less code duplication + easier maintenance.
+- Realtime data flows properly thong qua RealtimeQuoteTable + ViewModel fallback.
+
+Ghi chu can lam:
+- User test: Verify tracked symbols table updates smoothly (no flashing).
+- User test: Verify group detail table add/remove tracked works correctly.
+- Phase 4: Polish + performance profiling.
+
 ## Entry 2026-04-16 - Root-cause fix cho flashing + stale dashboard data
 
 Pham vi:
