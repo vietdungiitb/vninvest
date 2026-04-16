@@ -54,11 +54,13 @@ Root cause:
 
 Danh sach tep da sua:
 - frontend/src/utils/dashboardRealtimeViewModel.js (new)
+- frontend/src/utils/dashboardRealtimeViewModel.test.js (new)
 - frontend/src/components/DashboardRealtimePanel.jsx
 - docs/CODE_CHANGE_AUDIT_LEDGER.md
 
 Ghi chu verify:
 - Frontend build: `npm run build` pass.
+- Unit test ViewModel: pass 4/4 (`dashboardRealtimeViewModel.test.js`).
 - DashboardRealtimePanel da su dung `buildDashboardRealtimeQuoteList(...)` thay vi map quote truc tiep.
 - Quy tac fallback gia trong ViewModel:
   1) current_price
