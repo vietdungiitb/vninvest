@@ -266,3 +266,20 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Backend ticker payload da xac nhan co gia hop le cho CII/DIG trong cung thoi diem test.
 - Frontend build pass sau khi bo sung symbol normalization.
+
+## Entry 2026-04-16 - Hotfix hard refresh bootstrap quote hydration
+
+Plan tham chieu:
+- N/A (targeted hotfix, khong thay doi kien truc lon)
+
+Pham vi:
+- Bo sung startup bootstrap fetch trong shared realtime hook de nap quote cho toan bo symbol ngay sau hard refresh.
+- Chinh `ws healthy recovery interval` ve dung 5 giay de rut ngan thoi gian khoi phuc symbol thieu gia.
+
+Danh sach tep da sua:
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend build: Compiled successfully sau thay doi.
+- Docker dev frontend da rebuild/deploy thanh cong.

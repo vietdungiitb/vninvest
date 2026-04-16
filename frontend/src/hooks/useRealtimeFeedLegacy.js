@@ -269,6 +269,72 @@ export default function useRealtimeFeedLegacy({
     }));
   }, []);
 
+  useEffect(() => {
+    if (!enabled) return undefined;
+
+    const token = localStorage.getItem('access_token');
+    if (!token || !normalizedSymbols.length) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const hydrateQuotes = async () => {
+      // Hydrate full quote set once on mount so hard refresh does not leave
+      // a subset of symbols empty while waiting for polling cursor rotation.
+      const bootstrapBatchSize = 10;
+
+      for (let i = 0; i < normalizedSymbols.length; i += bootstrapBatchSize) {
+        const batch = normalizedSymbols.slice(i, i + bootstrapBatchSize);
+        const results = await Promise.allSettled(batch.map((symbol) => getRealtimeTicker(symbol)));
+        if (cancelled) return;
+
+        let ok = 0;
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            ok += 1;
+            const { data } = result.value;
+            applyTickerUpdate({
+              symbol: data.symbol,
+              current_price: data.current_price,
+              prev_price: data.prev_price,
+              change_value: data.change_value,
+              change_pct: data.change_pct,
+              open_price: data.open_price,
+              high_price: data.high_price,
+              low_price: data.low_price,
+              volume: data.volume,
+              freshness_seconds: data.freshness_seconds,
+              stale: data.stale,
+              last_date: data.last_date,
+              market_phase: data.market_phase,
+              market_code: data.market_code,
+              data_semantic: data.data_semantic,
+              source: data.source,
+            });
+          } else {
+            const status = getHttpStatus(result.reason);
+            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
+            if (status !== 429) {
+              console.warn(`Bootstrap quote fetch failed for ${batch[idx]}:`, result.reason?.message);
+            }
+          }
+        });
+
+        if (ok > 0) {
+          setLastEventAt(nowIso());
+          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
+        }
+      }
+    };
+
+    hydrateQuotes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, normalizedSymbols, applyTickerUpdate]);
+
   const applyAlert = useCallback((payload) => {
     const nextAlert = normalizeAlert(payload);
     const nextKey = nextAlert.event_id || `${nextAlert.symbol || 'NA'}-${nextAlert.ts || 'NA'}-${nextAlert.side || 'NA'}`;
@@ -315,7 +381,7 @@ export default function useRealtimeFeedLegacy({
 
       const hasRecoveryCandidates = wsHealthy && pollCandidates.length > 0;
       const effectiveIntervalMs = hasRecoveryCandidates
-        ? Math.max(WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS, Math.min(pollIntervalRef.current, 10000))
+        ? WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS
         : (wsHealthy
           ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
           : Math.max(pollIntervalRef.current, 5000));
