@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### WebSocket Realtime Token Refresh Hardening (2026-04-17)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - pre-refresh access token truoc WS connect + auth-close recovery cho 1006/1008/1011)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Ticker Hardening: No 500 Fallback (2026-04-17)
 - backend/portfolio/market_data_service.py (MODIFIED - harden cache payload type + catch unexpected errors va tra degraded payload thay vi 500)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17c)
