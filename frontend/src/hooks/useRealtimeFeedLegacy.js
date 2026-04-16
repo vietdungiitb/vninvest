@@ -155,9 +155,10 @@ export default function useRealtimeFeedLegacy({
 }) {
   const POLL_BATCH_SIZE = 4;
   const WS_HEALTHY_POLL_BATCH_SIZE = 2;
-  const WS_HEALTHY_RECOVERY_BATCH_SIZE = 8;
+  const WS_HEALTHY_RECOVERY_BATCH_SIZE = 16; // Increased from 8 for faster recovery
   const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
-  const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 5000;
+  const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 8000; // Increased from 5000 to reduce re-render frequency
+  const WS_HEALTHY_RECOVERY_MIN_CANDIDATES = 3; // Only enter recovery if >= 3 missing symbols
   const MAX_WS_SUB_SYMBOLS = 50;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
@@ -282,7 +283,8 @@ export default function useRealtimeFeedLegacy({
     const hydrateQuotes = async () => {
       // Hydrate full quote set once on mount so hard refresh does not leave
       // a subset of symbols empty while waiting for polling cursor rotation.
-      const bootstrapBatchSize = 10;
+      // Increased batch size from 10 -> 20 for faster sequential bootstrap without API surge
+      const bootstrapBatchSize = 20;
 
       for (let i = 0; i < normalizedSymbols.length; i += bootstrapBatchSize) {
         const batch = normalizedSymbols.slice(i, i + bootstrapBatchSize);
@@ -379,7 +381,8 @@ export default function useRealtimeFeedLegacy({
         return;
       }
 
-      const hasRecoveryCandidates = wsHealthy && pollCandidates.length > 0;
+      // Only enter recovery mode if WS healthy AND >= 3 missing symbols (reduces unnecessary recovery polling)
+      const hasRecoveryCandidates = wsHealthy && pollCandidates.length >= WS_HEALTHY_RECOVERY_MIN_CANDIDATES;
       const effectiveIntervalMs = hasRecoveryCandidates
         ? WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS
         : (wsHealthy
