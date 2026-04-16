@@ -267,9 +267,13 @@ class RealtimeTickerView(APIView):
         if last_date:
             try:
                 last_dt = datetime.fromisoformat(str(last_date))
-                freshness_seconds = max(int((datetime.now() - last_dt).total_seconds()), 0)
+                if last_dt.tzinfo is not None:
+                    now_dt = timezone.now().astimezone(last_dt.tzinfo)
+                else:
+                    now_dt = datetime.now()
+                freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
                 stale = freshness_seconds > 30
-            except ValueError:
+            except (TypeError, ValueError):
                 freshness_seconds = None
                 stale = True
 

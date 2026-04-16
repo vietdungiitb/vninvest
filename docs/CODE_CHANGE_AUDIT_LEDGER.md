@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17e - Realtime core ticker fallback timezone fix (legacy route safety)
+
+Muc tieu:
+- Loai bo diem co the gay `500` trong nhanh fallback cua `views_realtime_core.RealtimeTickerView`.
+
+Trieu chung runtime:
+- Production van xuat hien `GET /api/realtime/ticker/<symbol>/ 500` hang loat du da release cac fix truoc.
+
+Nguyen nhan goc:
+- Trong `views_realtime_core.py`, tinh freshness fallback van dung:
+  - `datetime.now() - last_dt`
+- Neu `last_dt` la timezone-aware (ISO co offset), phep tru aware-naive gay `TypeError` va roi 500.
+
+Danh sach tep da sua:
+- backend/portfolio/views_realtime_core.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Chuyen phep tinh freshness sang timezone-safe:
+  - aware: `timezone.now().astimezone(last_dt.tzinfo)`
+  - naive: `datetime.now()`
+- Mo rong catch sang `(TypeError, ValueError)`.
+
+Ket qua verify:
+- `get_errors` cho `backend/portfolio/views_realtime_core.py`: khong co loi.
+
+---
+
 ## Entry 2026-04-17d - WebSocket realtime token pre-refresh and auth-close recovery
 
 Muc tieu:
