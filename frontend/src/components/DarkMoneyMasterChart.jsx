@@ -78,14 +78,23 @@ const CANDLE_COLORS = {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function fmtCompact(v) {
+function fmtCompact(v, locale) {
   if (v == null) return '—';
   const n = Number(v);
   if (!Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
-  if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  const isVi = String(locale || '').startsWith('vi');
+  if (isVi) {
+    // Đơn vị tiếng Việt: TR = triệu, T = tỷ
+    if (Math.abs(n) >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}nghìnT`;
+    if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
+    if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}TR`;
+    if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  } else {
+    if (Math.abs(n) >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
+    if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
+    if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+    if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  }
   return n.toLocaleString(undefined);
 }
 
@@ -383,9 +392,10 @@ function QuickSignalBar({ strategyTable }) {
 }
 
 // ─── OHLC Crosshair Tooltip ───────────────────────────────────────────────────
-function OhlcTooltip({ data: d, chartType = 'candle' }) {
+function OhlcTooltip({ data: d, chartType = 'candle', locale }) {
   if (!d) return null;
   const changeColor = d.change == null ? 'text-slate-400' : d.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
+  // Whale buy/sell tính theo nến đang hover (tổng sự kiện trong khoảng thời gian đó)
   const whaleInfo = d.whaleInfo || {
     buyCount: 0,
     sellCount: 0,
@@ -408,11 +418,11 @@ function OhlcTooltip({ data: d, chartType = 'candle' }) {
       {d.volume != null && <span><span className="text-slate-500">Vol </span><span className="text-cyan-300">{fmtVolume(d.volume)}</span></span>}
       <span>
         <span className="text-slate-500">Whale Buy </span>
-        <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue)} ({whaleInfo.buyCount || 0})</span>
+        <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue, locale)} ({whaleInfo.buyCount || 0})</span>
       </span>
       <span>
         <span className="text-slate-500">Whale Sell </span>
-        <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue)} ({whaleInfo.sellCount || 0})</span>
+        <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue, locale)} ({whaleInfo.sellCount || 0})</span>
       </span>
     </div>
   );
@@ -474,7 +484,7 @@ function StrategyInterpretationTable({ strategyTable, t }) {
 
 // ─── SMFI Gauge Widget ───────────────────────────────────────────────────────
 
-function SmfiGauge({ smfi, smfiComponents, darkFlow, t }) {
+function SmfiGauge({ smfi, smfiComponents, darkFlow, t, locale }) {
   const strengthValue = darkFlow?.strength || darkFlow?.max_strength || 0;
   const smfiColor = smfi >= 0 ? '#22c55e' : '#f43f5e';
   const confidenceDisplay = darkFlow?.confidence || 'low';
@@ -552,8 +562,8 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t }) {
         </div>
         {smfiComponents && (
           <div className="mt-2 flex justify-between text-[10px] text-slate-500">
-            <span>{t('darkMoneyChart.whaleBuyTotal')}: <span className="text-emerald-400">{fmtCompact(smfiComponents.whale_buy_total)}</span></span>
-            <span>{t('darkMoneyChart.whaleSellTotal')}: <span className="text-rose-400">{fmtCompact(smfiComponents.whale_sell_total)}</span></span>
+            <span>{t('darkMoneyChart.whaleBuyTotal')}: <span className="text-emerald-400">{fmtCompact(smfiComponents.whale_buy_total, locale)}</span></span>
+            <span>{t('darkMoneyChart.whaleSellTotal')}: <span className="text-rose-400">{fmtCompact(smfiComponents.whale_sell_total, locale)}</span></span>
           </div>
         )}
       </div>
@@ -568,7 +578,7 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t }) {
 // ─── Main DarkMoneyMasterChart Component ─────────────────────────────────────
 
 export default function DarkMoneyMasterChart({ symbol }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
 
   // State
   const [data, setData] = useState(null);
@@ -583,6 +593,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const [showMa50, setShowMa50] = useState(true);
   const [chartType, setChartType] = useState('candle'); // 'candle' | 'line'
   const [ohlcTooltip, setOhlcTooltip] = useState(null);
+
   const [prefetchState, setPrefetchState] = useState({
     running: false,
     completed: 0,
@@ -992,7 +1003,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             priceLineVisible: false,
             lastValueVisible: true,
             baseValue: { type: 'price', price: 0 },
-            priceFormat: { type: 'custom', formatter: (v) => fmtCompact(v) },
+            priceFormat: { type: 'custom', formatter: (v) => fmtCompact(v, locale) },
           });
           cvdSeries.setData(cvdData);
           cvdMainSeriesRef.current = cvdSeries;
@@ -1477,7 +1488,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
               </div>
               <div ref={priceChartRef} className="lw-chart-container" />
                           {/* B2: OHLC Crosshair Tooltip */}
-                          <OhlcTooltip data={ohlcTooltip} chartType={chartType} t={t} />
+                          <OhlcTooltip data={ohlcTooltip} chartType={chartType} t={t} locale={locale} />
             </div>
 
             {/* Pane 2: CVD */}
@@ -1527,6 +1538,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
             smfiComponents={data.smfi_components}
             darkFlow={latestDarkFlow}
             t={t}
+            locale={locale}
           />
         </div>
       )}
