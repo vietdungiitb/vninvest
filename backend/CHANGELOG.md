@@ -1,3 +1,16 @@
+## Ghi chú thay đổi ngày 16/04/2026
+
+- Hoàn tất refactor canonical price unit cho quote prices theo chuẩn `THOUSAND_VND` xuyên suốt từ adapter -> services -> market data -> realtime collector -> prefetch tasks -> frontend hiển thị.
+- Thêm module chuẩn hóa đơn vị giá `portfolio/price_units.py` và bộ test đi kèm (`test_price_units_canonical.py`, `test_adapter_canonical.py`) để khóa contract canonical bằng test regression.
+- Chuẩn hóa adapter `vnstock_adapter` để mọi output quote trả về cùng chuẩn đơn vị, giảm phụ thuộc heuristic ở các lớp downstream.
+- Sửa constants services để đồng bộ chuẩn hệ thống, đồng thời cập nhật metadata/logging khi ingest DailyPrice.
+- Gỡ heuristic normalize ở frontend (Watchlist, Dashboard, StockDetail), thay bằng luồng tin cậy dữ liệu canonical từ backend.
+- Bổ sung command migration `finalize_price_unit_migration` (safe default dry-run, chỉ ghi DB khi `--force`).
+- Đã chạy migration force cho dữ liệu lịch sử DailyPrice: cập nhật 71,288 dòng; hậu kiểm dry-run xác nhận số record nghi ngờ (`close_price > 1000`) về 0.
+- Cập nhật dashboard/audit tài liệu trung tâm để phản ánh trạng thái phases 0-8 hoàn tất và bằng chứng vận hành.
+
+---
+
 - Bổ sung helper lịch thị trường dùng chung cho prefetch/runtime fallback: hỗ trợ `holiday_dates` theo policy, phân giải `market-local date` nhất quán cho `session close retention`, `session close date` và `offpeak ingest`.
 - Mở rộng `prefetch_time_policy` API/UI với `market.holiday_dates`, cho phép staff cấu hình ngày nghỉ thị trường ngay trên Admin Ops thay vì hardcode theo cuối tuần.
 - Thêm regression tests cho holiday offhours và retention theo market timezone để khóa drift khi mở rộng đa thị trường/timezone.

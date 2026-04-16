@@ -6,7 +6,7 @@
 
 ## 🚀 LATEST UPDATE (2026-04-16 ~17:15)
 
-### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-7 COMPLETE ✅
+### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-8 COMPLETE ✅
 
 **Problem Fixed:** Data poisoning from inconsistent quote prices (26,600 | 0.00 | 23.80 in same table)
 
@@ -56,7 +56,7 @@
 - ✅ Phase 7 dry-run (pre): scope 71,655 rows, suspicious >1000: 71,288 rows
 - ✅ Phase 7 apply: `manage.py finalize_price_unit_migration --force` updated 71,288 rows
 - ✅ Phase 7 dry-run (post): suspicious >1000: 0
-- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`, `f5e13a88`, `32a6c991`, `64f9b1a0`
+- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`, `f5e13a88`, `32a6c991`, `64f9b1a0`, `235ed347`
 
 **Token Budget:** ~150k / 200k used
 
@@ -81,6 +81,7 @@
 - frontend/src/pages/Watchlist.jsx (MODIFIED)
 - frontend/src/utils/dashboardRealtimeSelectors.js (MODIFIED)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - normalize removed)
+- backend/CHANGELOG.md (MODIFIED - 2026-04-16 canonical phase summary)
 - AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md (NEW)
 - PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md (NEW)
 - PROGRESS_DASHBOARD.md (MODIFIED - status synchronized)
