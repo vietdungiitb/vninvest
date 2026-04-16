@@ -12,6 +12,65 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
 - Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
+## Entry 2026-04-16 - Phase 5: Performance Testing & Validation - Testing Guides
+
+Pham vi:
+- Trien khai Phase 5 cua REALTIME_TABLE_UNIFICATION_PROPOSAL: Testing & Validation.
+- Tao 3 huong dan chi tiet de tien hanh:
+  1. Performance Profiling Guide: Chrome DevTools metrics + scenario analysis
+  2. Docker Rebuild Guide: Step-by-step rebuild commands + troubleshooting
+  3. User Acceptance Test Cases: 4 mandatory cases (A-D) + 2 bonus cases (E-F)
+
+- Muc tieu:
+  * Capture performance baseline truoc rebuild
+  * Rebuild Docker dev stack voi Phase 2 + Phase 3-4 changes
+  * Validate all 4 mandatory test cases pass
+  * Verify expected improvements (flashing reduction, smooth updates)
+
+Danh sach tep da sua (new):
+- docs/PERFORMANCE_PROFILING_GUIDE_20260416.md (new)
+  * Scenario 1-4: Dashboard market status, Watchlist tracked/group, memory leak
+  * Metrics: Render time, re-render frequency, frame rate, memory
+  * Expected vs Actual baseline
+  * Chrome DevTools step-by-step instructions
+
+- docs/DOCKER_REBUILD_GUIDE_20260416.md (new)
+  * Quick rebuild command (docker-compose down/up --build)
+  * Full clean rebuild option
+  * Verification checklist
+  * Troubleshooting guide
+  * Rollback plan
+
+- docs/USER_ACCEPTANCE_TEST_CASES_20260416.md (new)
+  * Case A: Pre-open/Offhours - no "—" in prices
+  * Case B: Open hours - smooth realtime updates
+  * Case C: F5 reload - fresh data, no stale
+  * Case D: No regression - hot symbols + alerts
+  * Case E-F: Optional Watchlist tests
+  * Summary report template + sign-off
+
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Documents created successfully with comprehensive checklists
+- Commit: e25057f0: docs: add Phase 5 guides - performance profiling, Docker rebuild, UAT cases
+- Ready for execution: User can follow guides to profile, rebuild, and test
+
+Tac dong mong doi:
+- User captures performance baseline before rebuild
+- Docker rebuild completes without errors
+- All 4 UAT cases pass:
+  * Case A: Offhours prices show fallback (not "—")
+  * Case B: Realtime updates smooth (≤2-3 flashes/min)
+  * Case C: F5 refresh hydrates fresh data
+  * Case D: Dashboard hot symbols/alerts work without regression
+
+Ghi chu can lam:
+- User to execute Docker rebuild using guide
+- User to run performance profiling (scenarios 1-4)
+- User to execute UAT cases A-D and fill summary report
+- Agent awaiting results to finalize audit
+
 ## Entry 2026-04-16 - Phase 2: Watchlist Integration voi RealtimeQuoteTable
 
 Pham vi:
