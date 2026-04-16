@@ -4,9 +4,9 @@
 
 ---
 
-## 🚀 LATEST UPDATE (2026-04-16 ~14:30)
+## 🚀 LATEST UPDATE (2026-04-16 ~16:30)
 
-### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-1 COMPLETE ✅
+### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-6 COMPLETE ✅
 
 **Problem Fixed:** Data poisoning from inconsistent quote prices (26,600 | 0.00 | 23.80 in same table)
 
@@ -14,24 +14,47 @@
 
 **Solution Architecture:** 
 - Phase 0: New canonical module (`price_units.py`) with QuotePrice dataclass and conversion helpers
-- Phase 1: Adapter standardization - ALL adapter outputs now guarantee THOUSAND_VND unit with metadata seal  
-- Phase 2: Services layer correction - _SYSTEM_PRICE_UNIT now correctly = THOUSAND_VND
-- Phases 3-8: Market data service, collector, tasks, frontend cleanup, migration (to follow)
+- Phase 1: Adapter standardization - ALL adapter outputs now guarantee THOUSAND_VND unit with metadata seal
+- Phase 2: Services layer correction - `_SYSTEM_PRICE_UNIT` fixed to `THOUSAND_VND`, integrated in `fetch_and_save_daily_prices`
+- Phase 3: Market data service - deprecate unit heuristic, keep backward-compatible identity scale
+- Phase 4: Realtime collector - remove `* 0.001`, trust canonical price from adapter
+- Phase 5: Tasks prefetch - canonical unit guard comments and safer assumptions
+- Phase 6: Frontend cleanup - remove/neutralize heuristic normalization in Watchlist, Dashboard, StockDetail
+- Phase 7: Optional historical migration command (pending)
+- Phase 8: Final audit documentation completed
 
-**Files Modified:**
+**Files Modified (Core):**
 - ✅ `backend/portfolio/price_units.py` (NEW - 284 lines, 40 tests)
 - ✅ `backend/portfolio/adapters/vnstock_adapter.py` (+150 lines, 8 tests)
 - ✅ `backend/portfolio/services.py` (+60 lines)
-- ✅ 2 new test suites: 48/48 tests passing ✅
-- ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (audit trail)
+- ✅ `backend/portfolio/market_data_service.py` (heuristic deprecated)
+- ✅ `backend/portfolio/realtime/collector.py` (scale factor removed)
+- ✅ `backend/portfolio/tasks_prefetch.py` (canonical guard comments)
+- ✅ `frontend/src/pages/Watchlist.jsx` (watchlist heuristic removed)
+- ✅ `frontend/src/utils/dashboardRealtimeSelectors.js` (dashboard heuristic removed)
+- ✅ `frontend/src/pages/StockDetail.jsx` (heuristics converted to identity)
+- ✅ 2 new test suites: 48/48 tests passing
+- ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (phase 0-1 audit)
+- ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md` (phase 2-6 audit)
+- ✅ `PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md` (executive update)
 
 **Status:** 
 - Phase 0: ✅ COMPLETE
-- Phase 1: ✅ COMPLETE  
-- Phase 2: 🟡 IN PROGRESS (services.py constants fixed, remaining: fetch_and_save_daily_prices integration)
-- Phases 3-8: ⏳ PENDING
+- Phase 1: ✅ COMPLETE
+- Phase 2: ✅ COMPLETE
+- Phase 3: ✅ COMPLETE
+- Phase 4: ✅ COMPLETE
+- Phase 5: ✅ COMPLETE
+- Phase 6: ✅ COMPLETE
+- Phase 7: ⏳ OPTIONAL / PENDING
+- Phase 8: ✅ COMPLETE
 
-**Token Budget:** ~120k / 200k used
+**Validation:**
+- ✅ Backend tests: 48/48 passing
+- ✅ Frontend build: success
+- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`
+
+**Token Budget:** ~150k / 200k used
 
 ---
 
