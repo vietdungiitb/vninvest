@@ -210,6 +210,33 @@ function normalizeCandlesForChart(rawCandles) {
   return [...dedupedByTime.values()].sort((left, right) => sortTimeKeysAsc(left.time, right.time));
 }
 
+function buildFallbackDarkFlowSeries(candles) {
+  if (!Array.isArray(candles) || !candles.length) return [];
+
+  let cvdAccumulator = 0;
+  return candles.map((candle) => {
+    const open = Number(candle?.open || 0);
+    const close = Number(candle?.close || 0);
+    const volume = Number(candle?.volume || 0);
+    const direction = close > open ? 1 : (close < open ? -1 : 0);
+    const signedVolume = Number.isFinite(volume) ? volume * direction : 0;
+    cvdAccumulator += signedVolume;
+
+    // Fallback strength giữ quanh mốc 50 để pane vẫn hiển thị có ngữ nghĩa trung tính.
+    const strength = 50 + (direction * 8);
+
+    return {
+      time: candle.time,
+      strength: Number.isFinite(strength) ? strength : 50,
+      max_strength: Number.isFinite(strength) ? strength : 50,
+      signal_count: 0,
+      cvd: Number.isFinite(cvdAccumulator) ? cvdAccumulator : 0,
+      signal_type: direction > 0 ? 'buy' : (direction < 0 ? 'sell' : 'none'),
+      confidence: 'low',
+    };
+  });
+}
+
 function addSeriesCompat(chart, legacyMethod, seriesCtor, options) {
   if (!chart) return null;
   if (typeof chart[legacyMethod] === 'function') {
@@ -769,14 +796,17 @@ export default function DarkMoneyMasterChart({ symbol }) {
     const candlesByTime = {};
     normalizedCandles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
     const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || [], normalizedCandles, interval);
+    const darkFlowSeries = data.dark_flow_series?.length
+      ? data.dark_flow_series
+      : buildFallbackDarkFlowSeries(normalizedCandles);
     const priceByTime = Object.fromEntries(normalizedCandles.map((c) => [String(c.time), Number(c.close || 0)]));
     const cvdByTime = Object.fromEntries(
-      (data.dark_flow_series || [])
+      darkFlowSeries
         .filter((d) => d.cvd !== undefined && d.cvd !== null)
         .map((d) => [String(d.time), Number(d.cvd || 0)]),
     );
     const darkFlowByTime = Object.fromEntries(
-      (data.dark_flow_series || []).map((d) => [String(d.time), Number(d.strength || 0)]),
+      darkFlowSeries.map((d) => [String(d.time), Number(d.strength || 0)]),
     );
 
     // A2: tick formatters — LW Charts v5 passes BusinessDay {year,month,day} for YYYY-MM-DD strings
@@ -970,7 +1000,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
       }
 
       // ── PANE 2: CVD — trục X ẩn (pane giữa không cần lặp label) ────────
-      if (cvdChartRef.current && data.dark_flow_series?.length) {
+      if (cvdChartRef.current && darkFlowSeries.length) {
         const cvdZoomLimits = computeZoomBarSpacingLimits(cvdChartRef.current.clientWidth, candles.length);
         const chart2 = createChart(cvdChartRef.current, {
           ...CHART_THEME,
@@ -989,7 +1019,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         });
         cvdChartInstance.current = chart2;
 
-        const cvdData = data.dark_flow_series
+        const cvdData = darkFlowSeries
           .filter((d) => d.cvd !== undefined && d.cvd !== null)
           .map((d) => ({ time: d.time, value: d.cvd }));
 
@@ -1013,7 +1043,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
       }
 
       // ── PANE 3: Dark Flow Strength — trục X hiện với full date ──────────
-      if (darkFlowChartRef.current && data.dark_flow_series?.length) {
+      if (darkFlowChartRef.current && darkFlowSeries.length) {
         const darkFlowZoomLimits = computeZoomBarSpacingLimits(darkFlowChartRef.current.clientWidth, candles.length);
         const chart3 = createChart(darkFlowChartRef.current, {
           ...CHART_THEME,
@@ -1036,7 +1066,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
         });
         darkFlowChartInstance.current = chart3;
 
-        const histData = data.dark_flow_series.map((d) => ({
+        const histData = darkFlowSeries.map((d) => ({
           time: d.time,
           value: d.strength || 0,
           color: (d.strength || 0) >= 0
@@ -1283,9 +1313,14 @@ export default function DarkMoneyMasterChart({ symbol }) {
   }, [data, showWhaleSignals, showWhaleLabels, showMa20, showMa50, chartType]);
 
   // ─── Latest dark flow for SMFI gauge ─────────────────────────────────────
-  const latestDarkFlow = data?.dark_flow_series?.length
-    ? data.dark_flow_series[data.dark_flow_series.length - 1]
-    : null;
+  const latestDarkFlow = (() => {
+    if (data?.dark_flow_series?.length) {
+      return data.dark_flow_series[data.dark_flow_series.length - 1];
+    }
+    const normalized = normalizeCandlesForChart(data?.candles || []);
+    const fallback = buildFallbackDarkFlowSeries(normalized);
+    return fallback.length ? fallback[fallback.length - 1] : null;
+  })();
 
   // B3: Giá trị hiện tại của MA để hiển thị trong legend
   const ma20Last = data?.moving_averages?.ma20?.at?.(-1)?.value ?? null;

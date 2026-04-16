@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### DarkMoney CVD/Strength Fallback Visibility Fix (2026-04-16)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - them fallback series khi `dark_flow_series` rong de 2 pane CVD va suc manh dong tien an khong con mat)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### JWT Refresh Single-Flight Auth Fix (2026-04-16)
 - frontend/src/api/client.js (MODIFIED - nhiều request 401 dùng chung một refresh promise để tránh race khi `ROTATE_REFRESH_TOKENS=True`)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16ac)
