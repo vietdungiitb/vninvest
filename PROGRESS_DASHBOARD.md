@@ -65,6 +65,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Legacy Cleanup + Regex NameError Fix (2026-04-17)
+- backend/portfolio/views_realtime_core.py (DELETED - module legacy khong con duoc route/import runtime)
+- backend/portfolio/market_data_service.py (MODIFIED - bo sung `import re` de tranh NameError khi regex search)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Core Ticker Timezone Fallback Fix (2026-04-17)
 - backend/portfolio/views_realtime_core.py (MODIFIED - timezone-safe freshness calculation trong fallback ticker de tranh TypeError aware/naive)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17e)

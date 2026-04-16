@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal

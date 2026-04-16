@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17f - Remove unused realtime legacy module and fix missing regex import causing potential 500
+
+Muc tieu:
+- Don dep phan legacy de tranh nham lan runtime.
+- Sua loi NameError co the gay 500 trong ticker pipeline.
+
+Trieu chung runtime:
+- Team nghi endpoint van dung legacy `views_realtime_core`.
+- Trong backend co loi phan tich static: `re` duoc su dung nhung chua import.
+
+Nguyen nhan goc:
+- Module `views_realtime_core.py` ton tai nhung khong con duoc route/import.
+- `market_data_service.py` co doan dung `re.search(...)` ma thieu `import re`.
+
+Danh sach tep da sua:
+- backend/portfolio/views_realtime_core.py (DELETE)
+- backend/portfolio/market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Xoa file legacy `backend/portfolio/views_realtime_core.py` (khong con reference runtime).
+- Bo sung `import re` tai `backend/portfolio/market_data_service.py` de tranh NameError.
+
+Ket qua verify:
+- `get_errors` cho `backend/portfolio/market_data_service.py`: khong co loi.
+
+---
+
 ## Entry 2026-04-17e - Realtime core ticker fallback timezone fix (legacy route safety)
 
 Muc tieu:
