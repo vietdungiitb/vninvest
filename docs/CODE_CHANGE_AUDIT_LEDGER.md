@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16k - Thu gon bang Khop lenh trong phien cho visual test
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Thu gon bang intraday matched trong panel Khop lenh de khong can scroll ngang tren viewport hien tai.
+- Bo cot `Loai`, doi cot cuoi thanh `M/B`.
+- Lam header bang sticky de luon hien khi scroll doc xem cac dong giao dich phia duoi.
+
+Danh sach tep da sua:
+- frontend/src/pages/StockDetail.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- Grid bang doi tu 5 cot thanh 4 cot: `Gio`, `Gia`, `KL`, `M/B`.
+- Header row them `sticky top-0` + nen mo de khong bi an khi cuon.
+- Container bang them `overflow-x-hidden` de tranh thanh scroll ngang.
+- Cot `M/B` hien `M` cho mua, `B` cho ban.
+
+---
+
 ## Entry 2026-04-16j - Intraday lunch-break stale suppression + fresher DB fallback priority
 
 Tham chieu implementation plan:
