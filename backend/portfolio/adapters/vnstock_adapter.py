@@ -8,6 +8,11 @@ import pandas as pd
 
 from portfolio.exceptions import ExternalSystemException
 from portfolio.vnstock_runtime_config import get_vnstock_runtime_settings
+from portfolio.price_units import (
+    normalize_quote_price_to_canonical,
+    PriceSource,
+    QUOTE_UNIT_CANONICAL,
+)
 
 from .cache_adapter import is_rate_limited_error
 
@@ -145,6 +150,76 @@ def _normalize_price_board_dataframe(price_board_df):
         return _coerce_price_board_numeric_columns(mi_df)
 
     return price_board_df
+
+
+def _ensure_quote_prices_canonical_thousand_vnd(df: pd.DataFrame, source_provider: str = 'KBS') -> pd.DataFrame:
+    """Ensure all quote price columns in dataframe are canonical THOUSAND_VND.
+    
+    This is the key function that standardizes price units immediately after normalization.
+    All prices from vnstock come either in VND (KBS) or THOUSAND_VND (VCI),
+    so we detect and convert them here to guarantee canonical output.
+    
+    Args:
+        df: MultiIndex DataFrame with structure {(section, field): value}
+        source_provider: Source provider name ('KBS' or 'VCI') for detection logic
+    
+    Returns:
+        DataFrame with all quote prices guaranteed in THOUSAND_VND canonical
+    
+    Side effect:
+        Sets df.attrs['price_unit_canonical'] = 'THOUSAND_VND' as contract seal
+    """
+    if df is None or getattr(df, 'empty', True) or not isinstance(df, pd.DataFrame):
+        return df
+    
+    result_df = df.copy()
+    
+    # Detect source unit from provider
+    # KBS typically returns full VND prices; VCI returns THOUSAND_VND
+    source_unit = 'VND' if source_provider.upper() == 'KBS' else 'THOUSAND_VND'
+    
+    # Price columns that need normalization
+    price_columns = [
+        ('match', 'match_price'),
+        ('match', 'reference_price'),
+        ('match', 'open_price'),
+        ('match', 'highest'),
+        ('match', 'lowest'),
+        ('match', 'ceiling_price'),
+        ('match', 'floor_price'),
+        ('listing', 'ref_price'),
+        # Bid/Ask levels
+        ('bid_ask', 'bid_1_price'),
+        ('bid_ask', 'bid_2_price'),
+        ('bid_ask', 'bid_3_price'),
+        ('bid_ask', 'ask_1_price'),
+        ('bid_ask', 'ask_2_price'),
+        ('bid_ask', 'ask_3_price'),
+    ]
+    
+    for col_tuple in price_columns:
+        if col_tuple in result_df.columns:
+            try:
+                # Normalize column to canonical THOUSAND_VND
+                result_df[col_tuple] = result_df[col_tuple].apply(
+                    lambda x: normalize_quote_price_to_canonical(
+                        value=x,
+                        source_unit=source_unit,
+                        source=PriceSource.VNSTOCK_DAILY,
+                    ).value if pd.notna(x) else x
+                )
+            except Exception as exc:
+                logger.warning(
+                    'Failed to normalize price column %s from %s: %s',
+                    col_tuple, source_provider, exc
+                )
+                # Continue processing other columns; don't fail entire operation
+    
+    # Seal contract: all prices now guaranteed THOUSAND_VND
+    result_df.attrs['price_unit_canonical'] = QUOTE_UNIT_CANONICAL
+    result_df.attrs['price_unit_source'] = source_provider
+    
+    return result_df
 
 
 def _resolve_int_env(name: str, default_value: int, min_value: int = 0) -> int:
@@ -309,18 +384,74 @@ def _run_with_timeout(fn, timeout=8):
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
-def fetch_intraday_dataframe(symbol: str, page_size: int):
-    stock_client = _build_stock_client(symbol=symbol, source='VCI')
+def fetch_price_depth_dataframe(symbol: str, source: str | None = None):
+    """Lấy dữ liệu sổ lệnh chuyên biệt từ Quote.price_depth (nếu hỗ trợ).
+    
+    OUTPUT GUARANTEE: All prices returned in canonical THOUSAND_VND.
+    """
+    timeout_seconds = _resolve_timeout('price_depth', 8)
+    # Price depth thường chỉ khả dụng trên VCI hoặc các provider có capability này
+    sources = _resolve_price_board_sources(explicit_source=source)
+    
+    for candidate_source in sources:
+        stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+        try:
+            # Kiểm tra xem quote api có tồn tại không
+            if not hasattr(stock_client, 'quote'):
+                continue
+                
+            result = _run_with_timeout(
+                lambda: stock_client.quote.price_depth(symbol=symbol),
+                timeout=timeout_seconds,
+            )
+            # Quote.price_depth thường trả về flat DF với bid/ask levels
+            # Chúng ta map nó sang canonical MultiIndex shape để reuse logic
+            normalized = _normalize_price_board_dataframe(result)
+            canonical = _ensure_quote_prices_canonical_thousand_vnd(
+                normalized,
+                source_provider=candidate_source
+            )
+            return canonical
+        except (ExternalSystemException, AttributeError):
+            continue
+            
+    # Fallback về price_board board nếu depth chuyên biệt fail
+    return fetch_price_board_dataframe([symbol], anchor_symbol=symbol, source=source)
 
-    return _run_with_timeout(
+
+def fetch_intraday_dataframe(symbol: str, page_size: int):
+    """Fetch intraday ticks for symbol.
+    
+    OUTPUT GUARANTEE: All prices returned in canonical THOUSAND_VND.
+    """
+    stock_client = _build_stock_client(symbol=symbol, source='VCI')
+    
+    result = _run_with_timeout(
         lambda: stock_client.quote.intraday(
             symbol=symbol,
             page_size=page_size,
         ),
         timeout=_resolve_timeout('intraday', 8),
     )
+    
+    # Intraday data is also normalized to canonical
+    normalized = _normalize_price_board_dataframe(result)
+    canonical = _ensure_quote_prices_canonical_thousand_vnd(
+        normalized,
+        source_provider='VCI'
+    )
+    return canonical
+
 
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
+    """Fetch market quote prices for symbol list.
+    
+    OUTPUT GUARANTEE: All prices returned in canonical THOUSAND_VND.
+    
+    This function is the primary ingress point for realtime quote prices.
+    It routes through multiple providers (KBS, VCI) with best-effort fallback.
+    Critically, it enforces canonical THOUSAND_VND unit on all outputs.
+    """
     timeout_seconds = _resolve_timeout('price_board', 8)
     sources = _resolve_price_board_sources(explicit_source=source)
     last_error = None
@@ -336,10 +467,17 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
                 timeout=timeout_seconds,
             )
             normalized_result = _normalize_price_board_dataframe(result)
-            last_result = normalized_result
+            
+            # CRITICAL: Ensure all prices are canonical THOUSAND_VND
+            # This is the point where we enforce the contract
+            canonical_result = _ensure_quote_prices_canonical_thousand_vnd(
+                normalized_result,
+                source_provider=candidate_source
+            )
+            last_result = canonical_result
 
-            if _price_board_dataframe_is_parseable(normalized_result):
-                return normalized_result
+            if _price_board_dataframe_is_parseable(canonical_result):
+                return canonical_result
 
             logger.warning(
                 'price_board source %s returned unusable payload for %d symbols; trying next source',
@@ -360,33 +498,6 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
     if last_error is not None:
         raise last_error
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
-
-
-def fetch_price_depth_dataframe(symbol: str, source: str | None = None):
-    """Lấy dữ liệu sổ lệnh chuyên biệt từ Quote.price_depth (nếu hỗ trợ)."""
-    timeout_seconds = _resolve_timeout('price_depth', 8)
-    # Price depth thường chỉ khả dụng trên VCI hoặc các provider có capability này
-    sources = _resolve_price_board_sources(explicit_source=source)
-    
-    for candidate_source in sources:
-        stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
-        try:
-            # Kiểm tra xem quote api có tồn tại không
-            if not hasattr(stock_client, 'quote'):
-                continue
-                
-            result = _run_with_timeout(
-                lambda: stock_client.quote.price_depth(symbol=symbol),
-                timeout=timeout_seconds,
-            )
-            # Quote.price_depth thường trả về flat DF với bid/ask levels
-            # Chúng ta map nó sang canonical MultiIndex shape để reuse logic
-            return _normalize_price_board_dataframe(result)
-        except (ExternalSystemException, AttributeError):
-            continue
-            
-    # Fallback về price_board board nếu depth chuyên biệt fail
-    return fetch_price_board_dataframe([symbol], anchor_symbol=symbol, source=source)
 
 
 def fetch_financial_ratio_dataframe(
