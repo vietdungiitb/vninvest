@@ -22,38 +22,6 @@ function toFiniteNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function resolveQuoteScale(rawPrice, references = []) {
-  const price = toFiniteNumber(rawPrice);
-  if (!price || price <= 0) {
-    return 1;
-  }
-
-  const validRefs = references.filter((item) => Number.isFinite(item) && item > 0);
-  const candidates = [1, 0.001, 1000];
-
-  if (!validRefs.length) {
-    // Dashboard quy ước hiển thị đơn vị nghìn VNĐ; giá lớn bất thường thường là VND.
-    return price >= 2000 ? 0.001 : 1;
-  }
-
-  const score = (factor) => {
-    const normalized = price * factor;
-    return validRefs.reduce((sum, ref) => sum + Math.abs(Math.log(normalized / ref)), 0);
-  };
-
-  let bestFactor = 1;
-  let bestScore = score(bestFactor);
-  for (let index = 1; index < candidates.length; index += 1) {
-    const factor = candidates[index];
-    const nextScore = score(factor);
-    if (nextScore < bestScore) {
-      bestScore = nextScore;
-      bestFactor = factor;
-    }
-  }
-  return bestFactor;
-}
-
 function fmtBil(value, formatNumberFn) {
   const v = Number(value) || 0;
   if (v >= 1_000_000_000_000) return `${(v / 1_000_000_000_000).toFixed(1)}N`;
@@ -394,20 +362,14 @@ export default function DashboardRealtimePanel({
     return monitoredSymbols.map((symbol) => {
       const rawQuote = quotesBySymbol[symbol] || { symbol };
       const holding = holdingsBySymbol.get(String(symbol || '').toUpperCase());
-
-      const avgCostRef = toFiniteNumber(holding?.avg_cost);
-      const holdingCurrentRef = toFiniteNumber(holding?.current_price);
-      const factor = resolveQuoteScale(rawQuote.current_price, [avgCostRef, holdingCurrentRef]);
-
       const currentPrice = toFiniteNumber(rawQuote.current_price);
       const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
-      const normalizedCurrent = currentPrice === null ? null : currentPrice * factor;
 
       return {
         ...rawQuote,
-        current_price: normalizedCurrent,
-         prev_price: prevPriceRaw,
-         change_pct: toFiniteNumber(rawQuote.change_pct),
+        current_price: currentPrice,
+        prev_price: prevPriceRaw,
+        change_pct: toFiniteNumber(rawQuote.change_pct),
       };
     });
   }, [holdings, monitoredSymbols, quotesBySymbol]);

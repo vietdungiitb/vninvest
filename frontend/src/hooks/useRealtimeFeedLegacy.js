@@ -9,6 +9,11 @@ function readEventField(payload, key) {
   return payload?.[key] ?? payload?.data?.[key];
 }
 
+function isValidQuotePrice(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) && numeric > 0;
+}
+
 function mergeQuote(prev, update) {
   const eventTimestamp = update.last_date ?? update.ts;
   const eventAgeSeconds = eventTimestamp
@@ -16,10 +21,14 @@ function mergeQuote(prev, update) {
     : null;
   const inferredFreshness = Number.isFinite(eventAgeSeconds) ? eventAgeSeconds : null;
 
+  const nextCurrentPrice = isValidQuotePrice(update.current_price)
+    ? Number(update.current_price)
+    : (isValidQuotePrice(update.price) ? Number(update.price) : prev.current_price);
+
   return {
     ...prev,
     symbol: update.symbol ?? prev.symbol,
-    current_price: update.current_price ?? update.price ?? prev.current_price,
+    current_price: nextCurrentPrice,
     prev_price: update.prev_price ?? prev.prev_price,
     change_value: update.change_value ?? prev.change_value,
     change_pct: update.change_pct ?? prev.change_pct,
@@ -97,7 +106,7 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
 
   (symbols || []).forEach((symbol) => {
     const quote = normalizedQuotes[symbol] || {};
-    const isMissing = quote.current_price == null;
+    const isMissing = !isValidQuotePrice(quote.current_price);
     const isOffhoursSessionClose = quote.data_semantic === 'last_session_close'
       || ['offhours', 'post_close', 'pre_open'].includes(String(quote.market_phase || '').toLowerCase());
     const freshnessSeconds = Number(quote.freshness_seconds);

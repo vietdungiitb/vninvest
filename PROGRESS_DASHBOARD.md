@@ -82,6 +82,8 @@
 - frontend/src/pages/Watchlist.jsx (MODIFIED)
 - frontend/src/utils/dashboardRealtimeSelectors.js (MODIFIED)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - normalize removed)
+- frontend/src/hooks/useRealtimeFeedLegacy.js (MODIFIED - ignore non-positive quote + force poll fallback)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - remove quote scale heuristic)
 - backend/CHANGELOG.md (MODIFIED - 2026-04-16 canonical phase summary)
 - AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md (NEW)
 - PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md (NEW)
