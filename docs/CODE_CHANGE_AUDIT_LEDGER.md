@@ -1,5 +1,36 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16ad - DarkMoney CVD/SMFI panes fallback when dark_flow_series is empty
+
+Muc tieu:
+- Khac phuc tinh trang 2 pane `CVD` va `Suc manh dong tien an` bi trong trang khi backend khong tra `dark_flow_series`.
+
+Trieu chung runtime:
+- Pane tieu de van hien, nhung duong/column chart khong render (nhin nhu "bien mat") tren nhieu ma.
+
+Nguyen nhan goc:
+- `DarkMoneyMasterChart` chi khoi tao pane 2/3 khi `data.dark_flow_series?.length > 0`.
+- Voi ma khong co `OrderFlowSignal` theo khung du lieu dang chon, backend tra mang rong => pane duoi khong co series.
+
+Danh sach tep da sua:
+- frontend/src/components/DarkMoneyMasterChart.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Them helper `buildFallbackDarkFlowSeries(candles)` de tao du lieu thay the tu huong nen + volume:
+  - `cvd`: tich luy signed volume theo huong gia.
+  - `strength`: quanh moc trung tinh `50` de chart van co ngu nghia.
+- Trong render pipeline, dung `darkFlowSeries` huu hieu:
+  - Neu backend co `dark_flow_series` => dung du lieu backend.
+  - Neu rong => dung fallback tu candles.
+- Cap nhat pane 2/3 va `latestDarkFlow` de dung cung mot logic fallback.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/components/DarkMoneyMasterChart.jsx`: khong co loi.
+
+---
+
 ## Entry 2026-04-16ac - JWT refresh single-flight to prevent concurrent rotation races
 
 Muc tieu:
