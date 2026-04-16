@@ -230,3 +230,21 @@ Ghi chu verify:
 - Da bo sung cache keys: latest/history cho offpeak ingest metadata.
 - Da bo sung endpoint history ho tro query param limit.
 - Da bo sung test cho unauthorized access va payload success.
+
+## Entry 2026-04-16 - Hotfix dashboard realtime refresh missing symbols
+
+Plan tham chieu:
+- N/A (targeted hotfix, khong thay doi kien truc lon)
+
+Pham vi:
+- Tang toc do polling recovery khi WebSocket dang healthy nhung van co symbol thieu gia/stale.
+- Tranh tinh trang bang "Trang thai thi truong theo ma" cham cap nhat trong offhours hoac khi WS khong day du symbol.
+
+Danh sach tep da sua:
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend production build: Compiled successfully.
+- Docker dev frontend da rebuild thanh cong va dang map port 80 ra host.
+- Logic moi: recovery polling 5s, batch 8 symbols khi WS healthy nhung co missing/stale candidates.

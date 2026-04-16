@@ -155,7 +155,9 @@ export default function useRealtimeFeedLegacy({
 }) {
   const POLL_BATCH_SIZE = 4;
   const WS_HEALTHY_POLL_BATCH_SIZE = 2;
+  const WS_HEALTHY_RECOVERY_BATCH_SIZE = 8;
   const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
+  const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 5000;
   const MAX_WS_SUB_SYMBOLS = 50;
   const [quotesBySymbol, setQuotesBySymbol] = useState({});
   const [realtimeStatus, setRealtimeStatus] = useState('idle');
@@ -301,18 +303,6 @@ export default function useRealtimeFeedLegacy({
       if (!token || !syms.length) return;
 
       const wsHealthy = wsHealthyRef.current;
-      const effectiveIntervalMs = wsHealthy
-        ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
-        : Math.max(pollIntervalRef.current, 5000);
-
-      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < effectiveIntervalMs) {
-        return;
-      }
-
-      if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
-        return;
-      }
-
       const pollCandidates = normalizePollSymbolCandidates(
         syms,
         quotesBySymbolRef.current,
@@ -323,12 +313,29 @@ export default function useRealtimeFeedLegacy({
         return;
       }
 
+      const hasRecoveryCandidates = wsHealthy && pollCandidates.length > 0;
+      const effectiveIntervalMs = hasRecoveryCandidates
+        ? Math.max(WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS, Math.min(pollIntervalRef.current, 10000))
+        : (wsHealthy
+          ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
+          : Math.max(pollIntervalRef.current, 5000));
+
+      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < effectiveIntervalMs) {
+        return;
+      }
+
+      if (pollBackoffUntilRef.current && Date.now() < pollBackoffUntilRef.current) {
+        return;
+      }
+
       lastPollAtRef.current = Date.now();
 
       const { batch: pollBatch, nextCursor } = pickPollBatch(
         pollCandidates,
         pollCursorRef.current,
-        wsHealthy ? WS_HEALTHY_POLL_BATCH_SIZE : POLL_BATCH_SIZE,
+        hasRecoveryCandidates
+          ? WS_HEALTHY_RECOVERY_BATCH_SIZE
+          : (wsHealthy ? WS_HEALTHY_POLL_BATCH_SIZE : POLL_BATCH_SIZE),
       );
 
       if (!pollBatch.length) {
