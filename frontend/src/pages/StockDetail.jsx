@@ -101,35 +101,18 @@ function fmtVol(v) {
 }
 
 function normalizeQuotePriceValue(value) {
+  // CANONICAL UNIT: Backend now guarantees all prices in THOUSAND_VND
+  // This function is kept (identity) for backward compatibility but does nothing
+  // All prices from API are already canonical, no heuristic detection needed
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  // Chuẩn hiển thị toàn trang StockDetail: nghìn VND.
-  // Hỗ trợ cả payload trả VND hoặc VND x1000.
-  if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1_000_000;
-  }
-  if (Math.abs(parsed) >= 1_000) {
-    return parsed / 1_000;
-  }
-  return parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function normalizeQuoteDeltaValue(value, currentPrice) {
+  // CANONICAL UNIT: Delta values also normalized at backend
+  // This function is kept (identity) for backward compatibility
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  const current = Number(currentPrice);
-  // Chuẩn hóa delta về nghìn VND giống chuẩn hiển thị giá.
-  if (Math.abs(parsed) >= 1_000_000) {
-    return parsed / 1_000_000;
-  }
-  if (Math.abs(parsed) >= 1_000) {
-    return parsed / 1_000;
-  }
-  // Nếu giá hiện tại đang ở thang nghìn (20-100) mà delta quá lớn, coi như đang ở VND.
-  if (Number.isFinite(current) && Math.abs(current) < 500 && Math.abs(parsed) >= 100) {
-    return parsed / 1_000;
-  }
-  return parsed;
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function advisoryStatusLabel(status, t) {
