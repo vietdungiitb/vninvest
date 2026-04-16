@@ -1,5 +1,33 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16m - Chuan hoa don vi 52W tren Stock Detail overview
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua root-cause backend khi `week52_high/week52_low` trong Stock Detail overview dang tra ve don vi VND lich su, khac voi `THOUSAND_VND` canonical cua cac o gia realtime.
+- Bo sung regression test de dam bao card `Biên độ 52W` luon hien cung dinh dang voi `Gia hien tai`, `Ref/Tran/San`, `Bien dong ngay`.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- Them `_normalize_historical_quote_price(...)` de chuyen gia lich su ve `THOUSAND_VND` canonical truoc khi dua vao `week52_high/week52_low`.
+- `get_stock_workspace_overview(...)` khong con day raw VND history len frontend cho card `Biên độ 52W`.
+- Them test `test_stock_workspace_overview_normalizes_52w_history_to_quote_unit`.
+
+Ket qua verify:
+- Test pass: `ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_overview_normalizes_52w_history_to_quote_unit`.
+- Live API sau rebuild backend:
+  - `current_price = 81.4`
+  - `week52_low = 51.26`
+  - `week52_high = 94.4`
+
+---
+
 ## Entry 2026-04-16l - Depth panel data-source fix + bubble chart X-axis semantics
 
 Tham chieu implementation plan:

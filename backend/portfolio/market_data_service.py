@@ -1973,8 +1973,8 @@ class MarketDataService:
                 interval='1D',
             )
             if history_df is not None and not history_df.empty and 'high' in history_df.columns:
-                week52_high = round(float(history_df['high'].max()), 2)
-                week52_low = round(float(history_df['low'].min()), 2)
+                week52_high = self._normalize_historical_quote_price(history_df['high'].max(), normalized_symbol)
+                week52_low = self._normalize_historical_quote_price(history_df['low'].min(), normalized_symbol)
                 if week52_high > 0:
                     payload['week52_high'] = week52_high
                 if week52_low > 0:
@@ -3416,6 +3416,23 @@ class MarketDataService:
         if numeric is None:
             return None
         return round(numeric * (scale if scale else 1.0), 2)
+
+    def _normalize_historical_quote_price(self, value, symbol: str | None = None):
+        numeric = self._safe_float(value)
+        if numeric is None:
+            return None
+
+        source_unit = 'VND' if abs(numeric) >= 1000 else 'THOUSAND_VND'
+        try:
+            canonical_quote = normalize_quote_price_to_canonical(
+                value=numeric,
+                source_unit=source_unit,
+                source=PriceSource.VNSTOCK_DAILY,
+                symbol=symbol,
+            )
+            return round(canonical_quote.value, 2)
+        except Exception:
+            return round(numeric / 1000, 2) if abs(numeric) >= 1000 else round(numeric, 2)
 
     def _normalize_intraday_price_vnd(self, value, source_unit: str | None = None):
         numeric = self._safe_float(value)

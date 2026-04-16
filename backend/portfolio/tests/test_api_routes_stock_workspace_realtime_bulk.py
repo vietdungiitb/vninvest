@@ -3447,6 +3447,78 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_502_BAD_GATEWAY)
         self.assertIn('detail', response.data)
+
+    @patch('portfolio.market_data_service.fetch_listing_symbols_dataframe')
+    @patch('portfolio.market_data_service.fetch_history_dataframe')
+    @patch('portfolio.market_data_service.fetch_price_board_dataframe')
+    @patch('portfolio.market_views.market_data_service._build_stock_workspace_overview_base')
+    def test_stock_workspace_overview_normalizes_52w_history_to_quote_unit(
+        self,
+        mock_build_base,
+        mock_fetch_price_board,
+        mock_fetch_history,
+        mock_fetch_listing,
+    ):
+        self.authenticate()
+        mock_build_base.return_value = {
+            'tracked_symbol_id': None,
+            'symbol': 'MWG',
+            'company_name': 'MWG',
+            'industry': 'Retail',
+            'exchange': 'HOSE',
+            'listed_date': '2010-01-01',
+            'is_active': True,
+            'updated_at': '2026-04-16T12:14:11+07:00',
+            'current_price': None,
+            'prev_price': None,
+            'change_value': None,
+            'change_pct': None,
+            'last_date': None,
+            'open_price': None,
+            'high_price': None,
+            'low_price': None,
+            'close_price': None,
+            'volume': None,
+            'average_price': None,
+            'reference_price': None,
+            'ceiling_price': None,
+            'floor_price': None,
+            'week52_high': None,
+            'week52_low': None,
+            'is_tracked': False,
+            'source_group_name': None,
+            'market_groups': [],
+            'watchlist_groups': [],
+            'market_group_refs': [],
+            'watchlist_memberships': [],
+        }
+        mock_fetch_price_board.return_value = pd.DataFrame(
+            [[80.0, 85.6, 74.4, 81.4, 82.0, 80.2, 80.2, 900000, 'HOSE']],
+            columns=pd.MultiIndex.from_tuples([
+                ('listing', 'ref_price'),
+                ('listing', 'ceiling'),
+                ('listing', 'floor'),
+                ('match', 'match_price'),
+                ('match', 'highest'),
+                ('match', 'lowest'),
+                ('match', 'open_price'),
+                ('match', 'accumulated_volume'),
+                ('listing', 'exchange'),
+            ]),
+        )
+        mock_fetch_history.return_value = pd.DataFrame([
+            {'high': 94400.0, 'low': 51262.43},
+            {'high': 93000.0, 'low': 60000.0},
+        ])
+        mock_fetch_listing.return_value = pd.DataFrame([])
+
+        response = self.client.get('/api/stock-management/stocks/MWG/overview/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['current_price'], 81.4)
+        self.assertEqual(response.data['week52_high'], 94.4)
+        self.assertEqual(response.data['week52_low'], 51.26)
+
     @patch('portfolio.market_views.market_data_service.get_financial_metrics')
     def test_financial_metrics_refactored_returns_502_on_unexpected_exception(self, mock_get_financial_metrics):
         self.authenticate()
