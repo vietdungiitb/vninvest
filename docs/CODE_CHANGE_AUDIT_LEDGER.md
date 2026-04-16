@@ -248,3 +248,21 @@ Ghi chu verify:
 - Frontend production build: Compiled successfully.
 - Docker dev frontend da rebuild thanh cong va dang map port 80 ra host.
 - Logic moi: recovery polling 5s, batch 8 symbols khi WS healthy nhung co missing/stale candidates.
+
+## Entry 2026-04-16 - Hotfix hard refresh symbol-key mismatch on Dashboard
+
+Plan tham chieu:
+- N/A (targeted hotfix, khong thay doi kien truc lon)
+
+Pham vi:
+- Sua mismatch key sau hard refresh khi `monitoredSymbols` co kha nang khac dinh dang (space/case) so voi key trong `quotesBySymbol`.
+- Chuan hoa symbol theo `trim + uppercase` tai Dashboard va DashboardRealtimePanel de map quote on dinh.
+
+Danh sach tep da sua:
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/DashboardRealtimePanel.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Backend ticker payload da xac nhan co gia hop le cho CII/DIG trong cung thoi diem test.
+- Frontend build pass sau khi bo sung symbol normalization.

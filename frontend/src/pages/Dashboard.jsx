@@ -21,6 +21,10 @@ import {
   buildLiveSummaryFromHoldings,
 } from '../utils/dashboardRealtimeSelectors';
 
+function normalizeSymbol(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
 export default function Dashboard() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t, formatDateTime } = useI18n();
@@ -34,15 +38,15 @@ export default function Dashboard() {
   const [syncMsg, setSyncMsg] = useState('');
 
   const holdingSymbols = useMemo(
-    () => holdings.map((item) => item.symbol).filter(Boolean),
+    () => holdings.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
     [holdings],
   );
   const trackedSymbolNames = useMemo(
-    () => trackedSymbols.map((item) => item.symbol).filter(Boolean),
+    () => trackedSymbols.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
     [trackedSymbols],
   );
   const monitoredSymbols = useMemo(
-    () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
+    () => [...new Set([...holdingSymbols, ...trackedSymbolNames].map((symbol) => normalizeSymbol(symbol)).filter(Boolean))],
     [holdingSymbols, trackedSymbolNames],
   );
 

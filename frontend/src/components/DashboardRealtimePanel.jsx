@@ -354,19 +354,21 @@ export default function DashboardRealtimePanel({
   const quoteList = useMemo(() => {
     const holdingsBySymbol = new Map(
       (holdings || []).map((item) => [
-        String(item?.symbol || '').toUpperCase(),
+        String(item?.symbol || '').trim().toUpperCase(),
         item,
       ]),
     );
 
     return monitoredSymbols.map((symbol) => {
-      const rawQuote = quotesBySymbol[symbol] || { symbol };
-      const holding = holdingsBySymbol.get(String(symbol || '').toUpperCase());
+      const normalizedSymbol = String(symbol || '').trim().toUpperCase();
+      const rawQuote = quotesBySymbol[symbol] || quotesBySymbol[normalizedSymbol] || { symbol: normalizedSymbol || symbol };
+      const holding = holdingsBySymbol.get(normalizedSymbol);
       const currentPrice = toFiniteNumber(rawQuote.current_price);
       const prevPriceRaw = toFiniteNumber(rawQuote.prev_price);
 
       return {
         ...rawQuote,
+        symbol: normalizedSymbol || rawQuote.symbol || symbol,
         current_price: currentPrice,
         prev_price: prevPriceRaw,
         change_pct: toFiniteNumber(rawQuote.change_pct),
