@@ -2755,6 +2755,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         }
 
         # Clear Redis VN30 cache key so MWG is never misclassified from a prior run.
+        cache.delete('intraday:MWG:50')
         cache.delete('intraday:is_vn30:MWG')
 
         # Use 5s gap to give enough buffer against slow test environments,
@@ -2805,6 +2806,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
             'market_code': 'VN_STOCK',
             'supported_timezones': ['Asia/Ho_Chi_Minh'],
         }
+        cache.delete('intraday:MWG:50')
         cache.delete('intraday:is_vn30:MWG')
 
         source_event_at = (timezone.now() - timedelta(minutes=45)).isoformat()
