@@ -113,7 +113,7 @@ services:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "${FRONTEND_PORT:-80}:80"
     restart: "no"
 
 volumes:
