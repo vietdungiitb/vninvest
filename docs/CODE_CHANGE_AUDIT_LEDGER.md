@@ -1,5 +1,40 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17a - Stop unauthenticated watchlist/tracked calls causing redirect loop noise
+
+Muc tieu:
+- Loai bo request protected endpoint khi nguoi dung chua dang nhap de tranh lap redirect `ERR_TOO_MANY_REDIRECTS` tren browser.
+
+Trieu chung runtime:
+- Console van xuat hien loi:
+  - `api/portfolio/watchlist/groups/: net::ERR_TOO_MANY_REDIRECTS`
+
+Nguyen nhan goc:
+- Mot so man hinh (dac biet `StockDetail`) van goi `getWatchlistGroups()` ngay khi mount.
+- Khi client dang o trang guest/het token, request den endpoint protected van duoc gui ra edge/proxy.
+
+Danh sach tep da sua:
+- frontend/src/api/client.js
+- frontend/src/pages/StockDetail.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `frontend/src/api/client.js`:
+  - Them `hasAuthTokens()`.
+  - `getWatchlistGroups()` va `getTrackedSymbols()` short-circuit tra `{ data: [] }` neu khong co cap token.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Dung `usePortfolio()` lay `isAuthenticated`.
+  - Bo qua fetch watchlist groups khi chua dang nhap; reset state ve mang rong.
+
+Ket qua verify:
+- `get_errors` cho:
+  - `frontend/src/api/client.js`
+  - `frontend/src/pages/StockDetail.jsx`
+  => khong co loi.
+
+---
+
 ## Entry 2026-04-16ad - DarkMoney CVD/SMFI panes fallback when dark_flow_series is empty
 
 Muc tieu:
