@@ -16,9 +16,9 @@ import {
   createPriceAlert,
   deleteTrackedSymbol,
   deleteWatchlistItem,
+  getDepthChart,
   getUserConfig,
   getIntradayMatched,
-  getPriceBoard,
   getRealtimeTicker,
   getSectorBreadth,
   getStockFinancials,
@@ -1091,7 +1091,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
     inFlightRef.current = true;
     if (isRefresh) setRefreshing(true);
     try {
-      const resp = await getPriceBoard(symbol);
+      const resp = await getDepthChart(symbol);
       setData(resp.data);
       setError('');
     } catch (err) {
@@ -1134,9 +1134,18 @@ function PriceDepthPanel({ symbol, liveVolume }) {
     );
   }
 
-  const depth = data?.depth || [];
-  const match = data?.match || {};
-  const ref = match.reference_price;
+  const bids = data?.bids || [];
+  const asks = data?.asks || [];
+  const depth = [0, 1, 2].map((index) => ({
+    level: index + 1,
+    bid_volume: bids[index]?.volume ?? null,
+    bid_price: bids[index]?.price ?? null,
+    ask_price: asks[index]?.price ?? null,
+    ask_volume: asks[index]?.volume ?? null,
+  })).filter((row) => (
+    row.bid_volume != null || row.bid_price != null || row.ask_price != null || row.ask_volume != null
+  ));
+  const ref = data?.reference_price;
 
   return (
     <section className="card-section p-4">
@@ -1144,6 +1153,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
         <div>
           <p className="text-label">{t('stockDetail.marketDepth')}</p>
           <h3 className="mt-1 text-base font-semibold text-white">{t('stockDetail.orderbook3Levels')}</h3>
+          <p className="mt-1 text-[11px] text-slate-500">{t('stockDetail.orderbook3LevelsDesc')}</p>
         </div>
         <button
           onClick={() => fetchData(true)}
@@ -1177,15 +1187,15 @@ function PriceDepthPanel({ symbol, liveVolume }) {
           </div>
 
           {/* Nước ngoài */}
-          {(match.foreign_buy_volume != null || match.foreign_sell_volume != null) && (
+          {(data?.foreign_buy_volume != null || data?.foreign_sell_volume != null) && (
             <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/50 px-3 py-2 text-[12px]">
               <div>
                 <span className="text-slate-500">{t('stockDetail.foreignBuy')} </span>
-                <span className="font-semibold text-cyan-300">{fmtVol(match.foreign_buy_volume)}</span>
+                <span className="font-semibold text-cyan-300">{fmtVol(data.foreign_buy_volume)}</span>
               </div>
               <div className="text-right">
                 <span className="text-slate-500">{t('stockDetail.foreignSell')} </span>
-                <span className="font-semibold text-orange-300">{fmtVol(match.foreign_sell_volume)}</span>
+                <span className="font-semibold text-orange-300">{fmtVol(data.foreign_sell_volume)}</span>
               </div>
             </div>
           )}

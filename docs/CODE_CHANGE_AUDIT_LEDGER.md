@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16l - Depth panel data-source fix + bubble chart X-axis semantics
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua panel `Sổ lệnh 3 mức giá` tren Stock Detail de dung endpoint depth chart thay vi payload gia-board khong on dinh cho contract 3 muc gia.
+- Bo sung mo ta va don vi cho truc X cua bubble chart, dong thoi doi truc X tu chi so gia lap sang khoi luong khop lenh thuc te.
+
+Danh sach tep da sua:
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/components/BubbleOrderChart.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- PriceDepthPanel goi `getDepthChart(symbol)` va map `bids/asks` -> 3 dong buy/sell levels.
+- Them text mo ta duoi title cho panel 3 muc gia.
+- BubbleOrderChart: `x = volume`, tick X format theo `K/M`, them label `Khối lượng (cp)` va mo ta truc X/Y.
+
+---
+
 ## Entry 2026-04-16k - Thu gon bang Khop lenh trong phien cho visual test
 
 Tham chieu implementation plan:

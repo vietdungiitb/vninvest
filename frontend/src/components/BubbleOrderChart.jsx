@@ -71,7 +71,7 @@ export function BubbleOrderChart({ orders, loading }) {
     ...o,
     idx: i,
     y: o.price || 0,
-    x: i,
+    x: Number(o.volume || 0),
   }));
 
   if (!bubbleData.length) {
@@ -94,6 +94,7 @@ export function BubbleOrderChart({ orders, loading }) {
         <div className="min-w-0">
           <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
           <h3 className="mt-0.5 text-sm font-semibold text-white">{t('whaleAlertsDashboard.priceVolumeBubble')}</h3>
+          <p className="mt-1 text-[11px] text-slate-500">{t('whaleAlertsDashboard.bubbleXAxisDesc')}</p>
         </div>
         <div className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap text-[10px] text-slate-400 sm:gap-3">
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />{t('whaleAlertsDashboard.buy')}</span>
@@ -104,12 +105,20 @@ export function BubbleOrderChart({ orders, loading }) {
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <XAxis
-              dataKey="idx"
+              dataKey="x"
               type="number"
-              tick={false}
+              tickFormatter={fmtVol}
+              tick={{ fontSize: 10, fill: '#64748b' }}
               axisLine={false}
               tickLine={false}
-              domain={['dataMin - 1', 'dataMax + 1']}
+              domain={[0, 'dataMax + 1000']}
+              label={{
+                value: t('whaleAlertsDashboard.bubbleXAxisUnit'),
+                position: 'insideBottom',
+                offset: -2,
+                fill: '#64748b',
+                fontSize: 10,
+              }}
             />
             <YAxis
               dataKey="y"
