@@ -986,7 +986,11 @@ export default function WhaleAlertsHub() {
         ? getWatchlistGroups()
         : Promise.resolve({ data: [] });
 
-      const requests = [
+      const advisoryRequest = canReadAdvisory
+        ? getWhaleAdvisories()
+        : Promise.resolve({ data: [] });
+
+      const [trackedResult, watchlistGroupsResult, aggregateResult, advisoryResult] = await Promise.allSettled([
         trackedSymbolsRequest,
         watchlistGroupsRequest,
         loadAggregateFeed({
@@ -997,19 +1001,34 @@ export default function WhaleAlertsHub() {
           scope: selectedFeedScope,
           limit: aggregatePageSize,
         }),
-      ];
+        advisoryRequest,
+      ]);
 
-      if (canReadAdvisory) {
-        requests.push(getWhaleAdvisories());
+      if (aggregateResult.status === 'rejected') {
+        throw aggregateResult.reason;
       }
 
-      const [trackedResult, watchlistGroupsResult, _aggregateResult, advisoryResult] = await Promise.all(requests);
       if (requestSeq !== bootstrapRequestSeqRef.current) {
         return;
       }
-      setTrackedSymbols(trackedResult.data || []);
-      setWatchlistGroups(watchlistGroupsResult.data || []);
-      setAdvisories(canReadAdvisory ? (advisoryResult.data || []).slice(0, 6) : []);
+
+      if (trackedResult.status === 'fulfilled') {
+        setTrackedSymbols(trackedResult.value?.data || []);
+      } else {
+        setTrackedSymbols([]);
+      }
+
+      if (watchlistGroupsResult.status === 'fulfilled') {
+        setWatchlistGroups(watchlistGroupsResult.value?.data || []);
+      } else {
+        setWatchlistGroups([]);
+      }
+
+      if (advisoryResult.status === 'fulfilled') {
+        setAdvisories((advisoryResult.value?.data || []).slice(0, 6));
+      } else {
+        setAdvisories([]);
+      }
     } catch (err) {
       if (requestSeq !== bootstrapRequestSeqRef.current || isRequestCanceled(err)) {
         return;
