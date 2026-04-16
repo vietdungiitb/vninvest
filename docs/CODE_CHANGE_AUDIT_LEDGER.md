@@ -12,6 +12,45 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
 - Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
+## Entry 2026-04-16 - Unified Realtime Table + Polling Optimization (Phase 1-4)
+
+Pham vi:
+- Thuc hien Phase 1-4 cua REALTIME_TABLE_UNIFICATION_PROPOSAL:
+  1. Phase 1: Tao component tai su dung RealtimeQuoteTable voi row-level memoization.
+  2. Phase 2: Integrate Dashboard RealtimePanel.
+  3. Phase 4: Toi uu hoa polling strategy de giam excessive re-renders.
+  (Phase 3 - Watchlist integration & Phase 5 - Testing = TODO)
+  
+- Muc tieu:
+  * Giam flashing Dashboard tu 5-10x/min -> 2-3x/min thong qua row memo.
+  * Gium API surge ban dau tu 100 calls/1s -> 20 calls/2-3s (batch size +).
+  * Gium recovery polling frequency tu 5s interval -> 8s interval.
+
+Danh sach tep da sua:
+- docs/REALTIME_TABLE_UNIFICATION_PROPOSAL_20260416.md (new - detailed proposal)
+- frontend/src/components/RealtimeQuoteTable/RealtimeQuoteTable.jsx (new - main component)
+- frontend/src/components/RealtimeQuoteTable/QuoteTableRow.jsx (new - memoized row)
+- frontend/src/components/RealtimeQuoteTable/columnPresets.js (new - column definitions + helpers)
+- frontend/src/components/RealtimeQuoteTable/index.js (new - barrel export)
+- frontend/src/components/RealtimeQuoteTable/RealtimeQuoteTableDemo.jsx (new - demo/test)
+- frontend/src/components/DashboardRealtimePanel.jsx (modified - import + use RealtimeQuoteTable)
+- frontend/src/hooks/useRealtimeFeedLegacy.js (modified - polling optimization)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Build: npm run build successful (462.19 kB gzip, +7 B tong).
+- Component: React.memo row voi custom comparison (price, change%, freshness, stale flag).
+- Polling: bootstrap batch 10->20, recovery batch 8->16, recovery interval 5s->8s, conditional recovery >= 3 candidates.
+- Commits:
+  * 817ba389: feat(realtime): implement RealtimeQuoteTable component with memoized rows
+  * 4cb65da6: fix(realtime): optimize polling strategy to reduce excessive re-renders
+- Ky vong: Dashboard UI shimmer giam 60-70% sau rebuild + Docker restart.
+
+Ghi chu can lam:
+- Phase 3: Integrate Watchlist (port Group/Tracked tables - low risk).
+- Phase 5: Load test + performance profiling (dev tools, Chrome DevTools, memory check).
+- User test: khop ket sau rebuild Docker dev stack.
+
 ## Entry 2026-04-15 - Fix realtime ticker API 500 errors (cache fallback)
 
 Pham vi:
