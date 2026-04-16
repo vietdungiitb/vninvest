@@ -20,7 +20,7 @@
 - Phase 4: Realtime collector - remove `* 0.001`, trust canonical price from adapter
 - Phase 5: Tasks prefetch - canonical unit guard comments and safer assumptions
 - Phase 6: Frontend cleanup - remove/neutralize heuristic normalization in Watchlist, Dashboard, StockDetail
-- Phase 7: Optional historical migration command (pending)
+- Phase 7: Optional historical migration command implemented (`finalize_price_unit_migration`), dry-run validated
 - Phase 8: Final audit documentation completed
 
 **Files Modified (Core):**
@@ -30,6 +30,7 @@
 - ✅ `backend/portfolio/market_data_service.py` (heuristic deprecated)
 - ✅ `backend/portfolio/realtime/collector.py` (scale factor removed)
 - ✅ `backend/portfolio/tasks_prefetch.py` (canonical guard comments)
+- ✅ `backend/portfolio/management/commands/finalize_price_unit_migration.py` (NEW - phase 7 command)
 - ✅ `frontend/src/pages/Watchlist.jsx` (watchlist heuristic removed)
 - ✅ `frontend/src/utils/dashboardRealtimeSelectors.js` (dashboard heuristic removed)
 - ✅ `frontend/src/pages/StockDetail.jsx` (normalize helpers removed, replaced by `finiteNumberOrNull`)
@@ -46,13 +47,15 @@
 - Phase 4: ✅ COMPLETE
 - Phase 5: ✅ COMPLETE
 - Phase 6: ✅ COMPLETE
-- Phase 7: ⏳ OPTIONAL / PENDING
+- Phase 7: 🟡 OPTIONAL / READY (command created, dry-run done, pending --force by operator)
 - Phase 8: ✅ COMPLETE
 
 **Validation:**
 - ✅ Backend tests: 48/48 passing
 - ✅ Frontend build: success
-- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`
+- ✅ Phase 7 dry-run: `manage.py finalize_price_unit_migration --limit 5` (no DB write)
+- ✅ Dry-run scope: 71,655 rows, suspicious >1000: 71,288 rows
+- ✅ Git commits: `9154c681`, `1c8b3af0`, `722b225e`, `64234c9c`, `f5e13a88`, `32a6c991`
 
 **Token Budget:** ~150k / 200k used
 
@@ -73,6 +76,7 @@
 - backend/portfolio/market_data_service.py (MODIFIED)
 - backend/portfolio/realtime/collector.py (MODIFIED)
 - backend/portfolio/tasks_prefetch.py (MODIFIED)
+- backend/portfolio/management/commands/finalize_price_unit_migration.py (NEW)
 - frontend/src/pages/Watchlist.jsx (MODIFIED)
 - frontend/src/utils/dashboardRealtimeSelectors.js (MODIFIED)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - normalize removed)

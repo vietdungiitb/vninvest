@@ -571,19 +571,24 @@ Result: All prices THOUSAND_VND throughout system
 ## REMAINING OPTIONAL WORK (Phase 7-8)
 
 ### Phase 7: Data Migration (Optional)
-**Status:** Not started (low priority)
+**Status:** Implemented command + dry-run validated
 
 Purpose: Fix any existing DailyPrice records with wrong units from before this fix.
 
 Implementation:
 ```bash
-# Create management command:
+# Management command (implemented):
 backend/portfolio/management/commands/finalize_price_unit_migration.py
 
 # Detects unit via heuristic (deprecated but works for diagnostic)
 # Applies conversion if needed
 # Dry-run flag: `--dry-run` before `--force`
 ```
+
+Dry-run evidence (2026-04-16):
+- Scope records: 71,655
+- Suspicious records (`close_price > 1000`): 71,288
+- Mode: dry-run (no DB write)
 
 **Why Optional:** Existing data continues working (canonical standard inherited at save time). New records all correct. Backfill only needed if audit reveals corrupted history.
 

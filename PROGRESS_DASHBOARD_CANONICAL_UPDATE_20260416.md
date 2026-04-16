@@ -33,6 +33,7 @@ Data poisoning bug (same stock showing as 26,600 | 0.00 | 23.80 in different UI 
 | **6a** | **Frontend** | `frontend/src/pages/Watchlist.jsx` (heuristic removed) | ✅ CLEANED |
 | **6b** | **Frontend** | `frontend/src/utils/dashboardRealtimeSelectors.js` (function removed) | ✅ CLEANED |
 | **6c** | **Frontend** | `frontend/src/pages/StockDetail.jsx` (normalize removed, finite helper) | ✅ CLEANED |
+| **7** | **Migration** | `backend/portfolio/management/commands/finalize_price_unit_migration.py` | 🟡 READY (dry-run) |
 
 ---
 
@@ -103,6 +104,11 @@ File sizes after gzip:
 ### Documentation
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (Phases 0-1 audit)
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md` (Phases 2-6 audit)
+
+### Phase 7 Runtime Validation
+- ✅ Command registered in Django management commands
+- ✅ Dry-run executed successfully (no DB write)
+- ✅ Scope: 71,655 rows | suspicious (>1000): 71,288 rows
 
 ---
 
