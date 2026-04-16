@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { getAggregateWhaleFeed, getRealtimeHealth, getUnifiedAlerts } from '../api/client';
 import RealtimeDebugPanel from './RealtimeDebugPanel';
 import AllocationPieChart from './AllocationPieChart';
+import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
 import { useI18n } from '../context/LangContext';
 
 function formatNumberSafe(value, formatNumberFn) {
@@ -1136,63 +1137,20 @@ export default function DashboardRealtimePanel({
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
-            <div className="rounded-xl border border-gray-800 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
-                <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
-                <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.priceUnitHint')}</p>
+            <div>
+              <div className="rounded-xl border border-gray-800 overflow-hidden bg-gray-950/40 mb-4">
+                <div className="px-4 py-3 border-b border-gray-800 bg-gray-950/70">
+                  <h3 className="text-sm font-semibold text-gray-200">{t('dashboardRealtime.marketStatusBySymbol')}</h3>
+                </div>
+                <RealtimeQuoteTable
+                  quotes={quoteList}
+                  columns={COLUMN_PRESETS.DASHBOARD_MARKET_STATUS}
+                  maxHeight="280px"
+                  showHint={true}
+                  emptyMessage={t('dashboardRealtime.noSymbols')}
+                  sortConfig={{ key: 'symbol', direction: 'asc' }}
+                />
               </div>
-              {quoteList.length === 0 ? (
-                <div className="px-4 py-8 text-sm text-gray-500 text-center">
-                  {t('dashboardRealtime.noSymbols')}
-                </div>
-              ) : (
-                <div className="max-h-[308px] overflow-y-auto overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-800">
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableSymbol')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePrice')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tablePctChange')}</th>
-                        <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{t('dashboardRealtime.tableFreshness')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800/60">
-                      {quoteList.map((item) => {
-                        const isUp = (item.change_pct ?? 0) > 0;
-                        const isDown = (item.change_pct ?? 0) < 0;
-                        return (
-                          <tr key={item.symbol} className="hover:bg-gray-800/30 transition-colors">
-                            <td className="px-4 py-3 font-bold text-brand-300">
-                              <Link
-                                to={`/stocks/${item.symbol}`}
-                                className="inline-flex items-center hover:text-cyan-300 transition-colors"
-                              >
-                                {item.symbol}
-                              </Link>
-                            </td>
-                            <td className="px-4 py-3 text-gray-200 tabular-nums">{formatQuotePrice(item.current_price)}</td>
-                            <td className={`px-4 py-3 font-semibold ${isUp ? 'text-emerald-300' : isDown ? 'text-red-300' : 'text-gray-400'}`}>
-                              {item.change_pct === null || item.change_pct === undefined
-                                ? '—'
-                                : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
-                            </td>
-                            <td className="px-4 py-3 text-xs">
-                              {(item.data_semantic === 'last_session_close'
-                                || ['offhours', 'post_close', 'pre_open'].includes(String(item.market_phase || '').toLowerCase())) ? (
-                                <span className="text-sky-300">{t('dashboardRealtime.sessionCloseLabel')}</span>
-                              ) : item.stale ? (
-                                <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
-                              ) : (
-                                <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
 
             <AllocationPieChart portfolioId={portfolioId} />
