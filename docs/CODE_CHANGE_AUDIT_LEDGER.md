@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16aa - Whale Alerts public bootstrap skips protected watchlist APIs
+
+Muc tieu:
+- Chan trang Whale Alerts goi API watchlist/tracked cua user khi chua dang nhap.
+
+Trieu chung runtime:
+- Browser console hien `ERR_TOO_MANY_REDIRECTS` / `401` quanh `api/portfolio/watchlist/groups/` tren trang public Whale Alerts.
+
+Nguyen nhan goc:
+- `WhaleAlertsHub` bootstrap goi `getTrackedSymbols()` va `getWatchlistGroups()` vo dieu kien.
+- Hai endpoint nay yeu cau JWT auth, trong khi trang Whale Alerts van co the duoc mo o che do public.
+
+Danh sach tep da sua:
+- frontend/src/pages/WhaleAlertsHub.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Dung `isAuthenticated` tu `PortfolioContext` de gate 2 request protected:
+  - da dang nhap: goi API nhu cu
+  - chua dang nhap: dung `Promise.resolve({ data: [] })`
+- Giu nguyen aggregate whale feed la public va van load binh thuong.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/pages/WhaleAlertsHub.jsx`: khong co loi.
+- Fetch truc tiep production URL `api/portfolio/watchlist/groups/`: backend tra `401`, khong phai backend redirect loop.
+
+---
+
 ## Entry 2026-04-16x - Whale Alerts Hub page-size options aligned to 3-cards grid
 
 Muc tieu:

@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Whale Alerts Public Bootstrap Auth Guard (2026-04-16)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - chỉ gọi tracked/watchlist APIs khi đã đăng nhập; guest dùng mảng rỗng để tránh lỗi auth/redirect trên trang public)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Whale Alerts Hub Page Size Alignment 3/6/9/12 (2026-04-16)
 - frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - đổi `Số mục/trang` thành 3/6/9/12, default 6, fallback 6 để khớp lưới 3 card/row)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16x)
