@@ -204,7 +204,7 @@ function pickPollBatch(symbols, cursor, batchSize) {
   };
 }
 
-export default function useRealtimeFeedLegacy({
+export default function useRealtimeFeedCore({
   symbols,
   pollInterval = 15000,
   maxAlerts = 5,

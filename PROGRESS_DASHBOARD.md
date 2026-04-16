@@ -65,6 +65,25 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Whale Alerts Hub Page Size Alignment 3/6/9/12 (2026-04-16)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - đổi `Số mục/trang` thành 3/6/9/12, default 6, fallback 6 để khớp lưới 3 card/row)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Realtime Manager Legacy Removal (2026-04-16)
+- frontend/src/context/RealtimeContext.jsx (MODIFIED - manager chuyển sang `useRealtimeFeedCore`)
+- frontend/src/hooks/useRealtimeFeedCore.js (NEW - hook realtime core)
+- frontend/src/hooks/useRealtimeFeedCore.test.js (NEW - test helper import core hook)
+- frontend/src/hooks/useRealtimeFeedLegacy.js (DELETED - loại bỏ hook legacy)
+- frontend/src/hooks/useRealtimeFeedLegacy.test.js (DELETED - loại bỏ test legacy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### DarkMoney Tooltip + Locale Compact Units (2026-04-16)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - Whale Buy/Sell tooltip theo per-candle; compact units theo locale VI `TR/T`, EN `M/B`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Docker Dev Update + Backend Startup Fix (2026-04-16)
 - backend/portfolio/views.py (MODIFIED - export missing admin intraday side backfill APIs so Django urls can resolve)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-16w)

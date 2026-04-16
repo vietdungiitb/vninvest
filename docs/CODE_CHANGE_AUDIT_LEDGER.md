@@ -1,5 +1,92 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16x - Whale Alerts Hub page-size options aligned to 3-cards grid
+
+Muc tieu:
+- Dieu chinh bo chon `So muc/trang` theo boi so cua 3 de khop layout 3 card/row.
+
+Pham vi:
+- Trang Whale Alerts Hub (Live Tape + Campaigns) page-size options.
+
+Danh sach tep da sua:
+- frontend/src/pages/WhaleAlertsHub.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Doi options page size:
+  - Tu `[4, 8, 12, 16]`
+  - Thanh `[3, 6, 9, 12]`
+- Doi default page size cho ca Aggregate va Campaigns:
+  - Tu `8`
+  - Thanh `6`
+- Doi fallback khi select value khong hop le:
+  - Tu `|| 8`
+  - Thanh `|| 6`
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/pages/WhaleAlertsHub.jsx`: khong co loi.
+
+---
+
+## Entry 2026-04-16y - Realtime manager migrated off legacy hook
+
+Muc tieu:
+- Loai bo duong runtime con su dung `useRealtimeFeedLegacy` tren trang Whale Alerts va cac trang realtime manager.
+
+Pham vi:
+- Realtime context manager + hook files + test helper imports.
+
+Danh sach tep da sua:
+- frontend/src/context/RealtimeContext.jsx
+- frontend/src/hooks/useRealtimeFeedCore.js
+- frontend/src/hooks/useRealtimeFeedCore.test.js
+- frontend/src/hooks/useRealtimeFeedLegacy.js (DELETE)
+- frontend/src/hooks/useRealtimeFeedLegacy.test.js (DELETE)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `RealtimeContext` doi import/call tu `useRealtimeFeedLegacy` sang `useRealtimeFeedCore`.
+- Tao file hook moi `useRealtimeFeedCore.js` (noi dung migration tu hook cu).
+- Doi test helper sang `useRealtimeFeedCore.test.js`.
+- Xoa file hook/test legacy de tranh import quay lai.
+
+Ket qua verify:
+- Tim kiem `useRealtimeFeedLegacy` trong `frontend/src`: khong con ket qua runtime.
+- `get_errors` pass cho:
+  - `frontend/src/context/RealtimeContext.jsx`
+  - `frontend/src/hooks/useRealtimeFeedCore.js`
+  - `frontend/src/hooks/useRealtimeFeedCore.test.js`
+
+---
+
+## Entry 2026-04-16z - DarkMoney tooltip semantics + locale compact unit labels
+
+Muc tieu:
+- Dam bao Whale Buy/Sell trong tooltip tinh theo cay nen dang hover.
+- Doi don vi compact theo locale: VI dung `TR/T`, EN dung `M/B`.
+
+Pham vi:
+- `DarkMoneyMasterChart` formatter + tooltip + SMFI compact labels.
+
+Danh sach tep da sua:
+- frontend/src/components/DarkMoneyMasterChart.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `fmtCompact(v, locale)` ho tro theo ngon ngu:
+  - VI: `TR`, `T`
+  - EN: `M`, `B`
+- `OhlcTooltip` dung `d.whaleInfo` (per-candle) thay vi tong toan phien.
+- Truyen `locale` vao tooltip + CVD formatter + SMFI block de thong nhat don vi hien thi.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/components/DarkMoneyMasterChart.jsx`: khong co loi.
+
+---
+
 ## Entry 2026-04-16w - Docker dev update + backend startup unblock
 
 Muc tieu:

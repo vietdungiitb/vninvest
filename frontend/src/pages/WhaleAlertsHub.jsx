@@ -236,7 +236,7 @@ function getFrequencyLabel(totalValue, t) {
   return { label: t('whaleHub.freqLow'), color: 'text-slate-500', bg: 'bg-slate-800/40 border-slate-700/50' };
 }
 
-const FEED_PAGE_SIZE_OPTIONS = [4, 8, 12, 16];
+const FEED_PAGE_SIZE_OPTIONS = [3, 6, 9, 12];
 
 function isRequestCanceled(err) {
   const code = String(err?.code || '').toUpperCase();
@@ -829,8 +829,8 @@ export default function WhaleAlertsHub() {
   const [campaignSideFilter, setCampaignSideFilter] = useState('all');
   const [campaignTypeFilter, setCampaignTypeFilter] = useState('all');
   const [campaignMinStrength, setCampaignMinStrength] = useState(0);
-  const [aggregatePageSize, setAggregatePageSize] = useState(8);
-  const [campaignPageSize, setCampaignPageSize] = useState(8);
+  const [aggregatePageSize, setAggregatePageSize] = useState(6);
+  const [campaignPageSize, setCampaignPageSize] = useState(6);
   const [campaignInitialLoading, setCampaignInitialLoading] = useState(false);
   const [campaignsLoaded, setCampaignsLoaded] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState(null);
@@ -1281,7 +1281,7 @@ export default function WhaleAlertsHub() {
                   <span>{t('whaleHub.itemsPerPage')}</span>
                   <select
                     value={aggregatePageSize}
-                    onChange={(event) => setAggregatePageSize(Number(event.target.value || 8))}
+                    onChange={(event) => setAggregatePageSize(Number(event.target.value || 6))}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                     style={{ colorScheme: 'dark' }}
                   >
@@ -1315,7 +1315,7 @@ export default function WhaleAlertsHub() {
                   <span>{t('whaleHub.itemsPerPage')}</span>
                   <select
                     value={campaignPageSize}
-                    onChange={(event) => setCampaignPageSize(Number(event.target.value || 8))}
+                    onChange={(event) => setCampaignPageSize(Number(event.target.value || 6))}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-100"
                     style={{ colorScheme: 'dark' }}
                   >

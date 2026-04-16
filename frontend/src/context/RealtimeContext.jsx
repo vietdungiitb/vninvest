@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import useRealtimeFeedLegacy from '../hooks/useRealtimeFeedLegacy';
+import useRealtimeFeedCore from '../hooks/useRealtimeFeedCore';
 
 const RealtimeContext = createContext(null);
 
@@ -36,7 +36,7 @@ export function RealtimeProvider({ children }) {
     return values.length ? Math.max(3000, Math.min(...values)) : 15000;
   }, [subscriptions]);
 
-  const feed = useRealtimeFeedLegacy({
+  const feed = useRealtimeFeedCore({
     symbols: aggregatedSymbols,
     maxAlerts,
     pollInterval,

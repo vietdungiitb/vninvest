@@ -1,9 +1,9 @@
 import {
   normalizePollSymbolCandidates,
   resolveRealtimePollIntervalMs,
-} from './useRealtimeFeedLegacy';
+} from './useRealtimeFeedCore';
 
-describe('useRealtimeFeedLegacy helpers', () => {
+describe('useRealtimeFeedCore helpers', () => {
   test('flags stale_over_threshold candidates for prioritized retry', () => {
     const result = normalizePollSymbolCandidates(
       ['MWG', 'VCB'],
