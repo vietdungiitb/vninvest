@@ -1,5 +1,33 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17d - WebSocket realtime token pre-refresh and auth-close recovery
+
+Muc tieu:
+- Giam loi realtime WS khi client mo ket noi bang access token da sap/da het han.
+
+Trieu chung runtime:
+- Frontend van bi fallback polling lien tuc, khong vao trang thai WS live on dinh.
+- User cung cap URL dang `wss://.../ws/realtime/?token=...` cho thay token duoc nhung truc tiep tren query string.
+
+Nguyen nhan goc:
+- `useRealtimeFeedCore` mo WebSocket bang token hien tai trong localStorage ma chua pre-check `exp`.
+- Khi token het han ngay truoc handshake, browser thuong nhan close code chung (1006/1008/1011), khong luon la 4401.
+
+Danh sach tep da sua:
+- frontend/src/hooks/useRealtimeFeedCore.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- Them helper decode JWT payload va `isTokenExpiringSoon()`.
+- Truoc khi `new WebSocket(...)`, neu token sap het han (<=90s) thi goi `refreshAccessToken()` de lay token moi.
+- Bo sung nhanh auth-recovery khi WS close code la `1006/1008/1011` va token da het han: thu refresh token + reconnect nhu nhanh 4401.
+
+Ket qua verify:
+- `get_errors` cho `frontend/src/hooks/useRealtimeFeedCore.js`: khong co loi.
+
+---
+
 ## Entry 2026-04-17c - Realtime ticker hardening for malformed cache payload and unexpected exceptions
 
 Muc tieu:

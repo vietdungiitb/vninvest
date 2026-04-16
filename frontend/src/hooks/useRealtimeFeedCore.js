@@ -122,6 +122,27 @@ function computeNextBackoffMs(currentBackoffMs) {
   return Math.min(currentBackoffMs * 2, 120000);
 }
 
+function decodeJwtPayload(token) {
+  try {
+    const parts = String(token || '').split('.');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const padded = `${base64}${'='.repeat((4 - (base64.length % 4)) % 4)}`;
+    const decoded = atob(padded);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function isTokenExpiringSoon(token, skewMs = 60000) {
+  if (!token) return true;
+  const payload = decodeJwtPayload(token);
+  const expSeconds = Number(payload?.exp);
+  if (!Number.isFinite(expSeconds)) return false;
+  return (Date.now() + Math.max(0, Number(skewMs) || 0)) >= (expSeconds * 1000);
+}
+
 export function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   const normalizedQuotes = quotesBySymbol || {};
   const staleOrMissing = [];
@@ -628,7 +649,7 @@ export default function useRealtimeFeedCore({
       reconnectTimer = window.setTimeout(connect, delayMs);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (destroyed) return;
 
       if (circuitOpenUntilRef.current && Date.now() < circuitOpenUntilRef.current) {
@@ -647,7 +668,19 @@ export default function useRealtimeFeedCore({
       circuitOpenUntilRef.current = null;
       setConnectionState((prev) => ({ ...prev, circuitOpen: false, circuitOpenUntil: null }));
 
-      const freshToken = localStorage.getItem('access_token');
+      let freshToken = localStorage.getItem('access_token');
+      if (!freshToken) {
+        setRealtimeStatus('idle');
+        return;
+      }
+
+      if (isTokenExpiringSoon(freshToken, 90_000)) {
+        const refreshedToken = await refreshAccessToken();
+        if (refreshedToken) {
+          freshToken = refreshedToken;
+        }
+      }
+
       if (!freshToken) {
         setRealtimeStatus('idle');
         return;
@@ -777,7 +810,14 @@ export default function useRealtimeFeedCore({
 
         if (ev.code === 1000) return;
 
-        if (ev.code === 4401) {
+        const currentAccessToken = localStorage.getItem('access_token');
+        const shouldTryAuthRefresh = ev.code === 4401
+          || (
+            [1006, 1008, 1011].includes(ev.code)
+            && isTokenExpiringSoon(currentAccessToken, 0)
+          );
+
+        if (shouldTryAuthRefresh) {
           refreshAccessToken().then((newToken) => {
             if (newToken && !destroyed) {
               reconnectAttemptRef.current += 1;
