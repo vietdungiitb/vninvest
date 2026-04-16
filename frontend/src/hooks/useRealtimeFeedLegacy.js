@@ -30,6 +30,10 @@ function mergeQuote(prev, update) {
     freshness_seconds: update.freshness_seconds ?? inferredFreshness ?? prev.freshness_seconds,
     stale: update.stale ?? (inferredFreshness !== null ? inferredFreshness > 30 : prev.stale),
     last_date: eventTimestamp ?? prev.last_date,
+    market_phase: update.market_phase ?? prev.market_phase,
+    market_code: update.market_code ?? prev.market_code,
+    data_semantic: update.data_semantic ?? prev.data_semantic,
+    source: update.source ?? prev.source,
   };
 }
 
@@ -94,8 +98,12 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   (symbols || []).forEach((symbol) => {
     const quote = normalizedQuotes[symbol] || {};
     const isMissing = quote.current_price == null;
+    const isOffhoursSessionClose = quote.data_semantic === 'last_session_close'
+      || ['offhours', 'post_close', 'pre_open'].includes(String(quote.market_phase || '').toLowerCase());
     const freshnessSeconds = Number(quote.freshness_seconds);
-    const isStale = quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20);
+    const isStale = isOffhoursSessionClose
+      ? false
+      : (quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20));
 
     if (isMissing || isStale) {
       staleOrMissing.push(symbol);
@@ -340,6 +348,10 @@ export default function useRealtimeFeedLegacy({
               freshness_seconds: data.freshness_seconds,
               stale: data.stale,
               last_date: data.last_date,
+              market_phase: data.market_phase,
+              market_code: data.market_code,
+              data_semantic: data.data_semantic,
+              source: data.source,
             });
           } else {
             const status = getHttpStatus(r.reason);

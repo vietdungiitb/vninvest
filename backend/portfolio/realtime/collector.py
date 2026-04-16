@@ -18,7 +18,13 @@ def collect_symbols_for_user(user_id: int | None = None) -> list[str]:
 
 
 def collect_intraday_frame(symbol: str) -> pd.DataFrame:
-    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday, fallback về synthetic nếu lỗi."""
+    """Lấy dữ liệu khớp lệnh thực từ vnstock intraday, fallback về synthetic nếu lỗi.
+    
+    PRICE UNIT GUARANTEE:
+    - Adapter (fetch_intraday_dataframe) now returns prices in canonical THOUSAND_VND
+    - No additional scaling needed here
+    - All prices are already normalized to THOUSAND_VND by adapter
+    """
     try:
         from portfolio.adapters.vnstock_adapter import fetch_intraday_dataframe
         df = fetch_intraday_dataframe(symbol=symbol, page_size=100)
@@ -40,8 +46,11 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                     price_val = float(raw_price) if raw_price else 0.0
                     vol_val = float(raw_vol) if raw_vol else 0.0
                     
-                    # Scale price to thousand VND unit
-                    price_val = round(price_val * 0.001, 3)
+                    # CANONICAL UNIT: Adapter already converted to THOUSAND_VND
+                    # Previous code had: price_val = round(price_val * 0.001, 3)
+                    # But adapter now handles this - prices are already canonical
+                    # So we just round and trust the canonical unit
+                    price_val = round(price_val, 3)  # No scale factor - already canonical THOUSAND_VND
                 except (ValueError, TypeError):
                     price_val = 0.0
                     vol_val = 0.0
@@ -68,7 +77,7 @@ def collect_intraday_frame(symbol: str) -> pd.DataFrame:
                 except Exception:
                     pass
 
-                rows.append({'ts': final_ts, 'price': price_val, 'volume': vol_val, 'side': side})
+                rows.append({'ts': final_ts, 'price': price_val, 'volume': vol_val, 'side': side, 'price_unit': 'THOUSAND_VND'})
             if rows:
                 return pd.DataFrame(rows)
     except (Exception, SystemExit) as exc:

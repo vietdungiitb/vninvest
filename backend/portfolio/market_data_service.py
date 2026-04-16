@@ -35,6 +35,7 @@ from .domain_constants import (
     resolve_user_whale_threshold_vnd,
 )
 from .exceptions import ExternalSystemException, MarketDataValidationException
+from .market_calendar import resolve_market_phase
 from .models import (
     DailyPrice,
     IntradayTick,
@@ -42,6 +43,7 @@ from .models import (
     SecuritiesGroup,
     SecuritiesItem,
     StockProfile,
+    TickerSessionClose,
     TrackedSymbol,
     UserConfig,
     WatchlistGroup,
@@ -53,6 +55,7 @@ from .observability import (
 )
 from .permissions import resolve_user_entitlements
 from .services import get_price_changes
+from .runtime_policy_helpers import _get_runtime_prefetch_time_policy
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 
 
@@ -197,8 +200,50 @@ class MarketDataService:
             'fetched_at': timezone.now().isoformat(),
         }
 
+    def _get_market_clock_context(self) -> dict:
+        policy = _get_runtime_prefetch_time_policy()
+        resolved = resolve_market_phase(policy)
+        return {
+            'profile': resolved.get('profile', 'offhours'),
+            'timezone': resolved.get('timezone', 'Asia/Ho_Chi_Minh'),
+            'market_code': resolved.get('market_code', 'VN_STOCK'),
+            'supported_timezones': list(resolved.get('supported_timezones') or [resolved.get('timezone', 'Asia/Ho_Chi_Minh')]),
+        }
+
+    def _resolve_latest_session_close(self, symbol: str, market_code: str) -> dict | None:
+        row = (
+            TickerSessionClose.objects
+            .filter(symbol=symbol, market_code=market_code)
+            .order_by('-session_date', '-captured_at')
+            .first()
+        )
+        if row is None:
+            return None
+        return {
+            'symbol': symbol,
+            'current_price': float(row.close_price) if row.close_price is not None else None,
+            'prev_price': float(row.prev_close_price) if row.prev_close_price is not None else None,
+            'change_value': float(row.change_value) if row.change_value is not None else None,
+            'change_pct': float(row.change_pct) if row.change_pct is not None else None,
+            'open_price': float(row.open_price) if row.open_price is not None else None,
+            'high_price': float(row.high_price) if row.high_price is not None else None,
+            'low_price': float(row.low_price) if row.low_price is not None else None,
+            'volume': int(row.volume) if row.volume is not None else None,
+            'last_date': row.captured_at.isoformat() if row.captured_at else None,
+            'session_date': row.session_date.isoformat(),
+            'source': 'session_close_store',
+            'cache_state': 'session_close',
+            'stale': False,
+            'freshness_seconds': 0,
+        }
+
     def get_realtime_ticker(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
+        market_clock = self._get_market_clock_context()
+        market_phase = market_clock.get('profile')
+        market_code = market_clock.get('market_code')
+        supported_timezones = market_clock.get('supported_timezones') or [market_clock.get('timezone')]
+        is_offhours_like = market_phase in {'offhours', 'post_close', 'pre_open'}
         ticker_cache_key = f'ticker:{normalized_symbol}'
         cached_ticker = get_cache(ticker_cache_key)
         if cached_ticker is not None:
@@ -224,18 +269,34 @@ class MarketDataService:
             if freshness_seconds is None:
                 freshness_seconds = stale_serve_seconds + 1
 
-            is_stale = freshness_seconds > freshness_threshold
+            is_stale = False if is_offhours_like and payload.get('current_price') is not None else (freshness_seconds > freshness_threshold)
             payload['freshness_seconds'] = freshness_seconds
             payload['stale'] = is_stale
-            payload['source'] = 'stale_cache' if is_stale else 'cache'
-            payload['cache_state'] = 'stale' if is_stale else 'fresh'
+            current_source = str(payload.get('source') or '').strip().lower()
+            if not current_source or current_source == 'prefetch':
+                current_source = 'stale_cache' if is_stale else 'cache'
+            payload['source'] = current_source
+            payload['cache_state'] = 'stale' if is_stale else ('session_close' if is_offhours_like else 'fresh')
             payload['served_at'] = served_at
+            payload['market_phase'] = payload.get('market_phase') or market_phase
+            payload['market_code'] = payload.get('market_code') or market_code
+            payload['supported_timezones'] = supported_timezones
             return payload
+
+        if is_offhours_like:
+            session_close_payload = self._resolve_latest_session_close(normalized_symbol, market_code)
+            if session_close_payload is not None:
+                session_close_payload['served_at'] = timezone.now().isoformat()
+                session_close_payload['market_phase'] = market_phase
+                session_close_payload['market_code'] = market_code
+                session_close_payload['supported_timezones'] = supported_timezones
+                session_close_payload['data_semantic'] = 'last_session_close'
+                return session_close_payload
 
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         last_date = price_info.get('last_date')
         freshness_seconds = None
-        stale = True
+        stale = not is_offhours_like
 
         if last_date:
             try:
@@ -272,6 +333,10 @@ class MarketDataService:
             'cache_state': 'miss',
             'fallback_reason': 'cache_miss_no_realtime_tick',
             'served_at': timezone.now().isoformat(),
+            'market_phase': market_phase,
+            'market_code': market_code,
+            'supported_timezones': supported_timezones,
+            'data_semantic': 'last_session_close' if is_offhours_like else 'realtime_or_stale',
         }
 
         allow_degraded = bool(getattr(settings, 'TICKER_CACHE_MISS_ALLOW_DEGRADED', False))
@@ -3112,27 +3177,37 @@ class MarketDataService:
             return None
 
     def _resolve_quote_price_scale(self, values) -> float:
-        candidates = []
-        for value in values or []:
-            numeric = self._safe_float(value)
-            if numeric is None:
-                continue
-            magnitude = abs(numeric)
-            if magnitude > 0:
-                candidates.append(magnitude)
-
-        if not candidates:
-            return 1.0
-
-        candidates.sort()
-        pivot = candidates[len(candidates) // 2]
-
-        # Providers can return VNĐ, nghin VNĐ, or VNĐ x 1000.
-        # Normalize all outputs to VNĐ for consistent UI rendering.
-        if pivot >= 1_000_000:
-            return 0.001
-        if pivot < 1_000:
-            return 1000.0
+        """DEPRECATED: Heuristic price scale detection.
+        
+        REASON DEPRECATED:
+        - Adapter (vnstock_adapter.py) now guarantees all prices in canonical THOUSAND_VND
+        - No heuristic detection needed anymore
+        - This function is kept for backward compatibility but always returns 1.0 (no scaling)
+        
+        If you see this being called, it's safe to ignore - prices are already canonical.
+        """
+        # OLD CODE (kept for reference but NEVER EXECUTED):
+        # candidates = []
+        # for value in values or []:
+        #     numeric = self._safe_float(value)
+        #     if numeric is None:
+        #         continue
+        #     magnitude = abs(numeric)
+        #     if magnitude > 0:
+        #         candidates.append(magnitude)
+        # 
+        # if not candidates:
+        #     return 1.0
+        # 
+        # candidates.sort()
+        # pivot = candidates[len(candidates) // 2]
+        # if pivot >= 1_000_000:
+        #     return 0.001
+        # if pivot < 1_000:
+        #     return 1000.0
+        # return 1.0
+        
+        # NEW: Adapter guarantees THOUSAND_VND canonical, so always return 1.0
         return 1.0
 
     def _normalize_quote_price(self, value, scale: float = 1.0):

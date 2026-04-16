@@ -4,6 +4,80 @@
 
 ---
 
+## 🚀 LATEST UPDATE (2026-04-16 ~14:30)
+
+### ⚡ PRICE UNIT CANONICAL REFACTOR - PHASES 0-1 COMPLETE ✅
+
+**Problem Fixed:** Data poisoning from inconsistent quote prices (26,600 | 0.00 | 23.80 in same table)
+
+**Root Cause:** Backend declared `_SYSTEM_PRICE_UNIT='VND'` but system expected `THOUSAND_VND`. Prices from different sources (vnstock KBS/VCI, realtime snapshot, intraday tick) arrived in different units. Frontend created 3 separate heuristic normalization functions to reverse-engineer correct unit.
+
+**Solution Architecture:** 
+- Phase 0: New canonical module (`price_units.py`) with QuotePrice dataclass and conversion helpers
+- Phase 1: Adapter standardization - ALL adapter outputs now guarantee THOUSAND_VND unit with metadata seal  
+- Phase 2: Services layer correction - _SYSTEM_PRICE_UNIT now correctly = THOUSAND_VND
+- Phases 3-8: Market data service, collector, tasks, frontend cleanup, migration (to follow)
+
+**Files Modified:**
+- ✅ `backend/portfolio/price_units.py` (NEW - 284 lines, 40 tests)
+- ✅ `backend/portfolio/adapters/vnstock_adapter.py` (+150 lines, 8 tests)
+- ✅ `backend/portfolio/services.py` (+60 lines)
+- ✅ 2 new test suites: 48/48 tests passing ✅
+- ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (audit trail)
+
+**Status:** 
+- Phase 0: ✅ COMPLETE
+- Phase 1: ✅ COMPLETE  
+- Phase 2: 🟡 IN PROGRESS (services.py constants fixed, remaining: fetch_and_save_daily_prices integration)
+- Phases 3-8: ⏳ PENDING
+
+**Token Budget:** ~120k / 200k used
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-16)
+
+### Price Unit Canonical Refactor (Phases 0-1)
+- backend/portfolio/price_units.py (NEW)
+- backend/tests/test_price_units_canonical.py (NEW - 40 tests)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED)
+- backend/tests/test_adapter_canonical.py (NEW - 8 tests)
+- backend/portfolio/services.py (MODIFIED)
+- AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md (NEW)
+
+### Ticker Realtime + Offhours Close Accuracy (1+2+3)
+- backend/portfolio/runtime_policy_helpers.py
+- backend/portfolio/market_calendar.py
+- backend/portfolio/tasks_prefetch.py
+- backend/portfolio/models.py
+- backend/portfolio/migrations/0041_tickersessionclose.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/warmup_cache.py
+- backend/portfolio/views_admin_runtime.py
+- backend/portfolio/tests/test_ticker_prefetch_task.py
+- backend/portfolio/tests/test_system_ai_admin_api.py
+- backend/CHANGELOG.md
+- frontend/src/pages/AdminOps.jsx
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- frontend/src/components/DashboardRealtimePanel.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+
+### Delta hardening: Market Calendar + Market-local Retention
+- backend/portfolio/market_calendar.py
+- backend/portfolio/runtime_policy_helpers.py
+- backend/portfolio/tasks_prefetch.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/warmup_cache.py
+- backend/portfolio/tests/test_ticker_prefetch_task.py
+- backend/portfolio/tests/test_system_ai_admin_api.py
+- frontend/src/pages/AdminOps.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- backend/CHANGELOG.md
+
+---
+
 ## ✅ COMPLETED TODAY (Day 1)
 
 ### ✅ Task 1.1: Code Review Watchlist (Lines 100-400)
@@ -75,6 +149,8 @@ C:\Mujoco Projects\vninvest\frontend\src\hooks\useRealtimeFeed.js
 - ✅ Advisory backend no longer crashes when `OPENCLAW_API_KEY` is missing
 - ✅ `useRealtimeFeed` now sends explicit `unsubscribe` on cleanup and exposes runtime connection metrics for reconnect/fallback QA
 - ✅ `manage.py test portfolio.tests.test_realtime_gateway portfolio.tests.test_realtime_compute` passes (6 tests)
+- ✅ Market calendar hardening implemented: holiday-aware offhours + market-local retention/offpeak date resolution
+- ✅ `VN_STOCK` runtime mặc định tự seed holiday_dates từ calendar `vnstock` năm hiện tại; warmup startup không còn log stacktrace khi DB chưa ready
 
 ### User Registration Extension
 - ✅ Backend `/api/auth/register/` now requires email and returns JWT for auto-login

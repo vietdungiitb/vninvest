@@ -1213,7 +1213,10 @@ export default function DashboardRealtimePanel({
                                 : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
                             </td>
                             <td className="px-4 py-3 text-xs">
-                              {item.stale ? (
+                              {(item.data_semantic === 'last_session_close'
+                                || ['offhours', 'post_close', 'pre_open'].includes(String(item.market_phase || '').toLowerCase())) ? (
+                                <span className="text-sky-300">{t('dashboardRealtime.sessionCloseLabel')}</span>
+                              ) : item.stale ? (
                                 <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
                               ) : (
                                 <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>
@@ -1358,7 +1361,10 @@ export default function DashboardRealtimePanel({
                             : `${isUp ? '+' : ''}${Number(item.change_pct).toFixed(2)}%`}
                         </td>
                         <td className="px-4 py-3 text-xs">
-                          {item.stale ? (
+                          {(item.data_semantic === 'last_session_close'
+                            || ['offhours', 'post_close', 'pre_open'].includes(String(item.market_phase || '').toLowerCase())) ? (
+                            <span className="text-sky-300">{t('dashboardRealtime.sessionCloseLabel')}</span>
+                          ) : item.stale ? (
                             <span className="text-amber-300">{t('dashboardRealtime.stale')}</span>
                           ) : (
                             <span className="text-gray-500">{t('dashboardRealtime.secondsShort', { value: formatNumber(item.freshness_seconds ?? 0) })}</span>

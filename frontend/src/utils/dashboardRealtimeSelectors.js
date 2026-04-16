@@ -8,54 +8,9 @@ function toFiniteNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeLivePriceUnit(rawLivePrice, { snapshotPrice, avgCost }) {
-  const livePrice = toFiniteNumber(rawLivePrice);
-  if (livePrice === null || livePrice <= 0) {
-    return null;
-  }
-
-  const snapshot = toFiniteNumber(snapshotPrice) && Number(snapshotPrice) > 0
-    ? Number(snapshotPrice)
-    : null;
-  const avg = toFiniteNumber(avgCost) && Number(avgCost) > 0
-    ? Number(avgCost)
-    : null;
-
-  const references = [];
-  if (avg) {
-    references.push(avg);
-  }
-  if (snapshot) {
-    const ratioToAvg = avg ? Math.max(snapshot, avg) / Math.min(snapshot, avg) : 1;
-    // Snapshot can already be contaminated by wrong unit (x1000). Ignore it when too far from avg_cost.
-    if (!avg || ratioToAvg <= 50) {
-      references.push(snapshot);
-    }
-  }
-
-  if (!references.length) {
-    return livePrice;
-  }
-
-  const candidates = [livePrice, livePrice * 1000, livePrice / 1000].filter((item) => item > 0);
-  const score = (candidate) => references.reduce(
-    (sum, ref) => sum + Math.abs(Math.log(candidate / ref)),
-    0,
-  );
-
-  let best = candidates[0];
-  let bestScore = score(best);
-  for (let index = 1; index < candidates.length; index += 1) {
-    const candidate = candidates[index];
-    const candidateScore = score(candidate);
-    if (candidateScore < bestScore) {
-      best = candidate;
-      bestScore = candidateScore;
-    }
-  }
-
-  return best;
-}
+// REMOVED: normalizeLivePriceUnit() function
+// REASON: Backend now guarantees all prices in canonical THOUSAND_VND
+// No heuristic unit detection needed on frontend anymore
 
 export function buildLiveHoldingsOverlay(holdings, quotesBySymbol) {
   return (holdings || []).map((holding) => {
@@ -65,10 +20,8 @@ export function buildLiveHoldingsOverlay(holdings, quotesBySymbol) {
     const snapshotMarketValue = toNumber(holding.market_value);
     const quote = quotesBySymbol?.[holding.symbol] || {};
 
-    const livePrice = normalizeLivePriceUnit(quote.current_price ?? holding.current_price, {
-      snapshotPrice: holding.current_price,
-      avgCost,
-    });
+    // Canonical unit: Trust backend price directly (already THOUSAND_VND)
+    const livePrice = toFiniteNumber(quote.current_price ?? holding.current_price);
     const hasLivePrice = livePrice !== null;
     const liveMarketValue = hasLivePrice ? livePrice * quantity : snapshotMarketValue;
     const liveUnrealizedPL = liveMarketValue - costBasis;

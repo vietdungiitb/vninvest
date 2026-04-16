@@ -1,3 +1,8 @@
+- Bổ sung helper lịch thị trường dùng chung cho prefetch/runtime fallback: hỗ trợ `holiday_dates` theo policy, phân giải `market-local date` nhất quán cho `session close retention`, `session close date` và `offpeak ingest`.
+- Mở rộng `prefetch_time_policy` API/UI với `market.holiday_dates`, cho phép staff cấu hình ngày nghỉ thị trường ngay trên Admin Ops thay vì hardcode theo cuối tuần.
+- Thêm regression tests cho holiday offhours và retention theo market timezone để khóa drift khi mở rộng đa thị trường/timezone.
+- Seed mặc định `VN_STOCK` holiday dates từ calendar có sẵn trong `vnstock` cho năm hiện tại, giúp runtime mới có dữ liệu ngày nghỉ usable ngay sau deploy/dev reset.
+- Warmup cache startup giờ bỏ qua êm khi DB/schema chưa sẵn sàng, tránh log stacktrace nhiễu trong test bootstrap và fresh dev startup.
 ## Ghi chú thay đổi ngày 12/04/2026
 
 - Bổ sung bootstrap cấu hình mặc định an toàn qua script `scripts/dev-setup.ps1` để tự tạo `backend/.env`, `backend/.env.dev`, `frontend/.env` với `DJANGO_SECRET_KEY` sinh ngẫu nhiên bằng CSPRNG, giảm thao tác cấu hình thủ công sau khi clone repo.

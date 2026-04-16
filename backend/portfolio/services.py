@@ -39,19 +39,43 @@ from .models import (
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
 )
+from .price_units import QUOTE_UNIT_CANONICAL, MONEY_UNIT_CANONICAL
 from .whale_scoring import resolve_whale_score_config
 
 logger = logging.getLogger(__name__)
 
+# ==================== CANONICAL PRICE UNIT STANDARDS ====================
+
 _VNSTOCK_PRICE_UNIT_VND = 'VND'
 _VNSTOCK_PRICE_UNIT_THOUSAND = 'THOUSAND_VND'
-_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_VND
 
+# CRITICAL: System canonical unit for all quote (stock) prices
+# All prices stored in DailyPrice and served via API MUST be THOUSAND_VND
+# This is the source of truth and must never change
+# Conversion: if source is VND (KBS), divide by 1000; if already THOUSAND_VND (VCI), passthrough
+_SYSTEM_PRICE_UNIT = _VNSTOCK_PRICE_UNIT_THOUSAND
+
+# Money values (transaction amounts, whale thresholds) use VND canonical
+_SYSTEM_MONEY_UNIT = _VNSTOCK_PRICE_UNIT_VND
+
+# ==================== PRICE UNIT RESOLUTION FUNCTIONS ====================
 
 def _resolve_vnstock_price_unit(dataframe) -> str | None:
+    """Detect source price unit from adapter dataframe attributes.
+    
+    Adapter now sets 'price_unit_canonical' = 'THOUSAND_VND' after normalization.
+    This function checks for that seal.
+    """
     attrs = getattr(dataframe, 'attrs', None)
     if not isinstance(attrs, dict):
         return None
+    
+    # Check for NEW canonical seal from adapter
+    canonical_unit = str(attrs.get('price_unit_canonical') or '').strip().upper()
+    if canonical_unit == _VNSTOCK_PRICE_UNIT_THOUSAND:
+        return canonical_unit
+    
+    # Fallback to old detection (for compatibility during migration)
     unit = str(attrs.get('price_unit') or '').strip().upper()
     if unit in {_VNSTOCK_PRICE_UNIT_VND, _VNSTOCK_PRICE_UNIT_THOUSAND}:
         return unit
@@ -59,18 +83,32 @@ def _resolve_vnstock_price_unit(dataframe) -> str | None:
 
 
 def _resolve_price_scale_to_system_unit(price_unit: str | None) -> Decimal:
+    """Resolve scale factor to convert detected unit to system canonical.
+    
+    Now that adapter guarantees THOUSAND_VND output, scale should be 1.0.
+    This function exists for backward compatibility during migration.
+    """
     if price_unit == _VNSTOCK_PRICE_UNIT_VND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_THOUSAND:
         return Decimal('0.001')
-    if price_unit == _VNSTOCK_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_VND:
-        return Decimal('1000')
+    if price_unit == _VNSTOCK_PRICE_UNIT_THOUSAND and _SYSTEM_PRICE_UNIT == _VNSTOCK_PRICE_UNIT_THOUSAND:
+        # Already canonical - no conversion needed
+        return Decimal('1')
+    # Default: assume passthrough
     return Decimal('1')
 
 
 def _infer_price_unit_from_first_close(first_close: Decimal | None) -> str | None:
+    """DEPRECATED: Heuristic detection of price unit.
+    
+    No longer needed - adapter now guarantees canonical unit.
+    Kept for backward compatibility.
+    """
     if first_close is None or first_close <= 0:
         return None
-    if first_close >= Decimal('2000'):
+    if first_close > Decimal('1000'):
+        # Likely VND (full price like 26,600,000)
         return _VNSTOCK_PRICE_UNIT_VND
+    # Likely THOUSAND_VND (like 26,600)
     return _VNSTOCK_PRICE_UNIT_THOUSAND
 
 
@@ -1471,6 +1509,11 @@ def fetch_and_save_daily_prices(
 ) -> dict:
     """
     Kéo giá lịch sử (OHLCV) của `symbol` từ vnstock3 và lưu vào DailyPrice.
+    
+    CANONICAL UNIT GUARANTEE:
+    - Adapter now normalizes all prices to THOUSAND_VND before returning dataframe
+    - This function receives df with prices already in canonical unit
+    - price_scale should be 1.0 (no conversion needed)
 
     Tham số:
         symbol     — Mã chứng khoán (VD: 'VNM', 'VIC').
@@ -1508,19 +1551,32 @@ def fetch_and_save_daily_prices(
         logger.warning('vnstock3 không trả về dữ liệu cho %s (%s → %s)', symbol, start_date, end_date)
         return result
 
+    # NEW: Check for adapter's canonical unit seal
     detected_unit = _resolve_vnstock_price_unit(df)
+    
+    # If adapter didn't seal it (legacy fallback), try heuristic
     first_close = _to_decimal(df.iloc[0].get('close')) if not df.empty else None
     if detected_unit is None:
         detected_unit = _infer_price_unit_from_first_close(first_close)
+        logger.info('Used heuristic unit detection for %s: %s', symbol, detected_unit)
+    
+    # Calculate scale factor to system unit
+    # With new adapter, this should always be 1.0
     price_scale = _resolve_price_scale_to_system_unit(detected_unit)
 
     if price_scale != Decimal('1'):
         logger.info(
-            'Normalize vnstock prices for %s: price_unit=%s, scale=%s (target=%s)',
+            'Normalizing vnstock prices for %s: detected_unit=%s, scale=%s (target=%s)',
             symbol,
             detected_unit or 'UNKNOWN',
             price_scale,
             _SYSTEM_PRICE_UNIT,
+        )
+    else:
+        logger.debug(
+            'Prices for %s already canonical THOUSAND_VND (detected_unit=%s), no conversion needed',
+            symbol,
+            detected_unit,
         )
 
     # --- Lưu từng dòng vào DailyPrice (update_or_create để idempotent) ---
@@ -1537,6 +1593,10 @@ def fetch_and_save_daily_prices(
             if data is None:
                 result['errors'] += 1
                 continue
+            
+            # Add price_unit metadata to track canonical unit
+            # This helps future migrations and debugging
+            data['price_unit'] = _SYSTEM_PRICE_UNIT  # THOUSAND_VND
 
             try:
                 with db_transaction.atomic():
@@ -1556,8 +1616,8 @@ def fetch_and_save_daily_prices(
                 result['updated'] += 1
 
     logger.info(
-        'Sync %s: tạo mới=%d, cập nhật=%d, lỗi=%d',
-        symbol, result['created'], result['updated'], result['errors'],
+        'Sync %s: tạo mới=%d, cập nhật=%d, lỗi=%d (price_unit=%s)',
+        symbol, result['created'], result['updated'], result['errors'], _SYSTEM_PRICE_UNIT,
     )
     return result
 

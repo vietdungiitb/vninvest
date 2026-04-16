@@ -78,49 +78,6 @@ function resolveWatchlistPriceScale(currentPrice, prevPrice) {
   return 1;
 }
 
-function normalizeWatchlistQuoteUnit(item) {
-  // Detect price unit: realtime API may return VND absolute (>=2000), while DB/UI use nghin VND.
-  const currentRaw = toFiniteNumber(item?.current_price);
-  const prevRaw = toFiniteNumber(item?.prev_price);
-  const priceFactor = currentRaw !== null && currentRaw >= 2000 ? 0.001 : 1;
-
-  const normalizedCurrent = currentRaw === null ? item?.current_price : currentRaw * priceFactor;
-  const normalizedPrev = prevRaw === null
-    ? item?.prev_price
-    : (priceFactor === 0.001 && prevRaw >= 2000 ? prevRaw * 0.001 : prevRaw);
-
-  // Reconcile change_value unit against change_pct for both realtime and snapshot rows.
-  // This fixes mixed payloads where change_value is still absolute VND while price is nghin VND.
-  const changeValueRaw = toFiniteNumber(item?.change_value);
-  const pct = toFiniteNumber(item?.change_pct);
-  const normalizedChangeValue = (() => {
-    if (changeValueRaw === null) return null;
-
-    const hasPct = Number.isFinite(pct) && Math.abs(pct) > 1e-9;
-    const hasPrice = Number.isFinite(Number(normalizedCurrent)) && Math.abs(Number(normalizedCurrent)) > 1e-9;
-    if (hasPct && hasPrice) {
-      const expectedAbs = Math.abs(Number(normalizedCurrent) * pct / 100);
-      const candidates = [changeValueRaw, changeValueRaw * 0.001, changeValueRaw * 1000];
-      return candidates.reduce((best, next) => (
-        Math.abs(Math.abs(next) - expectedAbs) < Math.abs(Math.abs(best) - expectedAbs) ? next : best
-      ), candidates[0]);
-    }
-
-    return changeValueRaw * priceFactor;
-  })();
-
-  // change_pct is a dimensionless ratio — no scaling needed.
-  const normalizedChangePct = toFiniteNumber(item?.change_pct);
-
-  return {
-    ...item,
-    current_price: normalizedCurrent,
-    prev_price: normalizedPrev,
-    change_value: normalizedChangeValue,
-    change_pct: normalizedChangePct,
-  };
-}
-
 function ChangeCell({ value }) {
   if (value === null || value === undefined) {
     return <span className="text-gray-600 text-xs">—</span>;
@@ -380,22 +337,22 @@ export default function WatchlistPage() {
   const groupsWithRealtime = useMemo(
     () => groups.map((group) => ({
       ...group,
-      items: group.items.map((item) => normalizeWatchlistQuoteUnit(
+      items: group.items.map((item) =>
         mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {}),
-      )),
+      ),
     })),
     [groups, quotesBySymbol],
   );
 
   const trackedSymbolsWithRealtime = useMemo(
-    () => trackedSymbols.map((item) => normalizeWatchlistQuoteUnit(
+    () => trackedSymbols.map((item) =>
       mergeTickerIntoItem(item, quotesBySymbol[item.symbol] || {}),
-    )),
+    ),
     [trackedSymbols, quotesBySymbol],
   );
 
   const priceAlertsWithRealtime = useMemo(
-    () => priceAlerts.map((rule) => normalizeWatchlistQuoteUnit({
+    () => priceAlerts.map((rule) => ({
       ...rule,
       current_price: quotesBySymbol[rule.symbol]?.current_price ?? rule.current_price,
       stale: quotesBySymbol[rule.symbol]?.stale ?? false,

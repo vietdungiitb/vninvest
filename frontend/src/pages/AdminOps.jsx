@@ -194,16 +194,22 @@ export default function AdminOps() {
     circuit_window_seconds: '',
     circuit_breaker_timeout_threshold: '',
     circuit_breaker_cooldown_seconds: '',
+    offhours_cache_ttl_seconds: '',
+    session_close_retention_days: '7',
     include_group_symbols: false,
+    session_close_capture_enabled: true,
   });
   const [prefetchSettingsState, setPrefetchSettingsState] = useState('idle');
   const [prefetchSettingsMessage, setPrefetchSettingsMessage] = useState('');
   const [prefetchTimePolicyForm, setPrefetchTimePolicyForm] = useState({
     timezone: 'Asia/Ho_Chi_Minh',
+    market_code: 'VN_STOCK',
+    supported_timezones: 'Asia/Ho_Chi_Minh',
     open_time: '09:00',
     close_time: '15:00',
     pre_open_minutes: '30',
     post_close_minutes: '30',
+    holiday_dates: '',
     lunch_enabled: true,
     lunch_start: '11:30',
     lunch_end: '13:00',
@@ -218,8 +224,8 @@ export default function AdminOps() {
     pre_close_interval_seconds: '60',
     post_close_query_enabled: true,
     post_close_interval_seconds: '180',
-    offhours_query_enabled: false,
-    offhours_interval_seconds: '600',
+    offhours_query_enabled: true,
+    offhours_interval_seconds: '1200',
     jitter_percent: '15',
     cooldown_multiplier_on_429: '2.0',
     max_interval_seconds: '1800',
@@ -341,7 +347,10 @@ export default function AdminOps() {
           circuit_window_seconds: String(runtime.circuit_window_seconds ?? ''),
           circuit_breaker_timeout_threshold: String(runtime.circuit_breaker_timeout_threshold ?? ''),
           circuit_breaker_cooldown_seconds: String(runtime.circuit_breaker_cooldown_seconds ?? ''),
+          offhours_cache_ttl_seconds: String(runtime.offhours_cache_ttl_seconds ?? ''),
+          session_close_retention_days: String(runtime.session_close_retention_days ?? '7'),
           include_group_symbols: Boolean(runtime.include_group_symbols),
+          session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
         });
       }
       if (payload?.prefetch_time_policy) {
@@ -365,10 +374,15 @@ export default function AdminOps() {
 
         setPrefetchTimePolicyForm({
           timezone: String(policy.timezone || 'Asia/Ho_Chi_Minh'),
+          market_code: String(policy.market_code || 'VN_STOCK'),
+          supported_timezones: Array.isArray(policy.supported_timezones)
+            ? policy.supported_timezones.join(',')
+            : String(policy.timezone || 'Asia/Ho_Chi_Minh'),
           open_time: String(market.open_time || '09:00'),
           close_time: String(market.close_time || '15:00'),
           pre_open_minutes: String(market.pre_open_minutes ?? 30),
           post_close_minutes: String(market.post_close_minutes ?? 30),
+          holiday_dates: Array.isArray(market.holiday_dates) ? market.holiday_dates.join('\n') : '',
           lunch_enabled: Boolean(market.lunch_break?.enabled),
           lunch_start: String(market.lunch_break?.start || '11:30'),
           lunch_end: String(market.lunch_break?.end || '13:00'),
@@ -391,10 +405,15 @@ export default function AdminOps() {
         });
         setPrefetchTimePolicyInitial({
           timezone: String(policy.timezone || 'Asia/Ho_Chi_Minh'),
+          market_code: String(policy.market_code || 'VN_STOCK'),
+          supported_timezones: Array.isArray(policy.supported_timezones)
+            ? policy.supported_timezones.join(',')
+            : String(policy.timezone || 'Asia/Ho_Chi_Minh'),
           open_time: String(market.open_time || '09:00'),
           close_time: String(market.close_time || '15:00'),
           pre_open_minutes: String(market.pre_open_minutes ?? 30),
           post_close_minutes: String(market.post_close_minutes ?? 30),
+          holiday_dates: Array.isArray(market.holiday_dates) ? market.holiday_dates.join('\n') : '',
           lunch_enabled: Boolean(market.lunch_break?.enabled),
           lunch_start: String(market.lunch_break?.start || '11:30'),
           lunch_end: String(market.lunch_break?.end || '13:00'),
@@ -539,7 +558,10 @@ export default function AdminOps() {
       circuit_window_seconds: Number(prefetchSettingsForm.circuit_window_seconds),
       circuit_breaker_timeout_threshold: Number(prefetchSettingsForm.circuit_breaker_timeout_threshold),
       circuit_breaker_cooldown_seconds: Number(prefetchSettingsForm.circuit_breaker_cooldown_seconds),
+      offhours_cache_ttl_seconds: Number(prefetchSettingsForm.offhours_cache_ttl_seconds),
+      session_close_retention_days: Number(prefetchSettingsForm.session_close_retention_days),
       include_group_symbols: Boolean(prefetchSettingsForm.include_group_symbols),
+      session_close_capture_enabled: Boolean(prefetchSettingsForm.session_close_capture_enabled),
     };
 
     if (Object.values(payload).some((value) => typeof value === 'number' && Number.isNaN(value))) {
@@ -563,7 +585,10 @@ export default function AdminOps() {
         circuit_window_seconds: String(runtime.circuit_window_seconds ?? ''),
         circuit_breaker_timeout_threshold: String(runtime.circuit_breaker_timeout_threshold ?? ''),
         circuit_breaker_cooldown_seconds: String(runtime.circuit_breaker_cooldown_seconds ?? ''),
+        offhours_cache_ttl_seconds: String(runtime.offhours_cache_ttl_seconds ?? ''),
+        session_close_retention_days: String(runtime.session_close_retention_days ?? '7'),
         include_group_symbols: Boolean(runtime.include_group_symbols),
+        session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
       });
       setPrefetchSettingsState('success');
       setPrefetchSettingsMessage(t('adminOps.prefetchSettingsSaveSuccess'));
@@ -603,11 +628,21 @@ export default function AdminOps() {
 
     const payload = {
       timezone: String(prefetchTimePolicyForm.timezone || 'Asia/Ho_Chi_Minh').trim(),
+      market_code: String(prefetchTimePolicyForm.market_code || 'VN_STOCK').trim().toUpperCase(),
+      supported_timezones: String(prefetchTimePolicyForm.supported_timezones || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean),
       market: {
         open_time: String(prefetchTimePolicyForm.open_time || '').trim(),
         close_time: String(prefetchTimePolicyForm.close_time || '').trim(),
         pre_open_minutes: Number(prefetchTimePolicyForm.pre_open_minutes),
         post_close_minutes: Number(prefetchTimePolicyForm.post_close_minutes),
+        holiday_dates: String(prefetchTimePolicyForm.holiday_dates || '')
+          .replace(/\r/g, '\n')
+          .split(/\n|,/)
+          .map((item) => item.trim())
+          .filter(Boolean),
         lunch_break: {
           enabled: Boolean(prefetchTimePolicyForm.lunch_enabled),
           start: String(prefetchTimePolicyForm.lunch_start || '').trim(),
@@ -653,12 +688,21 @@ export default function AdminOps() {
       setPrefetchTimePolicyMessage(t('adminOps.prefetchTimePolicyValidationRequired'));
       return;
     }
+    if (!payload.market_code) {
+      setPrefetchTimePolicyState('error');
+      setPrefetchTimePolicyMessage(t('adminOps.prefetchPolicyMarketCodeRequired'));
+      return;
+    }
+    if (!payload.supported_timezones.length) {
+      payload.supported_timezones = [payload.timezone];
+    }
 
     const nextErrors = {};
     const setError = (field, message) => {
       nextErrors[field] = message;
     };
     const timeRegex = /^\d{2}:\d{2}$/;
+    const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
     const parseTime = (value) => {
       const [hh, mm] = String(value || '').split(':');
       return Number(hh) * 60 + Number(mm);
@@ -676,6 +720,11 @@ export default function AdminOps() {
     if (!timeRegex.test(payload.market.lunch_break.end)) {
       setError('lunch_end', t('adminOps.prefetchTimePolicyValidationTimeFormat'));
     }
+    payload.market.holiday_dates.forEach((value) => {
+      if (!isoDateRegex.test(value)) {
+        setError('holiday_dates', t('adminOps.prefetchTimePolicyValidationHolidayDateFormat'));
+      }
+    });
 
     if (Object.keys(nextErrors).length === 0) {
       if (parseTime(payload.market.open_time) >= parseTime(payload.market.close_time)) {
@@ -710,6 +759,7 @@ export default function AdminOps() {
     const jitterMax = Number(prefetchTimePolicyRulebook?.rate_limit_guard?.jitter_percent_max ?? 50);
     const multiplierMin = Number(prefetchTimePolicyRulebook?.rate_limit_guard?.cooldown_multiplier_on_429_min ?? 1);
     const maxIntervalMin = Number(prefetchTimePolicyRulebook?.rate_limit_guard?.max_interval_seconds_min ?? 60);
+    const maxHolidayDates = Number(prefetchTimePolicyRulebook?.market?.holiday_dates_max_items ?? 366);
 
     if (payload.rate_limit_guard.jitter_percent < jitterMin || payload.rate_limit_guard.jitter_percent > jitterMax) {
       setError('jitter_percent', t('adminOps.prefetchTimePolicyValidationJitter'));
@@ -719,6 +769,9 @@ export default function AdminOps() {
     }
     if (payload.rate_limit_guard.max_interval_seconds < maxIntervalMin) {
       setError('max_interval_seconds', t('adminOps.prefetchTimePolicyValidationMaxInterval'));
+    }
+    if (payload.market.holiday_dates.length > maxHolidayDates) {
+      setError('holiday_dates', t('adminOps.prefetchTimePolicyValidationHolidayDateMaxItems', { value: maxHolidayDates }));
     }
 
     const profileIntervals = {
@@ -1318,6 +1371,8 @@ export default function AdminOps() {
               ['circuit_window_seconds', t('adminOps.prefetchCircuitWindow')],
               ['circuit_breaker_timeout_threshold', t('adminOps.prefetchCircuitThreshold')],
               ['circuit_breaker_cooldown_seconds', t('adminOps.prefetchCircuitCooldown')],
+              ['offhours_cache_ttl_seconds', t('adminOps.prefetchOffhoursCacheTtl')],
+              ['session_close_retention_days', t('adminOps.prefetchSessionCloseRetentionDays')],
             ].map(([field, label]) => (
               <label key={field} className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
                 <span>{label}</span>
@@ -1338,6 +1393,14 @@ export default function AdminOps() {
                 onChange={(event) => handlePrefetchSettingsInput('include_group_symbols', event.target.checked)}
               />
               <span>{t('adminOps.prefetchIncludeGroupSymbols')}</span>
+            </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.session_close_capture_enabled}
+                onChange={(event) => handlePrefetchSettingsInput('session_close_capture_enabled', event.target.checked)}
+              />
+              <span>{t('adminOps.prefetchSessionCloseCaptureEnabled')}</span>
             </label>
             <div className="md:col-span-3 flex flex-wrap items-center gap-3">
               <button
@@ -1390,6 +1453,23 @@ export default function AdminOps() {
               />
             </label>
             <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.prefetchPolicyMarketCode')}</span>
+              <input
+                value={prefetchTimePolicyForm.market_code}
+                onChange={(event) => handlePrefetchTimePolicyInput('market_code', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.prefetchPolicySupportedTimezones')}</span>
+              <input
+                value={prefetchTimePolicyForm.supported_timezones}
+                onChange={(event) => handlePrefetchTimePolicyInput('supported_timezones', event.target.value)}
+                placeholder="Asia/Ho_Chi_Minh,UTC"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
               <span>{t('adminOps.prefetchPolicyOpenTime')}</span>
               <input
                 value={prefetchTimePolicyForm.open_time}
@@ -1432,6 +1512,17 @@ export default function AdminOps() {
                 onChange={(event) => handlePrefetchTimePolicyInput('weekend_mode', event.target.value)}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
               />
+            </label>
+            <label className="md:col-span-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.prefetchPolicyHolidayDates')}</span>
+              <textarea
+                rows={4}
+                value={prefetchTimePolicyForm.holiday_dates}
+                onChange={(event) => handlePrefetchTimePolicyInput('holiday_dates', event.target.value)}
+                placeholder="2026-04-30\n2026-05-01"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('adminOps.prefetchPolicyHolidayDatesHint')}</p>
             </label>
             <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <input
