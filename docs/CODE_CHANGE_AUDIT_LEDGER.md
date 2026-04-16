@@ -12,6 +12,41 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
 - Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
+## Entry 2026-04-16 - Backend dev compose runtime fix cho loi "He thong dang ban"
+
+Pham vi:
+- Dieu tra backend khi frontend hien thong bao "He thong dang ban. Vui long thu lai sau." trong luong auth/request co JWT.
+- Xac nhan root cause tu backend logs: DB dev chua migrate, thieu bang `auth_user`, dan den request auth no `500`.
+- Sua tan goc cau hinh `docker-compose.dev.yml` de khi chay dev stack standalone khong bi runtime drift so voi base compose.
+
+Root cause da xac nhan:
+- `docker-compose.dev.yml` dang duoc chay doc lap, nhung service `backend` khong co `command` tro vao `entrypoint.sh`, nen khong auto-run `manage.py migrate`.
+- `celery_worker` va `celery_beat` cung dang fallback ve `CMD` cua image backend (`daphne`), nen process runtime sai vai tro.
+- Service `db` khong mount `postgres_data`, nen schema dev co nguy co reset ve trang thai rong sau recreate.
+
+Danh sach tep da sua:
+- docker-compose.dev.yml
+  * Add `postgres_data` volume vao service `db`.
+  * Add healthcheck cho `db` va `redis`.
+  * Add `command: ["/bin/sh", "/app/entrypoint.sh"]` cho `backend` de auto migrate + collectstatic + start Daphne.
+  * Add `depends_on` health/service gating cho `backend`, `celery_worker`, `celery_beat`, `frontend`.
+  * Add command dung cho `celery_worker` va `celery_beat` thay vi fallback ve `daphne`.
+  * Giu frontend default host port la `80` theo yeu cau user.
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Backend log truoc fix: `django.db.utils.ProgrammingError: relation "auth_user" does not exist`.
+- Request bi anh huong da ghi nhan: `POST /api/portfolio/portfolios/` tra `500` khi DRF co auth lookup.
+- Sau fix can verify:
+  * `python manage.py migrate --noinput` pass trong container backend.
+  * `/api/health/` van `200`.
+  * Auth/public login endpoint khong con bi generic server error do schema thieu.
+
+Tac dong mong doi:
+- Dev stack standalone khong con khoi dong voi DB schema rong ma chua migrate.
+- Luong auth/JWT khong con no `500` vi thieu bang `auth_user`.
+- Celery dev processes chay dung command thay vi gia backend HTTP server.
+
 ## Entry 2026-04-16 - Phase 5: Performance Testing & Validation - Testing Guides
 
 Pham vi:
