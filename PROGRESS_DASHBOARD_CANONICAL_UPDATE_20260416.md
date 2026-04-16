@@ -104,6 +104,7 @@ File sizes after gzip:
 ### Documentation
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (Phases 0-1 audit)
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md` (Phases 2-6 audit)
+- ✅ `RELEASE_SNAPSHOT_PRICE_UNIT_CANONICAL_20260416.md` (QA sign-off snapshot)
 
 ### Phase 7 Runtime Validation
 - ✅ Command registered in Django management commands

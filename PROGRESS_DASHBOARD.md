@@ -38,6 +38,7 @@
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (phase 0-1 audit)
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md` (phase 2-6 audit)
 - ✅ `PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md` (executive update)
+- ✅ `RELEASE_SNAPSHOT_PRICE_UNIT_CANONICAL_20260416.md` (release snapshot for QA sign-off)
 
 **Status:** 
 - Phase 0: ✅ COMPLETE
@@ -84,6 +85,7 @@
 - backend/CHANGELOG.md (MODIFIED - 2026-04-16 canonical phase summary)
 - AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md (NEW)
 - PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md (NEW)
+- RELEASE_SNAPSHOT_PRICE_UNIT_CANONICAL_20260416.md (NEW)
 - PROGRESS_DASHBOARD.md (MODIFIED - status synchronized)
 
 ### Ticker Realtime + Offhours Close Accuracy (1+2+3)
