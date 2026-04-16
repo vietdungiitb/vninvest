@@ -32,7 +32,7 @@ Data poisoning bug (same stock showing as 26,600 | 0.00 | 23.80 in different UI 
 | **5** | **Prefetch** | `backend/portfolio/tasks_prefetch.py` (canonical comments) | ✅ VALIDATED |
 | **6a** | **Frontend** | `frontend/src/pages/Watchlist.jsx` (heuristic removed) | ✅ CLEANED |
 | **6b** | **Frontend** | `frontend/src/utils/dashboardRealtimeSelectors.js` (function removed) | ✅ CLEANED |
-| **6c** | **Frontend** | `frontend/src/pages/StockDetail.jsx` (identity functions) | ✅ CLEANED |
+| **6c** | **Frontend** | `frontend/src/pages/StockDetail.jsx` (normalize removed, finite helper) | ✅ CLEANED |
 
 ---
 
@@ -94,7 +94,7 @@ File sizes after gzip:
 ### Frontend Files (3 modified)
 - ✅ `frontend/src/pages/Watchlist.jsx` (heuristic removed)
 - ✅ `frontend/src/utils/dashboardRealtimeSelectors.js` (50-line function removed)
-- ✅ `frontend/src/pages/StockDetail.jsx` (heuristic functions → identity)
+- ✅ `frontend/src/pages/StockDetail.jsx` (heuristic functions removed)
 
 ### Test Files (Created & Passing)
 - ✅ `backend/tests/test_price_units_canonical.py` (340 lines, 40 tests)

@@ -100,17 +100,7 @@ function fmtVol(v) {
   }).format(Number(v));
 }
 
-function normalizeQuotePriceValue(value) {
-  // CANONICAL UNIT: Backend now guarantees all prices in THOUSAND_VND
-  // This function is kept (identity) for backward compatibility but does nothing
-  // All prices from API are already canonical, no heuristic detection needed
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function normalizeQuoteDeltaValue(value, currentPrice) {
-  // CANONICAL UNIT: Delta values also normalized at backend
-  // This function is kept (identity) for backward compatibility
+function finiteNumberOrNull(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -910,7 +900,7 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
               >
                 <span className="text-slate-500">{row.time}</span>
                 <span className={`font-semibold tabular-nums ${row.side === 'buy' ? 'text-emerald-300' : row.side === 'sell' ? 'text-rose-300' : 'text-slate-200'}`}>
-                  {row.price != null ? formatQuotePrice(normalizeQuotePriceValue(row.price)) : '—'}
+                  {row.price != null ? formatQuotePrice(finiteNumberOrNull(row.price)) : '—'}
                 </span>
                 <span className="text-right text-slate-300 tabular-nums">{fmtVol(row.volume)}</span>
                 <span className={`text-right text-[10px] font-medium ${row.side === 'buy' ? 'text-emerald-400' : row.side === 'sell' ? 'text-rose-400' : 'text-slate-400'}`}>
@@ -1155,8 +1145,8 @@ function PriceDepthPanel({ symbol, liveVolume }) {
             {depth.map((row) => (
               <div key={row.level} className="grid grid-cols-4 gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-sm">
                 <span className="text-slate-300">{fmtVol(row.bid_volume)}</span>
-                <span className="font-semibold text-emerald-300">{formatQuotePrice(normalizeQuotePriceValue(row.bid_price))}</span>
-                <span className="font-semibold text-rose-300">{formatQuotePrice(normalizeQuotePriceValue(row.ask_price))}</span>
+                <span className="font-semibold text-emerald-300">{formatQuotePrice(finiteNumberOrNull(row.bid_price))}</span>
+                <span className="font-semibold text-rose-300">{formatQuotePrice(finiteNumberOrNull(row.ask_price))}</span>
                 <span className="text-right text-slate-300">{fmtVol(row.ask_volume)}</span>
               </div>
             ))}
@@ -1177,7 +1167,7 @@ function PriceDepthPanel({ symbol, liveVolume }) {
           )}
           {ref && (
             <p className="mt-2 text-right text-[10px] text-slate-600">
-              {t('stockDetail.reference')} {formatQuotePrice(normalizeQuotePriceValue(ref))} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
+              {t('stockDetail.reference')} {formatQuotePrice(finiteNumberOrNull(ref))} · {data.fetched_at ? new Date(data.fetched_at).toLocaleTimeString(undefined) : ''}
             </p>
           )}
         </>
@@ -2180,30 +2170,30 @@ export default function StockDetail() {
     ? tickerSnapshot
     : liveQuote;
 
-  const overviewCurrentPrice = normalizeQuotePriceValue(overview?.current_price);
-  const overviewClosePrice = normalizeQuotePriceValue(overview?.close_price);
-  const liveCurrentPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.current_price);
+  const overviewCurrentPrice = finiteNumberOrNull(overview?.current_price);
+  const overviewClosePrice = finiteNumberOrNull(overview?.close_price);
+  const liveCurrentPrice = finiteNumberOrNull(resolvedRealtimeQuote.current_price);
   const currentPrice = liveCurrentPrice ?? overviewCurrentPrice ?? overviewClosePrice ?? null;
-  const liveReferencePrice = normalizeQuotePriceValue(
+  const liveReferencePrice = finiteNumberOrNull(
     resolvedRealtimeQuote.reference_price ?? resolvedRealtimeQuote.prev_price,
   );
-  const referencePrice = liveReferencePrice ?? normalizeQuotePriceValue(overview?.reference_price) ?? null;
-  const liveCeilingPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.ceiling_price);
-  const ceilingPrice = liveCeilingPrice ?? normalizeQuotePriceValue(overview?.ceiling_price) ?? null;
-  const liveFloorPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.floor_price);
-  const floorPrice = liveFloorPrice ?? normalizeQuotePriceValue(overview?.floor_price) ?? null;
-  const liveAveragePrice = normalizeQuotePriceValue(resolvedRealtimeQuote.average_price);
-  const averagePrice = liveAveragePrice ?? normalizeQuotePriceValue(overview?.average_price) ?? null;
+  const referencePrice = liveReferencePrice ?? finiteNumberOrNull(overview?.reference_price) ?? null;
+  const liveCeilingPrice = finiteNumberOrNull(resolvedRealtimeQuote.ceiling_price);
+  const ceilingPrice = liveCeilingPrice ?? finiteNumberOrNull(overview?.ceiling_price) ?? null;
+  const liveFloorPrice = finiteNumberOrNull(resolvedRealtimeQuote.floor_price);
+  const floorPrice = liveFloorPrice ?? finiteNumberOrNull(overview?.floor_price) ?? null;
+  const liveAveragePrice = finiteNumberOrNull(resolvedRealtimeQuote.average_price);
+  const averagePrice = liveAveragePrice ?? finiteNumberOrNull(overview?.average_price) ?? null;
 
-  const overviewChangeValue = normalizeQuoteDeltaValue(overview?.change_value, currentPrice);
-  const liveChangeValue = normalizeQuoteDeltaValue(resolvedRealtimeQuote.change_value, currentPrice);
+  const overviewChangeValue = finiteNumberOrNull(overview?.change_value);
+  const liveChangeValue = finiteNumberOrNull(resolvedRealtimeQuote.change_value);
   const changeValue = liveChangeValue ?? overviewChangeValue ?? null;
   const changePct = Number.isFinite(Number(resolvedRealtimeQuote.change_pct))
     ? Number(resolvedRealtimeQuote.change_pct)
     : (Number.isFinite(Number(overview?.change_pct)) ? Number(overview.change_pct) : null);
 
-  const liveHighPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.high_price) ?? normalizeQuotePriceValue(overview?.high_price);
-  const liveLowPrice = normalizeQuotePriceValue(resolvedRealtimeQuote.low_price) ?? normalizeQuotePriceValue(overview?.low_price);
+  const liveHighPrice = finiteNumberOrNull(resolvedRealtimeQuote.high_price) ?? finiteNumberOrNull(overview?.high_price);
+  const liveLowPrice = finiteNumberOrNull(resolvedRealtimeQuote.low_price) ?? finiteNumberOrNull(overview?.low_price);
   const liveVolume = resolvedRealtimeQuote.volume ?? overview?.volume ?? null;
 
   const changeClass = useMemo(() => {
@@ -2224,7 +2214,7 @@ export default function StockDetail() {
     const points = chartData
       .map((item) => {
         const ts = item?.date ? new Date(item.date).getTime() : null;
-        const close = normalizeQuotePriceValue(item?.close);
+        const close = finiteNumberOrNull(item?.close);
         if (!Number.isFinite(ts) || !Number.isFinite(close)) {
           return null;
         }
@@ -2822,8 +2812,8 @@ export default function StockDetail() {
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.range52w')}</p>
-                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(normalizeQuotePriceValue(overview.week52_low))}</p>
-                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(normalizeQuotePriceValue(overview.week52_high))}</p>
+                <p className="mt-1 text-sm font-medium text-slate-100">{formatQuotePrice(finiteNumberOrNull(overview.week52_low))}</p>
+                <p className="mt-1 text-[10px] text-slate-500">→ {formatQuotePrice(finiteNumberOrNull(overview.week52_high))}</p>
               </div>
               <div className="card-compact">
                 <p className="text-label">{t('stockDetail.average')}</p>

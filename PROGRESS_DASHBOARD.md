@@ -32,7 +32,7 @@
 - ✅ `backend/portfolio/tasks_prefetch.py` (canonical guard comments)
 - ✅ `frontend/src/pages/Watchlist.jsx` (watchlist heuristic removed)
 - ✅ `frontend/src/utils/dashboardRealtimeSelectors.js` (dashboard heuristic removed)
-- ✅ `frontend/src/pages/StockDetail.jsx` (heuristics converted to identity)
+- ✅ `frontend/src/pages/StockDetail.jsx` (normalize helpers removed, replaced by `finiteNumberOrNull`)
 - ✅ 2 new test suites: 48/48 tests passing
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md` (phase 0-1 audit)
 - ✅ `AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md` (phase 2-6 audit)
@@ -67,6 +67,18 @@
 - backend/tests/test_adapter_canonical.py (NEW - 8 tests)
 - backend/portfolio/services.py (MODIFIED)
 - AUDIT_PRICE_UNIT_CANONICAL_PHASE1_20260416.md (NEW)
+
+### Price Unit Canonical Refactor (Phases 2-8)
+- backend/portfolio/services.py (MODIFIED)
+- backend/portfolio/market_data_service.py (MODIFIED)
+- backend/portfolio/realtime/collector.py (MODIFIED)
+- backend/portfolio/tasks_prefetch.py (MODIFIED)
+- frontend/src/pages/Watchlist.jsx (MODIFIED)
+- frontend/src/utils/dashboardRealtimeSelectors.js (MODIFIED)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - normalize removed)
+- AUDIT_PRICE_UNIT_CANONICAL_PHASE2_6_20260416.md (NEW)
+- PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md (NEW)
+- PROGRESS_DASHBOARD.md (MODIFIED - status synchronized)
 
 ### Ticker Realtime + Offhours Close Accuracy (1+2+3)
 - backend/portfolio/runtime_policy_helpers.py

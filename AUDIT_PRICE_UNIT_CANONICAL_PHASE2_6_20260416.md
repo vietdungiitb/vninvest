@@ -265,7 +265,7 @@ Prefetch task extracts prices from market_data_service (which trusts adapter). B
 
 **Changes Made:**
 
-1. **CONVERTED: `normalizeQuotePriceValue()` function to identity**
+1. **REMOVED: `normalizeQuotePriceValue()` heuristic helper**
    
    **Before (Heuristic Logic - ~13 lines):**
    ```javascript
@@ -283,18 +283,15 @@ Prefetch task extracts prices from market_data_service (which trusts adapter). B
    }
    ```
    
-   **After (Identity Function):**
+   **After (Removed, replaced by generic finite parser):**
    ```javascript
-   function normalizeQuotePriceValue(value) {
-     // CANONICAL UNIT: Backend now guarantees all prices in THOUSAND_VND
-     // This function is kept (identity) for backward compatibility but does nothing
-     // All prices from API are already canonical, no heuristic detection needed
+   function finiteNumberOrNull(value) {
      const parsed = Number(value);
      return Number.isFinite(parsed) ? parsed : null;
    }
    ```
 
-2. **CONVERTED: `normalizeQuoteDeltaValue()` function to identity**
+2. **REMOVED: `normalizeQuoteDeltaValue()` heuristic helper**
    
    **Before (Complex Heuristic - ~14 lines):**
    ```javascript
@@ -309,22 +306,17 @@ Prefetch task extracts prices from market_data_service (which trusts adapter). B
    }
    ```
    
-   **After (Identity Function):**
+   **After:**
    ```javascript
-   function normalizeQuoteDeltaValue(value, currentPrice) {
-     // CANONICAL UNIT: Delta values also normalized at backend
-     // This function is kept (identity) for backward compatibility
-     const parsed = Number(value);
-     return Number.isFinite(parsed) ? parsed : null;
-   }
+   // Delta uses finiteNumberOrNull(value) directly at call-sites
    ```
 
-3. **Call Sites Updated (17 total - now identity-safe):**
+3. **Call Sites Updated (all normalize call-sites removed):**
    - Line 930: Intraday price display
    - Lines 1175-1176: Bid/ask depth prices (2 calls)
    - Line 1197: Reference price display
    - Lines 2200-2244: Overview prices, live prices, high/low (8+ calls)
-   - Total: 17 call sites now pass through canonical prices unchanged
+   - Total: no remaining normalize call-site in StockDetail
 
 4. **Result:** StockDetail displays prices consistently across all sections
 
@@ -439,9 +431,9 @@ The build folder is ready to be deployed.
    - 51 lines deleted
 
 3. ✅ [frontend/src/pages/StockDetail.jsx](frontend/src/pages/StockDetail.jsx)
-   - Heuristic functions converted to identity (~24 lines)
-   - 17 call sites now send canonical prices directly
-   - Net change: -17 lines
+   - Heuristic normalize helpers removed
+   - Call sites switched to `finiteNumberOrNull(...)`
+   - No remaining normalize function/call in this file
 
 ### Test Files (Created in Phase 0, present for Phase 2-6):
 
