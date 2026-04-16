@@ -808,7 +808,7 @@ function SymbolInvestigationPanel({ selectedSymbol, onClose, t, localeTag, forma
 }
 
 export default function WhaleAlertsHub() {
-  const { ability, userPlan } = usePortfolio();
+  const { ability, userPlan, isAuthenticated } = usePortfolio();
   const { t, localeTag, formatDateTime } = useI18n();
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [watchlistGroups, setWatchlistGroups] = useState([]);
@@ -979,9 +979,16 @@ export default function WhaleAlertsHub() {
     setError('');
 
     try {
+      const trackedSymbolsRequest = isAuthenticated
+        ? getTrackedSymbols()
+        : Promise.resolve({ data: [] });
+      const watchlistGroupsRequest = isAuthenticated
+        ? getWatchlistGroups()
+        : Promise.resolve({ data: [] });
+
       const requests = [
-        getTrackedSymbols(),
-        getWatchlistGroups(),
+        trackedSymbolsRequest,
+        watchlistGroupsRequest,
         loadAggregateFeed({
           cursor: null,
           append: false,
@@ -1013,7 +1020,7 @@ export default function WhaleAlertsHub() {
         setLoading(false);
       }
     }
-  }, [aggregatePageSize, canReadAdvisory, feedSort, feedWindow, loadAggregateFeed, selectedFeedScope, t]);
+  }, [aggregatePageSize, canReadAdvisory, feedSort, feedWindow, isAuthenticated, loadAggregateFeed, selectedFeedScope, t]);
 
   useEffect(() => {
     return () => {
