@@ -12,6 +12,34 @@ Tai lieu nay la noi luu tru bat buoc danh sach tep da sua sau moi cong viec hoan
 - File plan bat buoc dat trong `docs/` theo policy: `docs/IMPLEMENTATION_PLANNING_POLICY.md`.
 - Moi entry audit cho sua doi lon/tinh nang moi phai tham chieu den file plan da dung de trien khai.
 
+## Entry 2026-04-16 - Root-cause fix cho flashing + stale dashboard data
+
+Pham vi:
+- Sua tan goc luong realtime dashboard thay vi va vi component-level:
+  1. Chuan hoa symbol key o hook realtime de tranh mismatch key giua WS/poll/API va UI.
+  2. On dinh alert identity/timestamp de danh sach "Ma nong" va "Trung tam canh bao hop nhat" khong bi reorder/chop giat lien tuc.
+  3. Loai bo animation pulse gan theo index dau danh sach (nguon gay nhap nhay gia).
+
+Root cause da xac nhan:
+- Symbol key khong duoc normalize tap trung trong `useRealtimeFeedLegacy`, dan den truong hop quote duoc cap nhat theo key khac (vd lower/trim variance), trong khi UI lookup theo uppercase.
+- Alert tong hop tao `id/ts` dong bang `new Date().toISOString()` moi render cho stale/price-shock alerts, lam danh sach thay doi thu tu va trigger visual flashing.
+
+Danh sach tep da sua:
+- frontend/src/hooks/useRealtimeFeedLegacy.js
+- frontend/src/components/DashboardRealtimePanel.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Frontend build: `npm run build` pass (Compiled successfully).
+- Realtime hook da bo sung normalize symbol + lookup fallback key strategy (`UPPER/raw/lower`).
+- Unified alert list da dung stable id/timestamp cho stale/price shock alerts, bo tie-break unstable sort.
+- Loai bo class `animate-pulse-once` tren item alert dau de tranh flashing gia.
+
+Tac dong mong doi:
+- Khu vuc "Ma nong" va "Trung tam canh bao hop nhat" on dinh, khong nhay nhap theo tung nhip render.
+- Bang "Trang thai thi truong theo ma" nhan duoc du lieu quote dung key, giam tinh trang hien thi `—` keo dai.
+- Sau F5, quotes duoc hydrate dung symbol key va cap nhat theo feed moi thay vi tiep tuc bieu hien stale state.
+
 ## Entry 2026-04-16 - Unified Realtime Table + Polling Optimization (Phase 1-4)
 
 Pham vi:

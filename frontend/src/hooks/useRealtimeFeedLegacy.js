@@ -9,6 +9,21 @@ function readEventField(payload, key) {
   return payload?.[key] ?? payload?.data?.[key];
 }
 
+function normalizeSymbol(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function getQuoteBySymbol(quotesBySymbol, symbol) {
+  const normalized = normalizeSymbol(symbol);
+  if (!normalized) return {};
+  return (
+    quotesBySymbol?.[normalized]
+    || quotesBySymbol?.[symbol]
+    || quotesBySymbol?.[String(symbol || '').trim().toLowerCase()]
+    || {}
+  );
+}
+
 function isValidQuotePrice(value) {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0;
@@ -27,7 +42,7 @@ function mergeQuote(prev, update) {
 
   return {
     ...prev,
-    symbol: update.symbol ?? prev.symbol,
+    symbol: normalizeSymbol(update.symbol ?? prev.symbol),
     current_price: nextCurrentPrice,
     prev_price: update.prev_price ?? prev.prev_price,
     change_value: update.change_value ?? prev.change_value,
@@ -105,7 +120,8 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   const fresh = [];
 
   (symbols || []).forEach((symbol) => {
-    const quote = normalizedQuotes[symbol] || {};
+    const normalizedSymbol = normalizeSymbol(symbol);
+    const quote = getQuoteBySymbol(normalizedQuotes, normalizedSymbol);
     const isMissing = !isValidQuotePrice(quote.current_price);
     const isOffhoursSessionClose = quote.data_semantic === 'last_session_close'
       || ['offhours', 'post_close', 'pre_open'].includes(String(quote.market_phase || '').toLowerCase());
@@ -115,9 +131,9 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
       : (quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20));
 
     if (isMissing || isStale) {
-      staleOrMissing.push(symbol);
+      staleOrMissing.push(normalizedSymbol);
     } else {
-      fresh.push(symbol);
+      fresh.push(normalizedSymbol);
     }
   });
 
@@ -256,17 +272,24 @@ export default function useRealtimeFeedLegacy({
     setQuotesBySymbol((prev) => {
       const next = {};
       normalizedSymbols.forEach((symbol) => {
-        next[symbol] = prev[symbol] || { symbol };
+        const normalizedSymbol = normalizeSymbol(symbol);
+        const existing = getQuoteBySymbol(prev, normalizedSymbol);
+        next[normalizedSymbol] = existing?.symbol ? existing : { symbol: normalizedSymbol };
       });
       return next;
     });
   }, [normalizedSymbols, enabled]);
 
   const applyTickerUpdate = useCallback((update) => {
-    if (!update?.symbol) return;
+    const normalizedSymbol = normalizeSymbol(update?.symbol);
+    if (!normalizedSymbol) return;
+
     setQuotesBySymbol((prev) => ({
       ...prev,
-      [update.symbol]: mergeQuote(prev[update.symbol] || { symbol: update.symbol }, update),
+      [normalizedSymbol]: mergeQuote(
+        getQuoteBySymbol(prev, normalizedSymbol) || { symbol: normalizedSymbol },
+        { ...update, symbol: normalizedSymbol },
+      ),
     }));
   }, []);
 

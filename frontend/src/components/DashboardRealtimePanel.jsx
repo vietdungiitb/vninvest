@@ -112,6 +112,17 @@ function localizeUnifiedHeadline(headline, t) {
   return headline;
 }
 
+function toStableAlertTimestamp(...values) {
+  for (const value of values) {
+    if (!value) continue;
+    const ts = new Date(value).getTime();
+    if (Number.isFinite(ts) && ts > 0) {
+      return new Date(ts).toISOString();
+    }
+  }
+  return null;
+}
+
 export default function DashboardRealtimePanel({
   holdings,
   trackedSymbolNames = [],
@@ -424,10 +435,11 @@ export default function DashboardRealtimePanel({
         const pct = Number(item.change_pct || 0);
         const absPct = Math.abs(pct);
         const severity = absPct >= 7 ? 'high' : 'medium';
+        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
         return {
-          id: `price-${item.symbol}-${item.last_date || item.freshness_seconds || 'now'}`,
+          id: `price-${item.symbol}`,
           symbol: item.symbol,
-          ts: item.last_date || new Date().toISOString(),
+          ts: stableTs,
           source: 'price_shock',
           severity,
           headline: pct >= 0
@@ -442,17 +454,20 @@ export default function DashboardRealtimePanel({
     const staleUnified = quoteList
       .filter((item) => item?.symbol && item?.stale)
       .slice(0, 3)
-      .map((item) => ({
-        id: `stale-${item.symbol}-${item.freshness_seconds || 'na'}`,
+      .map((item) => {
+        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
+        return {
+        id: `stale-${item.symbol}`,
         symbol: item.symbol,
-        ts: new Date().toISOString(),
+        ts: stableTs,
         source: 'stale_quote',
         severity: 'low',
         headline: t('dashboardRealtime.unifiedHeadlineStaleQuote'),
         detail: t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: formatNumber(item.freshness_seconds ?? 0) }),
         confidence: null,
         to: `/stocks/${item.symbol}`,
-      }));
+      };
+      });
 
     const combined = [...whaleAlerts, ...darkFlowUnified, ...priceShockUnified, ...staleUnified];
     const backendNormalized = (backendUnifiedSnapshot || []).map((item) => ({
@@ -480,11 +495,13 @@ export default function DashboardRealtimePanel({
       const aScore = severityWeight(a.severity);
       const bScore = severityWeight(b.severity);
       if (aScore !== bScore) return bScore - aScore;
-      return new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime();
+      const timeDelta = new Date(b.ts || 0).getTime() - new Date(a.ts || 0).getTime();
+      if (timeDelta !== 0) return timeDelta;
+      return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
     return deduped.slice(0, 50);
-  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, mergedAlerts, quoteList, t]);
+  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
 
   const alertSummary = useMemo(() => {
     return unifiedAlerts.reduce((acc, item) => {
@@ -671,7 +688,8 @@ export default function DashboardRealtimePanel({
       .sort((a, b) => {
         if (b.critical !== a.critical) return b.critical - a.critical;
         if (b.high !== a.high) return b.high - a.high;
-        return b.total - a.total;
+        if (b.total !== a.total) return b.total - a.total;
+        return String(a.symbol || '').localeCompare(String(b.symbol || ''));
       })
       .slice(0, 5);
   }, [unifiedAlerts]);
@@ -1065,7 +1083,7 @@ export default function DashboardRealtimePanel({
                         to={alert.to || `/stocks/${alert.symbol}`}
                         className="block"
                       >
-                        <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)} ${index === 0 ? 'animate-pulse-once' : ''}`}>
+                        <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)}`}>
                           <div className="flex items-center justify-between gap-2">
                             <span className="font-bold text-white text-[13px]">{alert.symbol || 'N/A'}</span>
                             <div className="flex items-center gap-2">
