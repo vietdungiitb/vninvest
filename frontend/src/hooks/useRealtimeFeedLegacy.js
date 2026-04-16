@@ -35,6 +35,9 @@ function mergeQuote(prev, update) {
     ? Math.max(0, Math.floor((Date.now() - new Date(eventTimestamp).getTime()) / 1000))
     : null;
   const inferredFreshness = Number.isFinite(eventAgeSeconds) ? eventAgeSeconds : null;
+  const nextAgeSeconds = Number.isFinite(Number(update.age_seconds))
+    ? Number(update.age_seconds)
+    : inferredFreshness;
 
   const nextCurrentPrice = isValidQuotePrice(update.current_price)
     ? Number(update.current_price)
@@ -51,9 +54,14 @@ function mergeQuote(prev, update) {
     high_price: update.high_price ?? prev.high_price,
     low_price: update.low_price ?? prev.low_price,
     volume: update.volume ?? prev.volume,
-    freshness_seconds: update.freshness_seconds ?? inferredFreshness ?? prev.freshness_seconds,
-    stale: update.stale ?? (inferredFreshness !== null ? inferredFreshness > 30 : prev.stale),
+    freshness_seconds: update.freshness_seconds ?? nextAgeSeconds ?? prev.freshness_seconds,
+    age_seconds: update.age_seconds ?? nextAgeSeconds ?? prev.age_seconds,
+    stale: update.stale ?? (nextAgeSeconds !== null ? nextAgeSeconds > 30 : prev.stale),
+    stale_over_threshold: update.stale_over_threshold ?? prev.stale_over_threshold ?? false,
+    stale_threshold_seconds: update.stale_threshold_seconds ?? prev.stale_threshold_seconds ?? null,
     last_date: eventTimestamp ?? prev.last_date,
+    source_event_at: update.source_event_at ?? prev.source_event_at,
+    served_at: update.served_at ?? prev.served_at,
     market_phase: update.market_phase ?? prev.market_phase,
     market_code: update.market_code ?? prev.market_code,
     data_semantic: update.data_semantic ?? prev.data_semantic,
@@ -114,10 +122,11 @@ function computeNextBackoffMs(currentBackoffMs) {
   return Math.min(currentBackoffMs * 2, 120000);
 }
 
-function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
+export function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   const normalizedQuotes = quotesBySymbol || {};
   const staleOrMissing = [];
   const fresh = [];
+  let hasOverThreshold = false;
 
   (symbols || []).forEach((symbol) => {
     const normalizedSymbol = normalizeSymbol(symbol);
@@ -126,9 +135,15 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
     const isOffhoursSessionClose = quote.data_semantic === 'last_session_close'
       || ['offhours', 'post_close', 'pre_open'].includes(String(quote.market_phase || '').toLowerCase());
     const freshnessSeconds = Number(quote.freshness_seconds);
+    const ageSeconds = Number(quote.age_seconds);
+    const staleOverThreshold = Boolean(quote.stale_over_threshold);
     const isStale = isOffhoursSessionClose
       ? false
-      : (quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20));
+      : (staleOverThreshold || quote.stale || (Number.isFinite(freshnessSeconds) && freshnessSeconds > 20));
+
+    if (staleOverThreshold || (Number.isFinite(ageSeconds) && Number.isFinite(quote.stale_threshold_seconds) && ageSeconds > Number(quote.stale_threshold_seconds))) {
+      hasOverThreshold = true;
+    }
 
     if (isMissing || isStale) {
       staleOrMissing.push(normalizedSymbol);
@@ -138,10 +153,36 @@ function normalizePollSymbolCandidates(symbols, quotesBySymbol, wsHealthy) {
   });
 
   if (!wsHealthy) {
-    return [...staleOrMissing, ...fresh];
+    return {
+      symbols: [...staleOrMissing, ...fresh],
+      hasOverThreshold,
+    };
   }
 
-  return staleOrMissing;
+  return {
+    symbols: staleOrMissing,
+    hasOverThreshold,
+  };
+}
+
+export function resolveRealtimePollIntervalMs({
+  wsHealthy,
+  hasRecoveryCandidates,
+  pollInterval,
+  hasOverThresholdCandidates,
+  staleResyncRetryMs,
+  wsHealthyRecoveryPollIntervalMs,
+  wsHealthyMinPollIntervalMs,
+}) {
+  const effectiveIntervalMs = hasRecoveryCandidates
+    ? wsHealthyRecoveryPollIntervalMs
+    : (wsHealthy
+      ? Math.max(pollInterval, wsHealthyMinPollIntervalMs)
+      : Math.max(pollInterval, 5000));
+
+  return hasOverThresholdCandidates
+    ? Math.min(effectiveIntervalMs, staleResyncRetryMs)
+    : effectiveIntervalMs;
 }
 
 function pickPollBatch(symbols, cursor, batchSize) {
@@ -169,6 +210,7 @@ export default function useRealtimeFeedLegacy({
   maxAlerts = 5,
   enabled = true,
 }) {
+  const STALE_RESYNC_RETRY_MS = 3000;
   const POLL_BATCH_SIZE = 4;
   const WS_HEALTHY_POLL_BATCH_SIZE = 2;
   const WS_HEALTHY_RECOVERY_BATCH_SIZE = 16; // Increased from 8 for faster recovery
@@ -191,6 +233,7 @@ export default function useRealtimeFeedLegacy({
     unsubscribed: 0,
     polling_successes: 0,
     polling_failures: 0,
+    intraday_retry_3s_total: 0,
     circuit_breaker_trips: 0,
   });
   const [lastLatencyMs, setLastLatencyMs] = useState(null);
@@ -330,8 +373,13 @@ export default function useRealtimeFeedLegacy({
               low_price: data.low_price,
               volume: data.volume,
               freshness_seconds: data.freshness_seconds,
+              age_seconds: data.age_seconds,
               stale: data.stale,
+              stale_over_threshold: data.stale_over_threshold,
+              stale_threshold_seconds: data.stale_threshold_seconds,
               last_date: data.last_date,
+              source_event_at: data.source_event_at,
+              served_at: data.served_at,
               market_phase: data.market_phase,
               market_code: data.market_code,
               data_semantic: data.data_semantic,
@@ -394,11 +442,13 @@ export default function useRealtimeFeedLegacy({
       if (!token || !syms.length) return;
 
       const wsHealthy = wsHealthyRef.current;
-      const pollCandidates = normalizePollSymbolCandidates(
+      const candidateResult = normalizePollSymbolCandidates(
         syms,
         quotesBySymbolRef.current,
         wsHealthy,
       );
+      const pollCandidates = candidateResult.symbols;
+      const hasOverThresholdCandidates = candidateResult.hasOverThreshold;
 
       if (!pollCandidates.length) {
         return;
@@ -406,13 +456,17 @@ export default function useRealtimeFeedLegacy({
 
       // Only enter recovery mode if WS healthy AND >= 3 missing symbols (reduces unnecessary recovery polling)
       const hasRecoveryCandidates = wsHealthy && pollCandidates.length >= WS_HEALTHY_RECOVERY_MIN_CANDIDATES;
-      const effectiveIntervalMs = hasRecoveryCandidates
-        ? WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS
-        : (wsHealthy
-          ? Math.max(pollIntervalRef.current, WS_HEALTHY_MIN_POLL_INTERVAL_MS)
-          : Math.max(pollIntervalRef.current, 5000));
+      const targetIntervalMs = resolveRealtimePollIntervalMs({
+        wsHealthy,
+        hasRecoveryCandidates,
+        pollInterval: pollIntervalRef.current,
+        hasOverThresholdCandidates,
+        staleResyncRetryMs: STALE_RESYNC_RETRY_MS,
+        wsHealthyRecoveryPollIntervalMs: WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS,
+        wsHealthyMinPollIntervalMs: WS_HEALTHY_MIN_POLL_INTERVAL_MS,
+      });
 
-      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < effectiveIntervalMs) {
+      if (lastPollAtRef.current && (Date.now() - lastPollAtRef.current) < targetIntervalMs) {
         return;
       }
 
@@ -421,6 +475,12 @@ export default function useRealtimeFeedLegacy({
       }
 
       lastPollAtRef.current = Date.now();
+      if (hasOverThresholdCandidates) {
+        setEventCounts((prev) => ({
+          ...prev,
+          intraday_retry_3s_total: prev.intraday_retry_3s_total + 1,
+        }));
+      }
 
       const { batch: pollBatch, nextCursor } = pickPollBatch(
         pollCandidates,
@@ -454,8 +514,13 @@ export default function useRealtimeFeedLegacy({
               low_price: data.low_price,
               volume: data.volume,
               freshness_seconds: data.freshness_seconds,
+              age_seconds: data.age_seconds,
               stale: data.stale,
+              stale_over_threshold: data.stale_over_threshold,
+              stale_threshold_seconds: data.stale_threshold_seconds,
               last_date: data.last_date,
+              source_event_at: data.source_event_at,
+              served_at: data.served_at,
               market_phase: data.market_phase,
               market_code: data.market_code,
               data_semantic: data.data_semantic,

@@ -105,6 +105,32 @@ function finiteNumberOrNull(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function isRealtimeQuoteScaleCompatible(candidateQuote, overview) {
+  const baselinePrice = finiteNumberOrNull(
+    overview?.current_price ?? overview?.close_price ?? overview?.reference_price,
+  );
+  const candidatePrice = finiteNumberOrNull(
+    candidateQuote?.current_price ?? candidateQuote?.reference_price ?? candidateQuote?.prev_price,
+  );
+
+  if (candidatePrice === null || baselinePrice === null || baselinePrice <= 0) {
+    return true;
+  }
+
+  const ratio = Math.max(candidatePrice, baselinePrice) / Math.min(candidatePrice, baselinePrice);
+  return ratio <= 20;
+}
+
+function pickRealtimeQuoteCandidate(preferredQuote, fallbackQuote, overview) {
+  if (preferredQuote?.current_price != null && isRealtimeQuoteScaleCompatible(preferredQuote, overview)) {
+    return preferredQuote;
+  }
+  if (fallbackQuote?.current_price != null && isRealtimeQuoteScaleCompatible(fallbackQuote, overview)) {
+    return fallbackQuote;
+  }
+  return {};
+}
+
 function advisoryStatusLabel(status, t) {
   const map = {
     overbought: t('stockDetail.statusOverbought'),
@@ -1243,10 +1269,15 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
 
   const years = financials?.years || [];
   if (!years.length) {
+    const isUpstreamUnavailable = financials?.source === 'vnstock_unavailable';
     return (
       <section className="card-section p-4 xl:col-span-3">
         <p className="text-label pb-2.5 border-b border-slate-800">{t('stockDetail.financialMetricsYearly')}</p>
-        <p className="mt-4 text-sm text-slate-500">{t('stockDetail.noFinancialData')}</p>
+        <p className="mt-4 text-sm text-slate-500">
+          {isUpstreamUnavailable
+            ? t('stockDetail.financialDataTemporarilyUnavailable')
+            : t('stockDetail.noFinancialData')}
+        </p>
       </section>
     );
   }
@@ -2200,9 +2231,11 @@ export default function StockDetail() {
   }, [normalizedSymbol]);
 
   const liveQuote = quotesBySymbol[normalizedSymbol] || {};
-  const resolvedRealtimeQuote = tickerSnapshot?.current_price != null
-    ? tickerSnapshot
-    : liveQuote;
+  const resolvedRealtimeQuote = pickRealtimeQuoteCandidate(
+    tickerSnapshot,
+    liveQuote,
+    overview,
+  );
 
   const overviewCurrentPrice = finiteNumberOrNull(overview?.current_price);
   const overviewClosePrice = finiteNumberOrNull(overview?.close_price);

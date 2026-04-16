@@ -10,6 +10,7 @@ from portfolio.models import UserConfig
 from portfolio.observability import (
     get_whale_pipeline_health_summary,
     get_market_observability_snapshot,
+    record_intraday_freshness_observation,
     record_whale_dedup_observation,
     record_whale_event_observation,
     reset_market_observability,
@@ -48,6 +49,12 @@ class MarketObservabilityTests(APITestCase):
             'trades': [],
             'total': 0,
             'source': 'mock',
+            'stale': True,
+            'stale_over_threshold': True,
+            'age_seconds': 14,
+            'stale_threshold_seconds': 10,
+            'served_at': '2026-04-16T10:36:58+07:00',
+            'source_event_at': '2026-04-16T10:36:44+07:00',
         }
 
         response = self.client.get('/api/realtime/intraday/VCB/?page_size=50')
@@ -59,6 +66,9 @@ class MarketObservabilityTests(APITestCase):
         self.assertGreaterEqual(payload['overall']['http_requests'], 1)
         self.assertIn('intraday-matched', payload['endpoints'])
         self.assertIn('p95', payload['endpoints']['intraday-matched']['latency_ms'])
+        self.assertIn('intraday_freshness', payload)
+        self.assertIn('age_seconds', payload['intraday_freshness'])
+        self.assertIn('stale_over_threshold_total', payload['intraday_freshness'])
 
     @patch('portfolio.market_data_service.fetch_intraday_dataframe')
     @patch('portfolio.market_data_service.is_vnstock_rate_limited')
@@ -123,6 +133,23 @@ class MarketObservabilityTests(APITestCase):
         self.assertEqual(summary['freshness']['sample_size'], 0)
         self.assertEqual(summary['snapshot_recovery']['events_total'], 0)
 
+    def test_market_observability_snapshot_contains_intraday_freshness_counters(self):
+        record_intraday_freshness_observation(
+            source='stale_cache:timeout',
+            age_seconds=14,
+            stale=True,
+            stale_over_threshold=True,
+            realtime_refresh_trigger=True,
+        )
+
+        snapshot = get_market_observability_snapshot()
+        self.assertIn('intraday_freshness', snapshot)
+        intraday = snapshot['intraday_freshness']
+        self.assertEqual(intraday['stale_served_total'], 1)
+        self.assertEqual(intraday['stale_over_threshold_total'], 1)
+        self.assertEqual(intraday['realtime_refresh_trigger_total'], 1)
+        self.assertEqual(intraday['age_seconds']['sample_size'], 1)
+
 
 class AdminRuntimeKPITests(APITestCase):
     """Tests for GET /api/admin-ops/runtime-kpi/ (S24-04)."""
@@ -172,6 +199,13 @@ class AdminRuntimeKPITests(APITestCase):
         record_whale_dedup_observation(hit=False)
         record_whale_dedup_observation(hit=True)
         record_whale_event_observation(source='redis_stream', ts='2026-04-10T09:15:00+07:00', recovered=False)
+        record_intraday_freshness_observation(
+            source='stale_cache:timeout',
+            age_seconds=14,
+            stale=True,
+            stale_over_threshold=True,
+            realtime_refresh_trigger=True,
+        )
 
         self._authenticate(self.admin_user)
         response = self.client.get('/api/admin-ops/runtime-kpi/')
@@ -187,6 +221,10 @@ class AdminRuntimeKPITests(APITestCase):
         self.assertIn('ai_chart_context', obs)
         self.assertIn('present', obs['ai_chart_context'])
         self.assertIn('used', obs['ai_chart_context'])
+        self.assertIn('intraday_freshness', obs)
+        self.assertIn('age_seconds', obs['intraday_freshness'])
+        self.assertIn('stale_over_threshold_total', obs['intraday_freshness'])
+        self.assertIn('realtime_refresh_trigger_total', obs['intraday_freshness'])
         self.assertIn('whale_pipeline', obs)
         self.assertIn('freshness', obs['whale_pipeline'])
         self.assertIn('dedup', obs['whale_pipeline'])

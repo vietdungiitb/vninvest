@@ -978,3 +978,107 @@ def offpeak_vnstock_ingest_history_api(request):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_intraday_side_backfill_preview_api(request):
+    """
+    POST /api/admin-ops/intraday-side-backfill/preview/
+    Admin-only: dry-run xem scope/changed/transitions trước khi apply.
+
+    Body (JSON, tất cả optional):
+      symbols       - danh sách mã (list[str]), mặc định tất cả
+      start_date    - YYYY-MM-DD
+      end_date      - YYYY-MM-DD
+      threshold     - giá trị min matched_value (VND), 0 = tất cả
+      batch_size    - chunk size iterator (mặc định 2000)
+    """
+    from portfolio.services_backfill import intraday_side_backfill_preview
+
+    symbols_raw = request.data.get('symbols') or []
+    if isinstance(symbols_raw, str):
+        symbols_raw = [s.strip() for s in symbols_raw.split(',') if s.strip()]
+    symbols = [str(s).strip().upper() for s in symbols_raw if str(s).strip()]
+
+    start_date = str(request.data.get('start_date') or '').strip() or None
+    end_date = str(request.data.get('end_date') or '').strip() or None
+
+    try:
+        threshold = int(request.data.get('threshold') or 0)
+    except (TypeError, ValueError):
+        return Response({'detail': 'threshold phai la so nguyen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        batch_size = max(100, int(request.data.get('batch_size') or 2000))
+    except (TypeError, ValueError):
+        batch_size = 2000
+
+    try:
+        result = intraday_side_backfill_preview(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            threshold=threshold,
+            batch_size=batch_size,
+        )
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'ok': True, **result}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_intraday_side_backfill_apply_api(request):
+    """
+    POST /api/admin-ops/intraday-side-backfill/apply/
+    Admin-only: apply backfill IntradayTick.side vào DB.
+
+    Body (JSON):
+      confirm       - phải là true (safety gate)
+      symbols       - danh sách mã (list[str])
+      start_date    - YYYY-MM-DD
+      end_date      - YYYY-MM-DD
+      threshold     - giá trị min matched_value (VND), 0 = tất cả
+      batch_size    - chunk size (mặc định 2000)
+    """
+    from portfolio.services_backfill import intraday_side_backfill_apply
+
+    confirm = request.data.get('confirm')
+    if str(confirm).strip().lower() not in {'true', '1', 'yes'}:
+        return Response(
+            {'detail': 'Phai truyen confirm=true de thuc hien apply.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    symbols_raw = request.data.get('symbols') or []
+    if isinstance(symbols_raw, str):
+        symbols_raw = [s.strip() for s in symbols_raw.split(',') if s.strip()]
+    symbols = [str(s).strip().upper() for s in symbols_raw if str(s).strip()]
+
+    start_date = str(request.data.get('start_date') or '').strip() or None
+    end_date = str(request.data.get('end_date') or '').strip() or None
+
+    try:
+        threshold = int(request.data.get('threshold') or 0)
+    except (TypeError, ValueError):
+        return Response({'detail': 'threshold phai la so nguyen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        batch_size = max(100, int(request.data.get('batch_size') or 2000))
+    except (TypeError, ValueError):
+        batch_size = 2000
+
+    try:
+        result = intraday_side_backfill_apply(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            threshold=threshold,
+            batch_size=batch_size,
+        )
+    except Exception as exc:
+        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    return Response({'ok': True, **result}, status=status.HTTP_200_OK)

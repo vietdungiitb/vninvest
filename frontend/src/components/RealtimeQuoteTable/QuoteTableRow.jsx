@@ -64,6 +64,10 @@ const QuoteTableRow = React.memo(
             <span className="text-sky-300">
               {t('dashboardRealtime.sessionCloseLabel') || 'Đóng cửa'}
             </span>
+          ) : quote.stale_over_threshold ? (
+            <span className="text-rose-300">
+              {t('dashboardRealtime.eventSyncingRealtime') || 'Đang đồng bộ'}
+            </span>
           ) : quote.stale ? (
             <span className="text-amber-300">
               {t('dashboardRealtime.stale') || 'Cũ'}
@@ -73,6 +77,32 @@ const QuoteTableRow = React.memo(
               {t('dashboardRealtime.secondsShort', {
                 value: formatNumber(quote.freshness_seconds ?? 0),
               }) || `${quote.freshness_seconds ?? 0}s`}
+            </span>
+          )}
+        </td>
+      ),
+      age_seconds: () => (
+        <td className="px-4 py-3 text-xs">
+          {quote.data_semantic === 'last_session_close' ||
+          ['offhours', 'post_close', 'pre_open'].includes(
+            String(quote.market_phase || '').toLowerCase()
+          ) ? (
+            <span className="text-sky-300">
+              {t('dashboardRealtime.sessionCloseLabel') || 'Đóng cửa'}
+            </span>
+          ) : quote.age_seconds === null || quote.age_seconds === undefined ? (
+            <span className="text-gray-500">—</span>
+          ) : quote.stale_over_threshold ? (
+            <span className="text-rose-300">
+              {t('dashboardRealtime.secondsShort', {
+                value: formatNumber(quote.age_seconds),
+              }) || `${quote.age_seconds}s`}
+            </span>
+          ) : (
+            <span className="text-gray-500">
+              {t('dashboardRealtime.secondsShort', {
+                value: formatNumber(quote.age_seconds),
+              }) || `${quote.age_seconds}s`}
             </span>
           )}
         </td>
@@ -141,7 +171,9 @@ const QuoteTableRow = React.memo(
       prevProps.quote.current_price === nextProps.quote.current_price &&
       prevProps.quote.change_pct === nextProps.quote.change_pct &&
       prevProps.quote.freshness_seconds === nextProps.quote.freshness_seconds &&
+      prevProps.quote.age_seconds === nextProps.quote.age_seconds &&
       prevProps.quote.stale === nextProps.quote.stale &&
+      prevProps.quote.stale_over_threshold === nextProps.quote.stale_over_threshold &&
       prevProps.quote.change === nextProps.quote.change &&
       prevProps.quote.data_semantic === nextProps.quote.data_semantic &&
       prevProps.quote.market_phase === nextProps.quote.market_phase;

@@ -26,6 +26,8 @@ import {
   updateAdminPrefetchTimePolicy,
   updateAdminSystemAiSettings,
   warmTickerPrefetch,
+  adminIntradaySideBackfillPreview,
+  adminIntradaySideBackfillApply,
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
@@ -261,6 +263,20 @@ export default function AdminOps() {
   const syncCooldownTimersRef = useRef({});
   const prefetchTimePolicyRulebook = systemAiSettings?.prefetch_time_policy_rulebook || {};
   const [activePage, setActivePage] = useState('overview');
+
+  // Backfill panel state
+  const [backfillForm, setBackfillForm] = useState({
+    symbols: '',
+    start_date: '',
+    end_date: '',
+    threshold: '500000000',
+    batch_size: '2000',
+  });
+  const [backfillPreview, setBackfillPreview] = useState(null);
+  const [backfillApplyResult, setBackfillApplyResult] = useState(null);
+  const [backfillPreviewState, setBackfillPreviewState] = useState('idle');
+  const [backfillApplyState, setBackfillApplyState] = useState('idle');
+  const [backfillMessage, setBackfillMessage] = useState('');
 
   const clearSyncCooldownTimer = useCallback((key) => {
     const timerId = syncCooldownTimersRef.current[key];
@@ -1036,6 +1052,7 @@ export default function AdminOps() {
         <button className={pageBtnClass('prefetch')} onClick={() => setActivePage('prefetch')}>Prefetch</button>
         <button className={pageBtnClass('vnstock')} onClick={() => setActivePage('vnstock')}>Vnstock Config</button>
         <button className={pageBtnClass('kpi')} onClick={() => setActivePage('kpi')}>Runtime KPI</button>
+        <button className={pageBtnClass('dataops')} onClick={() => setActivePage('dataops')}>Data Ops</button>
       </div>
 
       {/* Thống kê hệ thống */}
@@ -1817,6 +1834,220 @@ export default function AdminOps() {
       {activePage === 'kpi' ? (
       <section>
         <RuntimeKPIPanel />
+      </section>
+      ) : null}
+
+      {activePage === 'dataops' ? (
+      <section className="space-y-6">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t('adminOps.intradaySideBackfillTitle')}</h2>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('adminOps.intradaySideBackfillDesc')}</p>
+        </div>
+
+        {/* Form filter */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 space-y-4">
+          <div className="grid gap-4 md:grid-cols-3">
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              {t('adminOps.intradaySideBackfillSymbols')}
+              <input
+                type="text"
+                placeholder="VIC, VHM, VNM (để trống = tất cả)"
+                value={backfillForm.symbols}
+                onChange={(e) => setBackfillForm((prev) => ({ ...prev, symbols: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              {t('adminOps.intradaySideBackfillStartDate')}
+              <input
+                type="date"
+                value={backfillForm.start_date}
+                onChange={(e) => setBackfillForm((prev) => ({ ...prev, start_date: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              {t('adminOps.intradaySideBackfillEndDate')}
+              <input
+                type="date"
+                value={backfillForm.end_date}
+                onChange={(e) => setBackfillForm((prev) => ({ ...prev, end_date: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              {t('adminOps.intradaySideBackfillThreshold')}
+              <input
+                type="number"
+                min="0"
+                step="100000000"
+                value={backfillForm.threshold}
+                onChange={(e) => setBackfillForm((prev) => ({ ...prev, threshold: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              {t('adminOps.intradaySideBackfillBatchSize')}
+              <input
+                type="number"
+                min="100"
+                max="10000"
+                value={backfillForm.batch_size}
+                onChange={(e) => setBackfillForm((prev) => ({ ...prev, batch_size: e.target.value }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+          </div>
+
+          {/* Preview button */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              disabled={backfillPreviewState === 'loading'}
+              onClick={async () => {
+                setBackfillPreviewState('loading');
+                setBackfillMessage('');
+                setBackfillPreview(null);
+                setBackfillApplyResult(null);
+                try {
+                  const symbolList = backfillForm.symbols
+                    ? backfillForm.symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+                    : [];
+                  const payload = {
+                    symbols: symbolList,
+                    start_date: backfillForm.start_date || null,
+                    end_date: backfillForm.end_date || null,
+                    threshold: parseInt(backfillForm.threshold || '0', 10),
+                    batch_size: parseInt(backfillForm.batch_size || '2000', 10),
+                  };
+                  const resp = await withTimeout(adminIntradaySideBackfillPreview(payload), 60000, 'backfill-preview');
+                  setBackfillPreview(resp.data);
+                  setBackfillPreviewState('done');
+                } catch (err) {
+                  setBackfillMessage(err?.response?.data?.detail || err?.message || t('adminOps.unknownError'));
+                  setBackfillPreviewState('error');
+                }
+              }}
+              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {backfillPreviewState === 'loading' ? t('adminOps.intradaySideBackfillPreviewing') : t('adminOps.intradaySideBackfillPreviewBtn')}
+            </button>
+
+            {backfillPreview && (
+              <button
+                type="button"
+                disabled={backfillApplyState === 'loading'}
+                onClick={async () => {
+                  if (!window.confirm(t('adminOps.intradaySideBackfillApplyConfirm'))) return;
+                  setBackfillApplyState('loading');
+                  setBackfillMessage('');
+                  try {
+                    const symbolList = backfillForm.symbols
+                      ? backfillForm.symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+                      : [];
+                    const payload = {
+                      confirm: true,
+                      symbols: symbolList,
+                      start_date: backfillForm.start_date || null,
+                      end_date: backfillForm.end_date || null,
+                      threshold: parseInt(backfillForm.threshold || '0', 10),
+                      batch_size: parseInt(backfillForm.batch_size || '2000', 10),
+                    };
+                    const resp = await withTimeout(adminIntradaySideBackfillApply(payload), 300000, 'backfill-apply');
+                    setBackfillApplyResult(resp.data);
+                    setBackfillApplyState('done');
+                  } catch (err) {
+                    setBackfillMessage(err?.response?.data?.detail || err?.message || t('adminOps.unknownError'));
+                    setBackfillApplyState('error');
+                  }
+                }}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {backfillApplyState === 'loading' ? t('adminOps.intradaySideBackfillApplying') : t('adminOps.intradaySideBackfillApplyBtn')}
+              </button>
+            )}
+          </div>
+
+          {backfillMessage && (
+            <p className="text-sm text-red-500 dark:text-red-400">{backfillMessage}</p>
+          )}
+        </div>
+
+        {/* Preview result */}
+        {backfillPreview && (
+          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-5 dark:border-blue-900 dark:bg-blue-950/30 space-y-3">
+            <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-300">{t('adminOps.intradaySideBackfillPreviewResult')}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MiniMetric label={t('adminOps.intradaySideBackfillScopeRows')} value={fmtNumber(backfillPreview.scope_rows)} />
+              <MiniMetric label={t('adminOps.intradaySideBackfillChangedRows')} value={fmtNumber(backfillPreview.changed_rows)} />
+              <MiniMetric label="BUY" value={fmtNumber(backfillPreview.inferred_distribution?.BUY ?? 0)} />
+              <MiniMetric label="SELL" value={fmtNumber(backfillPreview.inferred_distribution?.SELL ?? 0)} />
+            </div>
+            {backfillPreview.transitions && Object.keys(backfillPreview.transitions).length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{t('adminOps.intradaySideBackfillTransitions')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(backfillPreview.transitions).map(([k, v]) => (
+                    <Pill key={k} tone="amber">{k}: {fmtNumber(v)}</Pill>
+                  ))}
+                </div>
+              </div>
+            )}
+            {backfillPreview.sample_rows && backfillPreview.sample_rows.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-1">{t('adminOps.intradaySideBackfillSampleRows')}</p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead>
+                      <tr className="text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                        <th className="pb-1 pr-3">ID</th>
+                        <th className="pb-1 pr-3">Symbol</th>
+                        <th className="pb-1 pr-3">Date</th>
+                        <th className="pb-1 pr-3">Time</th>
+                        <th className="pb-1 pr-3">Price</th>
+                        <th className="pb-1 pr-3">Old</th>
+                        <th className="pb-1">New</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {backfillPreview.sample_rows.slice(0, 15).map((row) => (
+                        <tr key={row.id} className="border-b border-gray-100 dark:border-gray-800">
+                          <td className="py-1 pr-3 text-gray-400">{row.id}</td>
+                          <td className="py-1 pr-3 font-medium">{row.symbol}</td>
+                          <td className="py-1 pr-3">{row.trade_date}</td>
+                          <td className="py-1 pr-3">{row.trade_time}</td>
+                          <td className="py-1 pr-3">{row.price}</td>
+                          <td className="py-1 pr-3"><Pill tone="red">{row.old_side}</Pill></td>
+                          <td className="py-1"><Pill tone="green">{row.new_side}</Pill></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Apply result */}
+        {backfillApplyResult && (
+          <div className="rounded-2xl border border-green-100 bg-green-50 p-5 dark:border-green-900 dark:bg-green-950/30 space-y-3">
+            <h3 className="text-sm font-semibold text-green-700 dark:text-green-300">{t('adminOps.intradaySideBackfillApplyResult')}</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <MiniMetric label={t('adminOps.intradaySideBackfillScopeRows')} value={fmtNumber(backfillApplyResult.scope_rows)} />
+              <MiniMetric label={t('adminOps.intradaySideBackfillUpdated')} value={fmtNumber(backfillApplyResult.updated)} />
+              <MiniMetric label={t('adminOps.intradaySideBackfillDuration')} value={`${backfillApplyResult.duration_seconds}s`} />
+              <MiniMetric label={t('adminOps.intradaySideBackfillSymbolsTouched')} value={(backfillApplyResult.symbols_touched || []).join(', ') || '—'} />
+            </div>
+            {backfillApplyResult.transitions && Object.keys(backfillApplyResult.transitions).length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(backfillApplyResult.transitions).map(([k, v]) => (
+                  <Pill key={k} tone="green">{k}: {fmtNumber(v)}</Pill>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
       ) : null}
     </div>

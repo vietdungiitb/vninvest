@@ -31,6 +31,12 @@ export const COLUMN_PRESETS = {
       sortable: false,
       width: '100px',
     },
+    {
+      key: 'age_seconds',
+      label: 'Tuổi dữ liệu',
+      sortable: false,
+      width: '110px',
+    },
   ],
 
   // Watchlist tracked symbols columns
@@ -65,6 +71,12 @@ export const COLUMN_PRESETS = {
       sortable: false,
       width: '100px',
     },
+    {
+      key: 'age_seconds',
+      label: 'Tuổi dữ liệu',
+      sortable: false,
+      width: '110px',
+    },
   ],
 
   // Watchlist groups columns
@@ -92,6 +104,12 @@ export const COLUMN_PRESETS = {
       label: 'Mới nhất',
       sortable: false,
       width: '100px',
+    },
+    {
+      key: 'age_seconds',
+      label: 'Tuổi dữ liệu',
+      sortable: false,
+      width: '110px',
     },
   ],
 };

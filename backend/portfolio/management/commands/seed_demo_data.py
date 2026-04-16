@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from portfolio.market_calendar import previous_trading_day, resolve_market_phase
 from portfolio.models import (
     AccountSnapshot,
     DailyPrice,
@@ -32,6 +33,62 @@ class Command(BaseCommand):
         parser.add_argument('--username', default='testuser', help='Main demo username.')
         parser.add_argument('--password', default='Test@123456', help='Main demo password.')
         parser.add_argument('--reset', action='store_true', help='Reset existing domain demo data for the user first.')
+
+    def _resolve_demo_tick_datetimes(self, count: int) -> list[datetime]:
+        phase_meta = resolve_market_phase()
+        profile = str(phase_meta.get('profile') or 'offhours').lower()
+        local_now = phase_meta.get('local_now') or timezone.localtime()
+        tzinfo = local_now.tzinfo or timezone.get_current_timezone()
+        session_open = time(9, 0, 0)
+        lunch_start = time(11, 30, 0)
+        lunch_end = time(13, 0, 0)
+        session_close = time(14, 45, 0)
+
+        def _aware_dt(target_date, target_time):
+            return timezone.make_aware(datetime.combine(target_date, target_time), tzinfo)
+
+        def _segment_slots(target_date, segments):
+            slots = []
+            for start_time, end_time in segments:
+                start_dt = _aware_dt(target_date, start_time)
+                end_dt = _aware_dt(target_date, end_time)
+                cursor = start_dt
+                while cursor <= end_dt:
+                    slots.append(cursor)
+                    cursor += timedelta(seconds=2)
+            return slots
+
+        if profile == 'pre_open':
+            session_date = previous_trading_day(None, local_now.date() - timedelta(days=1))
+            segments = [(session_open, lunch_start), (lunch_end, session_close)]
+        elif profile in {'post_close', 'offhours'}:
+            session_date = previous_trading_day(None, local_now.date())
+            segments = [(session_open, lunch_start), (lunch_end, session_close)]
+        elif profile == 'lunch_break':
+            session_date = local_now.date()
+            segments = [(session_open, time(11, 29, 58))]
+        else:
+            session_date = local_now.date()
+            current_cutoff = (local_now - timedelta(seconds=8)).time().replace(microsecond=0)
+            if current_cutoff < lunch_end:
+                segments = [(session_open, max(current_cutoff, session_open))]
+            else:
+                segments = [(session_open, time(11, 29, 58)), (lunch_end, max(current_cutoff, lunch_end))]
+
+        slots = _segment_slots(session_date, segments)
+        if not slots:
+            fallback_date = previous_trading_day(None, local_now.date() - timedelta(days=1))
+            slots = _segment_slots(fallback_date, [(session_open, lunch_start), (lunch_end, session_close)])
+
+        if count <= 1:
+            return [slots[-1]]
+
+        selected = []
+        max_index = len(slots) - 1
+        for index in range(count):
+            slot_index = round(index * max_index / (count - 1))
+            selected.append(slots[slot_index])
+        return selected
 
     def handle(self, *args, **options):
         username = options['username']
@@ -403,42 +460,44 @@ class Command(BaseCommand):
             WhaleAdvisory.objects.filter(pk=advisory.pk).update(created_at=spec['created_at'])
 
         tick_specs = [
-            ('FPT', 'BUY', Decimal('118500'), 12500, time(10, 12, 5)),
-            ('HPG', 'SELL', Decimal('28950'), 42000, time(10, 18, 10)),
-            ('VCB', 'BUY', Decimal('89200'), 24000, time(10, 25, 40)),
-            ('MWG', 'BUY', Decimal('61800'), 16000, time(10, 31, 15)),
-            ('FPT', 'BUY', Decimal('119200'), 8200, time(10, 42, 8)),
-            ('HPG', 'SELL', Decimal('29100'), 30000, time(10, 47, 50)),
-            ('VNM', 'BUY', Decimal('71200'), 78000, time(11, 2, 5)),
-            ('VCB', 'SELL', Decimal('88800'), 10500, time(11, 9, 42)),
-            ('VNM', 'BUY', Decimal('71500'), 16000, time(11, 15, 18)),
-            ('MWG', 'SELL', Decimal('60500'), 21000, time(11, 22, 33)),
-            ('MWG', 'BUY', Decimal('62400'), 27000, time(11, 28, 5)),
-            ('FPT', 'BUY', Decimal('120800'), 19000, time(11, 35, 48)),
-            ('MWG', 'BUY', Decimal('63100'), 35000, time(11, 44, 12)),
-            ('HPG', 'BUY', Decimal('29400'), 46000, time(11, 51, 37)),
-            ('FPT', 'SELL', Decimal('121300'), 14500, time(13, 2, 14)),
-            ('MWG', 'SELL', Decimal('62800'), 18000, time(13, 7, 56)),
-            ('VNM', 'SELL', Decimal('70900'), 18500, time(13, 15, 22)),
-            ('MWG', 'BUY', Decimal('63900'), 41000, time(13, 26, 18)),
-            ('FPT', 'BUY', Decimal('122100'), 24000, time(13, 33, 44)),
-            ('VCB', 'BUY', Decimal('89600'), 21000, time(13, 41, 9)),
-            ('MWG', 'BUY', Decimal('64500'), 52000, time(13, 49, 31)),
-            ('HPG', 'SELL', Decimal('29250'), 37000, time(13, 57, 6)),
-            ('MWG', 'SELL', Decimal('63800'), 22000, time(14, 6, 43)),
-            ('FPT', 'BUY', Decimal('123400'), 28000, time(14, 14, 20)),
-            ('MWG', 'BUY', Decimal('64800'), 61000, time(14, 21, 55)),
-            ('MWG', 'SELL', Decimal('64200'), 26000, time(14, 28, 11)),
-            ('FPT', 'SELL', Decimal('122800'), 17500, time(14, 34, 47)),
-            ('MWG', 'BUY', Decimal('65100'), 47000, time(14, 39, 32)),
+            ('FPT', 'BUY', Decimal('118.5'), 12500),
+            ('HPG', 'SELL', Decimal('28.95'), 42000),
+            ('VCB', 'BUY', Decimal('89.2'), 24000),
+            ('MWG', 'BUY', Decimal('61.8'), 16000),
+            ('FPT', 'BUY', Decimal('119.2'), 8200),
+            ('HPG', 'SELL', Decimal('29.1'), 30000),
+            ('VNM', 'BUY', Decimal('71.2'), 78000),
+            ('VCB', 'SELL', Decimal('88.8'), 10500),
+            ('VNM', 'BUY', Decimal('71.5'), 16000),
+            ('MWG', 'SELL', Decimal('60.5'), 21000),
+            ('MWG', 'BUY', Decimal('62.4'), 27000),
+            ('FPT', 'BUY', Decimal('120.8'), 19000),
+            ('MWG', 'BUY', Decimal('63.1'), 35000),
+            ('HPG', 'BUY', Decimal('29.4'), 46000),
+            ('FPT', 'SELL', Decimal('121.3'), 14500),
+            ('MWG', 'SELL', Decimal('62.8'), 18000),
+            ('VNM', 'SELL', Decimal('70.9'), 18500),
+            ('MWG', 'BUY', Decimal('63.9'), 41000),
+            ('FPT', 'BUY', Decimal('122.1'), 24000),
+            ('VCB', 'BUY', Decimal('89.6'), 21000),
+            ('MWG', 'BUY', Decimal('64.5'), 52000),
+            ('HPG', 'SELL', Decimal('29.25'), 37000),
+            ('MWG', 'SELL', Decimal('63.8'), 22000),
+            ('FPT', 'BUY', Decimal('123.4'), 28000),
+            ('MWG', 'BUY', Decimal('64.8'), 61000),
+            ('MWG', 'SELL', Decimal('64.2'), 26000),
+            ('FPT', 'SELL', Decimal('122.8'), 17500),
+            ('MWG', 'BUY', Decimal('65.1'), 47000),
         ]
-        today = timezone.localdate()
-        for index, (symbol, side, price, volume, trade_time) in enumerate(tick_specs, start=1):
+        tick_datetimes = self._resolve_demo_tick_datetimes(len(tick_specs))
+        for index, ((symbol, side, price, volume), tick_dt) in enumerate(zip(tick_specs, tick_datetimes), start=1):
+            trade_date = tick_dt.date()
+            trade_time = tick_dt.time().replace(tzinfo=None)
             tick, _ = IntradayTick.objects.update_or_create(
                 stream_id=f'seed-demo-{username}-{symbol.lower()}-{index}',
                 defaults={
                     'symbol': symbol,
-                    'trade_date': today,
+                    'trade_date': trade_date,
                     'trade_time': trade_time,
                     'price': price,
                     'volume': volume,
@@ -446,8 +505,7 @@ class Command(BaseCommand):
                     'match_type': 'ATO' if index % 2 else 'LO',
                 },
             )
-            tick_created_at = timezone.make_aware(datetime.combine(today, trade_time))
-            IntradayTick.objects.filter(pk=tick.pk).update(created_at=tick_created_at)
+            IntradayTick.objects.filter(pk=tick.pk).update(created_at=tick_dt)
 
         self.stdout.write(self.style.SUCCESS(
             f'Seeded comprehensive demo data for {username} / {password}'

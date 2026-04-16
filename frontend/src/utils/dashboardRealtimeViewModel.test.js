@@ -85,4 +85,45 @@ describe('dashboardRealtimeViewModel', () => {
     expect(list[0].symbol).toBe('ACB');
     expect(list[0].current_price).toBe(23.8);
   });
+
+  test('marks pre-open quote without price as no_data_offhours instead of stale', () => {
+    const record = buildDashboardRealtimeQuote({
+      symbol: 'VCB',
+      quote: {
+        symbol: 'VCB',
+        current_price: null,
+        prev_price: null,
+        stale: true,
+        market_phase: 'pre_open',
+      },
+      holding: null,
+    });
+
+    expect(record.display_state).toBe('no_data_offhours');
+    expect(record.stale).toBe(false);
+  });
+
+  test('transitions to resyncing state when stale_over_threshold is true', () => {
+    const record = buildDashboardRealtimeQuote({
+      symbol: 'VCB',
+      quote: {
+        symbol: 'VCB',
+        current_price: 92.5,
+        prev_price: 92.2,
+        stale: true,
+        stale_over_threshold: true,
+        stale_threshold_seconds: 10,
+        age_seconds: 14,
+        source_event_at: '2026-04-16T10:30:00+07:00',
+        served_at: '2026-04-16T10:30:14+07:00',
+        market_phase: 'am',
+      },
+      holding: null,
+    });
+
+    expect(record.display_state).toBe('resyncing');
+    expect(record.stale_over_threshold).toBe(true);
+    expect(record.age_seconds).toBe(14);
+    expect(record.stale_threshold_seconds).toBe(10);
+  });
 });

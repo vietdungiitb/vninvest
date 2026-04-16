@@ -83,9 +83,19 @@ export function buildDashboardRealtimeQuote({ symbol, quote = {}, holding = null
   });
 
   const resolvedFreshnessSeconds = toFiniteNumber(quote.freshness_seconds);
+  const resolvedAgeSeconds = toFiniteNumber(quote.age_seconds);
+  const resolvedThresholdSeconds = toFiniteNumber(quote.stale_threshold_seconds);
+  const staleOverThreshold = Boolean(quote.stale_over_threshold);
+  const hasDisplayPrice = isPositiveNumber(displayPrice);
+  const normalizedPhase = String(quote.market_phase || '').toLowerCase();
+  const isOffhoursLike = OFFHOURS_PHASES.has(normalizedPhase);
   const resolvedStale = displaySemantic === 'last_session_close'
     ? false
-    : Boolean(quote.stale || displaySemantic === 'stale_fallback');
+    : Boolean((quote.stale || displaySemantic === 'stale_fallback' || staleOverThreshold) && hasDisplayPrice);
+
+  const displayState = !hasDisplayPrice
+    ? (isOffhoursLike ? 'no_data_offhours' : 'no_data')
+    : (staleOverThreshold ? 'resyncing' : (resolvedStale ? 'stale' : 'realtime'));
 
   return {
     ...quote,
@@ -97,7 +107,17 @@ export function buildDashboardRealtimeQuote({ symbol, quote = {}, holding = null
     change_pct: resolvedChangePct,
     data_semantic: displaySemantic,
     stale: resolvedStale,
-    freshness_seconds: Number.isFinite(resolvedFreshnessSeconds) ? resolvedFreshnessSeconds : null,
+    freshness_seconds: Number.isFinite(resolvedFreshnessSeconds)
+      ? resolvedFreshnessSeconds
+      : (Number.isFinite(resolvedAgeSeconds) ? resolvedAgeSeconds : null),
+    age_seconds: Number.isFinite(resolvedAgeSeconds)
+      ? resolvedAgeSeconds
+      : (Number.isFinite(resolvedFreshnessSeconds) ? resolvedFreshnessSeconds : null),
+    stale_threshold_seconds: Number.isFinite(resolvedThresholdSeconds) ? resolvedThresholdSeconds : null,
+    stale_over_threshold: staleOverThreshold,
+    source_event_at: quote.source_event_at || null,
+    served_at: quote.served_at || null,
+    display_state: displayState,
     market_phase: quote.market_phase,
     market_code: quote.market_code,
   };

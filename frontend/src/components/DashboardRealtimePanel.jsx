@@ -134,7 +134,7 @@ export default function DashboardRealtimePanel({
   showSummaryMetrics = true,
   portfolioId = null,
 }) {
-  const { t, formatNumber, formatTime, formatQuotePrice, formatQuoteInteger } = useI18n();
+  const { t, formatNumber, formatTime, formatDateTime, formatQuotePrice, formatQuoteInteger } = useI18n();
   const [realtimeHealth, setRealtimeHealth] = useState(null);
   const [snapshotAlerts, setSnapshotAlerts] = useState([]);
   const [backendUnifiedSnapshot, setBackendUnifiedSnapshot] = useState([]);
@@ -1081,7 +1081,15 @@ export default function DashboardRealtimePanel({
                           </div>
                           <div className="mt-1 flex items-baseline justify-between gap-2">
                             <span className="text-sm font-bold text-white">{alert.headline}</span>
-                            <span className="text-[11px] text-slate-500">{formatTime(alert.ts)}</span>
+                            <span className="text-[11px] text-slate-500">
+                              {formatDateTime(alert.ts, {
+                                day: '2-digit',
+                                month: '2-digit',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                              })}
+                            </span>
                           </div>
                           <div className="mt-0.5 text-[11px] text-slate-500">
                             {alert.detail}

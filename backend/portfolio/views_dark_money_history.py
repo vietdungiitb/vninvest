@@ -14,7 +14,7 @@ import calendar
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
-from django.db.models import Avg, Count, F, FloatField, Max, Min, Q, Sum
+from django.db.models import Avg, Case, Count, ExpressionWrapper, F, FloatField, Max, Min, Q, Sum, When
 from django.db.models.functions import TruncDate, TruncHour, TruncMinute, TruncWeek
 from django.utils import timezone
 from rest_framework import status
@@ -22,7 +22,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import IntradayTick, OrderFlowSignal, TrackedSymbol
+from .models import DailyPrice, IntradayTick, OrderFlowSignal, TrackedSymbol
+from .price_units import PriceSource, QUOTE_UNIT_CANONICAL, normalize_quote_price_to_canonical
 from .whale_feed_helpers import _resolve_user_whale_threshold_vnd
 
 logger = logging.getLogger(__name__)
@@ -87,6 +88,65 @@ def _floor_intraday_bucket(value: datetime, interval: str):
 
 def _resolve_period_days(period: str) -> int:
     return PERIOD_DAYS_MAP.get(period.upper(), 90)
+
+
+def _normalize_chart_quote_price(value, *, source: PriceSource, symbol: str) -> float:
+    try:
+        numeric_value = float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    if numeric_value <= 0:
+        return 0.0
+    source_unit = 'VND' if numeric_value >= 1000 else 'THOUSAND_VND'
+    return round(
+        normalize_quote_price_to_canonical(
+            numeric_value,
+            source_unit,
+            source=source,
+            symbol=symbol,
+        ).value,
+        2,
+    )
+
+
+def _normalize_tick_side(value) -> str:
+    raw = str(value or '').strip().lower()
+    if raw in {'buy', 'bu', 'b'}:
+        return 'buy'
+    if raw in {'sell', 'sd', 's'}:
+        return 'sell'
+    return 'unknown'
+
+
+def _build_reference_price_by_trade_date(symbol: str, trade_dates: list[date]) -> dict[date, float]:
+    normalized_dates = sorted({d for d in trade_dates if d})
+    if not normalized_dates:
+        return {}
+
+    rows = list(
+        DailyPrice.objects
+        .filter(symbol=symbol, date__lt=normalized_dates[-1] + timedelta(days=1))
+        .order_by('date')
+        .values('date', 'close_price')
+    )
+    if not rows:
+        return {}
+
+    result: dict[date, float] = {}
+    pointer = 0
+    latest_prev_close = None
+
+    for trade_date in normalized_dates:
+      while pointer < len(rows) and rows[pointer]['date'] < trade_date:
+          try:
+              latest_prev_close = float(rows[pointer]['close_price'] or 0)
+          except (TypeError, ValueError):
+              latest_prev_close = latest_prev_close
+          pointer += 1
+      if latest_prev_close and latest_prev_close > 0:
+          result[trade_date] = latest_prev_close
+
+    return result
 
 
 def _compute_moving_averages(candles: list[dict], windows: list[int]) -> dict[str, list[dict]]:
@@ -271,10 +331,10 @@ def dark_money_history_api(request, symbol: str):
 
                     candle = {
                         'time': row_time,
-                        'open': round(float(row.get('open', 0)), 2),
-                        'high': round(float(row.get('high', 0)), 2),
-                        'low': round(float(row.get('low', 0)), 2),
-                        'close': round(float(row.get('close', 0)), 2),
+                        'open': _normalize_chart_quote_price(row.get('open', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
+                        'high': _normalize_chart_quote_price(row.get('high', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
+                        'low': _normalize_chart_quote_price(row.get('low', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
+                        'close': _normalize_chart_quote_price(row.get('close', 0), source=PriceSource.VNSTOCK_DAILY, symbol=normalized_symbol),
                         'volume': int(row.get('volume', 0)),
                     }
                     if candle['close'] > 0:
@@ -408,41 +468,91 @@ def dark_money_history_api(request, symbol: str):
     try:
         whale_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
 
-        whale_ticks_qs = (
+        whale_ticks_qs = list(
             IntradayTick.objects
             .filter(
                 symbol=normalized_symbol,
                 trade_date__gte=cutoff_date,
             )
             .annotate(
-                matched_value=F('price') * F('volume'),
+                # Canonical valuation: legacy rows may store VND, migrated rows store THOUSAND_VND.
+                matched_value=ExpressionWrapper(
+                    Case(
+                        When(price__gte=1000, then=F('price') * F('volume')),
+                        default=F('price') * 1000 * F('volume'),
+                        output_field=FloatField(),
+                    ),
+                    output_field=FloatField(),
+                ),
             )
             .filter(matched_value__gte=whale_threshold_vnd)
-            .filter(side__in=['BUY', 'SELL'])
-            .values('trade_date', 'side')
-            .annotate(
-                total_value=Sum(F('price') * F('volume'), output_field=FloatField()),
-                total_volume=Sum('volume'),
-                avg_price=Avg('price'),
-                count=Count('id'),
-                max_value=Max(F('price') * F('volume'), output_field=FloatField()),
-            )
-            .order_by('trade_date', 'side')
+            .values('trade_date', 'trade_time', 'side', 'price', 'volume', 'matched_value')
+            .order_by('trade_date', 'trade_time', 'matched_value')
         )
 
+        # Aggregate by (trade_date, inferred_side). We infer side from price movement
+        # when source side quality is poor (e.g. mostly SELL/UNKNOWN).
+        grouped = defaultdict(lambda: {
+            'total_value': 0.0,
+            'total_volume': 0.0,
+            'count': 0,
+            'price_volume_sum': 0.0,
+        })
+        reference_price_by_date = _build_reference_price_by_trade_date(
+            normalized_symbol,
+            [row.get('trade_date') for row in whale_ticks_qs],
+        )
+        prev_price_by_date = dict(reference_price_by_date)
+        last_side_by_date = {}
+
         for row in whale_ticks_qs:
-            trade_date = row['trade_date']
+            trade_date = row.get('trade_date')
             if not trade_date:
                 continue
 
-            side = str(row['side']).lower()
-            total_value = float(row['total_value'] or 0)
-            avg_price = float(row['avg_price'] or 0)
-            count = int(row['count'] or 0)
-
-            # Only include significant signals
-            if total_value < whale_threshold_vnd:
+            price = float(row.get('price') or 0)
+            volume = float(row.get('volume') or 0)
+            matched_value = float(row.get('matched_value') or 0)
+            if matched_value < whale_threshold_vnd:
                 continue
+
+            stored_side = _normalize_tick_side(row.get('side'))
+            prev_price = prev_price_by_date.get(trade_date)
+
+            if prev_price is None:
+                inferred_side = stored_side
+            elif price > prev_price:
+                inferred_side = 'buy'
+            elif price < prev_price:
+                inferred_side = 'sell'
+            else:
+                inferred_side = last_side_by_date.get(trade_date) or stored_side
+
+            prev_price_by_date[trade_date] = price
+            if inferred_side in {'buy', 'sell'}:
+                last_side_by_date[trade_date] = inferred_side
+            else:
+                continue
+
+            bucket = grouped[(trade_date, inferred_side)]
+            bucket['total_value'] += matched_value
+            bucket['total_volume'] += max(volume, 0.0)
+            bucket['count'] += 1
+            bucket['price_volume_sum'] += price * max(volume, 0.0)
+
+        for (trade_date, side), agg in sorted(grouped.items(), key=lambda item: (item[0][0], item[0][1])):
+            total_value = float(agg['total_value'] or 0)
+            total_volume = float(agg['total_volume'] or 0)
+            count = int(agg['count'] or 0)
+            if total_value < whale_threshold_vnd or count <= 0:
+                continue
+
+            avg_price_raw = (agg['price_volume_sum'] / total_volume) if total_volume > 0 else 0.0
+            avg_price = _normalize_chart_quote_price(
+                avg_price_raw,
+                source=PriceSource.INTRADAY_TICK,
+                symbol=normalized_symbol,
+            )
 
             severity = 'low'
             if total_value >= whale_threshold_vnd * 5:
@@ -452,19 +562,18 @@ def dark_money_history_api(request, symbol: str):
             elif total_value >= whale_threshold_vnd * 1.5:
                 severity = 'medium'
 
-            # Build descriptive label
-            price_display = f'{avg_price:,.0f}'
+            price_display = f'{avg_price:,.2f}'
             if side == 'buy':
-                label = f'Whale Buy: Vùng {price_display}'
+                label = f'Mua lớn: vùng {price_display}'
             else:
-                label = f'Whale Sell: Vùng {price_display}'
+                label = f'Bán lớn: vùng {price_display}'
 
             whale_signals.append({
                 'time': trade_date.strftime('%Y-%m-%d'),
                 'type': side,
                 'price': round(avg_price, 2),
                 'matched_value': round(total_value, 0),
-                'volume': int(row['total_volume'] or 0),
+                'volume': int(total_volume),
                 'count': count,
                 'severity': severity,
                 'label': label,
@@ -551,7 +660,11 @@ def dark_money_history_api(request, symbol: str):
         for sig in absorption_signals:
             absorption_zones.append({
                 'time': sig['created_at'].strftime('%Y-%m-%d') if sig['created_at'] else None,
-                'price': round(float(sig['price_at_signal'] or 0), 2),
+                'price': _normalize_chart_quote_price(
+                    sig['price_at_signal'] or 0,
+                    source=PriceSource.INTRADAY_TICK,
+                    symbol=normalized_symbol,
+                ),
                 'strength': round(float(sig['strength'] or 0), 2),
                 'confidence': sig['confidence'] or 'low',
                 'type': 'absorption',
@@ -577,7 +690,11 @@ def dark_money_history_api(request, symbol: str):
         for sig in aggression_qs:
             aggression_events.append({
                 'time': sig['created_at'].strftime('%Y-%m-%d') if sig['created_at'] else None,
-                'price': round(float(sig['price_at_signal'] or 0), 2),
+                'price': _normalize_chart_quote_price(
+                    sig['price_at_signal'] or 0,
+                    source=PriceSource.INTRADAY_TICK,
+                    symbol=normalized_symbol,
+                ),
                 'strength': round(float(sig['strength'] or 0), 2),
                 'tick_rate': round(float(sig['tick_rate'] or 0), 2),
                 'type': 'aggression',
@@ -590,6 +707,7 @@ def dark_money_history_api(request, symbol: str):
         'symbol': normalized_symbol,
         'period': period,
         'interval': interval,
+        'price_unit_canonical': QUOTE_UNIT_CANONICAL,
         'candles': candles,
         'dark_flow_series': dark_flow_series,
         'whale_signals': whale_signals,
@@ -607,5 +725,6 @@ def dark_money_history_api(request, symbol: str):
             'aggression_event_count': len(aggression_events),
             'period_days': period_days,
             'cutoff_date': cutoff_date.isoformat(),
+            'price_unit_canonical': QUOTE_UNIT_CANONICAL,
         },
     })

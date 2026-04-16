@@ -1,5 +1,469 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16w - Docker dev update + backend startup unblock
+
+Muc tieu:
+- Cap nhat Docker dev stack de test.
+- Xu ly backend khong khoi dong do route tham chieu symbol chua duoc export.
+
+Trieu chung runtime:
+- `docker compose up -d --build` gap loi BuildKit/engine channel: `failed to receive status ... EOF`.
+- Sau khi bring-up, backend fail startup voi:
+  - `AttributeError: module 'portfolio.views' has no attribute 'admin_intraday_side_backfill_preview_api'`
+
+Nguyen nhan goc:
+- `config/urls.py` da route den `portfolio_views.admin_intraday_side_backfill_preview_api` va `...apply_api`.
+- Hai ham nay co dinh nghia trong `views_admin_runtime.py` nhung chua duoc import/export trong `portfolio/views.py`.
+
+Danh sach tep da sua:
+- backend/portfolio/views.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `backend/portfolio/views.py`:
+  - Bo sung import export:
+    - `admin_intraday_side_backfill_preview_api`
+    - `admin_intraday_side_backfill_apply_api`
+
+Xu ly van hanh Docker dev:
+- Dung bien moi truong `DOCKER_API_VERSION=1.54` de tranh loi compose API route mismatch trong mot so lenh compose.
+- Rebuild image lien quan sau khi sua code:
+  - `backend`
+  - `celery_worker`
+  - `celery_beat`
+- Bring-up lai cac service:
+  - `backend`, `celery_worker`, `celery_beat`
+
+Ket qua verify:
+- `get_errors` cho `backend/portfolio/views.py`: khong co loi.
+- Health endpoint backend tra ve:
+  - `{"status": "ok", "service": "vninvest-backend"}`
+
+Ghi chu:
+- Warning `The "d_6e" variable is not set` xuat hien khi compose parse env, khong chan stack startup trong dot nay.
+
+---
+
+## Entry 2026-04-16v - Whale Alerts Hub race-condition guard + request cancellation
+
+Tham chieu implementation plan:
+- Pha tiep theo sau first-paint optimization: tranh stale response ghi de state khi user doi filter/tab nhanh.
+
+Pham vi:
+- Bo sung co che abort request cu va latest-response-wins cho aggregate/campaign feed.
+- Chan stale bootstrap response ghi de state loading/data moi.
+
+Danh sach tep da sua:
+- frontend/src/pages/WhaleAlertsHub.jsx
+- frontend/src/api/client.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `WhaleAlertsHub.jsx`:
+  - Them `useRef` sequence guards: `aggregateRequestSeqRef`, `campaignRequestSeqRef`, `bootstrapRequestSeqRef`.
+  - Them abort controllers `aggregateAbortRef`, `campaignAbortRef` va cleanup khi unmount.
+  - `loadAggregateFeed(...)`:
+    - Abort request aggregate cu khi chay request reset moi (`append=false`).
+    - Bo qua response neu khong phai request moi nhat (latest-response-wins).
+  - `loadCampaigns(...)`:
+    - Abort request campaign cu khi chay request reset moi (`append=false`).
+    - Bo qua response stale theo sequence guard.
+  - `fetchData(...)`:
+    - Bo qua setState neu response thuoc request bootstrap cu.
+    - Tranh set loading/error tu request da stale hoac bi cancel.
+- `client.js`:
+  - `getAggregateWhaleFeed(...)` ho tro param `signal` va truyen vao axios config.
+  - `getWhaleCampaigns(...)` ho tro param `signal` va truyen vao axios config.
+
+Ket qua verify:
+- Static diagnostics pass (`get_errors`):
+  - frontend/src/pages/WhaleAlertsHub.jsx
+  - frontend/src/api/client.js
+  - frontend/src/pages/WhaleAlertsHub.test.jsx
+
+Tac dong ky vong:
+- Giam request du thua khi user thao tac nhanh tren Whale Hub.
+- Khong con tinh huong response cu ghi de feed moi khi doi `scope/window/sort` lien tuc.
+- UI on dinh hon trong cac flow `refresh`, `load more`, va chuyen tab.
+
+---
+
+## Entry 2026-04-16u - Whale Alerts Hub first-paint optimization + page size control
+
+Tham chieu implementation plan:
+- Optimized load strategy cho trang `/whale-alerts` de giam first-paint latency va tai backend.
+
+Pham vi:
+- Loai bo luong stats scan nang (20 pages x 50 rows) khoi first load.
+- Chuyen Campaigns sang lazy-load theo tab thay vi goi ngay khi vao trang.
+- Them page size selector 4/8/12/16 cho Live Tape va Campaigns.
+
+Danh sach tep da sua:
+- frontend/src/pages/WhaleAlertsHub.jsx
+- frontend/src/pages/WhaleAlertsHub.test.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `WhaleAlertsHub.jsx`:
+  - Bo state + request scan `loadSymbolStatsMap(...)` khoi fetchData first load.
+  - Stats theo ma duoc tinh truc tiep tu aggregate feed hien co (client-side memo), tranh N request bo sung.
+  - Them state page size: `aggregatePageSize`, `campaignPageSize` voi options `[4, 8, 12, 16]` (mac dinh 8).
+  - `loadCampaigns(...)` chay lazy khi user mo tab Campaigns (`activeBoardTab === 'campaigns'`).
+  - Them skeleton loading rieng cho Campaigns lan dau (`campaignInitialLoading`).
+  - Cap nhat dieu kien UI `Hide less` theo page size dong, khong hardcode 12.
+- `WhaleAlertsHub.test.jsx`:
+  - Dieu chinh expectation: campaign API duoc goi khi click tab Campaigns, khong con auto-goi luc mount.
+- `vi.js` / `en.js`:
+  - Them key `whaleHub.itemsPerPage`.
+
+Ket qua verify:
+- Static diagnostics pass (`get_errors`):
+  - frontend/src/pages/WhaleAlertsHub.jsx
+  - frontend/src/pages/WhaleAlertsHub.test.jsx
+  - frontend/src/i18n/vi.js
+  - frontend/src/i18n/en.js
+
+Tac dong ky vong:
+- Giam tai backend ngay khi vao Whale Hub (khong con campaign + stats scan blocking).
+- First paint nhanh hon do chi can tracked/watchlist/aggregate feed.
+- User co the ha page size ve 4/8 khi can uu tien toc do, hoac tang 12/16 khi uu tien boi canh.
+
+---
+
+## Entry 2026-04-16t - Hotfix 502/504 do whale aggregate query scan qua lon
+
+Tham chieu su co:
+- Frontend nhan nhieu loi `502 Bad Gateway` va `504 Gateway Time-out` tren `/api/realtime/whale-feed/aggregate/` va `/api/realtime/whale-campaigns/`, sau do lan rong sang cac endpoint khac.
+
+Pham vi:
+- Sua duong DB fallback trong `get_whale_feed_aggregate(...)` de tranh quet toan bo queryset vao RAM trong phien co khoi luong lon.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Thay list-comprehension tren toan bo queryset bang iterator stream + early-stop:
+  - Duyet `queryset.iterator(chunk_size=1000)`
+  - Chi thu thap ban ghi hop le den khi dat `limit + 1`
+  - Dung som de tinh `has_more` ma khong can scan full tape
+- Muc tieu: giam CPU/RAM spike va tranh ASGI request bi treo/kill khi aggregate tren session co nhieu tick.
+
+Bang chung chan doan runtime:
+- `docker compose ps -a backend` cho thay backend `Exited (137)` (dau hieu bi kill do tai nguyen).
+- Backend logs ghi nhan nhieu ASGI app instance "took too long to shut down and was killed" o cac URI:
+  - `/api/realtime/whale-feed/aggregate/?sort=ts&window=session&limit=50`
+  - `/api/realtime/whale-feed/aggregate/?sort=ts&window=5m&limit=12`
+  - `/api/realtime/whale-campaigns/?window=session&campaign_limit=18&campaign_sort=strength`
+
+Ket qua verify:
+- Static diagnostics pass:
+  - `get_errors` cho `backend/portfolio/market_data_service.py` -> khong co loi.
+
+Ghi chu van hanh:
+- Dot nay khong tu dong rebuild/restart Docker dev stack theo governance. Sau khi merge, can user chu dong restart backend service de ap dung hotfix.
+
+---
+
+## Entry 2026-04-16s - Admin Ops intraday side backfill (preview/apply)
+
+Tham chieu implementation plan:
+- Phat trien tiep theo yeu cau van hanh: dua command backfill IntradayTick.side len Admin Ops UI.
+
+Pham vi:
+- Trien khai luong thao tac admin cho backfill side theo tick-rule voi 2 buoc:
+  - Preview (dry-run): xem scope/changed/transitions/sample.
+  - Apply: cap nhat DB co safety gate `confirm=true`.
+
+Danh sach tep da sua:
+- backend/portfolio/services_backfill.py
+- backend/portfolio/views_admin_runtime.py
+- backend/config/urls.py
+- frontend/src/api/client.js
+- frontend/src/pages/AdminOps.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tach logic command thanh service layer `services_backfill.py`:
+  - `intraday_side_backfill_preview(...)`
+  - `intraday_side_backfill_apply(...)`
+  - Logic infer side: previous-close seed + tick-rule (uptick/downtick/flat-inherit).
+- Them 2 endpoint admin-only trong `views_admin_runtime.py`:
+  - `POST /api/admin-ops/intraday-side-backfill/preview/`
+  - `POST /api/admin-ops/intraday-side-backfill/apply/`
+- Them URL routing cho 2 endpoint tren trong `backend/config/urls.py`.
+- Frontend bo sung:
+  - API client functions cho preview/apply.
+  - Tab `Data Ops` va panel backfill trong `AdminOps.jsx` voi form filter + ket qua preview/apply.
+  - i18n day du cho `adminOps.intradaySideBackfill*` (vi/en).
+
+Ket qua verify:
+- Syntax/diagnostics pass qua `get_errors` cho tat ca file sua doi:
+  - backend/portfolio/services_backfill.py
+  - backend/portfolio/views_admin_runtime.py
+  - backend/config/urls.py
+  - frontend/src/api/client.js
+  - frontend/src/pages/AdminOps.jsx
+  - frontend/src/i18n/vi.js
+  - frontend/src/i18n/en.js
+- Da sua 2 loi cau truc sau patch dau:
+  - Backfill React hooks dat sai vi tri (trong callback) -> dua ra top-level component.
+  - i18n keys dat ngoai namespace `adminOps` -> dua vao dung object.
+
+Ghi chu governance:
+- Dot nay chi bo sung UI/endpoint/service layer cho backfill, khong tu dong rebuild Docker stack.
+
+---
+
+## Entry 2026-04-16r - Dark Money side inference rebuilt from previous-close tick-rule
+
+Tham chieu implementation plan:
+- docs/WHALE_ALERTS_PRODUCTION_BASELINE_20260416.md
+
+Pham vi:
+- Sua root-cause khien Dark Money tooltip cua VIC co the ra `Whale Buy = 0` du du lieu matched value da dung, vi pipeline va read-path van bi lech manh theo `stored side` cua provider.
+- Chuyen logic sang suy luan chieu lenh theo tick-rule co seed tu gia dong cua phien truoc, de giam phu thuoc vao label `SELL/UNKNOWN` dau vao.
+
+Danh sach tep da sua:
+- backend/portfolio/views_dark_money_history.py
+- backend/portfolio/realtime/collector.py
+- backend/portfolio/management/commands/backfill_intraday_tick_side.py
+- PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- `views_dark_money_history.py` them `_build_reference_price_by_trade_date(...)` va seed `prev_price_by_date` bang gia dong cua phien truoc tu `DailyPrice`.
+- Whale signal inference doi sang quy tac:
+  - gia tang so voi reference/prev tick -> `buy`
+  - gia giam -> `sell`
+  - gia khong doi -> ke thua `last_side_by_date`, chi fallback ve `stored_side` khi chua co huong nao truoc do
+- `realtime/collector.py` ap dung cung tick-rule cho du lieu intraday moi truoc khi push vao stream/DB, de side persistence ve sau nhat quan hon.
+- Loai bo thien lech o nhanh gia bang nhau, khong de provider-side label keo ca cum tick tro lai `SELL`.
+
+Ket qua verify:
+- Backend syntax pass:
+  - `get_errors` cho `views_dark_money_history.py` va `realtime/collector.py` -> khong co loi.
+- Docker backend rebuild + force recreate thanh cong.
+- Verify authenticated API trong backend container:
+  - `status = 200`
+  - `whale_signal_count = 66`
+  - `type_count = {'buy': 34, 'sell': 32}`
+  - `today[0] = {'time': '2026-04-16', 'type': 'buy', 'price': 189.3, 'matched_value': 52501692450000.0, 'volume': 277346500, 'count': 15989, 'severity': 'extreme'}`
+- Verify bucket noi bo tren tap tick VIC vuot nguong user threshold:
+  - `2026-04-16-buy.total_value = 52,294,181,790,000`
+  - khang dinh du lieu da du de sinh signal buy sau khi suy luan dung.
+- Dry-run command (local Django context):
+  - VIC full scope rows: `479,965`
+  - changed rows (estimated): `310,440`
+- Apply co muc tieu tren Docker backend cho tap high-value ticks cua VIC:
+  - `scope_high_value = 21,895`
+  - `updated = 966`
+  - post-apply `today_high_value_side = BUY: 16,899 | SELL: 18 | UNKNOWN: 3`
+
+Ghi chu governance:
+- Dot nay da backfill co muc tieu cho tap high-value ticks de giam rui ro runtime; full-history backfill co the tiep tuc sau gio giao dich bang command `backfill_intraday_tick_side`.
+
+---
+
+## Entry 2026-04-16q - Whale Alerts session-flow card semantics fix
+
+Tham chieu implementation plan:
+- docs/WHALE_ALERTS_PRODUCTION_BASELINE_20260416.md
+
+Pham vi:
+- Sua card `Ty trong dong tien phien` de khong con tron hai he quy chieu: donut ve theo size-class (`shark/whale/small`) nhung so ben phai lai la `buy/sell/net`.
+- Bo sung contract backend cho phan `summary` de frontend co day du `buy/sell/unknown/total` va ti trong theo chieu lenh.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- frontend/src/components/MoneyFlowDonut.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `market_data_service.get_whale_feed(...)` them `unknown_value`, `total_value`, `buy_pct`, `sell_pct`, `unknown_pct` trong `summary`.
+- `MoneyFlowDonut.jsx` doi donut sang hien thi dung `Mua / Ban / Khong xac dinh` theo session flow, dong bo voi `buy_value`, `sell_value`, `flow_net` va them dong `Tong` de doi chieu.
+- Header card duoc doi copy thanh `Ty trong theo chieu lenh` de tranh hieu sai thanh phan size-class.
+- Regression test whale feed summary contract duoc bo sung de khoa cac field moi.
+
+Ket qua verify:
+- Frontend build pass:
+  - `npm run build` trong `frontend/` -> compiled successfully.
+- Django test pass:
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_response_contains_scoring_contract`
+- Live TPB summary verify:
+  - `buy_value = 7,114,950,000`
+  - `sell_value = 64,041,250,000`
+  - `unknown_value = 25,431,250,000`
+  - `total_value = 96,587,450,000`
+  - `buy_pct = 7.4`, `sell_pct = 66.3`, `unknown_pct = 26.3`
+
+---
+
+## Entry 2026-04-16p - Whale Alerts production hardening (timestamp + RVOL + FE cleanup)
+
+Tham chieu implementation plan:
+- docs/WHALE_ALERTS_PRODUCTION_BASELINE_20260416.md
+
+Pham vi:
+- Sua root-cause timestamp cua whale feed de `time`/`ts` khong bi drift khi du lieu den tu aware datetime, stream hoac fallback `IntradayTick` DB.
+- Doi RVOL tu rolling-average trong cung phien sang baseline dung nghia: bucket 15 phut hien tai so voi cung bucket cua 20 phien gan nhat.
+- Siết contract dark money history de chart nhan gia canonical va metadata ro rang, khong can frontend doan don vi.
+- Don dep Whale Alerts frontend scope: severity `extreme -> Siêu cao`, loai trung giua realtime va history feed, them toggle an/hien `MA20/MA50`, va doi wording RVOL theo semantics moi.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/views_dark_money_history.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- frontend/src/components/WhaleFeedPanel.jsx
+- frontend/src/components/RVOLChartPanel.jsx
+- frontend/src/components/DarkMoneyMasterChart.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/WHALE_ALERTS_PRODUCTION_BASELINE_20260416.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `get_rvol(...)` trong `market_data_service.py` hien bucket hoa current volume theo khung 15 phut va tinh `baseline_avg`/`rvol` tren 20 phien lich su cung bucket, kem `baseline_mode`, `baseline_sessions`, `source_event_at`.
+- `get_whale_feed(...)` va `_build_whale_order_payload(...)` dung lai helper parse intraday datetime thong nhat, mang theo `trade_date` cho DB fallback va tra `source_event_at` de feed card khong con sai thoi gian event.
+- `views_dark_money_history.py` normalize gia candles/whale signals/absorption/aggression ve `THOUSAND_VND` canonical va expose `price_unit_canonical` trong payload/meta.
+- `WhaleFeedPanel.jsx` dedupe whale history voi realtime board theo event fingerprint, dong thoi severity label trong scope dashboard khong con phu thuoc namespace cu.
+- `RVOLChartPanel.jsx` doi line/legend tu `SMA20` sang `baseline_avg` va copy 20-session baseline.
+- `DarkMoneyMasterChart.jsx` them toggle doc lap cho `MA20` va `MA50` ma khong doi cau truc pane/truc Y hien tai.
+- `vi.js` / `en.js` cap nhat wording Whale Alerts dashboard, trong do `severityExtreme` tieng Viet la `Siêu cao`.
+
+Ket qua verify:
+- Django tests pass:
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_rvol_endpoint_uses_same_bucket_20_session_baseline`
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_response_contains_scoring_contract`
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_falls_back_to_intraday_tick_db_when_vnstock_unavailable`
+- Frontend build pass:
+  - `npm run build` trong `frontend/` -> compiled successfully.
+- Static validation pass:
+  - `get_errors` cho cac file backend/frontend vua sua -> khong co loi.
+
+Ghi chu governance:
+- Dot nay chi dung duong code refactor hien hanh (`market_data_service`, component Whale Alerts dang active), khong mo rong sang helper legacy da bi thay the.
+
+---
+
+## Entry 2026-04-16o - Intraday runtime-provider unification + dead-path cleanup
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua root-cause ingest intraday bi dung khi provider `VCI` loi nhung adapter van hard-code `source='VCI'`, bo qua Runtime Vnstock Config tu Admin Ops.
+- Thong nhat provider resolution cho intraday/history/listing theo runtime config hien co, thay vi hard-code provider trong adapter va call-site stock workspace.
+- Don sach dead-path/noise lien quan intraday fallback cu va sua ordering Redis stream de API intraday doc dung giao dich moi nhat.
+
+Danh sach tep da sua:
+- backend/portfolio/adapters/vnstock_adapter.py
+- backend/portfolio/realtime/collector.py
+- backend/portfolio/realtime/tick_producer.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/views_stock_workspace_admin.py
+- backend/portfolio/tests/test_adapters.py
+- backend/portfolio/tests/test_tick_producer.py
+- PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- Them resolver chung `_resolve_runtime_sources(...)` va ap dung cho intraday/history/listing de tat ca lay primary + fallback tu `RuntimeVnstockConfig`/Admin Ops thay vi hard-code `VCI`.
+- `fetch_intraday_dataframe(...)` khong con dung normalize cua `price_board`; thay vao do co normalize intraday rieng theo schema thuc te va canonicalize gia ve `THOUSAND_VND`.
+- `fetch_intraday_dataframe(...)` failover qua provider tiep theo trong runtime chain; runtime verify xac nhan `VCI` loi nhung `KBS` thanh cong voi MWG.
+- `fetch_history_dataframe(...)` va `fetch_listing_symbols_dataframe(...)` cung dung runtime provider chain; listing overlay trong stock workspace khong con truyen `source='VCI'` truc tiep.
+- `collect_intraday_frame(...)` duoc lam sach thong diep log va bo dau vet "synthetic fallback" cu da khong con ton tai.
+- `TickProducer.push_intraday_ticks(...)` sap xep oldest -> newest truoc khi `XADD` de `XREVRANGE` luon tra ve trade moi nhat dung voi semantics cua API realtime.
+- Them regression tests cho runtime-configured intraday provider fallback va stream ordering.
+
+Ket qua verify:
+- Test pass:
+  - `portfolio.tests.test_adapters.VnstockAdapterTests` (18 tests)
+  - `portfolio.tests.test_tick_producer.TickProducerTests` (1 test)
+- Runtime verify trong Docker dev:
+  - `fetch_intraday_dataframe('MWG', 5)` tra du lieu thanh cong voi attrs `source='KBS'`, `intraday_source='KBS'`, `price_unit_canonical='THOUSAND_VND'`.
+  - `/api/health/streams/` khong con `total_ticks = 0`; sau fix ghi nhan `MWG.tick_count = 205`, tong stream `total_ticks = 5421`.
+  - `IntradayTick` cho `MWG` ngay `2026-04-16` da tien toi `max_trade_time = 14:21:55`, xac nhan DB writer da phuc hoi ingest.
+  - Sau khi push batch moi theo stream ordering moi va clear cache intraday ngan han, `/api/realtime/intraday/MWG/?page_size=10` tra:
+    - `source = stream`
+    - `source_event_at = 2026-04-16T14:24:51+07:00`
+    - `age_seconds = 31`
+    - trades moi nhat quanh `14:24:51`, khong con dung o `12:14:02` hay batch cu `14:16`.
+
+Ghi chu governance:
+- Van con mot so hard-code `VCI` o cac flow khac khong thuoc intraday stock workspace runtime path (vi du news/admin probes). Chung khong phai dead path cua bug nay va chua duoc mo rong pham vi o entry nay.
+
+---
+
+## Entry 2026-04-16n - Stock Detail production hardening cho chart canonical + financial failover
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua root-cause khi endpoint `chart` van tra OHLC o don vi raw history/VND trong khi `overview` va `realtime/ticker` da o `THOUSAND_VND` canonical.
+- Loai bo hardcode `VCI` trong financial ratio flow, them failover source hop le theo runtime, va harden UI de panel tai chinh khong roi vao trang thai trong mo ho khi upstream gian doan.
+- Them guard frontend de realtime payload sai scale khong duoc override header cua Stock Detail.
+
+Danh sach tep da sua:
+- backend/portfolio/adapters/vnstock_adapter.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/services_realtime_adapter.py
+- backend/portfolio/views_realtime_depth_financial.py
+- backend/portfolio/tests/test_adapters.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- PROGRESS_DASHBOARD_CANONICAL_UPDATE_20260416.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- `get_stock_workspace_chart(...)` va `_build_stock_workspace_overview_base(...)` normalize gia lich su/DB ve `THOUSAND_VND` canonical truoc khi tra payload va tinh technical.
+- `get_financial_metrics(...)`, realtime adapter wrapper, va legacy financial view khong con hardcode `source='VCI'`; thay vao do dung adapter failover source va tra kem `source` thuc te.
+- Financial ratio fallback chi giu cac source hop le voi runtime hien tai (`AUTO`, `TCBS`, `VCI`, `KBS`, optional `FMP`) de tranh noise tu `MSN`/module khong ton tai.
+- `StockDetail.jsx` them scale guard de realtime quote bat thuong khong override header.
+- Financial panel hien thi thong diep degrade ro rang khi upstream financial tam thoi khong san sang.
+- Them regression tests cho chart canonicalization va financial ratio source resolution/fallback.
+
+Ket qua verify:
+- Test pass:
+  - `VnstockAdapterTests.test_resolve_price_board_sources_keeps_order_and_dedup`
+  - `VnstockAdapterTests.test_resolve_financial_ratio_sources_keeps_order_and_dedup`
+  - `VnstockAdapterTests.test_fetch_price_board_dataframe_preserves_canonical_multiindex_payload`
+  - `VnstockAdapterTests.test_fetch_price_board_dataframe_fallbacks_on_rate_limit`
+  - `VnstockAdapterTests.test_fetch_financial_ratio_dataframe_uses_timeout_wrapper`
+  - `VnstockAdapterTests.test_fetch_financial_ratio_dataframe_fallbacks_to_next_source`
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_overview_normalizes_52w_history_to_quote_unit`
+  - `ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_chart_normalizes_history_points_to_quote_unit`
+- Live API sau rebuild backend dev:
+  - `overview.current_price = 81.1`
+  - `overview.week52_low = 51.26`
+  - `overview.week52_high = 94.4`
+  - `chart.points[0].open = 80.2`
+  - `chart.points[0].close = 80.3`
+  - `chart.points[last].close = 81.5`
+- Live financial probe:
+  - `financials.source = vnstock_unavailable`
+  - Tat ca source runtime kha dung (`AUTO`, `TCBS`, `VCI`, `KBS`) deu fail/empty tren upstream tai thoi diem verify, nen panel duoc fail-soft minh bach thay vi hien thi sai du lieu.
+
+---
+
 ## Entry 2026-04-16m - Chuan hoa don vi 52W tren Stock Detail overview
 
 Tham chieu implementation plan:

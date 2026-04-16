@@ -228,7 +228,7 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
-export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor } = {}) => {
+export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor, signal } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {
     params.set('symbols', symbols.join(','));
@@ -249,7 +249,7 @@ export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts',
     params.set('cursor', cursor);
   }
   const queryString = params.toString();
-  return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`);
+  return apiClient.get(`/realtime/whale-feed/aggregate/${queryString ? `?${queryString}` : ''}`, { signal });
 };
 export const getWhaleCampaigns = ({
   symbols,
@@ -259,6 +259,7 @@ export const getWhaleCampaigns = ({
   campaignSort = 'strength',
   campaignGapMinutes,
   cursor,
+  signal,
 } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {
@@ -283,7 +284,7 @@ export const getWhaleCampaigns = ({
     params.set('cursor', cursor);
   }
   const queryString = params.toString();
-  return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`);
+  return apiClient.get(`/realtime/whale-campaigns/${queryString ? `?${queryString}` : ''}`, { signal });
 };
 
 export const getUnifiedAlerts = ({ symbols, watchlistGroupIds, window = 'session', severityMin = 'low', limit = 20, cursor } = {}) => {
@@ -476,6 +477,11 @@ export const warmTickerPrefetch = (mode = 'async') =>
   apiClient.post(`/admin-ops/prefetch/warm/?mode=${encodeURIComponent(mode)}`);
 export const syncMarketGroups = (mode = 'all', clear = false) =>
   apiClient.post(`/admin-ops/market-groups/sync/?mode=${mode}&clear=${clear}`);
+
+export const adminIntradaySideBackfillPreview = (payload) =>
+  apiClient.post('/admin-ops/intraday-side-backfill/preview/', payload);
+export const adminIntradaySideBackfillApply = (payload) =>
+  apiClient.post('/admin-ops/intraday-side-backfill/apply/', payload);
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');

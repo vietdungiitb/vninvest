@@ -145,7 +145,7 @@ class FinancialMetricsView(APIView):
                 period='year',
                 lang='vi',
                 dropna=True,
-                source='VCI',
+                source=None,
             )
         except ExternalSystemException as exc:
             logger.warning('FinancialMetricsView lỗi vnstock %s: %s', normalized_symbol, exc)
@@ -222,6 +222,7 @@ class FinancialMetricsView(APIView):
         result = {
             'symbol': normalized_symbol,
             'years': years,
+            'source': str(getattr(df, 'attrs', {}).get('financial_ratio_source') or 'vnstock').strip().lower(),
             'fetched_at': timezone.now().isoformat(),
         }
         _cache_set(cache_key, result, timeout=21600)

@@ -294,23 +294,171 @@ def _build_stock_client(symbol: str, source: str = 'VCI'):
         raise ExternalSystemException(str(exc), code=code) from exc
 
 
-def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str]:
+def _resolve_runtime_sources(
+    *,
+    explicit_source: str | None = None,
+    runtime_primary_key: str | None = 'price_board_source',
+    env_primary_key: str | None = None,
+    env_fallback_key: str | None = None,
+    default_primary: str = 'KBS',
+    default_fallbacks: list[str] | None = None,
+    supported_sources: set[str] | None = None,
+) -> list[str]:
     runtime_settings = _get_runtime_settings()
 
-    configured_primary = str(runtime_settings.get('price_board_source') or '').strip().upper()
+    configured_primary = ''
+    if runtime_primary_key:
+        configured_primary = str(runtime_settings.get(runtime_primary_key) or '').strip().upper()
+    configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
+    runtime_fallbacks = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
+
+    env_primary = ''
+    if env_primary_key:
+        env_primary = str(os.getenv(env_primary_key, '') or '').strip().upper()
+
+    primary = str(explicit_source or configured_primary or env_primary or default_primary).strip().upper()
+
+    env_fallbacks: list[str] = []
+    if env_fallback_key:
+        env_fallback_raw = str(os.getenv(env_fallback_key, '') or '').strip()
+        env_fallbacks = [item.strip().upper() for item in env_fallback_raw.split(',') if item.strip()]
+
+    ordered: list[str] = []
+    for source in [primary] + runtime_fallbacks + env_fallbacks + list(default_fallbacks or []):
+        normalized_source = str(source or '').strip().upper()
+        if not normalized_source:
+            continue
+        if supported_sources and normalized_source not in supported_sources:
+            continue
+        if normalized_source not in ordered:
+            ordered.append(normalized_source)
+
+    return ordered or [default_primary]
+
+
+def _resolve_price_board_sources(explicit_source: str | None = None) -> list[str]:
+    return _resolve_runtime_sources(
+        explicit_source=explicit_source,
+        runtime_primary_key='price_board_source',
+        env_primary_key='VNSTOCK_PRICE_BOARD_SOURCE',
+        env_fallback_key='VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES',
+        default_primary='KBS',
+        default_fallbacks=['VCI'],
+    )
+
+
+def _resolve_intraday_sources(explicit_source: str | None = None) -> list[str]:
+    return _resolve_runtime_sources(
+        explicit_source=explicit_source,
+        runtime_primary_key='price_board_source',
+        env_primary_key='VNSTOCK_INTRADAY_SOURCE',
+        env_fallback_key='VNSTOCK_INTRADAY_FALLBACK_SOURCES',
+        default_primary='KBS',
+        default_fallbacks=['VCI'],
+    )
+
+
+def _resolve_history_sources(explicit_source: str | None = None) -> list[str]:
+    return _resolve_runtime_sources(
+        explicit_source=explicit_source,
+        runtime_primary_key='price_board_source',
+        env_primary_key='VNSTOCK_HISTORY_SOURCE',
+        env_fallback_key='VNSTOCK_HISTORY_FALLBACK_SOURCES',
+        default_primary='KBS',
+        default_fallbacks=['VCI'],
+    )
+
+
+def _resolve_listing_sources(explicit_source: str | None = None) -> list[str]:
+    return _resolve_runtime_sources(
+        explicit_source=explicit_source,
+        runtime_primary_key='price_board_source',
+        env_primary_key='VNSTOCK_LISTING_SOURCE',
+        env_fallback_key='VNSTOCK_LISTING_FALLBACK_SOURCES',
+        default_primary='KBS',
+        default_fallbacks=['VCI'],
+    )
+
+
+def _resolve_financial_ratio_sources(explicit_source: str | None = None) -> list[str]:
+    runtime_settings = _get_runtime_settings()
+
+    configured_primary = str(explicit_source or os.getenv('VNSTOCK_FINANCIAL_RATIO_SOURCE', '') or '').strip().upper()
     configured_fallbacks = runtime_settings.get('fallback_sources') if isinstance(runtime_settings.get('fallback_sources'), list) else []
     fallback_items = [str(item or '').strip().upper() for item in configured_fallbacks if str(item or '').strip()]
+    supported_sources = {'AUTO', 'TCBS', 'VCI', 'KBS', 'FMP'}
 
-    primary = str(explicit_source or configured_primary or os.getenv('VNSTOCK_PRICE_BOARD_SOURCE', 'KBS') or 'KBS').strip().upper()
-    if not fallback_items:
-        fallback_raw = str(os.getenv('VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES', 'VCI') or '').strip()
-        fallback_items = [item.strip().upper() for item in fallback_raw.split(',') if item.strip()]
+    if not configured_primary:
+        configured_primary = 'AUTO'
+
+    env_fallback_raw = str(os.getenv('VNSTOCK_FINANCIAL_RATIO_FALLBACK_SOURCES', 'TCBS,VCI,KBS') or '').strip()
+    env_fallbacks = [item.strip().upper() for item in env_fallback_raw.split(',') if item.strip()]
 
     ordered = []
-    for source in [primary] + fallback_items:
-        if source and source not in ordered:
+    for source in [configured_primary] + fallback_items + env_fallbacks:
+        if source and source in supported_sources and source not in ordered:
             ordered.append(source)
-    return ordered or ['KBS']
+    return ordered or ['AUTO']
+
+
+def _normalize_intraday_dataframe(result, *, source_provider: str) -> pd.DataFrame:
+    if result is None or getattr(result, 'empty', True):
+        return pd.DataFrame()
+
+    if not isinstance(result, pd.DataFrame):
+        try:
+            result = pd.DataFrame(result)
+        except Exception as exc:
+            raise ExternalSystemException(str(exc), code='vnstock_error') from exc
+
+    normalized_df = result.copy()
+    if normalized_df.empty:
+        return normalized_df
+
+    if 'time' not in normalized_df.columns:
+        if 'tradingDate' in normalized_df.columns:
+            normalized_df['time'] = normalized_df['tradingDate']
+        elif 'date' in normalized_df.columns:
+            normalized_df['time'] = normalized_df['date']
+        else:
+            normalized_df['time'] = ''
+
+    if 'price' not in normalized_df.columns and 'close' in normalized_df.columns:
+        normalized_df['price'] = normalized_df['close']
+    if 'volume' not in normalized_df.columns:
+        if 'vol' in normalized_df.columns:
+            normalized_df['volume'] = normalized_df['vol']
+        elif 'matchVolume' in normalized_df.columns:
+            normalized_df['volume'] = normalized_df['matchVolume']
+        else:
+            normalized_df['volume'] = 0
+
+    if 'match_type' not in normalized_df.columns:
+        if 'matchType' in normalized_df.columns:
+            normalized_df['match_type'] = normalized_df['matchType']
+        elif 'side' in normalized_df.columns:
+            normalized_df['match_type'] = normalized_df['side']
+        else:
+            normalized_df['match_type'] = 'UNKNOWN'
+
+    normalized_df['price'] = pd.to_numeric(normalized_df['price'], errors='coerce')
+    normalized_df['volume'] = pd.to_numeric(normalized_df['volume'], errors='coerce').fillna(0)
+
+    def _normalize_intraday_price(value):
+        if pd.isna(value):
+            return value
+        source_unit = 'VND' if abs(float(value)) >= 1000 else 'THOUSAND_VND'
+        return normalize_quote_price_to_canonical(
+            value=value,
+            source_unit=source_unit,
+            source=PriceSource.INTRADAY_TICK,
+        ).value
+
+    normalized_df['price'] = normalized_df['price'].apply(_normalize_intraday_price)
+    normalized_df.attrs['price_unit_canonical'] = QUOTE_UNIT_CANONICAL
+    normalized_df.attrs['price_unit_source'] = source_provider
+    normalized_df.attrs['intraday_source'] = source_provider
+    return normalized_df
 
 
 def _run_with_timeout(fn, timeout=8):
@@ -424,23 +572,37 @@ def fetch_intraday_dataframe(symbol: str, page_size: int):
     
     OUTPUT GUARANTEE: All prices returned in canonical THOUSAND_VND.
     """
-    stock_client = _build_stock_client(symbol=symbol, source='VCI')
-    
-    result = _run_with_timeout(
-        lambda: stock_client.quote.intraday(
-            symbol=symbol,
-            page_size=page_size,
-        ),
-        timeout=_resolve_timeout('intraday', 8),
-    )
-    
-    # Intraday data is also normalized to canonical
-    normalized = _normalize_price_board_dataframe(result)
-    canonical = _ensure_quote_prices_canonical_thousand_vnd(
-        normalized,
-        source_provider='VCI'
-    )
-    return canonical
+    timeout_seconds = _resolve_timeout('intraday', 8)
+    sources = _resolve_intraday_sources()
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.quote.intraday(
+                    symbol=symbol,
+                    page_size=page_size,
+                ),
+                timeout=timeout_seconds,
+            )
+            normalized = _normalize_intraday_dataframe(result, source_provider=candidate_source)
+            if normalized is None or normalized.empty:
+                logger.warning('intraday source %s returned empty payload for %s; trying next source', candidate_source, symbol)
+                continue
+            return normalized
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('intraday source %s failed for %s: %s', candidate_source, symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('intraday source %s missing intraday capability for %s', candidate_source, symbol)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
 def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, source: str | None = None):
@@ -506,13 +668,42 @@ def fetch_financial_ratio_dataframe(
     period: str = 'year',
     lang: str = 'vi',
     dropna: bool = True,
-    source: str = 'VCI',
+    source: str | None = None,
 ):
-    stock_client = _build_stock_client(symbol=symbol, source=source)
-    return _run_with_timeout(
-        lambda: stock_client.finance.ratio(period=period, lang=lang, dropna=dropna),
-        timeout=_resolve_timeout('financial_ratio', 10),
-    )
+    timeout_seconds = _resolve_timeout('financial_ratio', 10)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    last_error = None
+    last_result = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.finance.ratio(period=period, lang=lang, dropna=dropna),
+                timeout=timeout_seconds,
+            )
+            if result is None or getattr(result, 'empty', False):
+                logger.warning('financial_ratio source %s returned empty payload for %s; trying next source', candidate_source, symbol)
+                continue
+
+            if hasattr(result, 'attrs') and isinstance(result.attrs, dict):
+                result.attrs['financial_ratio_source'] = candidate_source
+            last_result = result
+            return result
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('financial_ratio source %s failed for %s: %s', candidate_source, symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('financial_ratio source %s missing finance ratio capability for %s', candidate_source, symbol)
+            continue
+
+    if last_result is not None:
+        return last_result
+    if last_error is not None:
+        raise last_error
+    raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
 def fetch_history_dataframe(
@@ -523,34 +714,52 @@ def fetch_history_dataframe(
     interval: str = '1D',
     source: str | None = None,
 ):
-    if source:
-        resolved_source = str(source).strip().upper()
-    else:
-        runtime_settings = _get_runtime_settings()
-        admin_source = str(runtime_settings.get('price_board_source') or '').strip().upper()
-        resolved_source = (
-            admin_source
-            or str(os.getenv('VNSTOCK_HISTORY_SOURCE', '') or '').strip().upper()
-            or 'KBS'
-        )
-    stock_client = _build_stock_client(symbol=symbol, source=resolved_source)
-    return _run_with_timeout(
-        lambda: stock_client.quote.history(
-            symbol=symbol,
-            start=start,
-            end=end,
-            interval=interval,
-        ),
-        timeout=_resolve_timeout('history', 12),
-    )
+    timeout_seconds = _resolve_timeout('history', 12)
+    sources = _resolve_history_sources(explicit_source=source)
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+            return _run_with_timeout(
+                lambda: stock_client.quote.history(
+                    symbol=symbol,
+                    start=start,
+                    end=end,
+                    interval=interval,
+                ),
+                timeout=timeout_seconds,
+            )
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('history source %s failed for %s: %s', candidate_source, symbol, exc)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
-def fetch_listing_symbols_dataframe(symbol: str, source: str = 'VCI'):
-    stock_client = _build_stock_client(symbol=symbol, source=source)
-    return _run_with_timeout(
-        lambda: stock_client.listing.all_symbols(),
-        timeout=_resolve_timeout('listing', 12),
-    )
+def fetch_listing_symbols_dataframe(symbol: str, source: str | None = None):
+    timeout_seconds = _resolve_timeout('listing', 12)
+    sources = _resolve_listing_sources(explicit_source=source)
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=symbol, source=candidate_source)
+            return _run_with_timeout(
+                lambda: stock_client.listing.all_symbols(),
+                timeout=timeout_seconds,
+            )
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('listing source %s failed for %s: %s', candidate_source, symbol, exc)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
 def read_stream_intraday_ticks(symbol: str, count: int):

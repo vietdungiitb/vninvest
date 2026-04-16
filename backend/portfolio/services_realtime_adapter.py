@@ -75,7 +75,7 @@ def fetch_intraday_dataframe(symbol: str, page_size: int = 25):
         raise ExternalSystemException(str(exc), code='vnstock_error')
 
 
-def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: str = 'vi', dropna: bool = True, source: str = 'VCI'):
+def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: str = 'vi', dropna: bool = True, source: str | None = None):
     """
     Wrapper around vnstock adapter to fetch financial ratio data.
     Emits metrics: realtime_upstream_calls_total (suffix: financial_ratio), realtime_upstream_errors_total
@@ -85,7 +85,7 @@ def fetch_financial_ratio_dataframe(symbol: str, *, period: str = 'year', lang: 
         period: Period type ('year', 'quarter') - default 'year'
         lang: Language ('vi', 'en') - default 'vi'
         dropna: Drop NaN rows - default True
-        source: Data source ('VCI', 'FiinPRO') - default 'VCI'
+        source: Optional preferred data source, will fallback automatically when omitted
         
     Returns:
         DataFrame with financial ratio data or None if failed

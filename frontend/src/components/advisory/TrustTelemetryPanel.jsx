@@ -26,7 +26,7 @@ function safeParse(raw, fallback) {
 }
 
 export default function TrustTelemetryPanel() {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const [counters, setCounters] = useState({});
   const [recentEvents, setRecentEvents] = useState([]);
 
@@ -85,7 +85,7 @@ export default function TrustTelemetryPanel() {
               return (
                 <li key={`${item?.ts || idx}`} className="text-[11px] text-slate-300 flex items-start justify-between gap-3">
                   <span className="truncate">{eventLabel}</span>
-                  <span className="text-slate-500 shrink-0">{item?.ts ? new Date(item.ts).toLocaleTimeString() : '—'}</span>
+                  <span className="text-slate-500 shrink-0">{item?.ts ? formatDateTime(item.ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</span>
                 </li>
               );
             })}

@@ -204,6 +204,8 @@ from .views_ai_advisory_session import (
     stock_ai_advisory_session_api,
 )
 from .views_admin_runtime import (
+    admin_intraday_side_backfill_apply_api,
+    admin_intraday_side_backfill_preview_api,
     admin_runtime_kpi_advisory_merge_api,
     admin_runtime_kpi_advisory_metrics_api,
     admin_runtime_kpi_api,

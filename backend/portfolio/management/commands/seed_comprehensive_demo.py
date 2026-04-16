@@ -440,7 +440,8 @@ class Command(BaseCommand):
         market_close = time(14, 30)
 
         for symbol in symbols:
-            base_price = Decimal(str(BASE_PRICES[symbol]))
+            base_price_vnd = Decimal(str(BASE_PRICES[symbol]))
+            base_price = base_price_vnd / Decimal('1000')
 
             for day_offset in range(num_days):
                 trade_date = date.today() - timedelta(days=day_offset)
@@ -452,7 +453,7 @@ class Command(BaseCommand):
                     second = randint(0, 59)
                     trade_time = time(hour, minute, second)
 
-                    price = base_price + Decimal(str(uniform(-2000, 2000)))
+                    price = base_price + Decimal(str(uniform(-2, 2)))
                     volume = randint(1000, 100000)
                     side = choice(['BUY', 'SELL', 'UNKNOWN'])
 

@@ -90,14 +90,22 @@ class TickProducer:
         key = self.stream_key(symbol)
         pushed = 0
         pipe = self.client.pipeline(transaction=False)
+        records = df.to_dict('records')
 
-        for record in df.to_dict('records'):
+        # Push oldest -> newest so the latest Redis stream entry maps to the
+        # newest trade event, which keeps XREVRANGE aligned with realtime API semantics.
+        def _record_sort_key(record: dict) -> tuple[int, str]:
+            ts_value = str(record.get("ts", "") or "")
+            return (0 if ts_value else 1, ts_value)
+
+        for record in sorted(records, key=_record_sort_key):
             fields = {
                 "symbol": symbol.upper(),
                 "ts": str(record.get("ts", "")),
                 "price": str(record.get("price", 0)),
                 "volume": str(int(record.get("volume", 0))),
                 "side": str(record.get("side", "UNKNOWN")),
+                "price_unit": str(record.get("price_unit", "THOUSAND_VND")),
             }
             pipe.xadd(key, fields, maxlen=self._max_len, approximate=True)
             pushed += 1

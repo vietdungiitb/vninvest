@@ -153,12 +153,11 @@ describe('WhaleAlertsHub Campaigns', () => {
     });
 
     renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabCampaigns' }));
 
     await waitFor(() => {
       expect(getWhaleCampaigns).toHaveBeenCalledTimes(1);
     });
-
-    fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabCampaigns' }));
 
     expect(await screen.findByText('HPG')).toBeTruthy();
 
@@ -184,6 +183,10 @@ describe('WhaleAlertsHub Campaigns', () => {
 
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabCampaigns' }));
+
+    await waitFor(() => {
+      expect(getWhaleCampaigns).toHaveBeenCalledTimes(1);
+    });
 
     expect(await screen.findByText('HPG')).toBeTruthy();
     expect(screen.getByText('FPT')).toBeTruthy();
@@ -217,6 +220,10 @@ describe('WhaleAlertsHub Campaigns', () => {
 
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabCampaigns' }));
+
+    await waitFor(() => {
+      expect(getWhaleCampaigns).toHaveBeenCalledTimes(1);
+    });
 
     expect(await screen.findByText('HPG')).toBeTruthy();
 
@@ -275,10 +282,6 @@ describe('WhaleAlertsHub Campaigns', () => {
     });
 
     renderPage();
-
-    await waitFor(() => {
-      expect(getWhaleCampaigns).toHaveBeenCalledTimes(1);
-    });
 
     fireEvent.click(screen.getByRole('button', { name: 'whaleHub.tabSymbolInvestigation' }));
 

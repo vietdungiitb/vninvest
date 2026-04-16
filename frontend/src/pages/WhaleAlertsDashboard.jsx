@@ -135,7 +135,7 @@ import { OrderFlowRadarPanel } from '../components/OrderFlowRadarPanel';
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function WhaleAlertsDashboard() {
-  const { t } = useI18n();
+  const { t, formatDateTime } = useI18n();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
 
@@ -293,7 +293,7 @@ export default function WhaleAlertsDashboard() {
             )}
             <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
               {realtimeStatus === 'live' ? t('whaleAlertsDashboard.statusLive') : realtimeStatus === 'polling' ? t('whaleAlertsDashboard.statusPolling') : t('whaleAlertsDashboard.statusConnecting')}
-              {lastEventAt ? ` · ${new Date(lastEventAt).toLocaleTimeString(undefined)}` : ''}
+              {lastEventAt ? ` · ${formatDateTime(lastEventAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
             </div>
             <Link
               to={`/stocks/${normalizedSymbol}`}
