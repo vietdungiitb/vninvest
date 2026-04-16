@@ -2778,6 +2778,52 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.data['stale_threshold_seconds'], 15)
         self.assertGreaterEqual(response.data['age_seconds'], 4)
 
+    @override_settings(INTRADAY_STALE_MAX_SECONDS_DEFAULT=15, INTRADAY_STALE_MAX_SECONDS_VN30=10)
+    @patch('portfolio.market_data_service.is_vnstock_rate_limited', return_value=True)
+    @patch('portfolio.market_data_service.resolve_market_phase')
+    def test_realtime_intraday_lunch_break_suppresses_stale_warning(self, mock_resolve_market_phase, _mock_rate_limited):
+        self.authenticate()
+
+        mock_resolve_market_phase.return_value = {
+            'profile': 'lunch_break',
+            'timezone': 'Asia/Ho_Chi_Minh',
+            'market_code': 'VN_STOCK',
+            'supported_timezones': ['Asia/Ho_Chi_Minh'],
+        }
+        cache.delete('intraday:is_vn30:MWG')
+
+        source_event_at = (timezone.now() - timedelta(minutes=45)).isoformat()
+        cache.set(
+            'intraday:last_good:MWG',
+            {
+                'symbol': 'MWG',
+                'trades': [
+                    {
+                        'time': '11:29:58',
+                        'price': 65.1,
+                        'volume': 47000,
+                        'side': 'buy',
+                        'match_type': 'ATO',
+                    }
+                ],
+                'total': 1,
+                'source': 'stream',
+                'stale': False,
+                'fetched_at': source_event_at,
+                'source_event_at': source_event_at,
+            },
+            timeout=60,
+        )
+
+        response = self.client.get('/api/realtime/intraday/MWG/?page_size=50')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['market_phase'], 'lunch_break')
+        self.assertFalse(response.data['stale'])
+        self.assertFalse(response.data['stale_over_threshold'])
+        self.assertEqual(response.data['stale_threshold_seconds'], 15)
+        self.assertGreaterEqual(response.data['age_seconds'], 60)
+
     @patch('portfolio.market_views.market_data_service.get_price_board')
     def test_price_board_endpoint_uses_refactored_market_view_when_flag_enabled(self, mock_get_price_board):
         self.authenticate()

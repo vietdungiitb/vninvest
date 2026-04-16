@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-16j - Intraday lunch-break stale suppression + fresher DB fallback priority
+
+Tham chieu implementation plan:
+- docs/REALTIME_FRESHNESS_CONTRACT_IMPLEMENTATION_PLAN_20260417.md
+
+Pham vi:
+- Sua root-cause cho visual test scenario khi vnstock intraday upstream unavailable nhung UI van bi banner stale trong `lunch_break`.
+- Khi fallback, uu tien DB intraday neu moi hon `last_good` cache cu.
+- Trong `lunch_break/pre_open/post_close/offhours`, khong gan `stale` / `stale_over_threshold` cho intraday fallback vi day la session-hold expected state, khong phai realtime incident.
+
+Danh sach tep da sua:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Noi dung cap nhat chinh:
+- Them `_select_preferred_intraday_fallback(...)` de chon DB fallback khi co event moi hon `last_good` cache hoac cache da vuot nguong freshness.
+- `_decorate_intraday_response_contract(...)` bo sung `market_phase` va tat stale banner trong `lunch_break/offhours-like` phases.
+- Them test regression `test_realtime_intraday_lunch_break_suppresses_stale_warning`.
+
+Ket qua verify:
+- API check sau rebuild + reseed + clear cache:
+  * VNM/FPT/MWG/VCB deu tra `market_phase=lunch_break`, `stale=false`, `stale_over_threshold=false`.
+- Visual root-cause xac nhan: banner stale do false-positive trong lunch break, khong con sau fix.
+
+---
+
 ## Entry 2026-04-17a - Realtime Freshness Contract: production-ready fix + test suite
 
 Tham chieu implementation plan:

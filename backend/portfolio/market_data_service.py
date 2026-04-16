@@ -8,7 +8,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.core.cache import cache
-from django.db.models import ExpressionWrapper, F, FloatField, Max, Min, Q
+from django.db.models import Case, ExpressionWrapper, F, FloatField, Max, Min, Q, When
 from django.utils import timezone
 
 from .adapters.cache_adapter import (
@@ -50,10 +50,12 @@ from .models import (
     WatchlistItem,
 )
 from .observability import (
+    record_intraday_freshness_observation,
     record_market_external_timeout,
     record_market_fallback,
 )
 from .permissions import resolve_user_entitlements
+from .price_units import PriceSource, normalize_quote_price_to_canonical
 from .services import get_price_changes
 from .runtime_policy_helpers import _get_runtime_prefetch_time_policy
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
@@ -140,15 +142,183 @@ class MarketDataService:
     def _intraday_last_good_cache_key(self, symbol: str) -> str:
         return f'intraday:last_good:{self.normalize_symbol(symbol)}'
 
+    def _intraday_vn30_cache_key(self, symbol: str) -> str:
+        return f'intraday:is_vn30:{self.normalize_symbol(symbol)}'
+
+    def _is_vn30_symbol(self, symbol: str) -> bool:
+        normalized_symbol = self.normalize_symbol(symbol)
+        cache_key = self._intraday_vn30_cache_key(normalized_symbol)
+        cached_flag = get_cache(cache_key)
+        if isinstance(cached_flag, bool):
+            return cached_flag
+
+        is_vn30 = SecuritiesItem.objects.filter(
+            symbol=normalized_symbol,
+            group__group_type=SecuritiesGroup.GroupType.MARKET_CAP,
+            group__name__icontains='VN30',
+        ).exists()
+        set_cache(cache_key, is_vn30, timeout=300)
+        return is_vn30
+
+    def _resolve_intraday_stale_threshold_seconds(self, symbol: str) -> int:
+        default_threshold = max(int(getattr(settings, 'INTRADAY_STALE_MAX_SECONDS_DEFAULT', 15) or 15), 1)
+        vn30_threshold = max(int(getattr(settings, 'INTRADAY_STALE_MAX_SECONDS_VN30', 10) or 10), 1)
+        return vn30_threshold if self._is_vn30_symbol(symbol) else default_threshold
+
+    def _parse_intraday_event_datetime(self, raw_value, fallback_date: date | None = None) -> datetime | None:
+        if raw_value is None:
+            return None
+
+        parsed_dt: datetime | None = None
+        if isinstance(raw_value, datetime):
+            parsed_dt = raw_value
+        elif isinstance(raw_value, date):
+            parsed_dt = datetime.combine(raw_value, time.min)
+        else:
+            text_value = str(raw_value).strip()
+            if not text_value:
+                return None
+
+            try:
+                parsed_dt = datetime.fromisoformat(text_value.replace('Z', '+00:00'))
+            except ValueError:
+                parsed_dt = None
+
+            if parsed_dt is None and len(text_value) <= 8 and ':' in text_value:
+                for fmt in ('%H:%M:%S', '%H:%M'):
+                    try:
+                        parsed_time = datetime.strptime(text_value, fmt).time()
+                        parsed_dt = datetime.combine(fallback_date or timezone.localdate(), parsed_time)
+                        break
+                    except ValueError:
+                        continue
+
+        if parsed_dt is None:
+            return None
+        if timezone.is_naive(parsed_dt):
+            parsed_dt = timezone.make_aware(parsed_dt, timezone.get_current_timezone())
+        return timezone.localtime(parsed_dt)
+
+    def _to_intraday_event_iso(self, raw_value, fallback_date: date | None = None) -> str | None:
+        event_dt = self._parse_intraday_event_datetime(raw_value, fallback_date=fallback_date)
+        return event_dt.isoformat() if event_dt is not None else None
+
+    def _resolve_intraday_stream_source_event_at(self, stream_ticks: list[dict]) -> str | None:
+        latest_dt = None
+        for tick in stream_ticks or []:
+            event_dt = self._parse_intraday_event_datetime(tick.get('ts'))
+            if event_dt is None:
+                continue
+            if latest_dt is None or event_dt > latest_dt:
+                latest_dt = event_dt
+        return latest_dt.isoformat() if latest_dt is not None else None
+
+    def _resolve_intraday_dataframe_source_event_at(self, df) -> str | None:
+        latest_dt = None
+        fallback_date = timezone.localdate()
+        for _, row in df.iterrows():
+            raw_time = row.get('time') or row.get('tradingDate') or row.get('date') or ''
+            event_dt = self._parse_intraday_event_datetime(raw_time, fallback_date=fallback_date)
+            if event_dt is None:
+                continue
+            if latest_dt is None or event_dt > latest_dt:
+                latest_dt = event_dt
+        return latest_dt.isoformat() if latest_dt is not None else None
+
+    def _decorate_intraday_response_contract(self, payload: dict, symbol: str) -> dict:
+        normalized_symbol = self.normalize_symbol(symbol)
+        enriched = dict(payload or {})
+        served_at_dt = timezone.now()
+        market_clock = self._get_market_clock_context()
+        market_phase = str(market_clock.get('profile') or 'offhours').lower()
+        is_session_hold_phase = market_phase in {'lunch_break', 'offhours', 'post_close', 'pre_open'}
+        source_event_dt = self._parse_intraday_event_datetime(enriched.get('source_event_at'))
+        if source_event_dt is None:
+            source_event_dt = self._parse_intraday_event_datetime(enriched.get('fetched_at'))
+
+        age_seconds = None
+        if source_event_dt is not None:
+            age_seconds = max(0, int((served_at_dt - source_event_dt).total_seconds()))
+
+        stale_threshold_seconds = self._resolve_intraday_stale_threshold_seconds(normalized_symbol)
+        is_stale = bool(enriched.get('stale'))
+        if is_session_hold_phase:
+            is_stale = False
+        stale_over_threshold = is_stale and age_seconds is not None and age_seconds > stale_threshold_seconds
+
+        enriched['symbol'] = normalized_symbol
+        enriched['source_event_at'] = source_event_dt.isoformat() if source_event_dt is not None else None
+        enriched['served_at'] = served_at_dt.isoformat()
+        enriched['age_seconds'] = age_seconds
+        enriched['stale_threshold_seconds'] = stale_threshold_seconds
+        enriched['stale'] = is_stale
+        enriched['stale_over_threshold'] = stale_over_threshold
+        enriched['market_phase'] = enriched.get('market_phase') or market_phase
+        if not enriched.get('fetched_at'):
+            enriched['fetched_at'] = enriched['served_at']
+
+        record_intraday_freshness_observation(
+            source=enriched.get('source'),
+            age_seconds=age_seconds,
+            stale=is_stale,
+            stale_over_threshold=stale_over_threshold,
+            realtime_refresh_trigger=stale_over_threshold,
+        )
+        return enriched
+
     def _build_intraday_stale_payload(self, payload: dict, symbol: str, reason: str) -> dict:
+        source_payload = dict(payload or {})
+        source_payload.pop('served_at', None)
+        source_payload.pop('age_seconds', None)
+        source_payload.pop('stale_over_threshold', None)
+        source_payload.pop('stale_threshold_seconds', None)
+        fetched_at = source_payload.get('fetched_at') or timezone.now().isoformat()
+        source_event_at = source_payload.get('source_event_at') or fetched_at
         return {
-            **payload,
+            **source_payload,
             'symbol': self.normalize_symbol(symbol),
             'source': f'stale_cache:{reason}',
             'stale': True,
             'fallback_reason': reason,
-            'fetched_at': timezone.now().isoformat(),
+            'fetched_at': fetched_at,
+            'source_event_at': source_event_at,
         }
+
+    def _select_preferred_intraday_fallback(self, symbol: str, last_good: dict | None, db_payload: dict | None) -> dict | None:
+        if not isinstance(last_good, dict) or not (last_good.get('trades') or []):
+            return db_payload
+        if db_payload is None:
+            return last_good
+
+        symbol_normalized = self.normalize_symbol(symbol)
+        now_dt = timezone.now()
+        threshold_seconds = self._resolve_intraday_stale_threshold_seconds(symbol_normalized)
+
+        last_good_event_dt = self._parse_intraday_event_datetime(
+            last_good.get('source_event_at') or last_good.get('fetched_at')
+        )
+        db_event_dt = self._parse_intraday_event_datetime(
+            db_payload.get('source_event_at') or db_payload.get('fetched_at')
+        )
+
+        last_good_age = None
+        if last_good_event_dt is not None:
+            last_good_age = max(0, int((now_dt - last_good_event_dt).total_seconds()))
+
+        db_age = None
+        if db_event_dt is not None:
+            db_age = max(0, int((now_dt - db_event_dt).total_seconds()))
+
+        if db_event_dt is not None and last_good_event_dt is None:
+            return db_payload
+        if db_event_dt is not None and last_good_event_dt is not None and db_event_dt > last_good_event_dt:
+            return db_payload
+        if last_good_age is not None and last_good_age > threshold_seconds:
+            if db_age is None:
+                return db_payload
+            if db_age <= threshold_seconds or db_age < last_good_age:
+                return db_payload
+        return last_good
 
     def _build_intraday_db_fallback(self, symbol: str, page_size: int, reason: str) -> dict | None:
         normalized_symbol = self.normalize_symbol(symbol)
@@ -174,9 +344,15 @@ class MarketDataService:
             )
 
         trades = []
+        latest_event_dt = None
         for row in rows:
             side_raw = str(row.side or '').upper()
             side = 'buy' if side_raw == 'BUY' else ('sell' if side_raw == 'SELL' else 'neutral')
+            event_dt = self._parse_intraday_event_datetime(
+                datetime.combine(row.trade_date, row.trade_time or time.min)
+            )
+            if event_dt is not None and (latest_event_dt is None or event_dt > latest_event_dt):
+                latest_event_dt = event_dt
             trades.append(
                 {
                     'time': row.trade_time.strftime('%H:%M:%S') if row.trade_time else '',
@@ -198,6 +374,7 @@ class MarketDataService:
             'stale': True,
             'fallback_reason': reason,
             'fetched_at': timezone.now().isoformat(),
+            'source_event_at': latest_event_dt.isoformat() if latest_event_dt is not None else None,
         }
 
     def _get_market_clock_context(self) -> dict:
@@ -357,46 +534,52 @@ class MarketDataService:
         last_good_key = self._intraday_last_good_cache_key(normalized_symbol)
         cached = get_cache(cache_key)
         if cached is not None:
-            return cached
+            return self._decorate_intraday_response_contract(cached, normalized_symbol)
 
         def _fallback_payload(reason: str, rate_limited: bool = False) -> dict | None:
             last_good = get_cache(last_good_key)
-            if isinstance(last_good, dict) and (last_good.get('trades') or []):
-                stale_payload = self._build_intraday_stale_payload(last_good, normalized_symbol, reason)
+            db_payload = self._build_intraday_db_fallback(normalized_symbol, resolved_page_size, reason)
+            preferred_payload = self._select_preferred_intraday_fallback(normalized_symbol, last_good, db_payload)
+            if preferred_payload is not None:
+                if preferred_payload is db_payload:
+                    payload = dict(db_payload)
+                    if rate_limited:
+                        payload['rate_limited'] = True
+                    set_cache(cache_key, payload, timeout=8)
+                    set_cache(last_good_key, payload, timeout=900)
+                    return payload
+
+                stale_payload = self._build_intraday_stale_payload(preferred_payload, normalized_symbol, reason)
                 if rate_limited:
                     stale_payload['rate_limited'] = True
                 set_cache(cache_key, stale_payload, timeout=5)
                 return stale_payload
-            db_payload = self._build_intraday_db_fallback(normalized_symbol, resolved_page_size, reason)
-            if db_payload is not None:
-                if rate_limited:
-                    db_payload['rate_limited'] = True
-                set_cache(cache_key, db_payload, timeout=8)
-                set_cache(last_good_key, db_payload, timeout=900)
-                return db_payload
             return None
 
         if is_vnstock_rate_limited('intraday'):
             record_market_fallback('intraday-matched', 'vnstock_backoff')
             fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
             if fallback is not None:
-                return fallback
-            return self._build_intraday_backoff_response(normalized_symbol)
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
 
         stream_ticks = read_stream_intraday_ticks(normalized_symbol, count=resolved_page_size)
         trades = self._build_stream_trades(stream_ticks)
         if trades:
+            source_event_at = self._resolve_intraday_stream_source_event_at(stream_ticks)
+            fetched_at = timezone.now().isoformat()
             result = {
                 'symbol': normalized_symbol,
                 'trades': trades,
                 'total': len(trades),
                 'source': 'stream',
                 'stale': False,
-                'fetched_at': timezone.now().isoformat(),
+                'fetched_at': fetched_at,
+                'source_event_at': source_event_at or fetched_at,
             }
             set_cache(cache_key, result, timeout=8)
             set_cache(last_good_key, result, timeout=900)
-            return result
+            return self._decorate_intraday_response_contract(result, normalized_symbol)
 
         try:
             df = fetch_intraday_dataframe(normalized_symbol, resolved_page_size)
@@ -406,70 +589,77 @@ class MarketDataService:
                 record_market_fallback('intraday-matched', 'vnstock_backoff')
                 fallback = _fallback_payload('vnstock_backoff', rate_limited=True)
                 if fallback is not None:
-                    return fallback
-                return self._build_intraday_backoff_response(normalized_symbol)
+                    return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+                return self._decorate_intraday_response_contract(self._build_intraday_backoff_response(normalized_symbol), normalized_symbol)
             if exc.code == 'vnstock_timeout':
                 record_market_external_timeout('intraday-matched')
                 fallback = _fallback_payload('timeout')
                 if fallback is not None:
-                    return fallback
-                return {
+                    return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+                return self._decorate_intraday_response_contract({
                     'symbol': normalized_symbol,
                     'trades': [],
                     'total': 0,
                     'source': 'timeout',
                     'fetched_at': timezone.now().isoformat(),
-                }
+                    'source_event_at': None,
+                }, normalized_symbol)
             if exc.code == 'vnstock_missing':
                 raise exc
             record_market_fallback('intraday-matched', 'vnstock_unavailable')
             fallback = _fallback_payload('vnstock_unavailable')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'source': 'vnstock_unavailable',
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
         except Exception as exc:
             logger.warning('get_intraday_matched unexpected error %s: %s', normalized_symbol, exc)
             record_market_fallback('intraday-matched', 'error')
             fallback = _fallback_payload('error')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'source': 'error',
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
 
         if df is None or df.empty:
             fallback = _fallback_payload('empty')
             if fallback is not None:
-                return fallback
-            return {
+                return self._decorate_intraday_response_contract(fallback, normalized_symbol)
+            return self._decorate_intraday_response_contract({
                 'symbol': normalized_symbol,
                 'trades': [],
                 'total': 0,
                 'fetched_at': timezone.now().isoformat(),
-            }
+                'source_event_at': None,
+            }, normalized_symbol)
 
         trades = self._build_dataframe_trades(df)
+        source_event_at = self._resolve_intraday_dataframe_source_event_at(df)
+        fetched_at = timezone.now().isoformat()
         result = {
             'symbol': normalized_symbol,
             'trades': trades,
             'total': len(trades),
             'source': 'vnstock',
             'stale': False,
-            'fetched_at': timezone.now().isoformat(),
+            'fetched_at': fetched_at,
+            'source_event_at': source_event_at or fetched_at,
         }
         set_cache(cache_key, result, timeout=8)
         set_cache(last_good_key, result, timeout=900)
-        return result
+        return self._decorate_intraday_response_contract(result, normalized_symbol)
 
     def get_price_board(self, symbol: str) -> dict:
         normalized_symbol = self.normalize_symbol(symbol)
@@ -907,23 +1097,20 @@ class MarketDataService:
         whale_value_total = 0.0
         small_value = 0.0
 
-        # Resolve price scale to ensure matched_value is calculated in VND.
-        price_candidates = []
-        if 'price' in df.columns:
-            price_candidates = df['price'].tolist()
-        elif 'close' in df.columns:
-            price_candidates = df['close'].tolist()
-        
-        price_scale = self._resolve_quote_price_scale(price_candidates)
+        source_unit_hint = None
+        if getattr(df, 'attrs', None):
+            source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
 
         for _, row in df.iterrows():
             try:
-                raw_price = self._normalize_quote_price(
-                    float(row.get('price') or row.get('close') or 0),
-                    price_scale
+                raw_price = self._normalize_intraday_price_vnd(
+                    row.get('price') or row.get('close') or 0,
+                    source_unit=row.get('price_unit') or source_unit_hint,
                 )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
+                continue
+            if raw_price is None:
                 continue
             matched_value = raw_price * raw_vol
             side = self._normalize_side(row.get('match_type') or row.get('matchType') or row.get('side') or '')
@@ -1068,7 +1255,17 @@ class MarketDataService:
         queryset = (
             IntradayTick.objects
             .filter(symbol__in=symbols)
-            .annotate(matched_value=ExpressionWrapper(F('price') * 1000 * F('volume'), output_field=FloatField()))
+            .annotate(
+                matched_value=ExpressionWrapper(
+                    Case(
+                        # Legacy rows may store price in VND; canonical rows are THOUSAND_VND.
+                        When(price__gte=1000, then=F('price') * F('volume')),
+                        default=F('price') * 1000 * F('volume'),
+                        output_field=FloatField(),
+                    ),
+                    output_field=FloatField(),
+                )
+            )
             .filter(matched_value__gte=min_threshold_vnd)
         )
 
@@ -1929,6 +2126,7 @@ class MarketDataService:
             'source': 'vnstock_backoff',
             'rate_limited': True,
             'fetched_at': timezone.now().isoformat(),
+            'source_event_at': None,
         }
 
     def _build_stream_trades(self, stream_ticks: list[dict]) -> list[dict]:
@@ -2180,23 +2378,21 @@ class MarketDataService:
     def _dataframe_has_threshold_hits(self, df, threshold_vnd: float) -> bool:
         if df is None or getattr(df, 'empty', True):
             return False
-            
-        price_candidates = []
-        if 'price' in df.columns:
-            price_candidates = df['price'].tolist()
-        elif 'close' in df.columns:
-            price_candidates = df['close'].tolist()
-            
-        price_scale = self._resolve_quote_price_scale(price_candidates)
+
+        source_unit_hint = None
+        if getattr(df, 'attrs', None):
+            source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
         
         for _, row in df.iterrows():
             try:
-                raw_price = self._normalize_quote_price(
-                    float(row.get('price') or row.get('close') or 0),
-                    price_scale
+                raw_price = self._normalize_intraday_price_vnd(
+                    row.get('price') or row.get('close') or 0,
+                    source_unit=row.get('price_unit') or source_unit_hint,
                 )
                 raw_vol = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
             except (ValueError, TypeError):
+                continue
+            if raw_price is None:
                 continue
             if raw_price * raw_vol >= threshold_vnd:
                 return True
@@ -2528,6 +2724,7 @@ class MarketDataService:
         return start_dt <= event_dt <= resolved_now
 
     def _is_tick_row_in_window(self, row, window: str, now=None) -> bool:
+        resolved_now = now or timezone.now()
         try:
             row_dt = timezone.make_aware(
                 datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
@@ -2535,11 +2732,12 @@ class MarketDataService:
             )
         except Exception:
             return False
-        start_dt = self._window_start_datetime(window, now=now)
+        if row_dt > resolved_now:
+            return False
+        start_dt = self._window_start_datetime(window, now=resolved_now)
         if start_dt is None:
             return True
-        # DB ticks are historical records; enforce only lower-bound window check.
-        return start_dt <= row_dt
+        return start_dt <= row_dt <= resolved_now
 
     def _allow_vnstock_aggregate_fallback(self, symbols: list[str]) -> bool:
         max_symbols = max(int(os.getenv('WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS', str(WHALE_AGGREGATE_VNSTOCK_MAX_SYMBOLS_DEFAULT))), 0)
@@ -2827,16 +3025,17 @@ class MarketDataService:
         synthetic_id = 1
         for symbol in symbols:
             stream_ticks = read_stream_intraday_ticks(symbol, count=150)
-            
-            # Resolve scale for the current symbol's ticks
-            price_candidates = [float(t.get('price', 0)) for t in stream_ticks]
-            price_scale = self._resolve_quote_price_scale(price_candidates)
-            
+
             for tick in stream_ticks:
                 try:
-                    price = self._normalize_quote_price(float(tick.get('price') or 0), price_scale)
+                    price = self._normalize_intraday_price_vnd(
+                        tick.get('price') or 0,
+                        source_unit=tick.get('price_unit'),
+                    )
                     volume = float(tick.get('volume') or 0)
                 except (TypeError, ValueError):
+                    continue
+                if price is None:
                     continue
                 matched_value = price * volume
                 if matched_value < threshold_vnd:
@@ -2898,18 +3097,20 @@ class MarketDataService:
             if df is None or df.empty:
                 continue
 
-            # Resolve scale for the current symbol's dataframe
-            price_candidates = df['price'].tolist() if 'price' in df.columns else df['close'].tolist() if 'close' in df.columns else []
-            price_scale = self._resolve_quote_price_scale(price_candidates)
+            source_unit_hint = None
+            if getattr(df, 'attrs', None):
+                source_unit_hint = str(df.attrs.get('price_unit_canonical') or '').strip().upper() or None
             
             for _, row in df.iterrows():
                 try:
-                    price = self._normalize_quote_price(
-                        float(row.get('price') or row.get('close') or 0),
-                        price_scale
+                    price = self._normalize_intraday_price_vnd(
+                        row.get('price') or row.get('close') or 0,
+                        source_unit=row.get('price_unit') or source_unit_hint,
                     )
                     volume = float(row.get('volume') or row.get('vol') or row.get('matchVolume') or 0)
                 except (TypeError, ValueError):
+                    continue
+                if price is None:
                     continue
                 matched_value = price * volume
                 if matched_value < threshold_vnd:
@@ -3215,6 +3416,29 @@ class MarketDataService:
         if numeric is None:
             return None
         return round(numeric * (scale if scale else 1.0), 2)
+
+    def _normalize_intraday_price_vnd(self, value, source_unit: str | None = None):
+        numeric = self._safe_float(value)
+        if numeric is None:
+            return None
+
+        resolved_source_unit = str(source_unit or '').strip().upper()
+        if resolved_source_unit not in {'VND', 'THOUSAND_VND'}:
+            # Fallback for legacy payloads missing unit metadata:
+            # - >= 1000: likely VND price (e.g. 65100)
+            # - < 1000: likely THOUSAND_VND canonical (e.g. 23.8)
+            resolved_source_unit = 'VND' if abs(numeric) >= 1000 else 'THOUSAND_VND'
+
+        try:
+            canonical_quote = normalize_quote_price_to_canonical(
+                value=numeric,
+                source_unit=resolved_source_unit,
+                source=PriceSource.INTRADAY_TICK,
+            )
+            return round(canonical_quote.to_vnd_for_calculation(), 2)
+        except Exception:
+            # Last-resort fallback keeps whale valuation safe in VND.
+            return round(numeric if abs(numeric) >= 1000 else numeric * 1000, 2)
 
     def _to_float(self, value):
         return float(value) if value is not None else None
