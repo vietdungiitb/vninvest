@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ab - Dua pagination mac dinh cua Trung tam canh bao hop nhat ve 5
+
+Muc tieu:
+- Dua so muc hien thi mac dinh cua Trung tam canh bao hop nhat tu 10 ve 5 de khop voi yeu cau UI hien tai.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/Dashboard.jsx`:
+  - Doi gia tri khoi tao `unifiedPageSize` tu `10` thanh `5`.
+  - Giu nguyen cac lua chon page-size 5/10/15/20 va co che pagination hien co.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren file Dashboard sau khi sua: khong co loi.
+
 ## Entry 2026-04-17z - Batch Ticker API and 429 Error Mitigation
 
 Tham chiếu implementation plan:

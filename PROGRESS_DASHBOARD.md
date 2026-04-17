@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI V2 - Mac dinh pagination Trung tam canh bao hop nhat ve 5 (2026-04-17)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - doi `unifiedPageSize` mac dinh tu 10 thanh 5)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime - Audit ID de-dup + polling metric fix (2026-04-17)
 - frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - xoa cap nhat polling_successes trung lap trong polling thanh cong)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - doi ma entry batch ticker tu 2026-04-17b sang 2026-04-17z va add entry 2026-04-17aa)

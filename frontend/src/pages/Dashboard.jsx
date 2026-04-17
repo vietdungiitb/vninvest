@@ -42,7 +42,7 @@ export default function Dashboard() {
   const [sourceFilter, setSourceFilter] = useState('all');
   const [severityFilter, setSeverityFilter] = useState('all');
   const [audienceFilter, setAudienceFilter] = useState('all');
-  const [unifiedPageSize, setUnifiedPageSize] = useState(10);
+  const [unifiedPageSize, setUnifiedPageSize] = useState(5);
 
   const holdingSymbols = useMemo(
     () => holdings.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
