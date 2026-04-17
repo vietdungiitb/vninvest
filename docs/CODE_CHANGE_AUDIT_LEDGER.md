@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17s - UI V2 Phase 3 playbook finalized (Ready-to-Code)
+
+Muc tieu:
+- Chot tai lieu huong dan ky thuat Phase 3 theo audit "Bloomberg High-Density" de doi code co the trien khai ngay, khong can hoi lai.
+- Chuyen tai lieu tu muc mo ta yeu cau sang muc technical playbook co pseudo-flow, acceptance criteria, rollout order, rollback.
+
+Noi dung cap nhat chinh:
+- `docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md`:
+  - Chuan hoa scope va out-of-scope cho Phase 3.
+  - Bo sung flow pagination cursorStack (Previous/Next) va reset filter rules.
+  - Dinh nghia layout desktop-first row A->D theo huong high-density.
+  - Chot Definition of Done + checklist nghiem thu + trinh tu implementation P0.
+  - Bo sung risk/rollback va danh sach file runtime can sua.
+
+Danh sach tep cap nhat:
+- docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Tai lieu dat trang thai "Ready-to-Code" theo audit noi bo.
+- Khong co thay doi runtime code o entry nay.
+
 ## Entry 2026-04-17r - Phase 3B whale scoring tuning (canary profile v2)
 
 Muc tieu:

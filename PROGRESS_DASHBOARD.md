@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI V2 Phase 3 Technical Playbook - Ready-to-Code (2026-04-17)
+- docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md (MODIFIED - chuan hoa thanh technical playbook day du: scope, pseudo-flow, acceptance criteria, implementation order, rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Phase 3B - Whale Scoring Tuning (Canary Profile v2) (2026-04-17)
 - backend/portfolio/whale_scoring.py (MODIFIED - them scoring profile v1/v2, tuning aggression/concentration fallback, stricter extreme band cho v2)
 - backend/config/settings.py (MODIFIED - them setting `WHALE_SCORE_PROFILE`, default v1)
