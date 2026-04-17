@@ -278,6 +278,8 @@ const vi = {
     heatmapRealtimeCaption: 'Biến động theo dõi • Realtime feed',
     heatmapModeTreemap: 'Treemap',
     heatmapModeSunburst: 'Sunburst',
+    heatmapSizeWeight: 'Tỷ trọng',
+    heatmapSizeCap: 'Vốn hóa',
     heatmapLegendUp: 'Tăng',
     heatmapLegendDown: 'Giảm',
     portfolioStatusTitle: 'Trạng thái danh mục',

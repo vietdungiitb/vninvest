@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Heatmap Mockup Alignment - Layout + Color Palette (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - sua treemap strip-layout, chuan hoa leafDepth/levels va doi visualMap sang Rose/Navy/Teal de sat mockup)
+- frontend/src/index.css (MODIFIED - dong bo mau tooltip heatmap theo palette moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Phase 1 Backend Stabilization - Bulk Aggregation Symbol Stats (2026-04-17)
 - backend/portfolio/views_stock_order_flow.py (MODIFIED - refactor `whale_advisory_symbol_stats_api` bo N+1 query, gom grouped aggregation theo symbol + threshold Case/When trong SQL)
 - backend/portfolio/models.py (MODIFIED - them composite index `['symbol', 'trade_date', 'side']` cho `IntradayTick`)

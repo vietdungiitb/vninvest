@@ -56,7 +56,7 @@ export default function Sidebar() {
       <div className="border-b border-slate-800 px-3 py-2">
         <NavLink
           to="/watchlist"
-          className="inline-flex w-full items-center justify-center rounded-md border border-emerald-700 bg-emerald-900/20 px-3 py-2 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-900/35"
+          className="btn-pill w-full border-emerald-700 bg-emerald-900/20 px-3 py-2 text-xs text-emerald-200 hover:bg-emerald-900/35"
         >
           {t('layout.openLiveBoard')}
         </NavLink>
@@ -64,12 +64,21 @@ export default function Sidebar() {
 
       <SidebarWatchlist trackedSymbols={trackedSymbols} />
 
-      <div className="border-t border-slate-800 px-4 py-3">
-        <p className="truncate text-[11px] font-semibold text-slate-200">{userIdentity?.username || t('layout.account')}</p>
-        <p className="truncate text-[10px] text-slate-500">{userIdentity?.email || ''}</p>
+      <div className="mt-auto border-t border-slate-800 px-3 py-3">
+        <div className="rounded-xl border border-slate-700 bg-slate-900/80 p-3">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/20 text-xs font-bold text-emerald-300">
+              {String(userIdentity?.username || 'A').slice(0, 1).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-semibold text-slate-200">{userIdentity?.username || t('layout.account')}</p>
+              <p className="truncate text-[10px] text-slate-500">{userIdentity?.email || ''}</p>
+            </div>
+          </div>
+        </div>
         <button
           onClick={logout}
-          className="mt-2 w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-left text-xs text-slate-300 transition-colors hover:border-rose-700 hover:text-rose-300"
+          className="btn-pill mt-2 w-full justify-start border-slate-700 bg-slate-900 px-2 py-1.5 text-left text-xs text-slate-300 hover:border-rose-700 hover:text-rose-300"
         >
           {t('layout.logout')}
         </button>

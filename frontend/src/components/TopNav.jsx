@@ -4,8 +4,8 @@ import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
 
 function groupLinkClass(isActive) {
-  return `inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-    isActive ? 'bg-emerald-600/20 text-emerald-200' : 'text-slate-300 hover:bg-slate-800 hover:text-slate-100'
+  return `inline-flex items-center rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+    isActive ? 'bg-emerald-600/20 text-emerald-200 border border-emerald-600/45 shadow-[0_0_0_1px_rgba(16,185,129,0.1)]' : 'text-slate-300 hover:bg-slate-800/85 hover:text-slate-100 border border-transparent'
   }`;
 }
 
@@ -14,7 +14,7 @@ function NavGroup({ label, items, icon }) {
     <div className="group relative">
       <button
         type="button"
-        className="inline-flex items-center gap-1 rounded-md border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-slate-700 hover:bg-slate-800"
+        className="btn-pill inline-flex items-center gap-1 border-slate-700/90 bg-slate-900/72 py-1.5 text-sm text-slate-200 hover:border-slate-500"
       >
         <span className="text-[12px] text-slate-400">{icon}</span>
         {label}
@@ -53,9 +53,9 @@ export default function TopNav() {
   ].filter((item) => item.to !== '/admin-ops' || ability.can('manage', 'all'));
 
   return (
-    <header className="h-16 shrink-0 border-b border-slate-800 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4">
+    <header className="h-[62px] shrink-0 border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
       <div className="flex h-full items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <NavLink to="/dashboard" className={({ isActive }) => groupLinkClass(isActive)}>
             {t('layout.nav.group.dashboard')}
           </NavLink>
@@ -64,22 +64,23 @@ export default function TopNav() {
           <NavGroup icon="◌" label={t('layout.nav.group.system')} items={systemItems} />
         </div>
 
-        <div className="flex items-center gap-2">
-          <select
-            value={locale}
-            onChange={(event) => setLanguage(event.target.value)}
-            className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100"
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setLanguage(locale === 'vi' ? 'en' : 'vi')}
+            className="btn-pill gap-1.5 border-slate-700/90 bg-slate-900 px-3 py-1 text-xs text-slate-100"
+            title={t('common.language')}
           >
-            <option value="vi">{t('common.vietnamese')}</option>
-            <option value="en">{t('common.english')}</option>
-          </select>
-          <div className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs text-slate-300">
+            <span>🌐</span>
+            <span className="font-bold">{locale === 'vi' ? 'VI' : 'EN'}</span>
+          </button>
+          <div className="rounded-full border border-slate-700/90 bg-slate-900 px-3 py-1 text-xs text-slate-300">
             <p className="font-semibold text-slate-100">{userIdentity?.username || 'admin'}</p>
             <p className="text-[10px] text-slate-500">{userIdentity?.email || 'local.dev'}</p>
           </div>
           <Link
             to="/settings"
-            className="rounded-md border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:text-white"
+            className="btn-pill border-slate-700/90 bg-slate-900 px-2.5 py-1 text-xs text-slate-200 hover:border-slate-600 hover:text-white"
           >
             {t('layout.nav.settings')}
           </Link>

@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17an - Heatmap mockup alignment fix (layout + color palette)
+
+Muc tieu:
+- Sua loi treemap bi render thanh dai ngang, khong phu toan bo khung heatmap.
+- Chinh lai bang mau de sat tone mockup hon (giam neon, tang do sach cua lop nen va tile).
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Chuan hoa gia tri node nganh ve scalar `value` de treemap chia tile on dinh.
+  - Tang `leafDepth` len `2` va bo sung level itemStyle cho leaf node de bo cuc phu full khung.
+  - Chinh visualMap sang thang mau Rose/Navy/Teal (`#be123c -> #1e3a5f -> #0f766e`), range `-4..+4`.
+  - Chinh mau control chips/toggle va legend de tong the dong bo tone slate/cyan theo mockup.
+- frontend/src/index.css
+  - Chinh mau tooltip heatmap (nen, vien, spark caption) theo palette moi.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 2 file frontend vua sua: khong co loi.
+
 ## Entry 2026-04-17am - Phase 1 backend stabilization (bulk aggregation for whale symbol stats)
 
 Muc tieu:
