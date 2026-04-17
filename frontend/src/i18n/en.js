@@ -19,6 +19,8 @@ const en = {
   },
   layout: {
     brandSubtitle: 'Portfolio Tracker',
+    watchlistRadar: 'Watchlist radar',
+    openLiveBoard: 'Open live board',
     expandMenu: 'Expand menu',
     collapseMenu: 'Collapse menu',
     expandMainNav: 'Expand main menu',
@@ -30,6 +32,12 @@ const en = {
     tools: 'Tools',
     logout: 'Log out',
     nav: {
+      group: {
+        dashboard: 'Overview',
+        signals: 'Signals & Whale',
+        portfolio: 'Portfolio',
+        system: 'System',
+      },
       dashboard: 'Overview',
       transactions: 'Transactions',
       watchlist: 'Market Radar',

@@ -13,6 +13,15 @@ function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function normalizeEventTimestamp(value) {
+  if (!value) return new Date().toISOString();
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return new Date().toISOString();
+  }
+  return new Date(ts).toISOString();
+}
+
 function getQuoteBySymbol(quotesBySymbol, symbol) {
   const normalized = normalizeSymbol(symbol);
   if (!normalized) return {};
@@ -70,6 +79,7 @@ function mergeQuote(prev, update) {
 }
 
 function normalizeAlert(payload) {
+  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
   return {
     event_id: readEventField(payload, 'event_id'),
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
@@ -84,11 +94,12 @@ function normalizeAlert(payload) {
     event_score: readEventField(payload, 'event_score'),
     display_score: readEventField(payload, 'display_score'),
     weights_version: readEventField(payload, 'weights_version'),
-    ts: readEventField(payload, 'ts') || payload.ts || payload.created_at,
+    ts: normalizedTs,
   };
 }
 
 function normalizeDarkFlowAlert(payload) {
+  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
   return {
     event_id: readEventField(payload, 'event_id'),
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
@@ -100,7 +111,7 @@ function normalizeDarkFlowAlert(payload) {
     small_order_ratio: readEventField(payload, 'small_order_ratio'),
     cvd_at_signal: readEventField(payload, 'cvd_at_signal'),
     description: readEventField(payload, 'description'),
-    ts: readEventField(payload, 'ts') || payload.ts || payload.created_at,
+    ts: normalizedTs,
   };
 }
 
@@ -291,6 +302,7 @@ export default function useRealtimeFeedCore({
   const pollBackoffUntilRef = useRef(null);
   const lastPollAtRef = useRef(0);
   const wsHealthyRef = useRef(false);
+  const lastProcessedEventIdsRef = useRef(new Map());
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
   useEffect(() => { quotesBySymbolRef.current = quotesBySymbol; }, [quotesBySymbol]);
@@ -450,6 +462,31 @@ export default function useRealtimeFeedCore({
       return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
   }, [maxAlerts]);
+
+  const shouldSkipDuplicateEvent = useCallback((payload, eventType) => {
+    const now = Date.now();
+    const dedupWindowMs = 1000;
+
+    const cache = lastProcessedEventIdsRef.current;
+    cache.forEach((expiresAt, key) => {
+      if (expiresAt <= now) {
+        cache.delete(key);
+      }
+    });
+
+    const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
+    const symbol = normalizeSymbol(readEventField(payload, 'symbol') || payload.symbol);
+    const side = String(readEventField(payload, 'side') || payload.side || readEventField(payload, 'signal_type') || payload.signal_type || '').toLowerCase();
+    const eventId = String(readEventField(payload, 'event_id') || payload.event_id || '').trim();
+    const dedupKey = eventId || `${eventType}:${symbol}:${normalizedTs}:${side}`;
+
+    if (cache.has(dedupKey)) {
+      return true;
+    }
+
+    cache.set(dedupKey, now + dedupWindowMs);
+    return false;
+  }, []);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -757,13 +794,27 @@ export default function useRealtimeFeedCore({
               setLatencySamplesMs((prev) => [...prev.slice(-199), latency]);
             }
           } else if (payload.event_type === 'whale_alert') {
-            applyAlert(payload);
-            setLastEventAt(payload.ts || new Date().toISOString());
+            const normalizedPayload = {
+              ...payload,
+              ts: normalizeEventTimestamp(payload.ts || payload.created_at),
+            };
+            if (shouldSkipDuplicateEvent(normalizedPayload, 'whale_alert')) {
+              return;
+            }
+            applyAlert(normalizedPayload);
+            setLastEventAt(normalizedPayload.ts);
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, whale_alert: prev.whale_alert + 1 }));
           } else if (payload.event_type === 'dark_flow_alert') {
-            applyDarkFlowAlert(payload);
-            setLastEventAt(payload.ts || new Date().toISOString());
+            const normalizedPayload = {
+              ...payload,
+              ts: normalizeEventTimestamp(payload.ts || payload.created_at),
+            };
+            if (shouldSkipDuplicateEvent(normalizedPayload, 'dark_flow_alert')) {
+              return;
+            }
+            applyDarkFlowAlert(normalizedPayload);
+            setLastEventAt(normalizedPayload.ts);
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, dark_flow_alert: prev.dark_flow_alert + 1 }));
           } else if (payload.event_type === 'whale_advisory') {
@@ -861,7 +912,7 @@ export default function useRealtimeFeedCore({
       window.clearTimeout(initTimer);
       cleanup();
     };
-  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate, enabled]); // eslint-disable-line
+  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
 
   return {
     quotesBySymbol,

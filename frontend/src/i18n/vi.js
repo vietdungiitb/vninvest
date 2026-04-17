@@ -19,6 +19,8 @@ const vi = {
   },
   layout: {
     brandSubtitle: 'Portfolio Tracker',
+    watchlistRadar: 'Danh sách theo dõi',
+    openLiveBoard: 'Bảng giá trực tiếp',
     expandMenu: 'Phóng to menu',
     collapseMenu: 'Thu nhỏ menu',
     expandMainNav: 'Phóng to menu chính',
@@ -30,6 +32,12 @@ const vi = {
     tools: 'Công cụ',
     logout: 'Đăng xuất',
     nav: {
+      group: {
+        dashboard: 'Tổng quan',
+        signals: 'Tín hiệu & Whale',
+        portfolio: 'Danh mục',
+        system: 'Hệ thống',
+      },
       dashboard: 'Tổng quan',
       transactions: 'Giao dịch',
       watchlist: 'Radar thị trường',

@@ -76,6 +76,7 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 )
 
         published = 0
+        whale_event_publish_flags: dict[str, dict[str, bool]] = {}
         for symbol in symbols:
             normalized_symbol = tasks_facade._normalize_symbol(symbol)
             runtime_config = tasks_facade.resolve_whale_runtime_config(
@@ -126,17 +127,30 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
 
                 if publisher.publish(whale_channel, whale_payload):
                     published += 1
+                    if event_id:
+                        whale_event_publish_flags[event_id] = {
+                            "symbol_channel_published": True,
+                            "user_channel_published": False,
+                        }
                     record_whale_event_observation(
                         source=str(whale_payload.get('source') or 'intraday-engine'),
                         ts=whale_payload.get('ts'),
                         recovered=bool(whale_payload.get('recovered')),
                     )
                 if user_id is not None:
-                    user_channel = f"user:{user_id}:alerts"
-                    user_seq = publisher.next_seq(user_channel)
-                    user_payload = {**whale_payload, "seq": user_seq}
-                    if publisher.publish(user_channel, user_payload):
-                        published += 1
+                    publish_flags = whale_event_publish_flags.get(event_id or "", {})
+                    already_on_symbol_channel = bool(publish_flags.get("symbol_channel_published"))
+                    if not already_on_symbol_channel:
+                        user_channel = f"user:{user_id}:alerts"
+                        user_seq = publisher.next_seq(user_channel)
+                        user_payload = {**whale_payload, "seq": user_seq}
+                        if publisher.publish(user_channel, user_payload):
+                            published += 1
+                            if event_id:
+                                whale_event_publish_flags[event_id] = {
+                                    "symbol_channel_published": False,
+                                    "user_channel_published": True,
+                                }
                 tracked_rows = list(
                     TrackedSymbol.objects.filter(symbol=signal.symbol)
                     .values('user_id', 'whale_alert_threshold_million')

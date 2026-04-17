@@ -1,5 +1,72 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17o - UI V2 Phase 2 (dedup whale + consolidated components)
+
+Muc tieu:
+- Xu ly goc re loi lap whale alerts tren duong backend broadcast va frontend websocket ingestion.
+- Trien khai cap component hoi tu cho Dashboard theo mockup Bloomberg V2: `UnifiedAlertBar` + `UnifiedAlertCenter`.
+
+Noi dung cap nhat chinh:
+- Backend `compute.py`:
+  - Chuan hoa timestamp whale ve do chinh xac giay truoc khi tao payload.
+  - Chuan hoa cong thuc `event_id` theo truc `symbol:ts(second):side:value` de dedup on dinh.
+- Backend `tasks_realtime.py`:
+  - Them co danh dau publish theo event va tranh phat chong lan whale giua `whale:{symbol}` va `user:{id}:alerts`.
+- Frontend `useRealtimeFeedCore.js`:
+  - Bo sung `normalizeEventTimestamp` cho payload WS whale/dark_flow truoc khi apply.
+  - Them cua so dedup 1000ms bang `Map` (`lastProcessedEventIds`) de bo goi trung do jitter mang.
+- Frontend Dashboard:
+  - Tao `UnifiedAlertBar.jsx` (summary severity + click filter).
+  - Tao `UnifiedAlertCenter.jsx` (feed card, mark read, mute 30p, source/audience filter, load more).
+  - Cap nhat `Dashboard.jsx` de thay `DashboardRealtimePanel` bang bo doi component moi va bo tri luoi 3:1.
+
+Danh sach tep cap nhat:
+- backend/portfolio/realtime/compute.py
+- backend/portfolio/tasks_realtime.py
+- frontend/src/hooks/useRealtimeFeedCore.js
+- frontend/src/components/UnifiedAlertBar.jsx (NEW)
+- frontend/src/components/UnifiedAlertCenter.jsx (NEW)
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren toan bo tep vua sua: khong co loi.
+
+## Entry 2026-04-17n - UI V2 Bloomberg refactor (layout + unified alerts extraction)
+
+Muc tieu:
+- Trien khai refactor theo `UI_V2_BLOOMBERG_MASTER_PLAN_20260417.md` va `UI_V2_TECHNICAL_AUDIT_REFACTOR_PLAN.md`.
+- Tach logic canh bao hop nhat khoi `DashboardRealtimePanel.jsx` theo huong hook-centric de tai su dung cho layout V2.
+- Chuan hoa shell giao dien V2 voi Sidebar 260px + TopNav grouped tabs.
+
+Noi dung cap nhat chinh:
+- Tao `useUnifiedAlerts` de gom logic merge/dedup/ranking/filter canh bao tu whale + dark flow + price shock + stale quote.
+- Tao `usePersistentAlertState` de luu read/mute/sound state vao localStorage (giu trang thai khi chuyen tab/page).
+- Refactor `DashboardRealtimePanel.jsx` thanh ban gon hon, consume 2 hook moi thay vi nhot logic trong component lon.
+- Refactor `Layout.jsx` thanh unified shell va tach thanh phan moi `Sidebar.jsx`, `TopNav.jsx`, `SidebarWatchlist.jsx`.
+- Sidebar Watchlist su dung `useRealtimeFeedFromManager({ pollInterval: 5000 })` va optimize row bang `React.memo` + flash state khi gia thay doi.
+- Bo sung i18n key V2 cho grouped nav va sidebar labels (VI/EN).
+- Bo sung CSS animation cho realtime flash trong watchlist row.
+
+Danh sach tep cap nhat:
+- frontend/src/components/Layout.jsx
+- frontend/src/components/Sidebar.jsx (NEW)
+- frontend/src/components/TopNav.jsx (NEW)
+- frontend/src/components/SidebarWatchlist.jsx (NEW)
+- frontend/src/components/DashboardRealtimePanel.jsx
+- frontend/src/hooks/useUnifiedAlerts.js (NEW)
+- frontend/src/hooks/usePersistentAlertState.js (NEW)
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+
+
 ## Entry 2026-04-17l - Phase 5 soak execution (fault injection) and reclaim validation PASS
 
 ## Entry 2026-04-17m - Extended staging soak test PASS (full Phase 5 gate completion)

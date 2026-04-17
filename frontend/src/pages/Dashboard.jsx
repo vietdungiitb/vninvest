@@ -8,14 +8,16 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { getSummary, getHoldings, syncPrices, getTrackedSymbols } from '../api/client';
 import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
-import PortfolioLineChart from '../components/PortfolioLineChart';
 import AllocationPieChart from '../components/AllocationPieChart';
-import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
 import PortfolioDigestPanel from '../components/PortfolioDigestPanel';
+import UnifiedAlertBar from '../components/UnifiedAlertBar';
+import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import useUnifiedAlerts from '../hooks/useUnifiedAlerts';
+import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   buildLiveHoldingsOverlay,
   buildLiveSummaryFromHoldings,
@@ -36,6 +38,9 @@ export default function Dashboard() {
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('all');
 
   const holdingSymbols = useMemo(
     () => holdings.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
@@ -58,6 +63,41 @@ export default function Dashboard() {
     darkFlowAlerts,
     metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
+
+  const {
+    readAlertIds,
+    markAlertAsRead,
+    isMutedSymbol,
+    muteSymbolFor30m,
+  } = usePersistentAlertState();
+
+  const {
+    filteredUnifiedAlerts,
+    alertSummary,
+    backendUnifiedHasMore,
+    loadingMoreUnified,
+    loadMoreUnifiedSnapshot,
+  } = useUnifiedAlerts({
+    alerts,
+    darkFlowAlerts,
+    monitoredSymbols,
+    quotesBySymbol,
+    holdings,
+    trackedSymbolNames,
+    enableSnapshot: isAuthenticated && Boolean(activePortfolioId),
+    lastEventAt,
+    sourceFilter,
+    severityFilter,
+    audienceFilter,
+    isMutedSymbol,
+    formatNumber: (value) => Number(value || 0).toLocaleString('vi-VN'),
+    t,
+  });
+
+  const unreadUnifiedCount = useMemo(
+    () => filteredUnifiedAlerts.filter((item) => !readAlertIds.has(item.id)).length,
+    [filteredUnifiedAlerts, readAlertIds],
+  );
 
   const monitoredQuotes = useMemo(
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
@@ -93,6 +133,10 @@ export default function Dashboard() {
       return acc;
     }, { up: 0, down: 0, flat: 0 });
   }, [monitoredQuotes]);
+
+  const handleSeverityBarFilter = useCallback((targetFilter) => {
+    setSeverityFilter((prev) => (prev === targetFilter ? 'all' : targetFilter));
+  }, []);
 
   const marketValue = liveHoldings.length > 0
     ? liveSummary.totalMarketValue
@@ -297,21 +341,34 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <DashboardRealtimePanel
-        holdings={liveHoldings}
-        trackedSymbolNames={trackedSymbolNames}
-        quotesBySymbol={quotesBySymbol}
-        realtimeStatus={realtimeStatus}
-        lastEventAt={lastEventAt}
-        alerts={alerts}
-        darkFlowAlerts={darkFlowAlerts}
-        metrics={metrics}
-        monitoredSymbols={monitoredSymbols}
-        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
-        onSyncRequest={handleSync}
-        showSummaryMetrics={false}
-        portfolioId={activePortfolioId}
+      <UnifiedAlertBar
+        alertSummary={alertSummary}
+        severityFilter={severityFilter}
+        onSeverityFilterChange={handleSeverityBarFilter}
+        unreadCount={unreadUnifiedCount}
       />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+        <div className="xl:col-span-3">
+          <UnifiedAlertCenter
+            alerts={filteredUnifiedAlerts}
+            readAlertIds={readAlertIds}
+            markAlertAsRead={markAlertAsRead}
+            muteSymbolFor30m={muteSymbolFor30m}
+            backendUnifiedHasMore={backendUnifiedHasMore}
+            loadingMoreUnified={loadingMoreUnified}
+            loadMoreUnifiedSnapshot={loadMoreUnifiedSnapshot}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+            audienceFilter={audienceFilter}
+            setAudienceFilter={setAudienceFilter}
+          />
+        </div>
+        <div className="space-y-4 xl:col-span-1">
+          <AllocationPieChart portfolioId={activePortfolioId} />
+          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+        </div>
+      </div>
 
       <PortfolioDigestPanel />
 
@@ -330,8 +387,6 @@ export default function Dashboard() {
         <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />
       </div>
 
-      {/* Risk & Performance Analytics */}
-      <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
     </div>
   );
 }
