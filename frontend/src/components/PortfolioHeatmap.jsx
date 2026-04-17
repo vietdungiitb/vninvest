@@ -103,6 +103,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
       return null;
     }
 
+    const heatScaleColors = ['#ef4444', '#f97316', '#94a3b8', '#22c55e', '#10b981'];
+
     const tooltip = {
       backgroundColor: 'rgba(2, 6, 23, 0.92)',
       borderColor: 'rgba(51, 65, 85, 0.7)',
@@ -169,7 +171,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           max: 3,
           dimension: 1,
           inRange: {
-            color: ['#ef4444', '#f97316', '#475569', '#22c55e', '#10b981'],
+            color: heatScaleColors,
           },
         },
         series: [
@@ -178,17 +180,17 @@ export default function PortfolioHeatmap({ holdings, title }) {
             id: 'portfolio-heatmap-transition',
             data: hierarchicalData,
             sort: 'desc',
-            radius: ['12%', '96%'],
+            radius: ['7%', '92%'],
             nodeClick: false,
             universalTransition: true,
             emphasis: { focus: 'ancestor' },
             itemStyle: {
-              borderColor: 'rgba(15, 23, 42, 0.5)',
-              borderWidth: 1,
+              borderColor: 'rgba(2, 6, 23, 0.78)',
+              borderWidth: 1.5,
             },
             label: {
               rotate: 'radial',
-              minAngle: 7,
+              minAngle: 5,
               formatter: (params) => {
                 if (params?.data?.children) return params.name;
                 const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
@@ -196,33 +198,47 @@ export default function PortfolioHeatmap({ holdings, title }) {
               },
               rich: {
                 symbol: {
-                  color: '#ffffff',
+                  color: '#f8fafc',
                   fontWeight: 800,
-                  fontSize: 11,
+                  fontSize: 12,
                   lineHeight: 14,
+                  textShadowBlur: 2,
+                  textShadowColor: 'rgba(2, 6, 23, 0.6)',
                 },
                 pct: {
-                  color: 'rgba(255,255,255,0.88)',
-                  fontSize: 9,
+                  color: 'rgba(241,245,249,0.95)',
+                  fontSize: 10,
                   lineHeight: 11,
                 },
               },
             },
             levels: [
-              {},
               {
-                r0: '12%',
-                r: '52%',
-                label: {
-                  rotate: 0,
-                  color: '#cbd5e1',
-                  fontWeight: 800,
-                  fontSize: 11,
+                itemStyle: {
+                  borderWidth: 0,
                 },
               },
               {
-                r0: '54%',
-                r: '96%',
+                r0: '7%',
+                r: '48%',
+                itemStyle: {
+                  borderColor: 'rgba(2, 6, 23, 0.82)',
+                  borderWidth: 2,
+                },
+                label: {
+                  rotate: 0,
+                  color: '#e2e8f0',
+                  fontWeight: 800,
+                  fontSize: 13,
+                },
+              },
+              {
+                r0: '50%',
+                r: '92%',
+                itemStyle: {
+                  borderColor: 'rgba(2, 6, 23, 0.72)',
+                  borderWidth: 1.5,
+                },
               },
             ],
           },
@@ -242,7 +258,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         max: 3,
         dimension: 1,
         inRange: {
-          color: ['#ef4444', '#f97316', '#475569', '#22c55e', '#10b981'],
+          color: heatScaleColors,
         },
       },
       series: [
@@ -273,7 +289,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           blur: {
             itemStyle: {
-              opacity: 0.72,
+              opacity: 0.86,
             },
           },
           label: {
