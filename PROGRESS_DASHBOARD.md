@@ -105,6 +105,17 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI V2 Layout Alignment Theo Mockup (2026-04-17)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - heatmap full row, panel Trang thai danh muc dua xuong cot phai duoi Phan bo danh muc, thu gon tieu de)
+- frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - thu gon thanh canh bao hop nhat theo thiet ke compact)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - them bo chon page-size 5/10/15/20 o footer)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - ho tro pageSize dong va reset pagination theo pageSize)
+- frontend/src/components/StatCard.jsx (MODIFIED - compact KPI density)
+- frontend/src/i18n/vi.js (MODIFIED - them label `paginationPageSize`)
+- frontend/src/i18n/en.js (MODIFIED - them label `paginationPageSize`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Hotfix - Blank Screen PortfolioHeatmap Undefined Payload (2026-04-17)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - them null guards cho payload/original trong Treemap custom renderer + tooltip)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17u)

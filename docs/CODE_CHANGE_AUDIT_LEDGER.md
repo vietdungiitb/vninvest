@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17v - Layout alignment theo mockup (status panel right column + compact strip + page-size)
+
+Muc tieu:
+- Canh layout Dashboard theo hinh ve: heatmap full row, panel Trang thai danh muc nam cot phai duoi Phan bo danh muc.
+- Thu gon Header/KPI va Thanh canh bao hop nhat theo giao dien compact.
+- Them page-size cho Trung tam canh bao hop nhat voi cac muc 5/10/15/20.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/Dashboard.jsx`:
+  - Doi heatmap thanh full-width row.
+  - Chuyen panel `Trang thai danh muc` xuong cot phai, dat duoi `AllocationPieChart`.
+  - Thu gon tieu de dashboard.
+  - Them state `unifiedPageSize` va truyen xuong alert center/hook.
+- `frontend/src/components/UnifiedAlertBar.jsx`:
+  - Thu gon strip, giam min-height va typography cua chips severity.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Them bo chon page-size 5/10/15/20 o footer.
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Ho tro `pageSize` dong, thay limit fetch va so item moi trang theo state.
+  - Reset pagination khi doi page-size.
+- `frontend/src/components/StatCard.jsx`:
+  - Thu gon paddings/font de KPI compact hon.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Them label i18n cho page-size (`paginationPageSize`).
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/UnifiedAlertBar.jsx
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/StatCard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` cac file vua sua: khong co loi.
+- `npm run build` (frontend): PASS.
+- Docker frontend rebuilt va bundle moi da serve: `main.3358d374.js`.
+
 ## Entry 2026-04-17u - Hotfix blank screen: PortfolioHeatmap undefined payload guard
 
 Muc tieu:

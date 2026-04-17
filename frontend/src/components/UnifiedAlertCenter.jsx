@@ -36,6 +36,8 @@ export default function UnifiedAlertCenter({
   goToFirstUnifiedPage,
   goToPreviousUnifiedPage,
   goToNextUnifiedPage,
+  pageSize,
+  setPageSize,
   sourceFilter,
   setSourceFilter,
   audienceFilter,
@@ -180,8 +182,25 @@ export default function UnifiedAlertCenter({
       </div>
 
       <div className="flex items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
-        <div className="text-slate-500">
-          {t('dashboardRealtime.paginationPage', { page: currentUnifiedPage || 1 })}
+        <div className="flex items-center gap-2 text-slate-500">
+          <span>{t('dashboardRealtime.paginationPage', { page: currentUnifiedPage || 1 })}</span>
+          <span>•</span>
+          <span>{t('dashboardRealtime.paginationPageSize')}</span>
+          <div className="flex items-center gap-1">
+            {[5, 10, 15, 20].map((size) => (
+              <button
+                key={size}
+                type="button"
+                onClick={() => setPageSize(size)}
+                className={`v2-chip-focus rounded border px-1.5 py-0.5 text-[11px] font-semibold ${pageSize === size
+                  ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
+                  : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
+                }`}
+              >
+                {size}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="flex items-center gap-1.5">
           <button

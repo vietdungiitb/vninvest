@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { getAggregateWhaleFeed, getUnifiedAlerts } from '../api/client';
 import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 
-const UNIFIED_ALERTS_PAGE_SIZE = 20;
+const DEFAULT_UNIFIED_ALERTS_PAGE_SIZE = 10;
 
 function formatNumberSafe(value, formatNumberFn) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -106,6 +106,7 @@ export default function useUnifiedAlerts({
   sourceFilter = 'all',
   severityFilter = 'all',
   audienceFilter = 'all',
+  pageSize = DEFAULT_UNIFIED_ALERTS_PAGE_SIZE,
   isMutedSymbol,
   formatNumber,
   t,
@@ -175,7 +176,7 @@ export default function useUnifiedAlerts({
       const response = await getUnifiedAlerts({
         symbols: monitoredSymbols,
         window: 'session',
-        limit: UNIFIED_ALERTS_PAGE_SIZE,
+        limit: pageSize,
         severityMin: 'low',
         cursor,
       });
@@ -215,14 +216,14 @@ export default function useUnifiedAlerts({
     setCursorStack(resetStack);
     setCurrentPageIndex(0);
     fetchUnifiedPage(0, resetStack);
-  }, [enableSnapshot, monitoredKey]);
+  }, [enableSnapshot, monitoredKey, pageSize]);
 
   useEffect(() => {
     const resetStack = [null];
     setCursorStack(resetStack);
     setCurrentPageIndex(0);
     fetchUnifiedPage(0, resetStack);
-  }, [sourceFilter, severityFilter, audienceFilter]);
+  }, [sourceFilter, severityFilter, audienceFilter, pageSize]);
 
   useEffect(() => {
     if (!enableSnapshot || !monitoredSymbols.length) {
@@ -234,7 +235,7 @@ export default function useUnifiedAlerts({
     return () => {
       window.clearInterval(intervalId);
     };
-  }, [enableSnapshot, monitoredKey, currentPageIndex]);
+  }, [enableSnapshot, monitoredKey, currentPageIndex, pageSize]);
 
   const goToFirstUnifiedPage = async () => {
     const resetStack = [null];
@@ -394,7 +395,7 @@ export default function useUnifiedAlerts({
       return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
-    return deduped.slice(0, UNIFIED_ALERTS_PAGE_SIZE);
+    return deduped.slice(0, pageSize);
   }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
 
   const filteredUnifiedAlerts = useMemo(() => {

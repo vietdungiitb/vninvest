@@ -271,6 +271,7 @@ const vi = {
     paginationPrev: 'Trước',
     paginationNext: 'Tiếp',
     paginationPage: 'Trang {page}',
+    paginationPageSize: 'Mục/trang',
     portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
     portfolioStatusTitle: 'Trạng thái danh mục',
   },

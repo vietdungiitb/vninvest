@@ -6,10 +6,10 @@ function SummaryChip({ label, count, tone, active, onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className={`v2-chip-focus min-h-[74px] rounded-lg border px-3 py-2 text-left transition-all duration-150 hover:-translate-y-[1px] hover:brightness-110 ${tone} ${active ? 'ring-1 ring-offset-0 ring-white/30' : ''}`}
+      className={`v2-chip-focus rounded-md border px-3 py-1.5 text-left transition-all duration-150 hover:-translate-y-[1px] hover:brightness-110 ${tone} ${active ? 'ring-1 ring-offset-0 ring-white/30' : ''}`}
     >
-      <p className="text-[10px] uppercase tracking-[0.14em] opacity-85">{label}</p>
-      <p className="mt-1 text-[22px] font-bold leading-none tabular-nums">{count}</p>
+      <p className="text-[10px] uppercase tracking-[0.12em] opacity-85">{label}</p>
+      <p className="mt-0.5 text-[18px] font-bold leading-none tabular-nums">{count}</p>
     </button>
   );
 }
@@ -23,20 +23,20 @@ export default function UnifiedAlertBar({
   const { t, formatNumber } = useI18n();
 
   return (
-    <section className="v2-panel rounded-xl p-4">
+    <section className="v2-panel rounded-xl p-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-300">
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
             {t('dashboardRealtime.unifiedAlertStripTitle')}
           </h2>
-          <p className="mt-1 max-w-[64ch] text-xs text-slate-500">{t('dashboardRealtime.unifiedAlertStripHint')}</p>
+          <p className="mt-0.5 max-w-[64ch] text-[11px] text-slate-500">{t('dashboardRealtime.unifiedAlertStripHint')}</p>
         </div>
-        <span className="rounded-full border border-slate-700 bg-slate-900/90 px-2.5 py-1 text-xs text-slate-300">
+        <span className="rounded-full border border-slate-700 bg-slate-900/90 px-2 py-0.5 text-[11px] text-slate-300">
           {t('dashboardRealtime.unreadAlerts', { count: formatNumber(unreadCount) })}
         </span>
       </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+      <div className="mt-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <SummaryChip
           label={t('dashboardRealtime.severityCritical')}
           count={formatNumber(alertSummary.critical || 0)}

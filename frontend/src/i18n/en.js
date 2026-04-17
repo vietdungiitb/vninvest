@@ -271,6 +271,7 @@ const en = {
     paginationPrev: 'Prev',
     paginationNext: 'Next',
     paginationPage: 'Page {page}',
+    paginationPageSize: 'Items/page',
     portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
     portfolioStatusTitle: 'Portfolio Status',
   },
