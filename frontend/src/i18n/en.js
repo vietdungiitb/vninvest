@@ -267,6 +267,12 @@ const en = {
     workspaceTabSettingsHint: 'Hide filters and policies to preserve space for hot symbols',
     settingsPanelTitle: 'Alert settings workspace',
     settingsPanelHint: 'Filters, mute controls, and toast policy live here so the main dashboard stays focused on urgent symbols.',
+    paginationFirst: 'First',
+    paginationPrev: 'Prev',
+    paginationNext: 'Next',
+    paginationPage: 'Page {page}',
+    portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
+    portfolioStatusTitle: 'Portfolio Status',
   },
   realtimeDebug: {
     title: 'Realtime Debug',

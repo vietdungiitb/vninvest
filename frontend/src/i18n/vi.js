@@ -267,6 +267,12 @@ const vi = {
     workspaceTabSettingsHint: 'Ẩn filter và chính sách để giải phóng không gian',
     settingsPanelTitle: 'Bảng cấu hình cảnh báo',
     settingsPanelHint: 'Tất cả bộ lọc, mute và chính sách toast được gom riêng ở đây để dashboard tập trung vào mã nóng.',
+    paginationFirst: 'Đầu',
+    paginationPrev: 'Trước',
+    paginationNext: 'Tiếp',
+    paginationPage: 'Trang {page}',
+    portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
+    portfolioStatusTitle: 'Trạng thái danh mục',
   },
   realtimeDebug: {
     title: 'Realtime Debug',

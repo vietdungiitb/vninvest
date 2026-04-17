@@ -105,6 +105,16 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI V2 Phase 3 Implementation - Heatmap + Intelligent Pagination (2026-04-17)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - them cursorStack pagination, reset trang khi doi filter, bo append load-more)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - thay load-more bang footer pagination First/Prev/Next + page indicator)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - tich hop PortfolioHeatmap ngay duoi KPI row + panel Trang thai danh muc)
+- frontend/src/components/StatCard.jsx (MODIFIED - compact density cho KPI cards)
+- frontend/src/i18n/vi.js (MODIFIED - them labels pagination + heatmap/status headings)
+- frontend/src/i18n/en.js (MODIFIED - them labels pagination + heatmap/status headings)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 Phase 3 Technical Playbook - Ready-to-Code (2026-04-17)
 - docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md (MODIFIED - chuan hoa thanh technical playbook day du: scope, pseudo-flow, acceptance criteria, implementation order, rollback)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17s)

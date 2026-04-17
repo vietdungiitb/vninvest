@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { getAggregateWhaleFeed, getUnifiedAlerts } from '../api/client';
 import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
 
+const UNIFIED_ALERTS_PAGE_SIZE = 20;
+
 function formatNumberSafe(value, formatNumberFn) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
@@ -113,6 +115,8 @@ export default function useUnifiedAlerts({
   const [backendUnifiedNextCursor, setBackendUnifiedNextCursor] = useState(null);
   const [backendUnifiedHasMore, setBackendUnifiedHasMore] = useState(false);
   const [loadingMoreUnified, setLoadingMoreUnified] = useState(false);
+  const [cursorStack, setCursorStack] = useState([null]);
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   const monitoredKey = useMemo(
     () => monitoredSymbols.slice().sort().join('|'),
@@ -150,50 +154,19 @@ export default function useUnifiedAlerts({
     };
   }, [monitoredKey, monitoredSymbols, enableSnapshot]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchUnifiedPage = async (pageIndex, stackOverride = null) => {
+    if (!enableSnapshot || !monitoredSymbols.length) {
+      setBackendUnifiedSnapshot([]);
+      setBackendUnifiedNextCursor(null);
+      setBackendUnifiedHasMore(false);
+      setCursorStack([null]);
+      setCurrentPageIndex(0);
+      return;
+    }
 
-    const loadUnifiedSnapshot = async () => {
-      if (!enableSnapshot || !monitoredSymbols.length) {
-        if (!cancelled) {
-          setBackendUnifiedSnapshot([]);
-          setBackendUnifiedNextCursor(null);
-          setBackendUnifiedHasMore(false);
-        }
-        return;
-      }
-
-      try {
-        const response = await getUnifiedAlerts({
-          symbols: monitoredSymbols,
-          window: 'session',
-          limit: 20,
-          severityMin: 'low',
-        });
-        if (!cancelled) {
-          setBackendUnifiedSnapshot(response.data?.results || []);
-          setBackendUnifiedNextCursor(response.data?.next_cursor || null);
-          setBackendUnifiedHasMore(Boolean(response.data?.has_more));
-        }
-      } catch (_err) {
-        if (!cancelled) {
-          setBackendUnifiedSnapshot([]);
-          setBackendUnifiedNextCursor(null);
-          setBackendUnifiedHasMore(false);
-        }
-      }
-    };
-
-    loadUnifiedSnapshot();
-    const intervalId = window.setInterval(loadUnifiedSnapshot, 30000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [enableSnapshot, monitoredKey, monitoredSymbols]);
-
-  const loadMoreUnifiedSnapshot = async () => {
-    if (!backendUnifiedHasMore || !backendUnifiedNextCursor || loadingMoreUnified) {
+    const activeStack = stackOverride || cursorStack;
+    const cursor = activeStack[pageIndex] ?? null;
+    if (pageIndex > 0 && !cursor) {
       return;
     }
 
@@ -202,30 +175,81 @@ export default function useUnifiedAlerts({
       const response = await getUnifiedAlerts({
         symbols: monitoredSymbols,
         window: 'session',
-        limit: 20,
+        limit: UNIFIED_ALERTS_PAGE_SIZE,
         severityMin: 'low',
-        cursor: backendUnifiedNextCursor,
+        cursor,
       });
+
       const incoming = response.data?.results || [];
-      setBackendUnifiedSnapshot((prev) => {
-        const seen = new Set(prev.map((item) => item.event_id || `${item.source}-${item.symbol}-${item.ts}`));
-        const merged = [...prev];
-        incoming.forEach((item) => {
-          const key = item.event_id || `${item.source}-${item.symbol}-${item.ts}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            merged.push(item);
+      const nextCursor = response.data?.next_cursor || null;
+      const hasMore = Boolean(response.data?.has_more);
+
+      setBackendUnifiedSnapshot(incoming);
+      setBackendUnifiedNextCursor(nextCursor);
+      setBackendUnifiedHasMore(hasMore);
+      setCurrentPageIndex(pageIndex);
+
+      setCursorStack((prev) => {
+        const base = stackOverride ? [...stackOverride] : [...prev];
+        if (base.length < pageIndex + 1) {
+          for (let i = base.length; i <= pageIndex; i += 1) {
+            base[i] = null;
           }
-        });
-        return merged;
+        }
+        if (nextCursor) {
+          base[pageIndex + 1] = nextCursor;
+        }
+        return base;
       });
-      setBackendUnifiedNextCursor(response.data?.next_cursor || null);
-      setBackendUnifiedHasMore(Boolean(response.data?.has_more));
     } catch (_err) {
-      // fail-soft
+      setBackendUnifiedSnapshot([]);
+      setBackendUnifiedNextCursor(null);
+      setBackendUnifiedHasMore(false);
     } finally {
       setLoadingMoreUnified(false);
     }
+  };
+
+  useEffect(() => {
+    const resetStack = [null];
+    setCursorStack(resetStack);
+    setCurrentPageIndex(0);
+    fetchUnifiedPage(0, resetStack);
+  }, [enableSnapshot, monitoredKey]);
+
+  useEffect(() => {
+    const resetStack = [null];
+    setCursorStack(resetStack);
+    setCurrentPageIndex(0);
+    fetchUnifiedPage(0, resetStack);
+  }, [sourceFilter, severityFilter, audienceFilter]);
+
+  useEffect(() => {
+    if (!enableSnapshot || !monitoredSymbols.length) {
+      return undefined;
+    }
+    const intervalId = window.setInterval(() => {
+      fetchUnifiedPage(currentPageIndex);
+    }, 30000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [enableSnapshot, monitoredKey, currentPageIndex]);
+
+  const goToFirstUnifiedPage = async () => {
+    const resetStack = [null];
+    setCursorStack(resetStack);
+    await fetchUnifiedPage(0, resetStack);
+  };
+
+  const goToPreviousUnifiedPage = async () => {
+    if (currentPageIndex <= 0 || loadingMoreUnified) return;
+    await fetchUnifiedPage(currentPageIndex - 1);
+  };
+
+  const goToNextUnifiedPage = async () => {
+    if (!backendUnifiedHasMore || !backendUnifiedNextCursor || loadingMoreUnified) return;
+    await fetchUnifiedPage(currentPageIndex + 1);
   };
 
   const mergedAlerts = useMemo(() => {
@@ -350,7 +374,9 @@ export default function useUnifiedAlerts({
       to: item.to || (item.source === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
     }));
 
-    const combinedWithBackend = [...backendNormalized, ...combined];
+    const combinedWithBackend = backendNormalized.length > 0
+      ? backendNormalized
+      : combined;
     const seen = new Set();
     const deduped = combinedWithBackend.filter((item) => {
       const key = `${item.source}-${item.symbol}-${item.headline}`;
@@ -368,7 +394,7 @@ export default function useUnifiedAlerts({
       return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
-    return deduped.slice(0, 50);
+    return deduped.slice(0, UNIFIED_ALERTS_PAGE_SIZE);
   }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
 
   const filteredUnifiedAlerts = useMemo(() => {
@@ -470,8 +496,12 @@ export default function useUnifiedAlerts({
     filteredUnifiedAlerts,
     alertSummary,
     hotSymbols,
+    currentUnifiedPage: currentPageIndex + 1,
+    hasPreviousUnifiedPage: currentPageIndex > 0,
     backendUnifiedHasMore,
     loadingMoreUnified,
-    loadMoreUnifiedSnapshot,
+    goToFirstUnifiedPage,
+    goToPreviousUnifiedPage,
+    goToNextUnifiedPage,
   };
 }

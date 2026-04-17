@@ -1,5 +1,43 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17t - UI V2 Phase 3 implementation (heatmap + intelligent pagination)
+
+Muc tieu:
+- Thuc thi code Phase 3 theo playbook da duoc phe duyet Ready-to-Code.
+- Dat layout high-density: KPI row gon + heatmap row + alert center phan trang.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Bo sung cursor-stack pagination (`cursorStack`, `currentPageIndex`) cho API cursor.
+  - Bo sung actions `goToFirstUnifiedPage`, `goToPreviousUnifiedPage`, `goToNextUnifiedPage`.
+  - Thay append load-more bang fetch theo trang; doi filter se reset ve trang 1.
+  - Gioi han output theo page size de giu khung nhin co dinh.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Loai bo nut `Load More`.
+  - Them footer pagination (`First`, `Prev`, `Next`, `Page X`) voi disable rules ro rang.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Tich hop `PortfolioHeatmap` ngay duoi KPI row.
+  - Chuyen block thong ke phu sang panel `Portfolio Status` ben phai (cung row heatmap).
+  - Noi props pagination moi vao `UnifiedAlertCenter`.
+- `frontend/src/components/StatCard.jsx`:
+  - Chuan hoa compact density cho KPI card (padding/typography).
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Bo sung i18n keys cho pagination va heading heatmap/status.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+- `npm run build` (frontend): PASS.
+
 ## Entry 2026-04-17s - UI V2 Phase 3 playbook finalized (Ready-to-Code)
 
 Muc tieu:

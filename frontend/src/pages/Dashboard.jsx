@@ -14,6 +14,7 @@ import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
 import PortfolioDigestPanel from '../components/PortfolioDigestPanel';
 import UnifiedAlertBar from '../components/UnifiedAlertBar';
 import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
+import PortfolioHeatmap from '../components/PortfolioHeatmap';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useUnifiedAlerts from '../hooks/useUnifiedAlerts';
@@ -74,9 +75,13 @@ export default function Dashboard() {
   const {
     filteredUnifiedAlerts,
     alertSummary,
+    currentUnifiedPage,
+    hasPreviousUnifiedPage,
     backendUnifiedHasMore,
     loadingMoreUnified,
-    loadMoreUnifiedSnapshot,
+    goToFirstUnifiedPage,
+    goToPreviousUnifiedPage,
+    goToNextUnifiedPage,
   } = useUnifiedAlerts({
     alerts,
     darkFlowAlerts,
@@ -314,30 +319,52 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-          <p className="mt-1 text-xl font-bold text-gray-100">{monitoredSymbols.length}</p>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
+        <div className="xl:col-span-3">
+          <PortfolioHeatmap
+            holdings={liveHoldings}
+            title={t('dashboardRealtime.portfolioHeatmapTitle')}
+          />
         </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-          <p className={`mt-1 text-xl font-bold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
-          </p>
-          <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
-          <p className={`mt-1 text-xl font-bold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
-            {realtimeStalePositions}
-          </p>
-          <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.staleHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
-          <p className="mt-1 text-lg font-bold text-gray-100">
-            {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
-          </p>
+        <div className="v2-panel-strong rounded-xl p-4">
+          <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
+            {t('dashboardRealtime.portfolioStatusTitle')}
+          </h3>
+          <div className="mt-3 space-y-2.5 text-xs">
+            <div>
+              <p className="text-slate-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+              <p className="mt-0.5 text-lg font-bold text-slate-100">{monitoredSymbols.length}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">{t('dashboardRealtime.upDownFlat')}</p>
+              <p className="mt-0.5 text-base font-semibold text-slate-100">
+                {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+              <p className={`mt-0.5 text-base font-semibold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-300' : 'text-slate-100'}`}>
+                {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-500">{t('dashboardRealtime.stale')}</p>
+              <p className={`mt-0.5 text-base font-semibold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-slate-100'}`}>
+                {realtimeStalePositions}
+              </p>
+            </div>
+            <div>
+              <p className="text-slate-500">{t('dashboardRealtime.lastEvent', {
+                time: lastEventAt
+                  ? formatDateTime(lastEventAt, {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                  })
+                  : '—',
+              })}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -355,9 +382,13 @@ export default function Dashboard() {
             readAlertIds={readAlertIds}
             markAlertAsRead={markAlertAsRead}
             muteSymbolFor30m={muteSymbolFor30m}
+            currentUnifiedPage={currentUnifiedPage}
+            hasPreviousUnifiedPage={hasPreviousUnifiedPage}
             backendUnifiedHasMore={backendUnifiedHasMore}
             loadingMoreUnified={loadingMoreUnified}
-            loadMoreUnifiedSnapshot={loadMoreUnifiedSnapshot}
+            goToFirstUnifiedPage={goToFirstUnifiedPage}
+            goToPreviousUnifiedPage={goToPreviousUnifiedPage}
+            goToNextUnifiedPage={goToNextUnifiedPage}
             sourceFilter={sourceFilter}
             setSourceFilter={setSourceFilter}
             audienceFilter={audienceFilter}

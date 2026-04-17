@@ -29,9 +29,13 @@ export default function UnifiedAlertCenter({
   readAlertIds,
   markAlertAsRead,
   muteSymbolFor30m,
+  currentUnifiedPage,
+  hasPreviousUnifiedPage,
   backendUnifiedHasMore,
   loadingMoreUnified,
-  loadMoreUnifiedSnapshot,
+  goToFirstUnifiedPage,
+  goToPreviousUnifiedPage,
+  goToNextUnifiedPage,
   sourceFilter,
   setSourceFilter,
   audienceFilter,
@@ -171,18 +175,40 @@ export default function UnifiedAlertCenter({
               );
             })}
 
-            {backendUnifiedHasMore && (
-              <button
-                type="button"
-                onClick={loadMoreUnifiedSnapshot}
-                disabled={loadingMoreUnified}
-                className="v2-chip-focus w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-60"
-              >
-                {loadingMoreUnified ? t('dashboardRealtime.loadingMore') : t('dashboardRealtime.loadMore')}
-              </button>
-            )}
           </div>
         )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
+        <div className="text-slate-500">
+          {t('dashboardRealtime.paginationPage', { page: currentUnifiedPage || 1 })}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={goToFirstUnifiedPage}
+            disabled={!hasPreviousUnifiedPage || loadingMoreUnified}
+            className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
+          >
+            {t('dashboardRealtime.paginationFirst')}
+          </button>
+          <button
+            type="button"
+            onClick={goToPreviousUnifiedPage}
+            disabled={!hasPreviousUnifiedPage || loadingMoreUnified}
+            className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
+          >
+            {t('dashboardRealtime.paginationPrev')}
+          </button>
+          <button
+            type="button"
+            onClick={goToNextUnifiedPage}
+            disabled={!backendUnifiedHasMore || loadingMoreUnified}
+            className="v2-chip-focus rounded border border-cyan-700/70 bg-cyan-950/25 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-900/35 disabled:opacity-50"
+          >
+            {loadingMoreUnified ? t('dashboardRealtime.loadingMore') : t('dashboardRealtime.paginationNext')}
+          </button>
+        </div>
       </div>
     </section>
   );
