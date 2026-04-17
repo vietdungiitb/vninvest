@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17y - Loai bo cau hinh trung lap o tab Tin hieu nong
+
+Muc tieu:
+- Loai bo tinh trang cau hinh trung lap o ca 2 tab.
+- Chi giu controls o tab `Cau hinh` va dong bo format cua tab nay theo style tab `Tin hieu nong`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Xoa cac nhom filter `Loc theo nguon` va `Pham vi hien thi` khoi tab `Tin hieu nong`.
+  - Giu tab `Tin hieu nong` chi con feed canh bao + pagination.
+  - Chuan hoa style controls trong tab `Cau hinh` theo dung format chip cua tab `Tin hieu nong` (mau active cyan, density/spacing/typography dong bo).
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file vua sua: khong co loi.
+
 ## Entry 2026-04-17x - Pixel-level refine tab Cau hinh theo mockup
 
 Muc tieu:

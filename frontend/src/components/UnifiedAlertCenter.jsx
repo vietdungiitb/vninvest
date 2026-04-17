@@ -107,47 +107,6 @@ export default function UnifiedAlertCenter({
           </button>
         </div>
 
-        {activeWorkspaceTab === 'alerts' && (
-          <>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="text-slate-500">{t('dashboardRealtime.filterBySource')}</span>
-              {['all', 'whale', 'dark_flow', 'price_shock', 'stale_quote'].map((source) => (
-                <button
-                  key={source}
-                  type="button"
-                  onClick={() => setSourceFilter(source)}
-                  className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${sourceFilter === source
-                    ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
-                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                  }`}
-                >
-                  {source === 'all' ? t('dashboardRealtime.filterAll') : sourceLabel(source, t)}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
-              <span className="text-slate-500">{t('dashboardRealtime.filterByAudience')}</span>
-              {[
-                { value: 'all', label: t('dashboardRealtime.filterAll') },
-                { value: 'holdings', label: t('dashboardRealtime.filterHoldingsOnly') },
-                { value: 'watchlist', label: t('dashboardRealtime.filterWatchlistOnly') },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setAudienceFilter(item.value)}
-                  className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${audienceFilter === item.value
-                    ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
-                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
       </div>
 
       {activeWorkspaceTab === 'alerts' ? (
@@ -286,18 +245,18 @@ export default function UnifiedAlertCenter({
           </div>
         </>
       ) : (
-        <div className="panel-scrollbar flex-1 overflow-y-auto bg-[#030d22] px-4 py-4">
+        <div className="panel-scrollbar flex-1 overflow-y-auto px-4 py-4">
           <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-2.5 text-sm">
-              <span className="text-[13px] text-slate-400">{t('dashboardRealtime.filterBySource')}</span>
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-slate-500">{t('dashboardRealtime.filterBySource')}</span>
               {['all', 'whale', 'dark_flow', 'price_shock', 'stale_quote'].map((source) => (
                 <button
                   key={source}
                   type="button"
                   onClick={() => setSourceFilter(source)}
-                  className={`v2-chip-focus rounded-full border px-5 py-2 text-[13px] font-semibold transition-colors ${sourceFilter === source
-                    ? 'border-emerald-500 bg-emerald-950/25 text-emerald-200'
-                    : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100'
+                  className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${sourceFilter === source
+                    ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
+                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
                   {source === 'all' ? t('dashboardRealtime.filterAll') : sourceLabel(source, t)}
@@ -305,8 +264,8 @@ export default function UnifiedAlertCenter({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 text-sm">
-              <span className="text-[13px] text-slate-400">{t('dashboardRealtime.filterByAudience')}</span>
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-slate-500">{t('dashboardRealtime.filterByAudience')}</span>
               {[
                 { value: 'all', label: t('dashboardRealtime.filterAll') },
                 { value: 'holdings', label: t('dashboardRealtime.filterHoldingsOnly') },
@@ -316,9 +275,9 @@ export default function UnifiedAlertCenter({
                   key={item.value}
                   type="button"
                   onClick={() => setAudienceFilter(item.value)}
-                  className={`v2-chip-focus rounded-full border px-5 py-2 text-[13px] font-semibold transition-colors ${audienceFilter === item.value
-                    ? 'border-emerald-500 bg-emerald-950/25 text-emerald-200'
-                    : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100'
+                  className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${audienceFilter === item.value
+                    ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
+                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
                   {item.label}
@@ -326,16 +285,16 @@ export default function UnifiedAlertCenter({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5 text-sm">
-              <span className="text-[13px] text-slate-400">{t('dashboardRealtime.filterBySeverity')}</span>
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-slate-500">{t('dashboardRealtime.filterBySeverity')}</span>
               {severityFilters.map((item) => (
                 <button
                   key={item.value}
                   type="button"
                   onClick={() => setSeverityFilter(item.value)}
-                  className={`v2-chip-focus rounded-full border px-5 py-2 text-[13px] font-semibold transition-colors ${severityFilter === item.value
-                    ? 'border-emerald-500 bg-emerald-950/25 text-emerald-200'
-                    : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100'
+                  className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${severityFilter === item.value
+                    ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
+                    : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                   }`}
                 >
                   {item.label}
@@ -343,17 +302,17 @@ export default function UnifiedAlertCenter({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 text-sm">
-              <span className="text-[13px] text-slate-400">{t('dashboardRealtime.criticalToastPolicy')}</span>
-              <span className="rounded-full border border-slate-700 bg-slate-900/70 px-4 py-2 text-[13px] font-semibold text-slate-300">
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <span className="text-slate-500">{t('dashboardRealtime.criticalToastPolicy')}</span>
+              <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 font-semibold text-slate-400">
                 {t('dashboardRealtime.toastQueuePolicy')}
               </span>
               <button
                 type="button"
                 onClick={toggleCriticalSound}
-                className={`v2-chip-focus rounded-full border px-4 py-2 text-[13px] font-semibold transition-colors ${criticalSoundEnabled
-                  ? 'border-emerald-500 bg-emerald-950/25 text-emerald-200'
-                  : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-600 hover:text-slate-100'
+                className={`v2-chip-focus rounded-full border px-2.5 py-1 font-semibold transition-colors ${criticalSoundEnabled
+                  ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
+                  : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
                 }`}
               >
                 {criticalSoundEnabled ? t('dashboardRealtime.soundOn') : t('dashboardRealtime.soundOff')}
