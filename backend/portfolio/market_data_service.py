@@ -2622,6 +2622,18 @@ class MarketDataService:
             default=True,
         )
         cursor_payload = self._decode_unified_alerts_cursor(query_params.get('cursor'))
+
+        # Cache key: per-user, per-symbol-set, per-params. Skip cache when cursor is used (pagination).
+        if cursor_payload is None:
+            sorted_symbols = ','.join(sorted(symbols)) if symbols else ''
+            _cache_key = (
+                f"unified_alerts:u{user.pk}:w{window}:s{severity_min}"
+                f":mt{int(include_market_top_tier)}:sym{hash(sorted_symbols)}:lim{limit}"
+            )
+            _cached = cache.get(_cache_key)
+            if _cached is not None:
+                return _cached
+
         if query_params.get('cursor') and cursor_payload is None:
             raise MarketDataValidationException('cursor không hợp lệ cho unified alerts.')
         if cursor_payload is not None:
@@ -2793,7 +2805,7 @@ class MarketDataService:
         page_items = deduped[:limit]
         results = [self._sanitize_unified_alert_item(item) for item in page_items]
         next_cursor = self._build_unified_alerts_next_cursor(page_items[-1], window=window, severity_min=severity_min) if has_more and page_items else None
-        return {
+        payload = {
             'results': results,
             'server_time': now.isoformat(),
             'filters': {
@@ -2824,6 +2836,13 @@ class MarketDataService:
                 },
             },
         }
+        # Cache non-paginated results for 20 seconds to prevent Daphne task timeout on repeated requests.
+        if cursor_payload is None:
+            try:
+                cache.set(_cache_key, payload, timeout=20)
+            except Exception:
+                pass
+        return payload
 
     def _parse_unified_severity_min(self, severity_raw) -> str:
         severity = str(severity_raw or 'low').strip().lower()
