@@ -316,6 +316,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
             id: 'portfolio-heatmap-transition',
             data: hierarchicalData,
             sort: 'desc',
+            center: ['50%', '50%'],
             radius: ['7%', '92%'],
             nodeClick: false,
             universalTransition: false,
@@ -400,13 +401,19 @@ export default function PortfolioHeatmap({ holdings, title }) {
           type: 'treemap',
           id: 'portfolio-heatmap-transition',
           data: hierarchicalData,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
           roam: false,
           nodeClick: false,
           universalTransition: false,
           stateAnimation: { duration: 0 },
           breadcrumb: { show: false },
           sort: 'desc',
-          squareRatio: 0.9,
+          squareRatio: 0.5,
           leafDepth: 2,
           visibleMin: 0,
           childrenVisibleMin: 0,
@@ -537,10 +544,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       </div>
 
-      <div className="flex-1 p-2.5 relative z-10" style={{ height: HEATMAP_HEIGHT }}>
+      <div className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
           option={option}
-          style={{ height: '100%', width: '100%' }}
+          style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
           notMerge={true}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
