@@ -7,6 +7,7 @@ from .views_realtime_ops import realtime_metrics_ops_api
 app_name = "portfolio_realtime"
 
 urlpatterns = [
+    path("tickers/", market_views.BatchRealtimeTickerView.as_view(), name="realtime-tickers"),
     path("ticker/<str:symbol>/", market_views.RealtimeTickerView.as_view(), name="realtime-ticker"),
     path("intraday/<str:symbol>/", market_views.IntradayMatchedView.as_view(), name="intraday-matched"),
     path("price-board/<str:symbol>/", market_views.PriceBoardView.as_view(), name="price-board"),

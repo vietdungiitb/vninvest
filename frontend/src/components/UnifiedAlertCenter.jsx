@@ -46,9 +46,11 @@ export default function UnifiedAlertCenter({
   setSourceFilter,
   audienceFilter,
   setAudienceFilter,
+  className = '',
 }) {
   const { t, formatDateTime, formatNumber } = useI18n();
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState('alerts');
+  const safeAlerts = React.useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
 
   const severityFilters = [
     { value: 'all', label: t('dashboardRealtime.filterAll') },
@@ -62,7 +64,7 @@ export default function UnifiedAlertCenter({
   ];
 
   return (
-    <section className="v2-panel flex min-h-[580px] flex-col rounded-xl">
+    <section className={`v2-panel flex min-h-[580px] flex-col rounded-xl ${className}`.trim()}>
       <div className="border-b border-slate-800/90 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -79,7 +81,7 @@ export default function UnifiedAlertCenter({
             </Link>
           ) : (
             <span className="text-sm font-semibold text-amber-300">
-              {t('dashboardRealtime.unreadAlerts', { count: formatNumber(alerts.filter((item) => !readAlertIds.has(item.id)).length) })}
+              {t('dashboardRealtime.unreadAlerts', { count: formatNumber(safeAlerts.filter((item) => !readAlertIds.has(item.id)).length) })}
             </span>
           )}
         </div>
@@ -112,13 +114,13 @@ export default function UnifiedAlertCenter({
       {activeWorkspaceTab === 'alerts' ? (
         <>
           <div className="panel-scrollbar flex-1 overflow-y-auto px-3 py-3">
-            {alerts.length === 0 ? (
+            {safeAlerts.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-slate-500">
                 {t('dashboardRealtime.noUnifiedAlerts')}
               </div>
             ) : (
               <div className="space-y-2.5">
-                {alerts.map((alert, index) => {
+                {safeAlerts.map((alert, index) => {
                   const severity = normalizeSeverity(alert.severity, 'medium');
                   const isUnread = !readAlertIds.has(alert.id);
                   return (

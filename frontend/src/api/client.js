@@ -247,6 +247,10 @@ export const regenerateStockAIExecutiveSummary = (symbol, payload = {}) =>
 export const deleteStockAIExecutiveSummary = (symbol, summaryId) =>
   apiClient.delete(`/stock-management/stocks/${encodeURIComponent(symbol)}/ai-advisory-summary/${summaryId}/`);
 export const getRealtimeTicker = (symbol) => apiClient.get(`/realtime/ticker/${symbol}/`);
+export const getRealtimeTickers = (symbols) => {
+  const symbolList = Array.isArray(symbols) ? symbols : [symbols];
+  return apiClient.get(`/realtime/tickers/?symbols=${symbolList.join(',')}`);
+};
 export const getIntradayMatched = (symbol, pageSize = 50) =>
   apiClient.get(`/realtime/intraday/${encodeURIComponent(symbol)}/?page_size=${pageSize}`);
 export const getPriceBoard = (symbol) =>

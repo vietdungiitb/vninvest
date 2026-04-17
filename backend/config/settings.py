@@ -245,6 +245,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'realtime': _get_throttle_rate('DRF_REALTIME_RATE', '60/minute'),
         'realtime_ticker': _get_throttle_rate('DRF_REALTIME_TICKER_RATE', '120/minute'),
+        'realtime_ticker_batch': _get_throttle_rate('DRF_REALTIME_TICKER_BATCH_RATE', '60/minute'),
         'realtime_intraday': _get_throttle_rate('DRF_REALTIME_INTRADAY_RATE', '90/minute'),
         'realtime_price_board': _get_throttle_rate('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
         'realtime_breadth': _get_throttle_rate('DRF_REALTIME_BREADTH_RATE', '90/minute'),

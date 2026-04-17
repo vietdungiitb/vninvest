@@ -1,5 +1,75 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ad - Hotfix Heatmap black-box + Unified Alert list desync
+
+Muc tieu:
+- Xu ly triet de 2 loi hien thi nghiem trong tren Dashboard:
+  - Heatmap hien khoang den trong du lieu ton tai.
+  - Summary canh bao va danh sach chi tiet lech pha (summary co so lieu nhung list rong).
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Hardening parse so cho `market_value/live_market_value` (ho tro string co dau phay).
+  - Chuyen du lieu sang cau truc hierarchical (`children`) cho `Treemap` de tang tinh tuong thich renderer.
+  - Them `treemapRenderKey` de ep rerender on-change khi holdings thay doi.
+  - Giu chieu cao responsive co dinh de tranh collapse theo parent flex/grid.
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Them reset pagination ve trang 1 khi co su kien moi (`lastEventAt`) de tranh cursor/page tro den trang rong.
+  - Tach `scopedUnifiedAlerts` (loc theo source/audience/mute) va tinh `alertSummary` theo scope hien thi de dong bo voi feed.
+  - Them fallback auto-reset ve trang 1 khi dang o trang >1, list rong nhung summary van con du lieu.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Hardening render voi `safeAlerts` (bao ve truong hop input khong phai array).
+  - Chuan hoa map/render path qua `safeAlerts` de tranh vo vong lap render.
+  - Ho tro `className` de parent grid ep `h-full` on-demand.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Gia co grid layout (`items-stretch`, `xl:min-h-[580px]`) de panel canh bao khong bi collapse chieu cao.
+  - Truyen `className="h-full"` vao `UnifiedAlertCenter`.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Da chay static error check tren 4 file frontend vua sua: khong phat hien loi moi.
+- Da chuan bi de verify truc quan tren Dashboard voi stack dev dang online (`http://127.0.0.1:8080`).
+
+## Entry 2026-04-17ac - Whale Alert visibility hardening in Unified Alert Center
+
+Muc tieu:
+- Xu ly triet de tinh trang Whale Alert bi chim khi co nhieu Dark Flow critical.
+- Bo sung market-wide top-tier whale highlights de khong bi gioi han trong holdings/watchlist.
+- Nang muc do nghiem trong cho whale signal tu 3x threshold tro len.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/market_data_service.py`:
+  - Nâng severity whale lên `critical` khi `matched_value >= 3 * threshold`.
+  - Thêm market-wide top-tier whale injection vao luong unified alerts (`include_market_top_tier=true` mac dinh).
+  - Doi thuat toan sap xep unified sang `priority rank` co bonus cho whale moi/whale lon, thay vi severity-only.
+  - Mo rong cursor pagination de mang theo `priority_rank`, dam bao khong overlap khi phan trang.
+  - Hardening parse timestamp trong unified alerts: chuan hoa datetime ve timezone-aware de tranh crash khi so sanh aware/naive trong sort va cursor filter.
+  - Bo sung helper parse boolean flag, sanitize payload va tinh whale priority rank.
+- `backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py`:
+  - Them test whale recency boost de whale moi khong bi dark flow cu de.
+  - Them test market-wide top-tier whale hien thi trong unified feed.
+  - Them test severity uplift 3x threshold => `critical`.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file backend vua sua: khong co loi.
+- Chay test target: KHONG THUC HIEN DUOC do loi ket noi PostgreSQL local (`127.0.0.1:5432` dong ket noi khi tao test DB).
+- Da smoke-check runtime qua `manage.py shell` voi duong di `get_unified_alerts` (mock symbols rong): khong con AttributeError, tra ve payload hop le.
+- Da verify health handler: `config.health.healthcheck(RequestFactory().get('/api/health/'))` tra ve HTTP 200 va payload `{"status": "ok", "service": "vninvest-backend"}`.
+- Da smoke-check resilience timestamp loi: inject su kien whale co `ts='bad-ts-format'` vao unified feed, ket qua `get_unified_alerts` van tra payload hop le (khong crash).
+
 ## Entry 2026-04-17ab - Dua pagination mac dinh cua Trung tam canh bao hop nhat ve 5
 
 Muc tieu:

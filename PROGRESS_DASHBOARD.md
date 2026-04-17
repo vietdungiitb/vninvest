@@ -105,6 +105,20 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI Hotfix - Heatmap black-box + Unified Alert list desync (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - hardening parse so + treemap data hierarchical + render key de force rerender)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - reset pagination ve trang 1 khi co event moi, dong bo summary theo scope hien thi, fallback auto-reset khi trang rong)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - safeAlerts guard cho map/render + ho tro className de ep full-height)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - them grid anti-collapse va truyen className h-full vao UnifiedAlertCenter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Unified Alerts - Whale visibility hardening (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - them severity uplift 3x threshold, market-wide top-tier whale highlights, whale-aware priority ranking + cursor compatibility, hardening parse timestamp timezone-aware de tranh crash aware/naive)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - them 3 regression tests cho whale recency boost, market-wide top-tier, severity uplift)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 - Mac dinh pagination Trung tam canh bao hop nhat ve 5 (2026-04-17)
 - frontend/src/pages/Dashboard.jsx (MODIFIED - doi `unifiedPageSize` mac dinh tu 10 thanh 5)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ab)

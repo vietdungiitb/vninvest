@@ -226,6 +226,14 @@ export default function useUnifiedAlerts({
   }, [sourceFilter, severityFilter, audienceFilter, pageSize]);
 
   useEffect(() => {
+    if (!enableSnapshot || !monitoredSymbols.length) return;
+    const resetStack = [null];
+    setCursorStack(resetStack);
+    setCurrentPageIndex(0);
+    fetchUnifiedPage(0, resetStack);
+  }, [lastEventAt]);
+
+  useEffect(() => {
     if (!enableSnapshot || !monitoredSymbols.length) {
       return undefined;
     }
@@ -446,8 +454,32 @@ export default function useUnifiedAlerts({
     });
   }, [unifiedAlerts, sourceFilter, severityFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol]);
 
+  const scopedUnifiedAlerts = useMemo(() => {
+    return unifiedAlerts.filter((item) => {
+      if (sourceFilter !== 'all' && item.source !== sourceFilter) {
+        return false;
+      }
+      if (audienceFilter === 'holdings') {
+        const holdingSet = new Set((holdings || []).map((h) => String(h.symbol || '').toUpperCase()).filter(Boolean));
+        if (!holdingSet.has(String(item.symbol || '').toUpperCase())) {
+          return false;
+        }
+      }
+      if (audienceFilter === 'watchlist') {
+        const watchlistSet = new Set((trackedSymbolNames || []).map((s) => String(s || '').toUpperCase()).filter(Boolean));
+        if (!watchlistSet.has(String(item.symbol || '').toUpperCase())) {
+          return false;
+        }
+      }
+      if (isMutedSymbol && isMutedSymbol(item.symbol)) {
+        return false;
+      }
+      return true;
+    });
+  }, [unifiedAlerts, sourceFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol]);
+
   const alertSummary = useMemo(() => {
-    return unifiedAlerts.reduce((acc, item) => {
+    return scopedUnifiedAlerts.reduce((acc, item) => {
       const normalized = normalizeUnifiedSeverity(item.severity, 'medium');
       acc[normalized] += 1;
       acc.total += 1;
@@ -459,7 +491,29 @@ export default function useUnifiedAlerts({
       low: 0,
       total: 0,
     });
-  }, [unifiedAlerts]);
+  }, [scopedUnifiedAlerts]);
+
+  useEffect(() => {
+    if (!enableSnapshot || currentPageIndex <= 0 || loadingMoreUnified) {
+      return;
+    }
+    if (filteredUnifiedAlerts.length > 0) {
+      return;
+    }
+    if (alertSummary.total <= 0) {
+      return;
+    }
+    const resetStack = [null];
+    setCursorStack(resetStack);
+    setCurrentPageIndex(0);
+    fetchUnifiedPage(0, resetStack);
+  }, [
+    enableSnapshot,
+    currentPageIndex,
+    loadingMoreUnified,
+    filteredUnifiedAlerts.length,
+    alertSummary.total,
+  ]);
 
   const hotSymbols = useMemo(() => {
     const symbolMap = new Map();

@@ -337,8 +337,8 @@ export default function Dashboard() {
         unreadCount={unreadUnifiedCount}
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4">
-        <div className="xl:col-span-3">
+      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-4">
+        <div className="xl:col-span-3 xl:min-h-[580px]">
           <UnifiedAlertCenter
             alerts={filteredUnifiedAlerts}
             readAlertIds={readAlertIds}
@@ -361,6 +361,7 @@ export default function Dashboard() {
             setSourceFilter={setSourceFilter}
             audienceFilter={audienceFilter}
             setAudienceFilter={setAudienceFilter}
+            className="h-full"
           />
         </div>
         <div className="space-y-4 xl:col-span-1">

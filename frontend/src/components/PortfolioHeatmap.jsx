@@ -7,15 +7,51 @@ import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
  * Dùng Recharts Treemap.
  */
 export default function PortfolioHeatmap({ holdings, title }) {
+  const HEATMAP_HEIGHT = 360;
+
+  const toNumber = (value) => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const normalized = value.replace(/,/g, '').trim();
+      const parsed = Number(normalized);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  };
+
   // 1. Chuẩn bị dữ liệu cho Treemap
-  // Cần lọc bỏ các vị thế không có market_value hoặc symbol
-  const data = holdings
-    .filter(h => h.symbol && Number(h.market_value) > 0)
-    .map(h => ({
-      name: h.symbol,
-      size: Number(h.market_value),
-      original: h,
-    }));
+  // Ưu tiên live_market_value nếu > 0, fallback về market_value snapshot.
+  const data = (holdings || [])
+    .map((h) => {
+      const liveValue = toNumber(h.live_market_value);
+      const snapshotValue = toNumber(h.market_value);
+      const size = liveValue > 0 ? liveValue : snapshotValue;
+
+      return {
+        name: String(h.symbol || '').trim().toUpperCase(),
+        size,
+        original: h,
+      };
+    })
+    .filter((item) => item.name && item.size > 0);
+
+  const treemapData = React.useMemo(() => ([
+    {
+      name: 'Portfolio',
+      children: data,
+    },
+  ]), [data]);
+
+  const treemapRenderKey = React.useMemo(() => {
+    return data
+      .map((item) => `${item.name}:${Math.round(Number(item.size) || 0)}`)
+      .join('|');
+  }, [data]);
+
+  if ((holdings || []).length > 0 && data.length === 0) {
+    console.warn('[Heatmap] Holdings present but no drawable data after size fallback.');
+  }
 
   if (!data.length) {
     return (
@@ -25,14 +61,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
       </div>
     );
   }
-
-  // Wrapper Treemap data
-  const treemapData = [
-    {
-      name: 'Portfolio',
-      children: data
-    }
-  ];
 
   // 2. Định nghĩa màu sắc dựa trên change_pct
   const getColor = (pct) => {
@@ -46,7 +74,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
   // 3. Custom content cho cell
   const CustomizedContent = (props) => {
     const { depth, x, y, width, height, payload, name } = props || {};
-    if (!payload || depth !== 1) return null;
+    if (!payload) return null;
+    if (payload?.children && payload.children.length > 0) return null;
 
     const original = payload?.original || {};
     // FIX: Đảm bảo change_pct là số hợp lệ trước khi gọi toFixed
@@ -68,7 +97,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           style={{
             fill: bgColor,
             stroke: '#111827',
-            strokeWidth: 2 / (depth + 1),
+            strokeWidth: 2 / ((Number(depth) || 0) + 1),
             strokeOpacity: 1,
             cursor: 'pointer'
           }}
@@ -138,10 +167,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       )}
       <div className="flex-1 min-h-[360px] p-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height={HEATMAP_HEIGHT}>
           <Treemap
+            key={treemapRenderKey || 'treemap-empty'}
             data={treemapData}
             dataKey="size"
+            nameKey="name"
             stroke="#fff"
             fill="#8884d8"
             content={<CustomizedContent />}
