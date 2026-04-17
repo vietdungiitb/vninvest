@@ -1,5 +1,36 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ai - Realtime remediation step 2 (Redis stream retention hard-cap)
+
+Muc tieu:
+- Ngan RAM bloating o Redis Streams khi stream lag xay ra keo dai hoac khi cau hinh `STREAM_MAX_LEN` bi dat qua cao.
+- Dam bao producer luon ghi `XADD` voi maxlen duoc gioi han boi hard-cap de khong phinh vo han theo cau hinh sai.
+
+Noi dung cap nhat chinh:
+- `backend/config/settings.py`:
+  - Giam default `STREAM_MAX_LEN` tu `50000` xuong `10000`.
+  - Bo sung `STREAM_MAX_LEN_HARD_CAP` (default `20000`).
+- `backend/portfolio/realtime/tick_producer.py`:
+  - Hardening khoi tao producer: clamp `STREAM_MAX_LEN` trong khoang an toan (toi thieu 1000, toi da = hard-cap).
+  - Them warning log khi cau hinh vuot hard-cap.
+- `backend/portfolio/tests/test_tick_producer.py`:
+  - Them regression test xac nhan maxlen bi clamp dung theo hard-cap.
+
+Tac dong ky thuat:
+- Loai bo rui ro stream growth khong kiem soat do misconfiguration.
+- Giu dung co che `XADD ... MAXLEN ~` hien co, nhung them guardrail de on dinh RAM Redis trong su co collector/consumer lag.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py
+- backend/portfolio/realtime/tick_producer.py
+- backend/portfolio/tests/test_tick_producer.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Chay test file `backend/portfolio/tests/test_tick_producer.py`: pass.
+- Django `manage.py check`: da pass o phien truoc va khong phat sinh loi moi tu patch nay.
+
 ## Entry 2026-04-17ah - Realtime 504 remediation step 1 (SQL-side filtering for whale aggregate fallback)
 
 Muc tieu:

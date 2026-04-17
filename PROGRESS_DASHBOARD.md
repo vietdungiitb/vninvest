@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime 504 Remediation - Redis stream retention hard-cap (2026-04-17)
+- backend/config/settings.py (MODIFIED - giam default STREAM_MAX_LEN va bo sung STREAM_MAX_LEN_HARD_CAP)
+- backend/portfolio/realtime/tick_producer.py (MODIFIED - clamp maxlen theo hard-cap va warning log khi vuot nguong)
+- backend/portfolio/tests/test_tick_producer.py (MODIFIED - them regression test cho maxlen clamp)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime 504 Remediation - SQL-side filtering for whale aggregate fallback (2026-04-17)
 - backend/portfolio/market_data_service.py (MODIFIED - chuyen loc threshold tung symbol va window boundary tu Python loop sang SQL Q filter, loai bo iterator blocking va pagination theo DB slice)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ah)
