@@ -3012,6 +3012,28 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(order['time'], '09:30:00')
         self.assertEqual(order['ts'], '2026-04-03T09:30:00+07:00')
         self.assertEqual(response.data['source_event_at'], '2026-04-03T09:31:00+07:00')
+
+    @patch('portfolio.market_data_service.get_cache', return_value=None)
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    def test_refactored_whale_feed_deduplicates_duplicate_ticks(self, mock_fetch_intraday_dataframe, _mock_stream_ticks, _mock_get_cache):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'free', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        self.authenticate()
+        mock_fetch_intraday_dataframe.return_value = pd.DataFrame([
+            {'time': '2026-04-03T14:01:46+07:00', 'price': 61400, 'volume': 19000, 'match_type': 'buy'},
+            {'time': '2026-04-03T14:01:46+07:00', 'price': 61400, 'volume': 19000, 'match_type': 'buy'},
+            {'time': '2026-04-03T14:01:46+07:00', 'price': 61400, 'volume': 19000, 'match_type': 'buy'},
+        ])
+
+        response = self.client.get('/api/realtime/whale-feed/VNM/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['whale_orders']), 1)
+        self.assertEqual(response.data['whale_orders'][0]['event_id'], 'whale:buy:20260403T140146:61400000:19000')
+
     @patch('portfolio.market_data_service.get_cache', return_value=None)
     @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])
     @patch('portfolio.market_data_service.fetch_intraday_dataframe', side_effect=ExternalSystemException('vnstock unavailable', code='vnstock_error'))
@@ -3324,6 +3346,112 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         for item in response.data['results']:
             self.assertEqual(item.get('severity'), 'critical')
+
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_boosts_recent_whale_against_old_dark_flow(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='VIC')
+
+        now = timezone.now()
+        mock_whale_aggregate.return_value = {
+            'results': [
+                {
+                    'event_id': 'whale:VIC:recent',
+                    'symbol': 'VIC',
+                    'severity': 'high',
+                    'side': 'BUY',
+                    'matched_value': 900_000_000,
+                    'threshold': 500_000_000,
+                    'ts': now.isoformat(),
+                }
+            ]
+        }
+
+        dark_flow = OrderFlowSignal.objects.create(
+            symbol='VIC',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=85,
+            confidence='high',
+            tick_rate=14.5,
+            small_order_ratio=0.66,
+            cvd_at_signal=1500000,
+            price_at_signal=100500,
+            window_seconds=300,
+            components_json={'test': True},
+            event_id='dark_flow:VIC:old-critical',
+            severity=OrderFlowSignal.SeverityChoices.URGENT,
+        )
+        OrderFlowSignal.objects.filter(id=dark_flow.id).update(created_at=now - timedelta(minutes=25))
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&limit=1&include_market_top_tier=false')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0].get('source'), 'whale')
+
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_includes_market_wide_top_tier_whale(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        mock_whale_aggregate.return_value = {'results': []}
+
+        local_now = timezone.localtime()
+        IntradayTick.objects.create(
+            symbol='VIC',
+            trade_date=local_now.date(),
+            trade_time=local_now.time().replace(microsecond=0),
+            price=Decimal('100000'),
+            volume=30000,
+            side='BUY',
+            stream_id='vic-market-top-tier',
+        )
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&limit=10&include_market_top_tier=true')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        market_whales = [
+            item for item in response.data['results']
+            if item.get('source') == 'whale' and item.get('market_wide') is True
+        ]
+        self.assertTrue(any(item.get('symbol') == 'VIC' for item in market_whales))
+
+    @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
+    def test_unified_alerts_endpoint_escalates_whale_to_critical_at_three_x_threshold(self, mock_whale_aggregate):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
+        mock_whale_aggregate.return_value = {
+            'results': [
+                {
+                    'event_id': 'whale:HPG:three-x',
+                    'symbol': 'HPG',
+                    'severity': 'high',
+                    'side': 'BUY',
+                    'matched_value': 1_600_000_000,
+                    'threshold': 500_000_000,
+                    'ts': timezone.now().isoformat(),
+                }
+            ]
+        }
+        self.authenticate_direct()
+
+        response = self.client.get('/api/realtime/unified-alerts/?window=session&limit=10&include_market_top_tier=false')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        whale_rows = [item for item in response.data['results'] if item.get('event_id') == 'whale:HPG:three-x']
+        self.assertEqual(len(whale_rows), 1)
+        self.assertEqual(whale_rows[0].get('severity'), 'critical')
+
     def test_unified_alerts_endpoint_rejects_invalid_severity_min(self):
         UserConfig.objects.update_or_create(
             user=self.user,

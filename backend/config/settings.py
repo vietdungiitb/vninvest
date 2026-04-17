@@ -245,6 +245,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'realtime': _get_throttle_rate('DRF_REALTIME_RATE', '60/minute'),
         'realtime_ticker': _get_throttle_rate('DRF_REALTIME_TICKER_RATE', '120/minute'),
+        'realtime_ticker_batch': _get_throttle_rate('DRF_REALTIME_TICKER_BATCH_RATE', '60/minute'),
         'realtime_intraday': _get_throttle_rate('DRF_REALTIME_INTRADAY_RATE', '90/minute'),
         'realtime_price_board': _get_throttle_rate('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
         'realtime_breadth': _get_throttle_rate('DRF_REALTIME_BREADTH_RATE', '90/minute'),
@@ -590,6 +591,7 @@ REALTIME_STREAM_PENDING_RECLAIM_ENABLED = os.getenv("REALTIME_STREAM_PENDING_REC
 REALTIME_WS_AUTH_CACHE_TTL_SECONDS = _env_int("REALTIME_WS_AUTH_CACHE_TTL_SECONDS", 120)
 STREAM_PENDING_RECLAIM_IDLE_MS = _env_int("STREAM_PENDING_RECLAIM_IDLE_MS", 60000)
 STREAM_PENDING_RECLAIM_BATCH = _env_int("STREAM_PENDING_RECLAIM_BATCH", 50)
+WHALE_SCORE_PROFILE = os.getenv("WHALE_SCORE_PROFILE", "v1").strip().lower()
 
 # Redis Streams — db=1 (riêng với Celery db=0 và Cache db=2)
 STREAM_REDIS_URL = os.getenv(

@@ -8,14 +8,17 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { getSummary, getHoldings, syncPrices, getTrackedSymbols } from '../api/client';
 import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
-import PortfolioLineChart from '../components/PortfolioLineChart';
 import AllocationPieChart from '../components/AllocationPieChart';
-import DashboardRealtimePanel from '../components/DashboardRealtimePanel';
 import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
 import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
 import PortfolioDigestPanel from '../components/PortfolioDigestPanel';
+import UnifiedAlertBar from '../components/UnifiedAlertBar';
+import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
+import PortfolioHeatmap from '../components/PortfolioHeatmap';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import useUnifiedAlerts from '../hooks/useUnifiedAlerts';
+import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   buildLiveHoldingsOverlay,
   buildLiveSummaryFromHoldings,
@@ -36,6 +39,10 @@ export default function Dashboard() {
   const [loadingHoldings, setLoadingHoldings] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('all');
+  const [unifiedPageSize, setUnifiedPageSize] = useState(5);
 
   const holdingSymbols = useMemo(
     () => holdings.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
@@ -59,6 +66,48 @@ export default function Dashboard() {
     metrics,
   } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
 
+  const {
+    readAlertIds,
+    criticalSoundEnabled,
+    markAlertAsRead,
+    isMutedSymbol,
+    muteSymbolFor30m,
+    toggleCriticalSound,
+  } = usePersistentAlertState();
+
+  const {
+    filteredUnifiedAlerts,
+    alertSummary,
+    currentUnifiedPage,
+    hasPreviousUnifiedPage,
+    backendUnifiedHasMore,
+    loadingMoreUnified,
+    goToFirstUnifiedPage,
+    goToPreviousUnifiedPage,
+    goToNextUnifiedPage,
+  } = useUnifiedAlerts({
+    alerts,
+    darkFlowAlerts,
+    monitoredSymbols,
+    quotesBySymbol,
+    holdings,
+    trackedSymbolNames,
+    enableSnapshot: isAuthenticated && Boolean(activePortfolioId),
+    lastEventAt,
+    sourceFilter,
+    severityFilter,
+    audienceFilter,
+    pageSize: unifiedPageSize,
+    isMutedSymbol,
+    formatNumber: (value) => Number(value || 0).toLocaleString('vi-VN'),
+    t,
+  });
+
+  const unreadUnifiedCount = useMemo(
+    () => filteredUnifiedAlerts.filter((item) => !readAlertIds.has(item.id)).length,
+    [filteredUnifiedAlerts, readAlertIds],
+  );
+
   const monitoredQuotes = useMemo(
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
     [monitoredSymbols, quotesBySymbol],
@@ -81,11 +130,59 @@ export default function Dashboard() {
     () => Number(liveSummary.totalMarketValue || 0) - snapshotMarketValue,
     [liveSummary.totalMarketValue, snapshotMarketValue],
   );
+  const heatmapData = useMemo(() => {
+    if (!monitoredSymbols.length) {
+      return [];
+    }
+
+    const holdingsMap = new Map();
+    liveHoldings.forEach((h) => holdingsMap.set(normalizeSymbol(h.symbol), h));
+
+    const trackedSymbolMap = new Map();
+    trackedSymbols.forEach((item) => trackedSymbolMap.set(normalizeSymbol(item.symbol), item));
+
+    const totalHeldValue = liveHoldings.reduce(
+      (sum, h) => sum + Number(h.live_market_value || h.market_value || 0),
+      0,
+    );
+    const avgPositionSize = liveHoldings.length > 0 ? totalHeldValue / liveHoldings.length : 10000;
+    const nominalSize = Math.max(avgPositionSize * 0.4, 2000);
+
+    return monitoredSymbols.map((symbol) => {
+      const held = holdingsMap.get(symbol);
+      const quote = quotesBySymbol[symbol] || {};
+      const changePct = quote.change_pct ?? held?.live_change_pct ?? 0;
+
+      const trackedInfo = trackedSymbolMap.get(symbol);
+      const industryRaw = String(held?.industry || trackedInfo?.industry || 'Khác').trim();
+      const industry = industryRaw || 'Khác';
+
+      if (held) {
+        return {
+          ...held,
+          symbol,
+          industry,
+          live_market_value: Number(held.live_market_value || held.market_value || 0),
+          live_change_pct: changePct,
+          is_holding: true,
+        };
+      }
+      return {
+        symbol,
+        industry,
+        live_market_value: nominalSize,
+        live_change_pct: changePct,
+        is_holding: false,
+      };
+    });
+  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+
   const realtimeMarketBreadth = useMemo(() => {
     return monitoredQuotes.reduce((acc, item) => {
-      if ((item.change_pct ?? 0) > 0) {
+      const changePct = item.change_pct ?? 0;
+      if (changePct > 0) {
         acc.up += 1;
-      } else if ((item.change_pct ?? 0) < 0) {
+      } else if (changePct < 0) {
         acc.down += 1;
       } else {
         acc.flat += 1;
@@ -93,6 +190,10 @@ export default function Dashboard() {
       return acc;
     }, { up: 0, down: 0, flat: 0 });
   }, [monitoredQuotes]);
+
+  const handleSeverityBarFilter = useCallback((targetFilter) => {
+    setSeverityFilter((prev) => (prev === targetFilter ? 'all' : targetFilter));
+  }, []);
 
   const marketValue = liveHoldings.length > 0
     ? liveSummary.totalMarketValue
@@ -187,11 +288,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-[1500px] space-y-6 px-5 py-6 xl:px-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-100">
+          <h1 className="text-lg font-bold text-gray-100">
             {summary?.portfolio_name ?? t('common.loading')}
           </h1>
           {summary?.last_updated && (
@@ -234,7 +335,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label={t('dashboard.marketValue')}
           unit={t('dashboard.thousandVndUnitShort')}
@@ -270,48 +371,92 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-          <p className="text-xl font-bold text-gray-100 mt-1">{monitoredSymbols.length}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-          <p className={`text-xl font-bold mt-1 ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-red-300' : 'text-gray-100'}`}>
-            {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
-          </p>
-          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
-          <p className={`text-xl font-bold mt-1 ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
-            {realtimeStalePositions}
-          </p>
-          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
-        </div>
-        <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
-          <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
-          <p className="text-lg font-bold text-gray-100 mt-1">
-            {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
-          </p>
-        </div>
+      <div className="grid grid-cols-1 gap-4">
+        <PortfolioHeatmap
+          holdings={heatmapData}
+          title={t('dashboardRealtime.watchlistHeatmapTitle', { defaultValue: 'Biến động Watchlist & Danh mục' })}
+        />
       </div>
 
-      <DashboardRealtimePanel
-        holdings={liveHoldings}
-        trackedSymbolNames={trackedSymbolNames}
-        quotesBySymbol={quotesBySymbol}
-        realtimeStatus={realtimeStatus}
-        lastEventAt={lastEventAt}
-        alerts={alerts}
-        darkFlowAlerts={darkFlowAlerts}
-        metrics={metrics}
-        monitoredSymbols={monitoredSymbols}
-        enableSnapshot={isAuthenticated && Boolean(activePortfolioId)}
-        onSyncRequest={handleSync}
-        showSummaryMetrics={false}
-        portfolioId={activePortfolioId}
+      <UnifiedAlertBar
+        alertSummary={alertSummary}
+        severityFilter={severityFilter}
+        onSeverityFilterChange={handleSeverityBarFilter}
+        unreadCount={unreadUnifiedCount}
       />
+
+      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-4">
+        <div className="xl:col-span-3 xl:min-h-[580px]">
+          <UnifiedAlertCenter
+            alerts={filteredUnifiedAlerts}
+            readAlertIds={readAlertIds}
+            markAlertAsRead={markAlertAsRead}
+            muteSymbolFor30m={muteSymbolFor30m}
+            severityFilter={severityFilter}
+            setSeverityFilter={setSeverityFilter}
+            criticalSoundEnabled={criticalSoundEnabled}
+            toggleCriticalSound={toggleCriticalSound}
+            currentUnifiedPage={currentUnifiedPage}
+            hasPreviousUnifiedPage={hasPreviousUnifiedPage}
+            backendUnifiedHasMore={backendUnifiedHasMore}
+            loadingMoreUnified={loadingMoreUnified}
+            goToFirstUnifiedPage={goToFirstUnifiedPage}
+            goToPreviousUnifiedPage={goToPreviousUnifiedPage}
+            goToNextUnifiedPage={goToNextUnifiedPage}
+            pageSize={unifiedPageSize}
+            setPageSize={setUnifiedPageSize}
+            sourceFilter={sourceFilter}
+            setSourceFilter={setSourceFilter}
+            audienceFilter={audienceFilter}
+            setAudienceFilter={setAudienceFilter}
+            className="h-full"
+          />
+        </div>
+        <div className="space-y-4 xl:col-span-1">
+          <AllocationPieChart portfolioId={activePortfolioId} />
+          <div className="v2-panel-strong rounded-xl p-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
+              {t('dashboardRealtime.portfolioStatusTitle')}
+            </h3>
+            <div className="mt-3 space-y-2.5 text-xs">
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+                <p className="mt-0.5 text-lg font-bold text-slate-100">{monitoredSymbols.length}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.upDownFlat')}</p>
+                <p className="mt-0.5 text-base font-semibold text-slate-100">
+                  {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+                <p className={`mt-0.5 text-base font-semibold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-300' : 'text-slate-100'}`}>
+                  {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.stale')}</p>
+                <p className={`mt-0.5 text-base font-semibold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-slate-100'}`}>
+                  {realtimeStalePositions}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.lastEvent', {
+                  time: lastEventAt
+                    ? formatDateTime(lastEventAt, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
+                    : '—',
+                })}</p>
+              </div>
+            </div>
+          </div>
+          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+        </div>
+      </div>
 
       <PortfolioDigestPanel />
 
@@ -323,15 +468,13 @@ export default function Dashboard() {
       </div>
 
       {/* Holdings Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+      <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
           {t('dashboard.holdings')}
         </h2>
         <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />
       </div>
 
-      {/* Risk & Performance Analytics */}
-      <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
     </div>
   );
 }

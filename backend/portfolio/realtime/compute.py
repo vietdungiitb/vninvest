@@ -41,10 +41,31 @@ def _classify_signal_size(matched_value: float) -> str:
     return classify_whale_size_class(matched_value)
 
 
+def _normalize_whale_timestamp(value: str | datetime | None) -> str:
+    """Normalize whale event timestamp to second precision (UTC ISO8601)."""
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        raw = str(value or "").strip()
+        if not raw:
+            return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+        try:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+        except ValueError:
+            return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+
+    return dt.replace(microsecond=0).isoformat()
+
+
 def _build_whale_event_id(signal: WhaleSignal, normalized_side: str) -> str:
     matched_value = int(round(float(signal.matched_value or 0.0)))
-    threshold = int(round(float(signal.threshold or 0.0)))
-    return f"whale:{signal.symbol}:{signal.ts}:{normalized_side}:{matched_value}:{threshold}"
+    normalized_ts = _normalize_whale_timestamp(signal.ts)
+    return f"whale:{signal.symbol}:{normalized_ts}:{normalized_side}:{matched_value}"
 
 
 def _derive_source_layer(source: str) -> str:
@@ -201,7 +222,7 @@ def detect_whale_signals(
         trade_side = str(row.get("side") or "UNKNOWN").upper()
         # BUG FIX: use actual trade timestamp instead of _iso_now()
         raw_ts = row.get("ts")
-        trade_ts = str(raw_ts) if (raw_ts is not None and str(raw_ts).strip()) else _iso_now()
+        trade_ts = _normalize_whale_timestamp(raw_ts if raw_ts is not None else _iso_now())
 
         hit_thresholds = [threshold for threshold in sorted_thresholds if mv >= threshold]
         if not hit_thresholds:
@@ -292,7 +313,15 @@ def build_whale_payload(
 ) -> dict:
     score_config = score_config or resolve_whale_score_config()
     normalized_side = _normalize_signal_side(signal.side)
-    event_id = _build_whale_event_id(signal, normalized_side)
+    normalized_ts = _normalize_whale_timestamp(signal.ts)
+    normalized_signal = WhaleSignal(
+        symbol=signal.symbol,
+        matched_value=signal.matched_value,
+        side=signal.side,
+        threshold=signal.threshold,
+        ts=normalized_ts,
+    )
+    event_id = _build_whale_event_id(normalized_signal, normalized_side)
     score_result = calculate_event_score(
         trade={
             "matched_value": signal.matched_value,
@@ -336,11 +365,11 @@ def build_whale_payload(
         "display_score": display_result["display_score"],
         "severity": display_result["severity"],
         "weights_version": score_result["weights_version"],
-            "freshness_bucket": _derive_freshness_bucket(signal.ts),
+            "freshness_bucket": _derive_freshness_bucket(normalized_ts),
             "recovered": recovered,
         "why_triggered": explainability["why_triggered"],
         "next_checks": explainability["next_checks"],
-        "ts": signal.ts,
+        "ts": normalized_ts,
         "seq": seq,
     }
 

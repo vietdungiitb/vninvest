@@ -19,7 +19,7 @@ import {
   getDepthChart,
   getUserConfig,
   getIntradayMatched,
-  getRealtimeTicker,
+  getRealtimeTickers,
   getSectorBreadth,
   getStockFinancials,
   getStockAIAdvisorySession,
@@ -2217,9 +2217,10 @@ export default function StockDetail() {
 
     const fetchTickerSnapshot = async () => {
       try {
-        const response = await getRealtimeTicker(normalizedSymbol);
+        const response = await getRealtimeTickers([normalizedSymbol]);
         if (!cancelled) {
-          setTickerSnapshot(response?.data || null);
+          const tickerData = response?.data?.[normalizedSymbol] || null;
+          setTickerSnapshot(tickerData);
         }
       } catch {
         if (!cancelled) {

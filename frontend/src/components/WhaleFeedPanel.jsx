@@ -55,6 +55,8 @@ function normalizeEventTimestamp(value) {
 
 function buildFeedEventKey(item) {
   if (!item) return '';
+  const eventId = String(item.event_id || '').trim();
+  if (eventId) return `id:${eventId}`;
   const alertKind = String(item.alert_kind || 'whale_alert').toLowerCase();
   const side = String(item.side || '').toLowerCase();
   const matchedValue = Number(item.matched_value || 0);
@@ -200,9 +202,22 @@ export function WhaleFeedPanel({
     });
     return keys;
   }, [realtimeItems]);
+
+  const dedupedHistoryOrders = React.useMemo(() => {
+    const seen = new Set();
+    const unique = [];
+    (orders || []).forEach((order, index) => {
+      const key = buildFeedEventKey({ ...order, alert_kind: 'whale_alert' }) || `history:${order?.time || 'na'}:${index}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      unique.push(order);
+    });
+    return unique;
+  }, [orders]);
+
   const dedupedOrders = React.useMemo(
-    () => orders.filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' }))),
-    [orders, realtimeEventKeys],
+    () => dedupedHistoryOrders.filter((order) => !realtimeEventKeys.has(buildFeedEventKey({ ...order, alert_kind: 'whale_alert' }))),
+    [dedupedHistoryOrders, realtimeEventKeys],
   );
 
   const sourceMeta = React.useMemo(() => {
@@ -315,7 +330,7 @@ export function WhaleFeedPanel({
                 </div>
                 <div className="flex flex-col gap-2">
                   {dedupedOrders.map((o, i) => (
-                    <AlertFeedCard key={`${o.time}-${i}`} order={o} animated={false} />
+                    <AlertFeedCard key={buildFeedEventKey({ ...o, alert_kind: 'whale_alert' }) || `history-${i}`} order={o} animated={false} />
                   ))}
                 </div>
               </div>

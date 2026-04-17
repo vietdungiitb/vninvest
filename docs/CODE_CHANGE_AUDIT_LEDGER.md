@@ -1,5 +1,548 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17af - Heatmap full-frame coverage for watchlist + portfolio symbols
+
+Muc tieu:
+- Sua triệt để heatmap Dashboard de cac ma co phieu phu kin toan bo khung, khong bi don vao mot dai nho o phia tren.
+- Loai bo rui ro render fail do dependency array tham chieu bien ngoai scope trong Dashboard.
+- Dong bo tieu de heatmap vao i18n va cap nhat audit file list theo governance cua repo.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Chuan hoa lai du lieu hierarchical theo `industry -> symbols` voi sector value dang mang `[size, changePct]` de ECharts tinh layout nhat quan.
+  - Cau hinh lai `treemap` voi `squareRatio`, `leafDepth`, `visibleMin=0`, `childrenVisibleMin=0`, upper label theo sector va label cho leaf node de cac ma phu kin toan bo dien tich khung.
+  - Giu toggle `Treemap/Sunburst`, bo console event thua, them `notMerge` de tranh cache option cu.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Sua `heatmapData` memo: xoa dependency sai scope `nominalSize`, them map lookup cho tracked symbols va fallback gia tri an toan.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Bo sung key tieu de/nhan heatmap de tranh hardcode o Dashboard.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren `PortfolioHeatmap.jsx` va `Dashboard.jsx`: khong co loi.
+- `npm run build` trong `frontend/`: build thanh cong.
+
+## Entry 2026-04-17ae - Hotfix 429 burst on StockDetail + poll batch tuning + frontend rebuild
+
+Muc tieu:
+- Giam tan suat request realtime de tranh vuot nguong 429 khi user mo nhieu tab/nhieu ma.
+- Chuyen StockDetail sang batch endpoint de thong nhat duong di realtime.
+- Rebuild frontend container de dam bao fix Heatmap/Alert Center duoc serve dung bundle moi.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/StockDetail.jsx`:
+  - Doi import va fetch snapshot tu `getRealtimeTicker(symbol)` sang `getRealtimeTickers([symbol])`.
+  - Map ket qua tu object batch (`response.data[symbol]`) truoc khi set state.
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Tang `POLL_BATCH_SIZE` tu `4` len `16`.
+  - Tang `WS_HEALTHY_POLL_BATCH_SIZE` tu `2` len `8`.
+- Runtime/devops:
+  - Rebuild image frontend va restart container `vninvest-dev-frontend` thanh cong.
+  - Xu ly conflict container bang cach remove container frontend cu truoc khi `compose up`.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/hooks/useRealtimeFeedCore.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 2 file frontend vua sua: khong co loi.
+- Frontend image build thanh cong (CRA compile PASS).
+- Container `vninvest-dev-frontend` da restart va health HTTP `200` tai `http://127.0.0.1:8080`.
+
+## Entry 2026-04-17ad - Hotfix Heatmap black-box + Unified Alert list desync
+
+Muc tieu:
+- Xu ly triet de 2 loi hien thi nghiem trong tren Dashboard:
+  - Heatmap hien khoang den trong du lieu ton tai.
+  - Summary canh bao va danh sach chi tiet lech pha (summary co so lieu nhung list rong).
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Hardening parse so cho `market_value/live_market_value` (ho tro string co dau phay).
+  - Chuyen du lieu sang cau truc hierarchical (`children`) cho `Treemap` de tang tinh tuong thich renderer.
+  - Them `treemapRenderKey` de ep rerender on-change khi holdings thay doi.
+  - Giu chieu cao responsive co dinh de tranh collapse theo parent flex/grid.
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Them reset pagination ve trang 1 khi co su kien moi (`lastEventAt`) de tranh cursor/page tro den trang rong.
+  - Tach `scopedUnifiedAlerts` (loc theo source/audience/mute) va tinh `alertSummary` theo scope hien thi de dong bo voi feed.
+  - Them fallback auto-reset ve trang 1 khi dang o trang >1, list rong nhung summary van con du lieu.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Hardening render voi `safeAlerts` (bao ve truong hop input khong phai array).
+  - Chuan hoa map/render path qua `safeAlerts` de tranh vo vong lap render.
+  - Ho tro `className` de parent grid ep `h-full` on-demand.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Gia co grid layout (`items-stretch`, `xl:min-h-[580px]`) de panel canh bao khong bi collapse chieu cao.
+  - Truyen `className="h-full"` vao `UnifiedAlertCenter`.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Da chay static error check tren 4 file frontend vua sua: khong phat hien loi moi.
+- Da chuan bi de verify truc quan tren Dashboard voi stack dev dang online (`http://127.0.0.1:8080`).
+
+## Entry 2026-04-17ac - Whale Alert visibility hardening in Unified Alert Center
+
+Muc tieu:
+- Xu ly triet de tinh trang Whale Alert bi chim khi co nhieu Dark Flow critical.
+- Bo sung market-wide top-tier whale highlights de khong bi gioi han trong holdings/watchlist.
+- Nang muc do nghiem trong cho whale signal tu 3x threshold tro len.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/market_data_service.py`:
+  - Nâng severity whale lên `critical` khi `matched_value >= 3 * threshold`.
+  - Thêm market-wide top-tier whale injection vao luong unified alerts (`include_market_top_tier=true` mac dinh).
+  - Doi thuat toan sap xep unified sang `priority rank` co bonus cho whale moi/whale lon, thay vi severity-only.
+  - Mo rong cursor pagination de mang theo `priority_rank`, dam bao khong overlap khi phan trang.
+  - Hardening parse timestamp trong unified alerts: chuan hoa datetime ve timezone-aware de tranh crash khi so sanh aware/naive trong sort va cursor filter.
+  - Bo sung helper parse boolean flag, sanitize payload va tinh whale priority rank.
+- `backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py`:
+  - Them test whale recency boost de whale moi khong bi dark flow cu de.
+  - Them test market-wide top-tier whale hien thi trong unified feed.
+  - Them test severity uplift 3x threshold => `critical`.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file backend vua sua: khong co loi.
+- Chay test target: KHONG THUC HIEN DUOC do loi ket noi PostgreSQL local (`127.0.0.1:5432` dong ket noi khi tao test DB).
+- Da smoke-check runtime qua `manage.py shell` voi duong di `get_unified_alerts` (mock symbols rong): khong con AttributeError, tra ve payload hop le.
+- Da verify health handler: `config.health.healthcheck(RequestFactory().get('/api/health/'))` tra ve HTTP 200 va payload `{"status": "ok", "service": "vninvest-backend"}`.
+- Da smoke-check resilience timestamp loi: inject su kien whale co `ts='bad-ts-format'` vao unified feed, ket qua `get_unified_alerts` van tra payload hop le (khong crash).
+
+## Entry 2026-04-17ab - Dua pagination mac dinh cua Trung tam canh bao hop nhat ve 5
+
+Muc tieu:
+- Dua so muc hien thi mac dinh cua Trung tam canh bao hop nhat tu 10 ve 5 de khop voi yeu cau UI hien tai.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/Dashboard.jsx`:
+  - Doi gia tri khoi tao `unifiedPageSize` tu `10` thanh `5`.
+  - Giu nguyen cac lua chon page-size 5/10/15/20 va co che pagination hien co.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren file Dashboard sau khi sua: khong co loi.
+
+## Entry 2026-04-17z - Batch Ticker API and 429 Error Mitigation
+
+Tham chiếu implementation plan:
+- [implementation_plan.md](file:///C:/Users/Pham%20Viet%20Dung/.gemini/antigravity/brain/fb9b26ec-daca-44f5-9a7a-1967f445e508/implementation_plan.md)
+
+Phạm vi:
+- Giải quyết lỗi 429 (Too Many Requests) trên Dashboard bằng cách nhóm các yêu cầu lấy giá cổ phiếu (ticker) vào một API gộp (batch).
+- Tối ưu hóa hiệu suất load trang đầu tiên (bootstrap) và quá trình polling định kỳ.
+
+Danh sách tệp đã sửa:
+- backend/portfolio/market_data_service.py: Thêm `get_realtime_tickers` dùng `cache.get_many`.
+- backend/portfolio/market_views.py: Thêm `BatchRealtimeTickerView`.
+- backend/portfolio/urls_realtime.py: Đăng ký endpoint `api/realtime/tickers/`.
+- backend/config/settings.py: Thêm throttle rate `realtime_ticker_batch` (60/minute).
+- frontend/src/api/client.js: Thêm hàm `getRealtimeTickers`.
+- frontend/src/hooks/useRealtimeFeedCore.js: Refactor để sử dụng batching cho cả đợt hydrate ban đầu và polling.
+- frontend/src/components/PortfolioHeatmap.jsx: Cập nhật ưu tiên dùng `live_market_value` và thêm defensive checks.
+
+Nội dung cập nhật chính:
+- Nhóm 25 mã vào một request khi load Dashboard (giảm số lượng request từ ~30 xuống 1-2).
+- Giảm áp lực lên Redis và Backend throttle.
+- Đảm bảo Heatmap luôn hiển thị dữ liệu mới nhất hoặc snapshot gần nhất nếu có lỗi kết nối.
+
+Kết quả verify:
+- Đã kiểm tra logic backend và frontend build pass.
+- Cấu hình throttle mới giúp hệ thống chịu tải tốt hơn khi có nhiều user truy cập Dashboard cùng lúc.
+
+---
+
+## Entry 2026-04-17aa - Audit ID de-dup + polling metric counter fix
+
+Muc tieu:
+- Loai bo trung ma entry audit trong ngay 2026-04-17 de tranh mo ho truy vet.
+- Sua telemetry polling trong realtime feed de tranh cong don thanh cong 2 lan tren moi chu ky poll.
+
+Noi dung cap nhat chinh:
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Doi ma entry batch ticker tu `2026-04-17b` thanh `2026-04-17z` de khong trung voi entry timezone fix da ton tai truoc do.
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Xoa block cap nhat `polling_successes` trung lap trong luong polling thanh cong.
+  - Giu logic dem theo request batch thanh cong (`+1`) va bo cap nhat `+ok` bi double-count.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useRealtimeFeedCore.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren hook sau khi sua: khong co loi.
+
+---
+
+## Entry 2026-04-17y - Loai bo cau hinh trung lap o tab Tin hieu nong
+
+Muc tieu:
+- Loai bo tinh trang cau hinh trung lap o ca 2 tab.
+- Chi giu controls o tab `Cau hinh` va dong bo format cua tab nay theo style tab `Tin hieu nong`.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Xoa cac nhom filter `Loc theo nguon` va `Pham vi hien thi` khoi tab `Tin hieu nong`.
+  - Giu tab `Tin hieu nong` chi con feed canh bao + pagination.
+  - Chuan hoa style controls trong tab `Cau hinh` theo dung format chip cua tab `Tin hieu nong` (mau active cyan, density/spacing/typography dong bo).
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file vua sua: khong co loi.
+
+## Entry 2026-04-17x - Pixel-level refine tab Cau hinh theo mockup
+
+Muc tieu:
+- Tinh chinh giao dien tab `Cau hinh` de khop hon voi mockup nguoi dung cung cap.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Doi hien thi unread sang text vang goc phai (thay vi badge vien day).
+  - Chinh lai khung nen, spacing va typography cua cac nhom filter trong tab `Cau hinh`.
+  - Tang kich thuoc chip controls (`px/py/text`) de giong style V1 trong mockup.
+  - Dong bo tone mau active/inactive cua chips theo layout V2 hien tai.
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file vua sua: khong co loi.
+
+## Entry 2026-04-17w - Khoi phuc tab Cau hinh trong UI V2 (giong V1)
+
+Muc tieu:
+- Khoi phuc tab `Cau hinh` bi mat trong V2 de nguoi dung gom toan bo control alert vao mot noi.
+- Dam bao day du 4 nhom theo yeu cau: Loc theo nguon, Pham vi hien thi, Loc theo muc do, Chinh sach toast nghiem trong.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Them tab switch `Tin hieu nong` / `Cau hinh` ngay trong panel Alert Center.
+  - Tao workspace `Cau hinh` voi day du controls:
+    - `Loc theo nguon` (Tat ca, Whale, Dark Flow, Bien dong gia, Quote cu).
+    - `Pham vi hien thi` (Tat ca, Chi holdings, Chi watchlist).
+    - `Loc theo muc do` (Tat ca, Nghiem trong, Cao, Trung binh, Thap, Chi nghiem trong, Tu Cao+, Tu Trung binh+).
+    - `Chinh sach toast nghiem trong` (chip policy + nut Bat/Tat am).
+  - Giu tab `Tin hieu nong` cho feed/pagination hien co.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Noi them props `severityFilter`, `setSeverityFilter`, `criticalSoundEnabled`, `toggleCriticalSound` vao `UnifiedAlertCenter`.
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+
+## Entry 2026-04-17v - Layout alignment theo mockup (status panel right column + compact strip + page-size)
+
+Muc tieu:
+- Canh layout Dashboard theo hinh ve: heatmap full row, panel Trang thai danh muc nam cot phai duoi Phan bo danh muc.
+- Thu gon Header/KPI va Thanh canh bao hop nhat theo giao dien compact.
+- Them page-size cho Trung tam canh bao hop nhat voi cac muc 5/10/15/20.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/Dashboard.jsx`:
+  - Doi heatmap thanh full-width row.
+  - Chuyen panel `Trang thai danh muc` xuong cot phai, dat duoi `AllocationPieChart`.
+  - Thu gon tieu de dashboard.
+  - Them state `unifiedPageSize` va truyen xuong alert center/hook.
+- `frontend/src/components/UnifiedAlertBar.jsx`:
+  - Thu gon strip, giam min-height va typography cua chips severity.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Them bo chon page-size 5/10/15/20 o footer.
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Ho tro `pageSize` dong, thay limit fetch va so item moi trang theo state.
+  - Reset pagination khi doi page-size.
+- `frontend/src/components/StatCard.jsx`:
+  - Thu gon paddings/font de KPI compact hon.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Them label i18n cho page-size (`paginationPageSize`).
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/UnifiedAlertBar.jsx
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/StatCard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` cac file vua sua: khong co loi.
+- `npm run build` (frontend): PASS.
+- Docker frontend rebuilt va bundle moi da serve: `main.3358d374.js`.
+
+## Entry 2026-04-17u - Hotfix blank screen: PortfolioHeatmap undefined payload guard
+
+Muc tieu:
+- Sua loi runtime lam trang Dashboard trang (blank screen) khi Recharts Treemap render node khong co payload.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Bo sung null-guard cho `props`, `payload`, `original` trong `CustomizedContent`.
+  - Bo sung guard cho tooltip payload (`payload[0]?.payload`) truoc khi truy cap field.
+  - Fallback an toan cho text name khi node khong day du du lieu.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file heatmap: khong co loi.
+- `npm run build` (frontend): PASS.
+- Docker frontend rebuilt va bundle moi da serve: `main.bcc05873.js`.
+
+## Entry 2026-04-17t - UI V2 Phase 3 implementation (heatmap + intelligent pagination)
+
+Muc tieu:
+- Thuc thi code Phase 3 theo playbook da duoc phe duyet Ready-to-Code.
+- Dat layout high-density: KPI row gon + heatmap row + alert center phan trang.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Bo sung cursor-stack pagination (`cursorStack`, `currentPageIndex`) cho API cursor.
+  - Bo sung actions `goToFirstUnifiedPage`, `goToPreviousUnifiedPage`, `goToNextUnifiedPage`.
+  - Thay append load-more bang fetch theo trang; doi filter se reset ve trang 1.
+  - Gioi han output theo page size de giu khung nhin co dinh.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Loai bo nut `Load More`.
+  - Them footer pagination (`First`, `Prev`, `Next`, `Page X`) voi disable rules ro rang.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Tich hop `PortfolioHeatmap` ngay duoi KPI row.
+  - Chuyen block thong ke phu sang panel `Portfolio Status` ben phai (cung row heatmap).
+  - Noi props pagination moi vao `UnifiedAlertCenter`.
+- `frontend/src/components/StatCard.jsx`:
+  - Chuan hoa compact density cho KPI card (padding/typography).
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Bo sung i18n keys cho pagination va heading heatmap/status.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+- `npm run build` (frontend): PASS.
+
+## Entry 2026-04-17s - UI V2 Phase 3 playbook finalized (Ready-to-Code)
+
+Muc tieu:
+- Chot tai lieu huong dan ky thuat Phase 3 theo audit "Bloomberg High-Density" de doi code co the trien khai ngay, khong can hoi lai.
+- Chuyen tai lieu tu muc mo ta yeu cau sang muc technical playbook co pseudo-flow, acceptance criteria, rollout order, rollback.
+
+Noi dung cap nhat chinh:
+- `docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md`:
+  - Chuan hoa scope va out-of-scope cho Phase 3.
+  - Bo sung flow pagination cursorStack (Previous/Next) va reset filter rules.
+  - Dinh nghia layout desktop-first row A->D theo huong high-density.
+  - Chot Definition of Done + checklist nghiem thu + trinh tu implementation P0.
+  - Bo sung risk/rollback va danh sach file runtime can sua.
+
+Danh sach tep cap nhat:
+- docs/UI_V2_PHASE_3_ANALYTICS_PAGINATION_GUIDE.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Tai lieu dat trang thai "Ready-to-Code" theo audit noi bo.
+- Khong co thay doi runtime code o entry nay.
+
+## Entry 2026-04-17r - Phase 3B whale scoring tuning (canary profile v2)
+
+Muc tieu:
+- Trien khai tuning scoring theo huong giam false-critical nhung van an toan rollout.
+- Dam bao rollback nhanh qua feature flag, khong pha vo payload contract.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/whale_scoring.py`:
+  - Them profile scoring `v1`/`v2` (config-driven) voi `WHALE_SCORE_PROFILE`.
+  - v2 tuning:
+    - Rebalance weights: size_impact 0.64, aggression_bonus 0.10, concentration_ratio 0.26.
+    - Aggression bonus theo size_ratio de giam score cho near-threshold events.
+    - Dieu chinh concentration fallback denominator tu 2.0 -> 3.0.
+    - Severity bands stricter cho extreme (`>=82`).
+  - Mac dinh van giu profile `v1` de tranh thay doi hanh vi production ngoai y muon.
+- `backend/config/settings.py`:
+  - Bo sung setting `WHALE_SCORE_PROFILE` (env-driven, default `v1`).
+- `backend/portfolio/tests/test_whale_scoring.py`:
+  - Cap nhat assertion event_id theo contract moi sau Phase 2.
+  - Bo sung test profile v1/v2 va test v2 giam near-threshold boost.
+- `docs/AUDIT_WHALE_SCORING_TUNING_RECOMMENDATIONS_20260417.md`:
+  - Bao cao khuyen nghi tuning va ke hoach canary rollout.
+
+Danh sach tep cap nhat:
+- backend/portfolio/whale_scoring.py
+- backend/config/settings.py
+- backend/portfolio/tests/test_whale_scoring.py
+- docs/AUDIT_WHALE_SCORING_TUNING_RECOMMENDATIONS_20260417.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac tep vua sua: khong co loi.
+- Chay test:
+  - `python backend/manage.py test portfolio.tests.test_whale_scoring -v 2`
+  - Ket qua: `OK` (7 tests).
+
+## Entry 2026-04-17q - Phase 3A.1 UI polish kickoff (pixel-perfect baseline)
+
+Muc tieu:
+- Bat dau thuc thi Phase 3A theo implementation plan da duoc tao o entry 2026-04-17p.
+- Nang cap visual hierarchy cua Dashboard V2 de tiep can muc pixel-perfect dark terminal.
+
+Noi dung cap nhat chinh:
+- `frontend/src/index.css`:
+  - Them visual tokens cho panel/focus (`--v2-shell-*`, `--v2-focus-ring`).
+  - Them utility classes `.v2-panel`, `.v2-panel-strong`, `.v2-chip-focus`.
+- `frontend/src/components/UnifiedAlertBar.jsx`:
+  - Tang hierarchy typography va card density cho severity chips.
+  - Tinh chinh hover/focus state de nhan dien trang thai ro hon.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Chuan hoa panel tone, heading hierarchy, filter chip states.
+  - Nang cap card hover/elevation, readability cua headline/detail.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Chinh nhac spacing + max width wrapper, dong bo nhiet do visual cho blocks thong ke/holdings.
+
+Danh sach tep cap nhat:
+- frontend/src/index.css
+- frontend/src/components/UnifiedAlertBar.jsx
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac tep vua sua: khong co loi.
+
+## Entry 2026-04-17p - Phase 3 kickoff plan (UI polish + whale scoring audit)
+
+Muc tieu:
+- Khoi dong Phase 3 theo policy planning mandatory, truoc khi coding cac thay doi lon tiep theo.
+- Dat baseline audit cho module whale scoring de phuc vu tuning muc Critical theo huong data-driven.
+
+Noi dung cap nhat chinh:
+- Tao implementation plan day du 12 muc bat buoc theo `IMPLEMENTATION_PLANNING_POLICY.md`:
+  - `docs/IMPLEMENTATION_PLAN_PHASE3_UI_POLISH_WHALE_SCORING_AUDIT_20260417.md`
+- Tao tai lieu baseline audit whale scoring:
+  - `docs/AUDIT_WHALE_SCORING_BASELINE_20260417.md`
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_PHASE3_UI_POLISH_WHALE_SCORING_AUDIT_20260417.md (NEW)
+- docs/AUDIT_WHALE_SCORING_BASELINE_20260417.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Day la moc planning + audit baseline (khong co thay doi runtime code o moc nay).
+
+## Entry 2026-04-17o - UI V2 Phase 2 (dedup whale + consolidated components)
+
+Muc tieu:
+- Xu ly goc re loi lap whale alerts tren duong backend broadcast va frontend websocket ingestion.
+- Trien khai cap component hoi tu cho Dashboard theo mockup Bloomberg V2: `UnifiedAlertBar` + `UnifiedAlertCenter`.
+
+Noi dung cap nhat chinh:
+- Backend `compute.py`:
+  - Chuan hoa timestamp whale ve do chinh xac giay truoc khi tao payload.
+  - Chuan hoa cong thuc `event_id` theo truc `symbol:ts(second):side:value` de dedup on dinh.
+- Backend `tasks_realtime.py`:
+  - Them co danh dau publish theo event va tranh phat chong lan whale giua `whale:{symbol}` va `user:{id}:alerts`.
+- Frontend `useRealtimeFeedCore.js`:
+  - Bo sung `normalizeEventTimestamp` cho payload WS whale/dark_flow truoc khi apply.
+  - Them cua so dedup 1000ms bang `Map` (`lastProcessedEventIds`) de bo goi trung do jitter mang.
+- Frontend Dashboard:
+  - Tao `UnifiedAlertBar.jsx` (summary severity + click filter).
+  - Tao `UnifiedAlertCenter.jsx` (feed card, mark read, mute 30p, source/audience filter, load more).
+  - Cap nhat `Dashboard.jsx` de thay `DashboardRealtimePanel` bang bo doi component moi va bo tri luoi 3:1.
+
+Danh sach tep cap nhat:
+- backend/portfolio/realtime/compute.py
+- backend/portfolio/tasks_realtime.py
+- frontend/src/hooks/useRealtimeFeedCore.js
+- frontend/src/components/UnifiedAlertBar.jsx (NEW)
+- frontend/src/components/UnifiedAlertCenter.jsx (NEW)
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren toan bo tep vua sua: khong co loi.
+
+## Entry 2026-04-17n - UI V2 Bloomberg refactor (layout + unified alerts extraction)
+
+Muc tieu:
+- Trien khai refactor theo `UI_V2_BLOOMBERG_MASTER_PLAN_20260417.md` va `UI_V2_TECHNICAL_AUDIT_REFACTOR_PLAN.md`.
+- Tach logic canh bao hop nhat khoi `DashboardRealtimePanel.jsx` theo huong hook-centric de tai su dung cho layout V2.
+- Chuan hoa shell giao dien V2 voi Sidebar 260px + TopNav grouped tabs.
+
+Noi dung cap nhat chinh:
+- Tao `useUnifiedAlerts` de gom logic merge/dedup/ranking/filter canh bao tu whale + dark flow + price shock + stale quote.
+- Tao `usePersistentAlertState` de luu read/mute/sound state vao localStorage (giu trang thai khi chuyen tab/page).
+- Refactor `DashboardRealtimePanel.jsx` thanh ban gon hon, consume 2 hook moi thay vi nhot logic trong component lon.
+- Refactor `Layout.jsx` thanh unified shell va tach thanh phan moi `Sidebar.jsx`, `TopNav.jsx`, `SidebarWatchlist.jsx`.
+- Sidebar Watchlist su dung `useRealtimeFeedFromManager({ pollInterval: 5000 })` va optimize row bang `React.memo` + flash state khi gia thay doi.
+- Bo sung i18n key V2 cho grouped nav va sidebar labels (VI/EN).
+- Bo sung CSS animation cho realtime flash trong watchlist row.
+
+Danh sach tep cap nhat:
+- frontend/src/components/Layout.jsx
+- frontend/src/components/Sidebar.jsx (NEW)
+- frontend/src/components/TopNav.jsx (NEW)
+- frontend/src/components/SidebarWatchlist.jsx (NEW)
+- frontend/src/components/DashboardRealtimePanel.jsx
+- frontend/src/hooks/useUnifiedAlerts.js (NEW)
+- frontend/src/hooks/usePersistentAlertState.js (NEW)
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+
+
 ## Entry 2026-04-17l - Phase 5 soak execution (fault injection) and reclaim validation PASS
 
 ## Entry 2026-04-17m - Extended staging soak test PASS (full Phase 5 gate completion)

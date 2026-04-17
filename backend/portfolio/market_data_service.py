@@ -389,6 +389,88 @@ class MarketDataService:
             'supported_timezones': list(resolved.get('supported_timezones') or [resolved.get('timezone', 'Asia/Ho_Chi_Minh')]),
         }
 
+    def get_realtime_tickers(self, symbols: list[str]) -> dict:
+        """Batch version of get_realtime_ticker."""
+        if not symbols:
+            return {}
+            
+        normalized_symbols = [self.normalize_symbol(s) for s in symbols if s]
+        if not normalized_symbols:
+            return {}
+            
+        market_clock = self._get_market_clock_context()
+        market_phase = market_clock.get('profile')
+        market_code = market_clock.get('market_code')
+        supported_timezones = market_clock.get('supported_timezones') or [market_clock.get('timezone')]
+        is_offhours_like = market_phase in {'offhours', 'post_close', 'pre_open'}
+        
+        # 1. Fetch from cache in one go
+        cache_keys = [f'ticker:{s}' for s in normalized_symbols]
+        cached_data_map = cache.get_many(cache_keys)
+        
+        results = {}
+        freshness_threshold = max(int(getattr(settings, 'TICKER_FRESHNESS_SECONDS', 15) or 15), 1)
+        stale_serve_seconds = max(int(getattr(settings, 'TICKER_STALE_SERVE_SECONDS', 90) or 90), 1)
+        served_at = timezone.now().isoformat()
+        
+        for symbol in normalized_symbols:
+            cached_ticker = cached_data_map.get(f'ticker:{symbol}')
+            
+            if cached_ticker and isinstance(cached_ticker, dict):
+                payload = dict(cached_ticker)
+                last_date = payload.get('last_date')
+                freshness_seconds = None
+                
+                if last_date:
+                    try:
+                        last_dt = datetime.fromisoformat(str(last_date))
+                        now_dt = timezone.now().astimezone(last_dt.tzinfo) if last_dt.tzinfo else datetime.now()
+                        freshness_seconds = max(int((now_dt - last_dt).total_seconds()), 0)
+                    except (TypeError, ValueError):
+                        freshness_seconds = None
+                        
+                if freshness_seconds is None:
+                    freshness_seconds = stale_serve_seconds + 1
+                    
+                is_stale = False if is_offhours_like and payload.get('current_price') is not None else (freshness_seconds > freshness_threshold)
+                payload.update({
+                    'freshness_seconds': freshness_seconds,
+                    'stale': is_stale,
+                    'served_at': served_at,
+                    'market_phase': payload.get('market_phase') or market_phase,
+                    'market_code': payload.get('market_code') or market_code,
+                    'supported_timezones': supported_timezones,
+                })
+                results[symbol] = payload
+            else:
+                # Cache miss for this symbol - we'll handle it during hydration or polling rotations
+                # but for simplicity in batch API, we return what it would have returned if called individually
+                if is_offhours_like:
+                    session_close_payload = self._resolve_latest_session_close(symbol, market_code)
+                    if session_close_payload:
+                        session_close_payload.update({
+                            'served_at': served_at,
+                            'market_phase': market_phase,
+                            'market_code': market_code,
+                            'supported_timezones': supported_timezones,
+                            'data_semantic': 'last_session_close'
+                        })
+                        results[symbol] = session_close_payload
+                        continue
+                
+                # Full cache miss / degraded fallback
+                results[symbol] = {
+                    'symbol': symbol,
+                    'current_price': None,
+                    'source': 'cache_miss_batch',
+                    'stale': True,
+                    'served_at': served_at,
+                    'market_phase': market_phase,
+                    'market_code': market_code,
+                }
+                
+        return results
+
     def _resolve_latest_session_close(self, symbol: str, market_code: str) -> dict | None:
         row = (
             TickerSessionClose.objects
@@ -1210,6 +1292,7 @@ class MarketDataService:
         shark_value = 0.0
         whale_value_total = 0.0
         small_value = 0.0
+        seen_trade_keys = set()
 
         source_unit_hint = None
         if getattr(df, 'attrs', None):
@@ -1228,6 +1311,19 @@ class MarketDataService:
                 continue
             matched_value = raw_price * raw_vol
             side = self._normalize_side(row.get('match_type') or row.get('matchType') or row.get('side') or '')
+            raw_time = row.get('time') or row.get('tradingDate') or ''
+            occurred_dt = self._parse_intraday_event_datetime(raw_time, fallback_date=row.get('trade_date'))
+            occurred_key = occurred_dt.strftime('%Y-%m-%dT%H:%M:%S%z') if occurred_dt is not None else str(raw_time)
+            trade_key = (
+                occurred_key,
+                int(round(float(raw_price or 0))),
+                int(float(raw_vol or 0)),
+                side,
+            )
+            if trade_key in seen_trade_keys:
+                continue
+            seen_trade_keys.add(trade_key)
+
             size_class = self._classify_signal_size(matched_value)
 
             if size_class == 'shark':
@@ -1243,7 +1339,6 @@ class MarketDataService:
                 total_sell_value += matched_value
 
             if matched_value >= threshold_vnd:
-                raw_time = row.get('time') or row.get('tradingDate') or ''
                 orders.append(
                     self._build_whale_order_payload(
                         raw_time=raw_time,
@@ -2417,6 +2512,7 @@ class MarketDataService:
             resolved_now = now if isinstance(now, datetime) else timezone.now()
             occurred_dt = timezone.localtime(resolved_now)
         occurred_at = occurred_dt.isoformat()
+        event_time_key = occurred_dt.strftime('%Y%m%dT%H%M%S')
 
         score_result = calculate_event_score(
             trade={
@@ -2438,8 +2534,10 @@ class MarketDataService:
         )
 
         time_str = occurred_dt.strftime('%H:%M:%S')
+        event_id = f"whale:{side}:{event_time_key}:{int(round(float(raw_price or 0)))}:{int(float(raw_vol or 0))}"
 
         return {
+            'event_id': event_id,
             'time': time_str,
             'ts': occurred_at,
             'price': raw_price,
@@ -2519,6 +2617,10 @@ class MarketDataService:
         limit = self._parse_limit(query_params.get('limit', 20))
         window = self._parse_aggregate_window(query_params.get('window', 'session'))
         severity_min = self._parse_unified_severity_min(query_params.get('severity_min', 'low'))
+        include_market_top_tier = self._parse_boolean_flag(
+            query_params.get('include_market_top_tier'),
+            default=True,
+        )
         cursor_payload = self._decode_unified_alerts_cursor(query_params.get('cursor'))
         if query_params.get('cursor') and cursor_payload is None:
             raise MarketDataValidationException('cursor không hợp lệ cho unified alerts.')
@@ -2529,7 +2631,7 @@ class MarketDataService:
                 raise MarketDataValidationException('cursor không hợp lệ cho severity_min hiện tại.')
         now = timezone.now()
 
-        if not symbols:
+        if not symbols and not include_market_top_tier:
             return {
                 'results': [],
                 'server_time': now.isoformat(),
@@ -2558,39 +2660,55 @@ class MarketDataService:
                 },
             }
 
-        aggregate_limit = min(max(limit * 2, 20), 50)
-        whale_payload = self.get_whale_feed_aggregate(
-            user,
-            {
-                'symbols': ','.join(symbols),
-                'sort': 'ts',
-                'window': window,
-                'limit': str(aggregate_limit),
-            },
-        )
-        whale_events = whale_payload.get('results') or []
+        whale_events = []
+        if symbols:
+            aggregate_limit = min(max(limit * 2, 20), 50)
+            whale_payload = self.get_whale_feed_aggregate(
+                user,
+                {
+                    'symbols': ','.join(symbols),
+                    'sort': 'ts',
+                    'window': window,
+                    'limit': str(aggregate_limit),
+                },
+            )
+            whale_events = whale_payload.get('results') or []
 
         whale_unified = []
         for event in whale_events:
+            symbol = str(event.get('symbol') or '').upper()
+            resolved_threshold = float(
+                event.get('threshold')
+                or self._get_user_whale_threshold_vnd(user, symbol=symbol)
+                or 0.0
+            )
+            matched_value = float(event.get('matched_value') or 0.0)
             raw_severity = str(event.get('severity') or 'medium').lower()
             severity = 'critical' if raw_severity == 'extreme' else raw_severity
+            if resolved_threshold > 0 and matched_value >= (resolved_threshold * 3.0):
+                severity = 'critical'
             whale_unified.append({
-                'event_id': event.get('event_id') or f"whale:{event.get('symbol')}:{event.get('ts')}",
-                'symbol': str(event.get('symbol') or '').upper(),
+                'event_id': event.get('event_id') or f"whale:{symbol}:{event.get('ts')}",
+                'symbol': symbol,
                 'source': 'whale',
                 'severity': severity,
                 'confidence': event.get('display_score'),
                 'headline': 'Large buy flow detected' if str(event.get('side') or '').lower() == 'buy' else 'Large sell flow detected',
-                'detail': f"Matched value: {round(float(event.get('matched_value') or 0.0), 2)}",
+                'detail': f"Matched value: {round(matched_value, 2)}",
                 'ts': event.get('ts') or now.isoformat(),
                 'to': f"/whale-alerts/{event.get('symbol')}",
+                'matched_value': matched_value,
+                'threshold': resolved_threshold,
+                'market_wide': False,
             })
 
-        window_start = self._window_start_datetime(window, now=now)
-        dark_flow_qs = OrderFlowSignal.objects.filter(symbol__in=symbols)
-        if window_start is not None:
-            dark_flow_qs = dark_flow_qs.filter(created_at__gte=window_start)
-        dark_flow_rows = list(dark_flow_qs.order_by('-created_at', '-id')[: max(limit * 3, 30)])
+        dark_flow_rows = []
+        if symbols:
+            window_start = self._window_start_datetime(window, now=now)
+            dark_flow_qs = OrderFlowSignal.objects.filter(symbol__in=symbols)
+            if window_start is not None:
+                dark_flow_qs = dark_flow_qs.filter(created_at__gte=window_start)
+            dark_flow_rows = list(dark_flow_qs.order_by('-created_at', '-id')[: max(limit * 3, 30)])
 
         dark_flow_unified = []
         for row in dark_flow_rows:
@@ -2613,9 +2731,20 @@ class MarketDataService:
                 'detail': f"Signal {row.signal_type} | strength={round(float(row.strength or 0.0), 1)}",
                 'ts': row.created_at.isoformat(),
                 'to': f"/stocks/{row.symbol}",
+                'market_wide': False,
             })
 
-        combined = whale_unified + dark_flow_unified
+        market_top_tier_whales = []
+        if include_market_top_tier:
+            market_top_tier_whales = self._build_market_top_tier_whale_unified(
+                user=user,
+                window=window,
+                now=now,
+                limit=min(max(limit, 3), 10),
+                exclude_symbols=symbols,
+            )
+
+        combined = whale_unified + dark_flow_unified + market_top_tier_whales
         min_rank = self._unified_severity_rank(severity_min)
         combined = [
             item for item in combined
@@ -2629,24 +2758,25 @@ class MarketDataService:
             if dedupe_key in seen:
                 continue
             seen.add(dedupe_key)
+            item['_priority_rank'] = self._compute_unified_priority_rank(item=item, now=now)
             deduped.append(item)
 
         deduped.sort(
             key=lambda item: (
-                self._unified_severity_rank(item.get('severity')),
-                datetime.fromisoformat(str(item.get('ts')).replace('Z', '+00:00')) if item.get('ts') else datetime.min,
+                int(item.get('_priority_rank') or 1),
+                self._safe_parse_unified_alert_ts(item.get('ts')),
                 str(item.get('event_id') or ''),
             ),
             reverse=True,
         )
 
         if cursor_payload is not None:
-            cursor_rank = int(cursor_payload.get('severity_rank'))
+            cursor_rank = int(cursor_payload.get('priority_rank'))
             cursor_ts = self._safe_parse_unified_alert_ts(cursor_payload.get('ts'))
             cursor_event_id = str(cursor_payload.get('event_id') or '')
             filtered = []
             for item in deduped:
-                item_rank = self._unified_severity_rank(item.get('severity'))
+                item_rank = int(item.get('_priority_rank') or 1)
                 item_ts = self._safe_parse_unified_alert_ts(item.get('ts'))
                 item_event_id = str(item.get('event_id') or '')
                 if item_rank < cursor_rank:
@@ -2660,8 +2790,9 @@ class MarketDataService:
             deduped = filtered
 
         has_more = len(deduped) > limit
-        results = deduped[:limit]
-        next_cursor = self._build_unified_alerts_next_cursor(results[-1], window=window, severity_min=severity_min) if has_more and results else None
+        page_items = deduped[:limit]
+        results = [self._sanitize_unified_alert_item(item) for item in page_items]
+        next_cursor = self._build_unified_alerts_next_cursor(page_items[-1], window=window, severity_min=severity_min) if has_more and page_items else None
         return {
             'results': results,
             'server_time': now.isoformat(),
@@ -2681,6 +2812,10 @@ class MarketDataService:
                 'source_mix': {
                     'whale': len([item for item in results if item.get('source') == 'whale']),
                     'dark_flow': len([item for item in results if item.get('source') == 'dark_flow']),
+                },
+                'market_top_tier': {
+                    'enabled': include_market_top_tier,
+                    'count': len([item for item in results if item.get('source') == 'whale' and item.get('market_wide') is True]),
                 },
                 'pagination': {
                     'limit': limit,
@@ -2708,30 +2843,33 @@ class MarketDataService:
 
     def _safe_parse_unified_alert_ts(self, ts_raw) -> datetime:
         if not ts_raw:
-            return datetime.min
+            return datetime.min.replace(tzinfo=timezone.utc)
         try:
-            return datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+            parsed = datetime.fromisoformat(str(ts_raw).replace('Z', '+00:00'))
+            if timezone.is_naive(parsed):
+                return timezone.make_aware(parsed, timezone.get_current_timezone())
+            return parsed
         except Exception:
-            return datetime.min
+            return datetime.min.replace(tzinfo=timezone.utc)
 
     def _decode_unified_alerts_cursor(self, raw_cursor: str | None) -> dict | None:
         payload = self._decode_whale_feed_cursor(raw_cursor)
         if not payload:
             return None
         try:
-            severity_rank = int(payload.get('severity_rank'))
+            priority_rank = int(payload.get('priority_rank') or payload.get('severity_rank'))
             event_id = str(payload.get('event_id') or '')
             ts = str(payload.get('ts') or '')
             window = str(payload.get('window') or '')
             severity_min = str(payload.get('severity_min') or '')
         except (TypeError, ValueError):
             return None
-        if severity_rank < 1 or severity_rank > 4:
+        if priority_rank < 1 or priority_rank > 8:
             return None
         if not event_id or not ts or not window or not severity_min:
             return None
         return {
-            'severity_rank': severity_rank,
+            'priority_rank': priority_rank,
             'event_id': event_id,
             'ts': ts,
             'window': window,
@@ -2740,13 +2878,142 @@ class MarketDataService:
 
     def _build_unified_alerts_next_cursor(self, item: dict, *, window: str, severity_min: str) -> str:
         payload = {
-            'severity_rank': self._unified_severity_rank(item.get('severity')),
+            'priority_rank': int(item.get('_priority_rank') or self._compute_unified_priority_rank(item=item, now=timezone.now())),
             'event_id': str(item.get('event_id') or ''),
             'ts': str(item.get('ts') or ''),
             'window': str(window),
             'severity_min': str(severity_min),
         }
         return self._encode_whale_feed_cursor(payload)
+
+    def _sanitize_unified_alert_item(self, item: dict) -> dict:
+        sanitized = dict(item)
+        for key in ('_priority_rank', 'matched_value', 'threshold'):
+            sanitized.pop(key, None)
+        return sanitized
+
+    def _parse_boolean_flag(self, raw_value, *, default: bool = False) -> bool:
+        if raw_value is None:
+            return default
+        normalized = str(raw_value).strip().lower()
+        if normalized in {'1', 'true', 'yes', 'on'}:
+            return True
+        if normalized in {'0', 'false', 'no', 'off'}:
+            return False
+        return default
+
+    def _compute_unified_priority_rank(self, item: dict, now=None) -> int:
+        base_rank = self._unified_severity_rank(item.get('severity'))
+        if str(item.get('source') or '') != 'whale':
+            return base_rank
+
+        threshold = float(item.get('threshold') or 0.0)
+        matched_value = float(item.get('matched_value') or 0.0)
+        ratio = (matched_value / threshold) if threshold > 0 else 0.0
+        bonus = 0
+        if ratio >= 3.0:
+            bonus += 2
+        elif ratio >= 1.5:
+            bonus += 1
+
+        resolved_now = now or timezone.now()
+        event_ts = self._safe_parse_unified_alert_ts(item.get('ts'))
+        try:
+            age_seconds = max((resolved_now - event_ts).total_seconds(), 0.0)
+        except Exception:
+            age_seconds = 0.0
+
+        if age_seconds <= 5 * 60:
+            bonus += 1
+        elif age_seconds <= 15 * 60 and ratio >= 1.0:
+            bonus += 1
+
+        if bool(item.get('market_wide')):
+            bonus += 1
+
+        return min(base_rank + bonus, 8)
+
+    def _build_market_top_tier_whale_unified(
+        self,
+        *,
+        user,
+        window: str,
+        now,
+        limit: int,
+        exclude_symbols: list[str] | None = None,
+    ) -> list[dict]:
+        base_threshold_vnd = float(self._get_user_whale_threshold_vnd(user) or 0.0)
+        if base_threshold_vnd <= 0:
+            return []
+
+        try:
+            tier_multiplier = float(os.getenv('UNIFIED_ALERTS_MARKET_TOP_TIER_MULTIPLIER', '5'))
+        except (TypeError, ValueError):
+            tier_multiplier = 5.0
+        tier_multiplier = max(tier_multiplier, 3.0)
+        market_tier_threshold = base_threshold_vnd * tier_multiplier
+
+        queryset = (
+            IntradayTick.objects
+            .annotate(
+                matched_value=ExpressionWrapper(
+                    Case(
+                        When(price__gte=1000, then=F('price') * F('volume')),
+                        default=F('price') * 1000 * F('volume'),
+                        output_field=FloatField(),
+                    ),
+                    output_field=FloatField(),
+                )
+            )
+            .filter(matched_value__gte=market_tier_threshold)
+        )
+
+        local_today = timezone.localdate()
+        if window == '5d':
+            queryset = queryset.filter(trade_date__gte=local_today - timedelta(days=4))
+        else:
+            queryset = queryset.filter(trade_date=local_today)
+
+        if exclude_symbols:
+            normalized_excludes = [str(symbol).strip().upper() for symbol in exclude_symbols if str(symbol).strip()]
+            if normalized_excludes:
+                queryset = queryset.exclude(symbol__in=normalized_excludes)
+
+        # Pull a slightly larger candidate set, then enforce exact window/time validity in Python.
+        candidates = list(queryset.order_by('-matched_value', '-trade_date', '-trade_time', '-id')[: max(limit * 8, 20)])
+        results = []
+        for row in candidates:
+            if not self._is_tick_row_in_window(row, window, now=now):
+                continue
+            try:
+                event_dt = timezone.make_aware(
+                    datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
+                    timezone.get_current_timezone(),
+                )
+            except Exception:
+                event_dt = now
+
+            symbol = str(getattr(row, 'symbol', '') or '').upper()
+            matched_value = float(getattr(row, 'matched_value', 0.0) or 0.0)
+            side = self._normalize_side(getattr(row, 'side', ''))
+            headline = 'Market-wide mega buy flow detected' if side == 'buy' else 'Market-wide mega sell flow detected'
+            results.append({
+                'event_id': f"tick:{getattr(row, 'id', 0)}",
+                'symbol': symbol,
+                'source': 'whale',
+                'severity': 'critical',
+                'confidence': 99,
+                'headline': headline,
+                'detail': f"Top-tier matched value: {round(matched_value, 2)}",
+                'ts': event_dt.isoformat(),
+                'to': f"/whale-alerts/{symbol}",
+                'matched_value': matched_value,
+                'threshold': base_threshold_vnd,
+                'market_wide': True,
+            })
+            if len(results) >= limit:
+                break
+        return results
 
     def _parse_limit(self, limit_raw) -> int:
         try:

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getRealtimeTicker, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
+import { getRealtimeTicker, getRealtimeTickers, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
 
 function nowIso() {
   return new Date().toISOString();
@@ -11,6 +11,15 @@ function readEventField(payload, key) {
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
+}
+
+function normalizeEventTimestamp(value) {
+  if (!value) return new Date().toISOString();
+  const ts = new Date(value).getTime();
+  if (!Number.isFinite(ts) || ts <= 0) {
+    return new Date().toISOString();
+  }
+  return new Date(ts).toISOString();
 }
 
 function getQuoteBySymbol(quotesBySymbol, symbol) {
@@ -70,6 +79,7 @@ function mergeQuote(prev, update) {
 }
 
 function normalizeAlert(payload) {
+  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
   return {
     event_id: readEventField(payload, 'event_id'),
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
@@ -84,11 +94,12 @@ function normalizeAlert(payload) {
     event_score: readEventField(payload, 'event_score'),
     display_score: readEventField(payload, 'display_score'),
     weights_version: readEventField(payload, 'weights_version'),
-    ts: readEventField(payload, 'ts') || payload.ts || payload.created_at,
+    ts: normalizedTs,
   };
 }
 
 function normalizeDarkFlowAlert(payload) {
+  const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
   return {
     event_id: readEventField(payload, 'event_id'),
     contract_version: readEventField(payload, 'contract_version') ?? payload.contract_version,
@@ -100,7 +111,7 @@ function normalizeDarkFlowAlert(payload) {
     small_order_ratio: readEventField(payload, 'small_order_ratio'),
     cvd_at_signal: readEventField(payload, 'cvd_at_signal'),
     description: readEventField(payload, 'description'),
-    ts: readEventField(payload, 'ts') || payload.ts || payload.created_at,
+    ts: normalizedTs,
   };
 }
 
@@ -232,8 +243,8 @@ export default function useRealtimeFeedCore({
   enabled = true,
 }) {
   const STALE_RESYNC_RETRY_MS = 3000;
-  const POLL_BATCH_SIZE = 4;
-  const WS_HEALTHY_POLL_BATCH_SIZE = 2;
+  const POLL_BATCH_SIZE = 16;
+  const WS_HEALTHY_POLL_BATCH_SIZE = 8;
   const WS_HEALTHY_RECOVERY_BATCH_SIZE = 16; // Increased from 8 for faster recovery
   const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
   const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 8000; // Increased from 5000 to reduce re-render frequency
@@ -291,6 +302,7 @@ export default function useRealtimeFeedCore({
   const pollBackoffUntilRef = useRef(null);
   const lastPollAtRef = useRef(0);
   const wsHealthyRef = useRef(false);
+  const lastProcessedEventIdsRef = useRef(new Map());
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
   useEffect(() => { quotesBySymbolRef.current = quotesBySymbol; }, [quotesBySymbol]);
@@ -368,56 +380,60 @@ export default function useRealtimeFeedCore({
     let cancelled = false;
 
     const hydrateQuotes = async () => {
-      // Hydrate full quote set once on mount so hard refresh does not leave
-      // a subset of symbols empty while waiting for polling cursor rotation.
-      // Increased batch size from 10 -> 20 for faster sequential bootstrap without API surge
-      const bootstrapBatchSize = 20;
+      const bootstrapBatchSize = 25; // Slightly increased for batching
 
       for (let i = 0; i < normalizedSymbols.length; i += bootstrapBatchSize) {
         const batch = normalizedSymbols.slice(i, i + bootstrapBatchSize);
-        const results = await Promise.allSettled(batch.map((symbol) => getRealtimeTicker(symbol)));
-        if (cancelled) return;
+        try {
+          const res = await getRealtimeTickers(batch);
+          if (cancelled) return;
 
-        let ok = 0;
-        results.forEach((result, idx) => {
-          if (result.status === 'fulfilled') {
-            ok += 1;
-            const { data } = result.value;
-            applyTickerUpdate({
-              symbol: data.symbol,
-              current_price: data.current_price,
-              prev_price: data.prev_price,
-              change_value: data.change_value,
-              change_pct: data.change_pct,
-              open_price: data.open_price,
-              high_price: data.high_price,
-              low_price: data.low_price,
-              volume: data.volume,
-              freshness_seconds: data.freshness_seconds,
-              age_seconds: data.age_seconds,
-              stale: data.stale,
-              stale_over_threshold: data.stale_over_threshold,
-              stale_threshold_seconds: data.stale_threshold_seconds,
-              last_date: data.last_date,
-              source_event_at: data.source_event_at,
-              served_at: data.served_at,
-              market_phase: data.market_phase,
-              market_code: data.market_code,
-              data_semantic: data.data_semantic,
-              source: data.source,
-            });
-          } else {
-            const status = getHttpStatus(result.reason);
-            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-            if (status !== 429) {
-              console.warn(`Bootstrap quote fetch failed for ${batch[idx]}:`, result.reason?.message);
+          const tickersMap = res.data || {};
+          let ok = 0;
+
+          Object.values(tickersMap).forEach((data) => {
+            if (data && data.symbol) {
+              ok += 1;
+              applyTickerUpdate({
+                symbol: data.symbol,
+                current_price: data.current_price,
+                prev_price: data.prev_price,
+                change_value: data.change_value,
+                change_pct: data.change_pct,
+                open_price: data.open_price,
+                high_price: data.high_price,
+                low_price: data.low_price,
+                volume: data.volume,
+                freshness_seconds: data.freshness_seconds,
+                age_seconds: data.age_seconds,
+                stale: data.stale,
+                stale_over_threshold: data.stale_over_threshold,
+                stale_threshold_seconds: data.stale_threshold_seconds,
+                last_date: data.last_date,
+                source_event_at: data.source_event_at,
+                served_at: data.served_at,
+                market_phase: data.market_phase,
+                market_code: data.market_code,
+                data_semantic: data.data_semantic,
+                source: data.source,
+              });
             }
-          }
-        });
+          });
 
-        if (ok > 0) {
-          setLastEventAt(nowIso());
-          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
+          if (ok > 0) {
+            setLastEventAt(nowIso());
+            setEventCounts((prev) => ({ 
+              ...prev, 
+              polling_successes: prev.polling_successes + 1, // Count as 1 batch success
+            }));
+          }
+        } catch (error) {
+          if (cancelled) return;
+          const status = getHttpStatus(error);
+          setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
+          if (status !== 429) {
+            console.warn('Bootstrap batch quote fetch failed:', error.message);
+          }
         }
       }
     };
@@ -450,6 +466,31 @@ export default function useRealtimeFeedCore({
       return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
   }, [maxAlerts]);
+
+  const shouldSkipDuplicateEvent = useCallback((payload, eventType) => {
+    const now = Date.now();
+    const dedupWindowMs = 1000;
+
+    const cache = lastProcessedEventIdsRef.current;
+    cache.forEach((expiresAt, key) => {
+      if (expiresAt <= now) {
+        cache.delete(key);
+      }
+    });
+
+    const normalizedTs = normalizeEventTimestamp(readEventField(payload, 'ts') || payload.ts || payload.created_at);
+    const symbol = normalizeSymbol(readEventField(payload, 'symbol') || payload.symbol);
+    const side = String(readEventField(payload, 'side') || payload.side || readEventField(payload, 'signal_type') || payload.signal_type || '').toLowerCase();
+    const eventId = String(readEventField(payload, 'event_id') || payload.event_id || '').trim();
+    const dedupKey = eventId || `${eventType}:${symbol}:${normalizedTs}:${side}`;
+
+    if (cache.has(dedupKey)) {
+      return true;
+    }
+
+    cache.set(dedupKey, now + dedupWindowMs);
+    return false;
+  }, []);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -516,14 +557,15 @@ export default function useRealtimeFeedCore({
       }
 
       try {
-        const results = await Promise.allSettled(pollBatch.map((s) => getRealtimeTicker(s)));
+        const res = await getRealtimeTickers(pollBatch);
         if (destroyed) return;
+        
+        const tickersMap = res.data || {};
         let ok = 0;
-        let had429 = false;
-        results.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
+        
+        Object.values(tickersMap).forEach((data) => {
+          if (data && data.symbol) {
             ok += 1;
-            const { data } = r.value;
             applyTickerUpdate({
               symbol: data.symbol,
               current_price: data.current_price,
@@ -547,34 +589,17 @@ export default function useRealtimeFeedCore({
               data_semantic: data.data_semantic,
               source: data.source,
             });
-          } else {
-            const status = getHttpStatus(r.reason);
-            if (status === 429) {
-              had429 = true;
-            }
-            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-            if (status !== 429) {
-              console.warn(`Polling failed for ${pollBatch[i]}:`, r.reason?.message);
-            }
           }
         });
 
-        if (had429) {
-          const nextBackoffMs = computeNextBackoffMs(pollBackoffMsRef.current);
-          pollBackoffMsRef.current = nextBackoffMs;
-          pollBackoffUntilRef.current = Date.now() + nextBackoffMs;
-          console.warn(`Polling rate limited (429). Backing off for ${nextBackoffMs}ms.`);
-          return;
+        if (ok > 0) {
+          setLastEventAt(nowIso());
+          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + 1 }));
+          consecutiveFailuresRef.current = 0;
         }
-
         pollBackoffMsRef.current = 0;
         pollBackoffUntilRef.current = null;
         pollCursorRef.current = nextCursor;
-
-        if (ok > 0) {
-          setLastEventAt(nowIso());
-          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
-        }
       } catch (err) {
         if (!destroyed) {
           const status = getHttpStatus(err);
@@ -757,13 +782,27 @@ export default function useRealtimeFeedCore({
               setLatencySamplesMs((prev) => [...prev.slice(-199), latency]);
             }
           } else if (payload.event_type === 'whale_alert') {
-            applyAlert(payload);
-            setLastEventAt(payload.ts || new Date().toISOString());
+            const normalizedPayload = {
+              ...payload,
+              ts: normalizeEventTimestamp(payload.ts || payload.created_at),
+            };
+            if (shouldSkipDuplicateEvent(normalizedPayload, 'whale_alert')) {
+              return;
+            }
+            applyAlert(normalizedPayload);
+            setLastEventAt(normalizedPayload.ts);
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, whale_alert: prev.whale_alert + 1 }));
           } else if (payload.event_type === 'dark_flow_alert') {
-            applyDarkFlowAlert(payload);
-            setLastEventAt(payload.ts || new Date().toISOString());
+            const normalizedPayload = {
+              ...payload,
+              ts: normalizeEventTimestamp(payload.ts || payload.created_at),
+            };
+            if (shouldSkipDuplicateEvent(normalizedPayload, 'dark_flow_alert')) {
+              return;
+            }
+            applyDarkFlowAlert(normalizedPayload);
+            setLastEventAt(normalizedPayload.ts);
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, dark_flow_alert: prev.dark_flow_alert + 1 }));
           } else if (payload.event_type === 'whale_advisory') {
@@ -861,7 +900,7 @@ export default function useRealtimeFeedCore({
       window.clearTimeout(initTimer);
       cleanup();
     };
-  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate, enabled]); // eslint-disable-line
+  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
 
   return {
     quotesBySymbol,

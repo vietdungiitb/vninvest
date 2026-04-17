@@ -49,6 +49,28 @@ class RealtimeTickerView(BaseMarketDataView):
         return Response(payload)
 
 
+class BatchRealtimeTickerView(BaseMarketDataView):
+    throttle_scope = 'realtime_ticker_batch'
+
+    def get(self, request):
+        symbols_str = request.query_params.get('symbols', '')
+        if not symbols_str:
+            return Response({'detail': 'Tham số symbols là bắt buộc.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        symbols = [s.strip().upper() for s in symbols_str.split(',') if s.strip()]
+        if not symbols:
+            return Response({'detail': 'Danh sách symbols không hợp lệ.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if len(symbols) > 50:
+            return Response({'detail': 'Tối đa 50 mã mỗi lần yêu cầu.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            payload = market_data_service.get_realtime_tickers(symbols)
+        except Exception as exc:
+            return self.handle_exception_response(exc)
+        return Response(payload)
+
+
 class IntradayMatchedView(BaseMarketDataView):
     throttle_scope = 'realtime_intraday'
 

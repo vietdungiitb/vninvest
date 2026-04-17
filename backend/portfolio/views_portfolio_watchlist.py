@@ -27,6 +27,7 @@ from .models import (
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
+    StockProfile,
 )
 from .serializers import (
     ChartPointSerializer,
@@ -290,6 +291,16 @@ class HoldingsView(APIView):
         portfolio = generics.get_object_or_404(Portfolio, pk=portfolio_id, user=request.user)
         df = compute_holdings(portfolio)
         holding_list = df.to_dict(orient='records') if not df.empty else []
+        
+        if holding_list:
+            symbols = [h['symbol'] for h in holding_list]
+            profiles = {
+                p['symbol']: p['industry'] or 'Khác' 
+                for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'industry')
+            }
+            for h in holding_list:
+                h['industry'] = profiles.get(h['symbol'], 'Khác')
+                
         serializer = HoldingSerializer(holding_list, many=True)
         return Response(serializer.data)
 
