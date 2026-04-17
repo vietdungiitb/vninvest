@@ -166,10 +166,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
           </h3>
         </div>
       )}
-      <div className="flex-1 min-h-[360px] p-2">
+      <div className="flex-1 min-h-[360px] p-2" style={{ position: 'relative' }}>
         <ResponsiveContainer width="100%" height={HEATMAP_HEIGHT}>
           <Treemap
-            key={treemapRenderKey || 'treemap-empty'}
+            key={`treemap-${treemapRenderKey}-${data.length}`}
             data={treemapData}
             dataKey="size"
             nameKey="name"

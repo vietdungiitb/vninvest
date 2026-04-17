@@ -115,11 +115,12 @@ export default function UnifiedAlertCenter({
         <>
           <div className="panel-scrollbar flex-1 overflow-y-auto px-3 py-3">
             {safeAlerts.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-sm text-slate-500">
+              <div className="flex flex-col h-full items-center justify-center py-20 text-sm text-slate-500">
+                <div className="text-3xl mb-4 text-slate-700 opacity-50">📡</div>
                 {t('dashboardRealtime.noUnifiedAlerts')}
               </div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-2.5 pb-10">
                 {safeAlerts.map((alert, index) => {
                   const severity = normalizeSeverity(alert.severity, 'medium');
                   const isUnread = !readAlertIds.has(alert.id);

@@ -403,7 +403,7 @@ export default function useUnifiedAlerts({
       return String(a.symbol || '').localeCompare(String(b.symbol || ''));
     });
 
-    return deduped.slice(0, pageSize);
+    return deduped;
   }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
 
   const filteredUnifiedAlerts = useMemo(() => {
@@ -428,7 +428,7 @@ export default function useUnifiedAlerts({
       return true;
     };
 
-    return unifiedAlerts.filter((item) => {
+    const filtered = unifiedAlerts.filter((item) => {
       if (sourceFilter !== 'all' && item.source !== sourceFilter) {
         return false;
       }
@@ -452,7 +452,9 @@ export default function useUnifiedAlerts({
       }
       return true;
     });
-  }, [unifiedAlerts, sourceFilter, severityFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol]);
+
+    return filtered.slice(0, pageSize);
+  }, [unifiedAlerts, sourceFilter, severityFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol, pageSize]);
 
   const scopedUnifiedAlerts = useMemo(() => {
     return unifiedAlerts.filter((item) => {
