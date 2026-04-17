@@ -3,7 +3,12 @@ from django.test import TestCase
 from unittest.mock import patch
 from rest_framework.test import APIClient
 
-from portfolio.services_realtime_metrics import increment_realtime_metric, get_realtime_metric, reset_realtime_metrics_for_test
+from portfolio.services_realtime_metrics import (
+    get_realtime_metric,
+    increment_realtime_metric,
+    reset_realtime_metrics_for_test,
+    set_realtime_metric,
+)
 from portfolio.throttles import RealtimeOpsMetricsRateThrottle
 
 
@@ -23,6 +28,8 @@ class RealtimeOpsMetricsApiTests(TestCase):
         increment_realtime_metric('cache_hits_total', amount=3)
         increment_realtime_metric('cache_misses_total', amount=1)
         increment_realtime_metric('realtime_upstream_calls_total', suffix='price_board', amount=2)
+        increment_realtime_metric('realtime_stream_reclaim_total', suffix='ws-broadcaster', amount=4)
+        set_realtime_metric('realtime_stream_pending_depth', 7, suffix='ws-broadcaster')
 
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get('/api/realtime/ops/metrics/?output=json')
@@ -36,9 +43,15 @@ class RealtimeOpsMetricsApiTests(TestCase):
         self.assertEqual(cache_data.get('reads_total'), 4)
         self.assertAlmostEqual(float(cache_data.get('hit_ratio')), 0.75, places=6)
 
+        stream_data = metrics.get('stream_reclaim', {})
+        self.assertEqual((stream_data.get('pending_depth') or {}).get('ws-broadcaster'), 7)
+        self.assertEqual((stream_data.get('reclaim_total') or {}).get('ws-broadcaster'), 4)
+
     def test_realtime_ops_metrics_returns_prometheus_text_for_staff(self):
         increment_realtime_metric('cache_hits_total', amount=5)
         increment_realtime_metric('realtime_upstream_errors_total', suffix='intraday', amount=1)
+        increment_realtime_metric('realtime_stream_reclaim_total', suffix='alert-engine', amount=2)
+        set_realtime_metric('realtime_stream_pending_depth', 3, suffix='alert-engine')
 
         self.client.force_authenticate(user=self.staff_user)
         response = self.client.get('/api/realtime/ops/metrics/?output=prometheus')
@@ -47,6 +60,8 @@ class RealtimeOpsMetricsApiTests(TestCase):
 
         self.assertIn('vninvest_realtime_cache_hits_total 5', content)
         self.assertIn('vninvest_realtime_upstream_errors_total{endpoint="intraday"} 1', content)
+        self.assertIn('vninvest_realtime_stream_pending_depth{group="alert-engine"} 3', content)
+        self.assertIn('vninvest_realtime_stream_reclaim_total{group="alert-engine"} 2', content)
 
     def test_realtime_ops_metrics_throttle_enforced(self):
         self.client.force_authenticate(user=self.staff_user)

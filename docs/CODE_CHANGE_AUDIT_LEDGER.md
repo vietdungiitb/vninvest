@@ -1,5 +1,57 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17k - Phase 4 metrics export + Phase 5 soak checklist initialization
+
+Muc tieu:
+- Hoan tat Phase 4 metrics export cho pending reclaim de dashboard co the monitor hieu qua.
+- Bat canary flags tren dev env cho native ticker path + pending reclaim.
+- Khoi tao checklist Phase 5 (soak test gate) de chot release.
+
+Danh sach tep da sua:
+- backend/portfolio/services_realtime_metrics.py
+- backend/portfolio/realtime/stream_consumers.py
+- backend/portfolio/tests/test_realtime_ops_metrics_api.py
+- compose.dev.env
+- docs/PHASE5_REALTIME_STABILIZATION_SOAK_CHECKLIST_20260417.md (NEW)
+- docs/STABILIZATION_TASKBOARD_20260417.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/services_realtime_metrics.py`:
+  - Them stream-group metrics model:
+    - gauge: `realtime_stream_pending_depth`
+    - counter: `realtime_stream_reclaim_total`, `realtime_stream_reclaim_errors_total`
+  - Them `set_realtime_metric(...)` cho gauge semantics.
+  - Mo rong JSON snapshot va Prometheus export voi cac metric stream reclaim theo group:
+    - `db-writer`, `ws-broadcaster`, `alert-engine`.
+- `backend/portfolio/realtime/stream_consumers.py`:
+  - Instrument reclaim path de emit metrics:
+    - set pending depth theo group
+    - tang reclaim_total khi claim thanh cong
+    - tang reclaim_errors_total neu loi reclaim/doc pending
+- `backend/portfolio/tests/test_realtime_ops_metrics_api.py`:
+  - Bo sung assert cho stream metrics trong output JSON va Prometheus.
+- `compose.dev.env`:
+  - Bat canary dev:
+    - `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED=True`
+    - `REALTIME_STREAM_PENDING_RECLAIM_ENABLED=True`
+- `docs/PHASE5_REALTIME_STABILIZATION_SOAK_CHECKLIST_20260417.md`:
+  - Tao checklist soak test 60 phut voi pass/fail gates va rollback nhanh.
+- `docs/STABILIZATION_TASKBOARD_20260417.md`:
+  - Cap nhat trang thai phase 0-4 da coding + phase 5 checklist khoi tao.
+
+Ket qua verify:
+- `get_errors` tren cac file sua: khong co loi.
+- Chay test muc tieu:
+  - `manage.py test portfolio.tests.test_realtime_ops_metrics_api portfolio.tests.test_realtime_compute portfolio.tests.test_realtime_gateway`
+  - Ket qua: `OK` (16 tests).
+
+Ghi chu staging:
+- Repo hien tai khong co file env staging rieng; can set 2 canary flags trong secret/env cua stack staging truoc khi soak.
+
+---
+
 ## Entry 2026-04-17j - Realtime stabilization taskboard phases 0-4 implementation
 
 Muc tieu:

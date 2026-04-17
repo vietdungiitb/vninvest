@@ -37,6 +37,18 @@ REALTIME_ENDPOINT_METRICS = (
     'realtime_upstream_calls_total',
     'realtime_upstream_errors_total',
 )
+REALTIME_STREAM_GROUPS = (
+    'db-writer',
+    'ws-broadcaster',
+    'alert-engine',
+)
+REALTIME_STREAM_GAUGE_METRICS = (
+    'realtime_stream_pending_depth',
+)
+REALTIME_STREAM_COUNTER_METRICS = (
+    'realtime_stream_reclaim_total',
+    'realtime_stream_reclaim_errors_total',
+)
 
 
 def _metric_cache_key(name: str, suffix: str | None = None) -> str:
@@ -125,6 +137,34 @@ def get_realtime_metric(name: str, *, suffix: str | None = None) -> int:
         return 0
 
 
+def set_realtime_metric(
+    name: str,
+    value: int,
+    *,
+    suffix: str | None = None,
+    timeout: int = 60 * 60 * 24,
+) -> int:
+    """
+    Set absolute realtime metric value.
+
+    This is used for gauge-like metrics (for example current pending depth).
+    """
+    key = _metric_cache_key(name, suffix=suffix)
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = 0
+    if parsed < 0:
+        parsed = 0
+
+    try:
+        cache.set(key, parsed, timeout=timeout)
+        return parsed
+    except Exception as exc:
+        logger.debug('Failed to set metric %s: %s', name, exc)
+        return 0
+
+
 def get_realtime_metrics_summary(prefix_filter: str | None = None) -> dict:
     """
     Get all realtime metrics (optionally filtered by prefix).
@@ -162,6 +202,18 @@ def build_realtime_metrics_snapshot() -> dict:
             metric_values[endpoint] = get_realtime_metric(metric_name, suffix=endpoint)
         metrics[metric_name] = metric_values
 
+    for metric_name in REALTIME_STREAM_GAUGE_METRICS:
+        metric_values = {}
+        for group in REALTIME_STREAM_GROUPS:
+            metric_values[group] = get_realtime_metric(metric_name, suffix=group)
+        metrics[metric_name] = metric_values
+
+    for metric_name in REALTIME_STREAM_COUNTER_METRICS:
+        metric_values = {}
+        for group in REALTIME_STREAM_GROUPS:
+            metric_values[group] = get_realtime_metric(metric_name, suffix=group)
+        metrics[metric_name] = metric_values
+
     hits = int(metrics.get('cache_hits_total') or 0)
     misses = int(metrics.get('cache_misses_total') or 0)
     total_reads = hits + misses
@@ -187,6 +239,11 @@ def build_realtime_metrics_snapshot() -> dict:
             'calls_total': metrics.get('realtime_upstream_calls_total', {}),
             'errors_total': metrics.get('realtime_upstream_errors_total', {}),
             'rate_limit_events_total': metrics.get('realtime_rate_limit_events_total', {}),
+        },
+        'stream_reclaim': {
+            'pending_depth': metrics.get('realtime_stream_pending_depth', {}),
+            'reclaim_total': metrics.get('realtime_stream_reclaim_total', {}),
+            'reclaim_errors_total': metrics.get('realtime_stream_reclaim_errors_total', {}),
         },
         'raw': metrics,
     }
@@ -253,6 +310,24 @@ def build_prometheus_metrics_text() -> str:
         lines.append('# TYPE vninvest_realtime_rate_limit_events_total counter')
         lines.append(f'vninvest_realtime_rate_limit_events_total{{endpoint="{endpoint}"}} {rl_value}')
 
+    stream_data = snapshot.get('stream_reclaim', {})
+    for group in REALTIME_STREAM_GROUPS:
+        pending_depth = int((stream_data.get('pending_depth', {}) or {}).get(group) or 0)
+        reclaim_total = int((stream_data.get('reclaim_total', {}) or {}).get(group) or 0)
+        reclaim_errors_total = int((stream_data.get('reclaim_errors_total', {}) or {}).get(group) or 0)
+
+        lines.append('# HELP vninvest_realtime_stream_pending_depth Current pending depth observed for stream consumer group')
+        lines.append('# TYPE vninvest_realtime_stream_pending_depth gauge')
+        lines.append(f'vninvest_realtime_stream_pending_depth{{group="{group}"}} {pending_depth}')
+
+        lines.append('# HELP vninvest_realtime_stream_reclaim_total Total stale pending entries reclaimed by consumer group')
+        lines.append('# TYPE vninvest_realtime_stream_reclaim_total counter')
+        lines.append(f'vninvest_realtime_stream_reclaim_total{{group="{group}"}} {reclaim_total}')
+
+        lines.append('# HELP vninvest_realtime_stream_reclaim_errors_total Total reclaim errors by consumer group')
+        lines.append('# TYPE vninvest_realtime_stream_reclaim_errors_total counter')
+        lines.append(f'vninvest_realtime_stream_reclaim_errors_total{{group="{group}"}} {reclaim_errors_total}')
+
     return '\n'.join(lines) + '\n'
 
 
@@ -273,14 +348,17 @@ def reset_realtime_metrics_for_test():
             'realtime_warmup_completed_total',
             'realtime_warmup_symbols_cached_total',
             'realtime_warmup_errors_total',
+            'realtime_stream_pending_depth',
+            'realtime_stream_reclaim_total',
+            'realtime_stream_reclaim_errors_total',
         ]
-        endpoints = list(REALTIME_ENDPOINTS)
+        suffixes = list(REALTIME_ENDPOINTS) + list(REALTIME_STREAM_GROUPS)
         
         for name in metric_names:
             key = _metric_cache_key(name)
             cache.delete(key)
-            for endpoint in endpoints:
-                key = _metric_cache_key(name, suffix=endpoint)
+            for suffix in suffixes:
+                key = _metric_cache_key(name, suffix=suffix)
                 cache.delete(key)
     except Exception as exc:
         logger.debug('Failed to reset metrics: %s', exc)

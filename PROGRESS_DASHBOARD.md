@@ -65,6 +65,16 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Stabilization Phase 4 Metrics Export + Phase 5 Checklist Init (2026-04-17)
+- backend/portfolio/services_realtime_metrics.py (MODIFIED - them metrics stream reclaim: pending_depth gauge + reclaim_total/reclaim_errors_total counters, snapshot + Prometheus export)
+- backend/portfolio/realtime/stream_consumers.py (MODIFIED - instrument pending depth/reclaim metrics trong run_once + reclaim path)
+- backend/portfolio/tests/test_realtime_ops_metrics_api.py (MODIFIED - them test asserts cho stream reclaim metrics trong JSON/Prometheus output)
+- compose.dev.env (MODIFIED - bat canary dev: REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED=True + REALTIME_STREAM_PENDING_RECLAIM_ENABLED=True)
+- docs/PHASE5_REALTIME_STABILIZATION_SOAK_CHECKLIST_20260417.md (NEW - checklist soak test 60 phut, pass/fail gates, rollback nhanh)
+- docs/STABILIZATION_TASKBOARD_20260417.md (MODIFIED - cap nhat progress phase 0-4/5)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Stabilization Taskboard Implementation (Phase 0-4) (2026-04-17)
 - backend/config/settings.py (MODIFIED - them feature flags cho WS plan/auth cache, native ticker path, pending reclaim va tham so TTL/idle/batch)
 - backend/.env.example (MODIFIED - bo sung bien env cho rollout phase 0-4)

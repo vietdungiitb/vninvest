@@ -22,6 +22,7 @@ import redis
 from django.conf import settings
 from django.utils import timezone as dj_tz
 from portfolio.price_units import PriceSource, normalize_quote_price_to_canonical
+from portfolio.services_realtime_metrics import increment_realtime_metric, set_realtime_metric
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +76,7 @@ class TickConsumerBase:
             pending_entries = self.client.xpending_range(key, self.group_name, "-", "+", batch)
         except Exception as exc:
             logger.debug("Pending reclaim skipped for %s (%s): %s", key, self.group_name, exc)
+            increment_realtime_metric("realtime_stream_reclaim_errors_total", suffix=self.group_name)
             return []
 
         reclaim_ids: list[str] = []
@@ -107,6 +109,11 @@ class TickConsumerBase:
                 message_ids=reclaim_ids,
             )
             if claimed:
+                increment_realtime_metric(
+                    "realtime_stream_reclaim_total",
+                    suffix=self.group_name,
+                    amount=len(claimed),
+                )
                 logger.info(
                     "Consumer %s reclaimed %d stale pending entries for %s",
                     self.consumer_name,
@@ -115,13 +122,30 @@ class TickConsumerBase:
                 )
             return claimed or []
         except Exception as exc:
+            increment_realtime_metric("realtime_stream_reclaim_errors_total", suffix=self.group_name)
             logger.warning("Pending reclaim failed for %s (%s): %s", key, self.group_name, exc)
             return []
+
+    def _observe_pending_depth(self, key: str) -> int:
+        pending_depth = 0
+        try:
+            summary = self.client.xpending(key, self.group_name)
+            if isinstance(summary, dict):
+                pending_depth = int(summary.get("pending") or summary.get(b"pending") or 0)
+            elif isinstance(summary, (list, tuple)) and len(summary) > 0:
+                pending_depth = int(summary[0] or 0)
+        except Exception as exc:
+            logger.debug("Pending depth read failed for %s (%s): %s", key, self.group_name, exc)
+
+        set_realtime_metric("realtime_stream_pending_depth", pending_depth, suffix=self.group_name)
+        return pending_depth
 
     def run_once(self, symbol: str) -> int:
         """Đọc 1 batch và xử lý. Trả về số message đã xử lý."""
         key = self.stream_key(symbol)
         try:
+            self._observe_pending_depth(key)
+
             # Reclaim stale pending trước nếu bật hardening flag.
             reclaimed_pending = self._claim_stale_pending(key)
 
