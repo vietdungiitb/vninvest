@@ -200,6 +200,9 @@ export default function Dashboard() {
           is_holding: true,
         };
       }
+      // Dùng market_cap từ live quote làm proxy hiển thị kích thước trong treemap;
+      // fallback về nominalSize nếu chưa có dữ liệu realtime.
+      const trackedDisplaySize = Number(quote.market_cap || 0) || nominalSize;
       return {
         symbol,
         industry,
@@ -207,7 +210,7 @@ export default function Dashboard() {
         live_current_price: Number(quote.current_price || 0),
         live_market_cap: Number(quote.market_cap || 0),
         live_volume: Number(quote.volume || 0),
-        live_market_value: nominalSize,
+        live_market_value: trackedDisplaySize,
         live_change_pct: changePct,
         sparkline24,
         is_holding: false,
@@ -541,11 +544,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+          <PortfolioDigestPanel />
         </div>
       </div>
 
-      <PortfolioDigestPanel />
+      <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
 
       {/* Charts */}
       <div className="space-y-4">

@@ -18,7 +18,7 @@ const PIECEWISE_VISUAL_MAP = {
     { lt: -5, color: '#7f1d1d' },
     { gte: -5, lt: -2, color: '#be123c' },
     { gte: -2, lt: 0, color: '#fca5a5' },
-    { gte: 0, lte: 0, color: '#475569' },
+    { gte: 0, lte: 0, color: '#ca8a04' },
     { gt: 0, lte: 2, color: '#86efac' },
     { gt: 2, lte: 5, color: '#22c55e' },
     { gt: 5, color: '#166534' },
@@ -71,7 +71,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
         return;
       }
 
-      const industry = String(h.industry || 'Khác').trim() || 'Khác';
+      const industryStr = String(h.industry || 'Khác').trim();
+      const industry = (industryStr && industryStr !== 'undefined') ? industryStr : 'Khác';
       if (!sectors[industry]) {
         sectors[industry] = {
           name: industry,
@@ -183,7 +184,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (ratio < 0.42) {
       return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}`;
     }
-    return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND}`;
+    return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? price.toFixed(2) : '\u2014'} VND}`;
   }, [maxLeafSize]);
 
   // Use stable module-level constants
@@ -247,6 +248,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
       formatter: (params) => {
         const data = params?.data;
         if (!data) return '';
+        // Guard: ECharts virtual root node (created internally when data is array) has children but no name
+        if (data.children && !data.name) return '';
 
         if (!data.children) {
           const size = Array.isArray(data.value) ? data.value[0] : Number(data.value || 0);
@@ -424,6 +427,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           label: {
             show: true,
+            align: 'center',
+            verticalAlign: 'middle',
             formatter: buildLeafLabel,
             overflow: 'truncate',
             rich: {
@@ -434,18 +439,21 @@ export default function PortfolioHeatmap({ holdings, title }) {
                 lineHeight: 16,
                 textShadowBlur: 3,
                 textShadowColor: 'rgba(2, 6, 23, 0.7)',
+                align: 'center',
               },
               pct: {
                 color: 'rgba(255,255,255,0.9)',
                 fontWeight: 700,
                 fontSize: 11,
                 lineHeight: 12,
+                align: 'center',
               },
               price: {
                 color: 'rgba(226,232,240,0.95)',
                 fontWeight: 600,
                 fontSize: 9,
                 lineHeight: 10,
+                align: 'center',
               },
             },
           },
@@ -550,8 +558,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
         <ReactECharts
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
-          notMerge={false}
-          lazyUpdate={true}
+          notMerge={true}
+          lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
         />
         

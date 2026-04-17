@@ -33,38 +33,33 @@ function formatVND(value) {
 function CustomTooltip({ active, payload, mode }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
+  const name = mode === 'sector' ? d.sector : d.symbol;
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 shadow-xl">
-      <p className="text-sm font-bold text-gray-100 mb-1">
-        {mode === 'sector' ? d.sector : d.symbol}
-      </p>
-      <p className="text-xs text-gray-400">{formatVND(d.value)}</p>
-      <p className="text-xs font-medium text-brand-400">{d.percentage.toFixed(2)}%</p>
+    <div style={{
+      backgroundColor: 'rgba(10, 18, 35, 0.96)',
+      border: '1px solid rgba(71, 85, 105, 0.72)',
+      borderRadius: 10,
+      padding: '10px 14px',
+      boxShadow: '0 8px 24px rgba(2, 6, 23, 0.5)',
+      minWidth: 170,
+    }}>
+      <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+        {mode === 'sector' ? 'Nhóm ngành' : 'Mã chứng khoán'}
+      </div>
+      <div style={{ fontSize: 17, fontWeight: 800, color: '#ffffff', marginBottom: 10 }}>{name}</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, marginBottom: 4 }}>
+        <span style={{ color: '#94a3b8', fontSize: 12 }}>Giá trị (nghìn VND)</span>
+        <span style={{ color: '#f8fafc', fontWeight: 700, fontSize: 12 }}>{formatVND(d.value)}</span>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+        <span style={{ color: '#94a3b8', fontSize: 12 }}>Tỷ trọng</span>
+        <span style={{ color: '#34d399', fontWeight: 800, fontSize: 12 }}>{d.percentage.toFixed(2)}%</span>
+      </div>
     </div>
   );
 }
 
-function CustomLegend({ data, mode }) {
-  return (
-    <ul className="space-y-1.5 mt-2">
-      {data.map((entry, i) => (
-        <li key={`${mode === 'sector' ? entry.sector : entry.symbol}-${i}`}
-            className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2">
-            <span
-              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-              style={{ backgroundColor: COLORS[i % COLORS.length] }}
-            />
-            <span className="text-gray-300 font-medium">
-              {mode === 'sector' ? entry.sector : entry.symbol}
-            </span>
-          </div>
-          <span className="text-gray-500 ml-4">{entry.percentage.toFixed(1)}%</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
+// CustomLegend removed — data shown via tooltip on hover
 
 export default function AllocationPieChart({ portfolioId }) {
   const { t } = useI18n();
@@ -99,29 +94,12 @@ export default function AllocationPieChart({ portfolioId }) {
 
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-      {/* Header + toggle */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            {t('allocation.title')}
-          </h2>
-          <p className="mt-1 text-[11px] text-gray-500">{t('allocation.priceUnitHint')}</p>
-        </div>
-        <div className="flex rounded-md overflow-hidden border border-gray-700 text-xs">
-          {['symbol', 'sector'].map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`px-3 py-1 transition-colors font-medium ${
-                mode === m
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-              }`}
-            >
-              {m === 'symbol' ? t('allocation.bySymbol') : t('allocation.bySector')}
-            </button>
-          ))}
-        </div>
+      {/* Header - title only */}
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+          {t('allocation.title')}
+        </h2>
+        <p className="mt-1 text-[11px] text-gray-500">{t('allocation.priceUnitHint')}</p>
       </div>
 
       {loading ? (
@@ -131,54 +109,68 @@ export default function AllocationPieChart({ portfolioId }) {
           {t('allocation.empty')}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          <div className="min-h-[180px]">
-            <ResponsiveContainer width="100%" height={180}>
-              <PieChart>
-                <Pie
-                  data={data}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={44}
-                  outerRadius={72}
-                  paddingAngle={3}
-                  dataKey="value"
-                  nameKey={nameKey}
-                >
-                  {data.map((entry, index) => (
-                    <Cell
-                      key={`${mode === 'sector' ? entry.sector : entry.symbol}-${index}`}
-                      fill={COLORS[index % COLORS.length]}
-                      stroke="transparent"
-                    />
-                  ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip mode={mode} />} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+        <>
+          {/* Centered donut chart */}
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={56}
+                outerRadius={90}
+                paddingAngle={3}
+                dataKey="value"
+                nameKey={nameKey}
+              >
+                {data.map((entry, index) => (
+                  <Cell
+                    key={`${mode === 'sector' ? entry.sector : entry.symbol}-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                    stroke="transparent"
+                  />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip mode={mode} />} />
+            </PieChart>
+          </ResponsiveContainer>
 
-          <div className="min-h-[180px] flex flex-col">
-            {mode === 'sector' && hhi !== null && (
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-500">{t('allocation.hhi')}</span>
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  hhi < 1500 ? 'bg-green-900 text-green-300'
-                  : hhi < 2500 ? 'bg-yellow-900 text-yellow-300'
-                  : 'bg-red-900 text-red-300'
-                }`}>
-                  {hhi.toFixed(0)}
-                </span>
-                <span className="text-xs text-gray-600">
-                  {hhi < 1500 ? t('allocation.hhiDiversified') : hhi < 2500 ? t('allocation.hhiMedium') : t('allocation.hhiConcentrated')}
-                </span>
-              </div>
-            )}
-            <div className="flex-1 overflow-y-auto pr-1 max-h-[180px]">
-              <CustomLegend data={data} mode={mode} />
+          {/* HHI score */}
+          {mode === 'sector' && hhi !== null && (
+            <div className="flex items-center gap-2 justify-center mb-3">
+              <span className="text-xs text-gray-500">{t('allocation.hhi')}</span>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                hhi < 1500 ? 'bg-green-900 text-green-300'
+                : hhi < 2500 ? 'bg-yellow-900 text-yellow-300'
+                : 'bg-red-900 text-red-300'
+              }`}>
+                {hhi.toFixed(0)}
+              </span>
+              <span className="text-xs text-gray-600">
+                {hhi < 1500 ? t('allocation.hhiDiversified') : hhi < 2500 ? t('allocation.hhiMedium') : t('allocation.hhiConcentrated')}
+              </span>
+            </div>
+          )}
+
+          {/* Mode toggle buttons at bottom-right */}
+          <div className="flex justify-end mt-3">
+            <div className="flex rounded-md overflow-hidden border border-gray-700 text-xs">
+              {['symbol', 'sector'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`px-3 py-1 transition-colors font-medium ${
+                    mode === m
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  }`}
+                >
+                  {m === 'symbol' ? t('allocation.bySymbol') : t('allocation.bySector')}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
