@@ -755,20 +755,27 @@ export default function DashboardRealtimePanel({
   ];
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-5">
+    <div className="bg-gray-950/40 border border-white/5 rounded-[2rem] p-8 backdrop-blur-md shadow-2xl space-y-8 relative overflow-hidden group">
+      <div className="absolute top-0 right-0 w-1 h-full bg-brand-600/10 group-hover:bg-brand-600/30 transition-all" />
+      
       {criticalToasts.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {criticalToasts.map((toast) => (
-            <div key={toast.id} className="flex items-center justify-between gap-3 rounded-lg border border-rose-700/70 bg-rose-950/40 px-4 py-2">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-rose-200">{t('dashboardRealtime.criticalToastTitle')}</p>
-                <p className="text-xs text-rose-100 mt-0.5">
-                  {toast.alert.symbol}: {toast.alert.headline}
-                </p>
+            <div key={toast.id} className="flex items-center justify-between gap-4 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-5 py-3 backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center text-rose-400">
+                  ⚠
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-300">{t('dashboardRealtime.criticalToastTitle')}</p>
+                  <p className="text-xs text-white font-bold mt-0.5">
+                    {toast.alert.symbol}: {toast.alert.headline}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setCriticalToasts((prev) => prev.filter((item) => item.id !== toast.id))}
-                className="rounded border border-rose-700/70 bg-rose-900/30 px-2 py-1 text-[11px] font-semibold text-rose-200 hover:bg-rose-900/50"
+                className="rounded-xl bg-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-white/20 transition-colors"
               >
                 {t('dashboardRealtime.dismiss')}
               </button>
@@ -777,17 +784,35 @@ export default function DashboardRealtimePanel({
         </div>
       )}
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-            {t('dashboardRealtime.title')}
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            {t('dashboardRealtime.subtitle')}
-          </p>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em]">
+              {t('dashboardRealtime.title')}
+            </h2>
+            <p className="text-[10px] text-gray-600 font-bold uppercase tracking-widest mt-2 leading-relaxed">
+              {t('dashboardRealtime.subtitle')}
+            </p>
+          </div>
+          <button
+            onClick={() => setCompact((v) => !v)}
+            className="p-2 rounded-xl bg-white/5 text-gray-500 hover:text-white transition-colors"
+            title={compact ? t('dashboardRealtime.expandPanel') : t('dashboardRealtime.collapsePanel')}
+          >
+            {compact ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" /></svg>
+            )}
+          </button>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className={`px-2.5 py-1 rounded-full border ${statusClasses}`}>
+
+        <div className="flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-widest">
+          <span className={`px-4 py-1.5 rounded-xl border border-white/5 backdrop-blur-sm transition-all shadow-lg ${
+            realtimeStatus === 'live' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+            realtimeStatus === 'connecting' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+            'text-gray-500 bg-white/5'
+          }`}>
             {realtimeLabels[realtimeStatus]}
           </span>
           <span className="px-2.5 py-1 rounded-full border border-gray-800 bg-gray-950 text-gray-400">
