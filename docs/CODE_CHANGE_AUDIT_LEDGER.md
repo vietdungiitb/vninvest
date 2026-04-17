@@ -1,5 +1,63 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17j - Realtime stabilization taskboard phases 0-4 implementation
+
+Muc tieu:
+- Trien khai coding theo `docs/STABILIZATION_TASKBOARD_20260417.md` cho cac phase P0/P1:
+  - Feature flags settings cho rollout an toan.
+  - Plan cache tren WebSocket advisory hot path.
+  - Auth snapshot cache hook (feature-flagged) cho reconnect storm.
+  - Native ticker payload path (khong bat buoc pandas DataFrame).
+  - Pending reclaim hardening cho Redis Streams worker.
+
+Danh sach tep da sua:
+- backend/config/settings.py
+- backend/.env.example
+- backend/portfolio/consumers.py
+- backend/portfolio/realtime/compute.py
+- backend/portfolio/realtime/stream_consumers.py
+- backend/portfolio/tests/test_realtime_compute.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- `backend/config/settings.py`:
+  - Them bo cờ runtime:
+    - `REALTIME_WS_PLAN_CACHE_ENABLED`
+    - `REALTIME_WS_AUTH_CACHE_ENABLED`
+    - `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`
+    - `REALTIME_STREAM_PENDING_RECLAIM_ENABLED`
+  - Them cac tham so reclaim/auth cache TTL:
+    - `REALTIME_WS_AUTH_CACHE_TTL_SECONDS`
+    - `STREAM_PENDING_RECLAIM_IDLE_MS`
+    - `STREAM_PENDING_RECLAIM_BATCH`
+- `backend/.env.example`:
+  - Dong bo full bo bien moi cho rollout theo env.
+- `backend/portfolio/consumers.py`:
+  - Them `WSAuthPrincipal` de giam DB roundtrip tren connect/reconnect.
+  - Cache user plan tai connect (`self.user_plan`) va dung trong `whale_advisory` thay vi query moi event.
+  - Bo sung auth snapshot cache hooks (`cache.get/set`) duoi feature flag.
+  - Hardening lookup plan theo `user_config.plan`/`is_superuser`, loai bo OpenCore plan lookup o WS hot path.
+- `backend/portfolio/realtime/compute.py`:
+  - Them `build_ticker_payload_native(...)` + helper tinh VWAP native tu rows.
+- `backend/portfolio/realtime/stream_consumers.py`:
+  - Them `_claim_stale_pending(...)` (XPENDING + XCLAIM) duoi feature flag.
+  - `run_once(...)` uu tien reclaim stale pending truoc khi doc pending/new.
+  - `WsBroadcastConsumer` them nhanh native payload duoi flag `REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED`.
+- `backend/portfolio/tests/test_realtime_compute.py`:
+  - Them test parity giua DataFrame path va native path cho ticker payload.
+
+Ket qua verify:
+- `get_errors` tren tat ca file sua: khong co loi.
+- Chay test muc tieu:
+  - `manage.py test portfolio.tests.test_realtime_compute portfolio.tests.test_realtime_gateway`
+  - Ket qua: `OK` (11 tests).
+
+Ghi chu rollout:
+- De tranh thay doi hanh vi dot ngot, `REALTIME_WS_AUTH_CACHE_ENABLED` mac dinh dat `False`; co the bat dan theo canary.
+
+---
+
 ## Entry 2026-04-17i - Tao implementation plan chi tiet cho Realtime Engine stabilization
 
 Tham chieu implementation plan:

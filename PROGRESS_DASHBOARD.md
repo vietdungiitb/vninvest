@@ -65,6 +65,16 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Stabilization Taskboard Implementation (Phase 0-4) (2026-04-17)
+- backend/config/settings.py (MODIFIED - them feature flags cho WS plan/auth cache, native ticker path, pending reclaim va tham so TTL/idle/batch)
+- backend/.env.example (MODIFIED - bo sung bien env cho rollout phase 0-4)
+- backend/portfolio/consumers.py (MODIFIED - cache plan tai connect, auth snapshot cache hooks, bo OpenCore plan lookup khoi WS hot path)
+- backend/portfolio/realtime/compute.py (MODIFIED - them `build_ticker_payload_native` + VWAP native)
+- backend/portfolio/realtime/stream_consumers.py (MODIFIED - them pending reclaim XPENDING/XCLAIM + native ticker branch theo flag)
+- backend/portfolio/tests/test_realtime_compute.py (MODIFIED - them test parity native payload vs DataFrame path)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Engine Stabilization Implementation Plan (2026-04-17)
 - docs/IMPLEMENTATION_PLAN_REALTIME_ENGINE_STABILIZATION_20260417.md (NEW - implementation plan chi tiet 12 muc mandatory cho hardening WS + Redis Streams)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17i)

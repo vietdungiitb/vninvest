@@ -1,7 +1,13 @@
 import pandas as pd
 from django.test import SimpleTestCase
 
-from portfolio.realtime.compute import build_ticker_payload, build_whale_payload, detect_whale_signals, WhaleSignal
+from portfolio.realtime.compute import (
+    WhaleSignal,
+    build_ticker_payload,
+    build_ticker_payload_native,
+    build_whale_payload,
+    detect_whale_signals,
+)
 
 
 class RealtimeComputeTests(SimpleTestCase):
@@ -26,6 +32,23 @@ class RealtimeComputeTests(SimpleTestCase):
         self.assertEqual(payload["source"], "ws_stream")
         self.assertTrue(payload["ts"])
         self.assertEqual(payload["last_date"], payload["ts"])
+
+    def test_build_ticker_payload_native_matches_dataframe_path(self):
+        rows = [
+            {"price": 10, "volume": 100, "side": "BUY"},
+            {"price": 20, "volume": 300, "side": "SELL"},
+        ]
+        frame = pd.DataFrame(rows)
+
+        payload_df = build_ticker_payload("VNM", frame, seq=7)
+        payload_native = build_ticker_payload_native("VNM", rows, seq=7)
+
+        self.assertEqual(payload_native["symbol"], payload_df["symbol"])
+        self.assertEqual(payload_native["seq"], payload_df["seq"])
+        self.assertEqual(payload_native["price"], payload_df["price"])
+        self.assertEqual(payload_native["volume"], payload_df["volume"])
+        self.assertEqual(payload_native["vwap"], payload_df["vwap"])
+        self.assertEqual(payload_native["source"], payload_df["source"])
 
     def test_detect_whale_signals_emits_threshold_hits(self):
         frame = pd.DataFrame(
