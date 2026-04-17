@@ -414,10 +414,13 @@ def portfolio_news_digest_api(request):
     GET /api/stock-management/portfolio/news-digest/
     Sprint35 Layer 3: Trả về bản tóm tắt tin tức danh mục mới nhất của user.
     Query param: ?date=YYYY-MM-DD (tuỳ chọn, mặc định hôm nay)
+    Fallback: nếu không có bản tin cho ngày yêu cầu, trả về bản tin gần nhất.
     """
-    from django.utils import timezone as _tz
     import datetime
 
+    from django.utils import timezone as _tz
+
+    today = _tz.localdate()
     date_str = request.query_params.get('date', '')
     if date_str:
         try:
@@ -425,22 +428,32 @@ def portfolio_news_digest_api(request):
         except ValueError:
             return Response({'detail': 'Định dạng ngày không hợp lệ. Dùng YYYY-MM-DD.'}, status=400)
     else:
-        target_date = None
+        target_date = today
 
+    # Tìm bản tin đúng ngày yêu cầu trước
     qs = PortfolioNewsDigest.objects.filter(user=request.user)
-    if target_date:
-        qs = qs.filter(date=target_date)
-    digest = qs.order_by('-date').first()
+    digest = qs.filter(date=target_date).order_by('-created_at').first()
+    is_latest_fallback = False
+
+    # Nếu không tìm được → fallback về bản tin gần nhất
+    if digest is None:
+        digest = qs.order_by('-date', '-created_at').first()
+        if digest is not None:
+            is_latest_fallback = (digest.date != target_date)
 
     if digest is None:
         return Response({
             'has_digest': False,
-            'date': str(target_date or _tz.localdate()),
-            'message': 'Chưa có bản tóm tắt tin tức cho ngày này.',
+            'today': str(today),
+            'requested_date': str(target_date),
+            'message': 'Chưa có bản tóm tắt tin tức. Bản tin sẽ được tạo tự động sau 16:05 các ngày trong tuần.',
         })
 
     return Response({
         'has_digest': True,
+        'is_latest_fallback': is_latest_fallback,
+        'today': str(today),
+        'requested_date': str(target_date),
         'id': digest.id,
         'date': str(digest.date),
         'symbols': digest.symbols,
