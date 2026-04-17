@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env pwsh
+#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     Khởi động toàn bộ stack vninvest ở chế độ dev local.
@@ -192,8 +192,8 @@ print('Created admin / test@123456' if created else 'Updated admin password -> t
         }
 
         # Seed demo data (testuser / test123 + mock intraday data)
-        Write-Host "  Seed demo user + data..."
-        docker exec $backendContainer python manage.py seed_demo_data 2>&1
+        Write-Host "  Seed demo user + data (skip mock whale alerts)..."
+        docker exec $backendContainer python manage.py seed_demo_data --no-alerts 2>&1
         if ($LASTEXITCODE -ne 0) {
             throw "Seed demo data thất bại (exit code: $LASTEXITCODE)."
         }
