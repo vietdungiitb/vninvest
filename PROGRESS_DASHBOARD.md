@@ -65,6 +65,15 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### OpenCore DPI Fallback Safety + Form Accessibility Cleanup (2026-04-17)
+- backend/portfolio/opencore_dpi.py (MODIFIED - harden default license creation bang get_or_create cho plan free, tranh DPIPlan.DoesNotExist crash)
+- backend/portfolio/opencore_analytics.py (MODIFIED - harden quota tracker + fail-safe analytics tracking de tranh 500 do side-effect)
+- backend/portfolio/middleware.py (MODIFIED - fail-safe cho market observability record trong finally block)
+- frontend/src/pages/Screener.jsx (MODIFIED - them id/name/label/aria-label cho cac form control rule/condition)
+- frontend/src/pages/Watchlist.jsx (MODIFIED - them id/name va aria-label cho cum search/filter + add tracked/price alert)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Legacy Cleanup + Regex NameError Fix (2026-04-17)
 - backend/portfolio/views_realtime_core.py (DELETED - module legacy khong con duoc route/import runtime)
 - backend/portfolio/market_data_service.py (MODIFIED - bo sung `import re` de tranh NameError khi regex search)

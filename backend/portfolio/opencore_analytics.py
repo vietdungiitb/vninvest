@@ -198,15 +198,19 @@ class DPIQuotaTracker(models.Model):
         now = timezone.now()
         period_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         period_end = (period_start + timedelta(days=32)).replace(day=1) - timedelta(seconds=1)
-        
-        obj, created = cls.objects.get_or_create(
+
+        obj = cls.objects.filter(
             user=user,
             period_start__gte=period_start,
-            period_start__lt=period_end,
-            defaults={
-                'period_start': period_start,
-                'period_end': period_end,
-            }
+            period_start__lte=period_end,
+        ).order_by('-period_start').first()
+        if obj is not None:
+            return obj
+
+        obj = cls.objects.create(
+            user=user,
+            period_start=period_start,
+            period_end=period_end,
         )
         return obj
 
@@ -261,54 +265,80 @@ def track_api_call(user: User, endpoint: str, method: str, status_code: int,
                    response_time_ms: int = 0, feature: str = '', indicator: str = '',
                    api_weight: int = 1, is_cached: bool = False):
     """Track API call and update metrics."""
-    
-    # Log the call
-    DPIAPICallLog.log_call(
-        user=user,
-        endpoint=endpoint,
-        method=method,
-        status_code=status_code,
-        response_time_ms=response_time_ms,
-        api_weight=api_weight,
-        feature=feature,
-        indicator=indicator,
-        is_cached=is_cached,
-    )
-    
-    # Update feature usage if applicable
-    if feature:
-        DPIFeatureUsage.increment_usage(
+
+    try:
+        # Log the call
+        DPIAPICallLog.log_call(
             user=user,
-            feature_key=feature,
+            endpoint=endpoint,
+            method=method,
+            status_code=status_code,
+            response_time_ms=response_time_ms,
             api_weight=api_weight,
-            response_time_ms=response_time_ms
+            feature=feature,
+            indicator=indicator,
+            is_cached=is_cached,
         )
-    
-    # Update quota
-    quota = DPIQuotaTracker.get_or_create_current(user)
-    if quota.is_within_quota(api_weight):
-        quota.add_quota_usage(api_weight)
-    else:
-        logger.warning(f"User {user.username} exceeded quota")
+
+        # Update feature usage if applicable
+        if feature:
+            DPIFeatureUsage.increment_usage(
+                user=user,
+                feature_key=feature,
+                api_weight=api_weight,
+                response_time_ms=response_time_ms
+            )
+
+        # Update quota
+        quota = DPIQuotaTracker.get_or_create_current(user)
+        if quota.is_within_quota(api_weight):
+            quota.add_quota_usage(api_weight)
+        else:
+            logger.warning("opencore.quota.exceeded username=%s", user.username)
+    except Exception as exc:
+        # Analytics side effects should not crash functional APIs.
+        logger.warning(
+            "opencore.analytics.track_failed user_id=%s endpoint=%s error=%s",
+            getattr(user, 'id', None),
+            endpoint,
+            exc,
+        )
 
 
 def get_monthly_usage_summary(user: User) -> Dict:
     """Get user's monthly usage summary."""
-    quota = DPIQuotaTracker.get_or_create_current(user)
-    
-    features = DPIFeatureUsage.objects.filter(user=user)
-    top_features = features.order_by('-usage_count')[:5]
-    
-    return {
-        'period': f"{quota.period_start.strftime('%Y-%m')}",
-        'api_calls_used': quota.api_calls_used,
-        'api_calls_limit': quota.api_call_limit,
-        'api_weight_used': quota.api_weight_used,
-        'api_weight_limit': quota.api_weight_limit,
-        'is_over_quota': quota.is_exceeded,
-        'top_features': [
-            {'name': f.feature_name, 'usage': f.usage_count}
-            for f in top_features
-        ],
-        'total_features_used': features.count(),
-    }
+    try:
+        quota = DPIQuotaTracker.get_or_create_current(user)
+
+        features = DPIFeatureUsage.objects.filter(user=user)
+        top_features = features.order_by('-usage_count')[:5]
+
+        return {
+            'period': f"{quota.period_start.strftime('%Y-%m')}",
+            'api_calls_used': quota.api_calls_used,
+            'api_calls_limit': quota.api_call_limit,
+            'api_weight_used': quota.api_weight_used,
+            'api_weight_limit': quota.api_weight_limit,
+            'is_over_quota': quota.is_exceeded,
+            'top_features': [
+                {'name': f.feature_name, 'usage': f.usage_count}
+                for f in top_features
+            ],
+            'total_features_used': features.count(),
+        }
+    except Exception as exc:
+        logger.warning(
+            "opencore.analytics.summary_failed user_id=%s error=%s",
+            getattr(user, 'id', None),
+            exc,
+        )
+        return {
+            'period': timezone.now().strftime('%Y-%m'),
+            'api_calls_used': 0,
+            'api_calls_limit': 0,
+            'api_weight_used': 0,
+            'api_weight_limit': 0,
+            'is_over_quota': False,
+            'top_features': [],
+            'total_features_used': 0,
+        }

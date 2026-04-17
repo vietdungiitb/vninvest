@@ -13,7 +13,11 @@ from django.utils import timezone
 from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 import json
+import logging
 from typing import Dict, List, Optional, Tuple
+
+
+logger = logging.getLogger(__name__)
 
 
 class DPIPlan(models.Model):
@@ -282,10 +286,46 @@ def get_or_create_default_license(user: User) -> DPILicense:
     Create default Free tier license if doesn't exist.
     Called on user creation.
     """
+    free_plan_defaults = {
+        'display_name': 'Community',
+        'description': 'Auto-created fallback Free plan for OpenCore safety.',
+        'annual_price_usd': 0,
+        'monthly_price_usd': 0,
+        'max_watchlist_items': 5,
+        'max_portfolio_accounts': 1,
+        'max_alerts': 10,
+        'max_api_calls_per_month': 5000,
+        'features': {
+            'sma': True,
+            'rsi': True,
+            'volume_profile': True,
+            'whale_momentum': False,
+            'dark_pool_flow': False,
+            'correlation_matrix': False,
+            'volatility_surface': False,
+            'sentiment_score': False,
+            'predictive_ml': False,
+            'cross_market_alpha': False,
+            'fund_flow_analysis': False,
+            'hedging_strategy': False,
+        },
+        'is_active': True,
+    }
+
+    free_plan, free_created = DPIPlan.objects.get_or_create(
+        name='free',
+        defaults=free_plan_defaults,
+    )
+    if free_created:
+        logger.warning(
+            'opencore.free_plan.autocreated user=%s reason=missing_seed_data',
+            getattr(user, 'username', 'unknown'),
+        )
+
     license, created = DPILicense.objects.get_or_create(
         user=user,
         defaults={
-            'plan': DPIPlan.objects.get(name='free'),
+            'plan': free_plan,
             'status': 'trial',
             'expiry_date': timezone.now() + timezone.timedelta(days=30),
         }

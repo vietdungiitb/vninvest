@@ -1265,10 +1265,12 @@ export default function WatchlistPage() {
                 <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
                   <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_180px_120px] gap-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                      <label htmlFor="tracked-add-symbol" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
                         {t('watchlist.stockSymbol')}
                       </label>
                       <input
+                        id="tracked-add-symbol"
+                        name="tracked_add_symbol"
                         value={addSymbol}
                         onChange={(e) => setAddSymbol(e.target.value.toUpperCase())}
                         placeholder={t('watchlist.symbolExample')}
@@ -1276,10 +1278,12 @@ export default function WatchlistPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                      <label htmlFor="tracked-source-group" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
                         {t('watchlist.sourceGroup')}
                       </label>
                       <select
+                        id="tracked-source-group"
+                        name="tracked_source_group"
                         value={srcGroupId}
                         onChange={(e) => setSrcGroupId(e.target.value)}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
@@ -1291,10 +1295,12 @@ export default function WatchlistPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
+                      <label htmlFor="tracked-threshold-override" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
                         {t('watchlist.whaleThresholdOverride')}
                       </label>
                       <input
+                        id="tracked-threshold-override"
+                        name="tracked_threshold_override"
                         type="number"
                         min="1"
                         step="1"
@@ -1330,8 +1336,10 @@ export default function WatchlistPage() {
 
                   <form onSubmit={handleCreatePriceAlert} className="grid grid-cols-1 lg:grid-cols-[1fr_180px_1fr_180px_140px] gap-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.stockSymbol')}</label>
+                      <label htmlFor="price-alert-symbol" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.stockSymbol')}</label>
                       <input
+                        id="price-alert-symbol"
+                        name="price_alert_symbol"
                         value={priceAlertForm.symbol}
                         onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
                         placeholder={t('watchlist.symbolExample')}
@@ -1339,8 +1347,10 @@ export default function WatchlistPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.condition')}</label>
+                      <label htmlFor="price-alert-condition" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.condition')}</label>
                       <select
+                        id="price-alert-condition"
+                        name="price_alert_condition"
                         value={priceAlertForm.condition}
                         onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, condition: e.target.value }))}
                         className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
@@ -1350,8 +1360,10 @@ export default function WatchlistPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.targetPrice')}</label>
+                      <label htmlFor="price-alert-target-price" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.targetPrice')}</label>
                       <input
+                        id="price-alert-target-price"
+                        name="price_alert_target_price"
                         type="number"
                         min="0"
                         step="0.01"
@@ -1362,8 +1374,10 @@ export default function WatchlistPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.cooldownSeconds')}</label>
+                      <label htmlFor="price-alert-cooldown-seconds" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.cooldownSeconds')}</label>
                       <input
+                        id="price-alert-cooldown-seconds"
+                        name="price_alert_cooldown_seconds"
                         type="number"
                         min="0"
                         step="1"
@@ -1501,6 +1515,9 @@ export default function WatchlistPage() {
                           </div>
 
                           <select
+                            id="tracked-sort-by"
+                            name="tracked_sort_by"
+                            aria-label={t('watchlist.sortSymbolAsc')}
                             value={trackedSortBy}
                             onChange={(e) => setTrackedSortBy(e.target.value)}
                             className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
@@ -1521,6 +1538,9 @@ export default function WatchlistPage() {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-2">
                             <input
+                              id="tracked-symbol-search"
+                              name="tracked_symbol_search"
+                              aria-label={t('watchlist.searchSymbolPlaceholder')}
                               type="text"
                               value={trackedSymbolSearch}
                               onChange={(e) => setTrackedSymbolSearch(e.target.value.toUpperCase())}
@@ -1528,6 +1548,9 @@ export default function WatchlistPage() {
                               className="w-52 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                             />
                             <select
+                              id="tracked-data-filter"
+                              name="tracked_data_filter"
+                              aria-label={t('watchlist.dataFilterAll')}
                               value={trackedDataFilter}
                               onChange={(e) => setTrackedDataFilter(e.target.value)}
                               className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
@@ -1543,6 +1566,9 @@ export default function WatchlistPage() {
                           <div className="flex items-center gap-2 text-xs text-gray-400">
                             <span>{t('watchlist.pageSize')}</span>
                             <select
+                              id="tracked-page-size"
+                              name="tracked_page_size"
+                              aria-label={t('watchlist.pageSize')}
                               value={trackedPageSize}
                               onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
                               className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
@@ -1556,6 +1582,9 @@ export default function WatchlistPage() {
 
                         <div className="flex flex-wrap items-center gap-2">
                           <input
+                            id="tracked-bulk-threshold"
+                            name="tracked_bulk_threshold"
+                            aria-label={t('watchlist.bulkThresholdPlaceholder')}
                             type="number"
                             min="1"
                             step="1"
@@ -1818,6 +1847,9 @@ export default function WatchlistPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <input
+                          id="group-symbol-search"
+                          name="group_symbol_search"
+                          aria-label={t('watchlist.searchSymbolPlaceholder')}
                           type="text"
                           value={groupSymbolSearch}
                           onChange={(e) => setGroupSymbolSearch(e.target.value.toUpperCase())}
@@ -1825,6 +1857,9 @@ export default function WatchlistPage() {
                           className="w-52 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                         />
                         <select
+                          id="group-data-filter"
+                          name="group_data_filter"
+                          aria-label={t('watchlist.dataFilterAll')}
                           value={groupDataFilter}
                           onChange={(e) => setGroupDataFilter(e.target.value)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
@@ -1840,6 +1875,9 @@ export default function WatchlistPage() {
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <span>{t('watchlist.pageSize')}</span>
                         <select
+                          id="group-page-size"
+                          name="group_page_size"
+                          aria-label={t('watchlist.pageSize')}
                           value={groupPageSize}
                           onChange={(e) => setGroupPageSize(Number(e.target.value) || 20)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"

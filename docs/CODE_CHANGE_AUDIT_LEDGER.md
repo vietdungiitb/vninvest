@@ -1,5 +1,56 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17g - OpenCore DPI plan safety hardening + search/filter accessibility cleanup
+
+Muc tieu:
+- Chan loi 500 do thieu seed DPIPlan trong he thong OpenCore.
+- Tang do ben cua luong tao license mac dinh khi plan free bi xoa/thieu.
+- Xu ly canh bao accessibility cho cum form search/filter tren frontend.
+
+Trieu chung runtime:
+- Log backend ghi nhan `DPIPlan.DoesNotExist` trong luong tao/quan ly license OpenCore.
+- Frontend co canh bao a11y: form control thieu `id`/`name`/label association.
+
+Nguyen nhan goc:
+- `get_or_create_default_license()` dung truc tiep `DPIPlan.objects.get(name='free')`; khi bang `DPIPlan` chua duoc seed thi throw `DoesNotExist`.
+- Mot so control search/filter tren Watchlist/Screener chua co day du metadata a11y.
+
+Danh sach tep da sua:
+- backend/portfolio/opencore_dpi.py
+- backend/portfolio/opencore_analytics.py
+- backend/portfolio/middleware.py
+- frontend/src/pages/Screener.jsx
+- frontend/src/pages/Watchlist.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `backend/portfolio/opencore_dpi.py`:
+  - Bo sung logger module.
+  - Hardening `get_or_create_default_license()` bang `DPIPlan.objects.get_or_create(name='free', defaults=...)`.
+  - Neu tu dong tao fallback Free plan thi ghi warning de ops co dau vet audit.
+- `backend/portfolio/opencore_analytics.py`:
+  - Hardening `DPIQuotaTracker.get_or_create_current()` theo filter + create an toan, tranh sai lookup khi create.
+  - Boc fail-safe cho `track_api_call()` va `get_monthly_usage_summary()` de loi analytics/quota khong lam sap API chinh.
+- `backend/portfolio/middleware.py`:
+  - Boc `record_market_http_observation(...)` trong try/except de loi observability khong chuyen response thanh 500.
+- `frontend/src/pages/Screener.jsx`:
+  - Them `id`/`name` cho cac `select/input` trong condition row va rule name.
+  - Them `label htmlFor` (bao gom `sr-only`) va `aria-label` cho field gia tri.
+- `frontend/src/pages/Watchlist.jsx`:
+  - Them `id`/`name` cho cac input/select trong cum add tracked, price alert, tracked filters, group filters.
+  - Bo sung `aria-label` cho cac control khong co visible label truc tiep.
+
+Ket qua verify:
+- `get_errors` cho:
+  - backend/portfolio/opencore_dpi.py
+  - frontend/src/pages/Screener.jsx
+  - frontend/src/pages/Watchlist.jsx
+  => khong co loi.
+- Da thu chay `manage.py initialize_dpi_plans` nhung command bi treo trong moi truong hien tai (khong tra output), can xac minh tiep tren runtime dang hoat dong on dinh.
+
+---
+
 ## Entry 2026-04-17f - Remove unused realtime legacy module and fix missing regex import causing potential 500
 
 Muc tieu:
