@@ -238,15 +238,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
     }
 
     const tooltip = {
-      backgroundColor: 'rgba(10, 18, 35, 0.94)',
+      backgroundColor: 'rgba(10, 18, 35, 0.96)',
       borderColor: 'rgba(71, 85, 105, 0.72)',
       borderWidth: 1,
       confine: true,
-      triggerOn: 'mousemove',
-      hideDelay: 400,
-      transitionDuration: 0,
-      enterable: false,
-      extraCssText: 'backdrop-filter: blur(11px); box-shadow: 0 14px 38px rgba(2, 6, 23, 0.44); border-radius: 12px;',
+      extraCssText: 'box-shadow: 0 8px 24px rgba(2, 6, 23, 0.5); border-radius: 10px;',
       textStyle: { color: '#e2e8f0', fontSize: 12 },
       formatter: (params) => {
         const data = params?.data;
