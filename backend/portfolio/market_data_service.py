@@ -1483,16 +1483,30 @@ class MarketDataService:
                     output_field=FloatField(),
                 )
             )
-            .filter(matched_value__gte=min_threshold_vnd)
         )
 
-        today_local = timezone.localdate()
-        if window == 'session':
-            queryset = queryset.filter(trade_date=today_local)
-        elif window == '5d':
-            queryset = queryset.filter(trade_date__gte=today_local - timedelta(days=4))
-        else:
-            queryset = queryset.filter(trade_date=today_local)
+        # Push per-symbol threshold filtering down to SQL to avoid Python-side full scans.
+        symbol_threshold_filter = Q()
+        for symbol in symbols:
+            symbol_threshold_filter |= Q(
+                symbol=symbol,
+                matched_value__gte=_resolve_threshold_for_symbol(symbol),
+            )
+        queryset = queryset.filter(symbol_threshold_filter)
+
+        # Apply precise window bounds in SQL using (trade_date, trade_time) to avoid post-filter loops.
+        resolved_now_local = timezone.localtime(request_now)
+        window_start = self._window_start_datetime(window, now=request_now)
+        if window_start is not None:
+            window_start_local = timezone.localtime(window_start)
+            queryset = queryset.filter(
+                Q(trade_date__gt=window_start_local.date()) |
+                Q(trade_date=window_start_local.date(), trade_time__gte=window_start_local.time())
+            )
+        queryset = queryset.filter(
+            Q(trade_date__lt=resolved_now_local.date()) |
+            Q(trade_date=resolved_now_local.date(), trade_time__lte=resolved_now_local.time())
+        )
 
         if sort == 'matched_value':
             if cursor_payload is not None:
@@ -1518,20 +1532,9 @@ class MarketDataService:
                 )
             queryset = queryset.order_by('-trade_date', '-trade_time', '-id')
 
-        # Stream rows and stop as soon as we have limit + 1 valid records.
-        # This prevents scanning/loading the whole queryset on high-volume sessions.
-        rows = []
-        for row in queryset.iterator(chunk_size=1000):
-            if (
-                float(getattr(row, 'matched_value', 0) or 0.0) >= _resolve_threshold_for_symbol(getattr(row, 'symbol', ''))
-                and self._is_tick_row_in_window(row, window, now=request_now)
-            ):
-                rows.append(row)
-                if len(rows) > limit:
-                    break
-
-        has_more = len(rows) > limit
-        page_rows = rows[:limit]
+        page_rows_with_probe = list(queryset[:limit + 1])
+        has_more = len(page_rows_with_probe) > limit
+        page_rows = page_rows_with_probe[:limit]
 
         if not page_rows:
             try:
