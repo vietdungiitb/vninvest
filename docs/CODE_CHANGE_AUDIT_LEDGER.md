@@ -1,5 +1,44 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17al - System hardening implementation (Phase 1-4)
+
+Muc tieu:
+- Giam giat/lag tren UI realtime bang co che RAF throttling cho ticker updates.
+- Chuyen mac dinh AI advisory sang async-first de han che nguy co web worker bi block va 504.
+- Toi uu xu ly whale history theo huong SQL loc + Pandas vectorization.
+- Dong bo tham so trim Redis streams theo cau hinh trung tam trong settings.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Them `pendingTickerUpdatesRef` + `tickerRafIdRef` de gom nhieu `ticker_update` trong cung frame.
+  - Them `flushTickerUpdates` va `applyTickerUpdateThrottled`.
+  - Chuyen websocket `ticker_update` handler sang duong RAF-throttled (tranh setState moi message).
+  - Them cleanup `cancelAnimationFrame` khi unmount.
+- `backend/config/settings.py`:
+  - Dat mac dinh `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE=False`.
+  - Dat mac dinh `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=False`.
+- `backend/portfolio/tasks_maintenance.py`:
+  - `trim_streams` doc `STREAM_MAX_LEN` + `STREAM_MAX_LEN_HARD_CAP` tu settings va clamp theo hard-cap.
+- `backend/portfolio/views_dark_money_history.py`:
+  - Them Pandas de vector hoa side inference va aggregate whale signals.
+  - Chuyen loop Python row-by-row sang DataFrame groupby/agg cho khoi whale history.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useRealtimeFeedCore.js
+- backend/config/settings.py
+- backend/portfolio/tasks_maintenance.py
+- backend/portfolio/views_dark_money_history.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Frontend production build: pass (`npm run build`, compiled successfully).
+- `manage.py check`: pass.
+- Test focused backend: `portfolio.tests.test_pr3_first_create_threshold` + `portfolio.tests.test_celery_task_names`: 11/11 pass.
+
+Rui ro con lai / follow-up:
+- Chua co test unit rieng cho vectorized block trong `views_dark_money_history.py`; can bo sung regression tests cho side inference theo trade_date.
+
 ## Entry 2026-04-17ak - SQL selection + Pandas vectorization for realtime hot paths
 
 Muc tieu:

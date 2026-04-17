@@ -14,6 +14,7 @@ import calendar
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 
+import pandas as pd
 from django.db.models import Avg, Case, Count, ExpressionWrapper, F, FloatField, Max, Min, Q, Sum, When
 from django.db.models.functions import TruncDate, TruncHour, TruncMinute, TruncWeek
 from django.utils import timezone
@@ -490,64 +491,68 @@ def dark_money_history_api(request, symbol: str):
             .order_by('trade_date', 'trade_time', 'matched_value')
         )
 
-        # Aggregate by (trade_date, inferred_side). We infer side from price movement
-        # when source side quality is poor (e.g. mostly SELL/UNKNOWN).
-        grouped = defaultdict(lambda: {
-            'total_value': 0.0,
-            'total_volume': 0.0,
-            'count': 0,
-            'price_volume_sum': 0.0,
-        })
-        reference_price_by_date = _build_reference_price_by_trade_date(
-            normalized_symbol,
-            [row.get('trade_date') for row in whale_ticks_qs],
-        )
-        prev_price_by_date = dict(reference_price_by_date)
-        last_side_by_date = {}
+        # Vectorized side inference + aggregation (SQL to Pandas)
+        if whale_ticks_qs:
+            frame = pd.DataFrame.from_records(whale_ticks_qs)
+            frame['price'] = pd.to_numeric(frame.get('price'), errors='coerce').fillna(0.0).astype(float)
+            frame['volume'] = pd.to_numeric(frame.get('volume'), errors='coerce').fillna(0.0).astype(float).clip(lower=0.0)
+            frame['matched_value'] = pd.to_numeric(frame.get('matched_value'), errors='coerce').fillna(0.0).astype(float)
+            frame = frame[frame['trade_date'].notna()]
 
-        for row in whale_ticks_qs:
-            trade_date = row.get('trade_date')
-            if not trade_date:
-                continue
+            if not frame.empty:
+                reference_price_by_date = _build_reference_price_by_trade_date(
+                    normalized_symbol,
+                    frame['trade_date'].dropna().tolist(),
+                )
 
-            price = float(row.get('price') or 0)
-            volume = float(row.get('volume') or 0)
-            matched_value = float(row.get('matched_value') or 0)
-            if matched_value < whale_threshold_vnd:
-                continue
+                frame['stored_side'] = frame['side'].map(_normalize_tick_side)
+                frame['prev_price'] = frame.groupby('trade_date')['price'].shift(1)
+                frame['ref_price'] = frame['trade_date'].map(reference_price_by_date)
+                frame['prev_price'] = frame['prev_price'].fillna(frame['ref_price'])
 
-            stored_side = _normalize_tick_side(row.get('side'))
-            prev_price = prev_price_by_date.get(trade_date)
+                frame['inferred_side'] = frame['stored_side']
+                frame.loc[frame['price'] > frame['prev_price'], 'inferred_side'] = 'buy'
+                frame.loc[frame['price'] < frame['prev_price'], 'inferred_side'] = 'sell'
 
-            if prev_price is None:
-                inferred_side = stored_side
-            elif price > prev_price:
-                inferred_side = 'buy'
-            elif price < prev_price:
-                inferred_side = 'sell'
+                # Preserve prior inferred side on unchanged price before falling back to stored side.
+                unchanged_mask = frame['price'] == frame['prev_price']
+                if unchanged_mask.any():
+                    forward_side = frame.groupby('trade_date')['inferred_side'].ffill()
+                    frame.loc[unchanged_mask, 'inferred_side'] = forward_side.loc[unchanged_mask].fillna(
+                        frame.loc[unchanged_mask, 'stored_side']
+                    )
+
+                frame = frame[frame['inferred_side'].isin(['buy', 'sell'])]
+
+                if not frame.empty:
+                    grouped = (
+                        frame.assign(price_volume_sum=frame['price'] * frame['volume'])
+                        .groupby(['trade_date', 'inferred_side'], as_index=False)
+                        .agg(
+                            total_value=('matched_value', 'sum'),
+                            total_volume=('volume', 'sum'),
+                            count=('matched_value', 'size'),
+                            price_volume_sum=('price_volume_sum', 'sum'),
+                        )
+                        .sort_values(['trade_date', 'inferred_side'])
+                    )
+                else:
+                    grouped = pd.DataFrame()
             else:
-                inferred_side = last_side_by_date.get(trade_date) or stored_side
+                grouped = pd.DataFrame()
+        else:
+            grouped = pd.DataFrame()
 
-            prev_price_by_date[trade_date] = price
-            if inferred_side in {'buy', 'sell'}:
-                last_side_by_date[trade_date] = inferred_side
-            else:
+        for agg in grouped.to_dict('records') if not grouped.empty else []:
+            trade_date = agg.get('trade_date')
+            side = agg.get('inferred_side')
+            total_value = float(agg.get('total_value') or 0)
+            total_volume = float(agg.get('total_volume') or 0)
+            count = int(agg.get('count') or 0)
+            if total_value < whale_threshold_vnd or count <= 0 or trade_date is None:
                 continue
 
-            bucket = grouped[(trade_date, inferred_side)]
-            bucket['total_value'] += matched_value
-            bucket['total_volume'] += max(volume, 0.0)
-            bucket['count'] += 1
-            bucket['price_volume_sum'] += price * max(volume, 0.0)
-
-        for (trade_date, side), agg in sorted(grouped.items(), key=lambda item: (item[0][0], item[0][1])):
-            total_value = float(agg['total_value'] or 0)
-            total_volume = float(agg['total_volume'] or 0)
-            count = int(agg['count'] or 0)
-            if total_value < whale_threshold_vnd or count <= 0:
-                continue
-
-            avg_price_raw = (agg['price_volume_sum'] / total_volume) if total_volume > 0 else 0.0
+            avg_price_raw = (float(agg.get('price_volume_sum') or 0.0) / total_volume) if total_volume > 0 else 0.0
             avg_price = _normalize_chart_quote_price(
                 avg_price_raw,
                 source=PriceSource.INTRADAY_TICK,

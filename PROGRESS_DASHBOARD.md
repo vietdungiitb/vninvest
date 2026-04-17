@@ -105,6 +105,14 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### System Hardening Implementation (2026-04-17)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - them RAF throttling cho ticker updates: pending buffer + requestAnimationFrame flush + cleanup unmount)
+- backend/config/settings.py (MODIFIED - doi mac dinh stock advisory sang async-first: disable force sync first create + disable sync fallback)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - trim_streams dong bo STREAM_MAX_LEN voi STREAM_MAX_LEN_HARD_CAP tu settings trung tam)
+- backend/portfolio/views_dark_money_history.py (MODIFIED - vector hoa whale side inference + aggregate bang Pandas DataFrame/groupby)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### SQL + Pandas Optimization (2026-04-17)
 - backend/portfolio/order_flow.py (MODIFIED - vector hoa CVD/tick-rate/size-distribution; SQL filter + .values projection cho tick window)
 - backend/portfolio/views_ai_advisory_session.py (MODIFIED - VWAP benchmark enrichment chuyen sang SQL values + pandas)

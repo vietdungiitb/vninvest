@@ -103,7 +103,10 @@ def trim_streams(self) -> dict:
     from portfolio import tasks as tasks_facade
     from portfolio.realtime.tick_producer import TickProducer
 
-    max_len = getattr(settings, "STREAM_MAX_LEN", 50_000)
+    max_len = int(getattr(settings, "STREAM_MAX_LEN", 10_000))
+    hard_cap = int(getattr(settings, "STREAM_MAX_LEN_HARD_CAP", max_len))
+    if hard_cap > 0:
+        max_len = min(max_len, hard_cap)
     symbols = tasks_facade.collect_symbols_for_user(user_id=None)
     if not symbols:
         return {"status": "ok", "trimmed": 0}

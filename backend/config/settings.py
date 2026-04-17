@@ -648,8 +648,9 @@ WHALE_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("WHALE_ADVISORY_SYNC_FALLB
 # Stock workspace AI advisory session:
 # - force sync create on first session call to avoid queue-only bootstrap.
 # - keep sync fallback when queue worker is temporarily unavailable.
-STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE = os.getenv("STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE", "True").lower() == "true"
-STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER", "True").lower() == "true"
+# Default async-first to prevent web worker blocking and 504 timeouts.
+STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE = os.getenv("STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE", "False").lower() == "true"
+STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER = os.getenv("STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER", "False").lower() == "true"
 HOLISTIC_ADVISORY_V1_ENABLED = os.getenv("HOLISTIC_ADVISORY_V1_ENABLED", "True").lower() == "true"
 HOLISTIC_ADVISORY_V1_COHORT_MODE = os.getenv("HOLISTIC_ADVISORY_V1_COHORT_MODE", "all").strip().lower()
 HOLISTIC_ADVISORY_V1_COHORT_USERNAMES = [
