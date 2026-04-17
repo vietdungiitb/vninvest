@@ -68,9 +68,11 @@ export default function Dashboard() {
 
   const {
     readAlertIds,
+    criticalSoundEnabled,
     markAlertAsRead,
     isMutedSymbol,
     muteSymbolFor30m,
+    toggleCriticalSound,
   } = usePersistentAlertState();
 
   const {
@@ -342,6 +344,10 @@ export default function Dashboard() {
             readAlertIds={readAlertIds}
             markAlertAsRead={markAlertAsRead}
             muteSymbolFor30m={muteSymbolFor30m}
+            severityFilter={severityFilter}
+            setSeverityFilter={setSeverityFilter}
+            criticalSoundEnabled={criticalSoundEnabled}
+            toggleCriticalSound={toggleCriticalSound}
             currentUnifiedPage={currentUnifiedPage}
             hasPreviousUnifiedPage={hasPreviousUnifiedPage}
             backendUnifiedHasMore={backendUnifiedHasMore}

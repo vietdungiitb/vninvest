@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17w - Khoi phuc tab Cau hinh trong UI V2 (giong V1)
+
+Muc tieu:
+- Khoi phuc tab `Cau hinh` bi mat trong V2 de nguoi dung gom toan bo control alert vao mot noi.
+- Dam bao day du 4 nhom theo yeu cau: Loc theo nguon, Pham vi hien thi, Loc theo muc do, Chinh sach toast nghiem trong.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Them tab switch `Tin hieu nong` / `Cau hinh` ngay trong panel Alert Center.
+  - Tao workspace `Cau hinh` voi day du controls:
+    - `Loc theo nguon` (Tat ca, Whale, Dark Flow, Bien dong gia, Quote cu).
+    - `Pham vi hien thi` (Tat ca, Chi holdings, Chi watchlist).
+    - `Loc theo muc do` (Tat ca, Nghiem trong, Cao, Trung binh, Thap, Chi nghiem trong, Tu Cao+, Tu Trung binh+).
+    - `Chinh sach toast nghiem trong` (chip policy + nut Bat/Tat am).
+  - Giu tab `Tin hieu nong` cho feed/pagination hien co.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Noi them props `severityFilter`, `setSeverityFilter`, `criticalSoundEnabled`, `toggleCriticalSound` vao `UnifiedAlertCenter`.
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac file frontend vua sua: khong co loi.
+
 ## Entry 2026-04-17v - Layout alignment theo mockup (status panel right column + compact strip + page-size)
 
 Muc tieu:

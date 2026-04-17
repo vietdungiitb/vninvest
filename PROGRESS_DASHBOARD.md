@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI V2 - Khoi phuc tab Cau hinh (2026-04-17)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - them tab Tin hieu nong/Cau hinh; gom day du bo loc theo nguon, pham vi hien thi, muc do va chinh sach toast nghiem trong)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - truyen severity filter + sound policy controls vao UnifiedAlertCenter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 Layout Alignment Theo Mockup (2026-04-17)
 - frontend/src/pages/Dashboard.jsx (MODIFIED - heatmap full row, panel Trang thai danh muc dua xuong cot phai duoi Phan bo danh muc, thu gon tieu de)
 - frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - thu gon thanh canh bao hop nhat theo thiet ke compact)
