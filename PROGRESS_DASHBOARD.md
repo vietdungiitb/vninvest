@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### DRF Throttle Rate Parser Hardening (2026-04-17)
+- backend/config/settings.py (MODIFIED - harden `_get_throttle_rate` de normalize/fallback an toan cho env throttle sai format)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### OpenCore DPI Fallback Safety + Form Accessibility Cleanup (2026-04-17)
 - backend/portfolio/opencore_dpi.py (MODIFIED - harden default license creation bang get_or_create cho plan free, tranh DPIPlan.DoesNotExist crash)
 - backend/portfolio/opencore_analytics.py (MODIFIED - harden quota tracker + fail-safe analytics tracking de tranh 500 do side-effect)

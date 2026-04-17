@@ -1,5 +1,37 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17h - DRF throttle-rate parser hardening to prevent malformed env 500
+
+Muc tieu:
+- Chan triet de loi 500 do throttle rate env sai format (`ValueError` trong DRF ScopedRateThrottle parse).
+
+Trieu chung runtime:
+- API realtime co the tra 500 khi mot bien env throttle duoc set sai dinh dang (vi du chi co so `120` hoac chuoi loi co nhieu dau `/`).
+
+Nguyen nhan goc:
+- DRF yeu cau rate theo format `num/period` va parse bang split `/`.
+- Cac gia tri env khong dung format co the gay unpack/parse exception trong runtime.
+
+Danh sach tep da sua:
+- backend/config/settings.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung sua code:
+- `backend/config/settings.py`:
+  - Hardening `_get_throttle_rate(...)` voi cac guard:
+    - Empty/non-numeric -> fallback default.
+    - Bare number (`120`) -> auto normalize `120/minute`.
+    - Missing period (`120/`) -> auto normalize `120/minute`.
+    - Multiple slash (`120/minute/extra`) -> fallback default.
+    - Unknown period prefix -> fallback default.
+  - Dam bao output cuoi cung luon an toan cho DRF parse-rate.
+
+Ket qua verify:
+- `get_errors` cho `backend/config/settings.py`: khong co loi.
+
+---
+
 ## Entry 2026-04-17g - OpenCore DPI plan safety hardening + search/filter accessibility cleanup
 
 Muc tieu:

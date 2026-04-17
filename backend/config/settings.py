@@ -187,6 +187,46 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+def _get_throttle_rate(env_var: str, default: str) -> str:
+    """Normalize throttle rate into DRF-safe ``num/period`` format.
+
+    Defensive cases handled:
+    - Empty / non-numeric values -> fallback to default
+    - Bare number like ``120`` -> auto-normalize to ``120/minute``
+    - Missing period like ``120/`` -> auto-normalize to ``120/minute``
+    - Multiple slashes like ``120/minute/extra`` -> fallback to default
+    - Unknown period prefix -> fallback to default
+    """
+    val = str(os.getenv(env_var, "")).strip()
+    if not val:
+        return default
+
+    # Bare integer is auto-upgraded to per-minute to keep backward compatibility.
+    if val.isdigit():
+        amount = int(val)
+        return f"{amount}/minute" if amount > 0 else default
+
+    # DRF parse_rate expects exactly one slash: "num/period".
+    if val.count("/") != 1:
+        return default
+
+    amount_raw, period_raw = [part.strip() for part in val.split("/", 1)]
+    if not amount_raw.isdigit():
+        return default
+
+    amount = int(amount_raw)
+    if amount <= 0:
+        return default
+
+    if not period_raw:
+        return f"{amount}/minute"
+
+    # DRF maps duration by the first character of period: s/m/h/d.
+    if period_raw[0].lower() not in {"s", "m", "h", "d"}:
+        return default
+
+    return f"{amount}/{period_raw}"
+
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -203,20 +243,20 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'realtime': os.getenv('DRF_REALTIME_RATE', '60/minute'),
-        'realtime_ticker': os.getenv('DRF_REALTIME_TICKER_RATE', '120/minute'),
-        'realtime_intraday': os.getenv('DRF_REALTIME_INTRADAY_RATE', '90/minute'),
-        'realtime_price_board': os.getenv('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
-        'realtime_breadth': os.getenv('DRF_REALTIME_BREADTH_RATE', '90/minute'),
-        'realtime_whale_feed': os.getenv('DRF_REALTIME_WHALE_FEED_RATE', '90/minute'),
-        'realtime_whale_aggregate': os.getenv('DRF_REALTIME_WHALE_AGG_RATE', '120/minute'),
-        'realtime_rvol': os.getenv('DRF_REALTIME_RVOL_RATE', '60/minute'),
-        'realtime_chart': os.getenv('DRF_REALTIME_CHART_RATE', '90/minute'),
-        'realtime_ops_metrics': os.getenv('DRF_REALTIME_OPS_METRICS_RATE', '30/minute'),
+        'realtime': _get_throttle_rate('DRF_REALTIME_RATE', '60/minute'),
+        'realtime_ticker': _get_throttle_rate('DRF_REALTIME_TICKER_RATE', '120/minute'),
+        'realtime_intraday': _get_throttle_rate('DRF_REALTIME_INTRADAY_RATE', '90/minute'),
+        'realtime_price_board': _get_throttle_rate('DRF_REALTIME_PRICE_BOARD_RATE', '120/minute'),
+        'realtime_breadth': _get_throttle_rate('DRF_REALTIME_BREADTH_RATE', '90/minute'),
+        'realtime_whale_feed': _get_throttle_rate('DRF_REALTIME_WHALE_FEED_RATE', '90/minute'),
+        'realtime_whale_aggregate': _get_throttle_rate('DRF_REALTIME_WHALE_AGG_RATE', '120/minute'),
+        'realtime_rvol': _get_throttle_rate('DRF_REALTIME_RVOL_RATE', '60/minute'),
+        'realtime_chart': _get_throttle_rate('DRF_REALTIME_CHART_RATE', '90/minute'),
+        'realtime_ops_metrics': _get_throttle_rate('DRF_REALTIME_OPS_METRICS_RATE', '30/minute'),
         'auth': '10/minute',
-        'auth_password_reset_request': os.getenv('DRF_AUTH_PASSWORD_RESET_REQUEST_RATE', '5/hour'),
-        'auth_password_reset_confirm': os.getenv('DRF_AUTH_PASSWORD_RESET_CONFIRM_RATE', '10/hour'),
-        'auth_resend_verification': os.getenv('DRF_AUTH_RESEND_VERIFICATION_RATE', '3/hour'),
+        'auth_password_reset_request': _get_throttle_rate('DRF_AUTH_PASSWORD_RESET_REQUEST_RATE', '5/hour'),
+        'auth_password_reset_confirm': _get_throttle_rate('DRF_AUTH_PASSWORD_RESET_CONFIRM_RATE', '10/hour'),
+        'auth_resend_verification': _get_throttle_rate('DRF_AUTH_RESEND_VERIFICATION_RATE', '3/hour'),
     },
 }
 
