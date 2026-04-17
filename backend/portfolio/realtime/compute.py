@@ -116,6 +116,62 @@ def build_ticker_payload(symbol: str, trades_df: pd.DataFrame, seq: int, contrac
     }
 
 
+def _compute_vwap_from_rows(rows: list[dict]) -> float:
+    weighted_sum = 0.0
+    total_volume = 0.0
+    for row in rows:
+        try:
+            price = float(row.get("price", 0) or 0)
+            volume = float(row.get("volume", 0) or 0)
+        except (TypeError, ValueError):
+            continue
+        if volume <= 0:
+            continue
+        weighted_sum += price * volume
+        total_volume += volume
+    if total_volume <= 0:
+        return 0.0
+    return float(weighted_sum / total_volume)
+
+
+def build_ticker_payload_native(symbol: str, rows: list[dict], seq: int, contract_version: str = "1.0") -> dict:
+    """Build ticker payload directly from native rows (without pandas DataFrame)."""
+    if not rows:
+        price = 0.0
+        volume = 0.0
+        vwap = 0.0
+    else:
+        last_row = rows[-1]
+        try:
+            price = float(last_row.get("price", 0) or 0)
+        except (TypeError, ValueError):
+            price = 0.0
+        volume = 0.0
+        for row in rows:
+            try:
+                volume += float(row.get("volume", 0) or 0)
+            except (TypeError, ValueError):
+                continue
+        vwap = _compute_vwap_from_rows(rows)
+
+    ts_iso = _iso_now()
+    return {
+        "event_type": "ticker_update",
+        "contract_version": contract_version,
+        "symbol": symbol.upper(),
+        "price": price,
+        "current_price": price,
+        "volume": volume,
+        "vwap": vwap,
+        "ts": ts_iso,
+        "last_date": ts_iso,
+        "freshness_seconds": 0,
+        "stale": False,
+        "source": "ws_stream",
+        "seq": seq,
+    }
+
+
 def detect_whale_signals(
     symbol: str,
     trades_df: pd.DataFrame,

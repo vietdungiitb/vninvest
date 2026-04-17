@@ -22,6 +22,7 @@ import redis
 from django.conf import settings
 from django.utils import timezone as dj_tz
 from portfolio.price_units import PriceSource, normalize_quote_price_to_canonical
+from portfolio.services_realtime_metrics import increment_realtime_metric, set_realtime_metric
 
 logger = logging.getLogger(__name__)
 
@@ -64,15 +65,97 @@ class TickConsumerBase:
         """Override trong subclass. messages = [(stream_id, fields), ...]"""
         raise NotImplementedError
 
+    def _claim_stale_pending(self, key: str) -> list[tuple[str, dict]]:
+        if not bool(getattr(settings, "REALTIME_STREAM_PENDING_RECLAIM_ENABLED", False)):
+            return []
+
+        idle_ms = max(int(getattr(settings, "STREAM_PENDING_RECLAIM_IDLE_MS", 60000)), 1000)
+        batch = max(int(getattr(settings, "STREAM_PENDING_RECLAIM_BATCH", 50)), 1)
+
+        try:
+            pending_entries = self.client.xpending_range(key, self.group_name, "-", "+", batch)
+        except Exception as exc:
+            logger.debug("Pending reclaim skipped for %s (%s): %s", key, self.group_name, exc)
+            increment_realtime_metric("realtime_stream_reclaim_errors_total", suffix=self.group_name)
+            return []
+
+        reclaim_ids: list[str] = []
+        for entry in pending_entries or []:
+            raw_id = entry.get("message_id") or entry.get(b"message_id")
+            raw_idle = entry.get("time_since_delivered") or entry.get(b"time_since_delivered")
+
+            if isinstance(raw_id, bytes):
+                msg_id = raw_id.decode(errors="ignore")
+            else:
+                msg_id = str(raw_id or "")
+
+            try:
+                idle = int(raw_idle or 0)
+            except (TypeError, ValueError):
+                idle = 0
+
+            if msg_id and idle >= idle_ms:
+                reclaim_ids.append(msg_id)
+
+        if not reclaim_ids:
+            return []
+
+        try:
+            claimed = self.client.xclaim(
+                key,
+                self.group_name,
+                self.consumer_name,
+                min_idle_time=idle_ms,
+                message_ids=reclaim_ids,
+            )
+            if claimed:
+                increment_realtime_metric(
+                    "realtime_stream_reclaim_total",
+                    suffix=self.group_name,
+                    amount=len(claimed),
+                )
+                logger.info(
+                    "Consumer %s reclaimed %d stale pending entries for %s",
+                    self.consumer_name,
+                    len(claimed),
+                    key,
+                )
+            return claimed or []
+        except Exception as exc:
+            increment_realtime_metric("realtime_stream_reclaim_errors_total", suffix=self.group_name)
+            logger.warning("Pending reclaim failed for %s (%s): %s", key, self.group_name, exc)
+            return []
+
+    def _observe_pending_depth(self, key: str) -> int:
+        pending_depth = 0
+        try:
+            summary = self.client.xpending(key, self.group_name)
+            if isinstance(summary, dict):
+                pending_depth = int(summary.get("pending") or summary.get(b"pending") or 0)
+            elif isinstance(summary, (list, tuple)) and len(summary) > 0:
+                pending_depth = int(summary[0] or 0)
+        except Exception as exc:
+            logger.debug("Pending depth read failed for %s (%s): %s", key, self.group_name, exc)
+
+        set_realtime_metric("realtime_stream_pending_depth", pending_depth, suffix=self.group_name)
+        return pending_depth
+
     def run_once(self, symbol: str) -> int:
         """Đọc 1 batch và xử lý. Trả về số message đã xử lý."""
         key = self.stream_key(symbol)
         try:
-            # Đọc pending trước (bị crash lần trước chưa ACK)
-            pending = self.client.xreadgroup(
-                self.group_name, self.consumer_name,
-                {key: "0"}, count=self._batch_size,
-            )
+            self._observe_pending_depth(key)
+
+            # Reclaim stale pending trước nếu bật hardening flag.
+            reclaimed_pending = self._claim_stale_pending(key)
+
+            # Đọc pending trước (bị crash lần trước chưa ACK) nếu chưa reclaim.
+            pending = []
+            if not reclaimed_pending:
+                pending = self.client.xreadgroup(
+                    self.group_name, self.consumer_name,
+                    {key: "0"}, count=self._batch_size,
+                )
             # Sau đó đọc mới
             new_msgs = self.client.xreadgroup(
                 self.group_name, self.consumer_name,
@@ -80,6 +163,7 @@ class TickConsumerBase:
             )
 
             all_entries: list[tuple[str, dict]] = []
+            all_entries.extend(reclaimed_pending or [])
             for stream_result in (pending or []) + (new_msgs or []):
                 _key, messages = stream_result
                 all_entries.extend(messages)
@@ -90,7 +174,7 @@ class TickConsumerBase:
             self.process_batch(symbol, all_entries)
 
             # ACK
-            ids = [sid for sid, _ in all_entries]
+            ids = list(dict.fromkeys([sid for sid, _ in all_entries]))
             self.client.xack(key, self.group_name, *ids)
             return len(ids)
 
@@ -197,10 +281,9 @@ class WsBroadcastConsumer(TickConsumerBase):
     consumer_name = "ws-broadcaster-1"
 
     def process_batch(self, symbol: str, messages: list[tuple[str, dict]]) -> None:
-        import pandas as pd
         from asgiref.sync import async_to_sync
         from channels.layers import get_channel_layer
-        from portfolio.realtime.compute import build_ticker_payload
+        from portfolio.realtime.compute import build_ticker_payload, build_ticker_payload_native
 
         rows = []
         for stream_id, fields in messages:
@@ -217,9 +300,14 @@ class WsBroadcastConsumer(TickConsumerBase):
         if not rows:
             return
 
-        df = pd.DataFrame(rows)
         seq = int(time.time() * 1000) % 2**31
-        payload = build_ticker_payload(symbol=symbol, trades_df=df, seq=seq)
+        if bool(getattr(settings, "REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED", False)):
+            payload = build_ticker_payload_native(symbol=symbol, rows=rows, seq=seq)
+        else:
+            import pandas as pd
+
+            df = pd.DataFrame(rows)
+            payload = build_ticker_payload(symbol=symbol, trades_df=df, seq=seq)
 
         channel_layer = get_channel_layer()
         if channel_layer is None:

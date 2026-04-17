@@ -60,7 +60,14 @@ def build_prefetch_health_snapshot():
     result["sample_cache_hits"] = sample_hits
     result["sample_cache_total"] = len(sample_symbols)
 
-    freshness_ok = result["freshness_seconds"] is None or result["freshness_seconds"] <= 90
+    policy = meta.get('policy') or {}
+    # Use effective_interval_seconds from policy if available, fallback to 90s.
+    # We allow a buffer (e.g., 2x interval or interval + 300s for long intervals) 
+    # to avoid false DEGRADED status during off-hours.
+    interval = int(policy.get('effective_interval_seconds') or 90)
+    threshold = max(interval * 2, 90) # At least 90s, or 2x the intended interval
+    
+    freshness_ok = result["freshness_seconds"] is None or result["freshness_seconds"] <= threshold
     query_enabled = bool((meta.get('policy') or {}).get('query_enabled', True))
     symbol_count = int(meta.get('symbols') or 0)
 

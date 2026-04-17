@@ -1,4 +1,4 @@
-﻿# docker-compose.dev.yml
+# docker-compose.dev.yml
 # Override file cho local dev testing.
 # Setup: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
 
@@ -66,6 +66,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    volumes:
+      - ./backend:/app
     command: ["/bin/sh", "/app/entrypoint.sh"]
     ports:
       - "8000:8000"
@@ -105,6 +107,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    volumes:
+      - ./backend:/app
     command: ["celery", "-A", "config", "worker", "-l", "info"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -136,6 +140,8 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    volumes:
+      - ./backend:/app
     command: ["celery", "-A", "config", "beat", "-l", "info"]
     extra_hosts:
       - "host.docker.internal:host-gateway"

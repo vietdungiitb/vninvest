@@ -1,14 +1,26 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from urllib.parse import parse_qs
 
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from django.conf import settings
 from django.contrib.auth.models import AnonymousUser, User
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework_simplejwt.tokens import AccessToken
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class WSAuthPrincipal:
+    id: int
+    username: str
+    plan: str = "free"
+    is_authenticated: bool = True
 
 
 class RealtimeConsumer(AsyncJsonWebsocketConsumer):
@@ -21,6 +33,8 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
                 return
 
             self.user = user
+            self.user_plan = await self._resolve_user_plan_for_connection()
+            self.user_plan_resolved_at = timezone.now().isoformat()
             self.symbol_groups: set[str] = set()
             self.user_alert_group = f"user_{self.user.id}_alerts"
             await self.channel_layer.group_add(self.user_alert_group, self.channel_name)
@@ -93,7 +107,10 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
         - pro: chỉ nhận ai_summary, loại bỏ ai_detail
         - premium/admin: nhận đầy đủ
         """
-        plan = await self._get_user_plan()
+        if getattr(settings, "REALTIME_WS_PLAN_CACHE_ENABLED", True):
+            plan = str(getattr(self, "user_plan", "free") or "free")
+        else:
+            plan = await self._get_user_plan()
         if plan not in ('pro', 'premium', 'admin'):
             return
         payload = dict(event['payload'])
@@ -117,11 +134,24 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
 
     @database_sync_to_async
     def _get_user_plan(self) -> str:
-        from portfolio.permissions import _get_plan
         user = getattr(self, 'user', None)
+        if hasattr(user, 'plan'):
+            return str(getattr(user, 'plan', 'free') or 'free')
         if not user or not user.is_authenticated:
             return 'free'
-        return _get_plan(user)
+        user_config = getattr(user, 'user_config', None)
+        if user_config and user_config.plan:
+            return str(user_config.plan).lower()
+        if user.is_superuser:
+            return 'admin'
+        return 'free'
+
+    async def _resolve_user_plan_for_connection(self) -> str:
+        if getattr(settings, "REALTIME_WS_PLAN_CACHE_ENABLED", True):
+            plan = str(getattr(self.user, "plan", "") or "").strip().lower()
+            if plan:
+                return plan
+        return await self._get_user_plan()
 
     async def heartbeat(self, event):
         await self.send_json(event["payload"])
@@ -153,9 +183,53 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             user_id = access_token.get("user_id")
             if not user_id:
                 return AnonymousUser()
+
+            if getattr(settings, "REALTIME_WS_AUTH_CACHE_ENABLED", True):
+                cache_key = f"ws_auth:{int(user_id)}"
+                snapshot = await self._cache_get(cache_key)
+                if not snapshot:
+                    snapshot = await self._build_auth_snapshot(int(user_id))
+                    if not snapshot:
+                        return AnonymousUser()
+                    cache_ttl = max(int(getattr(settings, "REALTIME_WS_AUTH_CACHE_TTL_SECONDS", 120)), 1)
+                    await self._cache_set(cache_key, snapshot, cache_ttl)
+                return WSAuthPrincipal(
+                    id=int(snapshot["user_id"]),
+                    username=str(snapshot.get("username", "")),
+                    plan=str(snapshot.get("plan", "free") or "free").lower(),
+                )
+
             return await self._get_user(user_id)
         except Exception:
             return AnonymousUser()
+
+    @database_sync_to_async
+    def _build_auth_snapshot(self, user_id: int):
+        try:
+            user = User.objects.select_related("user_config").get(pk=user_id)
+        except User.DoesNotExist:
+            return None
+
+        plan = "free"
+        user_config = getattr(user, "user_config", None)
+        if user_config and user_config.plan:
+            plan = str(user_config.plan).lower()
+        elif user.is_superuser:
+            plan = "admin"
+
+        return {
+            "user_id": user.id,
+            "username": user.username,
+            "plan": plan,
+        }
+
+    @database_sync_to_async
+    def _cache_get(self, key: str):
+        return cache.get(key)
+
+    @database_sync_to_async
+    def _cache_set(self, key: str, value, timeout: int):
+        cache.set(key, value, timeout=timeout)
 
     def _get_query_token(self) -> str | None:
         query_string = self.scope.get("query_string", b"").decode()
