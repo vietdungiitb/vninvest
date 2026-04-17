@@ -7,6 +7,24 @@ import { useI18n } from '../context/LangContext';
  * Hiển thị tỷ trọng và biến động (heat) của các mã trong danh mục.
  * Hỗ trợ chuyển đổi mượt mà giữa Treemap và Sunburst (Hierarchical).
  */
+
+// Stable references outside component — prevents useMemo from recomputing on every render
+const HEAT_SCALE_COLORS = ['#7f1d1d', '#be123c', '#fca5a5', '#475569', '#86efac', '#22c55e', '#166534'];
+const PIECEWISE_VISUAL_MAP = {
+  show: false,
+  type: 'piecewise',
+  dimension: 1,
+  pieces: [
+    { lt: -5, color: '#7f1d1d' },
+    { gte: -5, lt: -2, color: '#be123c' },
+    { gte: -2, lt: 0, color: '#fca5a5' },
+    { gte: 0, lte: 0, color: '#475569' },
+    { gt: 0, lte: 2, color: '#86efac' },
+    { gt: 2, lte: 5, color: '#22c55e' },
+    { gt: 5, color: '#166534' },
+  ],
+};
+
 export default function PortfolioHeatmap({ holdings, title }) {
   const { t } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
@@ -168,21 +186,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
     return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND}`;
   }, [maxLeafSize]);
 
-  const heatScaleColors = ['#7f1d1d', '#be123c', '#fca5a5', '#475569', '#86efac', '#22c55e', '#166534'];
-  const piecewiseVisualMap = {
-    show: false,
-    type: 'piecewise',
-    dimension: 1,
-    pieces: [
-      { lt: -5, color: '#7f1d1d' },
-      { gte: -5, lt: -2, color: '#be123c' },
-      { gte: -2, lt: 0, color: '#fca5a5' },
-      { gte: 0, lte: 0, color: '#475569' },
-      { gt: 0, lte: 2, color: '#86efac' },
-      { gt: 2, lte: 5, color: '#22c55e' },
-      { gt: 5, color: '#166534' },
-    ],
-  };
+  // Use stable module-level constants
+  const heatScaleColors = HEAT_SCALE_COLORS;
+  const piecewiseVisualMap = PIECEWISE_VISUAL_MAP;
 
   const buildTooltipSparkline = useCallback((values, strokeColor) => {
     const points = (Array.isArray(values) ? values : [])
@@ -548,8 +554,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
         <ReactECharts
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
-          notMerge={true}
-          lazyUpdate={false}
+          notMerge={false}
+          lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
         />
         
