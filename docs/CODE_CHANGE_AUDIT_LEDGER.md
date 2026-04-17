@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17x - Pixel-level refine tab Cau hinh theo mockup
+
+Muc tieu:
+- Tinh chinh giao dien tab `Cau hinh` de khop hon voi mockup nguoi dung cung cap.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Doi hien thi unread sang text vang goc phai (thay vi badge vien day).
+  - Chinh lai khung nen, spacing va typography cua cac nhom filter trong tab `Cau hinh`.
+  - Tang kich thuoc chip controls (`px/py/text`) de giong style V1 trong mockup.
+  - Dong bo tone mau active/inactive cua chips theo layout V2 hien tai.
+
+Danh sach tep cap nhat:
+- frontend/src/components/UnifiedAlertCenter.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file vua sua: khong co loi.
+
 ## Entry 2026-04-17w - Khoi phuc tab Cau hinh trong UI V2 (giong V1)
 
 Muc tieu:
