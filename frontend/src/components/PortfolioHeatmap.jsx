@@ -236,6 +236,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
       borderColor: 'rgba(71, 85, 105, 0.72)',
       borderWidth: 1,
       confine: true,
+      triggerOn: 'mousemove',
+      hideDelay: 400,
+      transitionDuration: 0,
+      enterable: false,
       extraCssText: 'backdrop-filter: blur(11px); box-shadow: 0 14px 38px rgba(2, 6, 23, 0.44); border-radius: 12px;',
       textStyle: { color: '#e2e8f0', fontSize: 12 },
       formatter: (params) => {
@@ -300,9 +304,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (viewMode === 'sunburst') {
       return {
         backgroundColor: 'transparent',
-        animationDuration: 350,
-        animationDurationUpdate: 900,
-        animationEasingUpdate: 'cubicInOut',
+        animation: false,
+        animationDuration: 0,
+        animationDurationUpdate: 0,
+        animationEasingUpdate: 'linear',
         tooltip,
         visualMap: piecewiseVisualMap,
         series: [
@@ -313,8 +318,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
             sort: 'desc',
             radius: ['7%', '92%'],
             nodeClick: false,
-            universalTransition: true,
-            emphasis: { focus: 'ancestor' },
+            universalTransition: false,
+            stateAnimation: { duration: 0 },
+            emphasis: { disabled: true },
             itemStyle: {
               borderColor: 'rgba(2, 6, 23, 0.78)',
               borderWidth: 1.5,
@@ -383,9 +389,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     return {
       backgroundColor: 'transparent',
-      animationDuration: 350,
-      animationDurationUpdate: 900,
-      animationEasingUpdate: 'cubicInOut',
+      animation: false,
+      animationDuration: 0,
+      animationDurationUpdate: 0,
+      animationEasingUpdate: 'linear',
       tooltip,
       visualMap: piecewiseVisualMap,
       series: [
@@ -395,7 +402,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
           data: hierarchicalData,
           roam: false,
           nodeClick: false,
-          universalTransition: true,
+          universalTransition: false,
+          stateAnimation: { duration: 0 },
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.9,
@@ -403,21 +411,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
-            focus: 'descendant',
-            itemStyle: {
-              borderColor: '#e2e8f0',
-              borderWidth: 2,
-              shadowBlur: 20,
-              shadowColor: 'rgba(15, 23, 42, 0.45)',
-            },
-            label: {
-              show: true,
-            },
-          },
-          blur: {
-            itemStyle: {
-              opacity: 0.86,
-            },
+            disabled: true,
           },
           label: {
             show: true,

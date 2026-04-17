@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Runtime Incident Hotfix - ECharts colorStops null (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tat transition/state animation gay crash `colorStops`, harden treemap/sunburst rendering)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Runtime Hotfix - lastEventAt ReferenceError (2026-04-18)
 - frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - sua bien tham chieu `lastEventAt` con sot thanh `_lastEventAt` de khac phuc crash runtime)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18c)

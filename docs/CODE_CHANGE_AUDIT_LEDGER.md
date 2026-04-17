@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18d - Runtime incident hotfix: ECharts `colorStops` null crash
+
+Muc tieu:
+- Khac phuc loi runtime: `TypeError: Cannot read properties of null (reading 'colorStops')` tren heatmap.
+
+Chan doan ky thuat:
+- Loi phat sinh trong luong state transition / keyframe animation cua ECharts (`Animator.addKeyframe`), khi noi suy mau trong qua trinh doi state giua Treemap/Sunburst.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Tat `animation` va dat duration update = 0 cho ca Treemap va Sunburst.
+  - Tat `universalTransition` cho ca 2 series.
+  - Dat `stateAnimation.duration = 0`.
+  - Vo hieu hoa `emphasis` transitions (`emphasis.disabled = true`).
+  - Loai bo `blur` state tren Treemap de tranh state interpolation phat sinh color object null.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren heatmap component: khong co loi.
+
 ## Entry 2026-04-18c - Runtime hotfix ReferenceError lastEventAt (Unified Alerts)
 
 Muc tieu:
