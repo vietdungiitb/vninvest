@@ -1,5 +1,42 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17r - Phase 3B whale scoring tuning (canary profile v2)
+
+Muc tieu:
+- Trien khai tuning scoring theo huong giam false-critical nhung van an toan rollout.
+- Dam bao rollback nhanh qua feature flag, khong pha vo payload contract.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/whale_scoring.py`:
+  - Them profile scoring `v1`/`v2` (config-driven) voi `WHALE_SCORE_PROFILE`.
+  - v2 tuning:
+    - Rebalance weights: size_impact 0.64, aggression_bonus 0.10, concentration_ratio 0.26.
+    - Aggression bonus theo size_ratio de giam score cho near-threshold events.
+    - Dieu chinh concentration fallback denominator tu 2.0 -> 3.0.
+    - Severity bands stricter cho extreme (`>=82`).
+  - Mac dinh van giu profile `v1` de tranh thay doi hanh vi production ngoai y muon.
+- `backend/config/settings.py`:
+  - Bo sung setting `WHALE_SCORE_PROFILE` (env-driven, default `v1`).
+- `backend/portfolio/tests/test_whale_scoring.py`:
+  - Cap nhat assertion event_id theo contract moi sau Phase 2.
+  - Bo sung test profile v1/v2 va test v2 giam near-threshold boost.
+- `docs/AUDIT_WHALE_SCORING_TUNING_RECOMMENDATIONS_20260417.md`:
+  - Bao cao khuyen nghi tuning va ke hoach canary rollout.
+
+Danh sach tep cap nhat:
+- backend/portfolio/whale_scoring.py
+- backend/config/settings.py
+- backend/portfolio/tests/test_whale_scoring.py
+- docs/AUDIT_WHALE_SCORING_TUNING_RECOMMENDATIONS_20260417.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac tep vua sua: khong co loi.
+- Chay test:
+  - `python backend/manage.py test portfolio.tests.test_whale_scoring -v 2`
+  - Ket qua: `OK` (7 tests).
+
 ## Entry 2026-04-17q - Phase 3A.1 UI polish kickoff (pixel-perfect baseline)
 
 Muc tieu:

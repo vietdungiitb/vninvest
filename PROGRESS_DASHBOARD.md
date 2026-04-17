@@ -105,6 +105,14 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Phase 3B - Whale Scoring Tuning (Canary Profile v2) (2026-04-17)
+- backend/portfolio/whale_scoring.py (MODIFIED - them scoring profile v1/v2, tuning aggression/concentration fallback, stricter extreme band cho v2)
+- backend/config/settings.py (MODIFIED - them setting `WHALE_SCORE_PROFILE`, default v1)
+- backend/portfolio/tests/test_whale_scoring.py (MODIFIED - cap nhat event_id assertion + bo sung tests profile v1/v2 va near-threshold behavior)
+- docs/AUDIT_WHALE_SCORING_TUNING_RECOMMENDATIONS_20260417.md (NEW - audit report + canary rollout recommendations)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Phase 3A.1 - Pixel-Perfect UI Polish Kickoff (2026-04-17)
 - frontend/src/index.css (MODIFIED - them visual tokens + utility classes cho panel/focus hierarchy)
 - frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - polish severity chip hierarchy, hover/focus, density)

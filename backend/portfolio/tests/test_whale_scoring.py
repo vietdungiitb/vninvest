@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.test import override_settings
 from django.test import SimpleTestCase
 from django.utils import timezone
 
@@ -52,7 +53,8 @@ class WhaleScoringTests(SimpleTestCase):
         )
 
         self.assertEqual(payload['event_type'], 'whale_alert')
-        self.assertEqual(payload['event_id'], f'whale:FPT:{occurred_at}:buy:5400000000:500000000')
+        normalized_ts = payload['ts']
+        self.assertEqual(payload['event_id'], f'whale:FPT:{normalized_ts}:buy:5400000000')
         self.assertEqual(payload['symbol'], 'FPT')
         self.assertEqual(payload['side'], 'buy')
         self.assertEqual(payload['config_version'], 'threshold-v1')
@@ -64,3 +66,30 @@ class WhaleScoringTests(SimpleTestCase):
         self.assertIn('weights_version', payload)
         self.assertLessEqual(payload['display_score'], payload['event_score'])
         self.assertIn(payload['severity'], {'low', 'medium', 'high', 'extreme'})
+
+    @override_settings(WHALE_SCORE_PROFILE='v1')
+    def test_profile_v1_keeps_default_contract(self):
+        config = resolve_whale_score_config()
+        self.assertEqual(config['profile'], 'v1')
+        self.assertEqual(config['version'], 'weights-v1')
+        self.assertEqual(classify_severity(76, config), 'extreme')
+
+    @override_settings(WHALE_SCORE_PROFILE='v2')
+    def test_profile_v2_uses_stricter_extreme_band(self):
+        config = resolve_whale_score_config()
+        self.assertEqual(config['profile'], 'v2')
+        self.assertEqual(config['version'], 'weights-v2')
+        self.assertEqual(classify_severity(80, config), 'high')
+        self.assertEqual(classify_severity(84, config), 'extreme')
+
+    @override_settings(WHALE_SCORE_PROFILE='v2')
+    def test_profile_v2_reduces_near_threshold_buy_boost(self):
+        trade = {'matched_value': 560_000_000, 'threshold': 500_000_000, 'side': 'buy'}
+        context = {'threshold_vnd': 500_000_000, 'side': 'buy'}
+
+        with override_settings(WHALE_SCORE_PROFILE='v1'):
+            v1_score = calculate_event_score(trade=trade, context=context, config=resolve_whale_score_config())
+
+        v2_score = calculate_event_score(trade=trade, context=context, config=resolve_whale_score_config())
+
+        self.assertLess(v2_score['event_score'], v1_score['event_score'])
