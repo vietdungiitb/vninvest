@@ -1,13 +1,16 @@
-import React from 'react';
-import { Treemap, ResponsiveContainer, Tooltip } from 'recharts';
+import React, { useMemo, useState } from 'react';
+import ReactECharts from 'echarts-for-react';
+import { useI18n } from '../context/LangContext';
 
 /**
  * PortfolioHeatmap
  * Hiển thị tỷ trọng và biến động (heat) của các mã trong danh mục.
- * Dùng Recharts Treemap.
+ * Hỗ trợ chuyển đổi mượt mà giữa Treemap và Sunburst (Hierarchical).
  */
 export default function PortfolioHeatmap({ holdings, title }) {
-  const HEATMAP_HEIGHT = 360;
+  const { t } = useI18n();
+  const [viewMode, setViewMode] = useState('treemap');
+  const HEATMAP_HEIGHT = 420;
 
   const toNumber = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -20,166 +23,365 @@ export default function PortfolioHeatmap({ holdings, title }) {
     return Number.isFinite(numeric) ? numeric : 0;
   };
 
-  // 1. Chuẩn bị dữ liệu cho Treemap
-  // Ưu tiên live_market_value nếu > 0, fallback về market_value snapshot.
-  const data = (holdings || [])
-    .map((h) => {
+  const formatPercent = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0.00%';
+    return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`;
+  };
+
+  const hierarchicalData = useMemo(() => {
+    if (!holdings?.length) return [];
+
+    const sectors = {};
+    (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
       const size = liveValue > 0 ? liveValue : snapshotValue;
+      if (size <= 0) {
+        return;
+      }
 
+      const rawChange = h.live_change_pct ?? h.change_pct ?? 0;
+      const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
+
+      const symbol = String(h.symbol || h.name || '').trim().toUpperCase();
+      if (!symbol) {
+        return;
+      }
+
+      const industry = String(h.industry || 'Khác').trim() || 'Khác';
+      if (!sectors[industry]) {
+        sectors[industry] = {
+          name: industry,
+          children: [],
+          value: [0, 0],
+          changePct: 0,
+          totalWeight: 0,
+        };
+      }
+
+      const isExtreme = Math.abs(changePct) >= 2;
+      const glowColor = changePct > 0 ? 'rgba(16, 185, 129, 0.36)' : 'rgba(244, 63, 94, 0.32)';
+
+      sectors[industry].children.push({
+        name: symbol,
+        symbol,
+        industry,
+        isHolding: Boolean(h.is_holding),
+        changePct,
+        value: [size, changePct],
+        itemStyle: {
+          borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
+          borderWidth: h.is_holding ? 2 : 1,
+          shadowBlur: isExtreme ? 14 : 0,
+          shadowColor: isExtreme ? glowColor : 'transparent',
+        },
+      });
+
+      sectors[industry].value[0] += size;
+      sectors[industry].totalWeight += size;
+      sectors[industry].changePct += size * changePct;
+    });
+
+    return Object.values(sectors)
+      .map((sector) => {
+        const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
+        return {
+          name: sector.name,
+          value: [sector.totalWeight, avgChange],
+          changePct: avgChange,
+          children: sector.children.sort((left, right) => right.value[0] - left.value[0]),
+        };
+      })
+      .sort((left, right) => right.value[0] - left.value[0]);
+  }, [holdings]);
+
+  const option = useMemo(() => {
+    if (!hierarchicalData.length) {
+      return null;
+    }
+
+    const tooltip = {
+      backgroundColor: 'rgba(2, 6, 23, 0.92)',
+      borderColor: 'rgba(51, 65, 85, 0.7)',
+      borderWidth: 1,
+      confine: true,
+      extraCssText: 'backdrop-filter: blur(10px); box-shadow: 0 12px 32px rgba(2, 6, 23, 0.45);',
+      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      formatter: (params) => {
+        const data = params?.data;
+        if (!data) return '';
+
+        if (!data.children) {
+          const size = Array.isArray(data.value) ? data.value[0] : Number(data.value || 0);
+          const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
+          const changeColor = changePct > 0 ? '#34d399' : changePct < 0 ? '#fb7185' : '#cbd5e1';
+
+          return `
+            <div style="min-width: 210px; padding: 4px 2px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
+                <strong style="font-size:16px; color:#ffffff;">${data.name}</strong>
+                <span style="font-size:11px; color:${data.isHolding ? '#facc15' : '#94a3b8'}; font-weight:700;">
+                  ${data.isHolding ? 'Đang nắm giữ' : 'Trong watchlist'}
+                </span>
+              </div>
+              <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom:6px;">
+                <span style="color:#94a3b8;">Nhóm ngành</span>
+                <span style="color:#f8fafc; font-weight:600;">${data.industry || 'Khác'}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom:6px;">
+                <span style="color:#94a3b8;">Trọng số hiển thị</span>
+                <span style="color:#f8fafc; font-weight:700;">${Math.round(size).toLocaleString('vi-VN')}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; gap:16px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
+                <span style="color:#94a3b8;">Biến động</span>
+                <span style="color:${changeColor}; font-weight:800;">${formatPercent(changePct)}</span>
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div style="min-width: 180px; padding: 4px 2px;">
+            <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Nhóm ngành</div>
+            <div style="font-size:18px; font-weight:800; color:#ffffff; margin-bottom:10px;">${data.name}</div>
+            <div style="display:flex; justify-content:space-between; gap:16px;">
+              <span style="color:#94a3b8;">Biến động bình quân</span>
+              <span style="color:${data.changePct > 0 ? '#34d399' : data.changePct < 0 ? '#fb7185' : '#cbd5e1'}; font-weight:800;">${formatPercent(data.changePct)}</span>
+            </div>
+          </div>
+        `;
+      },
+    };
+
+    if (viewMode === 'sunburst') {
       return {
-        name: String(h.symbol || '').trim().toUpperCase(),
-        size,
-        original: h,
+        backgroundColor: 'transparent',
+        animationDuration: 300,
+        tooltip,
+        visualMap: {
+          show: false,
+          min: -3,
+          max: 3,
+          dimension: 1,
+          inRange: {
+            color: ['#ef4444', '#f97316', '#475569', '#22c55e', '#10b981'],
+          },
+        },
+        series: [
+          {
+            type: 'sunburst',
+            data: hierarchicalData,
+            sort: 'desc',
+            radius: ['12%', '96%'],
+            nodeClick: false,
+            emphasis: { focus: 'ancestor' },
+            itemStyle: {
+              borderColor: 'rgba(15, 23, 42, 0.5)',
+              borderWidth: 1,
+            },
+            label: {
+              rotate: 'radial',
+              minAngle: 7,
+              formatter: (params) => {
+                if (params?.data?.children) return params.name;
+                const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+                return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
+              },
+              rich: {
+                symbol: {
+                  color: '#ffffff',
+                  fontWeight: 800,
+                  fontSize: 11,
+                  lineHeight: 14,
+                },
+                pct: {
+                  color: 'rgba(255,255,255,0.88)',
+                  fontSize: 9,
+                  lineHeight: 11,
+                },
+              },
+            },
+            levels: [
+              {},
+              {
+                r0: '12%',
+                r: '52%',
+                label: {
+                  rotate: 0,
+                  color: '#cbd5e1',
+                  fontWeight: 800,
+                  fontSize: 11,
+                },
+              },
+              {
+                r0: '54%',
+                r: '96%',
+              },
+            ],
+          },
+        ],
       };
-    })
-    .filter((item) => item.name && item.size > 0);
+    }
 
-  const treemapData = React.useMemo(() => ([
-    {
-      name: 'Portfolio',
-      children: data,
-    },
-  ]), [data]);
+    return {
+      backgroundColor: 'transparent',
+      animationDuration: 400,
+      tooltip,
+      visualMap: {
+        show: false,
+        min: -3,
+        max: 3,
+        dimension: 1,
+        inRange: {
+          color: ['#ef4444', '#f97316', '#475569', '#22c55e', '#10b981'],
+        },
+      },
+      series: [
+        {
+          type: 'treemap',
+          data: hierarchicalData,
+          roam: false,
+          nodeClick: false,
+          breadcrumb: { show: false },
+          sort: 'desc',
+          squareRatio: 0.75,
+          leafDepth: 1,
+          visibleMin: 0,
+          childrenVisibleMin: 0,
+          emphasis: { disabled: true },
+          label: {
+            show: true,
+            formatter: (params) => {
+              if (params?.data?.children) return '';
+              const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+              return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
+            },
+            overflow: 'truncate',
+            rich: {
+              symbol: {
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: 12,
+                lineHeight: 16,
+                textShadowBlur: 3,
+                textShadowColor: 'rgba(2, 6, 23, 0.7)',
+              },
+              pct: {
+                color: 'rgba(255,255,255,0.9)',
+                fontWeight: 700,
+                fontSize: 10,
+                lineHeight: 12,
+              },
+            },
+          },
+          upperLabel: { show: false },
+          itemStyle: {
+            borderColor: 'rgba(15, 23, 42, 0.45)',
+            borderWidth: 1,
+            gapWidth: 2,
+          },
+          levels: [
+            {
+              colorSaturation: [0.4, 0.8],
+              itemStyle: {
+                borderColor: 'rgba(15, 23, 42, 0.9)',
+                borderWidth: 2,
+                gapWidth: 2,
+              },
+              upperLabel: {
+                show: true,
+                height: 24,
+                color: '#f1f5f9',
+                fontWeight: 800,
+                fontSize: 11,
+                padding: [0, 0, 0, 8],
+                backgroundColor: 'rgba(2, 6, 23, 0.85)',
+              },
+            },
+            {
+              colorSaturation: [0.5, 0.9],
+              itemStyle: {
+                borderColor: 'rgba(2, 6, 23, 0.6)',
+                gapWidth: 1,
+                borderWidth: 1,
+              },
+            },
+          ],
+        },
+      ],
+    };
+  }, [formatPercent, hierarchicalData, viewMode]);
 
-  const treemapRenderKey = React.useMemo(() => {
-    return data
-      .map((item) => `${item.name}:${Math.round(Number(item.size) || 0)}`)
-      .join('|');
-  }, [data]);
-
-  if ((holdings || []).length > 0 && data.length === 0) {
-    console.warn('[Heatmap] Holdings present but no drawable data after size fallback.');
-  }
-
-  if (!data.length) {
+  if (!hierarchicalData.length) {
     return (
-      <div className="bg-gray-900/50 border border-gray-800 rounded-xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="text-3xl mb-2">📊</div>
-        <p className="text-gray-400 text-sm">Chưa có dữ liệu heatmap cho danh mục này.</p>
+      <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
+        <div className="text-4xl mb-3 animate-pulse">📊</div>
+        <p className="text-gray-400 text-sm font-medium">{t('dashboardRealtime.heatmapEmpty', { defaultValue: 'Chưa có dữ liệu heatmap cho danh mục này.' })}</p>
       </div>
     );
   }
 
-  // 2. Định nghĩa màu sắc dựa trên change_pct
-  const getColor = (pct) => {
-    if (pct > 2) return '#10b981'; // Xanh lá đậm (Emerald 500)
-    if (pct > 0) return '#059669'; // Xanh lá (Emerald 600)
-    if (pct < -2) return '#ef4444'; // Đỏ đậm (Red 500)
-    if (pct < 0) return '#dc2626'; // Đỏ (Red 600)
-    return '#4b5563'; // Xám (Gray 600)
-  };
+  return (
+    <div className="group relative bg-gray-900/60 backdrop-blur-xl border border-gray-800/50 rounded-2xl flex flex-col overflow-hidden transition-all duration-700 hover:border-gray-700/80 shadow-2xl" style={{ minHeight: HEATMAP_HEIGHT + 85 }}>
+      {/* Decorative background glow */}
+      <div className="absolute -top-24 -left-24 w-64 h-64 bg-brand-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-brand-500/10 transition-colors duration-1000" />
+      <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-brand-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-brand-500/10 transition-colors duration-1000" />
 
-  // 3. Custom content cho cell
-  const CustomizedContent = (props) => {
-    const { depth, x, y, width, height, payload, name } = props || {};
-    if (!payload) return null;
-    if (payload?.children && payload.children.length > 0) return null;
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-gray-800/50 bg-gray-950/40 flex items-center justify-between z-10">
+        <div className="flex flex-col">
+          <h3 className="text-[10px] sm:text-xs font-black text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+            {title}
+            <span className="flex h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
+          </h3>
+          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 tracking-wider">
+            {t('dashboardRealtime.heatmapRealtimeCaption', { defaultValue: 'Biến động theo dõi • Realtime feed' })}
+          </p>
+        </div>
+        
+        <div className="flex bg-gray-900/80 p-1 rounded-xl border border-gray-800/50 shadow-inner">
+          <button 
+            onClick={() => setViewMode('treemap')}
+            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'treemap' ? 'bg-brand-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}
+          >
+            <span style={{ fontSize: '14px' }}>⊞</span>
+            {t('dashboardRealtime.heatmapModeTreemap', { defaultValue: 'Treemap' })}
+          </button>
+          <button 
+            onClick={() => setViewMode('sunburst')}
+            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'sunburst' ? 'bg-brand-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}
+          >
+            <span style={{ fontSize: '14px' }}>◎</span>
+            {t('dashboardRealtime.heatmapModeSunburst', { defaultValue: 'Sunburst' })}
+          </button>
+        </div>
+      </div>
 
-    const original = payload?.original || {};
-    // FIX: Đảm bảo change_pct là số hợp lệ trước khi gọi toFixed
-    const rawChange = original.live_change_pct ?? original.change_pct ?? 0;
-    const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
-    
-    const bgColor = getColor(changePct);
-
-    // Chỉ hiện text nếu cell đủ to
-    const showText = width > 50 && height > 30;
-
-    return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={height}
-          style={{
-            fill: bgColor,
-            stroke: '#111827',
-            strokeWidth: 2 / ((Number(depth) || 0) + 1),
-            strokeOpacity: 1,
-            cursor: 'pointer'
-          }}
+      <div className="flex-1 p-3 relative z-10" style={{ height: HEATMAP_HEIGHT }}>
+        <ReactECharts
+          option={option}
+          style={{ height: '100%', width: '100%' }}
+          notMerge={true}
+          lazyUpdate={false}
+          opts={{ renderer: 'canvas' }}
         />
-        {showText && (
-          <text
-            x={x + width / 2}
-            y={y + height / 2}
-            textAnchor="middle"
-            fill="#fff"
-            fontSize={width > 80 ? 12 : 10}
-            fontWeight="bold"
-          >
-            {name || payload?.name || ''}
-          </text>
-        )}
-        {showText && height > 45 && (
-          <text
-            x={x + width / 2}
-            y={y + height / 2 + 15}
-            textAnchor="middle"
-            fill="#fff"
-            fillOpacity={0.8}
-            fontSize={10}
-          >
-            {changePct > 0 ? '+' : ''}{changePct.toFixed(2)}%
-          </text>
-        )}
-      </g>
-    );
-  };
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length && payload[0]?.payload) {
-      const { name, size, original = {} } = payload[0].payload;
-      const rawChange = original.live_change_pct ?? original.change_pct ?? 0;
-      const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
-      
-      return (
-        <div className="bg-gray-950 border border-gray-800 p-3 rounded-lg shadow-xl text-xs">
-          <p className="font-bold text-gray-100 mb-1">{name}</p>
-          <div className="space-y-1">
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-400">Giá trị:</span>
-              <span className="text-gray-200">{size.toLocaleString('vi-VN')} nghìn đồng</span>
-            </div>
-            <div className="flex justify-between gap-4">
-              <span className="text-gray-400">Biến động:</span>
-              <span className={changePct > 0 ? 'text-emerald-400' : changePct < 0 ? 'text-red-400' : 'text-gray-400'}>
-                {changePct > 0 ? '+' : ''}{changePct.toFixed(2)}%
-              </span>
-            </div>
+        
+        <div className="absolute bottom-6 right-6 flex items-center gap-4 bg-gray-950/90 px-4 py-2 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,0.6)]" />
+            <span className="text-[9px] text-gray-400 font-black tracking-tighter uppercase">
+              {t('dashboardRealtime.heatmapLegendUp', { defaultValue: 'Tăng' })}
+            </span>
+          </div>
+          <div className="w-px h-3 bg-gray-800" />
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#ff003c] shadow-[0_0_8px_rgba(255,0,60,0.6)]" />
+            <span className="text-[9px] text-gray-400 font-black tracking-tighter uppercase">
+              {t('dashboardRealtime.heatmapLegendDown', { defaultValue: 'Giảm' })}
+            </span>
           </div>
         </div>
-      );
-    }
-    return null;
-  };
-
-  return (
-    <div className="bg-gray-900/40 border border-gray-800 rounded-xl flex flex-col h-full overflow-hidden">
-      {title && (
-        <div className="px-4 py-3 border-b border-gray-800 bg-gray-900/60">
-          <h3 className="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest">
-            {title}
-          </h3>
-        </div>
-      )}
-      <div className="flex-1 min-h-[360px] p-2" style={{ position: 'relative' }}>
-        <ResponsiveContainer width="100%" height={HEATMAP_HEIGHT}>
-          <Treemap
-            key={`treemap-${treemapRenderKey}-${data.length}`}
-            data={treemapData}
-            dataKey="size"
-            nameKey="name"
-            stroke="#fff"
-            fill="#8884d8"
-            content={<CustomizedContent />}
-          >
-            <Tooltip content={<CustomTooltip />} />
-          </Treemap>
-        </ResponsiveContainer>
       </div>
     </div>
   );
