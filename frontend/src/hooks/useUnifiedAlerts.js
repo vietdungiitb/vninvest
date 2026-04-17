@@ -102,7 +102,7 @@ export default function useUnifiedAlerts({
   holdings = [],
   trackedSymbolNames = [],
   enableSnapshot = true,
-  lastEventAt = null,
+  lastEventAt: _lastEventAt = null,
   sourceFilter = 'all',
   severityFilter = 'all',
   audienceFilter = 'all',
@@ -226,14 +226,6 @@ export default function useUnifiedAlerts({
   }, [sourceFilter, severityFilter, audienceFilter, pageSize]);
 
   useEffect(() => {
-    if (!enableSnapshot || !monitoredSymbols.length) return;
-    const resetStack = [null];
-    setCursorStack(resetStack);
-    setCurrentPageIndex(0);
-    fetchUnifiedPage(0, resetStack);
-  }, [lastEventAt]);
-
-  useEffect(() => {
     if (!enableSnapshot || !monitoredSymbols.length) {
       return undefined;
     }
@@ -336,7 +328,7 @@ export default function useUnifiedAlerts({
         const pct = Number(item.change_pct || 0);
         const absPct = Math.abs(pct);
         const severity = absPct >= 7 ? 'high' : 'medium';
-        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
+        const stableTs = toStableAlertTimestamp(item.last_date, _lastEventAt);
         return {
           id: `price-${item.symbol}`,
           symbol: item.symbol,
@@ -356,7 +348,7 @@ export default function useUnifiedAlerts({
       .filter((item) => item?.symbol && item?.stale)
       .slice(0, 3)
       .map((item) => {
-        const stableTs = toStableAlertTimestamp(item.last_date, lastEventAt);
+        const stableTs = toStableAlertTimestamp(item.last_date, _lastEventAt);
         return {
           id: `stale-${item.symbol}`,
           symbol: item.symbol,
@@ -404,7 +396,7 @@ export default function useUnifiedAlerts({
     });
 
     return deduped;
-  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, lastEventAt, mergedAlerts, quoteList, t]);
+  }, [backendUnifiedSnapshot, darkFlowAlerts, formatNumber, _lastEventAt, mergedAlerts, quoteList, t]);
 
   const filteredUnifiedAlerts = useMemo(() => {
     const severityRank = {

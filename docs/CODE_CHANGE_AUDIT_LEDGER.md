@@ -1,5 +1,290 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18d - Runtime incident hotfix: ECharts `colorStops` null crash
+
+Muc tieu:
+- Khac phuc loi runtime: `TypeError: Cannot read properties of null (reading 'colorStops')` tren heatmap.
+
+Chan doan ky thuat:
+- Loi phat sinh trong luong state transition / keyframe animation cua ECharts (`Animator.addKeyframe`), khi noi suy mau trong qua trinh doi state giua Treemap/Sunburst.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Tat `animation` va dat duration update = 0 cho ca Treemap va Sunburst.
+  - Tat `universalTransition` cho ca 2 series.
+  - Dat `stateAnimation.duration = 0`.
+  - Vo hieu hoa `emphasis` transitions (`emphasis.disabled = true`).
+  - Loai bo `blur` state tren Treemap de tranh state interpolation phat sinh color object null.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren heatmap component: khong co loi.
+
+## Entry 2026-04-18c - Runtime hotfix ReferenceError lastEventAt (Unified Alerts)
+
+Muc tieu:
+- Sua loi runtime production: `ReferenceError: lastEventAt is not defined` trong `useUnifiedAlerts`.
+
+Nguyen nhan:
+- Sau khi doi ten prop thanh `_lastEventAt` de vo hieu hoa trigger refetch, van con 2 vi tri trong logic timestamp va dependency array tham chieu bien cu `lastEventAt`.
+
+Noi dung cap nhat chinh:
+- frontend/src/hooks/useUnifiedAlerts.js
+  - Thay `toStableAlertTimestamp(..., lastEventAt)` -> `toStableAlertTimestamp(..., _lastEventAt)` tai 2 vi tri.
+  - Thay dependency `lastEventAt` trong `useMemo` -> `_lastEventAt`.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren `useUnifiedAlerts.js` va `Dashboard.jsx`: khong co loi.
+
+## Entry 2026-04-18b - Emergency frontend request-loop fix + heatmap loading UX
+
+Muc tieu:
+- Cat trigger goi `unified-alerts` theo moi event realtime de tranh spam request.
+- Chinh UX loading heatmap, loai bo icon hu/khong ro nghia va thay spinner theo tone Slate.
+- Xac nhan backend whale symbol stats van giu bulk aggregation 1 query nhom.
+
+Noi dung cap nhat chinh:
+- frontend/src/hooks/useUnifiedAlerts.js
+  - Xoa `useEffect` refetch theo `lastEventAt` (nguon goc request loop tan suat cao).
+  - Giu refresh nen 30s va fetch theo pagination/filter actions.
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Thay placeholder icon trong trang thai rong bang spinner Slate-themed (`animate-spin`).
+- backend/portfolio/views_stock_order_flow.py
+  - Khong doi logic; da verify endpoint van dung grouped bulk aggregation (`values('symbol').annotate(...)`).
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 3 file (hook, heatmap, backend view): khong co loi.
+
+## Entry 2026-04-18a - Heatmap Bloomberg-Pro fix (leafDepth + sqrt normalization + piecewise color)
+
+Muc tieu:
+- Xu ly triet de hien tuong heatmap chi hien thi 1 thanh ngang va khung con lai bi trong.
+- Cang bang lai tile size giua ma von hoa rat lon va ma nho de de doc nhan.
+- Nang cap color map thanh 7 muc ro rang theo logic Bloomberg-style.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Chuyen bo size ratio sang sqrt-normalization: `normalizedDisplaySize = sqrt(raw) / sqrt(minRaw)`.
+  - Dat `leafDepth: 2` cho treemap voi du lieu phan cap `industry -> symbol`.
+  - Dung `piecewise visualMap` 7 muc:
+    - `< -5%`: `#7f1d1d`
+    - `-5% -> -2%`: `#be123c`
+    - `-2% -> 0%`: `#fca5a5`
+    - `0%`: `#475569`
+    - `0% -> 2%`: `#86efac`
+    - `2% -> 5%`: `#22c55e`
+    - `> 5%`: `#166534`
+  - Dieu chinh levels/upperLabel de nhom nganh hien ro nhung khong chiem dung layout leaf.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren heatmap component: khong co loi.
+
+## Entry 2026-04-17ao - Heatmap render stabilization (treemap strip bug fix)
+
+Muc tieu:
+- Sua loi heatmap treemap van bi don thanh 1 dai ngang (strip) du da chinh layout truoc do.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Tach data cho mode Treemap sang dataset phang (`treemapData`) chi gom leaf symbol.
+  - Giu mode Sunburst su dung dataset hierarchical nhu cu.
+  - Tat `universalTransition` o Treemap va don gian hoa `levels` de tranh artifact layout.
+  - Chinh `squareRatio` va `focus` de tile phan bo day khung va hover on dinh hon.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren file heatmap: khong co loi.
+
+## Entry 2026-04-17an - Heatmap mockup alignment fix (layout + color palette)
+
+Muc tieu:
+- Sua loi treemap bi render thanh dai ngang, khong phu toan bo khung heatmap.
+- Chinh lai bang mau de sat tone mockup hon (giam neon, tang do sach cua lop nen va tile).
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Chuan hoa gia tri node nganh ve scalar `value` de treemap chia tile on dinh.
+  - Tang `leafDepth` len `2` va bo sung level itemStyle cho leaf node de bo cuc phu full khung.
+  - Chinh visualMap sang thang mau Rose/Navy/Teal (`#be123c -> #1e3a5f -> #0f766e`), range `-4..+4`.
+  - Chinh mau control chips/toggle va legend de tong the dong bo tone slate/cyan theo mockup.
+- frontend/src/index.css
+  - Chinh mau tooltip heatmap (nen, vien, spark caption) theo palette moi.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 2 file frontend vua sua: khong co loi.
+
+## Entry 2026-04-17am - Phase 1 backend stabilization (bulk aggregation for whale symbol stats)
+
+Muc tieu:
+- Giam dot bien CPU DB tren endpoint thong ke whale theo symbol bang cach loai bo N+1 query pattern.
+- Chuyen logic thong ke BUY/SELL + tong gia tri/tong khoi luong sang grouped aggregation mot luot tren `IntradayTick`.
+- Bo sung index phu hop cho query pattern moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_stock_order_flow.py`:
+  - Refactor `whale_advisory_symbol_stats_api` tu vong lap per-symbol (nhieu `.count()`/`.aggregate()` rieng) sang 1 pipeline aggregate theo `symbol`.
+  - Them `Case/When` de ap threshold theo tung symbol (co ho tro override) ngay trong SQL annotate.
+  - Dung `Count(..., filter=...)` cho `buy_count`/`sell_count`, va `Sum` cho `total_value`/`total_volume` trong mot truy van nhom.
+  - Giu output payload tuong thich (`buyCount`, `sellCount`, `totalValue`, `totalVolume`, `count`, `avgOrderValue`).
+- `backend/portfolio/models.py`:
+  - Them index `['symbol', 'trade_date', 'side']` tren model `IntradayTick` de ho tro truy van aggregate theo symbol/date/side.
+- `backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py`:
+  - Add migration tao index DB moi `idx_intraday_sym_date_side`.
+
+Tac dong ky thuat:
+- Giam so round-trip DB tu cap so nhan theo so symbol ve 1 truy van nhom chinh (kem 1-2 truy van nho cho threshold config).
+- Giam nguy co CPU spike khi nguoi dung theo doi nhieu ma hoac window lon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_stock_order_flow.py
+- backend/portfolio/models.py
+- backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass (0 issues).
+- Static diagnostics (`get_errors`) tren cac file da sua: khong co loi.
+
+## Entry 2026-04-17al - System hardening implementation (Phase 1-4)
+
+Muc tieu:
+- Giam giat/lag tren UI realtime bang co che RAF throttling cho ticker updates.
+- Chuyen mac dinh AI advisory sang async-first de han che nguy co web worker bi block va 504.
+- Toi uu xu ly whale history theo huong SQL loc + Pandas vectorization.
+- Dong bo tham so trim Redis streams theo cau hinh trung tam trong settings.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Them `pendingTickerUpdatesRef` + `tickerRafIdRef` de gom nhieu `ticker_update` trong cung frame.
+  - Them `flushTickerUpdates` va `applyTickerUpdateThrottled`.
+  - Chuyen websocket `ticker_update` handler sang duong RAF-throttled (tranh setState moi message).
+  - Them cleanup `cancelAnimationFrame` khi unmount.
+- `backend/config/settings.py`:
+  - Dat mac dinh `STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE=False`.
+  - Dat mac dinh `STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER=False`.
+- `backend/portfolio/tasks_maintenance.py`:
+  - `trim_streams` doc `STREAM_MAX_LEN` + `STREAM_MAX_LEN_HARD_CAP` tu settings va clamp theo hard-cap.
+- `backend/portfolio/views_dark_money_history.py`:
+  - Them Pandas de vector hoa side inference va aggregate whale signals.
+  - Chuyen loop Python row-by-row sang DataFrame groupby/agg cho khoi whale history.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useRealtimeFeedCore.js
+- backend/config/settings.py
+- backend/portfolio/tasks_maintenance.py
+- backend/portfolio/views_dark_money_history.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Frontend production build: pass (`npm run build`, compiled successfully).
+- `manage.py check`: pass.
+- Test focused backend: `portfolio.tests.test_pr3_first_create_threshold` + `portfolio.tests.test_celery_task_names`: 11/11 pass.
+
+Rui ro con lai / follow-up:
+- Chua co test unit rieng cho vectorized block trong `views_dark_money_history.py`; can bo sung regression tests cho side inference theo trade_date.
+
+## Entry 2026-04-17ak - SQL selection + Pandas vectorization for realtime hot paths
+
+Muc tieu:
+- Chuan hoa chien luoc "SQL de loc - Pandas de tinh" tren cac diem nong realtime/finance.
+- Giam RAM do khoi tao model object khong can thiet va giam chi phi vong lap Python row-by-row.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/order_flow.py`:
+  - Toi uu `_fetch_ticks` sang SQL filter (`trade_time__gte`) + projection (`.values(...)`) + DataFrame.
+  - Vector hoa `compute_cvd_series` bang pandas groupby theo bucket.
+  - Vector hoa `compute_tick_rate` bang DataFrame thay cho loop.
+  - Vector hoa `compute_size_distribution` (mean/median/p95/ratios/histogram) va giu hanh vi p95 tuong thich test cu.
+- `backend/portfolio/views_ai_advisory_session.py`:
+  - Refactor tinh VWAP trong `_build_session_v2_benchmark_enrichment` tu iterator loop sang SQL `.values('price','volume')` + pandas vectorized sum.
+- `backend/portfolio/realtime/compute.py`:
+  - Loai bo duong tinh native loop; `build_ticker_payload_native` tro thanh wrapper chuan hoa qua DataFrame/pandas path.
+- `backend/portfolio/realtime/stream_consumers.py`:
+  - Standardize `WsBroadcastConsumer` su dung pandas compute path duy nhat (khong con branch native runtime).
+- `module_tree_full.md`:
+  - Regenerate de dong bo index lop/ham sau refactor.
+
+Danh sach tep cap nhat:
+- backend/portfolio/order_flow.py
+- backend/portfolio/views_ai_advisory_session.py
+- backend/portfolio/realtime/compute.py
+- backend/portfolio/realtime/stream_consumers.py
+- module_tree_full.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass.
+- Test focused refactor: `portfolio.tests.test_order_flow.TestComputeCVDSeriesDB`, `TestComputeTickRateDB`, `TestSizeDistribution`, va `portfolio.tests.test_realtime_compute`: 20/20 pass.
+- Luu y: nhom API test order-flow full endpoint co 403 do gate OpenCore trong env test hien tai, khong phai regression tu refactor vectorization.
+
+## Entry 2026-04-17aj - Unified alerts dual-path optimization (watchlist priority + market-wide cache)
+
+Muc tieu:
+- Uu tien tuyet doi luong Watchlist trong unified alerts: du lieu realtime, xep hang uu tien cao hon, khong bi tre boi cache tong.
+- Toi uu luong quet thi truong (mega whale) de giam tai Postgres: SQL prefilter theo volume index + cache global 60s.
+- Sua loi crash UI tren Heatmap khi chuyen doi Treemap <-> Sunburst.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/market_data_service.py`:
+  - Loai bo response cache tong cua `get_unified_alerts` de tranh lam cham luong Watchlist realtime.
+  - Danh dau su kien Watchlist (`watchlist_symbol=True`) cho whale/dark_flow va tang trong so trong `_compute_unified_priority_rank`.
+  - Tinh lai priority rank theo huong uu tien Watchlist; bo bonus uu tien rieng cho `market_wide` de khong de luong market-wide chen len tren watchlist.
+  - Toi uu `_build_market_top_tier_whale_unified`:
+    - Them cache global (`UNIFIED_ALERTS_MARKET_TOP_TIER_CACHE_SECONDS`, mac dinh 60s).
+    - Them SQL prefilter `volume__gte` (heuristic dua tren `UNIFIED_ALERTS_MARKET_TOP_TIER_MAX_PRICE_VND`).
+    - Day filter window `(trade_date, trade_time)` xuong SQL.
+    - Tach exclude watchlist ra Python sau cache de giu cache mang tinh global.
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Dat `notMerge={true}` de tranh crash animator trong transition.
+  - Bo `colorSaturation` o Treemap levels theo khuyen nghi fix bug colorStops.
+  - Hardening formatter voi null/NaN guard.
+  - Doi `shadowColor` fallback sang `rgba(0, 0, 0, 0)` de interpolation on dinh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass.
+- `ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_boosts_recent_whale_against_old_dark_flow`: pass.
+- `ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_includes_market_wide_top_tier_whale`: pass.
+- `npm run build` (frontend): compiled successfully.
+
 ## Entry 2026-04-17ai - Realtime remediation step 2 (Redis stream retention hard-cap)
 
 Muc tieu:
@@ -2881,3 +3166,73 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Frontend build: Compiled successfully sau thay doi.
 - Docker dev frontend da rebuild/deploy thanh cong.
+
+## Entry 2026-04-17 - UI/UX Core Refinement theo mockup Slate/Navy
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Chuyen dashboard tu dark den Slate/Navy theo mockup de giam eye strain va tang do tach lop panel.
+- Nang cap heatmap ECharts: visualMap 3 moc Rose/Slate/Emerald, tooltip cau truc thong tin mo rong, toggle mode Treemap/Sunburst va size metric Weight/Cap.
+- Toi uu sidebar watchlist: sticky header, filter theo nganh, row compact hon va cot gia/% co do rong co dinh de tranh layout shift khi realtime tick.
+- Nang cap KPI card: bo sung semantic icon va sparkline SVG nhe.
+- Chuan hoa interaction: nut sync co live pulse, TopNav doi language switch sang Globe + VI/EN.
+
+Danh sach tep da sua:
+- frontend/src/index.css
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/Sidebar.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren cac file frontend vua sua.
+- Mau sac va bo cuc da can chinh theo mockup: nen slate/navy, nhan emerald/rose, panel contrast vua phai.
+
+## Entry 2026-04-17b - Pixel tone refinement + heatmap mini-chart thuc te
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Tinh chinh giao dien cap pixel de sat hon tone mockup: border brightness, blur strength, spacing vi mo o heatmap panel.
+- Trien khai mini-chart tooltip heatmap bang du lieu intraday thuc te theo tung symbol (24 diem gan nhat).
+- Bo sung fallback sparkline khi intraday chua du diem de tranh tooltip trong.
+
+Danh sach tep da sua:
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren 3 file frontend vua sua.
+- Tooltip heatmap da hien mini-chart SVG thuc te thay cho placeholder.
+
+## Entry 2026-04-17c - Pixel-perfect pass 2 theo mockup
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Tinh chinh them cap pixel cho Sidebar/TopNav/Heatmap sau vong review dau.
+- Muc tieu: can bang contrast, spacing va density de giao dien giong mockup hon trong desktop viewport.
+
+Danh sach tep da sua:
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren cac file frontend vua sua.

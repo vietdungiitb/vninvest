@@ -7,9 +7,28 @@ import { useI18n } from '../context/LangContext';
  * Hiển thị tỷ trọng và biến động (heat) của các mã trong danh mục.
  * Hỗ trợ chuyển đổi mượt mà giữa Treemap và Sunburst (Hierarchical).
  */
+
+// Stable references outside component — prevents useMemo from recomputing on every render
+const HEAT_SCALE_COLORS = ['#7f1d1d', '#be123c', '#fca5a5', '#475569', '#86efac', '#22c55e', '#166534'];
+const PIECEWISE_VISUAL_MAP = {
+  show: false,
+  type: 'piecewise',
+  dimension: 1,
+  pieces: [
+    { lt: -5, color: '#7f1d1d' },
+    { gte: -5, lt: -2, color: '#be123c' },
+    { gte: -2, lt: 0, color: '#fca5a5' },
+    { gte: 0, lte: 0, color: '#ca8a04' },
+    { gt: 0, lte: 2, color: '#86efac' },
+    { gt: 2, lte: 5, color: '#22c55e' },
+    { gt: 5, color: '#166534' },
+  ],
+};
+
 export default function PortfolioHeatmap({ holdings, title }) {
   const { t } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
+  const [sizeMetric, setSizeMetric] = useState('weight');
   const HEATMAP_HEIGHT = 420;
 
   const toNumber = (value) => {
@@ -36,7 +55,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
     (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
-      const size = liveValue > 0 ? liveValue : snapshotValue;
+      const marketCap = toNumber(h.live_market_cap || h.market_cap);
+      const sizeByWeight = liveValue > 0 ? liveValue : snapshotValue;
+      const sizeByCap = marketCap > 0 ? marketCap : sizeByWeight;
+      const size = sizeMetric === 'cap' ? sizeByCap : sizeByWeight;
       if (size <= 0) {
         return;
       }
@@ -49,7 +71,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
         return;
       }
 
-      const industry = String(h.industry || 'Khác').trim() || 'Khác';
+      const industryStr = String(h.industry || 'Khác').trim();
+      const industry = (industryStr && industryStr !== 'undefined') ? industryStr : 'Khác';
       if (!sectors[industry]) {
         sectors[industry] = {
           name: industry,
@@ -67,15 +90,21 @@ export default function PortfolioHeatmap({ holdings, title }) {
         id: `symbol:${symbol}`,
         name: symbol,
         symbol,
+        companyName: String(h.company_name || h.name || symbol).trim(),
         industry,
         isHolding: Boolean(h.is_holding),
+        livePrice: toNumber(h.live_current_price || h.current_price),
+        marketCap,
+        volume: toNumber(h.live_volume || h.volume),
+        sparkline24: Array.isArray(h.sparkline24) ? h.sparkline24 : [],
+        sizeValue: size,
         changePct,
         value: [size, changePct],
         itemStyle: {
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
           borderWidth: h.is_holding ? 2 : 1,
           shadowBlur: isExtreme ? 14 : 0,
-          shadowColor: isExtreme ? glowColor : 'transparent',
+          shadowColor: isExtreme ? glowColor : 'rgba(0, 0, 0, 0)',
         },
       });
 
@@ -84,63 +113,182 @@ export default function PortfolioHeatmap({ holdings, title }) {
       sectors[industry].changePct += size * changePct;
     });
 
+    const allLeafRawSizes = [];
+    Object.values(sectors).forEach((sector) => {
+      (sector.children || []).forEach((leaf) => {
+        const raw = toNumber(leaf.sizeValue);
+        if (raw > 0) allLeafRawSizes.push(raw);
+      });
+    });
+
+    const minRawSize = allLeafRawSizes.length ? Math.min(...allLeafRawSizes) : 1;
+    const sqrtMin = Math.sqrt(Math.max(minRawSize, 1));
+
     return Object.values(sectors)
       .map((sector) => {
         const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
+
+        let sectorDisplayTotal = 0;
+        const normalizedChildren = (sector.children || []).map((leaf) => {
+          const raw = toNumber(leaf.sizeValue);
+          const sqrtRaw = Math.sqrt(Math.max(raw, 1));
+          // Bloomberg-style compression: compress huge-cap dominance while preserving rank.
+          const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
+          sectorDisplayTotal += normalizedDisplaySize;
+
+          return {
+            ...leaf,
+            value: [normalizedDisplaySize, toNumber(leaf.changePct)],
+          };
+        });
+
         return {
           id: `industry:${sector.name}`,
           name: sector.name,
-          value: [sector.totalWeight, avgChange],
+          value: sectorDisplayTotal,
           changePct: avgChange,
-          children: sector.children.sort((left, right) => right.value[0] - left.value[0]),
+          children: normalizedChildren.sort((left, right) => toNumber(right.value?.[0]) - toNumber(left.value?.[0])),
         };
       })
-      .sort((left, right) => right.value[0] - left.value[0]);
-  }, [holdings]);
+      .sort((left, right) => Number(right.value || 0) - Number(left.value || 0));
+  }, [holdings, sizeMetric]);
+
+  const maxLeafSize = useMemo(() => {
+    let max = 0;
+    hierarchicalData.forEach((industry) => {
+      (industry.children || []).forEach((leaf) => {
+        const val = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
+        if (val > max) {
+          max = val;
+        }
+      });
+    });
+    return max || 1;
+  }, [hierarchicalData]);
+
+  const buildLeafLabel = useCallback((params) => {
+    const leaf = params?.data;
+    if (!leaf || leaf.children) {
+      return '';
+    }
+
+    const rawCp = Array.isArray(leaf.value) ? leaf.value[1] : Number(leaf.changePct || 0);
+    const cp = Number.isFinite(rawCp) ? rawCp : 0;
+    const price = toNumber(leaf.livePrice);
+    const sizeValue = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
+    const ratio = sizeValue / maxLeafSize;
+
+    if (ratio < 0.18) {
+      return `{symbol|${leaf.name}}`;
+    }
+    if (ratio < 0.42) {
+      return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}`;
+    }
+    return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? price.toFixed(2) : '\u2014'} VND}`;
+  }, [maxLeafSize]);
+
+  // Use stable module-level constants
+  const heatScaleColors = HEAT_SCALE_COLORS;
+  const piecewiseVisualMap = PIECEWISE_VISUAL_MAP;
+
+  const buildTooltipSparkline = useCallback((values, strokeColor) => {
+    const points = (Array.isArray(values) ? values : [])
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value > 0)
+      .slice(-24);
+
+    if (points.length < 2) {
+      return '<div class="heatmap-tooltip__spark">Chua du du lieu 24h</div>';
+    }
+
+    const min = Math.min(...points);
+    const max = Math.max(...points);
+    const width = 176;
+    const height = 40;
+    const span = Math.max(max - min, 1);
+    const linePoints = points
+      .map((value, index) => {
+        const x = (index / Math.max(points.length - 1, 1)) * width;
+        const y = height - 6 - (((value - min) / span) * (height - 12));
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+    const polygon = `0,${height - 4} ${linePoints} ${width},${height - 4}`;
+    const latest = points[points.length - 1];
+
+    return `
+      <div class="heatmap-tooltip__spark">
+        <div class="heatmap-tooltip__spark-caption">Trend 24h • Last: ${Math.round(latest).toLocaleString('vi-VN')}</div>
+        <svg width="176" height="40" viewBox="0 0 176 40" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="heatmapSparkFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.35"></stop>
+              <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.05"></stop>
+            </linearGradient>
+          </defs>
+          <polygon points="${polygon}" fill="url(#heatmapSparkFill)"></polygon>
+          <polyline points="${linePoints}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        </svg>
+      </div>
+    `;
+  }, []);
 
   const option = useMemo(() => {
     if (!hierarchicalData.length) {
       return null;
     }
 
-    const heatScaleColors = ['#ef4444', '#f97316', '#94a3b8', '#22c55e', '#10b981'];
-
     const tooltip = {
-      backgroundColor: 'rgba(2, 6, 23, 0.92)',
-      borderColor: 'rgba(51, 65, 85, 0.7)',
+      backgroundColor: 'rgba(10, 18, 35, 0.96)',
+      borderColor: 'rgba(71, 85, 105, 0.72)',
       borderWidth: 1,
       confine: true,
-      extraCssText: 'backdrop-filter: blur(10px); box-shadow: 0 12px 32px rgba(2, 6, 23, 0.45);',
+      extraCssText: 'box-shadow: 0 8px 24px rgba(2, 6, 23, 0.5); border-radius: 10px;',
       textStyle: { color: '#e2e8f0', fontSize: 12 },
       formatter: (params) => {
         const data = params?.data;
         if (!data) return '';
+        // Guard: ECharts virtual root node (created internally when data is array) has children but no name
+        if (data.children && !data.name) return '';
 
         if (!data.children) {
           const size = Array.isArray(data.value) ? data.value[0] : Number(data.value || 0);
           const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
+          const price = toNumber(data.livePrice);
+          const cap = toNumber(data.marketCap);
+          const volume = toNumber(data.volume);
           const changeColor = changePct > 0 ? '#34d399' : changePct < 0 ? '#fb7185' : '#cbd5e1';
 
+          const sparklineMarkup = buildTooltipSparkline(
+            data.sparkline24,
+            changePct >= 0 ? '#10b981' : '#f43f5e',
+          );
+
           return `
-            <div style="min-width: 210px; padding: 4px 2px;">
-              <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;">
-                <strong style="font-size:16px; color:#ffffff;">${data.name}</strong>
-                <span style="font-size:11px; color:${data.isHolding ? '#facc15' : '#94a3b8'}; font-weight:700;">
-                  ${data.isHolding ? 'Đang nắm giữ' : 'Trong watchlist'}
+            <div class="heatmap-tooltip">
+              <div class="heatmap-tooltip__header">
+                <b>${data.name}</b> - ${data.companyName || data.name}
+              </div>
+              <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
+              <div class="heatmap-tooltip__row">
+                <span>Giá</span>
+                <span style="color:${changeColor}; font-weight:700;">
+                  ${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND (${formatPercent(changePct)})
                 </span>
               </div>
-              <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom:6px;">
-                <span style="color:#94a3b8;">Nhóm ngành</span>
-                <span style="color:#f8fafc; font-weight:600;">${data.industry || 'Khác'}</span>
+              <div class="heatmap-tooltip__row">
+                <span>Vốn hóa</span>
+                <span style="color:#f8fafc; font-weight:700;">${cap > 0 ? (cap / 1000).toFixed(1) : '—'} Tỷ</span>
               </div>
-              <div style="display:flex; justify-content:space-between; gap:16px; margin-bottom:6px;">
-                <span style="color:#94a3b8;">Trọng số hiển thị</span>
+              <div class="heatmap-tooltip__row">
+                <span>Khối lượng</span>
+                <span style="color:#f8fafc; font-weight:700;">${volume > 0 ? Math.round(volume).toLocaleString('vi-VN') : '—'}</span>
+              </div>
+              <div class="heatmap-tooltip__row">
+                <span>${sizeMetric === 'cap' ? 'Size theo cap' : 'Size theo tỷ trọng'}</span>
                 <span style="color:#f8fafc; font-weight:700;">${Math.round(size).toLocaleString('vi-VN')}</span>
               </div>
-              <div style="display:flex; justify-content:space-between; gap:16px; padding-top:8px; border-top:1px solid rgba(148,163,184,0.18);">
-                <span style="color:#94a3b8;">Biến động</span>
-                <span style="color:${changeColor}; font-weight:800;">${formatPercent(changePct)}</span>
-              </div>
+              ${sparklineMarkup}
             </div>
           `;
         }
@@ -161,29 +309,24 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (viewMode === 'sunburst') {
       return {
         backgroundColor: 'transparent',
-        animationDuration: 350,
-        animationDurationUpdate: 900,
-        animationEasingUpdate: 'cubicInOut',
+        animation: false,
+        animationDuration: 0,
+        animationDurationUpdate: 0,
+        animationEasingUpdate: 'linear',
         tooltip,
-        visualMap: {
-          show: false,
-          min: -3,
-          max: 3,
-          dimension: 1,
-          inRange: {
-            color: heatScaleColors,
-          },
-        },
+        visualMap: piecewiseVisualMap,
         series: [
           {
             type: 'sunburst',
             id: 'portfolio-heatmap-transition',
             data: hierarchicalData,
             sort: 'desc',
+            center: ['50%', '50%'],
             radius: ['7%', '92%'],
             nodeClick: false,
-            universalTransition: true,
-            emphasis: { focus: 'ancestor' },
+            universalTransition: false,
+            stateAnimation: { duration: 0 },
+            emphasis: { disabled: true },
             itemStyle: {
               borderColor: 'rgba(2, 6, 23, 0.78)',
               borderWidth: 1.5,
@@ -193,8 +336,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
               minAngle: 5,
               formatter: (params) => {
                 if (params?.data?.children) return params.name;
-                const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
-                return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
+                return buildLeafLabel(params);
               },
               rich: {
                 symbol: {
@@ -209,6 +351,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
                   color: 'rgba(241,245,249,0.95)',
                   fontSize: 10,
                   lineHeight: 11,
+                },
+                price: {
+                  color: 'rgba(226,232,240,0.95)',
+                  fontSize: 9,
+                  lineHeight: 10,
                 },
               },
             },
@@ -248,72 +395,65 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     return {
       backgroundColor: 'transparent',
-      animationDuration: 350,
-      animationDurationUpdate: 900,
-      animationEasingUpdate: 'cubicInOut',
+      animation: false,
+      animationDuration: 0,
+      animationDurationUpdate: 0,
+      animationEasingUpdate: 'linear',
       tooltip,
-      visualMap: {
-        show: false,
-        min: -3,
-        max: 3,
-        dimension: 1,
-        inRange: {
-          color: heatScaleColors,
-        },
-      },
+      visualMap: piecewiseVisualMap,
       series: [
         {
           type: 'treemap',
           id: 'portfolio-heatmap-transition',
           data: hierarchicalData,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: '100%',
+          height: '100%',
           roam: false,
           nodeClick: false,
-          universalTransition: true,
+          universalTransition: false,
+          stateAnimation: { duration: 0 },
           breadcrumb: { show: false },
           sort: 'desc',
-          squareRatio: 0.75,
-          leafDepth: 1,
+          squareRatio: 0.5,
+          leafDepth: 2,
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
-            focus: 'descendant',
-            itemStyle: {
-              borderColor: '#e2e8f0',
-              borderWidth: 2,
-              shadowBlur: 20,
-              shadowColor: 'rgba(15, 23, 42, 0.45)',
-            },
-            label: {
-              show: true,
-            },
-          },
-          blur: {
-            itemStyle: {
-              opacity: 0.86,
-            },
+            disabled: true,
           },
           label: {
             show: true,
-            formatter: (params) => {
-              if (params?.data?.children) return '';
-              const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
-              return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
-            },
+            align: 'center',
+            verticalAlign: 'middle',
+            formatter: buildLeafLabel,
             overflow: 'truncate',
             rich: {
               symbol: {
                 color: '#ffffff',
                 fontWeight: 900,
-                fontSize: 12,
+                fontSize: 14,
                 lineHeight: 16,
                 textShadowBlur: 3,
                 textShadowColor: 'rgba(2, 6, 23, 0.7)',
+                align: 'center',
               },
               pct: {
                 color: 'rgba(255,255,255,0.9)',
                 fontWeight: 700,
-                fontSize: 10,
+                fontSize: 11,
                 lineHeight: 12,
+                align: 'center',
+              },
+              price: {
+                color: 'rgba(226,232,240,0.95)',
+                fontWeight: 600,
+                fontSize: 9,
+                lineHeight: 10,
+                align: 'center',
               },
             },
           },
@@ -325,7 +465,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           levels: [
             {
-              colorSaturation: [0.4, 0.8],
               itemStyle: {
                 borderColor: 'rgba(15, 23, 42, 0.9)',
                 borderWidth: 2,
@@ -333,93 +472,108 @@ export default function PortfolioHeatmap({ holdings, title }) {
               },
               upperLabel: {
                 show: true,
-                height: 24,
-                color: '#f1f5f9',
+                height: 22,
+                color: '#e2e8f0',
                 fontWeight: 800,
-                fontSize: 11,
+                fontSize: 10,
                 padding: [0, 0, 0, 8],
-                backgroundColor: 'rgba(2, 6, 23, 0.85)',
+                backgroundColor: 'rgba(12, 22, 40, 0.76)',
               },
             },
             {
-              colorSaturation: [0.5, 0.9],
               itemStyle: {
-                borderColor: 'rgba(2, 6, 23, 0.6)',
-                gapWidth: 1,
+                borderColor: 'rgba(30, 58, 95, 0.48)',
                 borderWidth: 1,
+                gapWidth: 1,
               },
             },
           ],
         },
       ],
     };
-  }, [formatPercent, hierarchicalData, viewMode]);
+  }, [buildLeafLabel, buildTooltipSparkline, formatPercent, heatScaleColors, hierarchicalData, piecewiseVisualMap, sizeMetric, viewMode]);
 
   if (!hierarchicalData.length) {
     return (
       <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="text-4xl mb-3 animate-pulse">📊</div>
+        <div className="mb-3 h-10 w-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
         <p className="text-gray-400 text-sm font-medium">{t('dashboardRealtime.heatmapEmpty', { defaultValue: 'Chưa có dữ liệu heatmap cho danh mục này.' })}</p>
       </div>
     );
   }
 
   return (
-    <div className="group relative bg-gray-900/60 backdrop-blur-xl border border-gray-800/50 rounded-2xl flex flex-col overflow-hidden transition-all duration-700 hover:border-gray-700/80 shadow-2xl" style={{ minHeight: HEATMAP_HEIGHT + 85 }}>
+    <div className="group relative bg-slate-900/76 backdrop-blur-[12px] border border-slate-700/68 rounded-2xl flex flex-col overflow-hidden transition-all duration-500 hover:border-slate-500/80 shadow-2xl" style={{ minHeight: HEATMAP_HEIGHT + 96 }}>
       {/* Decorative background glow */}
-      <div className="absolute -top-24 -left-24 w-64 h-64 bg-brand-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-brand-500/10 transition-colors duration-1000" />
-      <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-brand-500/5 rounded-full blur-[100px] pointer-events-none group-hover:bg-brand-500/10 transition-colors duration-1000" />
+      <div className="absolute -top-24 -left-24 w-64 h-64 bg-cyan-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-cyan-500/10 transition-colors duration-700" />
+      <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-700" />
 
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-800/50 bg-gray-950/40 flex items-center justify-between z-10">
+      <div className="px-5 py-3 border-b border-slate-700/55 bg-slate-950/62 flex items-center justify-between z-10">
         <div className="flex flex-col">
-          <h3 className="text-[10px] sm:text-xs font-black text-gray-300 uppercase tracking-[0.2em] flex items-center gap-2">
+          <h3 className="text-[10px] sm:text-xs font-black text-slate-200 uppercase tracking-[0.2em] flex items-center gap-2">
             {title}
-            <span className="flex h-1.5 w-1.5 rounded-full bg-brand-500 animate-pulse" />
+            <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
           </h3>
-          <p className="text-[9px] text-gray-500 font-bold uppercase mt-1 tracking-wider">
+          <p className="text-[9px] text-slate-400/95 font-bold uppercase mt-0.5 tracking-wider">
             {t('dashboardRealtime.heatmapRealtimeCaption', { defaultValue: 'Biến động theo dõi • Realtime feed' })}
           </p>
         </div>
-        
-        <div className="flex bg-gray-900/80 p-1 rounded-xl border border-gray-800/50 shadow-inner">
+
+        <div className="flex items-center gap-1.5">
+          <div className="flex bg-slate-900/85 p-1 rounded-full border border-slate-700/50 shadow-inner">
+            <button
+              onClick={() => setSizeMetric('weight')}
+              className={`px-3 py-1 text-[10px] font-black rounded-full transition-all duration-300 ${sizeMetric === 'weight' ? 'bg-cyan-500 text-white shadow-[0_0_16px_rgba(6,182,212,0.35)]' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              {t('dashboardRealtime.heatmapSizeWeight', { defaultValue: 'Weight' })}
+            </button>
+            <button
+              onClick={() => setSizeMetric('cap')}
+              className={`px-3 py-1 text-[10px] font-black rounded-full transition-all duration-300 ${sizeMetric === 'cap' ? 'bg-cyan-500 text-white shadow-[0_0_16px_rgba(6,182,212,0.35)]' : 'text-slate-400 hover:text-slate-200'}`}
+            >
+              {t('dashboardRealtime.heatmapSizeCap', { defaultValue: 'Cap' })}
+            </button>
+          </div>
+          <div className="flex bg-slate-900/84 p-1 rounded-xl border border-slate-700/55 shadow-inner">
           <button 
             onClick={() => setViewMode('treemap')}
-            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'treemap' ? 'bg-brand-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}
+            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'treemap' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
           >
             <span style={{ fontSize: '14px' }}>⊞</span>
             {t('dashboardRealtime.heatmapModeTreemap', { defaultValue: 'Treemap' })}
           </button>
           <button 
             onClick={() => setViewMode('sunburst')}
-            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'sunburst' ? 'bg-brand-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] scale-[1.02]' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'}`}
+            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'sunburst' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
           >
             <span style={{ fontSize: '14px' }}>◎</span>
             {t('dashboardRealtime.heatmapModeSunburst', { defaultValue: 'Sunburst' })}
           </button>
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 p-3 relative z-10" style={{ height: HEATMAP_HEIGHT }}>
+      <div className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
           option={option}
-          style={{ height: '100%', width: '100%' }}
-          notMerge={false}
+          style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
+          notMerge={true}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
         />
         
-        <div className="absolute bottom-6 right-6 flex items-center gap-4 bg-gray-950/90 px-4 py-2 rounded-2xl border border-gray-800 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
+        <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#00ff88] shadow-[0_0_8px_rgba(0,255,136,0.6)]" />
-            <span className="text-[9px] text-gray-400 font-black tracking-tighter uppercase">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-[0_0_8px_rgba(15,118,110,0.55)]" />
+            <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendUp', { defaultValue: 'Tăng' })}
             </span>
           </div>
-          <div className="w-px h-3 bg-gray-800" />
+          <div className="w-px h-3 bg-slate-700" />
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#ff003c] shadow-[0_0_8px_rgba(255,0,60,0.6)]" />
-            <span className="text-[9px] text-gray-400 font-black tracking-tighter uppercase">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#be123c] shadow-[0_0_8px_rgba(190,18,60,0.5)]" />
+            <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendDown', { defaultValue: 'Giảm' })}
             </span>
           </div>

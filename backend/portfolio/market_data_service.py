@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import logging
+import math
 import os
 import re
 from collections import defaultdict
@@ -2626,17 +2627,6 @@ class MarketDataService:
         )
         cursor_payload = self._decode_unified_alerts_cursor(query_params.get('cursor'))
 
-        # Cache key: per-user, per-symbol-set, per-params. Skip cache when cursor is used (pagination).
-        if cursor_payload is None:
-            sorted_symbols = ','.join(sorted(symbols)) if symbols else ''
-            _cache_key = (
-                f"unified_alerts:u{user.pk}:w{window}:s{severity_min}"
-                f":mt{int(include_market_top_tier)}:sym{hash(sorted_symbols)}:lim{limit}"
-            )
-            _cached = cache.get(_cache_key)
-            if _cached is not None:
-                return _cached
-
         if query_params.get('cursor') and cursor_payload is None:
             raise MarketDataValidationException('cursor không hợp lệ cho unified alerts.')
         if cursor_payload is not None:
@@ -2715,6 +2705,7 @@ class MarketDataService:
                 'matched_value': matched_value,
                 'threshold': resolved_threshold,
                 'market_wide': False,
+                'watchlist_symbol': True,
             })
 
         dark_flow_rows = []
@@ -2747,6 +2738,7 @@ class MarketDataService:
                 'ts': row.created_at.isoformat(),
                 'to': f"/stocks/{row.symbol}",
                 'market_wide': False,
+                'watchlist_symbol': True,
             })
 
         market_top_tier_whales = []
@@ -2839,12 +2831,6 @@ class MarketDataService:
                 },
             },
         }
-        # Cache non-paginated results for 20 seconds to prevent Daphne task timeout on repeated requests.
-        if cursor_payload is None:
-            try:
-                cache.set(_cache_key, payload, timeout=20)
-            except Exception:
-                pass
         return payload
 
     def _parse_unified_severity_min(self, severity_raw) -> str:
@@ -2926,13 +2912,16 @@ class MarketDataService:
 
     def _compute_unified_priority_rank(self, item: dict, now=None) -> int:
         base_rank = self._unified_severity_rank(item.get('severity'))
+        bonus = 0
+        if bool(item.get('watchlist_symbol')):
+            bonus += 2
+
         if str(item.get('source') or '') != 'whale':
-            return base_rank
+            return min(base_rank + bonus, 8)
 
         threshold = float(item.get('threshold') or 0.0)
         matched_value = float(item.get('matched_value') or 0.0)
         ratio = (matched_value / threshold) if threshold > 0 else 0.0
-        bonus = 0
         if ratio >= 3.0:
             bonus += 2
         elif ratio >= 1.5:
@@ -2948,9 +2937,6 @@ class MarketDataService:
         if age_seconds <= 5 * 60:
             bonus += 1
         elif age_seconds <= 15 * 60 and ratio >= 1.0:
-            bonus += 1
-
-        if bool(item.get('market_wide')):
             bonus += 1
 
         return min(base_rank + bonus, 8)
@@ -2975,63 +2961,104 @@ class MarketDataService:
         tier_multiplier = max(tier_multiplier, 3.0)
         market_tier_threshold = base_threshold_vnd * tier_multiplier
 
-        queryset = (
-            IntradayTick.objects
-            .annotate(
-                matched_value=ExpressionWrapper(
-                    Case(
-                        When(price__gte=1000, then=F('price') * F('volume')),
-                        default=F('price') * 1000 * F('volume'),
-                        output_field=FloatField(),
-                    ),
-                    output_field=FloatField(),
-                )
-            )
-            .filter(matched_value__gte=market_tier_threshold)
-        )
+        try:
+            market_cache_ttl = int(os.getenv('UNIFIED_ALERTS_MARKET_TOP_TIER_CACHE_SECONDS', '60'))
+        except (TypeError, ValueError):
+            market_cache_ttl = 60
+        market_cache_ttl = max(market_cache_ttl, 5)
 
-        local_today = timezone.localdate()
-        if window == '5d':
-            queryset = queryset.filter(trade_date__gte=local_today - timedelta(days=4))
-        else:
-            queryset = queryset.filter(trade_date=local_today)
+        candidate_limit = max(limit * 8, 20)
+        cache_key = f"unified_alerts:market_top_tier:v2:w{window}:l{candidate_limit}:t{int(round(market_tier_threshold))}"
+        cached_candidates = cache.get(cache_key)
 
-        if exclude_symbols:
-            normalized_excludes = [str(symbol).strip().upper() for symbol in exclude_symbols if str(symbol).strip()]
-            if normalized_excludes:
-                queryset = queryset.exclude(symbol__in=normalized_excludes)
-
-        # Pull a slightly larger candidate set, then enforce exact window/time validity in Python.
-        candidates = list(queryset.order_by('-matched_value', '-trade_date', '-trade_time', '-id')[: max(limit * 8, 20)])
-        results = []
-        for row in candidates:
-            if not self._is_tick_row_in_window(row, window, now=now):
-                continue
+        if cached_candidates is None:
             try:
-                event_dt = timezone.make_aware(
-                    datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
-                    timezone.get_current_timezone(),
-                )
-            except Exception:
-                event_dt = now
+                max_price_vnd = float(os.getenv('UNIFIED_ALERTS_MARKET_TOP_TIER_MAX_PRICE_VND', '500000'))
+            except (TypeError, ValueError):
+                max_price_vnd = 500_000.0
+            max_price_vnd = max(max_price_vnd, 1_000.0)
+            min_volume_for_scan = max(int(math.ceil(market_tier_threshold / max_price_vnd)), 1)
 
-            symbol = str(getattr(row, 'symbol', '') or '').upper()
-            matched_value = float(getattr(row, 'matched_value', 0.0) or 0.0)
-            side = self._normalize_side(getattr(row, 'side', ''))
+            queryset = (
+                IntradayTick.objects
+                .filter(volume__gte=min_volume_for_scan)
+                .annotate(
+                    matched_value=ExpressionWrapper(
+                        Case(
+                            When(price__gte=1000, then=F('price') * F('volume')),
+                            default=F('price') * 1000 * F('volume'),
+                            output_field=FloatField(),
+                        ),
+                        output_field=FloatField(),
+                    )
+                )
+                .filter(matched_value__gte=market_tier_threshold)
+            )
+
+            resolved_now_local = timezone.localtime(now)
+            window_start = self._window_start_datetime(window, now=now)
+            if window_start is not None:
+                window_start_local = timezone.localtime(window_start)
+                queryset = queryset.filter(
+                    Q(trade_date__gt=window_start_local.date()) |
+                    Q(trade_date=window_start_local.date(), trade_time__gte=window_start_local.time())
+                )
+            queryset = queryset.filter(
+                Q(trade_date__lt=resolved_now_local.date()) |
+                Q(trade_date=resolved_now_local.date(), trade_time__lte=resolved_now_local.time())
+            )
+
+            rows = list(queryset.order_by('-matched_value', '-trade_date', '-trade_time', '-id')[:candidate_limit])
+            cached_candidates = []
+            for row in rows:
+                try:
+                    event_dt = timezone.make_aware(
+                        datetime.combine(getattr(row, 'trade_date'), getattr(row, 'trade_time')),
+                        timezone.get_current_timezone(),
+                    )
+                except Exception:
+                    event_dt = now
+                cached_candidates.append({
+                    'event_id': f"tick:{getattr(row, 'id', 0)}",
+                    'symbol': str(getattr(row, 'symbol', '') or '').upper(),
+                    'side': self._normalize_side(getattr(row, 'side', '')),
+                    'matched_value': float(getattr(row, 'matched_value', 0.0) or 0.0),
+                    'ts': event_dt.isoformat(),
+                })
+            try:
+                cache.set(cache_key, cached_candidates, timeout=market_cache_ttl)
+            except Exception:
+                pass
+
+        normalized_excludes = {
+            str(symbol).strip().upper()
+            for symbol in (exclude_symbols or [])
+            if str(symbol).strip()
+        }
+
+        results = []
+        for row in cached_candidates or []:
+            symbol = str(row.get('symbol') or '').upper()
+            if not symbol or symbol in normalized_excludes:
+                continue
+
+            matched_value = float(row.get('matched_value') or 0.0)
+            side = str(row.get('side') or 'neutral').lower()
             headline = 'Market-wide mega buy flow detected' if side == 'buy' else 'Market-wide mega sell flow detected'
             results.append({
-                'event_id': f"tick:{getattr(row, 'id', 0)}",
+                'event_id': str(row.get('event_id') or f"tick:{symbol}:{row.get('ts')}"),
                 'symbol': symbol,
                 'source': 'whale',
                 'severity': 'critical',
                 'confidence': 99,
                 'headline': headline,
                 'detail': f"Top-tier matched value: {round(matched_value, 2)}",
-                'ts': event_dt.isoformat(),
+                'ts': str(row.get('ts') or now.isoformat()),
                 'to': f"/whale-alerts/{symbol}",
                 'matched_value': matched_value,
                 'threshold': base_threshold_vnd,
                 'market_wide': True,
+                'watchlist_symbol': False,
             })
             if len(results) >= limit:
                 break

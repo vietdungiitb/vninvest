@@ -105,6 +105,68 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Runtime Incident Hotfix - ECharts colorStops null (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tat transition/state animation gay crash `colorStops`, harden treemap/sunburst rendering)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Runtime Hotfix - lastEventAt ReferenceError (2026-04-18)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - sua bien tham chieu `lastEventAt` con sot thanh `_lastEventAt` de khac phuc crash runtime)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Emergency Fix - Unified Alerts Request Loop + Heatmap Loading UX (2026-04-18)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - xoa refetch theo `lastEventAt`, chi giu refresh nen 30s + fetch khi doi trang/filter)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - thay placeholder icon bang spinner Slate-themed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Bloomberg-Pro Technical Fix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - ap dung leafDepth=2 + sqrt normalization + piecewise visualMap 7 muc de khac phuc hien tuong treemap thanh ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Render Stabilization - Treemap Strip Bug Fix (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tach mode Treemap sang data phang theo symbol, giam artifact layout gay day ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Mockup Alignment - Layout + Color Palette (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - sua treemap strip-layout, chuan hoa leafDepth/levels va doi visualMap sang Rose/Navy/Teal de sat mockup)
+- frontend/src/index.css (MODIFIED - dong bo mau tooltip heatmap theo palette moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Phase 1 Backend Stabilization - Bulk Aggregation Symbol Stats (2026-04-17)
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - refactor `whale_advisory_symbol_stats_api` bo N+1 query, gom grouped aggregation theo symbol + threshold Case/When trong SQL)
+- backend/portfolio/models.py (MODIFIED - them composite index `['symbol', 'trade_date', 'side']` cho `IntradayTick`)
+- backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py (NEW - migration tao index `idx_intraday_sym_date_side`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### System Hardening Implementation (2026-04-17)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - them RAF throttling cho ticker updates: pending buffer + requestAnimationFrame flush + cleanup unmount)
+- backend/config/settings.py (MODIFIED - doi mac dinh stock advisory sang async-first: disable force sync first create + disable sync fallback)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - trim_streams dong bo STREAM_MAX_LEN voi STREAM_MAX_LEN_HARD_CAP tu settings trung tam)
+- backend/portfolio/views_dark_money_history.py (MODIFIED - vector hoa whale side inference + aggregate bang Pandas DataFrame/groupby)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### SQL + Pandas Optimization (2026-04-17)
+- backend/portfolio/order_flow.py (MODIFIED - vector hoa CVD/tick-rate/size-distribution; SQL filter + .values projection cho tick window)
+- backend/portfolio/views_ai_advisory_session.py (MODIFIED - VWAP benchmark enrichment chuyen sang SQL values + pandas)
+- backend/portfolio/realtime/compute.py (MODIFIED - bo native loop path, chuan hoa wrapper qua pandas compute path)
+- backend/portfolio/realtime/stream_consumers.py (MODIFIED - ws broadcaster dung pandas path duy nhat)
+- module_tree_full.md (MODIFIED - regenerate index cay ham/lop sau refactor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Unified Alerts Dual-path - Watchlist Priority + Market-wide Cache (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - bo cache tong de Watchlist realtime, boost priority watchlist_symbol, toi uu market-wide query bang volume prefilter + SQL window + cache global 60s)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - crash fix transition: notMerge=true, bo colorSaturation, them NaN/null guards)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime 504 Remediation - Redis stream retention hard-cap (2026-04-17)
 - backend/config/settings.py (MODIFIED - giam default STREAM_MAX_LEN va bo sung STREAM_MAX_LEN_HARD_CAP)
 - backend/portfolio/realtime/tick_producer.py (MODIFIED - clamp maxlen theo hard-cap va warning log khi vuot nguong)
@@ -705,6 +767,65 @@ Overall Day 2:         ✅ Core implementation complete
 Get-ChildItem -Recurse -Include "*.jsx","*.js" | Select-String "new WebSocket"
 # Result: Only hooks/useRealtimeFeed.js ✅
 ```
+
+---
+
+## UI/UX Core Refinement - 2026-04-17
+
+Status: Completed (frontend visual refinement theo mockup Slate/Navy)
+
+Files modified:
+- frontend/src/index.css
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/Sidebar.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Highlights:
+- Dong bo palette Slate/Navy theo mockup, chuan hoa button pill va pulse live indicator.
+- Nang cap ECharts heatmap: visualMap Rose/Slate/Emerald, tooltip cau truc moi, toggle mode Treemap/Sunburst va size metric Weight/Cap.
+- Tang data density sidebar: sticky header, filter theo nganh, cot gia/% co do rong co dinh.
+- Bo sung KPI icon + sparkline SVG tren StatCard.
+- Toi uu TopNav: globe compact switch VI/EN de giam chiem dung khong gian.
+
+### Delta update - Pixel tone + mini-chart tooltip
+
+Status: Completed
+
+Files modified (delta):
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Delta highlights:
+- Bo sung du lieu intraday theo tung symbol de nuoi mini-chart tooltip heatmap.
+- Tooltip heatmap da render sparkline SVG thuc te (khong con placeholder).
+- Tinh chinh vi mo tone mockup: blur, border contrast, spacing header panel.
+
+### Delta update - Pixel-perfect pass 2
+
+Status: Completed
+
+Files modified (delta):
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Delta highlights:
+- Giam them vertical rhythm o watchlist row de tang mat do hien thi.
+- Can chinh top nav height, border tone, va spacing controls de dong bo voi dashboard shell.
+- Tinh chinh heatmap header/legend spacing + contrast de sat hon mockup.
 
 ---
 

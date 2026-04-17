@@ -303,6 +303,8 @@ export default function useRealtimeFeedCore({
   const lastPollAtRef = useRef(0);
   const wsHealthyRef = useRef(false);
   const lastProcessedEventIdsRef = useRef(new Map());
+  const pendingTickerUpdatesRef = useRef({});
+  const tickerRafIdRef = useRef(null);
 
   useEffect(() => { symbolsRef.current = normalizedSymbols; }, [normalizedSymbols]);
   useEffect(() => { quotesBySymbolRef.current = quotesBySymbol; }, [quotesBySymbol]);
@@ -368,6 +370,46 @@ export default function useRealtimeFeedCore({
       ),
     }));
   }, []);
+
+  const flushTickerUpdates = useCallback(() => {
+    const updates = pendingTickerUpdatesRef.current;
+    const symbols = Object.keys(updates);
+
+    if (!symbols.length) {
+      tickerRafIdRef.current = null;
+      return;
+    }
+
+    pendingTickerUpdatesRef.current = {};
+
+    setQuotesBySymbol((prev) => {
+      const next = { ...prev };
+      symbols.forEach((symbol) => {
+        const update = updates[symbol];
+        next[symbol] = mergeQuote(
+          getQuoteBySymbol(prev, symbol) || { symbol },
+          { ...update, symbol },
+        );
+      });
+      return next;
+    });
+
+    tickerRafIdRef.current = null;
+  }, []);
+
+  const applyTickerUpdateThrottled = useCallback((update) => {
+    const normalizedSymbol = normalizeSymbol(update?.symbol);
+    if (!normalizedSymbol) return;
+
+    pendingTickerUpdatesRef.current[normalizedSymbol] = {
+      ...update,
+      symbol: normalizedSymbol,
+    };
+
+    if (tickerRafIdRef.current === null) {
+      tickerRafIdRef.current = requestAnimationFrame(flushTickerUpdates);
+    }
+  }, [flushTickerUpdates]);
 
   useEffect(() => {
     if (!enabled) return undefined;
@@ -765,13 +807,30 @@ export default function useRealtimeFeedCore({
               subscribedSymbols: [],
             }));
           } else if (payload.event_type === 'ticker_update') {
-            applyTickerUpdate({
+            applyTickerUpdateThrottled({
               symbol: payload.symbol,
+              current_price: readEventField(payload, 'price') ?? readEventField(payload, 'current_price'),
               price: readEventField(payload, 'price'),
+              prev_price: readEventField(payload, 'prev_price'),
               change_value: readEventField(payload, 'change_value'),
               change_pct: readEventField(payload, 'change_pct'),
+              open_price: readEventField(payload, 'open_price'),
+              high_price: readEventField(payload, 'high_price'),
+              low_price: readEventField(payload, 'low_price'),
               volume: readEventField(payload, 'volume'),
               ts: payload.ts,
+              freshness_seconds: readEventField(payload, 'freshness_seconds'),
+              age_seconds: readEventField(payload, 'age_seconds'),
+              stale: readEventField(payload, 'stale'),
+              stale_over_threshold: readEventField(payload, 'stale_over_threshold'),
+              stale_threshold_seconds: readEventField(payload, 'stale_threshold_seconds'),
+              last_date: readEventField(payload, 'last_date'),
+              source_event_at: readEventField(payload, 'source_event_at'),
+              served_at: readEventField(payload, 'served_at'),
+              market_phase: readEventField(payload, 'market_phase'),
+              market_code: readEventField(payload, 'market_code'),
+              data_semantic: readEventField(payload, 'data_semantic'),
+              source: readEventField(payload, 'source'),
             });
             setLastEventAt(payload.ts || new Date().toISOString());
             setRealtimeStatus('live');
@@ -900,7 +959,14 @@ export default function useRealtimeFeedCore({
       window.clearTimeout(initTimer);
       cleanup();
     };
-  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdate, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
+  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdateThrottled, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
+
+  useEffect(() => () => {
+    if (tickerRafIdRef.current !== null) {
+      cancelAnimationFrame(tickerRafIdRef.current);
+      tickerRafIdRef.current = null;
+    }
+  }, []);
 
   return {
     quotesBySymbol,

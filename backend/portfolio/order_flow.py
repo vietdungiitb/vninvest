@@ -12,6 +12,7 @@ import statistics
 from datetime import date, datetime, time, timedelta, timezone
 from typing import Sequence
 
+import pandas as pd
 from django.core.cache import cache
 from django.db.models import QuerySet
 from django.utils import timezone as django_timezone
@@ -54,6 +55,14 @@ def _time_to_seconds(t: time) -> int:
     return t.hour * 3600 + t.minute * 60 + t.second
 
 
+def _seconds_to_time(seconds: int) -> time:
+    normalized = max(int(seconds), 0)
+    h = normalized // 3600
+    m = (normalized % 3600) // 60
+    s = normalized % 60
+    return time(h, m, s)
+
+
 def _fetch_ticks(symbol: str, window_minutes: int) -> list[dict]:
     """
     Query IntradayTick trong window_minutes gần nhất, trả về list[dict].
@@ -65,23 +74,24 @@ def _fetch_ticks(symbol: str, window_minutes: int) -> list[dict]:
     now_secs = _time_to_seconds(_now_time())
     cutoff_secs = now_secs - window_minutes * 60
 
+    cutoff_secs = max(cutoff_secs, 0)
+    cutoff_time = _seconds_to_time(cutoff_secs)
+
     qs: QuerySet = IntradayTick.objects.filter(
         symbol=symbol,
         trade_date=today,
+        trade_time__gte=cutoff_time,
     ).values("trade_time", "price", "volume", "side")
+    rows = list(qs)
+    if not rows:
+        return []
 
-    result = []
-    for row in qs:
-        t_secs = _time_to_seconds(row["trade_time"])
-        if t_secs >= cutoff_secs:
-            result.append({
-                "trade_time": row["trade_time"],
-                "price": float(row["price"]),
-                "volume": int(row["volume"]),
-                "side": row["side"],
-                "value": float(row["price"]) * int(row["volume"]),
-            })
-    return result
+    frame = pd.DataFrame.from_records(rows)
+    frame["price"] = pd.to_numeric(frame.get("price"), errors="coerce").fillna(0.0).astype(float)
+    frame["volume"] = pd.to_numeric(frame.get("volume"), errors="coerce").fillna(0).astype(int)
+    frame["value"] = frame["price"] * frame["volume"]
+
+    return frame.to_dict(orient="records")
 
 
 def _bucket_index(trade_time: time, bucket_seconds: int) -> int:
@@ -109,41 +119,43 @@ def compute_cvd_series(
     if not ticks:
         return []
 
-    buckets: dict[int, dict] = {}
-    for tick in ticks:
-        idx = _bucket_index(tick["trade_time"], bucket_seconds)
-        if idx not in buckets:
-            buckets[idx] = {"buy_value": 0.0, "sell_value": 0.0, "bucket_idx": idx}
-        b = buckets[idx]
-        val = tick["value"]
-        side = tick["side"]
-        if side == "BUY":
-            b["buy_value"] += val
-        elif side == "SELL":
-            b["sell_value"] += val
-        else:  # UNKNOWN — split 50/50
-            b["buy_value"] += val * 0.5
-            b["sell_value"] += val * 0.5
+    frame = pd.DataFrame.from_records(ticks)
+    if frame.empty:
+        return []
+    frame["value"] = pd.to_numeric(frame.get("value"), errors="coerce").fillna(0.0).astype(float)
+    frame["side"] = frame.get("side", "UNKNOWN").astype(str).str.upper()
+    frame["bucket_idx"] = frame["trade_time"].map(lambda t: _bucket_index(t, bucket_seconds))
 
-    # Sắp xếp theo bucket_idx tăng dần
-    sorted_buckets = sorted(buckets.values(), key=lambda x: x["bucket_idx"])
+    frame["buy_value_row"] = frame["value"].where(frame["side"] == "BUY", 0.0)
+    frame["sell_value_row"] = frame["value"].where(frame["side"] == "SELL", 0.0)
+    unknown_mask = ~frame["side"].isin(["BUY", "SELL"])
+    frame.loc[unknown_mask, "buy_value_row"] = frame.loc[unknown_mask, "value"] * 0.5
+    frame.loc[unknown_mask, "sell_value_row"] = frame.loc[unknown_mask, "value"] * 0.5
 
-    # Tính bucket_ts (ISO string) và cvd
+    grouped = (
+        frame.groupby("bucket_idx", as_index=False)[["buy_value_row", "sell_value_row"]]
+        .sum()
+        .sort_values("bucket_idx")
+    )
+
     today = _today()
     result = []
     cumulative = 0.0
-    for b in sorted_buckets:
-        secs = b["bucket_idx"] * bucket_seconds
+    for row in grouped.to_dict(orient="records"):
+        bucket_idx = int(row["bucket_idx"])
+        buy_value = float(row["buy_value_row"])
+        sell_value = float(row["sell_value_row"])
+        secs = bucket_idx * bucket_seconds
         bucket_time = (
             datetime.combine(today, time(0, 0))
             + timedelta(seconds=secs)
         )
-        cvd = b["buy_value"] - b["sell_value"]
+        cvd = buy_value - sell_value
         cumulative += cvd
         result.append({
             "bucket_ts": bucket_time.isoformat(),
-            "buy_value": round(b["buy_value"], 2),
-            "sell_value": round(b["sell_value"], 2),
+            "buy_value": round(buy_value, 2),
+            "sell_value": round(sell_value, 2),
             "cvd": round(cvd, 2),
             "cumulative_cvd": round(cumulative, 2),
         })
@@ -173,21 +185,24 @@ def compute_tick_rate(
     today = _today()
     now_secs = _time_to_seconds(_now_time())
     cutoff_secs = max(0, now_secs - window_seconds)
+    cutoff_time = _seconds_to_time(cutoff_secs)
 
     qs = IntradayTick.objects.filter(
         symbol=symbol,
         trade_date=today,
-    ).values("trade_time", "price", "volume")
+        trade_time__gte=cutoff_time,
+    ).values("price", "volume")
 
-    total = 0
-    small = 0
-    for row in qs:
-        t_secs = _time_to_seconds(row["trade_time"])
-        if t_secs >= cutoff_secs:
-            total += 1
-            val = float(row["price"]) * int(row["volume"])
-            if val < SMALL_ORDER_THRESHOLD:
-                small += 1
+    frame = pd.DataFrame.from_records(list(qs))
+    if frame.empty:
+        total = 0
+        small = 0
+    else:
+        frame["price"] = pd.to_numeric(frame.get("price"), errors="coerce").fillna(0.0).astype(float)
+        frame["volume"] = pd.to_numeric(frame.get("volume"), errors="coerce").fillna(0).astype(float)
+        frame["value"] = frame["price"] * frame["volume"]
+        total = int(len(frame.index))
+        small = int((frame["value"] < SMALL_ORDER_THRESHOLD).sum())
 
     tick_rate = total * (60.0 / window_seconds) if window_seconds > 0 else 0.0
     small_ratio = (small / total) if total > 0 else 0.0
@@ -228,34 +243,54 @@ def compute_size_distribution(
             "total_ticks": 0,
         }
 
-    values = [t["value"] for t in ticks]
-    values_sorted = sorted(values)
-    n = len(values)
+    frame = pd.DataFrame.from_records(ticks)
+    if frame.empty:
+        return {
+            "avg_value": 0.0,
+            "median_value": 0.0,
+            "p95_value": 0.0,
+            "small_ratio": 0.0,
+            "large_ratio": 0.0,
+            "bucket_histogram": {
+                "<50m": 0, "50-200m": 0, "200-500m": 0, "500m-2b": 0, ">2b": 0,
+            },
+            "total_ticks": 0,
+        }
 
-    avg_value = statistics.mean(values)
-    median_value = statistics.median(values)
+    frame["value"] = pd.to_numeric(frame.get("value"), errors="coerce")
+    frame = frame[pd.notna(frame["value"])]
+    if frame.empty:
+        return {
+            "avg_value": 0.0,
+            "median_value": 0.0,
+            "p95_value": 0.0,
+            "small_ratio": 0.0,
+            "large_ratio": 0.0,
+            "bucket_histogram": {
+                "<50m": 0, "50-200m": 0, "200-500m": 0, "500m-2b": 0, ">2b": 0,
+            },
+            "total_ticks": 0,
+        }
 
-    # P95: lấy phần tử ở vị trí floor(0.95 * n)
+    values = frame["value"].astype(float)
+    n = int(len(values.index))
+
+    avg_value = float(values.mean())
+    median_value = float(values.median())
+    values_sorted = sorted(values.tolist())
     p95_idx = min(int(math.floor(0.95 * n)), n - 1)
-    p95_value = values_sorted[p95_idx]
+    p95_value = float(values_sorted[p95_idx])
 
-    small = sum(1 for v in values if v < SMALL_ORDER_THRESHOLD)
-    large = sum(1 for v in values if v >= LARGE_ORDER_THRESHOLD)
+    small = int((values < SMALL_ORDER_THRESHOLD).sum())
+    large = int((values >= LARGE_ORDER_THRESHOLD).sum())
 
     histogram = {
-        "<50m": 0, "50-200m": 0, "200-500m": 0, "500m-2b": 0, ">2b": 0,
+        "<50m": int((values < ORDER_FLOW_BUCKET_LT_50M_MAX_VND).sum()),
+        "50-200m": int(((values >= ORDER_FLOW_BUCKET_LT_50M_MAX_VND) & (values < ORDER_FLOW_BUCKET_LT_200M_MAX_VND)).sum()),
+        "200-500m": int(((values >= ORDER_FLOW_BUCKET_LT_200M_MAX_VND) & (values < ORDER_FLOW_BUCKET_LT_500M_MAX_VND)).sum()),
+        "500m-2b": int(((values >= ORDER_FLOW_BUCKET_LT_500M_MAX_VND) & (values < ORDER_FLOW_BUCKET_LT_2B_MAX_VND)).sum()),
+        ">2b": int((values >= ORDER_FLOW_BUCKET_LT_2B_MAX_VND).sum()),
     }
-    for v in values:
-        if v < ORDER_FLOW_BUCKET_LT_50M_MAX_VND:
-            histogram["<50m"] += 1
-        elif v < ORDER_FLOW_BUCKET_LT_200M_MAX_VND:
-            histogram["50-200m"] += 1
-        elif v < ORDER_FLOW_BUCKET_LT_500M_MAX_VND:
-            histogram["200-500m"] += 1
-        elif v < ORDER_FLOW_BUCKET_LT_2B_MAX_VND:
-            histogram["500m-2b"] += 1
-        else:
-            histogram[">2b"] += 1
 
     return {
         "avg_value": round(avg_value, 2),

@@ -5,7 +5,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
-import { getSummary, getHoldings, syncPrices, getTrackedSymbols } from '../api/client';
+import {
+  getSummary,
+  getHoldings,
+  syncPrices,
+  getTrackedSymbols,
+  getIntradayMatched,
+} from '../api/client';
 import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
 import AllocationPieChart from '../components/AllocationPieChart';
@@ -43,6 +49,7 @@ export default function Dashboard() {
   const [severityFilter, setSeverityFilter] = useState('all');
   const [audienceFilter, setAudienceFilter] = useState('all');
   const [unifiedPageSize, setUnifiedPageSize] = useState(5);
+  const [heatmapSparklineBySymbol, setHeatmapSparklineBySymbol] = useState({});
 
   const holdingSymbols = useMemo(
     () => holdings.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
@@ -148,10 +155,31 @@ export default function Dashboard() {
     const avgPositionSize = liveHoldings.length > 0 ? totalHeldValue / liveHoldings.length : 10000;
     const nominalSize = Math.max(avgPositionSize * 0.4, 2000);
 
+    const buildFallbackSparkline = (quote, held) => {
+      const current = Number(quote?.current_price || held?.live_current_price || held?.current_price || 0);
+      const prev = Number(quote?.prev_price || held?.prev_close || current || 0);
+      if (!(current > 0) || !(prev > 0)) {
+        return [];
+      }
+      const delta = current - prev;
+      const base = prev;
+      return [
+        base,
+        base + (delta * 0.12),
+        base + (delta * 0.28),
+        base + (delta * 0.22),
+        base + (delta * 0.41),
+        base + (delta * 0.58),
+        base + (delta * 0.76),
+        current,
+      ].map((value) => Number(value.toFixed(2)));
+    };
+
     return monitoredSymbols.map((symbol) => {
       const held = holdingsMap.get(symbol);
       const quote = quotesBySymbol[symbol] || {};
       const changePct = quote.change_pct ?? held?.live_change_pct ?? 0;
+      const sparkline24 = heatmapSparklineBySymbol[symbol] || buildFallbackSparkline(quote, held);
 
       const trackedInfo = trackedSymbolMap.get(symbol);
       const industryRaw = String(held?.industry || trackedInfo?.industry || 'Khác').trim();
@@ -162,20 +190,79 @@ export default function Dashboard() {
           ...held,
           symbol,
           industry,
+          company_name: held.company_name || held.name || symbol,
+          live_current_price: Number(quote.current_price || held.live_current_price || held.current_price || 0),
+          live_market_cap: Number(quote.market_cap || held.live_market_cap || held.market_cap || 0),
+          live_volume: Number(quote.volume || held.live_volume || held.volume || 0),
           live_market_value: Number(held.live_market_value || held.market_value || 0),
           live_change_pct: changePct,
+          sparkline24,
           is_holding: true,
         };
       }
+      // Dùng market_cap từ live quote làm proxy hiển thị kích thước trong treemap;
+      // fallback về nominalSize nếu chưa có dữ liệu realtime.
+      const trackedDisplaySize = Number(quote.market_cap || 0) || nominalSize;
       return {
         symbol,
         industry,
-        live_market_value: nominalSize,
+        company_name: trackedInfo?.name || trackedInfo?.company_name || symbol,
+        live_current_price: Number(quote.current_price || 0),
+        live_market_cap: Number(quote.market_cap || 0),
+        live_volume: Number(quote.volume || 0),
+        live_market_value: trackedDisplaySize,
         live_change_pct: changePct,
+        sparkline24,
         is_holding: false,
       };
     });
-  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+  }, [heatmapSparklineBySymbol, liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function hydrateHeatmapSparkline() {
+      if (!isAuthenticated || !activePortfolioId || monitoredSymbols.length === 0) {
+        if (!cancelled) {
+          setHeatmapSparklineBySymbol({});
+        }
+        return;
+      }
+
+      const tasks = monitoredSymbols.map(async (symbol) => {
+        try {
+          const resp = await getIntradayMatched(symbol, 24);
+          const payload = resp?.data || {};
+          const trades = Array.isArray(payload?.trades) ? payload.trades : [];
+          const points = trades
+            .map((trade) => Number(trade?.price ?? trade?.matched_price ?? trade?.current_price ?? 0))
+            .filter((value) => Number.isFinite(value) && value > 0)
+            .slice(-24);
+          return [symbol, points];
+        } catch {
+          return [symbol, []];
+        }
+      });
+
+      const settled = await Promise.allSettled(tasks);
+      if (cancelled) return;
+
+      const next = {};
+      settled.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        const [symbol, points] = result.value;
+        if (Array.isArray(points) && points.length > 1) {
+          next[symbol] = points;
+        }
+      });
+      setHeatmapSparklineBySymbol(next);
+    }
+
+    hydrateHeatmapSparkline();
+    return () => {
+      cancelled = true;
+    };
+  }, [activePortfolioId, isAuthenticated, monitoredSymbols]);
 
   const realtimeMarketBreadth = useMemo(() => {
     return monitoredQuotes.reduce((acc, item) => {
@@ -308,13 +395,12 @@ export default function Dashboard() {
           <button
             onClick={handleSync}
             disabled={syncing}
-            className={`flex items-center gap-1.5 disabled:opacity-50
-                       border text-sm px-4 py-2 rounded-lg transition-colors
+            className={`btn-pill flex items-center gap-1.5 disabled:opacity-50
                        ${realtimeStatus === 'live'
-                         ? 'bg-emerald-950/40 hover:bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                         ? 'bg-emerald-950/40 hover:bg-emerald-950/60 border-emerald-700 text-emerald-300'
                          : realtimeStatus === 'idle'
-                           ? 'bg-gray-800 hover:bg-gray-700 border-amber-700 text-amber-300'
-                           : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-300'
+                           ? 'bg-slate-800 hover:bg-slate-700 border-amber-700 text-amber-300'
+                           : 'bg-slate-800 hover:bg-slate-700 border-slate-600 text-slate-200'
                        }`}
           >
             {syncing ? (
@@ -325,7 +411,7 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                {realtimeStatus === 'live' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
+                {realtimeStatus === 'live' && <span className="live-dot-pulse w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
                 {realtimeStatus === 'idle' && <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />}
                 {syncButtonLabel}
               </>
@@ -338,6 +424,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label={t('dashboard.marketValue')}
+          iconKey="marketValue"
           unit={t('dashboard.thousandVndUnitShort')}
           value={marketValue}
           loading={loadingSummary}
@@ -345,6 +432,7 @@ export default function Dashboard() {
         />
         <StatCard
           label={t('dashboard.unrealizedPL')}
+          iconKey="unrealizedPL"
           unit={t('dashboard.thousandVndUnitShort')}
           value={unrealizedPLValue}
           sub={summary ? `${parseFloat(unrealizedPLPctValue || 0).toFixed(2)}%` : null}
@@ -355,6 +443,7 @@ export default function Dashboard() {
         />
         <StatCard
           label={t('dashboard.realizedPL')}
+          iconKey="realizedPL"
           unit={t('dashboard.thousandVndUnitShort')}
           value={summary?.total_realized_pl}
           isPositive={realizedPL > 0}
@@ -364,6 +453,7 @@ export default function Dashboard() {
         />
         <StatCard
           label={t('dashboard.dividends')}
+          iconKey="dividends"
           unit={t('dashboard.thousandVndUnitShort')}
           value={summary?.total_dividends}
           loading={loadingSummary}
@@ -454,11 +544,11 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+          <PortfolioDigestPanel />
         </div>
       </div>
 
-      <PortfolioDigestPanel />
+      <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
 
       {/* Charts */}
       <div className="space-y-4">

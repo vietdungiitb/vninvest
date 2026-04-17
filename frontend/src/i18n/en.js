@@ -278,6 +278,8 @@ const en = {
     heatmapRealtimeCaption: 'Tracked movement • Realtime feed',
     heatmapModeTreemap: 'Treemap',
     heatmapModeSunburst: 'Sunburst',
+    heatmapSizeWeight: 'Weight',
+    heatmapSizeCap: 'Cap',
     heatmapLegendUp: 'Up',
     heatmapLegendDown: 'Down',
     portfolioStatusTitle: 'Portfolio Status',
