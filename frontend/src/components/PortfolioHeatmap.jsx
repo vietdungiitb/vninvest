@@ -12,8 +12,8 @@ const CustomTooltip = ({ active, payload, t, formatQuoteInteger }) => {
         <p className="text-xs text-gray-400 mt-1">
           {t('dashboard.marketValue')}: <span className="text-gray-200">{formatQuoteInteger(data.value)}</span>
         </p>
-        <p className={`text-xs font-semibold mt-1 ${Number(data.changePct || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {t('common.change')}: {Number(data.changePct || 0) >= 0 ? '+' : ''}{Number(data.changePct || 0).toFixed(2)}%
+        <p className={`text-xs font-semibold mt-1 ${data.changePct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {t('common.change')}: {data.changePct >= 0 ? '+' : ''}{data.changePct.toFixed(2)}%
         </p>
       </div>
     );
@@ -22,8 +22,7 @@ const CustomTooltip = ({ active, payload, t, formatQuoteInteger }) => {
 };
 
 const CustomizedContent = (props) => {
-  const { x, y, width, height, index, payload, depth, name } = props;
-  const changePct = Number(props.changePct || 0);
+  const { x, y, width, height, index, payload, depth, name, changePct } = props;
 
   // Color intensity based on changePct
   const getFillColor = (pct) => {
