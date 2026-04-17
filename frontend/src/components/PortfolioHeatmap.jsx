@@ -75,7 +75,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
           borderWidth: h.is_holding ? 2 : 1,
           shadowBlur: isExtreme ? 14 : 0,
-          shadowColor: isExtreme ? glowColor : 'transparent',
+          shadowColor: isExtreme ? glowColor : 'rgba(0, 0, 0, 0)',
         },
       });
 
@@ -193,7 +193,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
               minAngle: 5,
               formatter: (params) => {
                 if (params?.data?.children) return params.name;
-                const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+                const rawCp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+                const cp = Number.isFinite(rawCp) ? rawCp : 0;
                 return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
               },
               rich: {
@@ -296,7 +297,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
             show: true,
             formatter: (params) => {
               if (params?.data?.children) return '';
-              const cp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+              const rawCp = Array.isArray(params?.data?.value) ? params.data.value[1] : Number(params?.data?.changePct || 0);
+              const cp = Number.isFinite(rawCp) ? rawCp : 0;
               return `{symbol|${params.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(1)}%}`;
             },
             overflow: 'truncate',
@@ -325,7 +327,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           levels: [
             {
-              colorSaturation: [0.4, 0.8],
               itemStyle: {
                 borderColor: 'rgba(15, 23, 42, 0.9)',
                 borderWidth: 2,
@@ -342,7 +343,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
               },
             },
             {
-              colorSaturation: [0.5, 0.9],
               itemStyle: {
                 borderColor: 'rgba(2, 6, 23, 0.6)',
                 gapWidth: 1,
@@ -404,7 +404,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         <ReactECharts
           option={option}
           style={{ height: '100%', width: '100%' }}
-          notMerge={false}
+          notMerge={true}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
         />

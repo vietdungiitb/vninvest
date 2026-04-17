@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Unified Alerts Dual-path - Watchlist Priority + Market-wide Cache (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - bo cache tong de Watchlist realtime, boost priority watchlist_symbol, toi uu market-wide query bang volume prefilter + SQL window + cache global 60s)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - crash fix transition: notMerge=true, bo colorSaturation, them NaN/null guards)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime 504 Remediation - Redis stream retention hard-cap (2026-04-17)
 - backend/config/settings.py (MODIFIED - giam default STREAM_MAX_LEN va bo sung STREAM_MAX_LEN_HARD_CAP)
 - backend/portfolio/realtime/tick_producer.py (MODIFIED - clamp maxlen theo hard-cap va warning log khi vuot nguong)

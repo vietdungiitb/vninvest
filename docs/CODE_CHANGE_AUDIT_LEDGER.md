@@ -1,5 +1,40 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17aj - Unified alerts dual-path optimization (watchlist priority + market-wide cache)
+
+Muc tieu:
+- Uu tien tuyet doi luong Watchlist trong unified alerts: du lieu realtime, xep hang uu tien cao hon, khong bi tre boi cache tong.
+- Toi uu luong quet thi truong (mega whale) de giam tai Postgres: SQL prefilter theo volume index + cache global 60s.
+- Sua loi crash UI tren Heatmap khi chuyen doi Treemap <-> Sunburst.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/market_data_service.py`:
+  - Loai bo response cache tong cua `get_unified_alerts` de tranh lam cham luong Watchlist realtime.
+  - Danh dau su kien Watchlist (`watchlist_symbol=True`) cho whale/dark_flow va tang trong so trong `_compute_unified_priority_rank`.
+  - Tinh lai priority rank theo huong uu tien Watchlist; bo bonus uu tien rieng cho `market_wide` de khong de luong market-wide chen len tren watchlist.
+  - Toi uu `_build_market_top_tier_whale_unified`:
+    - Them cache global (`UNIFIED_ALERTS_MARKET_TOP_TIER_CACHE_SECONDS`, mac dinh 60s).
+    - Them SQL prefilter `volume__gte` (heuristic dua tren `UNIFIED_ALERTS_MARKET_TOP_TIER_MAX_PRICE_VND`).
+    - Day filter window `(trade_date, trade_time)` xuong SQL.
+    - Tach exclude watchlist ra Python sau cache de giu cache mang tinh global.
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Dat `notMerge={true}` de tranh crash animator trong transition.
+  - Bo `colorSaturation` o Treemap levels theo khuyen nghi fix bug colorStops.
+  - Hardening formatter voi null/NaN guard.
+  - Doi `shadowColor` fallback sang `rgba(0, 0, 0, 0)` de interpolation on dinh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass.
+- `ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_boosts_recent_whale_against_old_dark_flow`: pass.
+- `ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_includes_market_wide_top_tier_whale`: pass.
+- `npm run build` (frontend): compiled successfully.
+
 ## Entry 2026-04-17ai - Realtime remediation step 2 (Redis stream retention hard-cap)
 
 Muc tieu:
