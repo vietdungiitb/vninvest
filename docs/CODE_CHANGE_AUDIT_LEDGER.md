@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17i - Tao implementation plan chi tiet cho Realtime Engine stabilization
+
+Tham chieu implementation plan:
+- docs/IMPLEMENTATION_PLAN_REALTIME_ENGINE_STABILIZATION_20260417.md
+
+Pham vi:
+- Tao ke hoach trien khai chi tiet theo policy cho bai toan hardening realtime architecture (WS + Redis Streams).
+- Chot pham vi P0/P1/P2, rollout theo phase, test gates, observability va rollback.
+
+Danh sach tep da sua:
+- docs/IMPLEMENTATION_PLAN_REALTIME_ENGINE_STABILIZATION_20260417.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Ke hoach day du 12 muc mandatory theo `IMPLEMENTATION_PLANNING_POLICY.md`.
+- Tap trung cac risk da audit:
+  - N+1 DB query tren `whale_advisory`.
+  - CPU pressure do pandas DataFrame tren hot path.
+  - reconnect storm auth DB load.
+  - Redis stream pending reclaim reliability.
+- Co feature-flag strategy theo tung phase va rollback per-phase.
+- Co KPI, exit criteria, canary rollout, post-release checklist.
+
+Trang thai:
+- Chua coding theo plan nay trong entry hien tai.
+- Cho review/approve truoc khi trien khai phase implementation.
+
+---
+
 ## Entry 2026-04-17h - DRF throttle-rate parser hardening to prevent malformed env 500
 
 Muc tieu:

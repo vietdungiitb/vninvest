@@ -65,6 +65,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Engine Stabilization Implementation Plan (2026-04-17)
+- docs/IMPLEMENTATION_PLAN_REALTIME_ENGINE_STABILIZATION_20260417.md (NEW - implementation plan chi tiet 12 muc mandatory cho hardening WS + Redis Streams)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### DRF Throttle Rate Parser Hardening (2026-04-17)
 - backend/config/settings.py (MODIFIED - harden `_get_throttle_rate` de normalize/fallback an toan cho env throttle sai format)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17h)
