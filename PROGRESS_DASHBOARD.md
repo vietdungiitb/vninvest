@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI Heatmap - Readability polish Treemap + Sunburst (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tang do tuong phan Sunburst, can doi lai ring radius/levels, chuan hoa color scale va tinh chinh blur khi hover Treemap de de doc tren nen toi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI Hotfix - Heatmap full-frame coverage for watchlist + portfolio (2026-04-17)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - chuan hoa du lieu industry->symbols, cau hinh lai treemap/sunburst de cac ma phu kin toan bo khung heatmap)
 - frontend/src/pages/Dashboard.jsx (MODIFIED - sua `heatmapData` memo, xoa dependency sai scope va toi uu tracked symbol lookup)

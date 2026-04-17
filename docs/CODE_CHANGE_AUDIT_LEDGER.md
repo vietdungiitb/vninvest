@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ag - Heatmap readability polish (Treemap + Sunburst)
+
+Muc tieu:
+- Hoan thien heatmap UI de ca Treemap va Sunburst deu de doc tren nen toi, giam trang thai "chim mau" o Sunburst.
+- Giu khung nhin co dinh, khong zoom/pan, nhung hover van co diem nhan ro cho Treemap.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Chuan hoa bang mau chung `heatScaleColors` va tang do sang mau trung tinh cho gia tri gan 0 (`#94a3b8`) de tranh bi chim vao nen.
+  - Tinh chinh Sunburst:
+    - radius `['7%','92%']` de mo rong dien tich hien thi.
+    - tang contrast border va text (font size/label shadow).
+    - dieu chinh levels (`r0/r`) de ring industry va ring symbol can doi hon.
+  - Tinh chinh Treemap hover:
+    - giam do mo blur tu `0.72` len `0.86` cho tile khong focus de tong the van de doc.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `npm run build` trong `frontend/`: build thanh cong.
+
 ## Entry 2026-04-17af - Heatmap full-frame coverage for watchlist + portfolio symbols
 
 Muc tieu:
