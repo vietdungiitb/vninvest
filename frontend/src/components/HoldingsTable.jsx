@@ -55,7 +55,6 @@ export default function HoldingsTable({ holdings, loading }) {
     t('holdings.headers.unrealizedPL'),
     t('holdings.headers.realizedPL'),
     t('holdings.headers.dividends'),
-    t('transactions.actions'),
   ];
 
   return (
@@ -108,28 +107,6 @@ export default function HoldingsTable({ holdings, loading }) {
                 {parseFloat(h.dividends_received || 0) > 0
                   ? formatQuotePrice(h.dividends_received)
                   : <span className="text-gray-700">—</span>}
-              </td>
-              <td className="py-3 pr-4">
-                <div className="flex items-center gap-2">
-                  <Link
-                    to={`/stocks/${h.symbol}`}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-brand-400 transition-colors"
-                    title={t('stockDetail.stockWorkspace')}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14" />
-                    </svg>
-                  </Link>
-                  <Link
-                    to={`/transactions?symbol=${h.symbol}`}
-                    className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 hover:text-brand-400 transition-colors"
-                    title={t('transactions.addTransaction')}
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                  </Link>
-                </div>
               </td>
             </tr>
           ))}

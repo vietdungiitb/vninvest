@@ -98,24 +98,24 @@ export default function AllocationPieChart({ portfolioId }) {
   const nameKey = mode === 'sector' ? 'sector' : 'symbol';
 
   return (
-    <div className="bg-gray-950/60 border border-white/5 rounded-2xl p-6 backdrop-blur-sm shadow-xl flex flex-col h-full">
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       {/* Header + toggle */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xs font-bold text-gray-400 uppercase tracking-[0.2em]">
+          <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
             {t('allocation.title')}
           </h2>
-          <p className="mt-1 text-[10px] text-gray-600 font-medium uppercase tracking-wider">{t('allocation.priceUnitHint')}</p>
+          <p className="mt-1 text-[11px] text-gray-500">{t('allocation.priceUnitHint')}</p>
         </div>
-        <div className="flex bg-white/5 rounded-xl p-1 border border-white/5">
+        <div className="flex rounded-md overflow-hidden border border-gray-700 text-xs">
           {['symbol', 'sector'].map((m) => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`px-4 py-1.5 transition-all text-[10px] font-black uppercase tracking-widest rounded-lg ${
+              className={`px-3 py-1 transition-colors font-medium ${
                 mode === m
-                  ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/20'
-                  : 'text-gray-500 hover:text-gray-300'
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
               }`}
             >
               {m === 'symbol' ? t('allocation.bySymbol') : t('allocation.bySector')}

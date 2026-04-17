@@ -149,8 +149,6 @@ const en = {
     dividends: 'Dividends received',
     thousandVndUnitShort: 'thousand VND',
     holdings: 'Current holdings',
-    performanceHeatmap: 'Performance Heatmap',
-    heatmapWeightHint: 'Size = Weight, Color = Change %',
   },
   dashboardRealtime: {
     statusIdle: 'Disconnected',

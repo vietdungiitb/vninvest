@@ -149,8 +149,6 @@ const vi = {
     dividends: 'Cổ tức đã nhận',
     thousandVndUnitShort: 'nghìn đồng',
     holdings: 'Vị thế đang nắm giữ',
-    performanceHeatmap: 'Biểu đồ nhiệt hiệu suất',
-    heatmapWeightHint: 'Kích cỡ = Tỷ trọng, Màu sắc = Biến động',
   },
   dashboardRealtime: {
     statusIdle: 'Chưa kết nối',
