@@ -231,7 +231,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="mx-auto max-w-[1500px] space-y-6 px-5 py-6 xl:px-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -278,7 +278,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           label={t('dashboard.marketValue')}
           unit={t('dashboard.thousandVndUnitShort')}
@@ -314,28 +314,28 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-          <p className="text-xl font-bold text-gray-100 mt-1">{monitoredSymbols.length}</p>
+          <p className="mt-1 text-xl font-bold text-gray-100">{monitoredSymbols.length}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-          <p className={`text-xl font-bold mt-1 ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-red-300' : 'text-gray-100'}`}>
+          <p className={`mt-1 text-xl font-bold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-red-300' : 'text-gray-100'}`}>
             {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
           </p>
-          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
+          <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.deltaVsSnapshotHint')}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.stale')}</p>
-          <p className={`text-xl font-bold mt-1 ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
+          <p className={`mt-1 text-xl font-bold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-gray-100'}`}>
             {realtimeStalePositions}
           </p>
-          <p className="text-[11px] text-gray-500 mt-1">{t('dashboardRealtime.staleHint')}</p>
+          <p className="mt-1 text-[11px] text-gray-500">{t('dashboardRealtime.staleHint')}</p>
         </div>
         <div className="rounded-xl border border-gray-800 bg-gray-950 px-4 py-3">
           <p className="text-xs uppercase tracking-wider text-gray-500">{t('dashboardRealtime.upDownFlat')}</p>
-          <p className="text-lg font-bold text-gray-100 mt-1">
+          <p className="mt-1 text-lg font-bold text-gray-100">
             {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
           </p>
         </div>
@@ -380,8 +380,8 @@ export default function Dashboard() {
       </div>
 
       {/* Holdings Table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
+      <div className="rounded-xl border border-gray-800 bg-gray-900 p-5">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
           {t('dashboard.holdings')}
         </h2>
         <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />

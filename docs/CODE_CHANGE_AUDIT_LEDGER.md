@@ -1,5 +1,56 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17q - Phase 3A.1 UI polish kickoff (pixel-perfect baseline)
+
+Muc tieu:
+- Bat dau thuc thi Phase 3A theo implementation plan da duoc tao o entry 2026-04-17p.
+- Nang cap visual hierarchy cua Dashboard V2 de tiep can muc pixel-perfect dark terminal.
+
+Noi dung cap nhat chinh:
+- `frontend/src/index.css`:
+  - Them visual tokens cho panel/focus (`--v2-shell-*`, `--v2-focus-ring`).
+  - Them utility classes `.v2-panel`, `.v2-panel-strong`, `.v2-chip-focus`.
+- `frontend/src/components/UnifiedAlertBar.jsx`:
+  - Tang hierarchy typography va card density cho severity chips.
+  - Tinh chinh hover/focus state de nhan dien trang thai ro hon.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Chuan hoa panel tone, heading hierarchy, filter chip states.
+  - Nang cap card hover/elevation, readability cua headline/detail.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Chinh nhac spacing + max width wrapper, dong bo nhiet do visual cho blocks thong ke/holdings.
+
+Danh sach tep cap nhat:
+- frontend/src/index.css
+- frontend/src/components/UnifiedAlertBar.jsx
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren cac tep vua sua: khong co loi.
+
+## Entry 2026-04-17p - Phase 3 kickoff plan (UI polish + whale scoring audit)
+
+Muc tieu:
+- Khoi dong Phase 3 theo policy planning mandatory, truoc khi coding cac thay doi lon tiep theo.
+- Dat baseline audit cho module whale scoring de phuc vu tuning muc Critical theo huong data-driven.
+
+Noi dung cap nhat chinh:
+- Tao implementation plan day du 12 muc bat buoc theo `IMPLEMENTATION_PLANNING_POLICY.md`:
+  - `docs/IMPLEMENTATION_PLAN_PHASE3_UI_POLISH_WHALE_SCORING_AUDIT_20260417.md`
+- Tao tai lieu baseline audit whale scoring:
+  - `docs/AUDIT_WHALE_SCORING_BASELINE_20260417.md`
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_PHASE3_UI_POLISH_WHALE_SCORING_AUDIT_20260417.md (NEW)
+- docs/AUDIT_WHALE_SCORING_BASELINE_20260417.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Day la moc planning + audit baseline (khong co thay doi runtime code o moc nay).
+
 ## Entry 2026-04-17o - UI V2 Phase 2 (dedup whale + consolidated components)
 
 Muc tieu:

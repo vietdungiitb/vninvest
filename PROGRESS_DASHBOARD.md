@@ -105,6 +105,20 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Phase 3A.1 - Pixel-Perfect UI Polish Kickoff (2026-04-17)
+- frontend/src/index.css (MODIFIED - them visual tokens + utility classes cho panel/focus hierarchy)
+- frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - polish severity chip hierarchy, hover/focus, density)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - polish panel tone, card readability, interaction states)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - canh nhac spacing + max-width wrapper de dong bo visual rhythm)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Phase 3 Kickoff - Planning + Whale Scoring Baseline Audit (2026-04-17)
+- docs/IMPLEMENTATION_PLAN_PHASE3_UI_POLISH_WHALE_SCORING_AUDIT_20260417.md (NEW - implementation plan 12 muc mandatory cho Phase 3A/3B)
+- docs/AUDIT_WHALE_SCORING_BASELINE_20260417.md (NEW - baseline findings cho module whale_scoring truoc tuning)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 Phase 2 - Whale Dedup + Consolidated Components (2026-04-17)
 - backend/portfolio/realtime/compute.py (MODIFIED - chuan hoa ts ve giay, chuan hoa event_id whale de tang do on dinh dedup)
 - backend/portfolio/tasks_realtime.py (MODIFIED - them publish flag theo event, tranh overlap whale symbol channel va user alerts channel)
