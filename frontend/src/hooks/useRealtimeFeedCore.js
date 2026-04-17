@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getRealtimeTicker, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
+import { getRealtimeTicker, getRealtimeTickers, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
 
 function nowIso() {
   return new Date().toISOString();
@@ -380,56 +380,60 @@ export default function useRealtimeFeedCore({
     let cancelled = false;
 
     const hydrateQuotes = async () => {
-      // Hydrate full quote set once on mount so hard refresh does not leave
-      // a subset of symbols empty while waiting for polling cursor rotation.
-      // Increased batch size from 10 -> 20 for faster sequential bootstrap without API surge
-      const bootstrapBatchSize = 20;
+      const bootstrapBatchSize = 25; // Slightly increased for batching
 
       for (let i = 0; i < normalizedSymbols.length; i += bootstrapBatchSize) {
         const batch = normalizedSymbols.slice(i, i + bootstrapBatchSize);
-        const results = await Promise.allSettled(batch.map((symbol) => getRealtimeTicker(symbol)));
-        if (cancelled) return;
+        try {
+          const res = await getRealtimeTickers(batch);
+          if (cancelled) return;
 
-        let ok = 0;
-        results.forEach((result, idx) => {
-          if (result.status === 'fulfilled') {
-            ok += 1;
-            const { data } = result.value;
-            applyTickerUpdate({
-              symbol: data.symbol,
-              current_price: data.current_price,
-              prev_price: data.prev_price,
-              change_value: data.change_value,
-              change_pct: data.change_pct,
-              open_price: data.open_price,
-              high_price: data.high_price,
-              low_price: data.low_price,
-              volume: data.volume,
-              freshness_seconds: data.freshness_seconds,
-              age_seconds: data.age_seconds,
-              stale: data.stale,
-              stale_over_threshold: data.stale_over_threshold,
-              stale_threshold_seconds: data.stale_threshold_seconds,
-              last_date: data.last_date,
-              source_event_at: data.source_event_at,
-              served_at: data.served_at,
-              market_phase: data.market_phase,
-              market_code: data.market_code,
-              data_semantic: data.data_semantic,
-              source: data.source,
-            });
-          } else {
-            const status = getHttpStatus(result.reason);
-            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-            if (status !== 429) {
-              console.warn(`Bootstrap quote fetch failed for ${batch[idx]}:`, result.reason?.message);
+          const tickersMap = res.data || {};
+          let ok = 0;
+
+          Object.values(tickersMap).forEach((data) => {
+            if (data && data.symbol) {
+              ok += 1;
+              applyTickerUpdate({
+                symbol: data.symbol,
+                current_price: data.current_price,
+                prev_price: data.prev_price,
+                change_value: data.change_value,
+                change_pct: data.change_pct,
+                open_price: data.open_price,
+                high_price: data.high_price,
+                low_price: data.low_price,
+                volume: data.volume,
+                freshness_seconds: data.freshness_seconds,
+                age_seconds: data.age_seconds,
+                stale: data.stale,
+                stale_over_threshold: data.stale_over_threshold,
+                stale_threshold_seconds: data.stale_threshold_seconds,
+                last_date: data.last_date,
+                source_event_at: data.source_event_at,
+                served_at: data.served_at,
+                market_phase: data.market_phase,
+                market_code: data.market_code,
+                data_semantic: data.data_semantic,
+                source: data.source,
+              });
             }
-          }
-        });
+          });
 
-        if (ok > 0) {
-          setLastEventAt(nowIso());
-          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
+          if (ok > 0) {
+            setLastEventAt(nowIso());
+            setEventCounts((prev) => ({ 
+              ...prev, 
+              polling_successes: prev.polling_successes + 1, // Count as 1 batch success
+            }));
+          }
+        } catch (error) {
+          if (cancelled) return;
+          const status = getHttpStatus(error);
+          setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
+          if (status !== 429) {
+            console.warn('Bootstrap batch quote fetch failed:', error.message);
+          }
         }
       }
     };
@@ -553,14 +557,15 @@ export default function useRealtimeFeedCore({
       }
 
       try {
-        const results = await Promise.allSettled(pollBatch.map((s) => getRealtimeTicker(s)));
+        const res = await getRealtimeTickers(pollBatch);
         if (destroyed) return;
+        
+        const tickersMap = res.data || {};
         let ok = 0;
-        let had429 = false;
-        results.forEach((r, i) => {
-          if (r.status === 'fulfilled') {
+        
+        Object.values(tickersMap).forEach((data) => {
+          if (data && data.symbol) {
             ok += 1;
-            const { data } = r.value;
             applyTickerUpdate({
               symbol: data.symbol,
               current_price: data.current_price,
@@ -584,34 +589,17 @@ export default function useRealtimeFeedCore({
               data_semantic: data.data_semantic,
               source: data.source,
             });
-          } else {
-            const status = getHttpStatus(r.reason);
-            if (status === 429) {
-              had429 = true;
-            }
-            setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
-            if (status !== 429) {
-              console.warn(`Polling failed for ${pollBatch[i]}:`, r.reason?.message);
-            }
           }
         });
 
-        if (had429) {
-          const nextBackoffMs = computeNextBackoffMs(pollBackoffMsRef.current);
-          pollBackoffMsRef.current = nextBackoffMs;
-          pollBackoffUntilRef.current = Date.now() + nextBackoffMs;
-          console.warn(`Polling rate limited (429). Backing off for ${nextBackoffMs}ms.`);
-          return;
+        if (ok > 0) {
+          setLastEventAt(nowIso());
+          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + 1 }));
+          consecutiveFailuresRef.current = 0;
         }
-
         pollBackoffMsRef.current = 0;
         pollBackoffUntilRef.current = null;
         pollCursorRef.current = nextCursor;
-
-        if (ok > 0) {
-          setLastEventAt(nowIso());
-          setEventCounts((prev) => ({ ...prev, polling_successes: prev.polling_successes + ok }));
-        }
       } catch (err) {
         if (!destroyed) {
           const status = getHttpStatus(err);

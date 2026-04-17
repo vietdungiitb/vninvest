@@ -105,6 +105,22 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime - Audit ID de-dup + polling metric fix (2026-04-17)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - xoa cap nhat polling_successes trung lap trong polling thanh cong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - doi ma entry batch ticker tu 2026-04-17b sang 2026-04-17z va add entry 2026-04-17aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### UI V2 - Batch Ticker API & 429 Error Fix (2026-04-17)
+- backend/portfolio/market_data_service.py (MODIFIED - them `get_realtime_tickers` batch logic)
+- backend/portfolio/market_views.py (MODIFIED - them `BatchRealtimeTickerView`)
+- backend/portfolio/urls_realtime.py (MODIFIED - dang ky `tickers/` route)
+- backend/config/settings.py (MODIFIED - them `realtime_ticker_batch` throttle rate)
+- frontend/src/api/client.js (MODIFIED - them `getRealtimeTickers` API client)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - refactor sang batching cho hydration/polling)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - dung live_market_value + defensive checks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 - Xoa cau hinh trung lap giua 2 tab (2026-04-17)
 - frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - xoa bo loc khoi tab Tin hieu nong, giu cau hinh chi o tab Cau hinh va dong bo format style theo tab Tin hieu nong)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17y)

@@ -1,5 +1,57 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17z - Batch Ticker API and 429 Error Mitigation
+
+Tham chiếu implementation plan:
+- [implementation_plan.md](file:///C:/Users/Pham%20Viet%20Dung/.gemini/antigravity/brain/fb9b26ec-daca-44f5-9a7a-1967f445e508/implementation_plan.md)
+
+Phạm vi:
+- Giải quyết lỗi 429 (Too Many Requests) trên Dashboard bằng cách nhóm các yêu cầu lấy giá cổ phiếu (ticker) vào một API gộp (batch).
+- Tối ưu hóa hiệu suất load trang đầu tiên (bootstrap) và quá trình polling định kỳ.
+
+Danh sách tệp đã sửa:
+- backend/portfolio/market_data_service.py: Thêm `get_realtime_tickers` dùng `cache.get_many`.
+- backend/portfolio/market_views.py: Thêm `BatchRealtimeTickerView`.
+- backend/portfolio/urls_realtime.py: Đăng ký endpoint `api/realtime/tickers/`.
+- backend/config/settings.py: Thêm throttle rate `realtime_ticker_batch` (60/minute).
+- frontend/src/api/client.js: Thêm hàm `getRealtimeTickers`.
+- frontend/src/hooks/useRealtimeFeedCore.js: Refactor để sử dụng batching cho cả đợt hydrate ban đầu và polling.
+- frontend/src/components/PortfolioHeatmap.jsx: Cập nhật ưu tiên dùng `live_market_value` và thêm defensive checks.
+
+Nội dung cập nhật chính:
+- Nhóm 25 mã vào một request khi load Dashboard (giảm số lượng request từ ~30 xuống 1-2).
+- Giảm áp lực lên Redis và Backend throttle.
+- Đảm bảo Heatmap luôn hiển thị dữ liệu mới nhất hoặc snapshot gần nhất nếu có lỗi kết nối.
+
+Kết quả verify:
+- Đã kiểm tra logic backend và frontend build pass.
+- Cấu hình throttle mới giúp hệ thống chịu tải tốt hơn khi có nhiều user truy cập Dashboard cùng lúc.
+
+---
+
+## Entry 2026-04-17aa - Audit ID de-dup + polling metric counter fix
+
+Muc tieu:
+- Loai bo trung ma entry audit trong ngay 2026-04-17 de tranh mo ho truy vet.
+- Sua telemetry polling trong realtime feed de tranh cong don thanh cong 2 lan tren moi chu ky poll.
+
+Noi dung cap nhat chinh:
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Doi ma entry batch ticker tu `2026-04-17b` thanh `2026-04-17z` de khong trung voi entry timezone fix da ton tai truoc do.
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Xoa block cap nhat `polling_successes` trung lap trong luong polling thanh cong.
+  - Giu logic dem theo request batch thanh cong (`+1`) va bo cap nhat `+ok` bi double-count.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useRealtimeFeedCore.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren hook sau khi sua: khong co loi.
+
+---
+
 ## Entry 2026-04-17y - Loai bo cau hinh trung lap o tab Tin hieu nong
 
 Muc tieu:
