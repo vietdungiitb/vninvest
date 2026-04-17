@@ -38,7 +38,18 @@ class TickProducer:
 
     def __init__(self) -> None:
         self._client: redis.Redis | None = None
-        self._max_len: int = getattr(settings, "STREAM_MAX_LEN", 50_000)
+        configured_max_len = int(getattr(settings, "STREAM_MAX_LEN", 10_000) or 10_000)
+        configured_hard_cap = int(getattr(settings, "STREAM_MAX_LEN_HARD_CAP", 20_000) or 20_000)
+        hard_cap = max(configured_hard_cap, 1_000)
+        max_len = max(configured_max_len, 1_000)
+        self._max_len: int = min(max_len, hard_cap)
+        if configured_max_len > hard_cap:
+            logger.warning(
+                "STREAM_MAX_LEN=%s exceeds hard cap=%s, clamped to %s",
+                configured_max_len,
+                hard_cap,
+                self._max_len,
+            )
         self._snapshot_ttl: int = getattr(settings, "STREAM_SNAPSHOT_TTL", 60)
 
     @property

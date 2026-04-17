@@ -1,5 +1,63 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ai - Realtime remediation step 2 (Redis stream retention hard-cap)
+
+Muc tieu:
+- Ngan RAM bloating o Redis Streams khi stream lag xay ra keo dai hoac khi cau hinh `STREAM_MAX_LEN` bi dat qua cao.
+- Dam bao producer luon ghi `XADD` voi maxlen duoc gioi han boi hard-cap de khong phinh vo han theo cau hinh sai.
+
+Noi dung cap nhat chinh:
+- `backend/config/settings.py`:
+  - Giam default `STREAM_MAX_LEN` tu `50000` xuong `10000`.
+  - Bo sung `STREAM_MAX_LEN_HARD_CAP` (default `20000`).
+- `backend/portfolio/realtime/tick_producer.py`:
+  - Hardening khoi tao producer: clamp `STREAM_MAX_LEN` trong khoang an toan (toi thieu 1000, toi da = hard-cap).
+  - Them warning log khi cau hinh vuot hard-cap.
+- `backend/portfolio/tests/test_tick_producer.py`:
+  - Them regression test xac nhan maxlen bi clamp dung theo hard-cap.
+
+Tac dong ky thuat:
+- Loai bo rui ro stream growth khong kiem soat do misconfiguration.
+- Giu dung co che `XADD ... MAXLEN ~` hien co, nhung them guardrail de on dinh RAM Redis trong su co collector/consumer lag.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py
+- backend/portfolio/realtime/tick_producer.py
+- backend/portfolio/tests/test_tick_producer.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Chay test file `backend/portfolio/tests/test_tick_producer.py`: pass.
+- Django `manage.py check`: da pass o phien truoc va khong phat sinh loi moi tu patch nay.
+
+## Entry 2026-04-17ah - Realtime 504 remediation step 1 (SQL-side filtering for whale aggregate fallback)
+
+Muc tieu:
+- Loai bo nghen CPU/RAM do vong lap Python `queryset.iterator()` trong fallback DB cua `get_whale_feed_aggregate`.
+- Day toan bo logic loc threshold theo tung symbol va loc cua so thoi gian vao SQL de backend khong phai tao/duyet hang loat model instance khong can thiet.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/market_data_service.py`:
+  - Thay loc `matched_value__gte=min_threshold_vnd` + vong lap Python bang bo loc dong `Q(symbol=..., matched_value__gte=...)` theo tung symbol.
+  - Chuyen validate cua so thoi gian (`window`) vao SQL dua tren `(trade_date, trade_time)` voi can duoi/can tren theo `request_now`.
+  - Xoa block `for row in queryset.iterator(chunk_size=1000)`.
+  - Chuyen sang pagination probe truc tiep tren DB: `queryset[:limit + 1]` de xac dinh `has_more`.
+
+Tac dong ky thuat:
+- Giam tai CPU backend trong truong hop Redis stale va he thong fallback sang `IntradayTick`.
+- Giam RAM bloating do khong con khoi tao hang loat Django model instance de loc thu cong.
+- Giam nguy co timeout day chuyen (Daphne shutdown timeout -> Nginx 504) o endpoint whale aggregate.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren file backend sau khi sua: khong co loi.
+- Chua co ket qua `manage.py check` trong luot nay vi terminal tra output cham/hung sau khi trigger command.
+
 ## Entry 2026-04-17ag - Heatmap readability polish (Treemap + Sunburst)
 
 Muc tieu:

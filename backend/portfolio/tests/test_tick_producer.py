@@ -1,4 +1,4 @@
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 import pandas as pd
 
 from portfolio.realtime.tick_producer import TickProducer
@@ -24,6 +24,11 @@ class _FakeRedisClient:
 
 
 class TickProducerTests(SimpleTestCase):
+    @override_settings(STREAM_MAX_LEN=50000, STREAM_MAX_LEN_HARD_CAP=8000)
+    def test_stream_max_len_is_clamped_by_hard_cap(self):
+        producer = TickProducer()
+        self.assertEqual(producer._max_len, 8000)
+
     def test_push_intraday_ticks_pushes_oldest_first_so_latest_stream_entry_is_newest_trade(self):
         producer = TickProducer()
         fake_client = _FakeRedisClient()
