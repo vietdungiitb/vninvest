@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ae - Hotfix 429 burst on StockDetail + poll batch tuning + frontend rebuild
+
+Muc tieu:
+- Giam tan suat request realtime de tranh vuot nguong 429 khi user mo nhieu tab/nhieu ma.
+- Chuyen StockDetail sang batch endpoint de thong nhat duong di realtime.
+- Rebuild frontend container de dam bao fix Heatmap/Alert Center duoc serve dung bundle moi.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/StockDetail.jsx`:
+  - Doi import va fetch snapshot tu `getRealtimeTicker(symbol)` sang `getRealtimeTickers([symbol])`.
+  - Map ket qua tu object batch (`response.data[symbol]`) truoc khi set state.
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Tang `POLL_BATCH_SIZE` tu `4` len `16`.
+  - Tang `WS_HEALTHY_POLL_BATCH_SIZE` tu `2` len `8`.
+- Runtime/devops:
+  - Rebuild image frontend va restart container `vninvest-dev-frontend` thanh cong.
+  - Xu ly conflict container bang cach remove container frontend cu truoc khi `compose up`.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/hooks/useRealtimeFeedCore.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 2 file frontend vua sua: khong co loi.
+- Frontend image build thanh cong (CRA compile PASS).
+- Container `vninvest-dev-frontend` da restart va health HTTP `200` tai `http://127.0.0.1:8080`.
+
 ## Entry 2026-04-17ad - Hotfix Heatmap black-box + Unified Alert list desync
 
 Muc tieu:

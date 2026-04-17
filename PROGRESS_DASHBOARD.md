@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime 429 Mitigation + Frontend Rebuild (2026-04-17)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - chuyen ticker snapshot polling tu single endpoint sang batch endpoint `getRealtimeTickers([symbol])`)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - tang `POLL_BATCH_SIZE` 4->16 va `WS_HEALTHY_POLL_BATCH_SIZE` 2->8 de giam request burst)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI Hotfix - Heatmap black-box + Unified Alert list desync (2026-04-17)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - hardening parse so + treemap data hierarchical + render key de force rerender)
 - frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - reset pagination ve trang 1 khi co event moi, dong bo summary theo scope hien thi, fallback auto-reset khi trang rong)

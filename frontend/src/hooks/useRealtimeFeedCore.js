@@ -243,8 +243,8 @@ export default function useRealtimeFeedCore({
   enabled = true,
 }) {
   const STALE_RESYNC_RETRY_MS = 3000;
-  const POLL_BATCH_SIZE = 4;
-  const WS_HEALTHY_POLL_BATCH_SIZE = 2;
+  const POLL_BATCH_SIZE = 16;
+  const WS_HEALTHY_POLL_BATCH_SIZE = 8;
   const WS_HEALTHY_RECOVERY_BATCH_SIZE = 16; // Increased from 8 for faster recovery
   const WS_HEALTHY_MIN_POLL_INTERVAL_MS = 30000;
   const WS_HEALTHY_RECOVERY_POLL_INTERVAL_MS = 8000; // Increased from 5000 to reduce re-render frequency
