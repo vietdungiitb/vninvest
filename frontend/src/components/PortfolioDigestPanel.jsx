@@ -68,11 +68,24 @@ export default function PortfolioDigestPanel() {
       )}
 
       {!loading && !error && (!digest || !digest.has_digest) && (
-        <div className="text-sm text-gray-400">{t('portfolioDigest.noData')}</div>
+        <div className="space-y-2">
+          <div className="text-sm text-gray-400">{t('portfolioDigest.noData')}</div>
+          <div className="rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2 text-xs text-slate-400">
+            💡 Bản tin được tạo tự động lúc 16:05 các ngày Thứ 2 – Thứ 6 bằng AI.
+            Để bật tính năng này, hãy cấu hình <span className="text-cyan-400 font-semibold">AI API Key</span> trong phần Cài đặt tài khoản.
+          </div>
+        </div>
       )}
 
       {!loading && !error && digest?.has_digest && (
         <div className="space-y-3">
+          {digest.is_latest_fallback && (
+            <div className="flex items-center gap-2 rounded-md border border-amber-700/50 bg-amber-950/30 px-3 py-1.5 text-xs text-amber-300">
+              <span>⚠</span>
+              <span>Đây là bản tin gần nhất (ngày <span className="font-semibold">{digest.date}</span>), chưa có bản tin cho hôm nay.</span>
+            </div>
+          )}
+
           <div>
             <p className="text-xs uppercase tracking-wider text-gray-500">{t('portfolioDigest.summary')}</p>
             <p className="mt-1 text-sm leading-relaxed text-gray-100">{digest.digest_summary || '-'}</p>
