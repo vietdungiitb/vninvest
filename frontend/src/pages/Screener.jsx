@@ -50,11 +50,17 @@ function fmtNum(v) {
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
-function ConditionRow({ cond, onChange, onDelete, t }) {
+function ConditionRow({ cond, onChange, onDelete, t, rowIndex }) {
   const update = (key, val) => onChange({ ...cond, [key]: val });
+  const fieldId = `screener-condition-field-${rowIndex}`;
+  const opId = `screener-condition-op-${rowIndex}`;
+  const valueId = `screener-condition-value-${rowIndex}`;
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      <label htmlFor={fieldId} className="sr-only">Truong dieu kien</label>
       <select
+        id={fieldId}
+        name={`condition_field_${rowIndex}`}
         value={cond.field}
         onChange={(e) => update('field', e.target.value)}
         className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
@@ -63,7 +69,10 @@ function ConditionRow({ cond, onChange, onDelete, t }) {
           <option key={f.value} value={f.value}>{t(`screener.fields.${f.key}`)}</option>
         ))}
       </select>
+      <label htmlFor={opId} className="sr-only">Toan tu so sanh</label>
       <select
+        id={opId}
+        name={`condition_operator_${rowIndex}`}
         value={cond.op}
         onChange={(e) => update('op', e.target.value)}
         className="bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
@@ -72,11 +81,15 @@ function ConditionRow({ cond, onChange, onDelete, t }) {
           <option key={o.value} value={o.value}>{t(`screener.ops.${o.key}`)}</option>
         ))}
       </select>
+      <label htmlFor={valueId} className="sr-only">Gia tri dieu kien</label>
       <input
+        id={valueId}
+        name={`condition_value_${rowIndex}`}
         type="number"
         value={cond.value}
         onChange={(e) => update('value', e.target.value)}
         placeholder={t('screener.valuePlaceholder')}
+        aria-label="Gia tri dieu kien"
         className="w-28 bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded px-2 py-1 focus:outline-none focus:border-brand-500"
       />
       <button
@@ -115,8 +128,10 @@ function RuleEditor({ initial, onSave, onCancel }) {
   return (
     <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 space-y-4">
       <div>
-        <label className="text-xs text-gray-400 mb-1 block">{t('screener.ruleName')}</label>
+        <label htmlFor="screener-rule-name" className="text-xs text-gray-400 mb-1 block">{t('screener.ruleName')}</label>
         <input
+          id="screener-rule-name"
+          name="rule_name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={t('screener.ruleNamePlaceholder')}
@@ -129,6 +144,7 @@ function RuleEditor({ initial, onSave, onCancel }) {
           <ConditionRow
             key={i}
             cond={c}
+            rowIndex={i}
             onChange={(val) => updateCond(i, val)}
             onDelete={() => deleteCond(i)}
             t={t}

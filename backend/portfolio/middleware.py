@@ -1,6 +1,10 @@
 from time import perf_counter
+import logging
 
 from .observability import record_market_http_observation
+
+
+logger = logging.getLogger(__name__)
 
 
 class MarketObservabilityMiddleware:
@@ -31,4 +35,13 @@ class MarketObservabilityMiddleware:
                 resolver_match = getattr(request, 'resolver_match', None)
                 endpoint_name = getattr(resolver_match, 'url_name', None)
                 endpoint = endpoint_name or request_path
-                record_market_http_observation(endpoint=endpoint, status_code=status_code, latency_ms=latency_ms)
+                try:
+                    record_market_http_observation(endpoint=endpoint, status_code=status_code, latency_ms=latency_ms)
+                except Exception as exc:
+                    # Observability must never impact runtime request delivery.
+                    logger.warning(
+                        "market_observability.record_failed endpoint=%s status=%s error=%s",
+                        endpoint,
+                        status_code,
+                        exc,
+                    )
