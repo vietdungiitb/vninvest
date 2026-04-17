@@ -1,5 +1,100 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18c - Runtime hotfix ReferenceError lastEventAt (Unified Alerts)
+
+Muc tieu:
+- Sua loi runtime production: `ReferenceError: lastEventAt is not defined` trong `useUnifiedAlerts`.
+
+Nguyen nhan:
+- Sau khi doi ten prop thanh `_lastEventAt` de vo hieu hoa trigger refetch, van con 2 vi tri trong logic timestamp va dependency array tham chieu bien cu `lastEventAt`.
+
+Noi dung cap nhat chinh:
+- frontend/src/hooks/useUnifiedAlerts.js
+  - Thay `toStableAlertTimestamp(..., lastEventAt)` -> `toStableAlertTimestamp(..., _lastEventAt)` tai 2 vi tri.
+  - Thay dependency `lastEventAt` trong `useMemo` -> `_lastEventAt`.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren `useUnifiedAlerts.js` va `Dashboard.jsx`: khong co loi.
+
+## Entry 2026-04-18b - Emergency frontend request-loop fix + heatmap loading UX
+
+Muc tieu:
+- Cat trigger goi `unified-alerts` theo moi event realtime de tranh spam request.
+- Chinh UX loading heatmap, loai bo icon hu/khong ro nghia va thay spinner theo tone Slate.
+- Xac nhan backend whale symbol stats van giu bulk aggregation 1 query nhom.
+
+Noi dung cap nhat chinh:
+- frontend/src/hooks/useUnifiedAlerts.js
+  - Xoa `useEffect` refetch theo `lastEventAt` (nguon goc request loop tan suat cao).
+  - Giu refresh nen 30s va fetch theo pagination/filter actions.
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Thay placeholder icon trong trang thai rong bang spinner Slate-themed (`animate-spin`).
+- backend/portfolio/views_stock_order_flow.py
+  - Khong doi logic; da verify endpoint van dung grouped bulk aggregation (`values('symbol').annotate(...)`).
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren 3 file (hook, heatmap, backend view): khong co loi.
+
+## Entry 2026-04-18a - Heatmap Bloomberg-Pro fix (leafDepth + sqrt normalization + piecewise color)
+
+Muc tieu:
+- Xu ly triet de hien tuong heatmap chi hien thi 1 thanh ngang va khung con lai bi trong.
+- Cang bang lai tile size giua ma von hoa rat lon va ma nho de de doc nhan.
+- Nang cap color map thanh 7 muc ro rang theo logic Bloomberg-style.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Chuyen bo size ratio sang sqrt-normalization: `normalizedDisplaySize = sqrt(raw) / sqrt(minRaw)`.
+  - Dat `leafDepth: 2` cho treemap voi du lieu phan cap `industry -> symbol`.
+  - Dung `piecewise visualMap` 7 muc:
+    - `< -5%`: `#7f1d1d`
+    - `-5% -> -2%`: `#be123c`
+    - `-2% -> 0%`: `#fca5a5`
+    - `0%`: `#475569`
+    - `0% -> 2%`: `#86efac`
+    - `2% -> 5%`: `#22c55e`
+    - `> 5%`: `#166534`
+  - Dieu chinh levels/upperLabel de nhom nganh hien ro nhung khong chiem dung layout leaf.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren heatmap component: khong co loi.
+
+## Entry 2026-04-17ao - Heatmap render stabilization (treemap strip bug fix)
+
+Muc tieu:
+- Sua loi heatmap treemap van bi don thanh 1 dai ngang (strip) du da chinh layout truoc do.
+
+Noi dung cap nhat chinh:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Tach data cho mode Treemap sang dataset phang (`treemapData`) chi gom leaf symbol.
+  - Giu mode Sunburst su dung dataset hierarchical nhu cu.
+  - Tat `universalTransition` o Treemap va don gian hoa `levels` de tranh artifact layout.
+  - Chinh `squareRatio` va `focus` de tile phan bo day khung va hover on dinh hon.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren file heatmap: khong co loi.
+
 ## Entry 2026-04-17an - Heatmap mockup alignment fix (layout + color palette)
 
 Muc tieu:

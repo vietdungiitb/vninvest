@@ -94,15 +94,41 @@ export default function PortfolioHeatmap({ holdings, title }) {
       sectors[industry].changePct += size * changePct;
     });
 
+    const allLeafRawSizes = [];
+    Object.values(sectors).forEach((sector) => {
+      (sector.children || []).forEach((leaf) => {
+        const raw = toNumber(leaf.sizeValue);
+        if (raw > 0) allLeafRawSizes.push(raw);
+      });
+    });
+
+    const minRawSize = allLeafRawSizes.length ? Math.min(...allLeafRawSizes) : 1;
+    const sqrtMin = Math.sqrt(Math.max(minRawSize, 1));
+
     return Object.values(sectors)
       .map((sector) => {
         const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
+
+        let sectorDisplayTotal = 0;
+        const normalizedChildren = (sector.children || []).map((leaf) => {
+          const raw = toNumber(leaf.sizeValue);
+          const sqrtRaw = Math.sqrt(Math.max(raw, 1));
+          // Bloomberg-style compression: compress huge-cap dominance while preserving rank.
+          const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
+          sectorDisplayTotal += normalizedDisplaySize;
+
+          return {
+            ...leaf,
+            value: [normalizedDisplaySize, toNumber(leaf.changePct)],
+          };
+        });
+
         return {
           id: `industry:${sector.name}`,
           name: sector.name,
-          value: sector.totalWeight,
+          value: sectorDisplayTotal,
           changePct: avgChange,
-          children: sector.children.sort((left, right) => right.value[0] - left.value[0]),
+          children: normalizedChildren.sort((left, right) => toNumber(right.value?.[0]) - toNumber(left.value?.[0])),
         };
       })
       .sort((left, right) => Number(right.value || 0) - Number(left.value || 0));
@@ -142,7 +168,21 @@ export default function PortfolioHeatmap({ holdings, title }) {
     return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND}`;
   }, [maxLeafSize]);
 
-  const heatScaleColors = ['#be123c', '#1e3a5f', '#0f766e'];
+  const heatScaleColors = ['#7f1d1d', '#be123c', '#fca5a5', '#475569', '#86efac', '#22c55e', '#166534'];
+  const piecewiseVisualMap = {
+    show: false,
+    type: 'piecewise',
+    dimension: 1,
+    pieces: [
+      { lt: -5, color: '#7f1d1d' },
+      { gte: -5, lt: -2, color: '#be123c' },
+      { gte: -2, lt: 0, color: '#fca5a5' },
+      { gte: 0, lte: 0, color: '#475569' },
+      { gt: 0, lte: 2, color: '#86efac' },
+      { gt: 2, lte: 5, color: '#22c55e' },
+      { gt: 5, color: '#166534' },
+    ],
+  };
 
   const buildTooltipSparkline = useCallback((values, strokeColor) => {
     const points = (Array.isArray(values) ? values : [])
@@ -264,15 +304,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         animationDurationUpdate: 900,
         animationEasingUpdate: 'cubicInOut',
         tooltip,
-        visualMap: {
-          show: false,
-          min: -4,
-          max: 4,
-          dimension: 1,
-          inRange: {
-            color: heatScaleColors,
-          },
-        },
+        visualMap: piecewiseVisualMap,
         series: [
           {
             type: 'sunburst',
@@ -355,15 +387,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       animationDurationUpdate: 900,
       animationEasingUpdate: 'cubicInOut',
       tooltip,
-      visualMap: {
-        show: false,
-        min: -4,
-        max: 4,
-        dimension: 1,
-        inRange: {
-          color: heatScaleColors,
-        },
-      },
+      visualMap: piecewiseVisualMap,
       series: [
         {
           type: 'treemap',
@@ -374,8 +398,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           universalTransition: true,
           breadcrumb: { show: false },
           sort: 'desc',
-          squareRatio: 0.75,
-          // Show symbol nodes directly; leafDepth=1 causes strip-like drill-preview rendering.
+          squareRatio: 0.9,
           leafDepth: 2,
           visibleMin: 0,
           childrenVisibleMin: 0,
@@ -438,38 +461,31 @@ export default function PortfolioHeatmap({ holdings, title }) {
               },
               upperLabel: {
                 show: true,
-                height: 24,
-                color: '#f1f5f9',
+                height: 22,
+                color: '#e2e8f0',
                 fontWeight: 800,
-                fontSize: 11,
+                fontSize: 10,
                 padding: [0, 0, 0, 8],
-                backgroundColor: 'rgba(2, 6, 23, 0.85)',
+                backgroundColor: 'rgba(12, 22, 40, 0.76)',
               },
             },
             {
               itemStyle: {
-                borderColor: 'rgba(2, 6, 23, 0.6)',
-                gapWidth: 1,
+                borderColor: 'rgba(30, 58, 95, 0.48)',
                 borderWidth: 1,
-              },
-            },
-            {
-              itemStyle: {
-                borderColor: 'rgba(15, 23, 42, 0.42)',
                 gapWidth: 1,
-                borderWidth: 1,
               },
             },
           ],
         },
       ],
     };
-  }, [buildLeafLabel, buildTooltipSparkline, formatPercent, heatScaleColors, hierarchicalData, sizeMetric, viewMode]);
+  }, [buildLeafLabel, buildTooltipSparkline, formatPercent, heatScaleColors, hierarchicalData, piecewiseVisualMap, sizeMetric, viewMode]);
 
   if (!hierarchicalData.length) {
     return (
       <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="text-4xl mb-3 animate-pulse">📊</div>
+        <div className="mb-3 h-10 w-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
         <p className="text-gray-400 text-sm font-medium">{t('dashboardRealtime.heatmapEmpty', { defaultValue: 'Chưa có dữ liệu heatmap cho danh mục này.' })}</p>
       </div>
     );

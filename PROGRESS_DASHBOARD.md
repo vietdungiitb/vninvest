@@ -105,6 +105,27 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Runtime Hotfix - lastEventAt ReferenceError (2026-04-18)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - sua bien tham chieu `lastEventAt` con sot thanh `_lastEventAt` de khac phuc crash runtime)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Emergency Fix - Unified Alerts Request Loop + Heatmap Loading UX (2026-04-18)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - xoa refetch theo `lastEventAt`, chi giu refresh nen 30s + fetch khi doi trang/filter)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - thay placeholder icon bang spinner Slate-themed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Bloomberg-Pro Technical Fix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - ap dung leafDepth=2 + sqrt normalization + piecewise visualMap 7 muc de khac phuc hien tuong treemap thanh ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Render Stabilization - Treemap Strip Bug Fix (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tach mode Treemap sang data phang theo symbol, giam artifact layout gay day ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Heatmap Mockup Alignment - Layout + Color Palette (2026-04-17)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - sua treemap strip-layout, chuan hoa leafDepth/levels va doi visualMap sang Rose/Navy/Teal de sat mockup)
 - frontend/src/index.css (MODIFIED - dong bo mau tooltip heatmap theo palette moi)
