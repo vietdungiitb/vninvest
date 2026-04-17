@@ -43,6 +43,8 @@ export default function Dashboard() {
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [loadingHoldings, setLoadingHoldings] = useState(false);
+  const [holdingsReady, setHoldingsReady] = useState(false);
+  const [trackedSymbolsReady, setTrackedSymbolsReady] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
@@ -304,6 +306,7 @@ export default function Dashboard() {
       ]);
       setSummary(sumRes.data);
       setHoldings(holdRes.data);
+      setHoldingsReady(true);
     } catch (err) {
       console.error('Lỗi tải dữ liệu:', err);
     } finally {
@@ -323,8 +326,8 @@ export default function Dashboard() {
       return () => { cancelled = true; };
     }
     getTrackedSymbols()
-      .then((res) => { if (!cancelled) setTrackedSymbols(res.data || []); })
-      .catch(() => {});
+      .then((res) => { if (!cancelled) { setTrackedSymbols(res.data || []); setTrackedSymbolsReady(true); } })
+      .catch(() => { if (!cancelled) setTrackedSymbolsReady(true); });
     return () => { cancelled = true; };
   }, [isAuthenticated, activePortfolioId]);
 
@@ -463,7 +466,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4">
         <PortfolioHeatmap
-          holdings={heatmapData}
+          holdings={(holdingsReady && trackedSymbolsReady) ? heatmapData : []}
           title={t('dashboardRealtime.watchlistHeatmapTitle', { defaultValue: 'Biến động Watchlist & Danh mục' })}
         />
       </div>
