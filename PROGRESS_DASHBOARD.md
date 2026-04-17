@@ -105,6 +105,15 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### SQL + Pandas Optimization (2026-04-17)
+- backend/portfolio/order_flow.py (MODIFIED - vector hoa CVD/tick-rate/size-distribution; SQL filter + .values projection cho tick window)
+- backend/portfolio/views_ai_advisory_session.py (MODIFIED - VWAP benchmark enrichment chuyen sang SQL values + pandas)
+- backend/portfolio/realtime/compute.py (MODIFIED - bo native loop path, chuan hoa wrapper qua pandas compute path)
+- backend/portfolio/realtime/stream_consumers.py (MODIFIED - ws broadcaster dung pandas path duy nhat)
+- module_tree_full.md (MODIFIED - regenerate index cay ham/lop sau refactor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Unified Alerts Dual-path - Watchlist Priority + Market-wide Cache (2026-04-17)
 - backend/portfolio/market_data_service.py (MODIFIED - bo cache tong de Watchlist realtime, boost priority watchlist_symbol, toi uu market-wide query bang volume prefilter + SQL window + cache global 60s)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - crash fix transition: notMerge=true, bo colorSaturation, them NaN/null guards)

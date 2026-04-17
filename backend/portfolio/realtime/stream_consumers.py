@@ -283,7 +283,7 @@ class WsBroadcastConsumer(TickConsumerBase):
     def process_batch(self, symbol: str, messages: list[tuple[str, dict]]) -> None:
         from asgiref.sync import async_to_sync
         from channels.layers import get_channel_layer
-        from portfolio.realtime.compute import build_ticker_payload, build_ticker_payload_native
+        from portfolio.realtime.compute import build_ticker_payload
 
         rows = []
         for stream_id, fields in messages:
@@ -301,13 +301,10 @@ class WsBroadcastConsumer(TickConsumerBase):
             return
 
         seq = int(time.time() * 1000) % 2**31
-        if bool(getattr(settings, "REALTIME_STREAM_NATIVE_TICKER_PATH_ENABLED", False)):
-            payload = build_ticker_payload_native(symbol=symbol, rows=rows, seq=seq)
-        else:
-            import pandas as pd
+        import pandas as pd
 
-            df = pd.DataFrame(rows)
-            payload = build_ticker_payload(symbol=symbol, trades_df=df, seq=seq)
+        df = pd.DataFrame(rows)
+        payload = build_ticker_payload(symbol=symbol, trades_df=df, seq=seq)
 
         channel_layer = get_channel_layer()
         if channel_layer is None:

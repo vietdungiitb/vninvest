@@ -1,5 +1,40 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17ak - SQL selection + Pandas vectorization for realtime hot paths
+
+Muc tieu:
+- Chuan hoa chien luoc "SQL de loc - Pandas de tinh" tren cac diem nong realtime/finance.
+- Giam RAM do khoi tao model object khong can thiet va giam chi phi vong lap Python row-by-row.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/order_flow.py`:
+  - Toi uu `_fetch_ticks` sang SQL filter (`trade_time__gte`) + projection (`.values(...)`) + DataFrame.
+  - Vector hoa `compute_cvd_series` bang pandas groupby theo bucket.
+  - Vector hoa `compute_tick_rate` bang DataFrame thay cho loop.
+  - Vector hoa `compute_size_distribution` (mean/median/p95/ratios/histogram) va giu hanh vi p95 tuong thich test cu.
+- `backend/portfolio/views_ai_advisory_session.py`:
+  - Refactor tinh VWAP trong `_build_session_v2_benchmark_enrichment` tu iterator loop sang SQL `.values('price','volume')` + pandas vectorized sum.
+- `backend/portfolio/realtime/compute.py`:
+  - Loai bo duong tinh native loop; `build_ticker_payload_native` tro thanh wrapper chuan hoa qua DataFrame/pandas path.
+- `backend/portfolio/realtime/stream_consumers.py`:
+  - Standardize `WsBroadcastConsumer` su dung pandas compute path duy nhat (khong con branch native runtime).
+- `module_tree_full.md`:
+  - Regenerate de dong bo index lop/ham sau refactor.
+
+Danh sach tep cap nhat:
+- backend/portfolio/order_flow.py
+- backend/portfolio/views_ai_advisory_session.py
+- backend/portfolio/realtime/compute.py
+- backend/portfolio/realtime/stream_consumers.py
+- module_tree_full.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass.
+- Test focused refactor: `portfolio.tests.test_order_flow.TestComputeCVDSeriesDB`, `TestComputeTickRateDB`, `TestSizeDistribution`, va `portfolio.tests.test_realtime_compute`: 20/20 pass.
+- Luu y: nhom API test order-flow full endpoint co 403 do gate OpenCore trong env test hien tai, khong phai regression tu refactor vectorization.
+
 ## Entry 2026-04-17aj - Unified alerts dual-path optimization (watchlist priority + market-wide cache)
 
 Muc tieu:

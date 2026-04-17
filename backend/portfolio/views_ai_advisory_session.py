@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import pandas as pd
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import status
@@ -140,18 +141,20 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
     intraday_tick_at = None
     if latest_trade is not None:
         intraday_tick_at = f'{latest_trade.trade_date}T{latest_trade.trade_time}'
-        same_day_ticks = legacy_views.IntradayTick.objects.filter(symbol=normalized_symbol, trade_date=latest_trade.trade_date)
-        total_volume = 0.0
-        total_notional = 0.0
-        for tick in same_day_ticks.iterator():
-            tick_volume = float(tick.volume or 0)
-            tick_price = float(tick.price or 0)
-            total_volume += tick_volume
-            total_notional += tick_price * tick_volume
-        if total_volume > 0 and latest_trade.price is not None:
-            vwap_value = total_notional / total_volume
-            if vwap_value > 0:
-                vwap_deviation_pct = round(((float(latest_trade.price) - vwap_value) / vwap_value) * 100.0, 2)
+        same_day_ticks = legacy_views.IntradayTick.objects.filter(
+            symbol=normalized_symbol,
+            trade_date=latest_trade.trade_date,
+        ).values('price', 'volume')
+        frame = pd.DataFrame.from_records(list(same_day_ticks))
+        if not frame.empty:
+            frame['price'] = pd.to_numeric(frame.get('price'), errors='coerce').fillna(0.0).astype(float)
+            frame['volume'] = pd.to_numeric(frame.get('volume'), errors='coerce').fillna(0.0).astype(float)
+            total_volume = float(frame['volume'].sum())
+            if total_volume > 0 and latest_trade.price is not None:
+                total_notional = float((frame['price'] * frame['volume']).sum())
+                vwap_value = total_notional / total_volume
+                if vwap_value > 0:
+                    vwap_deviation_pct = round(((float(latest_trade.price) - vwap_value) / vwap_value) * 100.0, 2)
 
     daily_price_date = str(recent_prices[0].date) if recent_prices else None
     return {
