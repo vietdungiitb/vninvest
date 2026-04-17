@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Hotfix - Blank Screen PortfolioHeatmap Undefined Payload (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - them null guards cho payload/original trong Treemap custom renderer + tooltip)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### UI V2 Phase 3 Implementation - Heatmap + Intelligent Pagination (2026-04-17)
 - frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - them cursorStack pagination, reset trang khi doi filter, bo append load-more)
 - frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - thay load-more bang footer pagination First/Prev/Next + page indicator)

@@ -45,10 +45,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
   // 3. Custom content cho cell
   const CustomizedContent = (props) => {
-    const { root, depth, x, y, width, height, index, payload, colors, rank, name } = props;
-    if (depth !== 1) return null;
+    const { depth, x, y, width, height, payload, name } = props || {};
+    if (!payload || depth !== 1) return null;
 
-    const original = payload.original || {};
+    const original = payload?.original || {};
     // FIX: Đảm bảo change_pct là số hợp lệ trước khi gọi toFixed
     const rawChange = original.live_change_pct ?? original.change_pct ?? 0;
     const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
@@ -82,7 +82,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
             fontSize={width > 80 ? 12 : 10}
             fontWeight="bold"
           >
-            {name}
+            {name || payload?.name || ''}
           </text>
         )}
         {showText && height > 45 && (
@@ -102,8 +102,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
   };
 
   const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const { name, size, original } = payload[0].payload;
+    if (active && payload && payload.length && payload[0]?.payload) {
+      const { name, size, original = {} } = payload[0].payload;
       const rawChange = original.live_change_pct ?? original.change_pct ?? 0;
       const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
       

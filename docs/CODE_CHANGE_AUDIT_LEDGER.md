@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17u - Hotfix blank screen: PortfolioHeatmap undefined payload guard
+
+Muc tieu:
+- Sua loi runtime lam trang Dashboard trang (blank screen) khi Recharts Treemap render node khong co payload.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Bo sung null-guard cho `props`, `payload`, `original` trong `CustomizedContent`.
+  - Bo sung guard cho tooltip payload (`payload[0]?.payload`) truoc khi truy cap field.
+  - Fallback an toan cho text name khi node khong day du du lieu.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` file heatmap: khong co loi.
+- `npm run build` (frontend): PASS.
+- Docker frontend rebuilt va bundle moi da serve: `main.bcc05873.js`.
+
 ## Entry 2026-04-17t - UI V2 Phase 3 implementation (heatmap + intelligent pagination)
 
 Muc tieu:
