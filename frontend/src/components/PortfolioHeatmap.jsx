@@ -267,7 +267,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           return `
             <div class="heatmap-tooltip">
               <div class="heatmap-tooltip__header">
-                <b>${data.name}</b> - ${data.companyName || data.name}
+                <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
               </div>
               <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
               <div class="heatmap-tooltip__row">
@@ -427,6 +427,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           label: {
             show: true,
+            position: 'inside',
             align: 'center',
             verticalAlign: 'middle',
             formatter: buildLeafLabel,
