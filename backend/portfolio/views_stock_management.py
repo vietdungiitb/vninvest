@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .services import get_price_changes, sync_market_groups_for_user, sync_watchlist_prices
-from .models import PriceAlertRule, SecuritiesGroup, TrackedSymbol
+from .models import PriceAlertRule, SecuritiesGroup, TrackedSymbol, StockProfile
 from .serializers import PriceAlertRuleSerializer, TrackedSymbolSerializer
 from .view_helpers import _build_group_response, _build_price_alert_rule_row
 from .views_portfolio_watchlist import _acquire_sync_cooldown
@@ -179,9 +179,18 @@ class TrackedSymbolListCreateView(APIView):
         }
 
     def get(self, request):
-        tracked = TrackedSymbol.objects.filter(user=request.user).select_related('source_group')
+        tracked = list(TrackedSymbol.objects.filter(user=request.user).select_related('source_group'))
         symbols = [t.symbol for t in tracked]
         changes = get_price_changes(symbols) if symbols else {}
+        
+        # Optimized industry lookup
+        profiles = {}
+        if symbols:
+            profiles = {
+                p['symbol']: p['industry'] or 'Khác'
+                for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'industry')
+            }
+
         rows = []
         for ts in tracked:
             grp = ts.source_group
@@ -189,6 +198,7 @@ class TrackedSymbolListCreateView(APIView):
             rows.append({
                 'id': ts.id,
                 'symbol': ts.symbol,
+                'industry': profiles.get(ts.symbol, 'Khác'),
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
                 'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,

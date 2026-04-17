@@ -1,5 +1,34 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17af - Heatmap full-frame coverage for watchlist + portfolio symbols
+
+Muc tieu:
+- Sua triệt để heatmap Dashboard de cac ma co phieu phu kin toan bo khung, khong bi don vao mot dai nho o phia tren.
+- Loai bo rui ro render fail do dependency array tham chieu bien ngoai scope trong Dashboard.
+- Dong bo tieu de heatmap vao i18n va cap nhat audit file list theo governance cua repo.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`:
+  - Chuan hoa lai du lieu hierarchical theo `industry -> symbols` voi sector value dang mang `[size, changePct]` de ECharts tinh layout nhat quan.
+  - Cau hinh lai `treemap` voi `squareRatio`, `leafDepth`, `visibleMin=0`, `childrenVisibleMin=0`, upper label theo sector va label cho leaf node de cac ma phu kin toan bo dien tich khung.
+  - Giu toggle `Treemap/Sunburst`, bo console event thua, them `notMerge` de tranh cache option cu.
+- `frontend/src/pages/Dashboard.jsx`:
+  - Sua `heatmapData` memo: xoa dependency sai scope `nominalSize`, them map lookup cho tracked symbols va fallback gia tri an toan.
+- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
+  - Bo sung key tieu de/nhan heatmap de tranh hardcode o Dashboard.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `get_errors` tren `PortfolioHeatmap.jsx` va `Dashboard.jsx`: khong co loi.
+- `npm run build` trong `frontend/`: build thanh cong.
+
 ## Entry 2026-04-17ae - Hotfix 429 burst on StockDetail + poll batch tuning + frontend rebuild
 
 Muc tieu:

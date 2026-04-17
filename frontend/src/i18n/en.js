@@ -273,6 +273,13 @@ const en = {
     paginationPage: 'Page {page}',
     paginationPageSize: 'Items/page',
     portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
+    watchlistHeatmapTitle: 'Watchlist & portfolio movement',
+    heatmapEmpty: 'No heatmap data is available for this portfolio yet.',
+    heatmapRealtimeCaption: 'Tracked movement • Realtime feed',
+    heatmapModeTreemap: 'Treemap',
+    heatmapModeSunburst: 'Sunburst',
+    heatmapLegendUp: 'Up',
+    heatmapLegendDown: 'Down',
     portfolioStatusTitle: 'Portfolio Status',
   },
   realtimeDebug: {

@@ -273,6 +273,13 @@ const vi = {
     paginationPage: 'Trang {page}',
     paginationPageSize: 'Mục/trang',
     portfolioHeatmapTitle: 'Portfolio Performance Heatmap',
+    watchlistHeatmapTitle: 'Biến động watchlist & danh mục',
+    heatmapEmpty: 'Chưa có dữ liệu heatmap cho danh mục này.',
+    heatmapRealtimeCaption: 'Biến động theo dõi • Realtime feed',
+    heatmapModeTreemap: 'Treemap',
+    heatmapModeSunburst: 'Sunburst',
+    heatmapLegendUp: 'Tăng',
+    heatmapLegendDown: 'Giảm',
     portfolioStatusTitle: 'Trạng thái danh mục',
   },
   realtimeDebug: {

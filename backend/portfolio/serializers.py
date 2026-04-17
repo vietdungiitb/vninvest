@@ -367,6 +367,7 @@ class HoldingSerializer(serializers.Serializer):
     unrealized_pl_pct = serializers.DecimalField(max_digits=10, decimal_places=2, allow_null=True)
     realized_pl = serializers.DecimalField(max_digits=20, decimal_places=2)
     dividends_received = serializers.DecimalField(max_digits=20, decimal_places=2)
+    industry = serializers.CharField(required=False, allow_null=True)
 
 
 class SummarySerializer(serializers.Serializer):
@@ -447,6 +448,7 @@ class TrackedSymbolSerializer(serializers.Serializer):
     last_date = serializers.CharField(allow_null=True)
     added_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
+    industry = serializers.CharField(required=False, allow_null=True)
 
 
 class PriceAlertRuleSerializer(serializers.ModelSerializer):

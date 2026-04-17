@@ -130,11 +130,59 @@ export default function Dashboard() {
     () => Number(liveSummary.totalMarketValue || 0) - snapshotMarketValue,
     [liveSummary.totalMarketValue, snapshotMarketValue],
   );
+  const heatmapData = useMemo(() => {
+    if (!monitoredSymbols.length) {
+      return [];
+    }
+
+    const holdingsMap = new Map();
+    liveHoldings.forEach((h) => holdingsMap.set(normalizeSymbol(h.symbol), h));
+
+    const trackedSymbolMap = new Map();
+    trackedSymbols.forEach((item) => trackedSymbolMap.set(normalizeSymbol(item.symbol), item));
+
+    const totalHeldValue = liveHoldings.reduce(
+      (sum, h) => sum + Number(h.live_market_value || h.market_value || 0),
+      0,
+    );
+    const avgPositionSize = liveHoldings.length > 0 ? totalHeldValue / liveHoldings.length : 10000;
+    const nominalSize = Math.max(avgPositionSize * 0.4, 2000);
+
+    return monitoredSymbols.map((symbol) => {
+      const held = holdingsMap.get(symbol);
+      const quote = quotesBySymbol[symbol] || {};
+      const changePct = quote.change_pct ?? held?.live_change_pct ?? 0;
+
+      const trackedInfo = trackedSymbolMap.get(symbol);
+      const industryRaw = String(held?.industry || trackedInfo?.industry || 'Khác').trim();
+      const industry = industryRaw || 'Khác';
+
+      if (held) {
+        return {
+          ...held,
+          symbol,
+          industry,
+          live_market_value: Number(held.live_market_value || held.market_value || 0),
+          live_change_pct: changePct,
+          is_holding: true,
+        };
+      }
+      return {
+        symbol,
+        industry,
+        live_market_value: nominalSize,
+        live_change_pct: changePct,
+        is_holding: false,
+      };
+    });
+  }, [liveHoldings, monitoredSymbols, quotesBySymbol, trackedSymbols]);
+
   const realtimeMarketBreadth = useMemo(() => {
     return monitoredQuotes.reduce((acc, item) => {
-      if ((item.change_pct ?? 0) > 0) {
+      const changePct = item.change_pct ?? 0;
+      if (changePct > 0) {
         acc.up += 1;
-      } else if ((item.change_pct ?? 0) < 0) {
+      } else if (changePct < 0) {
         acc.down += 1;
       } else {
         acc.flat += 1;
@@ -325,8 +373,8 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-4">
         <PortfolioHeatmap
-          holdings={liveHoldings}
-          title={t('dashboardRealtime.portfolioHeatmapTitle')}
+          holdings={heatmapData}
+          title={t('dashboardRealtime.watchlistHeatmapTitle', { defaultValue: 'Biến động Watchlist & Danh mục' })}
         />
       </div>
 

@@ -105,6 +105,14 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### UI Hotfix - Heatmap full-frame coverage for watchlist + portfolio (2026-04-17)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - chuan hoa du lieu industry->symbols, cau hinh lai treemap/sunburst de cac ma phu kin toan bo khung heatmap)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - sua `heatmapData` memo, xoa dependency sai scope va toi uu tracked symbol lookup)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan/tieu de heatmap tieng Viet)
+- frontend/src/i18n/en.js (MODIFIED - them nhan/tieu de heatmap tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime 429 Mitigation + Frontend Rebuild (2026-04-17)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - chuyen ticker snapshot polling tu single endpoint sang batch endpoint `getRealtimeTickers([symbol])`)
 - frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - tang `POLL_BATCH_SIZE` 4->16 va `WS_HEALTHY_POLL_BATCH_SIZE` 2->8 de giam request burst)
