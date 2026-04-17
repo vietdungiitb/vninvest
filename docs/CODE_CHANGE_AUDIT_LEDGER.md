@@ -1,5 +1,38 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17am - Phase 1 backend stabilization (bulk aggregation for whale symbol stats)
+
+Muc tieu:
+- Giam dot bien CPU DB tren endpoint thong ke whale theo symbol bang cach loai bo N+1 query pattern.
+- Chuyen logic thong ke BUY/SELL + tong gia tri/tong khoi luong sang grouped aggregation mot luot tren `IntradayTick`.
+- Bo sung index phu hop cho query pattern moi.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_stock_order_flow.py`:
+  - Refactor `whale_advisory_symbol_stats_api` tu vong lap per-symbol (nhieu `.count()`/`.aggregate()` rieng) sang 1 pipeline aggregate theo `symbol`.
+  - Them `Case/When` de ap threshold theo tung symbol (co ho tro override) ngay trong SQL annotate.
+  - Dung `Count(..., filter=...)` cho `buy_count`/`sell_count`, va `Sum` cho `total_value`/`total_volume` trong mot truy van nhom.
+  - Giu output payload tuong thich (`buyCount`, `sellCount`, `totalValue`, `totalVolume`, `count`, `avgOrderValue`).
+- `backend/portfolio/models.py`:
+  - Them index `['symbol', 'trade_date', 'side']` tren model `IntradayTick` de ho tro truy van aggregate theo symbol/date/side.
+- `backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py`:
+  - Add migration tao index DB moi `idx_intraday_sym_date_side`.
+
+Tac dong ky thuat:
+- Giam so round-trip DB tu cap so nhan theo so symbol ve 1 truy van nhom chinh (kem 1-2 truy van nho cho threshold config).
+- Giam nguy co CPU spike khi nguoi dung theo doi nhieu ma hoac window lon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_stock_order_flow.py
+- backend/portfolio/models.py
+- backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- `manage.py check`: pass (0 issues).
+- Static diagnostics (`get_errors`) tren cac file da sua: khong co loi.
+
 ## Entry 2026-04-17al - System hardening implementation (Phase 1-4)
 
 Muc tieu:
@@ -2990,3 +3023,73 @@ Danh sach tep da sua:
 Ghi chu verify:
 - Frontend build: Compiled successfully sau thay doi.
 - Docker dev frontend da rebuild/deploy thanh cong.
+
+## Entry 2026-04-17 - UI/UX Core Refinement theo mockup Slate/Navy
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Chuyen dashboard tu dark den Slate/Navy theo mockup de giam eye strain va tang do tach lop panel.
+- Nang cap heatmap ECharts: visualMap 3 moc Rose/Slate/Emerald, tooltip cau truc thong tin mo rong, toggle mode Treemap/Sunburst va size metric Weight/Cap.
+- Toi uu sidebar watchlist: sticky header, filter theo nganh, row compact hon va cot gia/% co do rong co dinh de tranh layout shift khi realtime tick.
+- Nang cap KPI card: bo sung semantic icon va sparkline SVG nhe.
+- Chuan hoa interaction: nut sync co live pulse, TopNav doi language switch sang Globe + VI/EN.
+
+Danh sach tep da sua:
+- frontend/src/index.css
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/Sidebar.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren cac file frontend vua sua.
+- Mau sac va bo cuc da can chinh theo mockup: nen slate/navy, nhan emerald/rose, panel contrast vua phai.
+
+## Entry 2026-04-17b - Pixel tone refinement + heatmap mini-chart thuc te
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Tinh chinh giao dien cap pixel de sat hon tone mockup: border brightness, blur strength, spacing vi mo o heatmap panel.
+- Trien khai mini-chart tooltip heatmap bang du lieu intraday thuc te theo tung symbol (24 diem gan nhat).
+- Bo sung fallback sparkline khi intraday chua du diem de tranh tooltip trong.
+
+Danh sach tep da sua:
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren 3 file frontend vua sua.
+- Tooltip heatmap da hien mini-chart SVG thuc te thay cho placeholder.
+
+## Entry 2026-04-17c - Pixel-perfect pass 2 theo mockup
+
+Plan tham chieu:
+- docs/UI_UX_CORE_REFINEMENT_SPEC_20260417.md
+
+Pham vi:
+- Tinh chinh them cap pixel cho Sidebar/TopNav/Heatmap sau vong review dau.
+- Muc tieu: can bang contrast, spacing va density de giao dien giong mockup hon trong desktop viewport.
+
+Danh sach tep da sua:
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- PROGRESS_DASHBOARD.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+
+Ghi chu verify:
+- Static diagnostics: khong co loi tren cac file frontend vua sua.

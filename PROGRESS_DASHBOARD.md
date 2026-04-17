@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Phase 1 Backend Stabilization - Bulk Aggregation Symbol Stats (2026-04-17)
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - refactor `whale_advisory_symbol_stats_api` bo N+1 query, gom grouped aggregation theo symbol + threshold Case/When trong SQL)
+- backend/portfolio/models.py (MODIFIED - them composite index `['symbol', 'trade_date', 'side']` cho `IntradayTick`)
+- backend/portfolio/migrations/0043_intradaytick_symbol_trade_date_side_idx.py (NEW - migration tao index `idx_intraday_sym_date_side`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### System Hardening Implementation (2026-04-17)
 - frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - them RAF throttling cho ticker updates: pending buffer + requestAnimationFrame flush + cleanup unmount)
 - backend/config/settings.py (MODIFIED - doi mac dinh stock advisory sang async-first: disable force sync first create + disable sync fallback)
@@ -728,6 +735,65 @@ Overall Day 2:         ✅ Core implementation complete
 Get-ChildItem -Recurse -Include "*.jsx","*.js" | Select-String "new WebSocket"
 # Result: Only hooks/useRealtimeFeed.js ✅
 ```
+
+---
+
+## UI/UX Core Refinement - 2026-04-17
+
+Status: Completed (frontend visual refinement theo mockup Slate/Navy)
+
+Files modified:
+- frontend/src/index.css
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/components/StatCard.jsx
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/Sidebar.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/i18n/vi.js
+- frontend/src/i18n/en.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Highlights:
+- Dong bo palette Slate/Navy theo mockup, chuan hoa button pill va pulse live indicator.
+- Nang cap ECharts heatmap: visualMap Rose/Slate/Emerald, tooltip cau truc moi, toggle mode Treemap/Sunburst va size metric Weight/Cap.
+- Tang data density sidebar: sticky header, filter theo nganh, cot gia/% co do rong co dinh.
+- Bo sung KPI icon + sparkline SVG tren StatCard.
+- Toi uu TopNav: globe compact switch VI/EN de giam chiem dung khong gian.
+
+### Delta update - Pixel tone + mini-chart tooltip
+
+Status: Completed
+
+Files modified (delta):
+- frontend/src/pages/Dashboard.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Delta highlights:
+- Bo sung du lieu intraday theo tung symbol de nuoi mini-chart tooltip heatmap.
+- Tooltip heatmap da render sparkline SVG thuc te (khong con placeholder).
+- Tinh chinh vi mo tone mockup: blur, border contrast, spacing header panel.
+
+### Delta update - Pixel-perfect pass 2
+
+Status: Completed
+
+Files modified (delta):
+- frontend/src/components/SidebarWatchlist.jsx
+- frontend/src/components/TopNav.jsx
+- frontend/src/components/PortfolioHeatmap.jsx
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Delta highlights:
+- Giam them vertical rhythm o watchlist row de tang mat do hien thi.
+- Can chinh top nav height, border tone, va spacing controls de dong bo voi dashboard shell.
+- Tinh chinh heatmap header/legend spacing + contrast de sat hon mockup.
 
 ---
 

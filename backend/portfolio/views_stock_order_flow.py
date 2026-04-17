@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import base64
 import logging
 
-from django.db.models import ExpressionWrapper, F, FloatField, Q, Sum
+from django.db.models import Case, Count, ExpressionWrapper, F, FloatField, Q, Sum, Value, When
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -14,7 +14,7 @@ from .opencore_analytics import track_api_call
 from .opencore_dpi import check_feature_access
 from .permissions import IsProPlan, resolve_user_entitlements
 from .quota_service import build_quota_exceeded_payload, consume_quota
-from .whale_feed_helpers import _resolve_user_whale_threshold_vnd
+from .whale_feed_helpers import _get_user_symbol_threshold_overrides_vnd, _resolve_user_whale_threshold_vnd
 from portfolio.order_flow import compute_cvd_series, detect_dark_flow
 
 logger = logging.getLogger(__name__)
@@ -37,6 +37,7 @@ def whale_advisory_symbol_stats_api(request):
         symbols = list(
             TrackedSymbol.objects.filter(user=request.user).values_list('symbol', flat=True)
         )
+    symbols = list(dict.fromkeys(symbols))
 
     if not symbols:
         return Response(
@@ -59,24 +60,45 @@ def whale_advisory_symbol_stats_api(request):
     else:
         queryset = queryset.filter(trade_date=today_local)
 
-    stats_list = []
-    for symbol in symbols:
-        symbol_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, symbol)
-        symbol_ticks = queryset.filter(symbol=symbol, matched_value__gte=symbol_threshold_vnd)
+    base_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, symbol=None)
+    symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
+    symbol_threshold_case = Case(
+        *[
+            When(symbol=symbol, then=Value(float(symbol_threshold_overrides.get(symbol, base_threshold_vnd))))
+            for symbol in symbols
+        ],
+        default=Value(float(base_threshold_vnd)),
+        output_field=FloatField(),
+    )
 
-        buy_count = symbol_ticks.filter(side__iexact='BUY').count()
-        sell_count = symbol_ticks.filter(side__iexact='SELL').count()
+    aggregated_rows = (
+        queryset
+        .annotate(threshold_vnd=symbol_threshold_case)
+        .filter(matched_value__gte=F('threshold_vnd'))
+        .values('symbol')
+        .annotate(
+            buy_count=Count('pk', filter=Q(side__iexact='BUY')),
+            sell_count=Count('pk', filter=Q(side__iexact='SELL')),
+            total_value=Sum('matched_value'),
+            total_volume=Sum('volume'),
+        )
+    )
+
+    stats_list = []
+    for row in aggregated_rows:
+        buy_count = int(row.get('buy_count') or 0)
+        sell_count = int(row.get('sell_count') or 0)
         total_count = buy_count + sell_count
         if total_count <= 0:
             continue
 
-        total_value = float(symbol_ticks.aggregate(total=Sum('matched_value')).get('total') or 0.0)
-        total_volume = int(symbol_ticks.aggregate(total=Sum('volume')).get('total') or 0)
+        total_value = float(row.get('total_value') or 0.0)
+        total_volume = int(row.get('total_volume') or 0)
         avg_order_value = total_value / total_count
 
         stats_list.append(
             {
-                'symbol': symbol,
+                'symbol': row.get('symbol'),
                 'buyCount': buy_count,
                 'sellCount': sell_count,
                 'totalValue': total_value,

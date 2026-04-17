@@ -1454,6 +1454,7 @@ class IntradayTick(models.Model):
         verbose_name_plural = 'Tick khớp lệnh intraday'
         indexes = [
             models.Index(fields=['symbol', 'trade_date', 'trade_time']),
+            models.Index(fields=['symbol', 'trade_date', 'side'], name='idx_intraday_sym_date_side'),
         ]
         ordering = ['-trade_date', '-trade_time']
 
