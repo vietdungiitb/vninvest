@@ -46,7 +46,7 @@ Mục tiêu: Chống thất thoát dữ liệu và dọn dẹp các "Pending Ent
     - Quét các message ở trạng thái `Pending` quá lâu (> 60s).
     - Thực hiện claim về cho worker hiện tại để xử lý lại hoặc ACK nếu quá cũ.
 - [x] Cập nhật metrics: Đẩy số lượng pending depth lên Prometheus/Redis Metrics.
-- [ ] **Verification**: Manual kill process consumer khi đang đọc dở batch, bật lại và kiểm tra xem các id cũ có được xử lý lại không.
+- [x] **Verification**: Manual kill process consumer khi đang đọc dở batch, bật lại và kiểm tra xem các id cũ có được xử lý lại không.
 
 ## Phase 5: Nghiệm thu & Hardening ✅
 Mục tiêu: Chốt chặn chất lượng cuối cùng.

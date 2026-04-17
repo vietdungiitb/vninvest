@@ -65,6 +65,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Realtime Phase 5 Soak Execution - Fault Injection PASS (2026-04-17)
+- docs/PHASE5_REALTIME_STABILIZATION_SOAK_CHECKLIST_20260417.md (MODIFIED - ghi ket qua fault injection run, before/after pending va reclaim metrics, ket luan PASS cho gate fault injection)
+- docs/STABILIZATION_TASKBOARD_20260417.md (MODIFIED - mark completed verification cho Phase 4 manual kill/reclaim)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Realtime Stabilization Phase 4 Metrics Export + Phase 5 Checklist Init (2026-04-17)
 - backend/portfolio/services_realtime_metrics.py (MODIFIED - them metrics stream reclaim: pending_depth gauge + reclaim_total/reclaim_errors_total counters, snapshot + Prometheus export)
 - backend/portfolio/realtime/stream_consumers.py (MODIFIED - instrument pending depth/reclaim metrics trong run_once + reclaim path)

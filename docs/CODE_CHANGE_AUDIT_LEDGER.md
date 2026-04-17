@@ -1,5 +1,41 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-17l - Phase 5 soak execution (fault injection) and reclaim validation PASS
+
+Muc tieu:
+- Thuc thi gate quan trong nhat cua Phase 5: fault injection kill worker trong luc co traffic.
+- Xac nhan reclaim pipeline thuc su claim lai pending entries va cap nhat metrics dung ky vong.
+
+Danh sach tep da sua:
+- docs/PHASE5_REALTIME_STABILIZATION_SOAK_CHECKLIST_20260417.md
+- docs/STABILIZATION_TASKBOARD_20260417.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung thuc thi soak (fault injection):
+- Runtime flags duoc bat trong soak process:
+  - `REALTIME_STREAM_PENDING_RECLAIM_ENABLED=True`
+  - `STREAM_PENDING_RECLAIM_IDLE_MS=1000`
+- Tao stream symbol test `SOAKVNM2`, tao consumer group `db-writer`.
+- Push traffic vao stream, cho worker `crash-worker` doc 1 message vao PEL (khong ACK), sau do kill abrupt.
+- Quan sat truoc reclaim:
+  - `XPENDING`: `pending=1`, consumer `crash-worker`.
+- Chay `DbWriterConsumer.run_once(...)` de trigger reclaim.
+- Quan sat sau reclaim:
+  - `XPENDING`: `pending=0`.
+  - Metrics snapshot:
+    - `reclaim_total.db-writer = 1`
+    - `reclaim_errors_total.db-writer = 0`
+
+Ket qua gate:
+- PASS cho Fault Injection Gate trong checklist Phase 5.
+- Da cap nhat checklist voi thong so before/after va ket luan PASS.
+
+Ghi chu release-governance:
+- Promote `dev -> deploy` chi nen thuc hien sau khi hoan tat them soak staging full-duration (>=60 phut) va dien ket qua vao checklist.
+
+---
+
 ## Entry 2026-04-17k - Phase 4 metrics export + Phase 5 soak checklist initialization
 
 Muc tieu:

@@ -70,13 +70,23 @@
 - Xac nhan metrics va error-rate quay lai baseline.
 
 ## 8) Bang ghi ket qua (dien sau khi chay)
-- Moi truong: dev / staging
-- Thoi gian bat dau:
-- Thoi gian ket thuc:
-- So luong user/symbol gia lap:
-- pending_depth (max/avg):
-- reclaim_total (delta):
-- reclaim_errors_total (delta):
-- 500-rate:
-- Ket luan: PASS / FAIL
+- Moi truong: dev
+- Thoi gian bat dau: 2026-04-17 (fault-injection run)
+- Thoi gian ket thuc: 2026-04-17 (fault-injection run)
+- So luong user/symbol gia lap: 1 symbol test (`SOAKVNM2`), producer push 15 ticks trong fault window
+- pending_depth (max/avg): max=1 (db-writer), sau reclaim ve 0
+- reclaim_total (delta): +1 (group `db-writer`)
+- reclaim_errors_total (delta): +0
+- 500-rate: 0 trong fault-injection run
+- Ket luan: PASS (Fault Injection Gate)
 - Ghi chu audit:
+  - Worker `crash-worker` doc 1 message vao PEL, bi kill abrupt khi dang giu pending.
+  - Pending truoc reclaim: `pending=1` (consumer `crash-worker`).
+  - Sau `DbWriterConsumer.run_once(...)`: pending ve 0, `reclaim_total` tang dung ky vong.
+  - `STREAM_METRICS` snapshot: `reclaim_total.db-writer=1`, `reclaim_errors_total.db-writer=0`.
+
+## 9) Ket luan gate release
+- Gate da dat: Fault Injection reclaim validation.
+- Con lai truoc promote deploy:
+  - Chay soak staging theo duration day du (toi thieu 60 phut) theo muc 5.
+  - Dien ket qua staging vao muc 8 truoc khi ra lenh merge `dev -> deploy`.
