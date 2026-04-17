@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from '../context/LangContext';
 
@@ -23,11 +23,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
     return Number.isFinite(numeric) ? numeric : 0;
   };
 
-  const formatPercent = (value) => {
+  const formatPercent = useCallback((value) => {
     const numeric = Number(value);
     if (!Number.isFinite(numeric)) return '0.00%';
     return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`;
-  };
+  }, []);
 
   const hierarchicalData = useMemo(() => {
     if (!holdings?.length) return [];
@@ -64,6 +64,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       const glowColor = changePct > 0 ? 'rgba(16, 185, 129, 0.36)' : 'rgba(244, 63, 94, 0.32)';
 
       sectors[industry].children.push({
+        id: `symbol:${symbol}`,
         name: symbol,
         symbol,
         industry,
@@ -87,6 +88,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       .map((sector) => {
         const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
         return {
+          id: `industry:${sector.name}`,
           name: sector.name,
           value: [sector.totalWeight, avgChange],
           changePct: avgChange,
@@ -157,7 +159,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (viewMode === 'sunburst') {
       return {
         backgroundColor: 'transparent',
-        animationDuration: 300,
+        animationDuration: 350,
+        animationDurationUpdate: 900,
+        animationEasingUpdate: 'cubicInOut',
         tooltip,
         visualMap: {
           show: false,
@@ -171,10 +175,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         series: [
           {
             type: 'sunburst',
+            id: 'portfolio-heatmap-transition',
             data: hierarchicalData,
             sort: 'desc',
             radius: ['12%', '96%'],
             nodeClick: false,
+            universalTransition: true,
             emphasis: { focus: 'ancestor' },
             itemStyle: {
               borderColor: 'rgba(15, 23, 42, 0.5)',
@@ -226,7 +232,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     return {
       backgroundColor: 'transparent',
-      animationDuration: 400,
+      animationDuration: 350,
+      animationDurationUpdate: 900,
+      animationEasingUpdate: 'cubicInOut',
       tooltip,
       visualMap: {
         show: false,
@@ -240,16 +248,34 @@ export default function PortfolioHeatmap({ holdings, title }) {
       series: [
         {
           type: 'treemap',
+          id: 'portfolio-heatmap-transition',
           data: hierarchicalData,
           roam: false,
           nodeClick: false,
+          universalTransition: true,
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.75,
           leafDepth: 1,
           visibleMin: 0,
           childrenVisibleMin: 0,
-          emphasis: { disabled: true },
+          emphasis: {
+            focus: 'descendant',
+            itemStyle: {
+              borderColor: '#e2e8f0',
+              borderWidth: 2,
+              shadowBlur: 20,
+              shadowColor: 'rgba(15, 23, 42, 0.45)',
+            },
+            label: {
+              show: true,
+            },
+          },
+          blur: {
+            itemStyle: {
+              opacity: 0.72,
+            },
+          },
           label: {
             show: true,
             formatter: (params) => {
@@ -362,7 +388,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         <ReactECharts
           option={option}
           style={{ height: '100%', width: '100%' }}
-          notMerge={true}
+          notMerge={false}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
         />
