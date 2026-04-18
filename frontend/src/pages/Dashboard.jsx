@@ -478,8 +478,11 @@ export default function Dashboard() {
         unreadCount={unreadUnifiedCount}
       />
 
-      <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-4">
-        <div className="xl:col-span-3 xl:min-h-[580px]">
+      {/* Unified Dashboard Grid: Main Content (Left 2/3) + Side Panels (Right 1/3) */}
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
+        
+        {/* Main Column (2/3 width) */}
+        <div className="space-y-6 xl:col-span-2">
           <UnifiedAlertCenter
             alerts={filteredUnifiedAlerts}
             readAlertIds={readAlertIds}
@@ -502,64 +505,67 @@ export default function Dashboard() {
             setSourceFilter={setSourceFilter}
             audienceFilter={audienceFilter}
             setAudienceFilter={setAudienceFilter}
-            className="h-full"
+            className="w-full"
           />
-        </div>
-        <div className="xl:col-span-1">
-          <AllocationPieChart portfolioId={activePortfolioId} />
-        </div>
-      </div>
-
-      {/* Risk Performance Analytics + Portfolio Status */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <div className="xl:col-span-2">
+          
           <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
         </div>
-        <div className="xl:col-span-1">
-          <div className="v2-panel-strong rounded-xl p-4">
-            <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
+
+        {/* Side Column (1/3 width) */}
+        <div className="flex flex-col gap-6 xl:col-span-1">
+          <AllocationPieChart portfolioId={activePortfolioId} />
+          
+          <PortfolioDigestPanel />
+
+          <div className="v2-panel-strong rounded-xl p-5 shadow-lg border border-slate-800/50 bg-slate-900/40 backdrop-blur-sm">
+            <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400 border-b border-slate-800/60 pb-3 mb-4">
               {t('dashboardRealtime.portfolioStatusTitle')}
             </h3>
-            <div className="mt-3 space-y-2.5 text-xs">
-              <div>
-                <p className="text-slate-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-                <p className="mt-0.5 text-lg font-bold text-slate-100">{monitoredSymbols.length}</p>
+            <div className="space-y-4 text-xs">
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 font-medium">{t('dashboardRealtime.monitoredSymbols')}</p>
+                <p className="text-lg font-black text-slate-100">{monitoredSymbols.length}</p>
               </div>
-              <div>
-                <p className="text-slate-500">{t('dashboardRealtime.upDownFlat')}</p>
-                <p className="mt-0.5 text-base font-semibold text-slate-100">
-                  {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 font-medium">{t('dashboardRealtime.upDownFlat')}</p>
+                <div className="flex items-center gap-1.5 font-bold">
+                  <span className="text-emerald-400">{realtimeMarketBreadth.up}</span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-rose-400">{realtimeMarketBreadth.down}</span>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-slate-400">{realtimeMarketBreadth.flat}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 font-medium">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+                <p className={`text-base font-bold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-400' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-400' : 'text-slate-100'}`}>
+                  {realtimeDeltaVsSnapshot > 0 ? '+' : ''}{Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
                 </p>
               </div>
-              <div>
-                <p className="text-slate-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-                <p className={`mt-0.5 text-base font-semibold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-300' : 'text-slate-100'}`}>
-                  {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
-                </p>
-              </div>
-              <div>
-                <p className="text-slate-500">{t('dashboardRealtime.stale')}</p>
-                <p className={`mt-0.5 text-base font-semibold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-slate-100'}`}>
+              <div className="flex items-center justify-between">
+                <p className="text-slate-500 font-medium">{t('dashboardRealtime.stale')}</p>
+                <p className={`text-base font-bold ${realtimeStalePositions > 0 ? 'text-amber-400' : 'text-slate-100'}`}>
                   {realtimeStalePositions}
                 </p>
               </div>
-              <div>
-                <p className="text-slate-500">{t('dashboardRealtime.lastEvent', {
-                  time: lastEventAt
-                    ? formatDateTime(lastEventAt, {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      second: '2-digit',
-                    })
-                    : '—',
-                })}</p>
+              <div className="mt-2 pt-3 border-t border-slate-800/60">
+                <p className="text-[10px] text-slate-500 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                  {t('dashboardRealtime.lastEvent', {
+                    time: lastEventAt
+                      ? formatDateTime(lastEventAt, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })
+                      : '—',
+                  })}
+                </p>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <PortfolioDigestPanel />
 
       {/* Charts */}
       <div className="space-y-4">
