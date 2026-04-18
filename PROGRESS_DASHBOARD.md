@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### OpenCore Hardening Sprint Plan - 21 Days Roadmap (2026-04-18)
+- docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (NEW - proposal chi tiet 5 quyet dinh + timeline + resources)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-22 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### OpenCore Audit Report Hardening Alignment (2026-04-18)
 - docs/AUDIT_OPEN_CORE_DOCS_20260418.md (MODIFIED - chinh lai khuyen nghi archive docs cu theo huong precise, tranh xung dot voi authoritative set)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18s)
