@@ -1,6 +1,11 @@
 """
 OpenCore Integration Guide for Developers
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay la quick reference ky thuat duoc tao o giai doan som cua OpenCore.
+- Khong dung tai lieu nay de suy ra rang OpenCore dang launch-ready hay public-ready.
+- Truoc khi ap dung bat ky huong dan nao ben duoi, doi chieu voi bo tai lieu canonical: OC-12, OC-13, OC-14, OC-15.
+
 Quick reference for integrating OpenCore licensing into existing code.
 """
 

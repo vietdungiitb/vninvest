@@ -1,0 +1,27 @@
+name: OpenCore Doc Sync Gate
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+      - deploy
+
+jobs:
+  opencore-doc-sync-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run OC-19 doc sync gate
+        shell: pwsh
+        run: |
+          ./scripts/quality/check_opencore_doc_sync.ps1 `
+            -EventName "${{ github.event_name }}" `
+            -BaseRef "${{ github.base_ref }}" `
+            -BeforeSha "${{ github.event.before }}" `
+            -HeadSha "${{ github.sha }}"

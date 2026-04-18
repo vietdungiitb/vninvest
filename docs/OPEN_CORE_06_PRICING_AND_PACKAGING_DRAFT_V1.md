@@ -1,7 +1,8 @@
 # OPEN CORE PRICING AND PACKAGING DRAFT V1 (OC-06)
 
 Ngay tao: 2026-04-07
-Trang thai: Draft for pricing workshop
+Ngay cap nhat: 2026-04-18
+Trang thai: Baseline pricing hypothesis, chua duoc xem la execution-ready
 Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md
 
 ## 1. Muc tieu
@@ -32,7 +33,7 @@ Tao khung pricing annual de test thi truong trong 90 ngay dau, uu tien don gian 
 
 ## 4. Pricing architecture (chua final)
 - Annual-first pricing
-- Trial: 14 ngay (hoac quota premium gioi han)
+- Trial: tai lieu nay tung de xuat 14 ngay, nhung baseline business hien tai trong OC-02/OC-11 dang nghieng ve 7 ngay + grace 7 ngay; can chot canonical truoc khi thong diep ra ben ngoai
 - Grace period: 7 ngay sau expiry
 - Sau grace: read-only mode
 
@@ -57,6 +58,7 @@ Tao khung pricing annual de test thi truong trong 90 ngay dau, uu tien don gian 
 1. Co can monthly plan cho giai doan dau khong?
 2. Co educational/startup discount khong?
 3. Muc quota nao la diem can bang giua growth va chi phi?
+4. Trial/grace canonical message nao duoc phep dung cong khai?
 
 ## 9. Next review checkpoint
-- Chot pricing V1 va cap nhat OC-02 muc monetization mechanics.
+- Chot pricing V1 cung trial/grace wording va dong bo sang OC-11/OC-12 truoc khi public bat ky bang gia nao.
