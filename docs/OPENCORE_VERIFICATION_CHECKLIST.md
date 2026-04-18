@@ -1,5 +1,11 @@
 # OpenCore System Verification Checklist
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay chi con gia tri lich su/audit.
+- Khong dung tai lieu nay de ra quyet dinh hien tai cho OpenCore.
+- Cac khang dinh kieu "Ready for Production" trong file nay khong con duoc xem la authoritative.
+- Tai lieu thay the de doc quyet dinh hien tai: OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md, OPEN_CORE_STRATEGY_MASTER_FINAL.md, OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md, OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md.
+
 Run through this checklist to verify the OpenCore system is fully operational.
 
 **Date**: 2026-04-07  

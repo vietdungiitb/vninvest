@@ -1,11 +1,17 @@
 # OPEN CORE FEATURE BOUNDARY MATRIX V1 (OC-05)
 
 Ngay tao: 2026-04-07
-Trang thai: Draft for workshop
+Ngay cap nhat: 2026-04-18
+Trang thai: Baseline boundary matrix, can them canonical technical lock truoc khi public
 Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md
 
 ## 1. Muc tieu
 Chot ranh gioi Free/Pro theo tieu chi do duoc de tranh tranh luan cam tinh.
+
+Luu y 2026-04-18:
+1. Tai lieu nay khoa boundary cap san pham/module, KHONG khoa numeric quota unit hay runtime plan names.
+2. Runtime code hien tai dang dung plan names `free`, `pro`, `enterprise`; business package names van nen doc la Community / Pro Individual / Pro Team.
+3. Neu can public/community repo, can bo sung bang map feature_key -> endpoint/module/package de boundary co the enforce duoc.
 
 ## 2. Quy tac cham diem
 Moi module duoc cham theo 3 tieu chi (1-5):
@@ -50,10 +56,17 @@ Tong diem = UV + ML + RF
 2. Audit/export nang cao
 3. Support uu tien + SLA
 
-## 5. Open questions
-1. Gioi han quota Free cu the theo ngay/thang?
-2. Module nao duoc trial trong 14 ngay?
-3. Co mo API read-only cho Community khong?
+## 5. Ghi chu technical mapping hien tai
+1. Community -> runtime `free`
+2. Pro Individual -> runtime `pro`
+3. Pro Team -> runtime `enterprise` tam thoi o code hien tai
+4. Mapping nay la runtime compromise, chua phai ten package public cuoi cung
 
-## 6. Next review checkpoint
-- Workshop tiep theo: lock 10 module V1 va cap nhat OC-02 sang Approved.
+## 6. Open questions chua duoc lock
+1. Gioi han quota Free/Pro canonical theo ngay hay theo thang?
+2. Trial canonical la 7 ngay hay cach khac, va feature/quota trong trial duoc mo toi muc nao?
+3. Co mo API read-only cho Community khong?
+4. Boundary cap endpoint/feature_key nao duoc xem la public-safe?
+
+## 7. Next review checkpoint
+- Governance refresh tiep theo: lock boundary o muc feature_key/package va giai quyet quota-unit drift.

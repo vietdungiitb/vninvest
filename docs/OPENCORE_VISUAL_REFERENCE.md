@@ -1,5 +1,10 @@
 # OpenCore Quick Visual Summary
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay ghi lai mot dot visual/reference test dau thang 4.
+- Khong dung de ra quyet dinh hien tai vi co nhieu khang dinh "fully functional"/"ready" chi dung cho diem thoi gian cu.
+- Neu can tai lieu hien tai, doc OC-15 truoc.
+
 **Status**: 🏆 FULLY FUNCTIONAL (10/10 Tests Passed)
 
 ---

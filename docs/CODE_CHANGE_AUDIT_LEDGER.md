@@ -1,5 +1,529 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18af - Heatmap tooltip null-crash + responsive resize recovery hotfix
+
+Muc tieu:
+- Sua loi runtime `TooltipHTMLContent.js: Cannot set properties of null (setting 'innerHTML')` tren ECharts heatmap khi resize man hinh.
+- Dam bao heatmap tu dong co gian dung sau khi thu hep/trang thai cua so thay doi.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`
+  - Bo sung `ResizeObserver` + `window resize` listener de chu dong goi `chart.resize()` khi container thay doi kich thuoc.
+  - Them `safeResizeChart()` de `hideTip` truoc resize, tranh race-condition tooltip khi ECharts dang cap nhat DOM tooltip.
+  - Chuyen `tooltip.appendToBody` tu `true` sang `false` de tranh mat node tooltip khi layout thay doi manh.
+  - Bo sung `alwaysShowContent: false` va trigger resize khi doi mode (`treemap/sunburst`) hoac doi metric size.
+  - Gan `ref` vao chart component va chart container de thao tac resize on dinh.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Validation:
+- `get_errors` tren `frontend/src/components/PortfolioHeatmap.jsx`: khong co loi.
+- Manual behavior expected:
+  - Khong con crash tooltip khi co/doi kich thuoc cua so.
+  - Heatmap tu dong reflow ve dung layout ban dau sau resize.
+
+## Entry 2026-04-18ae - Relax dev/deploy review gate and align required governance check
+
+Muc tieu:
+- Bo yeu cau approval/review tren ruleset `dev` va `deploy` theo yeu cau van hanh.
+- Dam bao check bat buoc `Governance Release Gate / governance-postgres-regression` thuc su chay cho PR vao `dev`.
+
+Danh sach tep cap nhat:
+- .github/workflows/governance-release-gate.yml (MODIFIED - bo sung trigger `dev` cho `push` va `pull_request`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Ruleset API da cap nhat `required_approving_review_count=0` cho `OpenCore Protection - dev` va `OpenCore Protection - deploy`.
+- Workflow governance gate duoc bo sung trigger `dev` de context check bat buoc co mat tren PR vao `dev`.
+
+Validation:
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232122` => `required_approving_review_count: 0`.
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232124` => `required_approving_review_count: 0`.
+- PR #1 truoc do bi block boi missing governance check context; sau patch workflow se tao check context day du tren PR vao `dev`.
+
+## Entry 2026-04-18ad - Add README_DRAFT in separate housekeeping commit
+
+Muc tieu:
+- Dua `README_DRAFT.md` vao version control theo xac nhan option 2 cua user.
+- Tach thanh commit rieng de de audit va rollback neu can.
+
+Danh sach tep cap nhat:
+- README_DRAFT.md (NEW - ban nhap README tong hop tam thoi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Add `README_DRAFT.md` vao repository o commit rieng.
+- Khong thay doi runtime code/backend/frontend.
+
+Validation:
+- `git status` xac nhan thay doi scope housekeeping + audit docs.
+
+## Entry 2026-04-18ac - Data pipeline/Pandas/SQL optimization implementation (DP-01 execute)
+
+Muc tieu:
+- Thuc thi optimization theo ke hoach DP-01 voi uu tien SQL projection/filtering va Pandas vectorized.
+- Giam Python-loop overhead tren hot path va giu nguyen business output.
+- Bo sung backward compatibility cho whale aggregate payload de dam bao test/client legacy.
+
+Danh sach tep cap nhat:
+- backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hot path, toi uu loop/vectorized)
+- backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve symbol scope, them alert alias fields de backward compatibility)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - chuan hoa symbol helper, bo iterrows tren cache path)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (MODIFIED - cap nhat execution summary + validation evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Analytics:
+  - `_wavg_cost_for_symbol`: `itertuples()` thay cho `iterrows()` va bo sort lai khong can thiet.
+  - `compute_nav_series`: bo `apply(axis=1)`, thay bang map sign vectorized.
+- Market data service:
+  - `_resolve_whale_feed_symbols`: gom helper normalize, resolve watchlist/tracked bang SQL projection (`values_list`), bo prefetch relation khong can.
+  - `_build_aggregate_event_payload*`: them `alert_at`, `alert_first_seen_at`, `alert_age_seconds`.
+- Tasks prefetch:
+  - Them `_normalized_symbol_set` dung chung.
+  - `_cache_ticker_rows_from_dataframe`: bo `iterrows`, dung dict-record iteration.
+  - `_distinct_symbols`: tai su dung helper normalize.
+
+Validation:
+- Django system check: pass.
+- Focused regression tests: pass tren cac luong whale aggregate scope/watchlist/dedup, analytics risk metrics, prefetch normalization + realtime universe shard.
+- Ghi chu: 1 test whale aggregate co tinh khong on dinh khi chay batch do stream state, chay rieng pass sau fix compatibility fields.
+
+## Entry 2026-04-18ab - Data pipeline/Pandas/SQL optimization plan (DP-01)
+
+Muc tieu:
+- Lap ke hoach day du toi uu data pipeline theo chien luoc SQL projection + Pandas vectorized.
+- Chot pham vi hotspot va KPI before/after de duyet truoc khi code implementation.
+
+Danh sach tep cap nhat:
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (NEW - ke hoach chi tiet DP-01, phases A-D, KPI, risk, rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Xac dinh 4 hotspot uu tien: market_data_service, analytics, tasks_prefetch, admin insights.
+- Chia ke hoach 4 phase: baseline -> SQL optimization -> Pandas vectorization -> validation.
+- Dinh nghia KPI duyet: p95, query count, CPU time va acceptance criteria.
+- Bo sung bang baseline/after de dien trong qua trinh thuc thi.
+- Chot quy tac: khong doi API contract, uu tien tinh dung output business.
+
+## Entry 2026-04-18aa - Add one-command sync script for vninvest-core snapshot
+
+Muc tieu:
+- Tao script 1-lenh de dong bo snapshot sang repo private `vninvest-core`.
+- Chuan hoa quy trinh de nhung lan sau chi can chay script thay vi lam thu cong nhieu buoc.
+- Include file backlog theo yeu cau user cho dot commit hien tai.
+
+Danh sach tep cap nhat:
+- scripts/ops/sync_vninvest_core.ps1 (NEW - one-command sync script, snapshot + commit + push)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- README.md (MODIFIED - ghi quy trinh co dinh sync vninvest-core de su dung ve sau)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Script su dung snapshot seed repo de tranh loi push full-history.
+- Co tham so cau hinh: source path, seed path, target repo URL, target branch.
+- Co co che `-SkipPush` de test local an toan truoc khi day remote.
+- Script tu dong:
+  * Don seed working tree (giu `.git`)
+  * Copy snapshot tu source repo bang robocopy
+  * Commit neu co thay doi
+  * Push len `origin/main` neu khong bat `-SkipPush`
+
+## Entry 2026-04-18z - Create sprint kickoff package + team onboarding guide
+
+Muc tieu:
+- Tao integration doc cuoi cung cong hien tat ca 6 documents sprint planning (OC-22 through OC-27).
+- Cung cap clear reading roadmap, checklists, deadlines cho moi role (PO, Tech, Backend, Frontend, QA).
+- Chuan bi team 100% cho Monday kickoff.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone onboarding doc)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Tao OC-28 comprehensive kickoff guide (1200+ lines):
+  * Executive overview (5 min read)
+  * Role-specific reading paths (35-65 min per role)
+  * Week-by-week decision snapshot
+  * Pre-kickoff checklist for all 5 roles (Sun EOD deadline)
+  * Monday standup agenda + template
+  * Daily standup template (15 min each)
+  * Success metrics dashboard (per week)
+  * Quick reference decision cards
+  * FAQ + troubleshooting
+  * Full document linkage map
+  * Final pre-kickoff tech checklist
+- Status: READY FOR TEAM DISTRIBUTION (Fri 2026-04-19)
+- Target: All team members complete reading + prep by Sun 2026-04-21 EOD
+- Monday 09:00: Team kickoff standup starts sprint
+
+## Entry 2026-04-18y - Create sprint week 4 planning for legal bundle finalization
+
+Muc tieu:
+- Tao chi tiet sprint week 4 roadmap + Decision 5 finalization (legal bundle).
+- Chuan bi cho steering committee review (Mon 2026-05-19).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-27 chi tiet Decision 5 (legal bundle: Apache 2.0 + ToS + Privacy + Disclaimer).
+- 4 phase timeline: drafting (Mon-Tue) + legal review (Wed) + deployment (Thu) + final merge (Fri).
+- License selection: Apache 2.0 (recommended for commercial + self-host use).
+- Terms/Privacy/Disclaimer doc scopes + estimated lengths.
+- Post-sprint: steering committee review Mon 2026-05-19, GO/NO-GO decision for public launch.
+- Success criteria: All 5 decisions locked, OC-13 gates updated (4 YELLOW, 1 GREEN), sprint 100% complete.
+- Resource: 1 PO (15%), 1 Tech Lead (10%) = minimal (legal is bottleneck).
+- Status: READY FOR PLANNING (Mon 2026-05-13).
+
+## Entry 2026-04-18x - Create sprint week 3 planning for community package + self-host licensing
+
+Muc tieu:
+- Tao chi tiet sprint week 3 roadmap (2 decisions: community package boundary + self-host pro model).
+- Chuan bi truoc khi Week 2 ket thuc (Friday 2026-05-03).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-26 chi tiet 2 parallel decisions:
+  * Decision 3: Community V1 package (endpoint allowlist + feature gates)
+  * Decision 4: Self-host Pro model (entitlement licensing + CLI)
+- Phase breakdown (7 phases total across 2 decisions): analysis/design + implementation + frontend + tests/docs + merge.
+- Task assignments: 30+ tasks across backend/frontend/QA.
+- Success criteria: 5+ endpoints gated, licensing module complete, >90% tests, OC-13 gates YELLOW.
+- Resource: 1 PO (25%), 1 Tech Lead (100%), 1 Backend (60%), 1 Frontend (25%), 1 QA (15%) = 6.5 person-days.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-05-06).
+
+## Entry 2026-04-18w - Create sprint week 2 planning for package mapping decision
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
+## Entry 2026-04-18v - Create sprint week 2 backlog for Decision 2 (package mapping)
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
+## Entry 2026-04-18u - Create sprint week 1 backlog for Decision 1 (quota unit canonical)
+
+Muc tieu:
+- Tao chi tiet sprint week 1 roadmap va tasks de chot Decision 1.
+- Lam san sang de kick off standup Mon 2026-04-22.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-23 chi tiet 4 phase: Analysis (Mon), Docs Update (Tue), Tests (Wed), Integration (Thu-Fri).
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (docs) + 3.1-3.2 (tests) + 4.1-4.3 (PR/merge).
+- Resource: 1 PO (40%), 1 Tech Lead (100%), 1 Backend (50%), 1 QA (30%) = 3.5 person-days.
+- Success criteria: Decision approved, OC-05/06/11 coherent, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR SPRINT KICKOFF.
+
+## Entry 2026-04-18t - Create OpenCore hardening sprint plan (21-day roadmap)
+
+Muc tieu:
+- Tao chi tiet implementation roadmap de chot 5 quyet dinh then chot (OC-15 §6).
+- Lay approval tu PO truoc khi bat tay code.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-22 chi tiet 5 quyet dinh: quota unit, package mapping, community package boundary, self-host pro model, legal bundle.
+- Timeline: 21 ngay (2026-04-22 -> 2026-05-09).
+- Resource allocation + risk mitigation.
+- Target outcome: OC-13 RED -> YELLOW/GREEN; ready for public repo.
+- Status: PROPOSAL - awaiting PO/Tech Lead approval.
+
+## Entry 2026-04-18s - Refine OpenCore audit report for canonical governance alignment
+
+Muc tieu:
+- Chinh lai khuyen nghi trong bao cao audit de tranh xung dot voi authoritative docs lane.
+- Lam ro rang Quota Drift la rui ro can xu ly truoc public launch.
+
+Danh sach tep cap nhat:
+- docs/AUDIT_OPEN_CORE_DOCS_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Nang muc do rui ro Quota Drift tu Thap len Trung binh va gan ro vai tro blocker cho public launch den khi OC-13 het RED.
+- Dieu chinh khuyen nghi lam sach docs cu theo huong precise archive cho historical artifacts, khong archive dien rong OC-01..OC-10 neu con baseline tham chieu.
+
+## Entry 2026-04-18r - Ruleset apply success + 422 hardening for setup script
+
+Muc tieu:
+- Hoan tat apply ruleset OC-19 cho dev/main/deploy theo phuong an khong can GitHub CLI.
+- Hardening script de debug ro loi API 422 va payload compatibility.
+
+Danh sach tep cap nhat:
+- scripts/ops/setup_oc19_github_rulesets.ps1
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Bo sung diagnostics chi tiet cho HTTP error (status + response + error details).
+- Loai bo truong payload gay 422 trong required status checks va rule type khong hop le.
+- Da apply thanh cong 3 ruleset:
+  - OpenCore Protection - dev
+  - OpenCore Protection - main
+  - OpenCore Protection - deploy
+
+## Entry 2026-04-18q - Automate GitHub ruleset setup via PowerShell script
+
+Muc tieu:
+- Cho phep tao/sua ruleset dev/main/deploy bang 1 lenh, giam thao tac thu cong tren GitHub UI.
+
+Danh sach tep cap nhat:
+- scripts/ops/setup_oc19_github_rulesets.ps1
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them script upsert ruleset qua GitHub REST API cho 3 branch dev/main/deploy.
+- Them huong dan one-command va che do dry-run trong OC-21.
+
+## Entry 2026-04-18p - Add copy/paste ruleset templates for branch protection
+
+Muc tieu:
+- Cung cap doan mau copy/paste de setup ruleset nhanh, giam sai sot thao tac cho dev/main/deploy.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them section 4.3 trong OC-21 voi mau ruleset day du cho dev/main/deploy.
+- Them checklist post-setup de xac nhan enforcement da hoat dong dung.
+
+## Entry 2026-04-18o - Clarify branch ruleset content for dev/main/deploy
+
+Muc tieu:
+- Bo sung noi dung tao/sua ruleset cu the de team thuc thi branch protection dong nhat tren dev/main/deploy.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them section 4.1 va 4.2 trong OC-21: branch pattern, protections, required checks, additional protections va checklist xac nhan sau setup.
+
+## Entry 2026-04-18n - OC-19 hard enforcement follow-up (PR-only gate + setup guides)
+
+Muc tieu:
+- Giam noise CI bang PR-only gate va bo sung huong dan van hanh de khoa merge gate o cap branch protection.
+
+Danh sach tep cap nhat:
+- .github/workflows/opencore-doc-sync-gate.yml
+- docs/OPEN_CORE_20_OC19_GATE_QUICKSTART_20260418.md
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Chuyen OpenCore Doc Sync Gate sang chi chay pull_request.
+- Them quickstart 5 phut cho dev moi de pass OC-19.
+- Them huong dan setup branch protection required status check tren dev/main/deploy.
+
+## Entry 2026-04-18m - OpenCore OC-19 enforcement via PR template + CI gate
+
+Muc tieu:
+- Bien OC-19 thanh co che enforcement tu dong, khong phu thuoc quy trinh thu cong cua tung ca nhan.
+
+Danh sach tep cap nhat:
+- .github/pull_request_template.md
+- .github/workflows/opencore-doc-sync-gate.yml
+- scripts/quality/check_opencore_doc_sync.ps1
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them PR template bat buoc checklist OC-19.
+- Them GitHub Action gate check doc sync theo trigger mapping T1-T4.
+- Them script quality de detect OpenCore-impacting diff va fail neu thieu audit/docs evidence.
+
+## Entry 2026-04-18l - OpenCore default team governance policy (mandatory)
+
+Muc tieu:
+- Dua thanh quy dinh mac dinh de doi code luon bam theo docs canonical, tranh OpenCore bi loi thoi so voi runtime truth.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-19 voi trigger-to-docs mapping, merge gate checklist, SLA cap nhat docs va weekly anti-stale review.
+- Noi OC-19 vao bo canonical va go/no-go gate de coi nhu default rule trong moi PR OpenCore.
+- Them checkpoint quyet dinh ve viec ap dung OC-19 trong decision packet.
+
+## Entry 2026-04-18k - OpenCore public docs allowlist V1
+
+Muc tieu:
+- Tao allowlist public docs V1 ro rang de tranh cong bo nham private docs.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_18_PUBLIC_DOCS_ALLOWLIST_V1_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Bo sung OC-18 voi allowlist, blocklist, redaction rules va publication checklist.
+- Noi OC-18 vao bo canonical docs va publish-readiness gate.
+- Them checkpoint quyet dinh ve allowlist V1 trong decision packet.
+
+## Entry 2026-04-18j - OpenCore docs governance update (private docs vs public docs)
+
+Muc tieu:
+- Chot ro nguyen tac docs noi bo va docs cong bo la hai lane khac nhau.
+- Bo sung docs governance vao bo canonical OpenCore de tranh public nham tai lieu noi bo.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Xac nhan `docs/` trong monorepo la private docs by default.
+- Bo sung gate moi trong publish-readiness: docs lane separation.
+- Them OC-17 de quy dinh publication pipeline cho public docs (allowlist/sanitize/legal review).
+- Dong bo lai decision packet va strategy de tranh hieu nham rang docs private se duoc public.
+
+## Entry 2026-04-18i - OpenCore review memo for non-immediate decision
+
+Muc tieu:
+- Tao them 1 memo ngan de stakeholder doc va can nhac, khong ep quyet dinh ngay.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-16 nhu mot memo review, non-decisional, bo sung vao bo tai lieu canonical.
+- Huong dan thu tu doc de stakeholder co the xem bo docs moi ma chua can phai chot ngay.
+- Giu framing "reviewing" thay vi push sang approve/no-go som.
+
+## Entry 2026-04-18h - OpenCore documentation canonical refresh + historical doc deprecation
+
+Muc tieu:
+- Xay dung bo tai lieu OpenCore canonical, phan anh dung hien trang de phuc vu quyet dinh tiep theo.
+- Ha cap cac tai lieu OpenCore lich su dang gay nhieu vi co thong diep "ready/live/production" khong con phu hop.
+
+Pham vi cap nhat canonical:
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_02_DECISION_RECORD_V1.md
+- docs/OPEN_CORE_03_EXECUTION_PLAN_90D.md
+- docs/OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md
+- docs/OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md
+- docs/OPEN_CORE_08_RISK_REGISTER_V1.md
+- docs/OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
+- docs/OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+
+Pham vi ha cap tai lieu lich su:
+- docs/OPENCORE_VERIFICATION_CHECKLIST.md
+- docs/OPENCORE_INTEGRATION_GUIDE.md
+- docs/OPENCORE_VISUAL_REFERENCE.md
+- docs/OPENCORE_VISUAL_TEST_RESULTS.md
+- docs/OPENCORE_VISUAL_TEST_SUMMARY.md
+- docs/OPEN_CORE_IMPLEMENTATION_COMPLETE.md
+
+Noi dung cap nhat chinh:
+- Dung lai bo tai lieu authoritative thanh 2 lop:
+  - Canonical decision docs (OC-13/14/15 + OC-11/12/05)
+  - Historical artifacts giu lai cho audit nhung khong dung de ra quyet dinh hien tai
+- Chinh lai thong diep OpenCore tu "launch/public-ready" sang "decision-ready but not public-ready".
+- Ghi ro do lech giua business baseline va runtime truth, dac biet o quota unit, ten plan runtime, va package boundary Community/Pro.
+- Tao moi OC-15 de lam mot diem doc duy nhat cho governance checkpoint hien tai.
+
+Ket qua:
+- Stakeholder da co bo doc canonical de ra quyet dinh tiep theo.
+- Tai lieu cu van duoc giu cho audit, nhung da duoc gan co de tranh dung nham.
+
 ## Entry 2026-04-18g - Dashboard layout realignment (Status + Analytics cùng cụm sidebar)
 
 Mục tiêu:

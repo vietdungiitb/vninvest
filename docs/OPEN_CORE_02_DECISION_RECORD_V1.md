@@ -12,6 +12,11 @@ Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_DISCUSSION.md, OPEN_CORE_03_EXECU
 ## 1. Decision scope
 Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
 
+Luu y quan tri (2026-04-18):
+- Tai lieu nay van la business baseline hop le.
+- Tai lieu nay KHONG phai la nguon su that duy nhat cho runtime state, quota unit, hay publish readiness.
+- De ra quyet dinh hien tai, doc kem OC-13, OC-14, OC-15, OC-11 va OC-12.
+
 ## 2. Approved decisions (V1)
 1. Business model
 - Chon Open Core: core mo + premium annual.
@@ -64,4 +69,4 @@ Chot bo quyet dinh V1 cho mo hinh Open Core va goi thu phi annual.
 1. Final support SLA package wording.
 
 ## 7. Next review checkpoint
-- Review date target: 2026-04-14 (weekly governance checkpoint).
+- Review date target: 2026-04-18 governance refresh; neu doi policy lon thi tao OC-02 V2 thay vi rewrite file nay.

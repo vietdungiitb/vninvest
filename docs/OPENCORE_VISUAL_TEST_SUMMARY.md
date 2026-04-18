@@ -1,5 +1,10 @@
 # OpenCore Visual Test - Complete Summary
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay phan anh mot visual test point-in-time o dau thang 4.
+- Cac dong nhu "OpenCore LIVE by April 15" khong con duoc xem la authoritative.
+- Khong dung file nay de ra quyet dinh trien khai hien tai; dung OC-15, OC-14, OC-13.
+
 **Executed**: 2026-04-07  
 **User Request**: "Test thử các công việc của mục open_core trực quan" (Test OpenCore tasks visually)  
 **Result**: ✅ **10/10 Tests Passed - OpenCore Fully Functional**

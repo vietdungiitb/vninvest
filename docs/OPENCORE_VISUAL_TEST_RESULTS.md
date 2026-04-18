@@ -1,5 +1,10 @@
 # OpenCore Visual Test Results - PASSING ✅
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay la ket qua test lich su, khong phai go/no-go gate hien tai.
+- Khong dung de ket luan rang OpenCore dang public-ready hay production-ready o thoi diem hien tai.
+- Xem OC-13 va OC-15 de co danh gia hien tai chinh xac hon.
+
 **Test Date**: 2026-04-07  
 **Test Script**: `test_opencore_visual.py`  
 **Results**: **10/10 TESTS PASSED** 🎉
