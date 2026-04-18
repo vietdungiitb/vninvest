@@ -4,7 +4,61 @@
 
 ---
 
-## 🚀 LATEST UPDATE (2026-04-16 ~17:15)
+## 🚀 LATEST UPDATE (2026-04-18 ~15:30) - AI ADVISORY CANONICAL prompt_config INTEGRATION ✅
+
+### AI Advisory Runtime Configuration (prompt_config v2) - COMPLETE ✅
+
+**Milestone:** Canonical prompt_config support with 3 new context builders  
+**Duration:** 2026-04-18 ~14:00-15:30 UTC+7  
+**Result:** All 9 regression tests passing, deployed to dev
+
+**Feature Summary:**
+- ✅ `_parse_prompt_config()` — normalize client config against canonical defaults + validate
+- ✅ `_build_fundamental_context_for_prompt()` — vnstock fundamental metrics (EPS/PE/ROE/ROA)
+- ✅ `_build_ownership_context_for_prompt()` — insider deals activity (buy/sell count + recent txns)
+- ✅ `_build_sector_context_for_prompt()` — peer group + benchmark statistics
+- ✅ `_build_technical_context_for_prompt()` refactored — per-indicator filtering (RSI/Bollinger/Volume)
+- ✅ `_sprint17_generate_executive_synthesis_with_ai()` refactored — conditional source routing via prompt_config
+- ✅ `stock_ai_advisory_summary_regenerate_api` — accepts `prompt_config` from client, returns `prompt_config_version`
+
+**Implementation Details:**
+- 8 sources in registry (whale, dark_flow, technical, news, market, fundamental, ownership, sector)
+- Default state: whale/dark_flow/technical/market/news ENABLED; fundamental/ownership/sector DISABLED
+- Each source has lookback min/max bounds for validation + clamping
+- Technical source supports per-indicator selection: `{vols, prices, cdms, ma20, ma50, rsi, bollinger, snapshot}`
+- Backward compat: callers without `prompt_config` get original behavior (defaults applied)
+
+**Test Coverage:**
+- Parser: none input, override, clamp, invalid indicators, fallback
+- Builders: empty symbol guards
+- Constants: technical indicators set consistency
+
+**Files Modified:**
+- ✅ `backend/portfolio/ai_advisory_helpers.py` (+322 lines)
+  - Added: `_PROMPT_CONFIG_DEFAULTS`, `_PROMPT_CONFIG_REGISTRY`, `VALID_TECHNICAL_INDICATORS`
+  - Added: `_parse_prompt_config()`, `_build_fundamental_context_for_prompt()`, `_build_ownership_context_for_prompt()`, `_build_sector_context_for_prompt()`
+  - Modified: `_build_technical_context_for_prompt()` (added `enabled_indicators` param)
+  - Modified: `_sprint17_generate_executive_synthesis_with_ai()` (added `prompt_config` param, dynamic source routing)
+- ✅ `backend/portfolio/views_ai_advisory_components_summary.py` (+10 lines)
+  - Modified: `stock_ai_advisory_summary_regenerate_api()` reads `prompt_config`, passes to synthesis, returns `prompt_config_version`
+- ✅ `backend/tests/test_ai_advisory_prompt_config.py` (NEW - 159 lines, 9 tests)
+  - 9/9 regression tests PASS
+- ✅ `AUDIT_AI_ADVISORY_PROMPT_CONFIG_20260418.md` (NEW - 177 lines, full audit trail)
+
+**Commit:** `3ae46f28` (dev)
+
+**Status:**
+- Core implementation: ✅ COMPLETE
+- Parser + 3 new builders: ✅ COMPLETE  
+- Synthesis refactor: ✅ COMPLETE
+- View integration: ✅ COMPLETE
+- Regression tests: ✅ ALL 9 PASS
+- Audit documentation: ✅ COMPLETE
+
+**Next: Frontend integration (pending)** - settings drawer, technical multi-select, localStorage, client sends `prompt_config`
+
+---
+
 ## 🚀 LATEST UPDATE (2026-04-17 ~10:05) - REALTIME STABILIZATION PHASE 5 COMPLETE ✅
 
 ### REALTIME ENGINE STABILIZATION - PHASES 0-5 COMPLETE ✅
@@ -104,6 +158,51 @@
 ---
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
+
+### Refactor Vnstock Direct Calls to Central Adapter (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm `_log_upstream_payload_warning`, `fetch_symbols_by_industries_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_exchange_dataframe`)
+- backend/portfolio/services.py (MODIFIED - `fetch_market_sectors_and_groups` và `_fetch_exchange_lookup` không còn gọi `Vnstock()` trực tiếp)
+- backend/portfolio/admin.py (MODIFIED - `_fetch_live_workspace_data` dùng `fetch_price_board_dataframe` qua adapter)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - thêm 4 tests mới cho listing wrappers và payload warning)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - thêm test xác nhận admin dùng adapter price_board)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression tests listing lookup qua adapter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` sạch; exchange lookup test xác nhận pass (exit 0); sectors test assertion đã sửa đúng.
+- Status: COMPLETED (không còn `from vnstock import Vnstock` trực tiếp ngoài `_import_vnstock()` trong adapter)
+
+### VNStock Core Compatibility Coding - Standardized Adapter APIs (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm wrappers chuẩn hóa cho `fundamental_snapshot`, `insider_deals`, `industry_peers/benchmark/rank`)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - regression tests cho schema canonical và `source/source_used`)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - báo cáo rà soát tương thích vnstock core)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean trên file đã sửa; test `portfolio.tests.test_vnstock_adapter_standardized_methods` pass 3/3.
+- Status: COMPLETED (đã sẵn sàng dùng lớp API chuẩn hóa của vnstock core cho feature AI Advisory)
+
+### VNStock Dependency Gate - Lock Core Branch (2026-04-18)
+- backend/requirements.txt (VERIFIED - pinned to private vnstock `@core`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: xác minh `vnstock==1.0.2`; class-level APIs required đều có (`fundamental_snapshot`, `insider_deals`, `industry_peers`, `industry_benchmark`, `industry_rank`).
+- Status: COMPLETED (đã khóa nhánh vnstock core theo yêu cầu, sẵn sàng bước code tiếp theo)
+
+### AI Advisory Runtime Config - Pre-code Package Complete (2026-04-18)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical contract SSOT: schema v2, source registry, validation rules, migration map, definition of ready)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - add canonical contract priority note + compliance checklist item)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - add pre-code gate requiring project owner confirmation before coding)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: cập nhật đầy đủ tài liệu chuẩn bị trước coding, chưa thay đổi runtime code.
+- Status: READY FOR OWNER CONFIRMATION (sẵn sàng bắt đầu coding ngay khi được xác nhận)
+
+### AI Advisory Runtime Config - SSOT Mandatory Alignment (2026-04-18)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - bổ sung Section 7: nguyên tắc kiến trúc bắt buộc Single Source of Truth cho toàn bộ module dùng AI Advisory)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - bổ sung Section 6: workstream triển khai SSOT, migration/de-dup liên module, tiêu chí hoàn thành)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: cập nhật tài liệu kiến trúc/quản trị, không có thay đổi runtime code.
+- Status: COMPLETED (đã chốt ràng buộc SSOT bắt buộc trước khi coding các module liên quan)
 
 ### Heatmap Hybrid Stabilization Remediation Hardening (2026-04-18)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fix undefined i18n runtime reference, enforce market-cap-first sorting in both modes, set treemap leafDepth=0, localize tooltip labels)
