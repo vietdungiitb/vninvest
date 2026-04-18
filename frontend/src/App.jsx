@@ -9,6 +9,7 @@ import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import Upgrade from './pages/Upgrade';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
 import Transactions from './pages/Transactions';
+import Support from './pages/Support';
 import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
 import Screener from './pages/Screener';
@@ -76,6 +77,7 @@ export default function App() {
                 <Route path="whale-alerts" element={<WhaleAlertsHub />} />
                 <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
                 <Route path="transactions" element={<Transactions />} />
+                <Route path="support" element={<Support />} />
                 <Route path="watchlist" element={<Watchlist />} />
                 <Route path="admin-ops" element={<AdminOps />} />
                 <Route path="screener" element={<Screener />} />

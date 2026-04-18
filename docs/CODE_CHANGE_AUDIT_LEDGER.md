@@ -1,5 +1,104 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18ai - Support Ticket implementation slice 1 (backend + user portal)
+
+Muc tieu:
+- Implement support ticket feature theo ke hoach o muc su dung duoc ngay cho user, dong thoi mo staff API queue xu ly o backend.
+- Tao regression guard backend cho cac luong create/list/reply/reopen/staff patch.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py (MODIFIED - register app support + add throttle scopes)
+- backend/config/urls.py (MODIFIED - expose /api/support route + api root entry)
+- backend/support/__init__.py (NEW)
+- backend/support/apps.py (NEW)
+- backend/support/admin.py (NEW - admin registrations for support models)
+- backend/support/models.py (NEW - ticket/message/attachment/audit schema + transitions)
+- backend/support/permissions.py (NEW - staff and owner permissions)
+- backend/support/serializers.py (NEW - create/reply/list/staff update serializers)
+- backend/support/services.py (NEW - email queue helpers + deep link builder)
+- backend/support/tasks.py (NEW - Celery email task wrapper)
+- backend/support/views.py (NEW - user/staff API endpoints)
+- backend/support/urls.py (NEW - support routes)
+- backend/support/migrations/__init__.py (NEW)
+- backend/support/migrations/0001_initial.py (NEW - initial schema migration)
+- backend/tests/test_support_api.py (NEW - focused API regression tests)
+- frontend/src/api/support.js (NEW - support API client)
+- frontend/src/pages/Support.jsx (NEW - user support portal)
+- frontend/src/components/support/SupportTicketList.jsx (NEW)
+- frontend/src/components/support/TicketThread.jsx (NEW)
+- frontend/src/components/support/TicketComposer.jsx (NEW)
+- frontend/src/components/support/TicketCreationForm.jsx (NEW)
+- frontend/src/components/support/TicketMetaPanel.jsx (NEW)
+- frontend/src/App.jsx (MODIFIED - add /support route)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add support entry CTA)
+- frontend/src/components/TopNav.jsx (MODIFIED - add support nav link)
+- frontend/src/i18n/vi.js (MODIFIED - add support namespace and menu labels)
+- frontend/src/i18n/en.js (MODIFIED - add support namespace and menu labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend:
+  - Tao module `support` hoan chinh cho user/staff ticket workflow, attachment policy co gioi han, audit log va email task bat dong bo.
+  - Them endpoints user: list/create/detail/reply/reopen; endpoints staff: queue list/patch/reply.
+  - Them throttle rate rieng cho create va reply ticket.
+- Frontend:
+  - Tao trang `/support` voi luong tao ticket moi, xem danh sach ticket, xem thread, reply va reopen.
+  - Bo sung support vao menu TopNav + Sidebar.
+  - Bo sung i18n `support.*` cho tieng Viet co dau va tieng Anh.
+- Testing:
+  - Them 4 test backend cho create/list, chong doc cheo ticket, reopen khi user reply, va staff patch/reply.
+
+Validation:
+- `get_errors` tren backend/frontend files lien quan: khong co loi.
+- `python backend/manage.py check`: pass.
+- `python backend/manage.py test backend.tests.test_support_api`: 4/4 pass.
+- Ghi chu pham vi: frontend hien dang cover user portal; staff dashboard UI chuyen sang slice sau neu can thao tac tren web thay vi admin/API.
+
+## Entry 2026-04-18ah - Add quick links + role-based execution board to Support Ticket plan
+
+Muc tieu:
+- Dat lien ket lam viec nhanh ngay trong ke hoach support ticket de doi code mo dung file trong 1 click.
+- Bo sung bang task theo vai tro (Backend A/B, Frontend, QA, Ops) de trien khai khong can hoi lai.
+
+Danh sach tep cap nhat:
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - add quick links section + ticket-ready execution board)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them Section 0: lien ket backend/frontend/docs entry points dang ton tai trong workspace.
+- Them Section 16: phan ra deliverables theo vai tro va cot moc tich hop M1-M4.
+- Giu nguyen pham vi nghiep vu va technical contract cua ban v2.
+
+Validation:
+- Cac lien ket file duoc gan vao tai lieu de doi code thao tac nhanh.
+- Tai lieu dat muc implementation handoff, khong can lam ro them de bat dau sprint.
+
+## Entry 2026-04-18ag - Support Ticket implementation-ready plan V2
+
+Muc tieu:
+- Nang cap tai lieu ke hoach ticket support thanh ban implementation-ready cho doi lap trinh.
+- Chot ro state machine, permission matrix, API contract, test plan, rollout/rollback va checklist ban giao.
+
+Danh sach tep cap nhat:
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - rewrite thanh ban Ready for Dev v2)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them kien truc tong the backend/frontend/observability.
+- Chot mo hinh du lieu day du: SupportTicket, TicketMessage, TicketAttachment, TicketAuditLog.
+- Chot state transitions hop le + quy tac nghiep vu reopen/close.
+- Them permission matrix chi tiet user/staff/admin.
+- Chot API contract user + staff (pagination/filter/sort, error code conventions).
+- Bo sung bao mat attachment, rate limit, email async qua Celery.
+- Bo sung metrics SLA, alerting, rollout/rollback va DoD.
+
+Validation:
+- Tai lieu da du chi tiet de doi implementation bat dau code ngay ma khong can lam ro them.
+- Khong thay doi runtime code frontend/backend trong dot nay.
+
 ## Entry 2026-04-18af - Heatmap tooltip null-crash + responsive resize recovery hotfix
 
 Muc tieu:

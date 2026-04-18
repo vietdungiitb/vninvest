@@ -60,6 +60,12 @@ export default function Sidebar() {
         >
           {t('layout.openLiveBoard')}
         </NavLink>
+        <NavLink
+          to="/support"
+          className="btn-pill mt-2 w-full border-cyan-700 bg-cyan-900/20 px-3 py-2 text-xs text-cyan-200 hover:bg-cyan-900/35"
+        >
+          {t('layout.nav.support')}
+        </NavLink>
       </div>
 
       <SidebarWatchlist trackedSymbols={trackedSymbols} />

@@ -114,6 +114,7 @@ INSTALLED_APPS = [
     'channels',
     # Local
     'portfolio',
+    'support',
 ]
 
 MIDDLEWARE = [
@@ -258,6 +259,8 @@ REST_FRAMEWORK = {
         'auth_password_reset_request': _get_throttle_rate('DRF_AUTH_PASSWORD_RESET_REQUEST_RATE', '5/hour'),
         'auth_password_reset_confirm': _get_throttle_rate('DRF_AUTH_PASSWORD_RESET_CONFIRM_RATE', '10/hour'),
         'auth_resend_verification': _get_throttle_rate('DRF_AUTH_RESEND_VERIFICATION_RATE', '3/hour'),
+        'support_ticket_create': _get_throttle_rate('DRF_SUPPORT_TICKET_CREATE_RATE', '5/hour'),
+        'support_ticket_reply': _get_throttle_rate('DRF_SUPPORT_TICKET_REPLY_RATE', '30/hour'),
     },
 }
 
