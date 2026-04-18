@@ -99,10 +99,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
     };
   }, [safeResizeChart]);
 
-  useEffect(() => {
-    safeResizeChart();
-  }, [safeResizeChart, viewMode, sizeMetric, hierarchicalData.length]);
-
   const toNumber = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value === 'string') {
@@ -260,6 +256,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
       })
       .sort((left, right) => Number(right.value || 0) - Number(left.value || 0));
   }, [holdings, sizeMetric]);
+
+  useEffect(() => {
+    safeResizeChart();
+  }, [safeResizeChart, viewMode, sizeMetric, hierarchicalData.length]);
 
   const maxLeafSize = useMemo(() => {
     let max = 0;
