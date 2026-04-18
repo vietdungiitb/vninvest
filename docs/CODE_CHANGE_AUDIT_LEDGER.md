@@ -1,5 +1,70 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18g - Dashboard layout realignment (Status + Analytics cùng cụm sidebar)
+
+Mục tiêu:
+- Đưa panel Trạng thái danh mục về cùng hàng bố cục với panel Phân tích rủi ro & hiệu suất.
+- Đưa panel Phân tích rủi ro & hiệu suất vào cùng cột với khu Trung tâm cảnh báo hợp nhất thay vì chiếm full-width bên dưới.
+
+Nội dung cập nhật chính:
+- frontend/src/pages/Dashboard.jsx
+  - Trong grid chính `xl:grid-cols-4`, giữ `UnifiedAlertCenter` ở `xl:col-span-3`.
+  - Cột phải `xl:col-span-1` được tổ chức lại: `AllocationPieChart` + cụm `Trạng thái danh mục` + `PortfolioAnalyticsPanel` + `PortfolioDigestPanel`.
+  - Loại bỏ `PortfolioAnalyticsPanel` render full-width ở dưới grid chính.
+
+Danh sách tệp cập nhật:
+- frontend/src/pages/Dashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Kết quả kiểm tra:
+- `get_errors` trên Dashboard page: không có lỗi.
+
+## Entry 2026-04-18f - Hotfix tooltip flashing on heatmap hover
+
+Mục tiêu:
+- Khắc phục hiện tượng tooltip nhấp nháy (flashing) và tự biến mất khi rê/giữ chuột trên cùng một mã trong Heatmap.
+
+Nguyên nhân khả dĩ:
+- Tooltip HTML bị hide/show liên tục theo chu kỳ mousemove trên tile nhỏ + reflow.
+- Sparkline SVG dùng `linearGradient` id cố định, có thể gây xung đột tham chiếu khi tooltip cập nhật nhanh.
+
+Nội dung cập nhật chính:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Cấu hình tooltip ổn định hơn: `trigger='item'`, `triggerOn='mousemove'`, `renderMode='html'`, `appendToBody=true`, `showDelay=40`, `hideDelay=120`, `transitionDuration=0.08`, `enterable=false`.
+  - Thêm `pointer-events:none` trong `extraCssText` để tránh tooltip bắt lại chuột gây loop hide/show.
+  - Đổi gradient id của sparkline theo symbol (`heatmapSparkFill-${symbol}`) thay vì id cố định để loại bỏ va chạm id.
+
+Danh sách tệp cập nhật:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Kết quả kiểm tra:
+- `get_errors` trên heatmap component: không có lỗi.
+
+## Entry 2026-04-18e - UI polish: Treemap palette desaturation + opacity theo biên độ
+
+Mục tiêu:
+- Giảm độ chói Treemap trên nền tối để tránh mỏi mắt khi theo dõi lâu.
+- Giữ ý nghĩa tăng/giảm rõ ràng nhưng chuyển sang bảng màu Fintech dịu hơn.
+
+Nội dung cập nhật chính:
+- frontend/src/components/PortfolioHeatmap.jsx
+  - Đổi bảng màu heatmap sang tông muted: `#089981`, `#1B5E20`, `#F23645`, `#7F1D1D`, `#2A2E39`.
+  - Đổi `visualMap` sang continuous và thêm `colorAlpha` để độ đậm tăng theo biên độ biến động.
+  - Thêm logic `resolveHeatTileStyle(changePct)` để tô màu tile theo mức tăng/giảm + opacity theo magnitude.
+  - Giảm glow/shadow cho tile cực trị để tránh tương phản gắt.
+  - Đồng bộ màu tăng/giảm trong tooltip + legend với palette mới.
+
+Danh sách tệp cập nhật:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Kết quả kiểm tra:
+- `get_errors` trên heatmap component: không có lỗi.
+
 ## Entry 2026-04-18d - Runtime incident hotfix: ECharts `colorStops` null crash
 
 Muc tieu:

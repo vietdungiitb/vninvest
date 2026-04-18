@@ -126,6 +126,21 @@
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18a)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
+### Heatmap UI Polish - Fintech muted palette + desaturation (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi bang mau sang tone Fintech muted, giam saturation, them opacity theo bien do va giam glow de de quan sat tren nen toi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Heatmap Tooltip Stability Hotfix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - hardening tooltip ECharts de loai bo flashing/hide loop khi hover tren cung 1 ma)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Dashboard Layout Realignment - Status + Analytics Sidebar (2026-04-18)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - dua PortfolioAnalyticsPanel vao cung cot voi UnifiedAlertCenter, bo full-width render; sap xep lai cum sidebar voi panel Trang thai danh muc)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Heatmap Render Stabilization - Treemap Strip Bug Fix (2026-04-17)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tach mode Treemap sang data phang theo symbol, giam artifact layout gay day ngang)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-17ao)
