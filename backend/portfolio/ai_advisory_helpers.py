@@ -707,6 +707,222 @@ def _compute_bollinger_snapshot(close_values: list[float], window: int = 20) -> 
     }
 
 
+# ---------------------------------------------------------------------------
+# Canonical prompt_config defaults and parser (SSOT: canonical contract v2)
+# ---------------------------------------------------------------------------
+
+_PROMPT_CONFIG_DEFAULTS: dict = {
+    'sources': {
+        'whale':      {'enabled': True,  'lookback': 180, 'lookback_unit': 'day'},
+        'dark_flow':  {'enabled': True,  'lookback': 90,  'lookback_unit': 'day'},
+        'technical':  {
+            'enabled': True, 'lookback': 30, 'lookback_unit': 'session',
+            'indicators': ['vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot'],
+        },
+        'news':        {'enabled': True,  'lookback': 14,  'lookback_unit': 'day'},
+        'market':      {'enabled': True,  'lookback': 7,   'lookback_unit': 'day'},
+        'fundamental': {'enabled': False, 'lookback': 1,   'lookback_unit': 'quarter'},
+        'ownership':   {'enabled': False, 'lookback': 365, 'lookback_unit': 'day'},
+        'sector':      {'enabled': False, 'lookback': 60,  'lookback_unit': 'session'},
+    },
+}
+
+_PROMPT_CONFIG_REGISTRY: dict = {
+    'whale':      {'min': 1, 'max': 365},
+    'dark_flow':  {'min': 1, 'max': 365},
+    'technical':  {'min': 1, 'max': 180},
+    'news':       {'min': 1, 'max': 30},
+    'market':     {'min': 1, 'max': 30},
+    'fundamental':{'min': 1, 'max': 8},
+    'ownership':  {'min': 1, 'max': 365},
+    'sector':     {'min': 1, 'max': 180},
+}
+
+VALID_TECHNICAL_INDICATORS: frozenset = frozenset({
+    'vols', 'prices', 'cdms', 'ma20', 'ma50', 'rsi', 'bollinger', 'snapshot',
+})
+
+
+def _parse_prompt_config(raw_config: dict | None) -> dict:
+    """Parse và normalize prompt_config, fallback về canonical defaults khi thiếu/lỗi."""
+    defaults = _PROMPT_CONFIG_DEFAULTS['sources']
+    if not isinstance(raw_config, dict):
+        return {src: dict(cfg) for src, cfg in defaults.items()}
+
+    raw_sources = raw_config.get('sources') or {}
+    resolved: dict = {}
+    for source_id, default_cfg in defaults.items():
+        raw_src = raw_sources.get(source_id) if isinstance(raw_sources, dict) else {}
+        if not isinstance(raw_src, dict):
+            raw_src = {}
+
+        enabled = bool(raw_src.get('enabled', default_cfg['enabled']))
+        registry = _PROMPT_CONFIG_REGISTRY.get(source_id, {'min': 1, 'max': 365})
+        try:
+            lookback = max(registry['min'], min(registry['max'], int(raw_src.get('lookback', default_cfg['lookback']))))
+        except (TypeError, ValueError):
+            lookback = default_cfg['lookback']
+
+        entry: dict = {'enabled': enabled, 'lookback': lookback}
+
+        if source_id == 'technical':
+            raw_indicators = raw_src.get('indicators', default_cfg.get('indicators', []))
+            if isinstance(raw_indicators, list):
+                valid = [ind for ind in raw_indicators if ind in VALID_TECHNICAL_INDICATORS]
+                entry['indicators'] = valid if valid else list(VALID_TECHNICAL_INDICATORS)
+            else:
+                entry['indicators'] = list(VALID_TECHNICAL_INDICATORS)
+
+        resolved[source_id] = entry
+
+    return resolved
+
+
+# ---------------------------------------------------------------------------
+# New context builders: fundamental, ownership, sector
+# ---------------------------------------------------------------------------
+
+def _build_fundamental_context_for_prompt(symbol: str, lookback_quarters: int = 1) -> str:
+    from .adapters.vnstock_adapter import fetch_fundamental_snapshot_dataframe
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return ''
+    try:
+        df = fetch_fundamental_snapshot_dataframe(normalized_symbol, period='quarter', standardize=True)
+        if df is None or df.empty:
+            return f'Fundamental context: không có dữ liệu cơ bản cho {normalized_symbol}.'
+
+        if 'period' in df.columns:
+            periods = sorted(df['period'].dropna().unique(), reverse=True)[:max(1, lookback_quarters)]
+            df = df[df['period'].isin(periods)]
+
+        key_metrics = ['EPS', 'PE', 'ROE', 'ROA', 'REVENUE', 'GROSS_PROFIT', 'NET_PROFIT']
+        lines = [f'Fundamental {lookback_quarters} quý gần nhất ({normalized_symbol}):']
+        has_data = False
+        for period in sorted(df['period'].unique() if 'period' in df.columns else [], reverse=True):
+            period_df = df[df['period'] == period] if 'period' in df.columns else df
+            metrics_dict: dict = {}
+            if 'metric' in df.columns and 'value' in df.columns:
+                for _, row in period_df.iterrows():
+                    m = str(row.get('metric') or '').strip().upper()
+                    v = row.get('value')
+                    if m:
+                        metrics_dict[m] = v
+            if not metrics_dict:
+                continue
+            parts = []
+            for m in key_metrics:
+                v = metrics_dict.get(m)
+                if v is not None:
+                    try:
+                        parts.append(f'{m}={float(v):.2f}')
+                    except (TypeError, ValueError):
+                        parts.append(f'{m}={v}')
+            if parts:
+                lines.append(f'  {period}: {", ".join(parts)}')
+                has_data = True
+        if not has_data:
+            return f'Fundamental context: không đủ dữ liệu chi tiết cho {normalized_symbol}.'
+        return '\n'.join(lines)
+    except Exception as exc:
+        logger.warning('_build_fundamental_context_for_prompt failed symbol=%s err=%s', normalized_symbol, exc)
+        return f'Fundamental context: không thể tải ({type(exc).__name__}).'
+
+
+def _build_ownership_context_for_prompt(symbol: str, lookback_days: int = 365) -> str:
+    from .adapters.vnstock_adapter import fetch_insider_deals_dataframe
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return ''
+    try:
+        df = fetch_insider_deals_dataframe(normalized_symbol, standardize=True)
+        if df is None or df.empty:
+            return f'Ownership context: không có dữ liệu insider deals cho {normalized_symbol}.'
+
+        import pandas as _pd
+        since_dt = timezone.now() - timedelta(days=max(int(lookback_days), 7))
+        date_col = next((c for c in ['announce_date', 'deal_date'] if c in df.columns), None)
+        if date_col:
+            try:
+                df[date_col] = _pd.to_datetime(df[date_col], errors='coerce')
+                df = df[df[date_col] >= _pd.Timestamp(since_dt.date())]
+            except Exception:
+                pass
+
+        if df.empty:
+            return f'Ownership context {lookback_days}d: không có giao dịch nội bộ trong kỳ.'
+
+        buy_count = int((df['action'].str.upper() == 'BUY').sum()) if 'action' in df.columns else 0
+        sell_count = int((df['action'].str.upper() == 'SELL').sum()) if 'action' in df.columns else 0
+        total_count = len(df)
+
+        details = []
+        for _, row in df.head(5).iterrows():
+            actor = str(row.get('actor_name') or 'N/A')[:30]
+            action = str(row.get('action') or '?').upper()
+            qty = row.get('quantity')
+            ratio = row.get('ratio')
+            qty_text = f'{int(qty):,}' if qty is not None and qty == qty else 'n/a'
+            ratio_text = f'{float(ratio):.2f}%' if ratio is not None and ratio == ratio else 'n/a'
+            details.append(f'{actor} {action} qty={qty_text} ratio={ratio_text}')
+
+        detail_block = '; '.join(details) if details else 'n/a'
+        return (
+            f'Ownership/Insider {lookback_days}d: tổng={total_count} giao dịch, MUA={buy_count}, BÁN={sell_count}.\n'
+            f'Giao dịch gần nhất: {detail_block}'
+        )
+    except Exception as exc:
+        logger.warning('_build_ownership_context_for_prompt failed symbol=%s err=%s', normalized_symbol, exc)
+        return f'Ownership context: không thể tải ({type(exc).__name__}).'
+
+
+def _build_sector_context_for_prompt(symbol: str, lookback_sessions: int = 60) -> str:
+    from .adapters.vnstock_adapter import fetch_industry_benchmark_dataframe, fetch_industry_peers_dataframe
+
+    normalized_symbol = str(symbol or '').strip().upper()
+    if not normalized_symbol:
+        return ''
+    try:
+        peers_df = fetch_industry_peers_dataframe(normalized_symbol)
+        benchmark_df = fetch_industry_benchmark_dataframe(normalized_symbol)
+
+        lines = [f'Sector context {lookback_sessions} phiên ({normalized_symbol}):']
+
+        if peers_df is not None and not peers_df.empty:
+            peer_count = len(peers_df)
+            sym_col = next((c for c in ['symbol', 'ticker', 'code'] if c in peers_df.columns), None)
+            if sym_col:
+                peer_symbols = peers_df[sym_col].astype(str).str.upper().tolist()[:10]
+                lines.append(f'  Peer group ({peer_count} cổ phiếu): {", ".join(peer_symbols)}')
+            else:
+                lines.append(f'  Peer group: {peer_count} cổ phiếu cùng ngành.')
+        else:
+            lines.append('  Peer group: không có dữ liệu.')
+
+        if benchmark_df is not None and not benchmark_df.empty:
+            num_col = next((c for c in ['value', 'pe', 'pb', 'roe', 'eps'] if c in benchmark_df.columns), None)
+            if num_col:
+                metric_vals = benchmark_df[num_col].dropna()
+                if not metric_vals.empty:
+                    lines.append(
+                        f'  Benchmark {num_col}: trung bình ngành={float(metric_vals.mean()):.2f}, '
+                        f'min={float(metric_vals.min()):.2f}, max={float(metric_vals.max()):.2f}'
+                    )
+                else:
+                    lines.append(f'  Benchmark: {len(benchmark_df)} điểm dữ liệu ngành có sẵn.')
+            else:
+                lines.append(f'  Benchmark: {len(benchmark_df)} điểm dữ liệu ngành có sẵn.')
+        else:
+            lines.append('  Benchmark: không có dữ liệu ngành.')
+
+        return '\n'.join(lines)
+    except Exception as exc:
+        logger.warning('_build_sector_context_for_prompt failed symbol=%s err=%s', normalized_symbol, exc)
+        return f'Sector context: không thể tải ({type(exc).__name__}).'
+
+
 def _build_whale_context_for_prompt(user, symbol: str, lookback_days: int = 180) -> str:
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol or user is None:
@@ -808,7 +1024,12 @@ def _build_dark_flow_context_for_prompt(symbol: str, lookback_days: int = 180) -
     )
 
 
-def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: int = 30) -> str:
+def _build_technical_context_for_prompt(
+    user,
+    symbol: str,
+    lookback_sessions: int = 30,
+    enabled_indicators: list | None = None,
+) -> str:
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return ''
@@ -913,14 +1134,37 @@ def _build_technical_context_for_prompt(user, symbol: str, lookback_sessions: in
     resistance_text = _format_price_level(resistance)
     current_price_text = _format_price_level(current_price_anchor)
     current_rsi_text = f'{current_rsi:.1f}' if current_rsi is not None else 'n/a'
-    return (
-        f'Technical 30 phien: current_price={current_price_text}, bias={technical.get("bias", "NEUTRAL")}, RSI14={current_rsi_text}, '
-        f'RSI_range_30={rsi_range_text}, RSI_trend={rsi_trend}.\n'
-        f'{macd_text}\n'
-        f'{boll_text}\n'
-        f'Volume 30 phien: current={current_volume:,.0f}, avg20={avg_volume_20:,.0f}, ratio={volume_ratio:.2f}x, '
-        f'volume_trend={volume_trend}, support={support_text}, resistance={resistance_text}.'
-    )
+
+    # Build sections based on enabled_indicators (None = all enabled for backward compat)
+    inds = set(enabled_indicators) if isinstance(enabled_indicators, list) else set(VALID_TECHNICAL_INDICATORS)
+
+    tech_lines = []
+    if inds.intersection({'snapshot', 'prices', 'ma20', 'ma50'}):
+        tech_lines.append(
+            f'Technical {lookback_sessions} phien: current_price={current_price_text}, bias={technical.get("bias", "NEUTRAL")}, '
+            f'support={support_text}, resistance={resistance_text}.'
+        )
+    if 'rsi' in inds:
+        tech_lines.append(
+            f'RSI14={current_rsi_text}, RSI_range={rsi_range_text}, RSI_trend={rsi_trend}.'
+        )
+    if 'cdms' in inds or not inds.isdisjoint({'cdms'}):
+        pass  # candle-pattern block reserved for future implementation
+    if inds.intersection({'prices', 'ma20', 'ma50'}) and 'rsi' not in inds:
+        # Already captured in snapshot line above; no extra line needed
+        pass
+    if current_macd and inds.intersection({'snapshot', 'prices', 'ma20', 'ma50', 'rsi', 'vols'}):
+        # MACD included whenever any price-related indicator is enabled (but only if computed)
+        tech_lines.append(macd_text)
+    if 'bollinger' in inds:
+        tech_lines.append(boll_text)
+    if 'vols' in inds:
+        tech_lines.append(
+            f'Volume {lookback_sessions} phien: current={current_volume:,.0f}, avg20={avg_volume_20:,.0f}, '
+            f'ratio={volume_ratio:.2f}x, volume_trend={volume_trend}.'
+        )
+
+    return '\n'.join(tech_lines) if tech_lines else ''
 
 
 def _build_market_context_for_prompt(user, symbol: str) -> str:
@@ -1021,6 +1265,7 @@ def _sprint17_generate_executive_synthesis_with_ai(
     summary_payload: dict,
     synthesis_preference: str = 'balanced',
     news_context: str = "",
+    prompt_config: dict | None = None,
 ) -> str | None:
     from portfolio.ai_service import _claude_completion, _openai_compatible_completion
     from portfolio.openclaw_client import _call as _openclaw_call
@@ -1053,20 +1298,55 @@ def _sprint17_generate_executive_synthesis_with_ai(
         )
     component_block = '\n'.join(component_lines) if component_lines else '- khong co component'
 
-    whale_context_block = _build_whale_context_for_prompt(user=user, symbol=symbol, lookback_days=180)
-    dark_flow_context_block = _build_dark_flow_context_for_prompt(symbol=symbol, lookback_days=180)
-    technical_context_block = _build_technical_context_for_prompt(user=user, symbol=symbol, lookback_sessions=30)
-    market_context_block = _build_market_context_for_prompt(user=user, symbol=symbol)
+    src_cfg = _parse_prompt_config(prompt_config)
 
     grounding_sections = []
-    if whale_context_block:
-        grounding_sections.append(f'Whale / whale alert context:\n{whale_context_block}')
-    if dark_flow_context_block:
-        grounding_sections.append(f'Dark money / order-flow context:\n{dark_flow_context_block}')
-    if technical_context_block:
-        grounding_sections.append(f'Technical context 30 phien (RSI/MACD/VOL/BOLL):\n{technical_context_block}')
-    if market_context_block:
-        grounding_sections.append(f'Market context:\n{market_context_block}')
+
+    if src_cfg.get('whale', {}).get('enabled', True):
+        whale_lb = src_cfg['whale'].get('lookback', 180)
+        whale_context_block = _build_whale_context_for_prompt(user=user, symbol=symbol, lookback_days=whale_lb)
+        if whale_context_block:
+            grounding_sections.append(f'Whale / whale alert context (lookback={whale_lb}d):\n{whale_context_block}')
+
+    if src_cfg.get('dark_flow', {}).get('enabled', True):
+        df_lb = src_cfg['dark_flow'].get('lookback', 90)
+        dark_flow_context_block = _build_dark_flow_context_for_prompt(symbol=symbol, lookback_days=df_lb)
+        if dark_flow_context_block:
+            grounding_sections.append(f'Dark money / order-flow context (lookback={df_lb}d):\n{dark_flow_context_block}')
+
+    if src_cfg.get('technical', {}).get('enabled', True):
+        tech_lb = src_cfg['technical'].get('lookback', 30)
+        tech_indicators = src_cfg['technical'].get('indicators', list(VALID_TECHNICAL_INDICATORS))
+        technical_context_block = _build_technical_context_for_prompt(
+            user=user, symbol=symbol, lookback_sessions=tech_lb, enabled_indicators=tech_indicators
+        )
+        if technical_context_block:
+            grounding_sections.append(
+                f'Technical context {tech_lb} phien ({", ".join(tech_indicators)}):\n{technical_context_block}'
+            )
+
+    if src_cfg.get('market', {}).get('enabled', True):
+        market_context_block = _build_market_context_for_prompt(user=user, symbol=symbol)
+        if market_context_block:
+            grounding_sections.append(f'Market context:\n{market_context_block}')
+
+    if src_cfg.get('fundamental', {}).get('enabled', False):
+        fund_lb = src_cfg['fundamental'].get('lookback', 1)
+        fund_block = _build_fundamental_context_for_prompt(symbol=symbol, lookback_quarters=fund_lb)
+        if fund_block:
+            grounding_sections.append(f'Fundamental context ({fund_lb}q):\n{fund_block}')
+
+    if src_cfg.get('ownership', {}).get('enabled', False):
+        own_lb = src_cfg['ownership'].get('lookback', 365)
+        own_block = _build_ownership_context_for_prompt(symbol=symbol, lookback_days=own_lb)
+        if own_block:
+            grounding_sections.append(f'Ownership/Insider context:\n{own_block}')
+
+    if src_cfg.get('sector', {}).get('enabled', False):
+        sec_lb = src_cfg['sector'].get('lookback', 60)
+        sec_block = _build_sector_context_for_prompt(symbol=symbol, lookback_sessions=sec_lb)
+        if sec_block:
+            grounding_sections.append(f'Sector context:\n{sec_block}')
 
     # Format news block if available
     news_block = ''
