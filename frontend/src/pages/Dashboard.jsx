@@ -505,54 +505,61 @@ export default function Dashboard() {
             className="h-full"
           />
         </div>
-        <div className="space-y-4 xl:col-span-1">
+        <div className="xl:col-span-1">
           <AllocationPieChart portfolioId={activePortfolioId} />
-          <div className="grid grid-cols-1 gap-4">
-            <div className="v2-panel-strong rounded-xl p-4">
-              <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
-                {t('dashboardRealtime.portfolioStatusTitle')}
-              </h3>
-              <div className="mt-3 space-y-2.5 text-xs">
-                <div>
-                  <p className="text-slate-500">{t('dashboardRealtime.monitoredSymbols')}</p>
-                  <p className="mt-0.5 text-lg font-bold text-slate-100">{monitoredSymbols.length}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">{t('dashboardRealtime.upDownFlat')}</p>
-                  <p className="mt-0.5 text-base font-semibold text-slate-100">
-                    {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
-                  <p className={`mt-0.5 text-base font-semibold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-300' : 'text-slate-100'}`}>
-                    {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-500">{t('dashboardRealtime.stale')}</p>
-                  <p className={`mt-0.5 text-base font-semibold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-slate-100'}`}>
-                    {realtimeStalePositions}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-500">{t('dashboardRealtime.lastEvent', {
-                    time: lastEventAt
-                      ? formatDateTime(lastEventAt, {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                      : '—',
-                  })}</p>
-                </div>
-              </div>
-            </div>
-            <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
-          </div>
-          <PortfolioDigestPanel />
         </div>
       </div>
+
+      {/* Risk Performance Analytics + Portfolio Status */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+        </div>
+        <div className="xl:col-span-1">
+          <div className="v2-panel-strong rounded-xl p-4">
+            <h3 className="text-xs font-bold uppercase tracking-[0.14em] text-slate-300">
+              {t('dashboardRealtime.portfolioStatusTitle')}
+            </h3>
+            <div className="mt-3 space-y-2.5 text-xs">
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.monitoredSymbols')}</p>
+                <p className="mt-0.5 text-lg font-bold text-slate-100">{monitoredSymbols.length}</p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.upDownFlat')}</p>
+                <p className="mt-0.5 text-base font-semibold text-slate-100">
+                  {realtimeMarketBreadth.up} / {realtimeMarketBreadth.down} / {realtimeMarketBreadth.flat}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.deltaVsSnapshot')}</p>
+                <p className={`mt-0.5 text-base font-semibold ${realtimeDeltaVsSnapshot > 0 ? 'text-emerald-300' : realtimeDeltaVsSnapshot < 0 ? 'text-rose-300' : 'text-slate-100'}`}>
+                  {Math.round(realtimeDeltaVsSnapshot).toLocaleString('vi-VN')}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.stale')}</p>
+                <p className={`mt-0.5 text-base font-semibold ${realtimeStalePositions > 0 ? 'text-amber-300' : 'text-slate-100'}`}>
+                  {realtimeStalePositions}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">{t('dashboardRealtime.lastEvent', {
+                  time: lastEventAt
+                    ? formatDateTime(lastEventAt, {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    })
+                    : '—',
+                })}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <PortfolioDigestPanel />
 
       {/* Charts */}
       <div className="space-y-4">
