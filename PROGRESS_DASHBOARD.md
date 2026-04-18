@@ -159,6 +159,16 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### AI Advisory prompt_config - Production-ready UI Hardening (2026-04-18)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicate enabled-sources render; keep single summary badge section with translated labels)
+- frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - full i18n for settings drawer labels/descriptions/summary)
+- frontend/src/i18n/vi.js (MODIFIED - add stockDetail prompt_config keys in Vietnamese)
+- frontend/src/i18n/en.js (MODIFIED - add stockDetail prompt_config keys in English)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `StockDetail.prompt_config.test.js` pass 13/13; backend `tests.test_ai_advisory_e2e_integration` pass 12/12 with `DB_ENGINE=sqlite`; `get_errors` clean on touched frontend files.
+- Status: COMPLETED (prompt_config flow now production-ready across UX + i18n + regression checks)
+
 ### Refactor Vnstock Direct Calls to Central Adapter (2026-04-18)
 - backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm `_log_upstream_payload_warning`, `fetch_symbols_by_industries_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_exchange_dataframe`)
 - backend/portfolio/services.py (MODIFIED - `fetch_market_sectors_and_groups` và `_fetch_exchange_lookup` không còn gọi `Vnstock()` trực tiếp)

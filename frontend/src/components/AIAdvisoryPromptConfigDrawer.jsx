@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useI18n } from '../context/LangContext';
 
 const SOURCES_METADATA = {
-  whale: { label: 'Whale Alerts', lookback: 180, unit: 'day' },
-  dark_flow: { label: 'Dark Money Flow', lookback: 90, unit: 'day' },
-  technical: { label: 'Technical Analysis', lookback: 30, unit: 'session', indicators: true },
-  news: { label: 'News Context', lookback: 14, unit: 'day' },
-  market: { label: 'Market', lookback: 7, unit: 'day' },
-  fundamental: { label: 'Fundamental', lookback: 1, unit: 'quarter' },
-  ownership: { label: 'Ownership/Insider', lookback: 365, unit: 'day' },
-  sector: { label: 'Sector Comparison', lookback: 60, unit: 'session' },
+  whale: { lookback: 180, unit: 'day' },
+  dark_flow: { lookback: 90, unit: 'day' },
+  technical: { lookback: 30, unit: 'session', indicators: true },
+  news: { lookback: 14, unit: 'day' },
+  market: { lookback: 7, unit: 'day' },
+  fundamental: { lookback: 1, unit: 'quarter' },
+  ownership: { lookback: 365, unit: 'day' },
+  sector: { lookback: 60, unit: 'session' },
 };
 
 const TECHNICAL_INDICATORS = ['rsi', 'bollinger', 'vols', 'prices', 'ma20', 'ma50', 'snapshot', 'cdms'];
@@ -17,6 +17,17 @@ const TECHNICAL_INDICATORS = ['rsi', 'bollinger', 'vols', 'prices', 'ma20', 'ma5
 export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, onConfigChange }) {
   const { t } = useI18n();
   const [localConfig, setLocalConfig] = useState(config);
+
+  const sourceLabelById = {
+    whale: t('stockDetail.promptSourceWhale', { defaultValue: 'Whale Alerts' }),
+    dark_flow: t('stockDetail.promptSourceDarkFlow', { defaultValue: 'Dark Money Flow' }),
+    technical: t('stockDetail.promptSourceTechnical', { defaultValue: 'Technical Analysis' }),
+    news: t('stockDetail.promptSourceNews', { defaultValue: 'News Context' }),
+    market: t('stockDetail.promptSourceMarket', { defaultValue: 'Market Context' }),
+    fundamental: t('stockDetail.promptSourceFundamental', { defaultValue: 'Fundamental' }),
+    ownership: t('stockDetail.promptSourceOwnership', { defaultValue: 'Ownership/Insider' }),
+    sector: t('stockDetail.promptSourceSector', { defaultValue: 'Sector Comparison' }),
+  };
 
   useEffect(() => {
     setLocalConfig(config);
@@ -71,7 +82,7 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
         <div className="sticky top-0 border-b border-slate-700 bg-slate-900 px-6 py-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-100">
-              {t('stockDetail.advisorySynthesisSettings') || 'AI Advisory Settings'}
+              {t('stockDetail.advisorySynthesisSettings', { defaultValue: 'AI Advisory Settings' })}
             </h2>
             <button
               onClick={onClose}
@@ -83,7 +94,10 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
             </button>
           </div>
           <p className="mt-1 text-sm text-slate-400">
-            {t('stockDetail.advisorySynthesisSettingsDesc') || `Choose which data sources to include in the synthesis (${enabledSources} enabled)`}
+            {t('stockDetail.advisorySynthesisSettingsDesc', {
+              count: enabledSources,
+              defaultValue: `Choose which data sources to include in the synthesis (${enabledSources} enabled)`,
+            })}
           </p>
         </div>
 
@@ -92,7 +106,7 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
           {/* Default Sources Section */}
           <div>
             <h3 className="mb-3 text-sm font-medium text-slate-300">
-              {t('stockDetail.advisorySources') || 'Data Sources'}
+              {t('stockDetail.advisorySources', { defaultValue: 'Data Sources' })}
             </h3>
             <div className="grid gap-3">
               {Object.entries(SOURCES_METADATA).map(([sourceId, meta]) => {
@@ -116,7 +130,7 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
                     />
                     <div className="flex-1">
                       <label className="text-sm font-medium text-slate-100 cursor-pointer">
-                        {meta.label}
+                        {sourceLabelById[sourceId] || sourceId}
                       </label>
                       {meta.indicators ? (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -140,8 +154,12 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
                         </div>
                       ) : (
                         <p className="mt-1 text-xs text-slate-400">
-                          Lookback: {meta.lookback} {meta.unit}
-                          {!isDefault && ' (optional)'}
+                          {t('stockDetail.promptLookback', {
+                            value: meta.lookback,
+                            unit: meta.unit,
+                            defaultValue: `Lookback: ${meta.lookback} ${meta.unit}`,
+                          })}
+                          {!isDefault && ` (${t('stockDetail.promptOptional', { defaultValue: 'optional' })})`}
                         </p>
                       )}
                     </div>
@@ -154,7 +172,11 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
           {/* Summary */}
           <div className="border-t border-slate-700 pt-4">
             <p className="text-xs text-slate-400">
-              {enabledSources} source{enabledSources !== 1 ? 's' : ''} enabled • {enabledIndicators} indicator{enabledIndicators !== 1 ? 's' : ''} selected
+              {t('stockDetail.promptConfigSummary', {
+                sources: enabledSources,
+                indicators: enabledIndicators,
+                defaultValue: `${enabledSources} sources enabled • ${enabledIndicators} indicators selected`,
+              })}
             </p>
           </div>
         </div>
@@ -165,7 +187,7 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
             onClick={onClose}
             className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 transition"
           >
-            {t('stockDetail.close') || 'Close'}
+            {t('stockDetail.close', { defaultValue: 'Close' })}
           </button>
         </div>
       </div>

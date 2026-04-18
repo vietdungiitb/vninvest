@@ -1,5 +1,153 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18at - AI Advisory prompt_config production-ready UI hardening
+
+Muc tieu:
+- Hoan tat production-ready cho luong prompt_config tren StockDetail voi UX on dinh va i18n day du.
+- Loai bo render badge trung lap trong summary va chuan hoa nhan nguon du lieu theo dictionary vi/en.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicated enabled-sources block, centralize source label mapping, keep single summary badge section)
+- frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - full i18n labels/descriptions, remove hardcoded English fallback strings in UI copy)
+- frontend/src/i18n/vi.js (MODIFIED - add stockDetail keys for prompt_config settings drawer + enabled-sources summary labels)
+- frontend/src/i18n/en.js (MODIFIED - add stockDetail keys for prompt_config settings drawer + enabled-sources summary labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Summary panel chi con mot block badge "enabled sources" (khong bi lap doi).
+- Ten source hien thi qua i18n keys thay vi raw `source_id`.
+- Drawer prompt_config su dung dictionary vi/en cho title, description, source labels, lookback line va summary line.
+
+Validation:
+- Frontend test: `npm test -- --watchAll=false --runInBand src/__tests__/StockDetail.prompt_config.test.js` => 13/13 PASS.
+- Backend integration test: `DB_ENGINE=sqlite python manage.py test tests.test_ai_advisory_e2e_integration -v 1` => 12/12 PASS.
+- `get_errors` clean tren 4 file frontend da cap nhat.
+
+---
+
+## Entry 2026-04-18as - Refactor Vnstock direct calls to central adapter (runtime policy unification)
+
+Muc tieu:
+- Loai bo toan bo `from vnstock import Vnstock` va `Vnstock()` truc tiep trong services.py va admin.py.
+- Dua moi luong goi listing va price-board ve adapter trung tam de dong bo timeout/retry/source fallback policy.
+- Them canh bao log chuyen biet khi upstream provider tra payload thieu key `data` (tranh fail cung o duong nong).
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - them _log_upstream_payload_warning, fetch_symbols_by_industries_dataframe, fetch_symbols_by_group_series, fetch_symbols_by_exchange_dataframe)
+- backend/portfolio/services.py (MODIFIED - refactor fetch_market_sectors_and_groups va _fetch_exchange_lookup sang adapter wrappers moi)
+- backend/portfolio/admin.py (MODIFIED - refactor _fetch_live_workspace_data sang fetch_price_board_dataframe, xoa import Vnstock truc tiep)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - them 4 test moi cho listing wrappers va payload warning)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - them test xac nhan admin dung adapter price_board)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression tests cho listing lookup qua adapter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Ket qua:
+- Khong con `from vnstock import Vnstock` truc tiep ngoai _import_vnstock() trong adapter.
+- Moi luong goi vnstock deu di qua adapter co retry/timeout/source-fallback nhat quan.
+
+---
+
+## Entry 2026-04-18ar - VNStock core compatibility coding (standardized adapter APIs)
+
+Muc tieu:
+- Code voi vnstock core theo huong tan dung cac ham da chuan hoa cho AI Advisory Runtime Config.
+- Ra soat va harden tinh tuong thich bang lop adapter trung tam de tranh phan manh logic theo module.
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - add standardized wrappers for fundamental_snapshot, insider_deals, industry_peers/benchmark/rank + schema coercion helpers)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - regression tests for canonical schemas and source metadata)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - compatibility audit report and migration notes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Bo sung bo ham adapter moi de dung truc tiep API chuan hoa cua vnstock core:
+  - `fetch_fundamental_snapshot_dataframe`
+  - `fetch_insider_deals_dataframe`
+  - `fetch_industry_peers_dataframe`
+  - `fetch_industry_benchmark_dataframe`
+  - `fetch_industry_rank_dataframe`
+- Chuan hoa schema dau ra cho 2 nhom critical:
+  - Fundamental snapshot long-table schema.
+  - Insider deals standardized schema.
+- Gan thong tin `source` va `source_used` de phuc vu audit khi source AUTO failover.
+
+Validation:
+- `get_errors` clean tren cac file code vua sua.
+- Test da chay: `python backend/manage.py test portfolio.tests.test_vnstock_adapter_standardized_methods -v 2`
+  - Ket qua: `OK` (3 tests pass).
+  - Ghi chu: log canh bao RuntimeVnstockConfig trong SimpleTestCase khong lam fail test; da xac nhan bo test pass.
+
+## Entry 2026-04-18aq - VNStock branch lock to core (pre-code dependency gate)
+
+Muc tieu:
+- Chot lai dependency vnstock private theo yeu cau moi: su dung nhanh `core`, khong su dung `vnstock-main`.
+- Xac minh bo ham can thiet cho tinh nang AI Advisory (fundamental/insider/industry) ton tai truoc khi bat dau coding.
+
+Danh sach tep cap nhat:
+- backend/requirements.txt (VERIFIED - dang pin `vnstock ... @core`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Xac nhan dependency branch da o `@core` theo yeu cau.
+- Xac minh class-level APIs tren vnstock core:
+  - `Finance.fundamental_snapshot`
+  - `Company.insider_deals`
+  - `Finance.industry_peers`
+  - `Finance.industry_benchmark`
+  - `Finance.industry_rank`
+
+Validation:
+- Kiem tra version package: `vnstock==1.0.2` trong virtualenv hien tai.
+- Class-level introspection: tat ca 5 ham bat buoc deu ton tai.
+- Ghi chu: live instantiation `Vnstock(...).stock(symbol='VCB', source='AUTO')` co the phu thuoc upstream provider runtime data, da co mot lan fail do payload provider khong co key `data`.
+
+## Entry 2026-04-18ap - AI Advisory runtime pre-code package (canonical contract + code-ready gate)
+
+Muc tieu:
+- Hoan tat toan bo cong viec chuan bi truoc coding cho AI Advisory Runtime Config theo SSOT.
+- Chot canonical contract duy nhat de team co the coding ngay sau khi chu du an xac nhan.
+
+Danh sach tep cap nhat:
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical schema v2, source registry, validation rules, migration map, definition of ready)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - them IMPORTANT note tham chieu canonical contract + checklist compliance)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - them IMPORTANT note + section gate bat buoc truoc coding)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Chot schema canonical co `prompt_config.version`, `lookback_unit`, technical indicators enum va rules validation.
+- Chot chien luoc compatibility cho endpoint legacy va endpoint canonical trong giai doan migration.
+- Chot Definition of Ready voi gate cuoi: cho xac nhan chu du an truoc khi bat dau coding.
+
+Validation:
+- Day la cap nhat tai lieu pre-code, khong thay doi runtime code.
+- `get_errors` khong bat buoc cho moc tai lieu.
+
+## Entry 2026-04-18ao - AI Advisory runtime config SSOT mandate alignment
+
+Muc tieu:
+- Bo sung rang buoc kien truc bat buoc Single Source of Truth cho nang cap AI Advisory Runtime Prompt Config.
+- Dam bao chuc nang tu van AI sau nang cap duoc tai su dung cho tat ca module, khong viet logic rieng le.
+
+Danh sach tep cap nhat:
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - them section SSOT mandatory architecture constraints, shared core service model, acceptance gates)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - them SSOT execution workstream: centralized service, shared schema, module migration/de-dup, CI guard)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Chot nguyen tac bat buoc: AI Advisory Runtime Config phai di qua mot pipeline trung tam dung chung toan he thong.
+- Them rang buoc cam duplicate prompt builder theo module.
+- Them tieu chi nghiem thu SSOT va huong migration module cu ve interface chung.
+
+Validation:
+- Day la cap nhat tai lieu governance/spec-plan, khong thay doi runtime code.
+- `get_errors` khong bat buoc cho moc tai lieu.
+
 ## Entry 2026-04-18an - Heatmap hybrid stabilization remediation hardening
 
 Muc tieu:

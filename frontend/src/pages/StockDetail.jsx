@@ -172,6 +172,20 @@ function advisorySynthesisPreferenceLabel(preference, t) {
   return map[String(preference || '').toLowerCase()] || map.balanced;
 }
 
+function advisoryPromptSourceLabel(sourceId, t) {
+  const map = {
+    whale: t('stockDetail.promptSourceWhale'),
+    dark_flow: t('stockDetail.promptSourceDarkFlow'),
+    technical: t('stockDetail.promptSourceTechnical'),
+    news: t('stockDetail.promptSourceNews'),
+    market: t('stockDetail.promptSourceMarket'),
+    fundamental: t('stockDetail.promptSourceFundamental'),
+    ownership: t('stockDetail.promptSourceOwnership'),
+    sector: t('stockDetail.promptSourceSector'),
+  };
+  return map[String(sourceId || '').toLowerCase()] || String(sourceId || '').replace(/_/g, ' ');
+}
+
 function advisoryRetryOutcomeLabel(outcome, t) {
   const map = {
     idle: t('stockDetail.retryOutcomeIdle'),
@@ -3365,32 +3379,22 @@ export default function StockDetail() {
                         </div>
                         {/* Display enabled sources for this summary */}
                         {advisoryPromptConfig && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {Object.entries(advisoryPromptConfig.sources)
+                          <div className="mt-2">
+                            <p className="mb-1 text-[11px] text-slate-500">
+                              {t('stockDetail.enabledSourcesForSummary')}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(advisoryPromptConfig.sources)
                               .filter(([_, cfg]) => cfg.enabled)
                               .map(([sourceId]) => (
                                 <span
                                   key={sourceId}
                                   className="rounded-full border border-emerald-700/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300"
                                 >
-                                  ✓ {sourceId.replace(/_/g, ' ')}
+                                  ✓ {advisoryPromptSourceLabel(sourceId, t)}
                                 </span>
                               ))}
-                          </div>
-                        )}
-                        {/* Display enabled sources for this summary */}
-                        {advisoryPromptConfig && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {Object.entries(advisoryPromptConfig.sources)
-                              .filter(([_, cfg]) => cfg.enabled)
-                              .map(([sourceId]) => (
-                                <span
-                                  key={sourceId}
-                                  className="rounded-full border border-emerald-700/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300"
-                                >
-                                  ✓ {sourceId.replace(/_/g, ' ')}
-                                </span>
-                              ))}
+                            </div>
                           </div>
                         )}
                         {advisoryExecutiveSummaries.length > 1 ? (
