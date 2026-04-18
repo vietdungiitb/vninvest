@@ -4,7 +4,61 @@
 
 ---
 
-## 🚀 LATEST UPDATE (2026-04-16 ~17:15)
+## 🚀 LATEST UPDATE (2026-04-18 ~15:30) - AI ADVISORY CANONICAL prompt_config INTEGRATION ✅
+
+### AI Advisory Runtime Configuration (prompt_config v2) - COMPLETE ✅
+
+**Milestone:** Canonical prompt_config support with 3 new context builders  
+**Duration:** 2026-04-18 ~14:00-15:30 UTC+7  
+**Result:** All 9 regression tests passing, deployed to dev
+
+**Feature Summary:**
+- ✅ `_parse_prompt_config()` — normalize client config against canonical defaults + validate
+- ✅ `_build_fundamental_context_for_prompt()` — vnstock fundamental metrics (EPS/PE/ROE/ROA)
+- ✅ `_build_ownership_context_for_prompt()` — insider deals activity (buy/sell count + recent txns)
+- ✅ `_build_sector_context_for_prompt()` — peer group + benchmark statistics
+- ✅ `_build_technical_context_for_prompt()` refactored — per-indicator filtering (RSI/Bollinger/Volume)
+- ✅ `_sprint17_generate_executive_synthesis_with_ai()` refactored — conditional source routing via prompt_config
+- ✅ `stock_ai_advisory_summary_regenerate_api` — accepts `prompt_config` from client, returns `prompt_config_version`
+
+**Implementation Details:**
+- 8 sources in registry (whale, dark_flow, technical, news, market, fundamental, ownership, sector)
+- Default state: whale/dark_flow/technical/market/news ENABLED; fundamental/ownership/sector DISABLED
+- Each source has lookback min/max bounds for validation + clamping
+- Technical source supports per-indicator selection: `{vols, prices, cdms, ma20, ma50, rsi, bollinger, snapshot}`
+- Backward compat: callers without `prompt_config` get original behavior (defaults applied)
+
+**Test Coverage:**
+- Parser: none input, override, clamp, invalid indicators, fallback
+- Builders: empty symbol guards
+- Constants: technical indicators set consistency
+
+**Files Modified:**
+- ✅ `backend/portfolio/ai_advisory_helpers.py` (+322 lines)
+  - Added: `_PROMPT_CONFIG_DEFAULTS`, `_PROMPT_CONFIG_REGISTRY`, `VALID_TECHNICAL_INDICATORS`
+  - Added: `_parse_prompt_config()`, `_build_fundamental_context_for_prompt()`, `_build_ownership_context_for_prompt()`, `_build_sector_context_for_prompt()`
+  - Modified: `_build_technical_context_for_prompt()` (added `enabled_indicators` param)
+  - Modified: `_sprint17_generate_executive_synthesis_with_ai()` (added `prompt_config` param, dynamic source routing)
+- ✅ `backend/portfolio/views_ai_advisory_components_summary.py` (+10 lines)
+  - Modified: `stock_ai_advisory_summary_regenerate_api()` reads `prompt_config`, passes to synthesis, returns `prompt_config_version`
+- ✅ `backend/tests/test_ai_advisory_prompt_config.py` (NEW - 159 lines, 9 tests)
+  - 9/9 regression tests PASS
+- ✅ `AUDIT_AI_ADVISORY_PROMPT_CONFIG_20260418.md` (NEW - 177 lines, full audit trail)
+
+**Commit:** `3ae46f28` (dev)
+
+**Status:**
+- Core implementation: ✅ COMPLETE
+- Parser + 3 new builders: ✅ COMPLETE  
+- Synthesis refactor: ✅ COMPLETE
+- View integration: ✅ COMPLETE
+- Regression tests: ✅ ALL 9 PASS
+- Audit documentation: ✅ COMPLETE
+
+**Next: Frontend integration (pending)** - settings drawer, technical multi-select, localStorage, client sends `prompt_config`
+
+---
+
 ## 🚀 LATEST UPDATE (2026-04-17 ~10:05) - REALTIME STABILIZATION PHASE 5 COMPLETE ✅
 
 ### REALTIME ENGINE STABILIZATION - PHASES 0-5 COMPLETE ✅
@@ -103,7 +157,381 @@
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-16)
+## ✅ AUDIT FILE LIST (2026-04-18)
+
+### Governance Lock - Delivery Playbook Mandatory No-Exception (2026-04-18)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - them tuyen bo bat buoc khong ngoai le cho toan bo hoat dong phat trien)
+- README.md (MODIFIED - them muc policy bat buoc tuan thu delivery playbook)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: governance/documentation update only, khong thay doi runtime code.
+- Status: COMPLETED (policy no-exception da duoc khoa o cap do repository governance)
+
+### VNInvest Project Delivery Playbook Standardization Report (2026-04-18)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (NEW - quy trinh xay dung du an vninvest sat thuc te: 8 giai doan SDLC, stack high-scale, mandatory rules, release gates, checklist DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: tai lieu governance/process only, khong thay doi runtime code.
+- Status: COMPLETED (report co the dung lam khuon mau cho cac du an tiep theo)
+
+### Vnstock Adapter Regression Hardening + Runtime Docs Package Finalization (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - harden centralized vnstock wrappers and payload warning path)
+- backend/portfolio/admin.py (MODIFIED - admin workspace live data flow uses adapter entrypoints)
+- backend/portfolio/services.py (MODIFIED - sectors/groups/exchange listing queries routed via adapter)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - expanded regression tests for adapter wrappers/fallback warnings)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - updated brittle assertions to current workspace template labels)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression guard for services vnstock refactor behavior)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - standardized adapter schema/source regression tests)
+- PLAN_PHASE3_E2E_AI_ADVISORY_20260418.md (NEW - phase-3 execution checklist)
+- docs/AUDIT_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config audit report)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical runtime contract)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config implementation plan)
+- docs/PROJECT_DEVELOPMENT_FRAMEWORK_BLUEPRINT.md (NEW - project development framework blueprint)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (NEW - runtime prompt_config technical spec)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnstock core compatibility audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnstock_refactor portfolio.tests.test_vnstock_adapter_standardized_methods -v 1` pass 9/9; `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` pass 29/29.
+- Status: COMPLETED (backend vnstock refactor package and associated runtime documentation are commit-ready)
+
+### AI Advisory prompt_config - Production-ready UI Hardening (2026-04-18)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicate enabled-sources render; keep single summary badge section with translated labels)
+- frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - full i18n for settings drawer labels/descriptions/summary)
+- frontend/src/i18n/vi.js (MODIFIED - add stockDetail prompt_config keys in Vietnamese)
+- frontend/src/i18n/en.js (MODIFIED - add stockDetail prompt_config keys in English)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `StockDetail.prompt_config.test.js` pass 13/13; backend `tests.test_ai_advisory_e2e_integration` pass 12/12 with `DB_ENGINE=sqlite`; `get_errors` clean on touched frontend files.
+- Status: COMPLETED (prompt_config flow now production-ready across UX + i18n + regression checks)
+
+### Refactor Vnstock Direct Calls to Central Adapter (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm `_log_upstream_payload_warning`, `fetch_symbols_by_industries_dataframe`, `fetch_symbols_by_group_series`, `fetch_symbols_by_exchange_dataframe`)
+- backend/portfolio/services.py (MODIFIED - `fetch_market_sectors_and_groups` và `_fetch_exchange_lookup` không còn gọi `Vnstock()` trực tiếp)
+- backend/portfolio/admin.py (MODIFIED - `_fetch_live_workspace_data` dùng `fetch_price_board_dataframe` qua adapter)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - thêm 4 tests mới cho listing wrappers và payload warning)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - thêm test xác nhận admin dùng adapter price_board)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression tests listing lookup qua adapter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` sạch; exchange lookup test xác nhận pass (exit 0); sectors test assertion đã sửa đúng.
+- Status: COMPLETED (không còn `from vnstock import Vnstock` trực tiếp ngoài `_import_vnstock()` trong adapter)
+
+### VNStock Core Compatibility Coding - Standardized Adapter APIs (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - thêm wrappers chuẩn hóa cho `fundamental_snapshot`, `insider_deals`, `industry_peers/benchmark/rank`)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - regression tests cho schema canonical và `source/source_used`)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - báo cáo rà soát tương thích vnstock core)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean trên file đã sửa; test `portfolio.tests.test_vnstock_adapter_standardized_methods` pass 3/3.
+- Status: COMPLETED (đã sẵn sàng dùng lớp API chuẩn hóa của vnstock core cho feature AI Advisory)
+
+### VNStock Dependency Gate - Lock Core Branch (2026-04-18)
+- backend/requirements.txt (VERIFIED - pinned to private vnstock `@core`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: xác minh `vnstock==1.0.2`; class-level APIs required đều có (`fundamental_snapshot`, `insider_deals`, `industry_peers`, `industry_benchmark`, `industry_rank`).
+- Status: COMPLETED (đã khóa nhánh vnstock core theo yêu cầu, sẵn sàng bước code tiếp theo)
+
+### AI Advisory Runtime Config - Pre-code Package Complete (2026-04-18)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical contract SSOT: schema v2, source registry, validation rules, migration map, definition of ready)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - add canonical contract priority note + compliance checklist item)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - add pre-code gate requiring project owner confirmation before coding)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: cập nhật đầy đủ tài liệu chuẩn bị trước coding, chưa thay đổi runtime code.
+- Status: READY FOR OWNER CONFIRMATION (sẵn sàng bắt đầu coding ngay khi được xác nhận)
+
+### AI Advisory Runtime Config - SSOT Mandatory Alignment (2026-04-18)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - bổ sung Section 7: nguyên tắc kiến trúc bắt buộc Single Source of Truth cho toàn bộ module dùng AI Advisory)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - bổ sung Section 6: workstream triển khai SSOT, migration/de-dup liên module, tiêu chí hoàn thành)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: cập nhật tài liệu kiến trúc/quản trị, không có thay đổi runtime code.
+- Status: COMPLETED (đã chốt ràng buộc SSOT bắt buộc trước khi coding các module liên quan)
+
+### Heatmap Hybrid Stabilization Remediation Hardening (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fix undefined i18n runtime reference, enforce market-cap-first sorting in both modes, set treemap leafDepth=0, localize tooltip labels)
+- frontend/src/i18n/vi.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` Vietnamese labels)
+- frontend/src/i18n/en.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` English labels)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - complete verification checklist + post-audit remediation notes)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - align walkthrough with final implementation behavior)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean on touched frontend files; `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4.
+- Status: COMPLETED (heatmap hybrid plan, implementation, and audit documentation are now aligned)
+
+### Support SLA/Ops Dashboard for Staff Queue (2026-04-18)
+- backend/support/views.py (MODIFIED - add `StaffSupportDashboardView` with queue/throughput/SLA metrics)
+- backend/support/urls.py (MODIFIED - expose `/api/support/staff/dashboard/`)
+- backend/tests/test_support_api.py (MODIFIED - add staff dashboard endpoint tests)
+- frontend/src/api/support.js (MODIFIED - add `getStaffSupportDashboard`)
+- frontend/src/components/support/SupportOpsDashboard.jsx (NEW - support ops metric cards)
+- frontend/src/pages/Support.jsx (MODIFIED - render ops dashboard in staff mode)
+- frontend/src/i18n/vi.js (MODIFIED - support ops labels)
+- frontend/src/i18n/en.js (MODIFIED - support ops labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: backend tests `tests.test_support_api` pass 6/6, frontend tests `src/pages/Support.test.jsx` pass 4/4.
+- Status: COMPLETED (staff has integrated SLA/ops visibility directly in support queue view)
+
+### Auth Contract Hardening - /api/auth/me Staff Flags (2026-04-18)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - lock `is_staff`/`is_superuser` contract in auth/me tests)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `python backend/manage.py test portfolio.tests.test_api_routes_auth_profile` pass 7/7, `get_errors` clean.
+- Status: COMPLETED (auth payload contract for support staff mode is now regression-protected)
+
+### Support Ticket Frontend Regression Tests (2026-04-18)
+- frontend/src/pages/Support.test.jsx (NEW - focused regression tests for support user/staff flows)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4, `get_errors` clean.
+- Status: COMPLETED (support page now has frontend regression guard for user + staff workflow)
+
+### Support Ticket Implementation Slice 2 - Staff Web Workflow (2026-04-18)
+- backend/portfolio/auth_views.py (MODIFIED - expose `is_staff` and `is_superuser` in `/api/auth/me`)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - persist staff role flags in auth state)
+- frontend/src/pages/Support.jsx (MODIFIED - add staff queue mode, filters, patch/reply workflow)
+- frontend/src/components/support/SupportTicketList.jsx (MODIFIED - requester-aware staff queue cards)
+- frontend/src/components/support/TicketMetaPanel.jsx (MODIFIED - show requester and assignee in staff mode)
+- frontend/src/components/support/SupportQueueFilters.jsx (NEW - queue filters for staff)
+- frontend/src/components/support/StaffTicketActions.jsx (NEW - assign/status/priority controls)
+- frontend/src/i18n/vi.js (MODIFIED - support staff labels/messages)
+- frontend/src/i18n/en.js (MODIFIED - support staff labels/messages)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean on touched files.
+- Status: COMPLETED (staff can triage and respond from `/support` without leaving the portal)
+
+### Support Ticket Implementation Slice 1 - Backend + User Portal (2026-04-18)
+- backend/config/settings.py (MODIFIED - register app support + add throttle scopes)
+- backend/config/urls.py (MODIFIED - expose /api/support route + api root entry)
+- backend/support/__init__.py (NEW)
+- backend/support/apps.py (NEW)
+- backend/support/admin.py (NEW - support admin registrations)
+- backend/support/models.py (NEW - support schema + transitions)
+- backend/support/permissions.py (NEW - support permission classes)
+- backend/support/serializers.py (NEW - support API serializers)
+- backend/support/services.py (NEW - email queue helpers + deep link builder)
+- backend/support/tasks.py (NEW - Celery mail task wrapper)
+- backend/support/views.py (NEW - user/staff support endpoints)
+- backend/support/urls.py (NEW - support route map)
+- backend/support/migrations/__init__.py (NEW)
+- backend/support/migrations/0001_initial.py (NEW - initial schema migration)
+- backend/tests/test_support_api.py (NEW - focused API regression tests)
+- frontend/src/api/support.js (NEW - support API client)
+- frontend/src/pages/Support.jsx (NEW - support center page)
+- frontend/src/components/support/SupportTicketList.jsx (NEW)
+- frontend/src/components/support/TicketThread.jsx (NEW)
+- frontend/src/components/support/TicketComposer.jsx (NEW)
+- frontend/src/components/support/TicketCreationForm.jsx (NEW)
+- frontend/src/components/support/TicketMetaPanel.jsx (NEW)
+- frontend/src/App.jsx (MODIFIED - add /support route)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add support shortcut)
+- frontend/src/components/TopNav.jsx (MODIFIED - add support nav)
+- frontend/src/i18n/vi.js (MODIFIED - support labels/messages)
+- frontend/src/i18n/en.js (MODIFIED - support labels/messages)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `python backend/manage.py check` pass, `python backend/manage.py test backend.tests.test_support_api` pass 4/4, `get_errors` clean.
+- Status: IN PROGRESS (backend workflow + user portal usable; staff web dashboard slice can follow if can thao tac trực quan cho ops)
+
+### Support Ticket Plan V2 - Quick Links + Role Board (2026-04-18)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - add Section 0 quick links and Section 16 role-based execution board)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (team can navigate and execute directly from plan document)
+
+### Support Ticket Plan V2 (Ready for Dev) (2026-04-18)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - rewrite to implementation-ready plan for full engineering execution)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (ready for engineering kickoff without additional clarification)
+
+### Heatmap Tooltip Null-Crash + Responsive Resize Recovery Hotfix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - harden tooltip lifecycle during resize + add ResizeObserver-driven chart.resize)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (ready for manual UI verification on resize/zoom flow)
+
+### Dev/Deploy Ruleset Review Gate Relax + Governance Check Alignment (2026-04-18)
+- .github/workflows/governance-release-gate.yml (MODIFIED - trigger them `dev` cho push/pull_request de tao context check governance-postgres-regression tren PR vao dev)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Ruleset update qua GitHub API: `OpenCore Protection - dev` va `OpenCore Protection - deploy` da dat `required_approving_review_count = 0`
+- Status: IN PROGRESS (dang day commit len PR de kich hoat lai required checks va merge)
+
+### README_DRAFT Separate Commit (2026-04-18)
+- README_DRAFT.md (NEW - draft README content added as separate housekeeping commit by user selection)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (no runtime code impact)
+
+### Data Pipeline / Pandas / SQL Optimization Implementation (2026-04-18)
+- backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hotspot, toi uu vectorized path)
+- backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve scope symbols bang SQL projection + backward-compatible alert alias fields)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - tai su dung symbol normalization helper, bo iterrows tren cache path)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (MODIFIED - cap nhat execution summary + validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: Django check pass, focused regression tests pass tren hotspot.
+- Status: READY FOR DEPLOYMENT CANDIDATE (can bo sung benchmark p95/query-count de dong dau production-ready theo KPI)
+
+### Data Pipeline / Pandas / SQL Optimization Plan (2026-04-18)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (NEW - ke hoach chi tiet toi uu hotspot du lieu, KPI before/after, phase A-D, risk/rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: WAITING REVIEW (plan only, chua code)
+
+### One-Command Sync to vninvest-core (2026-04-18)
+- scripts/ops/sync_vninvest_core.ps1 (NEW - script dong bo snapshot sang repo private vninvest-core: copy, commit, push)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- README.md (MODIFIED - them quy trinh co dinh sync vninvest-core de lan sau chay script, khong can hoi lai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: READY TO USE (chay 1 lenh la sync)
+
+### Sprint Kickoff Package - Team Onboarding (2026-04-18)
+- docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone doc for team prep, reading roadmaps, checklists, standup templates, success metrics)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: READY FOR DISTRIBUTION (Fri 2026-04-19)
+
+### Sprint Week 4 Planning - Legal Bundle & Closure (2026-04-18)
+- docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md (NEW - week 4 legal finalization + post-sprint steering review + GO/NO-GO gate)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-27 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Week 3 Planning - Community Package & Self-Host (2026-04-18)
+- docs/OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md (NEW - week 3 detailed roadmap 2 decisions: community package allowlist + self-host licensing model)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-26 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Executive Approval Checklist (2026-04-18)
+- docs/OPEN_CORE_25_SPRINT_EXECUTIVE_CHECKLIST_20260418.md (NEW - executive summary + approval gate for 21-day sprint + week-by-week success criteria)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-25 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Week 2 Planning - Package Mapping Decision (2026-04-18)
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md (NEW - week 2 detailed roadmap 5 phases, resource + success criteria)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-24 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Week 1 Execution Plan - Quota Decision (2026-04-18)
+- docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md (NEW - detailed week 1 tasks + resource allocation + daily standup talking points)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-23 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Hardening Sprint Plan - 21 Days Roadmap (2026-04-18)
+- docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (NEW - proposal chi tiet 5 quyet dinh + timeline + resources)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-22 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Audit Report Hardening Alignment (2026-04-18)
+- docs/AUDIT_OPEN_CORE_DOCS_20260418.md (MODIFIED - chinh lai khuyen nghi archive docs cu theo huong precise, tranh xung dot voi authoritative set)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OC-19 Ruleset Applied Successfully (dev/main/deploy) (2026-04-18)
+- scripts/ops/setup_oc19_github_rulesets.ps1 (MODIFIED - harden debug HTTP 422, payload compatibility)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OC-21 One Command Ruleset Automation (2026-04-18)
+- scripts/ops/setup_oc19_github_rulesets.ps1 (NEW - script upsert ruleset dev/main/deploy qua GitHub API)
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md (MODIFIED - them section 4.4 one-command automation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OC-21 Copy Paste Ruleset Templates (2026-04-18)
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md (MODIFIED - them section 4.3 voi template copy/paste cho dev/main/deploy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OC-21 Ruleset Clarification (dev/main/deploy) (2026-04-18)
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md (MODIFIED - bo sung noi dung tao/sua ruleset cu the, required checks, protections va checklist xac nhan)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OC-19 Hard Enforcement Follow-up (PR-only Gate + Setup Guides) (2026-04-18)
+- .github/workflows/opencore-doc-sync-gate.yml (MODIFIED - chi chay pull_request de giam noise push)
+- docs/OPEN_CORE_20_OC19_GATE_QUICKSTART_20260418.md (NEW - huong dan 5 phut cho dev moi pass gate)
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md (NEW - huong dan setup required status checks o branch protection)
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md (MODIFIED - bo sung nhom rule enforcement tren hosting)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung OC-20, OC-21 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore OC-19 Enforcement (PR Template + CI Gate) (2026-04-18)
+- .github/pull_request_template.md (NEW - checklist bat buoc cho PR OpenCore)
+- .github/workflows/opencore-doc-sync-gate.yml (NEW - gate tu dong chan PR/push khi thieu doc sync)
+- scripts/quality/check_opencore_doc_sync.ps1 (NEW - script kiem tra trigger mapping OC-19 va audit evidence)
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md (MODIFIED - bo sung muc CI enforcement)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung OC-19a automation gate)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Default Team Governance Policy (Mandatory) (2026-04-18)
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md (NEW - quy dinh mac dinh cho doi code: trigger mapping, merge gate, SLA cap nhat docs)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung OC-19 vao bo canonical)
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md (MODIFIED - bo sung gate ap dung OC-19)
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md (MODIFIED - bo sung cau hoi quyet dinh ap dung OC-19)
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md (MODIFIED - lien ket OC-19)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Public Docs Allowlist V1 (2026-04-18)
+- docs/OPEN_CORE_18_PUBLIC_DOCS_ALLOWLIST_V1_20260418.md (NEW - allowlist/blocklist/redaction rules/checklist cho lane public docs)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung OC-18 vao bo canonical)
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md (MODIFIED - bo sung gate allowlist V1)
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md (MODIFIED - bo sung quyet dinh allowlist V1)
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md (MODIFIED - lien ket execution artifact OC-18)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Docs Governance - Private vs Public Separation (2026-04-18)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung nguyen tac `docs/` la private va them OC-17 vao bo canonical)
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md (MODIFIED - them muc docs governance private/public)
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md (MODIFIED - them gate/blocker/checklist cho docs lane separation)
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md (MODIFIED - bo sung quyet dinh docs governance)
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md (MODIFIED - bo sung cau hoi docs separation trong memo review)
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md (NEW - policy draft tach lane private docs va public docs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Review Memo - Non-immediate Decision Support (2026-04-18)
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md (NEW - memo ngan de stakeholder doc va can nhac truoc khi quyet dinh)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung OC-16 vao bo tai lieu canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### OpenCore Documentation Canonical Refresh + Historical Doc Deprecation (2026-04-18)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - bo sung bo tai lieu canonical hien tai, thu tu doc, va danh sach tai lieu lich su khong authoritative)
+- docs/OPEN_CORE_02_DECISION_RECORD_V1.md (MODIFIED - them note governance ve pham vi authoritative)
+- docs/OPEN_CORE_03_EXECUTION_PLAN_90D.md (MODIFIED - rebaseline roadmap sang canonicalization + publish hardening)
+- docs/OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md (MODIFIED - chot boundary cap san pham, ghi ro chua canonical numeric/runtime)
+- docs/OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md (MODIFIED - danh dau pricing hypothesis va drift trial/grace)
+- docs/OPEN_CORE_08_RISK_REGISTER_V1.md (MODIFIED - cap nhat risk register theo tinh hinh OpenCore hien tai)
+- docs/OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md (MODIFIED - doi tu "fully locked" sang business baseline only, ghi ro runtime drift)
+- docs/OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md (MODIFIED - doi tu draft coding checklist sang runtime rebaseline/canonicalization checklist)
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md (MODIFIED - cap nhat go/no-go gate hien tai cho public/community lane)
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md (MODIFIED - viet lai thanh executive strategy summary dung voi hien trang)
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md (NEW - decision packet canonical de doc va ra quyet dinh nhanh)
+- docs/OPENCORE_VERIFICATION_CHECKLIST.md (MODIFIED - gan co historical artifact)
+- docs/OPENCORE_INTEGRATION_GUIDE.md (MODIFIED - gan co historical artifact)
+- docs/OPENCORE_VISUAL_REFERENCE.md (MODIFIED - gan co historical artifact)
+- docs/OPENCORE_VISUAL_TEST_RESULTS.md (MODIFIED - gan co historical artifact)
+- docs/OPENCORE_VISUAL_TEST_SUMMARY.md (MODIFIED - gan co historical artifact)
+- docs/OPEN_CORE_IMPLEMENTATION_COMPLETE.md (MODIFIED - gan co historical artifact)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 ### OpenCore Hardening Sprint Plan - 21 Days Roadmap (2026-04-18)
 - docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (NEW - proposal chi tiet 5 quyet dinh + timeline + resources)

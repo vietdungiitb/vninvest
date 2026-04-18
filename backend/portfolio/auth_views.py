@@ -65,6 +65,8 @@ class UserMeView(RetrieveAPIView):
             'id': user.id,
             'username': user.username,
             'email': user.email,
+            'is_staff': bool(user.is_staff),
+            'is_superuser': bool(user.is_superuser),
             'first_name': user.first_name,
             'last_name': user.last_name,
             'plan': plan,

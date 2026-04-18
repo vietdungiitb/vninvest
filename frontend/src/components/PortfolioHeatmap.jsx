@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from '../context/LangContext';
 
@@ -42,10 +42,71 @@ const PIECEWISE_VISUAL_MAP = {
 };
 
 export default function PortfolioHeatmap({ holdings, title }) {
-  const { t } = useI18n();
+  const { t, locale, localeTag } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
   const [sizeMetric, setSizeMetric] = useState('weight');
   const HEATMAP_HEIGHT = 420;
+  const chartComponentRef = useRef(null);
+  const chartContainerRef = useRef(null);
+  const resizeRafRef = useRef(0);
+
+  const safeResizeChart = useCallback(() => {
+    const chart = chartComponentRef.current?.getEchartsInstance?.();
+    if (!chart || chart.isDisposed?.()) {
+      return;
+    }
+
+    try {
+      chart.dispatchAction({ type: 'hideTip' });
+    } catch (_err) {
+      // Ignore tooltip action errors during transient resize/dispose timing.
+    }
+
+    chart.resize({
+      animation: {
+        duration: 0,
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    const scheduleResize = () => {
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        safeResizeChart();
+      });
+    };
+
+    const observer = new ResizeObserver(() => {
+      scheduleResize();
+    });
+
+    if (chartContainerRef.current) {
+      observer.observe(chartContainerRef.current);
+    }
+
+    window.addEventListener('resize', scheduleResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleResize);
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = 0;
+      }
+      
+      const chart = chartComponentRef.current?.getEchartsInstance?.();
+      if (chart && !chart.isDisposed()) {
+        try {
+          chart.dispatchAction({ type: 'hideTip' });
+        } catch (_) {
+          // Ignore tip action errors during unmount race.
+        }
+      }
+    };
+  }, [safeResizeChart]);
 
   const toNumber = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -99,45 +160,37 @@ export default function PortfolioHeatmap({ holdings, title }) {
     };
   };
 
-  const hierarchicalData = useMemo(() => {
-    if (!holdings?.length) return [];
+  const chartData = useMemo(() => {
+    if (!holdings?.length) return { grouped: [], flat: [] };
 
     const sectors = {};
+    const flatList = [];
+
     (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
       const marketCap = toNumber(h.live_market_cap || h.market_cap);
+      
       const sizeByWeight = liveValue > 0 ? liveValue : snapshotValue;
       const sizeByCap = marketCap > 0 ? marketCap : sizeByWeight;
       const size = sizeMetric === 'cap' ? sizeByCap : sizeByWeight;
-      if (size <= 0) {
-        return;
-      }
+
+      if (size <= 0) return;
 
       const rawChange = h.live_change_pct ?? h.change_pct ?? 0;
       const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
-
       const symbol = String(h.symbol || h.name || '').trim().toUpperCase();
-      if (!symbol) {
-        return;
-      }
+      if (!symbol) return;
 
       const industryStr = String(h.industry || 'Khác').trim();
       const industry = (industryStr && industryStr !== 'undefined') ? industryStr : 'Khác';
-      if (!sectors[industry]) {
-        sectors[industry] = {
-          name: industry,
-          children: [],
-          value: [0, 0],
-          changePct: 0,
-          totalWeight: 0,
-        };
-      }
-
+      
       const isExtreme = Math.abs(changePct) >= 3;
       const tileStyle = resolveHeatTileStyle(changePct);
 
-      sectors[industry].children.push({
+      const sortMarketCap = marketCap > 0 ? marketCap : sizeByCap;
+
+      const leafNode = {
         id: `symbol:${symbol}`,
         name: symbol,
         symbol,
@@ -146,11 +199,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         isHolding: Boolean(h.is_holding),
         livePrice: toNumber(h.live_current_price || h.current_price),
         marketCap,
+        sortMarketCap,
         volume: toNumber(h.live_volume || h.volume),
         sparkline24: Array.isArray(h.sparkline24) ? h.sparkline24 : [],
         sizeValue: size,
         changePct,
-        value: [size, changePct],
+        value: [size, changePct], // [size, change]
         itemStyle: {
           color: tileStyle.fill,
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
@@ -158,65 +212,81 @@ export default function PortfolioHeatmap({ holdings, title }) {
           shadowBlur: isExtreme ? 10 : 0,
           shadowColor: isExtreme ? tileStyle.glow : 'rgba(0, 0, 0, 0)',
         },
-      });
+      };
 
-      sectors[industry].value[0] += size;
-      sectors[industry].totalWeight += size;
-      sectors[industry].changePct += size * changePct;
-    });
+      // Add to flat list
+      flatList.push(leafNode);
 
-    const allLeafRawSizes = [];
-    Object.values(sectors).forEach((sector) => {
-      (sector.children || []).forEach((leaf) => {
-        const raw = toNumber(leaf.sizeValue);
-        if (raw > 0) allLeafRawSizes.push(raw);
-      });
-    });
-
-    const minRawSize = allLeafRawSizes.length ? Math.min(...allLeafRawSizes) : 1;
-    const sqrtMin = Math.sqrt(Math.max(minRawSize, 1));
-
-    return Object.values(sectors)
-      .map((sector) => {
-        const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
-
-        let sectorDisplayTotal = 0;
-        const normalizedChildren = (sector.children || []).map((leaf) => {
-          const raw = toNumber(leaf.sizeValue);
-          const sqrtRaw = Math.sqrt(Math.max(raw, 1));
-          // Bloomberg-style compression: compress huge-cap dominance while preserving rank.
-          const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
-          sectorDisplayTotal += normalizedDisplaySize;
-
-          return {
-            ...leaf,
-            value: [normalizedDisplaySize, toNumber(leaf.changePct)],
-          };
-        });
-
-        return {
-          id: `industry:${sector.name}`,
-          name: sector.name,
-          value: sectorDisplayTotal,
-          changePct: avgChange,
-          children: normalizedChildren.sort((left, right) => toNumber(right.value?.[0]) - toNumber(left.value?.[0])),
+      // Add to grouped structure
+      if (!sectors[industry]) {
+        sectors[industry] = {
+          name: industry,
+          children: [],
+          totalSize: 0,
+          totalMarketCap: 0,
+          weightedChange: 0,
         };
-      })
-      .sort((left, right) => Number(right.value || 0) - Number(left.value || 0));
+      }
+      sectors[industry].children.push(leafNode);
+      sectors[industry].totalSize += size;
+      sectors[industry].totalMarketCap += sortMarketCap;
+      sectors[industry].weightedChange += size * changePct;
+    });
+
+    // Calculate Global Normalization (Bloomberg Style)
+    // We want to compress huge outliers (VCB/HPG) so they don't eat 90% of the screen,
+    // but still clearly indicate their relative rank.
+    const allSizes = flatList.map(l => l.sizeValue);
+    const minSize = allSizes.length ? Math.min(...allSizes) : 1;
+    const sqrtMin = Math.sqrt(Math.max(minSize, 1));
+
+    const normalizeNode = (node) => {
+      const sqrtRaw = Math.sqrt(Math.max(node.sizeValue, 1));
+      const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
+      return {
+        ...node,
+        value: [normalizedDisplaySize, node.changePct],
+      };
+    };
+
+    // 1. Process Flat Data (Treemap)
+    const processedFlatData = flatList
+      .map(normalizeNode)
+      .sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value[0] - a.value[0]));
+
+    // 2. Process Grouped Data (Sunburst)
+    const processedGroupedData = Object.values(sectors).map((sector) => {
+      const avgChange = sector.totalSize > 0 ? sector.weightedChange / sector.totalSize : 0;
+      const normalizedChildren = sector.children.map(normalizeNode);
+      const sectorDisplayTotal = normalizedChildren.reduce((sum, c) => sum + c.value[0], 0);
+
+      return {
+        id: `industry:${sector.name}`,
+        name: sector.name,
+        value: sectorDisplayTotal,
+        sortMarketCap: sector.totalMarketCap,
+        changePct: avgChange,
+        children: normalizedChildren.sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value[0] - a.value[0])),
+      };
+    }).sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value - a.value));
+
+    return { grouped: processedGroupedData, flat: processedFlatData };
   }, [holdings, sizeMetric]);
+
+  useEffect(() => {
+    safeResizeChart();
+  }, [safeResizeChart, viewMode, sizeMetric, chartData.flat.length]);
 
   const maxLeafSize = useMemo(() => {
     let max = 0;
-    hierarchicalData.forEach((industry) => {
-      (industry.children || []).forEach((leaf) => {
-        const val = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
-        if (val > max) {
-          max = val;
-        }
-      });
+    chartData.flat.forEach((leaf) => {
+      const val = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
+      if (val > max) {
+        max = val;
+      }
     });
     return max || 1;
-  }, [hierarchicalData]);
+  }, [chartData.flat]);
 
   const buildLeafLabel = useCallback((params) => {
     const leaf = params?.data;
@@ -250,7 +320,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       .slice(-24);
 
     if (points.length < 2) {
-      return '<div class="heatmap-tooltip__spark">Chua du du lieu 24h</div>';
+      return `<div class="heatmap-tooltip__spark">${t('dashboardRealtime.heatmapTooltipNoData24h', { defaultValue: 'Chưa đủ dữ liệu 24h' })}</div>`;
     }
 
     const min = Math.min(...points);
@@ -271,7 +341,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     return `
       <div class="heatmap-tooltip__spark">
-        <div class="heatmap-tooltip__spark-caption">Trend 24h • Last: ${Math.round(latest).toLocaleString('vi-VN')}</div>
+        <div class="heatmap-tooltip__spark-caption">${t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Trend 24h' })} • ${t('dashboardRealtime.heatmapTooltipLast', { defaultValue: 'Last' })}: ${Math.round(latest).toLocaleString(localeTag || 'vi-VN')}</div>
         <svg width="176" height="40" viewBox="0 0 176 40" preserveAspectRatio="none">
           <defs>
             <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
@@ -284,19 +354,26 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </svg>
       </div>
     `;
-  }, []);
+  }, [localeTag, t]);
 
   const option = useMemo(() => {
-    if (!hierarchicalData.length) {
-      return null;
-    }
+    const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
+    if (!dataSet || dataSet.length === 0) return null;
+
+    const fallbackIndustryLabel = t('dashboardRealtime.heatmapTooltipIndustryFallback', { defaultValue: 'Khác' });
+    const groupLabel = t('dashboardRealtime.heatmapTooltipGroupLabel', { defaultValue: 'Nhóm ngành' });
+    const averageChangeLabel = t('dashboardRealtime.heatmapTooltipAverageChange', { defaultValue: 'Biến động b.quân' });
+    const currentPriceLabel = t('dashboardRealtime.heatmapTooltipCurrentPrice', { defaultValue: 'Giá hiện tại' });
+    const marketCapLabel = t('dashboardRealtime.heatmapTooltipMarketCap', { defaultValue: 'Vốn hóa' });
+    const volumeLabel = t('dashboardRealtime.heatmapTooltipVolume', { defaultValue: 'Khối lượng' });
 
     const tooltip = {
       trigger: 'item',
       triggerOn: 'mousemove',
       renderMode: 'html',
-      appendToBody: true,
+      appendToBody: false,
       enterable: false,
+      alwaysShowContent: false,
       showDelay: 40,
       hideDelay: 120,
       transitionDuration: 0.08,
@@ -309,62 +386,65 @@ export default function PortfolioHeatmap({ holdings, title }) {
       formatter: (params) => {
         const data = params?.data;
         if (!data) return '';
-        // Guard: ECharts virtual root node (created internally when data is array) has children but no name
-        if (data.children && !data.name) return '';
+        
+        // Industry Path Logic
+        const treePathInfo = params.treePathInfo || [];
+        let industryPath = '';
+        if (treePathInfo.length > 1) {
+          // hierarchical case (Sunburst)
+          industryPath = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
+        } else {
+          // flat case (Treemap)
+          industryPath = data.industry || fallbackIndustryLabel;
+        }
 
-        if (!data.children) {
-          const size = Array.isArray(data.value) ? data.value[0] : Number(data.value || 0);
-          const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
-          const price = toNumber(data.livePrice);
-          const cap = toNumber(data.marketCap);
-          const volume = toNumber(data.volume);
-          const changeColor = changePct > 0
-            ? FINTECH_HEAT_COLORS.upStrong
-            : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
-
-          const sparklineMarkup = buildTooltipSparkline(
-            data.sparkline24,
-            changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong,
-            data.symbol || data.name,
-          );
-
+        // Sector/Industry Node (has children)
+        if (data.children) {
           return `
             <div class="heatmap-tooltip">
               <div class="heatmap-tooltip__header">
-                <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
+                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${groupLabel}</span>
+                <b>${data.name}</b>
               </div>
               <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
               <div class="heatmap-tooltip__row">
-                <span>Giá</span>
-                <span style="color:${changeColor}; font-weight:700;">
-                  ${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND (${formatPercent(changePct)})
+                <span>${averageChangeLabel}</span>
+                <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:700;">
+                  ${formatPercent(data.changePct)}
                 </span>
               </div>
-              <div class="heatmap-tooltip__row">
-                <span>Vốn hóa</span>
-                <span style="color:#f8fafc; font-weight:700;">${cap > 0 ? (cap / 1000).toFixed(1) : '—'} Tỷ</span>
-              </div>
-              <div class="heatmap-tooltip__row">
-                <span>Khối lượng</span>
-                <span style="color:#f8fafc; font-weight:700;">${volume > 0 ? Math.round(volume).toLocaleString('vi-VN') : '—'}</span>
-              </div>
-              <div class="heatmap-tooltip__row">
-                <span>${sizeMetric === 'cap' ? 'Size theo cap' : 'Size theo tỷ trọng'}</span>
-                <span style="color:#f8fafc; font-weight:700;">${Math.round(size).toLocaleString('vi-VN')}</span>
-              </div>
-              ${sparklineMarkup}
             </div>
           `;
         }
 
+        // Stock Node (Leaf)
+        const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
+        const changeColor = changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
+
         return `
-          <div style="min-width: 180px; padding: 4px 2px;">
-            <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Nhóm ngành</div>
-            <div style="font-size:18px; font-weight:800; color:#ffffff; margin-bottom:10px;">${data.name}</div>
-            <div style="display:flex; justify-content:space-between; gap:16px;">
-              <span style="color:#94a3b8;">Biến động bình quân</span>
-              <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:800;">${formatPercent(data.changePct)}</span>
+          <div class="heatmap-tooltip">
+            <div class="heatmap-tooltip__header">
+              <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${industryPath}</span>
+              <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
             </div>
+            <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
+            
+            <div class="heatmap-tooltip__row">
+              <span>${currentPriceLabel}</span>
+              <span style="color:${changeColor}; font-weight:700;">
+                ${toNumber(data.livePrice).toFixed(2)} VND (${formatPercent(changePct)})
+              </span>
+            </div>
+            <div class="heatmap-tooltip__row">
+              <span>${marketCapLabel}</span>
+              <span style="color:#f8fafc; font-weight:700;">${(toNumber(data.marketCap) / 1e9).toFixed(1)}B VND</span>
+            </div>
+            <div class="heatmap-tooltip__row">
+              <span>${volumeLabel}</span>
+              <span style="color:#f8fafc; font-weight:700;">${Math.round(toNumber(data.volume)).toLocaleString(localeTag || 'vi-VN')}</span>
+            </div>
+
+            ${buildTooltipSparkline(data.sparkline24, changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong, data.symbol)}
           </div>
         `;
       },
@@ -372,25 +452,35 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     if (viewMode === 'sunburst') {
       return {
-        backgroundColor: 'transparent',
         animation: false,
         animationDuration: 0,
         animationDurationUpdate: 0,
         animationEasingUpdate: 'linear',
         tooltip,
-        visualMap: piecewiseVisualMap,
         series: [
           {
             type: 'sunburst',
             id: 'portfolio-heatmap-transition',
-            data: hierarchicalData,
+            data: chartData.grouped,
             sort: 'desc',
             center: ['50%', '50%'],
             radius: ['7%', '92%'],
             nodeClick: false,
             universalTransition: false,
             stateAnimation: { duration: 0 },
-            emphasis: { disabled: true },
+            emphasis: {
+              disabled: false,
+              itemStyle: {
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                shadowBlur: 15,
+                shadowColor: 'rgba(255, 255, 255, 0.45)',
+              },
+              label: {
+                show: true,
+                fontWeight: 'bold',
+              },
+            },
             itemStyle: {
               borderColor: 'rgba(2, 6, 23, 0.78)',
               borderWidth: 1.5,
@@ -464,12 +554,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
       animationDurationUpdate: 0,
       animationEasingUpdate: 'linear',
       tooltip,
-      visualMap: piecewiseVisualMap,
       series: [
         {
           type: 'treemap',
           id: 'portfolio-heatmap-transition',
-          data: hierarchicalData,
+          data: chartData.flat,
           top: 0,
           left: 0,
           right: 0,
@@ -483,11 +572,21 @@ export default function PortfolioHeatmap({ holdings, title }) {
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.5,
-          leafDepth: 2,
+          leafDepth: 0,
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
-            disabled: true,
+            disabled: false,
+            itemStyle: {
+              borderWidth: 2,
+              borderColor: '#ffffff',
+              shadowBlur: 12,
+              shadowColor: 'rgba(255, 255, 255, 0.4)',
+            },
+            label: {
+              show: true,
+              fontWeight: '900',
+            },
           },
           label: {
             show: true,
@@ -524,41 +623,16 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           upperLabel: { show: false },
           itemStyle: {
-            borderColor: 'rgba(15, 23, 42, 0.45)',
-            borderWidth: 1,
-            gapWidth: 2,
+            borderColor: 'rgba(15, 23, 10, 0.55)',
+            borderWidth: 1.5,
+            gapWidth: 1.5,
           },
-          levels: [
-            {
-              itemStyle: {
-                borderColor: 'rgba(15, 23, 42, 0.9)',
-                borderWidth: 2,
-                gapWidth: 2,
-              },
-              upperLabel: {
-                show: true,
-                height: 22,
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: 10,
-                padding: [0, 0, 0, 8],
-                backgroundColor: 'rgba(12, 22, 40, 0.76)',
-              },
-            },
-            {
-              itemStyle: {
-                borderColor: 'rgba(30, 58, 95, 0.48)',
-                borderWidth: 1,
-                gapWidth: 1,
-              },
-            },
-          ],
+          levels: [],
         },
       ],
-    };
-  }, [buildLeafLabel, buildTooltipSparkline, formatPercent, heatScaleColors, hierarchicalData, piecewiseVisualMap, sizeMetric, viewMode]);
+  }, [viewMode, chartData, buildLeafLabel, buildTooltipSparkline, formatPercent, localeTag, t]);
 
-  if (!hierarchicalData.length) {
+  if (!chartData.flat.length) {
     return (
       <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
         <div className="mb-3 h-10 w-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
@@ -619,13 +693,18 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       </div>
 
-      <div className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
+      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
+          key={`${viewMode}-${chartData.flat.length}-${locale}`}
+          ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
           notMerge={true}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
+          onChartReady={() => {
+            safeResizeChart();
+          }}
         />
         
         <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">

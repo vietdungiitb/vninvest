@@ -41,6 +41,12 @@ Nguyen tac quan tri tai lieu (bat buoc):
 22. OC-20 (OC-19 gate quickstart): OPEN_CORE_20_OC19_GATE_QUICKSTART_20260418.md
 23. OC-21 (branch protection setup): OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
 24. OC-22 (hardening sprint 21 days): OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (PROPOSAL awaiting approval)
+25. OC-23 (sprint week 1 quota decision): OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md (READY FOR EXECUTION)
+26. OC-24 (sprint week 2 package mapping): OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md (PLANNING)
+27. OC-25 (executive checklist + approval): OPEN_CORE_25_SPRINT_EXECUTIVE_CHECKLIST_20260418.md (AWAITING APPROVAL)
+28. OC-26 (sprint week 3 community + self-host): OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md (PLANNING)
+29. OC-27 (sprint week 4 legal bundle): OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md (PLANNING)
+30. OC-28 (sprint kickoff package + team onboarding): OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (READY FOR DISTRIBUTION)
 
 ## 3. Thu tu doc de ra quyet dinh nhanh
 1. Bat dau tu OC-15 neu can mot ban tong hop de ra quyet dinh.

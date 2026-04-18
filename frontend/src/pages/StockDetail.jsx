@@ -45,6 +45,7 @@ import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import { BubbleOrderChart } from '../components/BubbleOrderChart';
 import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
+import AIAdvisoryPromptConfigDrawer from '../components/AIAdvisoryPromptConfigDrawer';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -169,6 +170,20 @@ function advisorySynthesisPreferenceLabel(preference, t) {
     balanced: t('stockDetail.preferenceBalanced'),
   };
   return map[String(preference || '').toLowerCase()] || map.balanced;
+}
+
+function advisoryPromptSourceLabel(sourceId, t) {
+  const map = {
+    whale: t('stockDetail.promptSourceWhale'),
+    dark_flow: t('stockDetail.promptSourceDarkFlow'),
+    technical: t('stockDetail.promptSourceTechnical'),
+    news: t('stockDetail.promptSourceNews'),
+    market: t('stockDetail.promptSourceMarket'),
+    fundamental: t('stockDetail.promptSourceFundamental'),
+    ownership: t('stockDetail.promptSourceOwnership'),
+    sector: t('stockDetail.promptSourceSector'),
+  };
+  return map[String(sourceId || '').toLowerCase()] || String(sourceId || '').replace(/_/g, ' ');
 }
 
 function advisoryRetryOutcomeLabel(outcome, t) {
@@ -965,6 +980,14 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
           </div>
         )}
       </div>
+
+      {/* AI Advisory Prompt Config Settings Drawer */}
+      <AIAdvisoryPromptConfigDrawer
+        isOpen={advisoryPromptConfigShowSettings}
+        onClose={() => setAdvisoryPromptConfigShowSettings(false)}
+        config={advisoryPromptConfig}
+        onConfigChange={setAdvisoryPromptConfig}
+      />
     </section>
   );
 }
@@ -1481,6 +1504,49 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
   );
 }
 
+// ============================================================================
+// AI Advisory prompt_config helpers (localStorage persistence)
+// ============================================================================
+
+function _loadAdvisoryPromptConfigFromStorage(symbol) {
+  try {
+    const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch (err) {
+    console.warn('Failed to load prompt_config from localStorage:', err);
+    return null;
+  }
+}
+
+function _saveAdvisoryPromptConfigToStorage(symbol, promptConfig) {
+  try {
+    if (!promptConfig) {
+      localStorage.removeItem(`ai_advisory_prompt_config:${symbol}`);
+    } else {
+      localStorage.setItem(`ai_advisory_prompt_config:${symbol}`, JSON.stringify(promptConfig));
+    }
+  } catch (err) {
+    console.warn('Failed to save prompt_config to localStorage:', err);
+  }
+}
+
+function _getDefaultPromptConfig() {
+  return {
+    version: 2,
+    sources: {
+      whale: { enabled: true },
+      dark_flow: { enabled: true },
+      technical: { enabled: true, indicators: ['rsi', 'bollinger', 'vols'] },
+      news: { enabled: true },
+      market: { enabled: true },
+      fundamental: { enabled: false },
+      ownership: { enabled: false },
+      sector: { enabled: false },
+    },
+  };
+}
+
 export default function StockDetail() {
   const { t, formatQuotePrice, formatDateTime } = useI18n();
   const { isAuthenticated } = usePortfolio();
@@ -1544,6 +1610,8 @@ export default function StockDetail() {
   const [retryEventOutcomeFilter, setRetryEventOutcomeFilter] = useState('all');
   const [retryEventReasonFilter, setRetryEventReasonFilter] = useState('all');
   const [retryEventSortMode, setRetryEventSortMode] = useState('newest');
+  const [advisoryPromptConfig, setAdvisoryPromptConfig] = useState(null);
+  const [advisoryPromptConfigShowSettings, setAdvisoryPromptConfigShowSettings] = useState(false);
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
@@ -1890,7 +1958,17 @@ export default function StockDetail() {
       lastOutcome: 'idle',
       lastEventAt: null,
     });
+    
+    // Load prompt_config from localStorage for this symbol, or use defaults
+    const storedConfig = _loadAdvisoryPromptConfigFromStorage(normalizedSymbol);
+    setAdvisoryPromptConfig(storedConfig || _getDefaultPromptConfig());
   }, [normalizedSymbol]);
+
+  // Save prompt_config to localStorage when it changes
+  useEffect(() => {
+    if (!normalizedSymbol || !advisoryPromptConfig) return;
+    _saveAdvisoryPromptConfigToStorage(normalizedSymbol, advisoryPromptConfig);
+  }, [advisoryPromptConfig, normalizedSymbol]);
 
   useEffect(() => {
     if (!normalizedSymbol) return;
@@ -2728,6 +2806,7 @@ export default function StockDetail() {
       const response = await regenerateStockAIExecutiveSummary(normalizedSymbol, {
         component_ids: activeIds,
         synthesis_preference: advisorySynthesisPreference,
+        prompt_config: advisoryPromptConfig,  // Include canonical prompt_config for source/indicator selection
       });
       const summary = response?.data?.executive_summary || null;
       setAdvisoryExecutiveSummary(summary);
@@ -3259,6 +3338,15 @@ export default function StockDetail() {
                         </select>
                         <button
                           type="button"
+                          onClick={() => setAdvisoryPromptConfigShowSettings(true)}
+                          disabled={advisoryRegeneratingSummary}
+                          className="rounded-full border border-blue-700/60 bg-blue-500/10 px-3 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-60"
+                          title="AI Advisory Settings"
+                        >
+                          ⚙️ {t('stockDetail.settings') || 'Settings'}
+                        </button>
+                        <button
+                          type="button"
                           onClick={handleRegenerateExecutiveSummary}
                           disabled={advisoryRegeneratingSummary || advisoryComponents.length === 0}
                           className="btn-secondary"
@@ -3289,6 +3377,26 @@ export default function StockDetail() {
                           </span>
                           <span className="text-slate-500">v{advisoryExecutiveSummary.summary_version}</span>
                         </div>
+                        {/* Display enabled sources for this summary */}
+                        {advisoryPromptConfig && (
+                          <div className="mt-2">
+                            <p className="mb-1 text-[11px] text-slate-500">
+                              {t('stockDetail.enabledSourcesForSummary')}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {Object.entries(advisoryPromptConfig.sources)
+                              .filter(([_, cfg]) => cfg.enabled)
+                              .map(([sourceId]) => (
+                                <span
+                                  key={sourceId}
+                                  className="rounded-full border border-emerald-700/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300"
+                                >
+                                  ✓ {advisoryPromptSourceLabel(sourceId, t)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {advisoryExecutiveSummaries.length > 1 ? (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {advisoryExecutiveSummaries.map((summaryItem) => (

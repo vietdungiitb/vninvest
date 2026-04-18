@@ -1,5 +1,730 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18aw - Governance lock: vninvest playbook mandatory no-exception
+
+Muc tieu:
+- Khoa quy trinh phat trien vninvest theo playbook o muc bat buoc, khong ngoai le.
+- Dam bao tat ca contributor nhin thay policy nay ngay trong tai lieu goc va README.
+
+Danh sach tep cap nhat:
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add no-exception mandatory policy declaration and merge gating statement)
+- README.md (MODIFIED - add mandatory delivery playbook policy section for all development work)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Day la cap nhat governance policy va documentation, khong thay doi runtime code.
+- Policy lock duoc cong bo tai 2 diem vao/chinh: playbook + README.
+
+---
+
+## Entry 2026-04-18av - VNInvest project delivery playbook standardization report
+
+Muc tieu:
+- Chuyen hoa blueprint tong quat thanh playbook thuc thi sat voi thuc te vninvest.
+- Bo sung day du giai doan trien khai, cong nghe ap dung, release gates va mandatory governance rules.
+
+Danh sach tep cap nhat:
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (NEW - production-ready delivery playbook for vninvest with Plan-First, Test Pyramid, Audit workflow, stack mapping, and DoD checklists)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Day la cap nhat tai lieu governance/process, khong thay doi runtime code.
+- Da doi chieu noi dung voi blueprint goc va quy dinh hien hanh trong README (plan-first, anti-fat-file, audit mandatory).
+
+---
+
+## Entry 2026-04-18au - Vnstock adapter regression hardening and docs package finalization
+
+Muc tieu:
+- Chot production-ready cho batch refactor vnstock adapter voi bo test backend xanh toan bo.
+- Loai bo brittle assertion trong admin workspace test de phu hop copy hien tai cua template.
+- Dong bo goi tai lieu runtime-config va vnstock compatibility vao cung mot moc audit commit-ready.
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - centralized wrappers for listing/fundamental/ownership/sector flows + upstream payload warning handling)
+- backend/portfolio/admin.py (MODIFIED - workspace data retrieval uses adapter pathway)
+- backend/portfolio/services.py (MODIFIED - sector/group/exchange lookups moved to adapter wrappers)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - adapter regression coverage for wrappers and fallback warning path)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - stabilize assertions with current template labels)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - service-level regression tests for vnstock refactor routes)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - canonical schema regression tests for standardized adapter methods)
+- PLAN_PHASE3_E2E_AI_ADVISORY_20260418.md (NEW - phase-3 execution checkpoint for AI advisory runtime)
+- docs/AUDIT_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config audit package)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical runtime-config contract)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - implementation plan for runtime prompt config)
+- docs/PROJECT_DEVELOPMENT_FRAMEWORK_BLUEPRINT.md (NEW - delivery framework blueprint)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (NEW - technical specification)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnstock core compatibility audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnstock_refactor portfolio.tests.test_vnstock_adapter_standardized_methods -v 1` => 9/9 PASS.
+- `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` => 29/29 PASS.
+
+---
+
+## Entry 2026-04-18at - AI Advisory prompt_config production-ready UI hardening
+
+Muc tieu:
+- Hoan tat production-ready cho luong prompt_config tren StockDetail voi UX on dinh va i18n day du.
+- Loai bo render badge trung lap trong summary va chuan hoa nhan nguon du lieu theo dictionary vi/en.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicated enabled-sources block, centralize source label mapping, keep single summary badge section)
+- frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - full i18n labels/descriptions, remove hardcoded English fallback strings in UI copy)
+- frontend/src/i18n/vi.js (MODIFIED - add stockDetail keys for prompt_config settings drawer + enabled-sources summary labels)
+- frontend/src/i18n/en.js (MODIFIED - add stockDetail keys for prompt_config settings drawer + enabled-sources summary labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Summary panel chi con mot block badge "enabled sources" (khong bi lap doi).
+- Ten source hien thi qua i18n keys thay vi raw `source_id`.
+- Drawer prompt_config su dung dictionary vi/en cho title, description, source labels, lookback line va summary line.
+
+Validation:
+- Frontend test: `npm test -- --watchAll=false --runInBand src/__tests__/StockDetail.prompt_config.test.js` => 13/13 PASS.
+- Backend integration test: `DB_ENGINE=sqlite python manage.py test tests.test_ai_advisory_e2e_integration -v 1` => 12/12 PASS.
+- `get_errors` clean tren 4 file frontend da cap nhat.
+
+---
+
+## Entry 2026-04-18as - Refactor Vnstock direct calls to central adapter (runtime policy unification)
+
+Muc tieu:
+- Loai bo toan bo `from vnstock import Vnstock` va `Vnstock()` truc tiep trong services.py va admin.py.
+- Dua moi luong goi listing va price-board ve adapter trung tam de dong bo timeout/retry/source fallback policy.
+- Them canh bao log chuyen biet khi upstream provider tra payload thieu key `data` (tranh fail cung o duong nong).
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - them _log_upstream_payload_warning, fetch_symbols_by_industries_dataframe, fetch_symbols_by_group_series, fetch_symbols_by_exchange_dataframe)
+- backend/portfolio/services.py (MODIFIED - refactor fetch_market_sectors_and_groups va _fetch_exchange_lookup sang adapter wrappers moi)
+- backend/portfolio/admin.py (MODIFIED - refactor _fetch_live_workspace_data sang fetch_price_board_dataframe, xoa import Vnstock truc tiep)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - them 4 test moi cho listing wrappers va payload warning)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - them test xac nhan admin dung adapter price_board)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression tests cho listing lookup qua adapter)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Ket qua:
+- Khong con `from vnstock import Vnstock` truc tiep ngoai _import_vnstock() trong adapter.
+- Moi luong goi vnstock deu di qua adapter co retry/timeout/source-fallback nhat quan.
+
+---
+
+## Entry 2026-04-18ar - VNStock core compatibility coding (standardized adapter APIs)
+
+Muc tieu:
+- Code voi vnstock core theo huong tan dung cac ham da chuan hoa cho AI Advisory Runtime Config.
+- Ra soat va harden tinh tuong thich bang lop adapter trung tam de tranh phan manh logic theo module.
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - add standardized wrappers for fundamental_snapshot, insider_deals, industry_peers/benchmark/rank + schema coercion helpers)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - regression tests for canonical schemas and source metadata)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - compatibility audit report and migration notes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Bo sung bo ham adapter moi de dung truc tiep API chuan hoa cua vnstock core:
+  - `fetch_fundamental_snapshot_dataframe`
+  - `fetch_insider_deals_dataframe`
+  - `fetch_industry_peers_dataframe`
+  - `fetch_industry_benchmark_dataframe`
+  - `fetch_industry_rank_dataframe`
+- Chuan hoa schema dau ra cho 2 nhom critical:
+  - Fundamental snapshot long-table schema.
+  - Insider deals standardized schema.
+- Gan thong tin `source` va `source_used` de phuc vu audit khi source AUTO failover.
+
+Validation:
+- `get_errors` clean tren cac file code vua sua.
+- Test da chay: `python backend/manage.py test portfolio.tests.test_vnstock_adapter_standardized_methods -v 2`
+  - Ket qua: `OK` (3 tests pass).
+  - Ghi chu: log canh bao RuntimeVnstockConfig trong SimpleTestCase khong lam fail test; da xac nhan bo test pass.
+
+## Entry 2026-04-18aq - VNStock branch lock to core (pre-code dependency gate)
+
+Muc tieu:
+- Chot lai dependency vnstock private theo yeu cau moi: su dung nhanh `core`, khong su dung `vnstock-main`.
+- Xac minh bo ham can thiet cho tinh nang AI Advisory (fundamental/insider/industry) ton tai truoc khi bat dau coding.
+
+Danh sach tep cap nhat:
+- backend/requirements.txt (VERIFIED - dang pin `vnstock ... @core`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Xac nhan dependency branch da o `@core` theo yeu cau.
+- Xac minh class-level APIs tren vnstock core:
+  - `Finance.fundamental_snapshot`
+  - `Company.insider_deals`
+  - `Finance.industry_peers`
+  - `Finance.industry_benchmark`
+  - `Finance.industry_rank`
+
+Validation:
+- Kiem tra version package: `vnstock==1.0.2` trong virtualenv hien tai.
+- Class-level introspection: tat ca 5 ham bat buoc deu ton tai.
+- Ghi chu: live instantiation `Vnstock(...).stock(symbol='VCB', source='AUTO')` co the phu thuoc upstream provider runtime data, da co mot lan fail do payload provider khong co key `data`.
+
+## Entry 2026-04-18ap - AI Advisory runtime pre-code package (canonical contract + code-ready gate)
+
+Muc tieu:
+- Hoan tat toan bo cong viec chuan bi truoc coding cho AI Advisory Runtime Config theo SSOT.
+- Chot canonical contract duy nhat de team co the coding ngay sau khi chu du an xac nhan.
+
+Danh sach tep cap nhat:
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical schema v2, source registry, validation rules, migration map, definition of ready)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - them IMPORTANT note tham chieu canonical contract + checklist compliance)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - them IMPORTANT note + section gate bat buoc truoc coding)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Chot schema canonical co `prompt_config.version`, `lookback_unit`, technical indicators enum va rules validation.
+- Chot chien luoc compatibility cho endpoint legacy va endpoint canonical trong giai doan migration.
+- Chot Definition of Ready voi gate cuoi: cho xac nhan chu du an truoc khi bat dau coding.
+
+Validation:
+- Day la cap nhat tai lieu pre-code, khong thay doi runtime code.
+- `get_errors` khong bat buoc cho moc tai lieu.
+
+## Entry 2026-04-18ao - AI Advisory runtime config SSOT mandate alignment
+
+Muc tieu:
+- Bo sung rang buoc kien truc bat buoc Single Source of Truth cho nang cap AI Advisory Runtime Prompt Config.
+- Dam bao chuc nang tu van AI sau nang cap duoc tai su dung cho tat ca module, khong viet logic rieng le.
+
+Danh sach tep cap nhat:
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (MODIFIED - them section SSOT mandatory architecture constraints, shared core service model, acceptance gates)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (MODIFIED - them SSOT execution workstream: centralized service, shared schema, module migration/de-dup, CI guard)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Chot nguyen tac bat buoc: AI Advisory Runtime Config phai di qua mot pipeline trung tam dung chung toan he thong.
+- Them rang buoc cam duplicate prompt builder theo module.
+- Them tieu chi nghiem thu SSOT va huong migration module cu ve interface chung.
+
+Validation:
+- Day la cap nhat tai lieu governance/spec-plan, khong thay doi runtime code.
+- `get_errors` khong bat buoc cho moc tai lieu.
+
+## Entry 2026-04-18an - Heatmap hybrid stabilization remediation hardening
+
+Muc tieu:
+- Dong bo triet de giua tai lieu heatmap hybrid va implementation thuc te sau dot audit.
+- Sua loi runtime i18n, khoa sorting theo market cap dung spec, va i18n-hoa tooltip labels.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fix undefined i18n reference, enforce market-cap-first sorting, set treemap leafDepth=0, localize tooltip labels)
+- frontend/src/i18n/vi.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` Vietnamese keys)
+- frontend/src/i18n/en.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` English keys)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - mark verification checklist complete + add post-audit remediation notes)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - align walkthrough with final implementation details)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Runtime safety:
+  - Thay `i18n.language` bang `locale` tu `useI18n()` de loai bo nguy co `ReferenceError` trong render path.
+- Sorting consistency:
+  - Treemap leaves va Sunburst sectors/children duoc sort theo `marketCap` giam dan.
+  - Van giu toggle `sizeMetric` de dieu khien kich thuoc tile, nhung thu tu uu tien theo market cap.
+- Spec alignment:
+  - Treemap `leafDepth` dat ve `0` theo technical plan.
+- i18n alignment:
+  - Tooltip labels/chu thich duoc doi sang i18n keys cho ca vi/en.
+
+Validation:
+- `get_errors` clean tren: `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- Frontend regression suite: `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` => 4/4 pass.
+- Ghi chu: khong co test file rieng cho heatmap trong workspace hien tai.
+
+## Entry 2026-04-18am - Support SLA/Ops dashboard for staff queue
+
+Muc tieu:
+- Hoan thien phan van hanh con thieu cho support team bang dashboard SLA/Ops ngay trong `/support`.
+- Cung cap endpoint backend de frontend staff mode theo doi queue, throughput va SLA metrics theo thoi gian thuc.
+
+Danh sach tep cap nhat:
+- backend/support/views.py (MODIFIED - add `StaffSupportDashboardView` for queue/throughput/SLA metrics)
+- backend/support/urls.py (MODIFIED - expose `/api/support/staff/dashboard/`)
+- backend/tests/test_support_api.py (MODIFIED - add access + payload tests for staff dashboard endpoint)
+- frontend/src/api/support.js (MODIFIED - add `getStaffSupportDashboard` API client)
+- frontend/src/components/support/SupportOpsDashboard.jsx (NEW - staff ops metrics cards)
+- frontend/src/pages/Support.jsx (MODIFIED - load/render ops dashboard in staff queue mode)
+- frontend/src/i18n/vi.js (MODIFIED - add `support.ops.*` Vietnamese labels)
+- frontend/src/i18n/en.js (MODIFIED - add `support.ops.*` English labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend:
+  - Them endpoint staff dashboard tra cac metric: active/unassigned/urgent/reopened queue, resolved/closed last 24h, trung binh first response/resolution va SLA breach counters.
+  - Bao ve endpoint bang `IsStaffUser`.
+- Frontend:
+  - Trong staff queue mode, render panel `SupportOpsDashboard` de quan sat SLA/ops ma khong can roi trang `/support`.
+  - Bo sung i18n cho nhan metric dashboard.
+
+Validation:
+- `get_errors` clean tren backend/frontend files lien quan.
+- `python backend/manage.py test tests.test_support_api`: 6/6 pass.
+- `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx`: 4/4 pass.
+
+## Entry 2026-04-18al - Lock /api/auth/me contract for staff flags
+
+Muc tieu:
+- Khoa contract backend cho `/api/auth/me` de dam bao frontend support queue luon nhan duoc co `is_staff`/`is_superuser` on dinh.
+- Tranh regression vo tinh khi refactor auth response schema o cac sprint tiep theo.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add assertions for `is_staff`/`is_superuser` on `/api/auth/me`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Bo sung assertion cho user thuong: `is_staff=False`, `is_superuser=False`.
+- Them test moi cho superuser: `/api/auth/me` phai tra `is_staff=True`, `is_superuser=True`.
+
+Validation:
+- `get_errors` tren file test: khong co loi.
+- `python backend/manage.py test portfolio.tests.test_api_routes_auth_profile`: 7/7 pass.
+
+## Entry 2026-04-18ak - Support Ticket frontend regression tests
+
+Muc tieu:
+- Bo sung regression test cho support portal de giu on dinh luong user/staff tren frontend sau cac dot refactor tiep theo.
+- Bao ve 3 nhom hanh vi chinh: empty state user, tao ticket moi, va staff queue workflow.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Support.test.jsx (NEW - focused frontend regression tests for support page)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them 4 test frontend cho trang support:
+  - Render form tao ticket khi user chua co ticket.
+  - Tao ticket moi tu user portal.
+  - Staff queue co the assign/save workflow.
+  - Staff reply dung staff endpoint trong queue mode.
+
+Validation:
+- `get_errors` tren `frontend/src/pages/Support.test.jsx`: khong co loi.
+- `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx`: 4/4 pass.
+- Ghi chu pham vi: day la focused regression suite, chua cover het attachment flow va backend error matrix o UI.
+
+## Entry 2026-04-18aj - Support Ticket implementation slice 2 (staff web workflow)
+
+Muc tieu:
+- Mo rong support portal de staff xu ly ticket truc tiep tren web, khong can dung admin/API thuan.
+- Dong bo role `is_staff` vao auth state frontend de route support co the hien thi queue van hanh trong cung 1 man hinh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/auth_views.py (MODIFIED - expose `is_staff` and `is_superuser` in `/api/auth/me`)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - persist role flags in `userIdentity`)
+- frontend/src/pages/Support.jsx (MODIFIED - add staff queue mode, filters, staff reply/patch workflow)
+- frontend/src/components/support/SupportTicketList.jsx (MODIFIED - requester-aware queue cards + empty override)
+- frontend/src/components/support/TicketMetaPanel.jsx (MODIFIED - show requester/assignee in staff mode)
+- frontend/src/components/support/SupportQueueFilters.jsx (NEW - staff queue filters)
+- frontend/src/components/support/StaffTicketActions.jsx (NEW - assign/status/priority workflow)
+- frontend/src/i18n/vi.js (MODIFIED - add support staff workflow labels)
+- frontend/src/i18n/en.js (MODIFIED - add support staff workflow labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend/auth:
+  - `/api/auth/me` tra them `is_staff`, `is_superuser` de frontend xac dinh che do van hanh hop le.
+- Frontend:
+  - Support page co 2 mode cho staff: `User portal` va `Staff queue`.
+  - Staff queue ho tro loc theo search/status/priority va bo loc `chi ticket cua toi`.
+  - Staff co the nhan ticket, bo phu trach, doi status, doi priority va reply ngay tren ticket thread.
+  - Meta panel hien them requester/assignee trong che do staff.
+
+Validation:
+- `get_errors` tren backend/frontend files lien quan: khong co loi.
+- Ghi chu pham vi: slice nay mo rong web workflow cho staff; chua lam dashboard SLA rieng/board phan trang nang cao.
+
+## Entry 2026-04-18ai - Support Ticket implementation slice 1 (backend + user portal)
+
+Muc tieu:
+- Implement support ticket feature theo ke hoach o muc su dung duoc ngay cho user, dong thoi mo staff API queue xu ly o backend.
+- Tao regression guard backend cho cac luong create/list/reply/reopen/staff patch.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py (MODIFIED - register app support + add throttle scopes)
+- backend/config/urls.py (MODIFIED - expose /api/support route + api root entry)
+- backend/support/__init__.py (NEW)
+- backend/support/apps.py (NEW)
+- backend/support/admin.py (NEW - admin registrations for support models)
+- backend/support/models.py (NEW - ticket/message/attachment/audit schema + transitions)
+- backend/support/permissions.py (NEW - staff and owner permissions)
+- backend/support/serializers.py (NEW - create/reply/list/staff update serializers)
+- backend/support/services.py (NEW - email queue helpers + deep link builder)
+- backend/support/tasks.py (NEW - Celery email task wrapper)
+- backend/support/views.py (NEW - user/staff API endpoints)
+- backend/support/urls.py (NEW - support routes)
+- backend/support/migrations/__init__.py (NEW)
+- backend/support/migrations/0001_initial.py (NEW - initial schema migration)
+- backend/tests/test_support_api.py (NEW - focused API regression tests)
+- frontend/src/api/support.js (NEW - support API client)
+- frontend/src/pages/Support.jsx (NEW - user support portal)
+- frontend/src/components/support/SupportTicketList.jsx (NEW)
+- frontend/src/components/support/TicketThread.jsx (NEW)
+- frontend/src/components/support/TicketComposer.jsx (NEW)
+- frontend/src/components/support/TicketCreationForm.jsx (NEW)
+- frontend/src/components/support/TicketMetaPanel.jsx (NEW)
+- frontend/src/App.jsx (MODIFIED - add /support route)
+- frontend/src/components/Sidebar.jsx (MODIFIED - add support entry CTA)
+- frontend/src/components/TopNav.jsx (MODIFIED - add support nav link)
+- frontend/src/i18n/vi.js (MODIFIED - add support namespace and menu labels)
+- frontend/src/i18n/en.js (MODIFIED - add support namespace and menu labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend:
+  - Tao module `support` hoan chinh cho user/staff ticket workflow, attachment policy co gioi han, audit log va email task bat dong bo.
+  - Them endpoints user: list/create/detail/reply/reopen; endpoints staff: queue list/patch/reply.
+  - Them throttle rate rieng cho create va reply ticket.
+- Frontend:
+  - Tao trang `/support` voi luong tao ticket moi, xem danh sach ticket, xem thread, reply va reopen.
+  - Bo sung support vao menu TopNav + Sidebar.
+  - Bo sung i18n `support.*` cho tieng Viet co dau va tieng Anh.
+- Testing:
+  - Them 4 test backend cho create/list, chong doc cheo ticket, reopen khi user reply, va staff patch/reply.
+
+Validation:
+- `get_errors` tren backend/frontend files lien quan: khong co loi.
+- `python backend/manage.py check`: pass.
+- `python backend/manage.py test backend.tests.test_support_api`: 4/4 pass.
+- Ghi chu pham vi: frontend hien dang cover user portal; staff dashboard UI chuyen sang slice sau neu can thao tac tren web thay vi admin/API.
+
+## Entry 2026-04-18ah - Add quick links + role-based execution board to Support Ticket plan
+
+Muc tieu:
+- Dat lien ket lam viec nhanh ngay trong ke hoach support ticket de doi code mo dung file trong 1 click.
+- Bo sung bang task theo vai tro (Backend A/B, Frontend, QA, Ops) de trien khai khong can hoi lai.
+
+Danh sach tep cap nhat:
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - add quick links section + ticket-ready execution board)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them Section 0: lien ket backend/frontend/docs entry points dang ton tai trong workspace.
+- Them Section 16: phan ra deliverables theo vai tro va cot moc tich hop M1-M4.
+- Giu nguyen pham vi nghiep vu va technical contract cua ban v2.
+
+Validation:
+- Cac lien ket file duoc gan vao tai lieu de doi code thao tac nhanh.
+- Tai lieu dat muc implementation handoff, khong can lam ro them de bat dau sprint.
+
+## Entry 2026-04-18ag - Support Ticket implementation-ready plan V2
+
+Muc tieu:
+- Nang cap tai lieu ke hoach ticket support thanh ban implementation-ready cho doi lap trinh.
+- Chot ro state machine, permission matrix, API contract, test plan, rollout/rollback va checklist ban giao.
+
+Danh sach tep cap nhat:
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (MODIFIED - rewrite thanh ban Ready for Dev v2)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them kien truc tong the backend/frontend/observability.
+- Chot mo hinh du lieu day du: SupportTicket, TicketMessage, TicketAttachment, TicketAuditLog.
+- Chot state transitions hop le + quy tac nghiep vu reopen/close.
+- Them permission matrix chi tiet user/staff/admin.
+- Chot API contract user + staff (pagination/filter/sort, error code conventions).
+- Bo sung bao mat attachment, rate limit, email async qua Celery.
+- Bo sung metrics SLA, alerting, rollout/rollback va DoD.
+
+Validation:
+- Tai lieu da du chi tiet de doi implementation bat dau code ngay ma khong can lam ro them.
+- Khong thay doi runtime code frontend/backend trong dot nay.
+
+## Entry 2026-04-18af - Heatmap tooltip null-crash + responsive resize recovery hotfix
+
+Muc tieu:
+- Sua loi runtime `TooltipHTMLContent.js: Cannot set properties of null (setting 'innerHTML')` tren ECharts heatmap khi resize man hinh.
+- Dam bao heatmap tu dong co gian dung sau khi thu hep/trang thai cua so thay doi.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`
+  - Bo sung `ResizeObserver` + `window resize` listener de chu dong goi `chart.resize()` khi container thay doi kich thuoc.
+  - Them `safeResizeChart()` de `hideTip` truoc resize, tranh race-condition tooltip khi ECharts dang cap nhat DOM tooltip.
+  - Chuyen `tooltip.appendToBody` tu `true` sang `false` de tranh mat node tooltip khi layout thay doi manh.
+  - Bo sung `alwaysShowContent: false` va trigger resize khi doi mode (`treemap/sunburst`) hoac doi metric size.
+  - Gan `ref` vao chart component va chart container de thao tac resize on dinh.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Validation:
+- `get_errors` tren `frontend/src/components/PortfolioHeatmap.jsx`: khong co loi.
+- Manual behavior expected:
+  - Khong con crash tooltip khi co/doi kich thuoc cua so.
+  - Heatmap tu dong reflow ve dung layout ban dau sau resize.
+
+## Entry 2026-04-18ae - Relax dev/deploy review gate and align required governance check
+
+Muc tieu:
+- Bo yeu cau approval/review tren ruleset `dev` va `deploy` theo yeu cau van hanh.
+- Dam bao check bat buoc `Governance Release Gate / governance-postgres-regression` thuc su chay cho PR vao `dev`.
+
+Danh sach tep cap nhat:
+- .github/workflows/governance-release-gate.yml (MODIFIED - bo sung trigger `dev` cho `push` va `pull_request`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Ruleset API da cap nhat `required_approving_review_count=0` cho `OpenCore Protection - dev` va `OpenCore Protection - deploy`.
+- Workflow governance gate duoc bo sung trigger `dev` de context check bat buoc co mat tren PR vao `dev`.
+
+Validation:
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232122` => `required_approving_review_count: 0`.
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232124` => `required_approving_review_count: 0`.
+- PR #1 truoc do bi block boi missing governance check context; sau patch workflow se tao check context day du tren PR vao `dev`.
+
+## Entry 2026-04-18ad - Add README_DRAFT in separate housekeeping commit
+
+Muc tieu:
+- Dua `README_DRAFT.md` vao version control theo xac nhan option 2 cua user.
+- Tach thanh commit rieng de de audit va rollback neu can.
+
+Danh sach tep cap nhat:
+- README_DRAFT.md (NEW - ban nhap README tong hop tam thoi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Add `README_DRAFT.md` vao repository o commit rieng.
+- Khong thay doi runtime code/backend/frontend.
+
+Validation:
+- `git status` xac nhan thay doi scope housekeeping + audit docs.
+
+## Entry 2026-04-18ac - Data pipeline/Pandas/SQL optimization implementation (DP-01 execute)
+
+Muc tieu:
+- Thuc thi optimization theo ke hoach DP-01 voi uu tien SQL projection/filtering va Pandas vectorized.
+- Giam Python-loop overhead tren hot path va giu nguyen business output.
+- Bo sung backward compatibility cho whale aggregate payload de dam bao test/client legacy.
+
+Danh sach tep cap nhat:
+- backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hot path, toi uu loop/vectorized)
+- backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve symbol scope, them alert alias fields de backward compatibility)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - chuan hoa symbol helper, bo iterrows tren cache path)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (MODIFIED - cap nhat execution summary + validation evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Analytics:
+  - `_wavg_cost_for_symbol`: `itertuples()` thay cho `iterrows()` va bo sort lai khong can thiet.
+  - `compute_nav_series`: bo `apply(axis=1)`, thay bang map sign vectorized.
+- Market data service:
+  - `_resolve_whale_feed_symbols`: gom helper normalize, resolve watchlist/tracked bang SQL projection (`values_list`), bo prefetch relation khong can.
+  - `_build_aggregate_event_payload*`: them `alert_at`, `alert_first_seen_at`, `alert_age_seconds`.
+- Tasks prefetch:
+  - Them `_normalized_symbol_set` dung chung.
+  - `_cache_ticker_rows_from_dataframe`: bo `iterrows`, dung dict-record iteration.
+  - `_distinct_symbols`: tai su dung helper normalize.
+
+Validation:
+- Django system check: pass.
+- Focused regression tests: pass tren cac luong whale aggregate scope/watchlist/dedup, analytics risk metrics, prefetch normalization + realtime universe shard.
+- Ghi chu: 1 test whale aggregate co tinh khong on dinh khi chay batch do stream state, chay rieng pass sau fix compatibility fields.
+
+## Entry 2026-04-18ab - Data pipeline/Pandas/SQL optimization plan (DP-01)
+
+Muc tieu:
+- Lap ke hoach day du toi uu data pipeline theo chien luoc SQL projection + Pandas vectorized.
+- Chot pham vi hotspot va KPI before/after de duyet truoc khi code implementation.
+
+Danh sach tep cap nhat:
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (NEW - ke hoach chi tiet DP-01, phases A-D, KPI, risk, rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Xac dinh 4 hotspot uu tien: market_data_service, analytics, tasks_prefetch, admin insights.
+- Chia ke hoach 4 phase: baseline -> SQL optimization -> Pandas vectorization -> validation.
+- Dinh nghia KPI duyet: p95, query count, CPU time va acceptance criteria.
+- Bo sung bang baseline/after de dien trong qua trinh thuc thi.
+- Chot quy tac: khong doi API contract, uu tien tinh dung output business.
+
+## Entry 2026-04-18aa - Add one-command sync script for vninvest-core snapshot
+
+Muc tieu:
+- Tao script 1-lenh de dong bo snapshot sang repo private `vninvest-core`.
+- Chuan hoa quy trinh de nhung lan sau chi can chay script thay vi lam thu cong nhieu buoc.
+- Include file backlog theo yeu cau user cho dot commit hien tai.
+
+Danh sach tep cap nhat:
+- scripts/ops/sync_vninvest_core.ps1 (NEW - one-command sync script, snapshot + commit + push)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- README.md (MODIFIED - ghi quy trinh co dinh sync vninvest-core de su dung ve sau)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Script su dung snapshot seed repo de tranh loi push full-history.
+- Co tham so cau hinh: source path, seed path, target repo URL, target branch.
+- Co co che `-SkipPush` de test local an toan truoc khi day remote.
+- Script tu dong:
+  * Don seed working tree (giu `.git`)
+  * Copy snapshot tu source repo bang robocopy
+  * Commit neu co thay doi
+  * Push len `origin/main` neu khong bat `-SkipPush`
+
+## Entry 2026-04-18z - Create sprint kickoff package + team onboarding guide
+
+Muc tieu:
+- Tao integration doc cuoi cung cong hien tat ca 6 documents sprint planning (OC-22 through OC-27).
+- Cung cap clear reading roadmap, checklists, deadlines cho moi role (PO, Tech, Backend, Frontend, QA).
+- Chuan bi team 100% cho Monday kickoff.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone onboarding doc)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Tao OC-28 comprehensive kickoff guide (1200+ lines):
+  * Executive overview (5 min read)
+  * Role-specific reading paths (35-65 min per role)
+  * Week-by-week decision snapshot
+  * Pre-kickoff checklist for all 5 roles (Sun EOD deadline)
+  * Monday standup agenda + template
+  * Daily standup template (15 min each)
+  * Success metrics dashboard (per week)
+  * Quick reference decision cards
+  * FAQ + troubleshooting
+  * Full document linkage map
+  * Final pre-kickoff tech checklist
+- Status: READY FOR TEAM DISTRIBUTION (Fri 2026-04-19)
+- Target: All team members complete reading + prep by Sun 2026-04-21 EOD
+- Monday 09:00: Team kickoff standup starts sprint
+
+## Entry 2026-04-18y - Create sprint week 4 planning for legal bundle finalization
+
+Muc tieu:
+- Tao chi tiet sprint week 4 roadmap + Decision 5 finalization (legal bundle).
+- Chuan bi cho steering committee review (Mon 2026-05-19).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-27 chi tiet Decision 5 (legal bundle: Apache 2.0 + ToS + Privacy + Disclaimer).
+- 4 phase timeline: drafting (Mon-Tue) + legal review (Wed) + deployment (Thu) + final merge (Fri).
+- License selection: Apache 2.0 (recommended for commercial + self-host use).
+- Terms/Privacy/Disclaimer doc scopes + estimated lengths.
+- Post-sprint: steering committee review Mon 2026-05-19, GO/NO-GO decision for public launch.
+- Success criteria: All 5 decisions locked, OC-13 gates updated (4 YELLOW, 1 GREEN), sprint 100% complete.
+- Resource: 1 PO (15%), 1 Tech Lead (10%) = minimal (legal is bottleneck).
+- Status: READY FOR PLANNING (Mon 2026-05-13).
+
+## Entry 2026-04-18x - Create sprint week 3 planning for community package + self-host licensing
+
+Muc tieu:
+- Tao chi tiet sprint week 3 roadmap (2 decisions: community package boundary + self-host pro model).
+- Chuan bi truoc khi Week 2 ket thuc (Friday 2026-05-03).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-26 chi tiet 2 parallel decisions:
+  * Decision 3: Community V1 package (endpoint allowlist + feature gates)
+  * Decision 4: Self-host Pro model (entitlement licensing + CLI)
+- Phase breakdown (7 phases total across 2 decisions): analysis/design + implementation + frontend + tests/docs + merge.
+- Task assignments: 30+ tasks across backend/frontend/QA.
+- Success criteria: 5+ endpoints gated, licensing module complete, >90% tests, OC-13 gates YELLOW.
+- Resource: 1 PO (25%), 1 Tech Lead (100%), 1 Backend (60%), 1 Frontend (25%), 1 QA (15%) = 6.5 person-days.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-05-06).
+
+## Entry 2026-04-18w - Create sprint week 2 planning for package mapping decision
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
+## Entry 2026-04-18v - Create sprint week 2 backlog for Decision 2 (package mapping)
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
+## Entry 2026-04-18u - Create sprint week 1 backlog for Decision 1 (quota unit canonical)
+
+Muc tieu:
+- Tao chi tiet sprint week 1 roadmap va tasks de chot Decision 1.
+- Lam san sang de kick off standup Mon 2026-04-22.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-23 chi tiet 4 phase: Analysis (Mon), Docs Update (Tue), Tests (Wed), Integration (Thu-Fri).
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (docs) + 3.1-3.2 (tests) + 4.1-4.3 (PR/merge).
+- Resource: 1 PO (40%), 1 Tech Lead (100%), 1 Backend (50%), 1 QA (30%) = 3.5 person-days.
+- Success criteria: Decision approved, OC-05/06/11 coherent, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR SPRINT KICKOFF.
+
 ## Entry 2026-04-18t - Create OpenCore hardening sprint plan (21-day roadmap)
 
 Muc tieu:

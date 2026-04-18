@@ -3,6 +3,7 @@ import logging
 import os
 import threading
 import time
+from typing import Any
 
 import pandas as pd
 
@@ -18,6 +19,33 @@ from .cache_adapter import is_rate_limited_error
 
 
 logger = logging.getLogger(__name__)
+
+
+_FUNDAMENTAL_SNAPSHOT_SCHEMA = [
+    'symbol',
+    'period',
+    'report_date',
+    'metric',
+    'value',
+    'unit',
+    'source',
+    'source_used',
+]
+
+_INSIDER_DEALS_SCHEMA = [
+    'symbol',
+    'announce_date',
+    'deal_date',
+    'actor_name',
+    'actor_type',
+    'action',
+    'quantity',
+    'price',
+    'ratio',
+    'note',
+    'source',
+    'source_used',
+]
 
 
 _PRICE_BOARD_FIELDS_BY_SECTION = {
@@ -285,11 +313,27 @@ def _import_vnstock():
         raise ExternalSystemException('vnstock chưa được cài đặt.', code='vnstock_missing') from exc
 
 
+def _is_missing_data_key_error(exc: Exception) -> bool:
+    return isinstance(exc, KeyError) and str(exc).strip("'") == 'data'
+
+
+def _log_upstream_payload_warning(*, source: str, symbol: str, operation: str, exc: Exception) -> None:
+    if _is_missing_data_key_error(exc):
+        logger.warning(
+            "vnstock upstream payload missing key 'data' op=%s source=%s symbol=%s",
+            operation,
+            source,
+            symbol,
+        )
+
+
 def _build_stock_client(symbol: str, source: str = 'VCI'):
     vnstock_cls = _import_vnstock()
     try:
         return vnstock_cls().stock(symbol=symbol, source=source)
     except (Exception, SystemExit) as exc:
+        if isinstance(exc, Exception):
+            _log_upstream_payload_warning(source=source, symbol=symbol, operation='stock_client_init', exc=exc)
         code = 'vnstock_rate_limited' if is_rate_limited_error(exc) else 'vnstock_error'
         raise ExternalSystemException(str(exc), code=code) from exc
 
@@ -730,6 +774,355 @@ def fetch_financial_ratio_dataframe(
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
+def _to_dataframe(result: Any) -> pd.DataFrame:
+    if isinstance(result, pd.DataFrame):
+        return result.copy()
+    if result is None:
+        return pd.DataFrame()
+    try:
+        return pd.DataFrame(result)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _empty_schema_df(columns: list[str]) -> pd.DataFrame:
+    return pd.DataFrame(columns=columns)
+
+
+def _series_from_col(frame: pd.DataFrame, column: str, default_value: Any = '') -> pd.Series:
+    if column in frame.columns:
+        return frame[column]
+    return pd.Series([default_value] * len(frame), index=frame.index)
+
+
+def _normalize_period(period: str | None) -> str:
+    normalized = str(period or 'quarter').strip().lower()
+    if normalized == 'annual':
+        return 'year'
+    if normalized not in {'quarter', 'year'}:
+        return 'quarter'
+    return normalized
+
+
+def _coerce_fundamental_snapshot_df(
+    result: Any,
+    *,
+    symbol: str,
+    period: str,
+    source_used: str,
+) -> pd.DataFrame:
+    frame = _to_dataframe(result)
+    if frame.empty:
+        return _empty_schema_df(_FUNDAMENTAL_SNAPSHOT_SCHEMA)
+
+    rename_map = {
+        'indicator': 'metric',
+        'ratio': 'metric',
+        'ratio_name': 'metric',
+        'name': 'metric',
+        'item': 'metric',
+        'date': 'report_date',
+        'period_name': 'period',
+        'report_period': 'period',
+    }
+    frame = frame.rename(columns=rename_map)
+
+    normalized_period = _normalize_period(period)
+    frame['symbol'] = _series_from_col(frame, 'symbol', symbol).fillna(symbol).astype(str).str.upper()
+    frame['period'] = _series_from_col(frame, 'period', normalized_period).fillna(normalized_period).astype(str).str.lower()
+    frame['report_date'] = _series_from_col(frame, 'report_date', '').fillna('').astype(str)
+    frame['metric'] = _series_from_col(frame, 'metric', '').fillna('').astype(str)
+    frame['value'] = pd.to_numeric(_series_from_col(frame, 'value', None), errors='coerce')
+    frame['unit'] = _series_from_col(frame, 'unit', '').fillna('').astype(str)
+    frame['source'] = _series_from_col(frame, 'source', 'vnstock').fillna('vnstock').astype(str)
+    frame['source_used'] = _series_from_col(frame, 'source_used', source_used).fillna(source_used).astype(str)
+
+    return frame[_FUNDAMENTAL_SNAPSHOT_SCHEMA]
+
+
+def _coerce_insider_deals_df(
+    result: Any,
+    *,
+    symbol: str,
+    source_used: str,
+) -> pd.DataFrame:
+    frame = _to_dataframe(result)
+    if frame.empty:
+        return _empty_schema_df(_INSIDER_DEALS_SCHEMA)
+
+    rename_map = {
+        'announcement_date': 'announce_date',
+        'announced_date': 'announce_date',
+        'trading_date': 'deal_date',
+        'insider_name': 'actor_name',
+        'name': 'actor_name',
+        'side': 'action',
+        'qty': 'quantity',
+        'deal_price': 'price',
+        'ownership_ratio': 'ratio',
+        'remark': 'note',
+    }
+    frame = frame.rename(columns=rename_map)
+
+    frame['symbol'] = _series_from_col(frame, 'symbol', symbol).fillna(symbol).astype(str).str.upper()
+    frame['announce_date'] = _series_from_col(frame, 'announce_date', '').fillna('').astype(str)
+    frame['deal_date'] = _series_from_col(frame, 'deal_date', '').fillna('').astype(str)
+    frame['actor_name'] = _series_from_col(frame, 'actor_name', '').fillna('').astype(str)
+    frame['actor_type'] = _series_from_col(frame, 'actor_type', '').fillna('').astype(str)
+    frame['action'] = _series_from_col(frame, 'action', '').fillna('').astype(str).str.upper()
+    frame['quantity'] = pd.to_numeric(_series_from_col(frame, 'quantity', None), errors='coerce')
+    frame['price'] = pd.to_numeric(_series_from_col(frame, 'price', None), errors='coerce')
+    frame['ratio'] = pd.to_numeric(_series_from_col(frame, 'ratio', None), errors='coerce')
+    frame['note'] = _series_from_col(frame, 'note', '').fillna('').astype(str)
+    frame['source'] = _series_from_col(frame, 'source', 'vnstock').fillna('vnstock').astype(str)
+    frame['source_used'] = _series_from_col(frame, 'source_used', source_used).fillna(source_used).astype(str)
+
+    return frame[_INSIDER_DEALS_SCHEMA]
+
+
+def _attach_common_source_columns(result: Any, source_used: str) -> pd.DataFrame:
+    frame = _to_dataframe(result)
+    if frame.empty:
+        frame = pd.DataFrame()
+    frame['source'] = _series_from_col(frame, 'source', 'vnstock').fillna('vnstock').astype(str)
+    frame['source_used'] = _series_from_col(frame, 'source_used', source_used).fillna(source_used).astype(str)
+    return frame
+
+
+def fetch_fundamental_snapshot_dataframe(
+    symbol: str,
+    *,
+    metrics: list[str] | None = None,
+    period: str = 'quarter',
+    source: str | None = None,
+) -> pd.DataFrame:
+    """Fetch standardized fundamental snapshot from vnstock core finance API.
+
+    Always returns a DataFrame with canonical long-table schema.
+    """
+    timeout_seconds = _resolve_timeout('financial_ratio', 10)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    normalized_symbol = str(symbol or '').strip().upper()
+    normalized_period = _normalize_period(period)
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.finance.fundamental_snapshot(
+                    symbol=normalized_symbol,
+                    metrics=metrics,
+                    period=normalized_period,
+                ),
+                timeout=timeout_seconds,
+            )
+            return _coerce_fundamental_snapshot_df(
+                result,
+                symbol=normalized_symbol,
+                period=normalized_period,
+                source_used=candidate_source,
+            )
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('fundamental_snapshot source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            # Backward-compat fallback for older vnstock variants.
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('fundamental_snapshot not available on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        logger.warning('fundamental_snapshot fallback to empty schema for %s due to: %s', normalized_symbol, last_error)
+    return _empty_schema_df(_FUNDAMENTAL_SNAPSHOT_SCHEMA)
+
+
+def fetch_insider_deals_dataframe(
+    symbol: str,
+    *,
+    page: int = 1,
+    page_size: int | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    actor_type: str | None = None,
+    standardize: bool = True,
+    source: str | None = None,
+) -> pd.DataFrame:
+    """Fetch insider deals with standardized schema when standardize=True."""
+    timeout_seconds = _resolve_timeout('listing', 12)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    normalized_symbol = str(symbol or '').strip().upper()
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.company.insider_deals(
+                    page=page,
+                    page_size=page_size,
+                    start_date=start_date,
+                    end_date=end_date,
+                    actor_type=actor_type,
+                    standardize=standardize,
+                ),
+                timeout=timeout_seconds,
+            )
+            if standardize:
+                return _coerce_insider_deals_df(result, symbol=normalized_symbol, source_used=candidate_source)
+            return _attach_common_source_columns(result, source_used=candidate_source)
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('insider_deals source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('insider_deals not available on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        logger.warning('insider_deals fallback to empty schema for %s due to: %s', normalized_symbol, last_error)
+    return _empty_schema_df(_INSIDER_DEALS_SCHEMA) if standardize else pd.DataFrame()
+
+
+def fetch_industry_peers_dataframe(
+    symbol: str,
+    *,
+    level: int = 4,
+    include_exchanges: list[str] | None = None,
+    max_peers: int = 100,
+    source: str | None = None,
+) -> pd.DataFrame:
+    timeout_seconds = _resolve_timeout('financial_ratio', 10)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    normalized_symbol = str(symbol or '').strip().upper()
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.finance.industry_peers(
+                    symbol=normalized_symbol,
+                    level=level,
+                    include_exchanges=include_exchanges,
+                    max_peers=max_peers,
+                ),
+                timeout=timeout_seconds,
+            )
+            frame = _attach_common_source_columns(result, source_used=candidate_source)
+            if 'symbol' not in frame.columns:
+                frame['symbol'] = normalized_symbol
+            return frame
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('industry_peers source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('industry_peers not available on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        logger.warning('industry_peers fallback to empty DataFrame for %s due to: %s', normalized_symbol, last_error)
+    return pd.DataFrame()
+
+
+def fetch_industry_benchmark_dataframe(
+    symbol: str,
+    *,
+    metrics: list[str] | None = None,
+    period: str = 'quarter',
+    method: str = 'median',
+    source: str | None = None,
+) -> pd.DataFrame:
+    timeout_seconds = _resolve_timeout('financial_ratio', 10)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    normalized_symbol = str(symbol or '').strip().upper()
+    normalized_period = _normalize_period(period)
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.finance.industry_benchmark(
+                    symbol=normalized_symbol,
+                    metrics=metrics,
+                    period=normalized_period,
+                    method=method,
+                ),
+                timeout=timeout_seconds,
+            )
+            frame = _attach_common_source_columns(result, source_used=candidate_source)
+            if 'symbol' not in frame.columns:
+                frame['symbol'] = normalized_symbol
+            if 'period' not in frame.columns:
+                frame['period'] = normalized_period
+            return frame
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('industry_benchmark source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('industry_benchmark not available on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        logger.warning('industry_benchmark fallback to empty DataFrame for %s due to: %s', normalized_symbol, last_error)
+    return pd.DataFrame()
+
+
+def fetch_industry_rank_dataframe(
+    symbol: str,
+    *,
+    metric: str = 'roe',
+    period: str = 'quarter',
+    method: str = 'percentile',
+    source: str | None = None,
+) -> pd.DataFrame:
+    timeout_seconds = _resolve_timeout('financial_ratio', 10)
+    sources = _resolve_financial_ratio_sources(explicit_source=source)
+    normalized_symbol = str(symbol or '').strip().upper()
+    normalized_period = _normalize_period(period)
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.finance.industry_rank(
+                    symbol=normalized_symbol,
+                    metric=metric,
+                    period=normalized_period,
+                    method=method,
+                ),
+                timeout=timeout_seconds,
+            )
+            frame = _attach_common_source_columns(result, source_used=candidate_source)
+            if 'symbol' not in frame.columns:
+                frame['symbol'] = normalized_symbol
+            if 'period' not in frame.columns:
+                frame['period'] = normalized_period
+            if 'metric' not in frame.columns:
+                frame['metric'] = metric
+            return frame
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('industry_rank source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('industry_rank not available on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        logger.warning('industry_rank fallback to empty DataFrame for %s due to: %s', normalized_symbol, last_error)
+    return pd.DataFrame()
+
+
 def fetch_history_dataframe(
     symbol: str,
     *,
@@ -784,6 +1177,102 @@ def fetch_listing_symbols_dataframe(symbol: str, source: str | None = None):
     if last_error is not None:
         raise last_error
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
+
+
+def fetch_symbols_by_industries_dataframe(anchor_symbol: str = 'ACB', source: str | None = None):
+    timeout_seconds = _resolve_timeout('listing', 12)
+    sources = _resolve_listing_sources(explicit_source=source)
+    normalized_symbol = str(anchor_symbol or 'ACB').strip().upper() or 'ACB'
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.listing.symbols_by_industries(),
+                timeout=timeout_seconds,
+            )
+            frame = _to_dataframe(result)
+            if not frame.empty:
+                return frame
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('symbols_by_industries source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('symbols_by_industries missing capability on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    return pd.DataFrame()
+
+
+def fetch_symbols_by_group_series(group_code: str, anchor_symbol: str = 'ACB', source: str | None = None) -> pd.Series:
+    timeout_seconds = _resolve_timeout('listing', 12)
+    sources = _resolve_listing_sources(explicit_source=source)
+    normalized_symbol = str(anchor_symbol or 'ACB').strip().upper() or 'ACB'
+    normalized_group_code = str(group_code or '').strip().upper()
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.listing.symbols_by_group(normalized_group_code),
+                timeout=timeout_seconds,
+            )
+            if isinstance(result, pd.Series):
+                return result.copy()
+            frame = _to_dataframe(result)
+            if 'symbol' in frame.columns:
+                return frame['symbol'].astype(str)
+            if not frame.empty:
+                first_col = frame.columns[0]
+                return frame[first_col].astype(str)
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('symbols_by_group source %s failed for %s/%s: %s', candidate_source, normalized_symbol, normalized_group_code, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('symbols_by_group missing capability on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    return pd.Series(dtype='object')
+
+
+def fetch_symbols_by_exchange_dataframe(anchor_symbol: str = 'ACB', source: str | None = None):
+    timeout_seconds = _resolve_timeout('listing', 12)
+    sources = _resolve_listing_sources(explicit_source=source)
+    normalized_symbol = str(anchor_symbol or 'ACB').strip().upper() or 'ACB'
+    last_error = None
+
+    for candidate_source in sources:
+        try:
+            stock_client = _build_stock_client(symbol=normalized_symbol, source=candidate_source)
+            result = _run_with_timeout(
+                lambda: stock_client.listing.symbols_by_exchange(),
+                timeout=timeout_seconds,
+            )
+            frame = _to_dataframe(result)
+            if not frame.empty:
+                return frame
+        except ExternalSystemException as exc:
+            last_error = exc
+            logger.warning('symbols_by_exchange source %s failed for %s: %s', candidate_source, normalized_symbol, exc)
+            continue
+        except AttributeError as exc:
+            last_error = ExternalSystemException(str(exc), code='vnstock_error')
+            logger.warning('symbols_by_exchange missing capability on source %s for %s', candidate_source, normalized_symbol)
+            continue
+
+    if last_error is not None:
+        raise last_error
+    return pd.DataFrame()
 
 
 def read_stream_intraday_ticks(symbol: str, count: int):

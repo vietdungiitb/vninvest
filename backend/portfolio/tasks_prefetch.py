@@ -166,6 +166,14 @@ def _build_symbol_count_map(queryset, symbol_field: str, count_field: str) -> di
     return payload
 
 
+def _normalized_symbol_set(queryset) -> set[str]:
+    return {
+        str(symbol).strip().upper()
+        for symbol in queryset
+        if symbol and str(symbol).strip()
+    }
+
+
 def _compute_heat_score(
     *,
     watchlist_users: int,
@@ -211,11 +219,9 @@ def _collect_realtime_symbol_universe(topology: dict, runtime_settings: dict) ->
     include_group_symbols = bool(runtime_settings.get('include_group_symbols', False))
     system_symbols = set()
     if include_group_symbols:
-        system_symbols = {
-            str(symbol).strip().upper()
-            for symbol in SecuritiesItem.objects.values_list('symbol', flat=True).distinct()
-            if symbol and str(symbol).strip()
-        }
+        system_symbols = _normalized_symbol_set(
+            SecuritiesItem.objects.values_list('symbol', flat=True).distinct()
+        )
 
     all_symbols = set(tracked_users) | set(watchlist_users) | set(alert_users) | set(holding_users) | set(system_symbols)
 
@@ -528,7 +534,7 @@ def _cache_ticker_rows_from_dataframe(
     market_code: str = 'VN_STOCK',
 ) -> int:
     cached_count = 0
-    for _, row in df.iterrows():
+    for row in df.to_dict(orient='records'):
         try:
             sym = _extract_row_symbol(row)
             if not sym:
@@ -1037,11 +1043,7 @@ def _cleanup_session_close_retention(runtime_settings: dict | None = None, polic
 
 
 def _distinct_symbols(queryset) -> list[str]:
-    return sorted({
-        str(symbol).strip().upper()
-        for symbol in queryset
-        if symbol and str(symbol).strip()
-    })
+    return sorted(_normalized_symbol_set(queryset))
 
 
 def _collect_prefetch_symbols(runtime_settings: dict | None = None) -> tuple[list[str], dict]:

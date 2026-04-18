@@ -147,6 +147,12 @@ cd frontend
 npm run build   # → build/ ready, 0 errors
 ```
 
+## Quy Dinh Bat Buoc: Delivery Playbook (Khong Ngoai Le)
+
+- Tu ngay 2026-04-18, toan bo phat trien vninvest bat buoc tuan thu quy trinh trong `docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md`.
+- Pham vi ap dung: feature, bugfix, hotfix, refactor, va moi thay doi co anh huong den runtime/governance.
+- Bat ky thay doi nao khong dap ung day du Plan-First, Test Pyramid, Audit Ledger va Release Gate deu khong du dieu kien merge.
+
 ## Quy Dinh Bat Buoc: Anti-Fat-File
 
 Quy dinh nay la bat buoc cho toan bo backend/frontend de tranh tai dien monolith va refactor lon ve sau.
@@ -171,6 +177,29 @@ CI dang enforce quy dinh nay tai workflow `large-file-guard`.
 - Neu thieu file list, cong viec duoc xem la chua dong vong ban giao.
 
 Tai lieu audit tap trung hien tai: `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
+
+## Quy Trinh Co Dinh: Sync `vninvest-core` (khong can hoi lai)
+
+Mac dinh tu nay:
+1. Phat trien feature o repo chinh `vninvest` (branch `dev`/feature branch).
+2. Khi can test truc quan truoc public, dong bo sang repo private `vninvest-core` bang script.
+3. Khong mirror tu dong moi commit sang `vninvest-core`; dong bo theo dot review/test.
+
+Lenh chuan (1 lenh):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ops\sync_vninvest_core.ps1
+```
+
+Lenh dry-run (khong push):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ops\sync_vninvest_core.ps1 -SkipPush
+```
+
+Ghi chu:
+- Script tao snapshot o `C:\Mujoco Projects\vninvest-core-seed`, commit neu co thay doi, roi push len `https://github.com/vietdungiitb/vninvest-core.git` (branch `main`).
+- Neu can tuy bien (path, repo URL, branch, commit message), xem tham so trong `scripts/ops/sync_vninvest_core.ps1`.
 
 ---
 

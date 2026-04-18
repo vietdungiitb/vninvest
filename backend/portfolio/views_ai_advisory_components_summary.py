@@ -579,6 +579,8 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     synthesis_preference = str(request.data.get('synthesis_preference') or 'balanced').strip().lower()
     if synthesis_preference not in {'short_term_action', 'risk_management', 'balanced'}:
         synthesis_preference = 'balanced'
+    raw_prompt_config = request.data.get('prompt_config')
+    prompt_config = raw_prompt_config if isinstance(raw_prompt_config, dict) else None
 
     qs = legacy_views.AIAdvisoryComponentRecord.objects.filter(
         user=request.user,
@@ -614,6 +616,7 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
         summary_payload=summary_payload,
         synthesis_preference=synthesis_preference,
         news_context=news_context_str,  # NEW (Sprint 35): Include news context
+        prompt_config=prompt_config,    # NEW: canonical runtime config from client
     )
     if ai_synthesis_text:
         summary_payload['synthesis_text'] = ai_synthesis_text
@@ -626,7 +629,12 @@ def stock_ai_advisory_summary_regenerate_api(request, symbol: str):
     )
     legacy_views._cache_set(lock_key, timezone.now().isoformat(), timeout=cooldown)
 
-    return _tracked_response({'ok': True, 'executive_summary': legacy_views.AIAdvisoryExecutiveSummarySerializer(summary).data}, status.HTTP_201_CREATED)
+    response_data = {
+        'ok': True,
+        'executive_summary': legacy_views.AIAdvisoryExecutiveSummarySerializer(summary).data,
+        'prompt_config_version': (raw_prompt_config or {}).get('version', 2) if isinstance(raw_prompt_config, dict) else 2,
+    }
+    return _tracked_response(response_data, status.HTTP_201_CREATED)
 
 
 @api_view(['DELETE'])

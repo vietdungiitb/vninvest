@@ -1,5 +1,33 @@
 # VNInvest Roadmap Status (2026-04-03)
 
+---
+
+## 🎯 CURRENT SPRINT (2026-04-18)
+
+### Sprint 35+ - AI Advisory Runtime Configuration
+**Focus**: Dynamic AI Advisory synthesis with canonical prompt_config support  
+**Status**: ✅ PHASE 1 COMPLETE (Backend integration done, frontend pending)
+
+**Phase 1 (COMPLETE - 2026-04-18):**
+- ✅ Canonical `prompt_config` v2 schema (SSOT: `CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md`)
+- ✅ `_parse_prompt_config()` with validation & defaults
+- ✅ 3 new context builders: fundamental, ownership, sector
+- ✅ Dynamic source routing in `_sprint17_generate_executive_synthesis_with_ai()`
+- ✅ `_build_technical_context_for_prompt()` per-indicator filtering
+- ✅ View endpoint accepts `prompt_config` from client
+- ✅ 9/9 regression tests passing
+- ✅ Deployed to dev (commit `3ae46f28`)
+
+**Phase 2 (PENDING - Frontend):**
+- [ ] Settings drawer UI (toggle sources, select technical indicators)
+- [ ] localStorage persistence of user `prompt_config`
+- [ ] Send `prompt_config` with synthesis regenerate request
+- [ ] Display enabled sources + indicators in UI summary
+
+**Next**: Frontend integration (estimated 1-2 days)
+
+---
+
 ## Terminology Normalization
 
 - Canonical naming: `User Management Core` belongs to `Sprint 12`.

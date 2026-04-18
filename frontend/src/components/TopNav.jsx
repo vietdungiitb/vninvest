@@ -47,6 +47,7 @@ export default function TopNav() {
   ];
 
   const systemItems = [
+    { to: '/support', label: t('layout.nav.support') },
     { to: '/screener', label: t('layout.nav.screener') },
     { to: '/settings', label: t('layout.nav.settings') },
     { to: '/admin-ops', label: t('layout.nav.adminOps') },

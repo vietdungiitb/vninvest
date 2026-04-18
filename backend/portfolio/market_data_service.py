@@ -3169,6 +3169,13 @@ class MarketDataService:
         explicit_symbols = query_params.get('symbols', '')
         watchlist_group_ids_raw = query_params.get('watchlist_group_ids', '')
 
+        def _normalize_symbols(raw_symbols) -> list[str]:
+            return sorted({
+                str(symbol).strip().upper()
+                for symbol in raw_symbols
+                if str(symbol).strip()
+            })
+
         def _parse_watchlist_group_ids(raw_value: str) -> list[int]:
             parsed_ids = []
             for chunk in str(raw_value or '').split(','):
@@ -3181,37 +3188,42 @@ class MarketDataService:
                     continue
             return sorted(set(parsed_ids))
 
+        def _resolve_watchlist_symbols(group_ids: list[int]) -> list[str]:
+            if not group_ids:
+                return []
+            watchlist_symbols = WatchlistItem.objects.filter(
+                group__user=user,
+                group_id__in=group_ids,
+            ).values_list('symbol', flat=True)
+            return _normalize_symbols(watchlist_symbols)
+
+        def _resolve_tracked_symbols() -> list[str]:
+            tracked_symbols = TrackedSymbol.objects.filter(user=user).values_list('symbol', flat=True)
+            return _normalize_symbols(tracked_symbols)
+
         if scope_raw in ('custom', 'symbols'):
-            symbols = sorted({str(symbol).strip().upper() for symbol in explicit_symbols.split(',') if str(symbol).strip()})
+            symbols = _normalize_symbols(explicit_symbols.split(','))
             return symbols, 'custom', [], 'query_scope'
 
         if scope_raw == 'watchlist':
             group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-            groups = WatchlistGroup.objects.filter(user=user, id__in=group_ids).prefetch_related('items')
-            symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+            symbols = _resolve_watchlist_symbols(group_ids)
             return symbols, 'watchlist', group_ids, 'query_scope'
 
         if scope_raw == 'tracked':
-            tracked_symbols = list(
-                TrackedSymbol.objects.filter(user=user).order_by('-added_at').values_list('symbol', flat=True)
-            )
-            symbols = sorted({str(symbol).strip().upper() for symbol in tracked_symbols if str(symbol).strip()})
+            symbols = _resolve_tracked_symbols()
             return symbols, 'tracked', [], 'query_scope'
 
         if explicit_symbols:
-            symbols = sorted({str(symbol).strip().upper() for symbol in explicit_symbols.split(',') if str(symbol).strip()})
+            symbols = _normalize_symbols(explicit_symbols.split(','))
             return symbols, 'custom', [], 'symbols_param'
 
         if watchlist_group_ids_raw:
             group_ids = _parse_watchlist_group_ids(watchlist_group_ids_raw)
-            groups = WatchlistGroup.objects.filter(user=user, id__in=group_ids).prefetch_related('items')
-            symbols = sorted({item.symbol.upper() for group in groups for item in group.items.all()})
+            symbols = _resolve_watchlist_symbols(group_ids)
             return symbols, 'watchlist', group_ids, 'watchlist_param'
 
-        tracked_symbols = list(
-            TrackedSymbol.objects.filter(user=user).order_by('-added_at').values_list('symbol', flat=True)
-        )
-        symbols = sorted({str(symbol).strip().upper() for symbol in tracked_symbols if str(symbol).strip()})
+        symbols = _resolve_tracked_symbols()
         return symbols, 'tracked', [], 'default_tracked'
 
     def _build_aggregate_event_payload(self, row, threshold_vnd: float, score_config: dict | None = None, now=None) -> dict:
@@ -3265,6 +3277,10 @@ class MarketDataService:
             'threshold': threshold_vnd,
             'size_class': self._classify_signal_size(matched_value),
             'ts': occurred_at,
+            # Backward-compatible aliases for legacy clients/tests.
+            'alert_at': occurred_at,
+            'alert_first_seen_at': occurred_at,
+            'alert_age_seconds': display_result['age_seconds'],
             'source': 'intraday_tick_db',
             'event_score': score_result['event_score'],
             'display_score': display_result['display_score'],
@@ -3348,6 +3364,10 @@ class MarketDataService:
             'threshold': threshold_vnd,
             'size_class': record.get('size_class') or self._classify_signal_size(matched_value),
             'ts': occurred_at,
+            # Backward-compatible aliases for legacy clients/tests.
+            'alert_at': occurred_at,
+            'alert_first_seen_at': str(record.get('alert_first_seen_at') or occurred_at),
+            'alert_age_seconds': float(record.get('alert_age_seconds') or display_result['age_seconds']),
             'source': source,
             'event_score': score_result['event_score'],
             'display_score': display_result['display_score'],

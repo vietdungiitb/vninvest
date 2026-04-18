@@ -123,7 +123,7 @@ def _wavg_cost_for_symbol(group: pd.DataFrame) -> dict:
                   qty -= qty_bán ; nếu qty = 0 → reset avg_cost = 0
         DIVIDEND: dividends += price × quantity
 
-    Tại sao vẫn dùng iterrows ở đây?
+    Tại sao vẫn dùng vòng lặp tuần tự ở đây?
         Giá vốn WAVG là bài toán tuần tự — mỗi dòng phụ thuộc vào kết quả của dòng trước.
         Không thể vectorize hoàn toàn. Nhưng Pandas vẫn nhanh hơn ORM loop vì dữ liệu
         đã được load bulk một lần, không có network/DB round-trip trong vòng lặp.
@@ -133,9 +133,11 @@ def _wavg_cost_for_symbol(group: pd.DataFrame) -> dict:
     realized_pl = 0.0
     dividends = 0.0
 
-    for _, row in group.sort_values('date').iterrows():
-        t = row['transaction_type']
-        p, q, f = row['price'], row['quantity'], row['fee']
+    # load_transactions_df() da order_by('date', 'created_at') tu SQL,
+    # groupby giu thu tu xuat hien nen khong can sort lai moi group.
+    for row in group.itertuples(index=False):
+        t = row.transaction_type
+        p, q, f = row.price, row.quantity, row.fee
 
         if t == BUY:
             total_old = avg_cost * qty
@@ -210,7 +212,7 @@ def compute_holdings(portfolio) -> pd.DataFrame:
     )
     # distinct('symbol') chỉ hoạt động với PostgreSQL.
     # Với SQLite dùng subquery thay thế:
-    from django.db.models import Max, Subquery, OuterRef, FloatField
+    from django.db.models import OuterRef, Subquery
     latest_date_sub = (
         DailyPrice.objects
         .filter(symbol=OuterRef('symbol'))
@@ -295,10 +297,13 @@ def compute_nav_series(portfolio, days: int = 90) -> pd.DataFrame:
 
     # --- Bước 4a: qty_change mỗi ngày, mỗi mã ---
     # BUY → +qty, SELL → -qty, DIVIDEND → 0
-    df_txs['qty_signed'] = df_txs.apply(
-        lambda r: r['quantity'] if r['transaction_type'] == BUY
-        else (-r['quantity'] if r['transaction_type'] == SELL else 0.0),
-        axis=1,
+    qty_sign_map = {
+        BUY: 1.0,
+        SELL: -1.0,
+    }
+    df_txs['qty_signed'] = (
+        df_txs['quantity']
+        * df_txs['transaction_type'].map(qty_sign_map).fillna(0.0)
     )
 
     # Tổng thay đổi theo (date, symbol) — xử lý nhiều lệnh cùng ngày

@@ -112,6 +112,21 @@ class VnstockAdapterTests(SimpleTestCase):
 
         self.assertEqual(ctx.exception.code, 'vnstock_rate_limited')
 
+    @patch('portfolio.adapters.vnstock_adapter.logger.warning')
+    @patch('portfolio.adapters.vnstock_adapter._import_vnstock')
+    def test_build_stock_client_logs_missing_data_payload_warning(self, mock_import, mock_warning):
+        class _VnstockStub:
+            def stock(self, symbol, source):
+                raise KeyError('data')
+
+        mock_import.return_value = _VnstockStub
+
+        with self.assertRaises(ExternalSystemException) as ctx:
+            vnstock_adapter._build_stock_client(symbol='FPT', source='AUTO')
+
+        self.assertEqual(ctx.exception.code, 'vnstock_error')
+        mock_warning.assert_called()
+
     @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
     @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
     def test_fetch_financial_ratio_dataframe_uses_timeout_wrapper(self, mock_build_stock, mock_run_timeout):
@@ -204,6 +219,60 @@ class VnstockAdapterTests(SimpleTestCase):
         self.assertEqual(result, {'rows': 1})
         mock_build_stock.assert_called_once_with(symbol='HPG', source='KBS')
         self.assertEqual(mock_run_timeout.call_count, 1)
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_listing_sources', return_value=['VCI'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_symbols_by_industries_dataframe_uses_adapter_runtime_chain(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        fake_client = type('StockClient', (), {'listing': type('ListingClient', (), {'symbols_by_industries': lambda *a, **k: None})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = pd.DataFrame([{'symbol': 'VCB', 'industry_code': 101, 'industry_name': 'Ngan hang'}])
+
+        result = vnstock_adapter.fetch_symbols_by_industries_dataframe(anchor_symbol='ACB', source='VCI')
+
+        self.assertEqual(result.iloc[0]['symbol'], 'VCB')
+        mock_build_stock.assert_called_once_with(symbol='ACB', source='VCI')
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_listing_sources', return_value=['VCI'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_symbols_by_group_series_returns_series(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        fake_client = type('StockClient', (), {'listing': type('ListingClient', (), {'symbols_by_group': lambda *a, **k: None})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = pd.Series(['VCB', 'BID'])
+
+        result = vnstock_adapter.fetch_symbols_by_group_series('VN30', anchor_symbol='ACB', source='VCI')
+
+        self.assertEqual(result.tolist(), ['VCB', 'BID'])
+        mock_build_stock.assert_called_once_with(symbol='ACB', source='VCI')
+
+    @patch('portfolio.adapters.vnstock_adapter._resolve_listing_sources', return_value=['VCI'])
+    @patch('portfolio.adapters.vnstock_adapter._run_with_timeout')
+    @patch('portfolio.adapters.vnstock_adapter._build_stock_client')
+    def test_fetch_symbols_by_exchange_dataframe_returns_dataframe(
+        self,
+        mock_build_stock,
+        mock_run_timeout,
+        _mock_sources,
+    ):
+        fake_client = type('StockClient', (), {'listing': type('ListingClient', (), {'symbols_by_exchange': lambda *a, **k: None})()})()
+        mock_build_stock.return_value = fake_client
+        mock_run_timeout.return_value = pd.DataFrame([{'symbol': 'VCB', 'organ_name': 'Vietcombank', 'exchange': 'HOSE'}])
+
+        result = vnstock_adapter.fetch_symbols_by_exchange_dataframe(anchor_symbol='ACB', source='VCI')
+
+        self.assertEqual(result.iloc[0]['exchange'], 'HOSE')
+        mock_build_stock.assert_called_once_with(symbol='ACB', source='VCI')
 
     def test_normalize_price_board_dataframe_keeps_raw_vnstock_price_units(self):
         source_df = pd.DataFrame(
