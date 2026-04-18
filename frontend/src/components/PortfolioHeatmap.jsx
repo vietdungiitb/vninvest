@@ -160,45 +160,35 @@ export default function PortfolioHeatmap({ holdings, title }) {
     };
   };
 
-  const hierarchicalData = useMemo(() => {
-    if (!holdings?.length) return [];
+  const chartData = useMemo(() => {
+    if (!holdings?.length) return { grouped: [], flat: [] };
 
     const sectors = {};
+    const flatList = [];
+
     (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
       const marketCap = toNumber(h.live_market_cap || h.market_cap);
+      
       const sizeByWeight = liveValue > 0 ? liveValue : snapshotValue;
       const sizeByCap = marketCap > 0 ? marketCap : sizeByWeight;
       const size = sizeMetric === 'cap' ? sizeByCap : sizeByWeight;
-      if (size <= 0) {
-        return;
-      }
+
+      if (size <= 0) return;
 
       const rawChange = h.live_change_pct ?? h.change_pct ?? 0;
       const changePct = Number.isFinite(Number(rawChange)) ? Number(rawChange) : 0;
-
       const symbol = String(h.symbol || h.name || '').trim().toUpperCase();
-      if (!symbol) {
-        return;
-      }
+      if (!symbol) return;
 
       const industryStr = String(h.industry || 'Khác').trim();
       const industry = (industryStr && industryStr !== 'undefined') ? industryStr : 'Khác';
-      if (!sectors[industry]) {
-        sectors[industry] = {
-          name: industry,
-          children: [],
-          value: [0, 0],
-          changePct: 0,
-          totalWeight: 0,
-        };
-      }
-
+      
       const isExtreme = Math.abs(changePct) >= 3;
       const tileStyle = resolveHeatTileStyle(changePct);
 
-      sectors[industry].children.push({
+      const leafNode = {
         id: `symbol:${symbol}`,
         name: symbol,
         symbol,
@@ -211,7 +201,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         sparkline24: Array.isArray(h.sparkline24) ? h.sparkline24 : [],
         sizeValue: size,
         changePct,
-        value: [size, changePct],
+        value: [size, changePct], // [size, change]
         itemStyle: {
           color: tileStyle.fill,
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
@@ -219,69 +209,78 @@ export default function PortfolioHeatmap({ holdings, title }) {
           shadowBlur: isExtreme ? 10 : 0,
           shadowColor: isExtreme ? tileStyle.glow : 'rgba(0, 0, 0, 0)',
         },
-      });
+      };
 
-      sectors[industry].value[0] += size;
-      sectors[industry].totalWeight += size;
-      sectors[industry].changePct += size * changePct;
-    });
+      // Add to flat list
+      flatList.push(leafNode);
 
-    const allLeafRawSizes = [];
-    Object.values(sectors).forEach((sector) => {
-      (sector.children || []).forEach((leaf) => {
-        const raw = toNumber(leaf.sizeValue);
-        if (raw > 0) allLeafRawSizes.push(raw);
-      });
-    });
-
-    const minRawSize = allLeafRawSizes.length ? Math.min(...allLeafRawSizes) : 1;
-    const sqrtMin = Math.sqrt(Math.max(minRawSize, 1));
-
-    return Object.values(sectors)
-      .map((sector) => {
-        const avgChange = sector.totalWeight > 0 ? sector.changePct / sector.totalWeight : 0;
-
-        let sectorDisplayTotal = 0;
-        const normalizedChildren = (sector.children || []).map((leaf) => {
-          const raw = toNumber(leaf.sizeValue);
-          const sqrtRaw = Math.sqrt(Math.max(raw, 1));
-          // Bloomberg-style compression: compress huge-cap dominance while preserving rank.
-          const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
-          sectorDisplayTotal += normalizedDisplaySize;
-
-          return {
-            ...leaf,
-            value: [normalizedDisplaySize, toNumber(leaf.changePct)],
-          };
-        });
-
-        return {
-          id: `industry:${sector.name}`,
-          name: sector.name,
-          value: sectorDisplayTotal,
-          changePct: avgChange,
-          children: normalizedChildren.sort((left, right) => toNumber(right.value?.[0]) - toNumber(left.value?.[0])),
+      // Add to grouped structure
+      if (!sectors[industry]) {
+        sectors[industry] = {
+          name: industry,
+          children: [],
+          totalSize: 0,
+          weightedChange: 0,
         };
-      })
-      .sort((left, right) => Number(right.value || 0) - Number(left.value || 0));
+      }
+      sectors[industry].children.push(leafNode);
+      sectors[industry].totalSize += size;
+      sectors[industry].weightedChange += size * changePct;
+    });
+
+    // Calculate Global Normalization (Bloomberg Style)
+    // We want to compress huge outliers (VCB/HPG) so they don't eat 90% of the screen,
+    // but still clearly indicate their relative rank.
+    const allSizes = flatList.map(l => l.sizeValue);
+    const minSize = allSizes.length ? Math.min(...allSizes) : 1;
+    const sqrtMin = Math.sqrt(Math.max(minSize, 1));
+
+    const normalizeNode = (node) => {
+      const sqrtRaw = Math.sqrt(Math.max(node.sizeValue, 1));
+      const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
+      return {
+        ...node,
+        value: [normalizedDisplaySize, node.changePct],
+      };
+    };
+
+    // 1. Process Flat Data (Treemap)
+    const processedFlatData = flatList
+      .map(normalizeNode)
+      .sort((a, b) => b.value[0] - a.value[0]);
+
+    // 2. Process Grouped Data (Sunburst)
+    const processedGroupedData = Object.values(sectors).map((sector) => {
+      const avgChange = sector.totalSize > 0 ? sector.weightedChange / sector.totalSize : 0;
+      const normalizedChildren = sector.children.map(normalizeNode);
+      const sectorDisplayTotal = normalizedChildren.reduce((sum, c) => sum + c.value[0], 0);
+
+      return {
+        id: `industry:${sector.name}`,
+        name: sector.name,
+        value: sectorDisplayTotal,
+        changePct: avgChange,
+        children: normalizedChildren.sort((a, b) => b.value[0] - a.value[0]),
+      };
+    }).sort((a, b) => b.value - a.value);
+
+    return { grouped: processedGroupedData, flat: processedFlatData };
   }, [holdings, sizeMetric]);
 
   useEffect(() => {
     safeResizeChart();
-  }, [safeResizeChart, viewMode, sizeMetric, hierarchicalData.length]);
+  }, [safeResizeChart, viewMode, sizeMetric, chartData.flat.length]);
 
   const maxLeafSize = useMemo(() => {
     let max = 0;
-    hierarchicalData.forEach((industry) => {
-      (industry.children || []).forEach((leaf) => {
-        const val = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
-        if (val > max) {
-          max = val;
-        }
-      });
+    chartData.flat.forEach((leaf) => {
+      const val = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
+      if (val > max) {
+        max = val;
+      }
     });
     return max || 1;
-  }, [hierarchicalData]);
+  }, [chartData.flat]);
 
   const buildLeafLabel = useCallback((params) => {
     const leaf = params?.data;
@@ -315,7 +314,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       .slice(-24);
 
     if (points.length < 2) {
-      return '<div class="heatmap-tooltip__spark">Chua du du lieu 24h</div>';
+      return '<div class="heatmap-tooltip__spark">Chưa đủ dữ liệu 24h</div>';
     }
 
     const min = Math.min(...points);
@@ -352,9 +351,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
   }, []);
 
   const option = useMemo(() => {
-    if (!hierarchicalData.length) {
-      return null;
-    }
+    const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
+    if (!dataSet || dataSet.length === 0) return null;
 
     const tooltip = {
       trigger: 'item',
@@ -376,71 +374,64 @@ export default function PortfolioHeatmap({ holdings, title }) {
         const data = params?.data;
         if (!data) return '';
         
-        // Extract tree path (e.g., Sector / Symbol)
+        // Industry Path Logic
         const treePathInfo = params.treePathInfo || [];
-        const treePath = [];
-        for (let i = 1; i < treePathInfo.length; i++) {
-          if (treePathInfo[i].name) treePath.push(treePathInfo[i].name);
+        let industryPath = '';
+        if (treePathInfo.length > 1) {
+          // hierarchical case (Sunburst)
+          industryPath = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
+        } else {
+          // flat case (Treemap)
+          industryPath = data.industry || 'Khác';
         }
-        const pathString = treePath.join(' / ');
 
-        // Guard: ECharts virtual root node (created internally when data is array) has children but no name
-        if (data.children && !data.name) return '';
-
-        if (!data.children) {
-          const size = Array.isArray(data.value) ? data.value[0] : Number(data.value || 0);
-          const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
-          const price = toNumber(data.livePrice);
-          const cap = toNumber(data.marketCap);
-          const volume = toNumber(data.volume);
-          const changeColor = changePct > 0
-            ? FINTECH_HEAT_COLORS.upStrong
-            : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
-
-          const sparklineMarkup = buildTooltipSparkline(
-            data.sparkline24,
-            changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong,
-            data.symbol || data.name,
-          );
-
+        // Sector/Industry Node (has children)
+        if (data.children) {
           return `
             <div class="heatmap-tooltip">
               <div class="heatmap-tooltip__header">
-                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${pathString}</span>
-                <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
+                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">Nhóm ngành</span>
+                <b>${data.name}</b>
               </div>
               <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
               <div class="heatmap-tooltip__row">
-                <span>Giá</span>
-                <span style="color:${changeColor}; font-weight:700;">
-                  ${price > 0 ? Math.round(price).toLocaleString('vi-VN') : '—'} VND (${formatPercent(changePct)})
+                <span>Biến động b.quân</span>
+                <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:700;">
+                  ${formatPercent(data.changePct)}
                 </span>
               </div>
-              <div class="heatmap-tooltip__row">
-                <span>Vốn hóa</span>
-                <span style="color:#f8fafc; font-weight:700;">${cap > 0 ? (cap / 1000).toFixed(1) : '—'} Tỷ</span>
-              </div>
-              <div class="heatmap-tooltip__row">
-                <span>Khối lượng</span>
-                <span style="color:#f8fafc; font-weight:700;">${volume > 0 ? Math.round(volume).toLocaleString('vi-VN') : '—'}</span>
-              </div>
-              <div class="heatmap-tooltip__row">
-                <span>${sizeMetric === 'cap' ? 'Size theo cap' : 'Size theo tỷ trọng'}</span>
-                <span style="color:#f8fafc; font-weight:700;">${Math.round(size).toLocaleString('vi-VN')}</span>
-              </div>
-              ${sparklineMarkup}
             </div>
           `;
         }
 
+        // Stock Node (Leaf)
+        const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
+        const changeColor = changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
+
         return `
-          <div style="min-width: 180px; padding: 4px 2px;">
-            <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px;">Nhóm ngành</div>
-            <div style="font-size:18px; font-weight:800; color:#ffffff; margin-bottom:10px;">${data.name}</div>
-            <div style="display:flex; justify-content:space-between; gap:16px;">
-              <span style="color:#94a3b8;">Biến động bình quân</span>
-              <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:800;">${formatPercent(data.changePct)}</span>
+          <div class="heatmap-tooltip">
+            <div class="heatmap-tooltip__header">
+              <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${industryPath}</span>
+              <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
             </div>
+            <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
+            
+            <div class="heatmap-tooltip__row">
+              <span>Giá hiện tại</span>
+              <span style="color:${changeColor}; font-weight:700;">
+                ${toNumber(data.livePrice).toFixed(2)} VND (${formatPercent(changePct)})
+              </span>
+            </div>
+            <div class="heatmap-tooltip__row">
+              <span>Vốn hóa</span>
+              <span style="color:#f8fafc; font-weight:700;">${(toNumber(data.marketCap) / 1e9).toFixed(1)}B VND</span>
+            </div>
+            <div class="heatmap-tooltip__row">
+              <span>Khối lượng</span>
+              <span style="color:#f8fafc; font-weight:700;">${Math.round(toNumber(data.volume)).toLocaleString('vi-VN')}</span>
+            </div>
+
+            ${buildTooltipSparkline(data.sparkline24, changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong, data.symbol)}
           </div>
         `;
       },
@@ -457,7 +448,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           {
             type: 'sunburst',
             id: 'portfolio-heatmap-transition',
-            data: hierarchicalData,
+            data: chartData.grouped,
             sort: 'desc',
             center: ['50%', '50%'],
             radius: ['7%', '92%'],
@@ -554,7 +545,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         {
           type: 'treemap',
           id: 'portfolio-heatmap-transition',
-          data: hierarchicalData,
+          data: chartData.flat,
           top: 0,
           left: 0,
           right: 0,
@@ -568,7 +559,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.5,
-          leafDepth: 2,
+          leafDepth: null,
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
@@ -619,48 +610,16 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           upperLabel: { show: false },
           itemStyle: {
-            borderColor: 'rgba(15, 23, 42, 0.45)',
-            borderWidth: 1,
-            gapWidth: 2,
+            borderColor: 'rgba(15, 23, 10, 0.55)',
+            borderWidth: 1.5,
+            gapWidth: 1.5,
           },
-          levels: [
-            {
-              itemStyle: {
-                borderColor: 'rgba(15, 23, 42, 0.95)',
-                borderWidth: 4,
-                gapWidth: 4,
-              },
-              upperLabel: {
-                show: true,
-                height: 22,
-                color: '#e2e8f0',
-                fontWeight: 800,
-                fontSize: 10,
-                padding: [0, 0, 0, 8],
-                backgroundColor: 'rgba(12, 22, 40, 0.82)',
-              },
-            },
-            {
-              itemStyle: {
-                borderColor: 'rgba(30, 58, 95, 0.35)',
-                borderWidth: 1.5,
-                gapWidth: 1.5,
-              },
-            },
-            {
-              itemStyle: {
-                borderColor: 'rgba(30, 58, 95, 0.25)',
-                borderWidth: 1,
-                gapWidth: 1,
-              },
-            },
-          ],
+          levels: [],
         },
       ],
-    };
-  }, [buildLeafLabel, buildTooltipSparkline, formatPercent, heatScaleColors, hierarchicalData, piecewiseVisualMap, sizeMetric, viewMode]);
+  }, [viewMode, chartData, buildLeafLabel, buildTooltipSparkline, formatPercent, i18n.language]);
 
-  if (!hierarchicalData.length) {
+  if (!chartData.flat.length) {
     return (
       <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
         <div className="mb-3 h-10 w-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
@@ -723,7 +682,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
       <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
-          key={`${viewMode}-${hierarchicalData?.length || 0}-${i18n.language}`}
+          key={`${viewMode}-${chartData.flat.length}-${i18n.language}`}
           ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
