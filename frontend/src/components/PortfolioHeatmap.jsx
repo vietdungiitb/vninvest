@@ -9,20 +9,36 @@ import { useI18n } from '../context/LangContext';
  */
 
 // Stable references outside component — prevents useMemo from recomputing on every render
-const HEAT_SCALE_COLORS = ['#7f1d1d', '#be123c', '#fca5a5', '#475569', '#86efac', '#22c55e', '#166534'];
+const FINTECH_HEAT_COLORS = {
+  upStrong: '#089981',
+  upSoft: '#1B5E20',
+  downStrong: '#F23645',
+  downSoft: '#7F1D1D',
+  neutral: '#2A2E39',
+};
+
+const HEAT_SCALE_COLORS = [
+  FINTECH_HEAT_COLORS.downStrong,
+  FINTECH_HEAT_COLORS.downSoft,
+  FINTECH_HEAT_COLORS.neutral,
+  FINTECH_HEAT_COLORS.upSoft,
+  FINTECH_HEAT_COLORS.upStrong,
+];
+
 const PIECEWISE_VISUAL_MAP = {
   show: false,
-  type: 'piecewise',
+  type: 'continuous',
   dimension: 1,
-  pieces: [
-    { lt: -5, color: '#7f1d1d' },
-    { gte: -5, lt: -2, color: '#be123c' },
-    { gte: -2, lt: 0, color: '#fca5a5' },
-    { gte: 0, lte: 0, color: '#ca8a04' },
-    { gt: 0, lte: 2, color: '#86efac' },
-    { gt: 2, lte: 5, color: '#22c55e' },
-    { gt: 5, color: '#166534' },
-  ],
+  min: -6,
+  max: 6,
+  inRange: {
+    color: HEAT_SCALE_COLORS,
+    colorAlpha: [0.45, 0.92],
+  },
+  outOfRange: {
+    color: [FINTECH_HEAT_COLORS.neutral],
+    colorAlpha: 0.4,
+  },
 };
 
 export default function PortfolioHeatmap({ holdings, title }) {
@@ -47,6 +63,41 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (!Number.isFinite(numeric)) return '0.00%';
     return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`;
   }, []);
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  const hexToRgba = (hexColor, alpha = 1) => {
+    const hex = String(hexColor || '').replace('#', '');
+    if (hex.length !== 6) return `rgba(42, 46, 57, ${alpha})`;
+    const r = parseInt(hex.slice(0, 2), 16);
+    const g = parseInt(hex.slice(2, 4), 16);
+    const b = parseInt(hex.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  };
+
+  const resolveHeatTileStyle = (changePct) => {
+    const magnitude = clamp(Math.abs(toNumber(changePct)) / 5, 0, 1);
+    const alpha = 0.42 + (magnitude * 0.46);
+
+    if (changePct > 0) {
+      const base = changePct >= 2.5 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.upSoft;
+      return {
+        fill: hexToRgba(base, alpha),
+        glow: hexToRgba(FINTECH_HEAT_COLORS.upStrong, 0.24),
+      };
+    }
+    if (changePct < 0) {
+      const base = changePct <= -2.5 ? FINTECH_HEAT_COLORS.downStrong : FINTECH_HEAT_COLORS.downSoft;
+      return {
+        fill: hexToRgba(base, alpha),
+        glow: hexToRgba(FINTECH_HEAT_COLORS.downStrong, 0.22),
+      };
+    }
+    return {
+      fill: hexToRgba(FINTECH_HEAT_COLORS.neutral, 0.52),
+      glow: 'rgba(0, 0, 0, 0)',
+    };
+  };
 
   const hierarchicalData = useMemo(() => {
     if (!holdings?.length) return [];
@@ -83,8 +134,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
         };
       }
 
-      const isExtreme = Math.abs(changePct) >= 2;
-      const glowColor = changePct > 0 ? 'rgba(16, 185, 129, 0.36)' : 'rgba(244, 63, 94, 0.32)';
+      const isExtreme = Math.abs(changePct) >= 3;
+      const tileStyle = resolveHeatTileStyle(changePct);
 
       sectors[industry].children.push({
         id: `symbol:${symbol}`,
@@ -101,10 +152,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
         changePct,
         value: [size, changePct],
         itemStyle: {
+          color: tileStyle.fill,
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
           borderWidth: h.is_holding ? 2 : 1,
-          shadowBlur: isExtreme ? 14 : 0,
-          shadowColor: isExtreme ? glowColor : 'rgba(0, 0, 0, 0)',
+          shadowBlur: isExtreme ? 10 : 0,
+          shadowColor: isExtreme ? tileStyle.glow : 'rgba(0, 0, 0, 0)',
         },
       });
 
@@ -191,7 +243,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
   const heatScaleColors = HEAT_SCALE_COLORS;
   const piecewiseVisualMap = PIECEWISE_VISUAL_MAP;
 
-  const buildTooltipSparkline = useCallback((values, strokeColor) => {
+  const buildTooltipSparkline = useCallback((values, strokeColor, symbolKey = 'default') => {
     const points = (Array.isArray(values) ? values : [])
       .map((value) => Number(value))
       .filter((value) => Number.isFinite(value) && value > 0)
@@ -203,6 +255,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     const min = Math.min(...points);
     const max = Math.max(...points);
+    const gradientId = `heatmapSparkFill-${String(symbolKey || 'default').replace(/[^a-zA-Z0-9_-]/g, '')}`;
     const width = 176;
     const height = 40;
     const span = Math.max(max - min, 1);
@@ -221,12 +274,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         <div class="heatmap-tooltip__spark-caption">Trend 24h • Last: ${Math.round(latest).toLocaleString('vi-VN')}</div>
         <svg width="176" height="40" viewBox="0 0 176 40" preserveAspectRatio="none">
           <defs>
-            <linearGradient id="heatmapSparkFill" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.35"></stop>
               <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.05"></stop>
             </linearGradient>
           </defs>
-          <polygon points="${polygon}" fill="url(#heatmapSparkFill)"></polygon>
+          <polygon points="${polygon}" fill="url(#${gradientId})"></polygon>
           <polyline points="${linePoints}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></polyline>
         </svg>
       </div>
@@ -239,11 +292,19 @@ export default function PortfolioHeatmap({ holdings, title }) {
     }
 
     const tooltip = {
+      trigger: 'item',
+      triggerOn: 'mousemove',
+      renderMode: 'html',
+      appendToBody: true,
+      enterable: false,
+      showDelay: 40,
+      hideDelay: 120,
+      transitionDuration: 0.08,
       backgroundColor: 'rgba(10, 18, 35, 0.96)',
       borderColor: 'rgba(71, 85, 105, 0.72)',
       borderWidth: 1,
       confine: true,
-      extraCssText: 'box-shadow: 0 8px 24px rgba(2, 6, 23, 0.5); border-radius: 10px;',
+      extraCssText: 'box-shadow: 0 8px 24px rgba(2, 6, 23, 0.5); border-radius: 10px; pointer-events:none; will-change:transform; backface-visibility:hidden;',
       textStyle: { color: '#e2e8f0', fontSize: 12 },
       formatter: (params) => {
         const data = params?.data;
@@ -257,11 +318,14 @@ export default function PortfolioHeatmap({ holdings, title }) {
           const price = toNumber(data.livePrice);
           const cap = toNumber(data.marketCap);
           const volume = toNumber(data.volume);
-          const changeColor = changePct > 0 ? '#34d399' : changePct < 0 ? '#fb7185' : '#cbd5e1';
+          const changeColor = changePct > 0
+            ? FINTECH_HEAT_COLORS.upStrong
+            : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
 
           const sparklineMarkup = buildTooltipSparkline(
             data.sparkline24,
-            changePct >= 0 ? '#10b981' : '#f43f5e',
+            changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong,
+            data.symbol || data.name,
           );
 
           return `
@@ -299,7 +363,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
             <div style="font-size:18px; font-weight:800; color:#ffffff; margin-bottom:10px;">${data.name}</div>
             <div style="display:flex; justify-content:space-between; gap:16px;">
               <span style="color:#94a3b8;">Biến động bình quân</span>
-              <span style="color:${data.changePct > 0 ? '#34d399' : data.changePct < 0 ? '#fb7185' : '#cbd5e1'}; font-weight:800;">${formatPercent(data.changePct)}</span>
+              <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:800;">${formatPercent(data.changePct)}</span>
             </div>
           </div>
         `;
@@ -566,14 +630,14 @@ export default function PortfolioHeatmap({ holdings, title }) {
         
         <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#0f766e] shadow-[0_0_8px_rgba(15,118,110,0.55)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#089981] shadow-[0_0_6px_rgba(8,153,129,0.38)]" />
             <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendUp', { defaultValue: 'Tăng' })}
             </span>
           </div>
           <div className="w-px h-3 bg-slate-700" />
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#be123c] shadow-[0_0_8px_rgba(190,18,60,0.5)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#F23645] shadow-[0_0_6px_rgba(242,54,69,0.36)]" />
             <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendDown', { defaultValue: 'Giảm' })}
             </span>
