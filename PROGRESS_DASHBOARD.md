@@ -105,6 +105,17 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Heatmap Hybrid Stabilization Remediation Hardening (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fix undefined i18n runtime reference, enforce market-cap-first sorting in both modes, set treemap leafDepth=0, localize tooltip labels)
+- frontend/src/i18n/vi.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` Vietnamese labels)
+- frontend/src/i18n/en.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` English labels)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - complete verification checklist + post-audit remediation notes)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - align walkthrough with final implementation behavior)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean on touched frontend files; `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4.
+- Status: COMPLETED (heatmap hybrid plan, implementation, and audit documentation are now aligned)
+
 ### Support SLA/Ops Dashboard for Staff Queue (2026-04-18)
 - backend/support/views.py (MODIFIED - add `StaffSupportDashboardView` with queue/throughput/SLA metrics)
 - backend/support/urls.py (MODIFIED - expose `/api/support/staff/dashboard/`)

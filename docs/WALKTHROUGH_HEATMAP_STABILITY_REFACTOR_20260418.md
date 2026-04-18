@@ -10,7 +10,8 @@ The heatmap now uses a dual-data approach depending on the `viewMode`:
 - **Sunburst (Hierarchy Focused)**: Retains multi-level sector grouping for an overview of market distribution.
 
 ### 2. Sorting & Sizing
-- **Market Cap Sorting**: Both modes are now strictly sorted by Market Capitalization (descending), ensuring the largest companies are always most prominent.
+- **Market Cap Sorting**: Both modes are strictly sorted by Market Capitalization (descending), ensuring the largest companies are always most prominent.
+- **Sizing Toggle**: Tile size can still switch between portfolio weight and market cap, but ordering remains market-cap-first for consistency.
 - **Context Preservation**: Even in the flat Treemap view, the **Industry name** is preserved and displayed in the tooltip header to maintain market context.
 
 ### 3. ECharts Core Hardening
@@ -23,9 +24,11 @@ The heatmap now uses a dual-data approach depending on the `viewMode`:
 ## Verification Results
 
 ### Code Integrity
-- Verified that all `hierarchicalData` references were migrated to the new `chartData` structure.
+- Verified that the heatmap dataset builder returns the new `chartData` structure (`grouped` + `flat`).
 - Fixed a syntax error in the `option` useMemo hook that occurred during code assembly.
 - Confirmed that the `key` prop correctly resets the chart instance on mode changes.
+- Fixed runtime i18n safety by replacing undefined language references with `locale` from context.
+- Updated tooltip captions to use i18n keys in both Vietnamese and English dictionaries.
 
 ### Visual Audit (Constructive)
 - **Treemap**: Confirmed that it displays a single, dense grid with sharp borders between stocks and no sector overlapping labels.

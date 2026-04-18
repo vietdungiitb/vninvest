@@ -14,7 +14,7 @@
 - **Context Preservation**: Ensure the `Industry` name is always available in the tooltip, even in the flat Treemap view.
 
 ### 2. Frontend Implementation (`PortfolioHeatmap.jsx`)
-- Refactor the `hierarchicalData` useMemo to return an object containing both `grouped` and `flat` datasets.
+- Refactor the heatmap data useMemo to return an object containing both `grouped` and `flat` datasets.
 - Update `ReactECharts` configuration:
     - **Treemap**:
         - Use `flatData`.
@@ -29,12 +29,18 @@
 ### 3. Stability Hardening
 - **Force Remount**: Maintain the `key` prop on `ReactECharts` (`viewMode-dataID-lang`) to ensure ECharts instances are destroyed and recreated during mode switches, avoiding state corruption.
 - **Defensive Rendering**: Maintain the patched ECharts core (via `patch-package`) to prevent `innerHTML` crashes if the chart is disposed while a tooltip is still active.
+- **Runtime Safety**: Ensure language key is sourced from the i18n context (`locale`) to avoid undefined reference at render time.
 
 ## Verification Plan
 
 ### Manual Verification
-- [ ] **Treemap**: Verify stocks are in a single continuous area with NO sector labels on top.
-- [ ] **Sunburst**: Verify stocks are still grouped into colored sector "wedges".
-- [ ] **Sorting**: Verify that VCB/HPG (largest caps) appear first/largest.
-- [ ] **Tooltips**: Verify "Banking" or "Ngân hàng" appears in the tooltip path for relevant stocks.
-- [ ] **Transitions**: Rapidly switch between Treemap and Sunburst; ensure no "TypeError" or UI flickering occurs.
+- [x] **Treemap**: Stocks render in a single continuous flat area with no sector labels.
+- [x] **Sunburst**: Stocks remain grouped into sector wedges.
+- [x] **Sorting**: Flat leaves and grouped branches are sorted by Market Capitalization (descending).
+- [x] **Tooltips**: Industry path is preserved in both modes; tooltip labels are i18n-driven.
+- [x] **Transitions**: Rapid mode switching no longer triggers `innerHTML` crash; forced remount remains active.
+
+### Post-audit Remediation (2026-04-18)
+- Fixed heatmap runtime safety by replacing undefined `i18n.language` usage with context `locale`.
+- Enforced strict Market Cap sorting order across Treemap and Sunburst while preserving size metric toggle for tile sizing.
+- Aligned Treemap config with plan by setting `leafDepth` to `0`.

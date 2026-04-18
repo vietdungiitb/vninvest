@@ -42,7 +42,7 @@ const PIECEWISE_VISUAL_MAP = {
 };
 
 export default function PortfolioHeatmap({ holdings, title }) {
-  const { t } = useI18n();
+  const { t, locale, localeTag } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
   const [sizeMetric, setSizeMetric] = useState('weight');
   const HEATMAP_HEIGHT = 420;
@@ -188,6 +188,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
       const isExtreme = Math.abs(changePct) >= 3;
       const tileStyle = resolveHeatTileStyle(changePct);
 
+      const sortMarketCap = marketCap > 0 ? marketCap : sizeByCap;
+
       const leafNode = {
         id: `symbol:${symbol}`,
         name: symbol,
@@ -197,6 +199,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
         isHolding: Boolean(h.is_holding),
         livePrice: toNumber(h.live_current_price || h.current_price),
         marketCap,
+        sortMarketCap,
         volume: toNumber(h.live_volume || h.volume),
         sparkline24: Array.isArray(h.sparkline24) ? h.sparkline24 : [],
         sizeValue: size,
@@ -220,11 +223,13 @@ export default function PortfolioHeatmap({ holdings, title }) {
           name: industry,
           children: [],
           totalSize: 0,
+          totalMarketCap: 0,
           weightedChange: 0,
         };
       }
       sectors[industry].children.push(leafNode);
       sectors[industry].totalSize += size;
+      sectors[industry].totalMarketCap += sortMarketCap;
       sectors[industry].weightedChange += size * changePct;
     });
 
@@ -247,7 +252,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
     // 1. Process Flat Data (Treemap)
     const processedFlatData = flatList
       .map(normalizeNode)
-      .sort((a, b) => b.value[0] - a.value[0]);
+      .sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value[0] - a.value[0]));
 
     // 2. Process Grouped Data (Sunburst)
     const processedGroupedData = Object.values(sectors).map((sector) => {
@@ -259,10 +264,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
         id: `industry:${sector.name}`,
         name: sector.name,
         value: sectorDisplayTotal,
+        sortMarketCap: sector.totalMarketCap,
         changePct: avgChange,
-        children: normalizedChildren.sort((a, b) => b.value[0] - a.value[0]),
+        children: normalizedChildren.sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value[0] - a.value[0])),
       };
-    }).sort((a, b) => b.value - a.value);
+    }).sort((a, b) => (b.sortMarketCap - a.sortMarketCap) || (b.value - a.value));
 
     return { grouped: processedGroupedData, flat: processedFlatData };
   }, [holdings, sizeMetric]);
@@ -314,7 +320,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
       .slice(-24);
 
     if (points.length < 2) {
-      return '<div class="heatmap-tooltip__spark">Chưa đủ dữ liệu 24h</div>';
+      return `<div class="heatmap-tooltip__spark">${t('dashboardRealtime.heatmapTooltipNoData24h', { defaultValue: 'Chưa đủ dữ liệu 24h' })}</div>`;
     }
 
     const min = Math.min(...points);
@@ -335,7 +341,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     return `
       <div class="heatmap-tooltip__spark">
-        <div class="heatmap-tooltip__spark-caption">Trend 24h • Last: ${Math.round(latest).toLocaleString('vi-VN')}</div>
+        <div class="heatmap-tooltip__spark-caption">${t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Trend 24h' })} • ${t('dashboardRealtime.heatmapTooltipLast', { defaultValue: 'Last' })}: ${Math.round(latest).toLocaleString(localeTag || 'vi-VN')}</div>
         <svg width="176" height="40" viewBox="0 0 176 40" preserveAspectRatio="none">
           <defs>
             <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
@@ -348,11 +354,18 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </svg>
       </div>
     `;
-  }, []);
+  }, [localeTag, t]);
 
   const option = useMemo(() => {
     const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
     if (!dataSet || dataSet.length === 0) return null;
+
+    const fallbackIndustryLabel = t('dashboardRealtime.heatmapTooltipIndustryFallback', { defaultValue: 'Khác' });
+    const groupLabel = t('dashboardRealtime.heatmapTooltipGroupLabel', { defaultValue: 'Nhóm ngành' });
+    const averageChangeLabel = t('dashboardRealtime.heatmapTooltipAverageChange', { defaultValue: 'Biến động b.quân' });
+    const currentPriceLabel = t('dashboardRealtime.heatmapTooltipCurrentPrice', { defaultValue: 'Giá hiện tại' });
+    const marketCapLabel = t('dashboardRealtime.heatmapTooltipMarketCap', { defaultValue: 'Vốn hóa' });
+    const volumeLabel = t('dashboardRealtime.heatmapTooltipVolume', { defaultValue: 'Khối lượng' });
 
     const tooltip = {
       trigger: 'item',
@@ -382,7 +395,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           industryPath = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
         } else {
           // flat case (Treemap)
-          industryPath = data.industry || 'Khác';
+          industryPath = data.industry || fallbackIndustryLabel;
         }
 
         // Sector/Industry Node (has children)
@@ -390,12 +403,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
           return `
             <div class="heatmap-tooltip">
               <div class="heatmap-tooltip__header">
-                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">Nhóm ngành</span>
+                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${groupLabel}</span>
                 <b>${data.name}</b>
               </div>
               <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
               <div class="heatmap-tooltip__row">
-                <span>Biến động b.quân</span>
+                <span>${averageChangeLabel}</span>
                 <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:700;">
                   ${formatPercent(data.changePct)}
                 </span>
@@ -417,18 +430,18 @@ export default function PortfolioHeatmap({ holdings, title }) {
             <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
             
             <div class="heatmap-tooltip__row">
-              <span>Giá hiện tại</span>
+              <span>${currentPriceLabel}</span>
               <span style="color:${changeColor}; font-weight:700;">
                 ${toNumber(data.livePrice).toFixed(2)} VND (${formatPercent(changePct)})
               </span>
             </div>
             <div class="heatmap-tooltip__row">
-              <span>Vốn hóa</span>
+              <span>${marketCapLabel}</span>
               <span style="color:#f8fafc; font-weight:700;">${(toNumber(data.marketCap) / 1e9).toFixed(1)}B VND</span>
             </div>
             <div class="heatmap-tooltip__row">
-              <span>Khối lượng</span>
-              <span style="color:#f8fafc; font-weight:700;">${Math.round(toNumber(data.volume)).toLocaleString('vi-VN')}</span>
+              <span>${volumeLabel}</span>
+              <span style="color:#f8fafc; font-weight:700;">${Math.round(toNumber(data.volume)).toLocaleString(localeTag || 'vi-VN')}</span>
             </div>
 
             ${buildTooltipSparkline(data.sparkline24, changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong, data.symbol)}
@@ -559,7 +572,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.5,
-          leafDepth: null,
+          leafDepth: 0,
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
@@ -617,7 +630,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           levels: [],
         },
       ],
-  }, [viewMode, chartData, buildLeafLabel, buildTooltipSparkline, formatPercent, i18n.language]);
+  }, [viewMode, chartData, buildLeafLabel, buildTooltipSparkline, formatPercent, localeTag, t]);
 
   if (!chartData.flat.length) {
     return (
@@ -682,7 +695,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
       <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
-          key={`${viewMode}-${chartData.flat.length}-${i18n.language}`}
+          key={`${viewMode}-${chartData.flat.length}-${locale}`}
           ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}

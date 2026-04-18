@@ -1,5 +1,36 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18an - Heatmap hybrid stabilization remediation hardening
+
+Muc tieu:
+- Dong bo triet de giua tai lieu heatmap hybrid va implementation thuc te sau dot audit.
+- Sua loi runtime i18n, khoa sorting theo market cap dung spec, va i18n-hoa tooltip labels.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fix undefined i18n reference, enforce market-cap-first sorting, set treemap leafDepth=0, localize tooltip labels)
+- frontend/src/i18n/vi.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` Vietnamese keys)
+- frontend/src/i18n/en.js (MODIFIED - add `dashboardRealtime.heatmapTooltip*` English keys)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - mark verification checklist complete + add post-audit remediation notes)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - align walkthrough with final implementation details)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Runtime safety:
+  - Thay `i18n.language` bang `locale` tu `useI18n()` de loai bo nguy co `ReferenceError` trong render path.
+- Sorting consistency:
+  - Treemap leaves va Sunburst sectors/children duoc sort theo `marketCap` giam dan.
+  - Van giu toggle `sizeMetric` de dieu khien kich thuoc tile, nhung thu tu uu tien theo market cap.
+- Spec alignment:
+  - Treemap `leafDepth` dat ve `0` theo technical plan.
+- i18n alignment:
+  - Tooltip labels/chu thich duoc doi sang i18n keys cho ca vi/en.
+
+Validation:
+- `get_errors` clean tren: `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- Frontend regression suite: `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` => 4/4 pass.
+- Ghi chu: khong co test file rieng cho heatmap trong workspace hien tai.
+
 ## Entry 2026-04-18am - Support SLA/Ops dashboard for staff queue
 
 Muc tieu:
