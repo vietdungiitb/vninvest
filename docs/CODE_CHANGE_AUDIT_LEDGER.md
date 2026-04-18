@@ -1,5 +1,36 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18am - Support SLA/Ops dashboard for staff queue
+
+Muc tieu:
+- Hoan thien phan van hanh con thieu cho support team bang dashboard SLA/Ops ngay trong `/support`.
+- Cung cap endpoint backend de frontend staff mode theo doi queue, throughput va SLA metrics theo thoi gian thuc.
+
+Danh sach tep cap nhat:
+- backend/support/views.py (MODIFIED - add `StaffSupportDashboardView` for queue/throughput/SLA metrics)
+- backend/support/urls.py (MODIFIED - expose `/api/support/staff/dashboard/`)
+- backend/tests/test_support_api.py (MODIFIED - add access + payload tests for staff dashboard endpoint)
+- frontend/src/api/support.js (MODIFIED - add `getStaffSupportDashboard` API client)
+- frontend/src/components/support/SupportOpsDashboard.jsx (NEW - staff ops metrics cards)
+- frontend/src/pages/Support.jsx (MODIFIED - load/render ops dashboard in staff queue mode)
+- frontend/src/i18n/vi.js (MODIFIED - add `support.ops.*` Vietnamese labels)
+- frontend/src/i18n/en.js (MODIFIED - add `support.ops.*` English labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend:
+  - Them endpoint staff dashboard tra cac metric: active/unassigned/urgent/reopened queue, resolved/closed last 24h, trung binh first response/resolution va SLA breach counters.
+  - Bao ve endpoint bang `IsStaffUser`.
+- Frontend:
+  - Trong staff queue mode, render panel `SupportOpsDashboard` de quan sat SLA/ops ma khong can roi trang `/support`.
+  - Bo sung i18n cho nhan metric dashboard.
+
+Validation:
+- `get_errors` clean tren backend/frontend files lien quan.
+- `python backend/manage.py test tests.test_support_api`: 6/6 pass.
+- `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx`: 4/4 pass.
+
 ## Entry 2026-04-18al - Lock /api/auth/me contract for staff flags
 
 Muc tieu:

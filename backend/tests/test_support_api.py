@@ -1,6 +1,8 @@
 from unittest.mock import patch
+from datetime import timedelta
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -145,3 +147,55 @@ class SupportTicketApiTests(APITestCase):
         self.assertTrue(ticket.last_message_by_staff)
         self.assertTrue(TicketAuditLog.objects.filter(ticket=ticket, action='PRIORITY_CHANGED').exists())
         self.assertTrue(TicketAuditLog.objects.filter(ticket=ticket, action='ASSIGNEE_CHANGED').exists())
+
+    def test_staff_dashboard_requires_staff_permission(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get('/api/support/staff/dashboard/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_dashboard_returns_queue_and_sla_metrics(self):
+        now = timezone.now()
+        ticket_open = SupportTicket.objects.create(
+            requester=self.user,
+            subject='Open urgent ticket',
+            category='TECHNICAL',
+            priority='URGENT',
+            status=TicketStatus.OPEN,
+        )
+        ticket_open.created_at = now - timedelta(hours=3)
+        ticket_open.save(update_fields=['created_at'])
+
+        ticket_resolved = SupportTicket.objects.create(
+            requester=self.other_user,
+            subject='Resolved ticket with response',
+            category='ACCOUNT',
+            priority='MEDIUM',
+            status=TicketStatus.RESOLVED,
+            first_response_at=now - timedelta(hours=1),
+            resolved_at=now - timedelta(minutes=20),
+        )
+        ticket_resolved.created_at = now - timedelta(hours=4)
+        ticket_resolved.save(update_fields=['created_at'])
+
+        ticket_closed = SupportTicket.objects.create(
+            requester=self.other_user,
+            subject='Closed ticket record',
+            category='BILLING',
+            priority='LOW',
+            status=TicketStatus.CLOSED,
+            first_response_at=now - timedelta(hours=10),
+            closed_at=now - timedelta(minutes=30),
+        )
+        ticket_closed.created_at = now - timedelta(hours=12)
+        ticket_closed.save(update_fields=['created_at'])
+
+        self.client.force_authenticate(user=self.staff_user)
+        response = self.client.get('/api/support/staff/dashboard/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['queue']['active_total'], 1)
+        self.assertEqual(response.data['queue']['urgent_active'], 1)
+        self.assertEqual(response.data['throughput']['resolved_last_24h'], 1)
+        self.assertEqual(response.data['throughput']['closed_last_24h'], 1)
+        self.assertIsNotNone(response.data['sla']['avg_first_response_seconds'])
+        self.assertIsNotNone(response.data['sla']['avg_resolution_seconds'])

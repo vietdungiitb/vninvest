@@ -105,6 +105,20 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Support SLA/Ops Dashboard for Staff Queue (2026-04-18)
+- backend/support/views.py (MODIFIED - add `StaffSupportDashboardView` with queue/throughput/SLA metrics)
+- backend/support/urls.py (MODIFIED - expose `/api/support/staff/dashboard/`)
+- backend/tests/test_support_api.py (MODIFIED - add staff dashboard endpoint tests)
+- frontend/src/api/support.js (MODIFIED - add `getStaffSupportDashboard`)
+- frontend/src/components/support/SupportOpsDashboard.jsx (NEW - support ops metric cards)
+- frontend/src/pages/Support.jsx (MODIFIED - render ops dashboard in staff mode)
+- frontend/src/i18n/vi.js (MODIFIED - support ops labels)
+- frontend/src/i18n/en.js (MODIFIED - support ops labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: backend tests `tests.test_support_api` pass 6/6, frontend tests `src/pages/Support.test.jsx` pass 4/4.
+- Status: COMPLETED (staff has integrated SLA/ops visibility directly in support queue view)
+
 ### Auth Contract Hardening - /api/auth/me Staff Flags (2026-04-18)
 - backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - lock `is_staff`/`is_superuser` contract in auth/me tests)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18al)

@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.utils import timezone
+from datetime import timedelta
 from rest_framework import status
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -370,3 +371,66 @@ class StaffTicketReplyView(APIView):
 
         queue_ticket_reply_email(ticket, ticket.requester.email)
         return Response(TicketMessageSerializer(message).data, status=status.HTTP_201_CREATED)
+
+
+class StaffSupportDashboardView(APIView):
+    permission_classes = [IsAuthenticated, IsStaffUser]
+
+    def get(self, request):
+        now = timezone.now()
+        active_statuses = [TicketStatus.OPEN, TicketStatus.IN_PROGRESS, TicketStatus.REOPENED]
+        queue_qs = SupportTicket.objects.all()
+        active_qs = queue_qs.filter(status__in=active_statuses)
+
+        total_active = active_qs.count()
+        unassigned_active = active_qs.filter(assignee__isnull=True).count()
+        urgent_active = active_qs.filter(priority='URGENT').count()
+        reopened_active = active_qs.filter(status=TicketStatus.REOPENED).count()
+        resolved_last_24h = queue_qs.filter(resolved_at__gte=now - timedelta(hours=24)).count()
+        closed_last_24h = queue_qs.filter(closed_at__gte=now - timedelta(hours=24)).count()
+
+        first_response_seconds = []
+        first_response_breach_8h = 0
+        urgent_first_response_breach_2h = 0
+        resolution_seconds = []
+        resolution_breach_72h = 0
+
+        for ticket in queue_qs.only('created_at', 'first_response_at', 'resolved_at', 'priority'):
+            if ticket.first_response_at:
+                delta_seconds = max(0, int((ticket.first_response_at - ticket.created_at).total_seconds()))
+                first_response_seconds.append(delta_seconds)
+                if delta_seconds > 8 * 3600:
+                    first_response_breach_8h += 1
+                if ticket.priority == 'URGENT' and delta_seconds > 2 * 3600:
+                    urgent_first_response_breach_2h += 1
+
+            if ticket.resolved_at:
+                resolve_seconds = max(0, int((ticket.resolved_at - ticket.created_at).total_seconds()))
+                resolution_seconds.append(resolve_seconds)
+                if resolve_seconds > 72 * 3600:
+                    resolution_breach_72h += 1
+
+        avg_first_response_seconds = int(sum(first_response_seconds) / len(first_response_seconds)) if first_response_seconds else None
+        avg_resolution_seconds = int(sum(resolution_seconds) / len(resolution_seconds)) if resolution_seconds else None
+
+        payload = {
+            'generated_at': now.isoformat(),
+            'queue': {
+                'active_total': total_active,
+                'unassigned_active': unassigned_active,
+                'urgent_active': urgent_active,
+                'reopened_active': reopened_active,
+            },
+            'throughput': {
+                'resolved_last_24h': resolved_last_24h,
+                'closed_last_24h': closed_last_24h,
+            },
+            'sla': {
+                'avg_first_response_seconds': avg_first_response_seconds,
+                'avg_resolution_seconds': avg_resolution_seconds,
+                'first_response_breach_8h': first_response_breach_8h,
+                'urgent_first_response_breach_2h': urgent_first_response_breach_2h,
+                'resolution_breach_72h': resolution_breach_72h,
+            },
+        }
+        return Response(payload)

@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   createSupportTicket,
   getSupportTicketDetail,
+  getStaffSupportDashboard,
   listSupportTickets,
   listStaffSupportTickets,
   patchStaffSupportTicket,
@@ -11,6 +12,7 @@ import {
   replySupportTicket,
 } from '../api/support';
 import SupportQueueFilters from '../components/support/SupportQueueFilters';
+import SupportOpsDashboard from '../components/support/SupportOpsDashboard';
 import StaffTicketActions from '../components/support/StaffTicketActions';
 import SupportTicketList from '../components/support/SupportTicketList';
 import TicketComposer from '../components/support/TicketComposer';
@@ -41,6 +43,8 @@ export default function Support() {
     priority: '',
     mineOnly: false,
   });
+  const [opsData, setOpsData] = useState(null);
+  const [opsLoading, setOpsLoading] = useState(false);
 
   const isStaffUser = Boolean(userIdentity?.isStaff);
 
@@ -105,9 +109,28 @@ export default function Support() {
     }
   };
 
+  const loadStaffOpsDashboard = async () => {
+    if (!staffMode || !isStaffUser) {
+      return;
+    }
+    setOpsLoading(true);
+    try {
+      const response = await getStaffSupportDashboard();
+      setOpsData(response.data || null);
+    } catch {
+      setOpsData(null);
+    } finally {
+      setOpsLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadTickets();
   }, [staffMode, staffFilters.search, staffFilters.status, staffFilters.priority, staffFilters.mineOnly, userIdentity?.id]);
+
+  useEffect(() => {
+    loadStaffOpsDashboard();
+  }, [staffMode, isStaffUser]);
 
   useEffect(() => {
     if (selectedTicket?.id) {
@@ -230,6 +253,10 @@ export default function Support() {
         <div className="rounded-lg border border-rose-700/70 bg-rose-900/20 px-3 py-2 text-sm text-rose-200">
           {errorMessage}
         </div>
+      )}
+
+      {staffMode && isStaffUser && (
+        <SupportOpsDashboard data={opsData} loading={opsLoading} t={t} />
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">

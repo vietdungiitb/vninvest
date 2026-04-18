@@ -18,6 +18,9 @@ export const reopenSupportTicket = (ticketId) =>
 export const listStaffSupportTickets = (params = {}) =>
   apiClient.get('/support/staff/tickets/', { params });
 
+export const getStaffSupportDashboard = () =>
+  apiClient.get('/support/staff/dashboard/');
+
 export const patchStaffSupportTicket = (ticketId, payload) =>
   apiClient.patch(`/support/staff/tickets/${ticketId}/`, payload);
 

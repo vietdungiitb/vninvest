@@ -1800,6 +1800,17 @@ const en = {
       saving: 'Saving...',
       updateFailed: 'Failed to update ticket.',
     },
+    ops: {
+      loading: 'Loading support ops dashboard...',
+      activeQueue: 'Active queue',
+      urgentQueue: 'Urgent tickets',
+      firstResponseAvg: 'Avg first response',
+      resolutionAvg: 'Avg resolution',
+      unassigned: 'Unassigned',
+      reopened: 'Reopened',
+      breach8h: 'SLA > 8h',
+      breach72h: 'SLA > 72h',
+    },
     status: {
       OPEN: 'Open',
       IN_PROGRESS: 'In progress',

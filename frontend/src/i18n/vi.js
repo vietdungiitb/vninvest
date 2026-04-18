@@ -1810,6 +1810,17 @@ const vi = {
       saving: 'Đang lưu...',
       updateFailed: 'Cập nhật ticket thất bại.',
     },
+    ops: {
+      loading: 'Đang tải dashboard vận hành support...',
+      activeQueue: 'Queue đang mở',
+      urgentQueue: 'Ticket khẩn cấp',
+      firstResponseAvg: 'TB phản hồi đầu',
+      resolutionAvg: 'TB xử lý xong',
+      unassigned: 'Chưa phân công',
+      reopened: 'Mở lại',
+      breach8h: 'Vượt SLA 8h',
+      breach72h: 'Vượt SLA 72h',
+    },
     status: {
       OPEN: 'Mới',
       IN_PROGRESS: 'Đang xử lý',
