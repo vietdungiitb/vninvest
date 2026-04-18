@@ -35,14 +35,14 @@ Việc cập nhật bộ tài liệu từ OC-14 đến OC-21 đã tạo ra một
 | :--- | :--- | :--- |
 | **Leakage (Rò rỉ)** | Cao | Đảm bảo script Mirror không copy thư mục `docs/`. |
 | **Outdated Docs** | Trung bình | Đánh dấu "OBSOLETE" cho các file đầu tháng 4 (như OC-02 v1, OC-04). |
-| **Quota Drift** | Thấp | Cập nhất lại OC-11 (Numeric Lock Sheet) để khớp với code Backend. |
+| **Quota Drift** | Trung bình | Cập nhật lại OC-11 (Numeric Lock Sheet) và chốt canonical quota/trial để khớp runtime backend; xem đây là blocker cho public launch cho đến khi OC-13 chuyển khỏi trạng thái RED. |
 
 ---
 
 ## 4. Khuyến nghị Tiếp theo (Recommendations)
 
 1. **Khóa thông số (Hardening):** Chốt 5 câu hỏi còn treo tại Mục 6 của OC-15.
-2. **Làm sạch tài liệu cũ:** Chuyển các tài liệu từ OC-01 đến OC-10 (trừ OC-05) vào thư mục `docs/archived/` hoặc đánh dấu `[DEPRECATED]` ở header để tránh gây nhầm lẫn khi tra cứu.
+2. **Làm sạch tài liệu cũ:** Ưu tiên archive/đánh dấu `[DEPRECATED]` cho các historical artifacts đầu tháng 4 đã được nêu rõ là không authoritative; không archive diện rộng toàn bộ OC-01..OC-10 nếu vẫn đang được dùng làm baseline tham chiếu.
 3. **Phê duyệt OC-19:** Chính thức áp dụng OC-19 (Team Governance Policy) làm tiêu chuẩn cho mọi PR liên quan đến Open Core.
 4. **Triển khai Script mẫu:** Viết script `tools/mirror_core.sh` (mô phỏng) để kiểm chứng khả năng tách code tự động như đã đề xuất.
 

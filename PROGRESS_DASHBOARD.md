@@ -105,6 +105,11 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### OpenCore Audit Report Hardening Alignment (2026-04-18)
+- docs/AUDIT_OPEN_CORE_DOCS_20260418.md (MODIFIED - chinh lai khuyen nghi archive docs cu theo huong precise, tranh xung dot voi authoritative set)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### OC-19 Ruleset Applied Successfully (dev/main/deploy) (2026-04-18)
 - scripts/ops/setup_oc19_github_rulesets.ps1 (MODIFIED - harden debug HTTP 422, payload compatibility)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18r)
