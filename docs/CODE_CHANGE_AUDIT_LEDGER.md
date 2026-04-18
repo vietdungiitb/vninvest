@@ -1,5 +1,219 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18r - Ruleset apply success + 422 hardening for setup script
+
+Muc tieu:
+- Hoan tat apply ruleset OC-19 cho dev/main/deploy theo phuong an khong can GitHub CLI.
+- Hardening script de debug ro loi API 422 va payload compatibility.
+
+Danh sach tep cap nhat:
+- scripts/ops/setup_oc19_github_rulesets.ps1
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Bo sung diagnostics chi tiet cho HTTP error (status + response + error details).
+- Loai bo truong payload gay 422 trong required status checks va rule type khong hop le.
+- Da apply thanh cong 3 ruleset:
+  - OpenCore Protection - dev
+  - OpenCore Protection - main
+  - OpenCore Protection - deploy
+
+## Entry 2026-04-18q - Automate GitHub ruleset setup via PowerShell script
+
+Muc tieu:
+- Cho phep tao/sua ruleset dev/main/deploy bang 1 lenh, giam thao tac thu cong tren GitHub UI.
+
+Danh sach tep cap nhat:
+- scripts/ops/setup_oc19_github_rulesets.ps1
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them script upsert ruleset qua GitHub REST API cho 3 branch dev/main/deploy.
+- Them huong dan one-command va che do dry-run trong OC-21.
+
+## Entry 2026-04-18p - Add copy/paste ruleset templates for branch protection
+
+Muc tieu:
+- Cung cap doan mau copy/paste de setup ruleset nhanh, giam sai sot thao tac cho dev/main/deploy.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them section 4.3 trong OC-21 voi mau ruleset day du cho dev/main/deploy.
+- Them checklist post-setup de xac nhan enforcement da hoat dong dung.
+
+## Entry 2026-04-18o - Clarify branch ruleset content for dev/main/deploy
+
+Muc tieu:
+- Bo sung noi dung tao/sua ruleset cu the de team thuc thi branch protection dong nhat tren dev/main/deploy.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them section 4.1 va 4.2 trong OC-21: branch pattern, protections, required checks, additional protections va checklist xac nhan sau setup.
+
+## Entry 2026-04-18n - OC-19 hard enforcement follow-up (PR-only gate + setup guides)
+
+Muc tieu:
+- Giam noise CI bang PR-only gate va bo sung huong dan van hanh de khoa merge gate o cap branch protection.
+
+Danh sach tep cap nhat:
+- .github/workflows/opencore-doc-sync-gate.yml
+- docs/OPEN_CORE_20_OC19_GATE_QUICKSTART_20260418.md
+- docs/OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Chuyen OpenCore Doc Sync Gate sang chi chay pull_request.
+- Them quickstart 5 phut cho dev moi de pass OC-19.
+- Them huong dan setup branch protection required status check tren dev/main/deploy.
+
+## Entry 2026-04-18m - OpenCore OC-19 enforcement via PR template + CI gate
+
+Muc tieu:
+- Bien OC-19 thanh co che enforcement tu dong, khong phu thuoc quy trinh thu cong cua tung ca nhan.
+
+Danh sach tep cap nhat:
+- .github/pull_request_template.md
+- .github/workflows/opencore-doc-sync-gate.yml
+- scripts/quality/check_opencore_doc_sync.ps1
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Them PR template bat buoc checklist OC-19.
+- Them GitHub Action gate check doc sync theo trigger mapping T1-T4.
+- Them script quality de detect OpenCore-impacting diff va fail neu thieu audit/docs evidence.
+
+## Entry 2026-04-18l - OpenCore default team governance policy (mandatory)
+
+Muc tieu:
+- Dua thanh quy dinh mac dinh de doi code luon bam theo docs canonical, tranh OpenCore bi loi thoi so voi runtime truth.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_19_DEFAULT_TEAM_GOVERNANCE_POLICY_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-19 voi trigger-to-docs mapping, merge gate checklist, SLA cap nhat docs va weekly anti-stale review.
+- Noi OC-19 vao bo canonical va go/no-go gate de coi nhu default rule trong moi PR OpenCore.
+- Them checkpoint quyet dinh ve viec ap dung OC-19 trong decision packet.
+
+## Entry 2026-04-18k - OpenCore public docs allowlist V1
+
+Muc tieu:
+- Tao allowlist public docs V1 ro rang de tranh cong bo nham private docs.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_18_PUBLIC_DOCS_ALLOWLIST_V1_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Bo sung OC-18 voi allowlist, blocklist, redaction rules va publication checklist.
+- Noi OC-18 vao bo canonical docs va publish-readiness gate.
+- Them checkpoint quyet dinh ve allowlist V1 trong decision packet.
+
+## Entry 2026-04-18j - OpenCore docs governance update (private docs vs public docs)
+
+Muc tieu:
+- Chot ro nguyen tac docs noi bo va docs cong bo la hai lane khac nhau.
+- Bo sung docs governance vao bo canonical OpenCore de tranh public nham tai lieu noi bo.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md
+- docs/OPEN_CORE_17_DOCS_GOVERNANCE_PRIVATE_PUBLIC_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Xac nhan `docs/` trong monorepo la private docs by default.
+- Bo sung gate moi trong publish-readiness: docs lane separation.
+- Them OC-17 de quy dinh publication pipeline cho public docs (allowlist/sanitize/legal review).
+- Dong bo lai decision packet va strategy de tranh hieu nham rang docs private se duoc public.
+
+## Entry 2026-04-18i - OpenCore review memo for non-immediate decision
+
+Muc tieu:
+- Tao them 1 memo ngan de stakeholder doc va can nhac, khong ep quyet dinh ngay.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_16_REVIEW_MEMO_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-16 nhu mot memo review, non-decisional, bo sung vao bo tai lieu canonical.
+- Huong dan thu tu doc de stakeholder co the xem bo docs moi ma chua can phai chot ngay.
+- Giu framing "reviewing" thay vi push sang approve/no-go som.
+
+## Entry 2026-04-18h - OpenCore documentation canonical refresh + historical doc deprecation
+
+Muc tieu:
+- Xay dung bo tai lieu OpenCore canonical, phan anh dung hien trang de phuc vu quyet dinh tiep theo.
+- Ha cap cac tai lieu OpenCore lich su dang gay nhieu vi co thong diep "ready/live/production" khong con phu hop.
+
+Pham vi cap nhat canonical:
+- docs/OPEN_CORE_00_INDEX.md
+- docs/OPEN_CORE_02_DECISION_RECORD_V1.md
+- docs/OPEN_CORE_03_EXECUTION_PLAN_90D.md
+- docs/OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md
+- docs/OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md
+- docs/OPEN_CORE_08_RISK_REGISTER_V1.md
+- docs/OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
+- docs/OPEN_CORE_12_ENTITLEMENT_QUOTA_IMPLEMENTATION_CHECKLIST_V1.md
+- docs/OPEN_CORE_13_COMMUNITY_PUBLISH_READINESS_V1.md
+- docs/OPEN_CORE_STRATEGY_MASTER_FINAL.md
+- docs/OPEN_CORE_15_DECISION_PACKET_CURRENT_20260418.md
+
+Pham vi ha cap tai lieu lich su:
+- docs/OPENCORE_VERIFICATION_CHECKLIST.md
+- docs/OPENCORE_INTEGRATION_GUIDE.md
+- docs/OPENCORE_VISUAL_REFERENCE.md
+- docs/OPENCORE_VISUAL_TEST_RESULTS.md
+- docs/OPENCORE_VISUAL_TEST_SUMMARY.md
+- docs/OPEN_CORE_IMPLEMENTATION_COMPLETE.md
+
+Noi dung cap nhat chinh:
+- Dung lai bo tai lieu authoritative thanh 2 lop:
+  - Canonical decision docs (OC-13/14/15 + OC-11/12/05)
+  - Historical artifacts giu lai cho audit nhung khong dung de ra quyet dinh hien tai
+- Chinh lai thong diep OpenCore tu "launch/public-ready" sang "decision-ready but not public-ready".
+- Ghi ro do lech giua business baseline va runtime truth, dac biet o quota unit, ten plan runtime, va package boundary Community/Pro.
+- Tao moi OC-15 de lam mot diem doc duy nhat cho governance checkpoint hien tai.
+
+Ket qua:
+- Stakeholder da co bo doc canonical de ra quyet dinh tiep theo.
+- Tai lieu cu van duoc giu cho audit, nhung da duoc gan co de tranh dung nham.
+
 ## Entry 2026-04-18g - Dashboard layout realignment (Status + Analytics cùng cụm sidebar)
 
 Mục tiêu:

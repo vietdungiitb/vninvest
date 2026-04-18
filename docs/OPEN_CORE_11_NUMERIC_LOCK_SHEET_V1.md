@@ -2,8 +2,8 @@
 
 Doc ID: OC-11
 Ngay tao: 2026-04-07
-Ngay cap nhat: 2026-04-07
-Trang thai: Fully locked for V1 execution
+Ngay cap nhat: 2026-04-18
+Trang thai: Business baseline only, KHONG con duoc xem la runtime-canonical
 Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_06_PRICING_AND_PACKAGING_DRAFT_V1.md, OPEN_CORE_10_VNSTOCK_SOURCE_STRATEGY_V1.md
 
 ## 1. Muc tieu
@@ -13,7 +13,11 @@ Khoa cac tham so so hoc quan trong de tranh tre execution:
 - Trial/Grace
 - SLO
 
-## 2. Numeric locks (workshop answers applied)
+Quan trong 2026-04-18:
+1. Tai lieu nay khong con duoc doc nhu "runtime truth" vi code OpenCore hien tai dang bieu dien mot phan quota theo thang.
+2. Tai lieu nay van co gia tri la business baseline/hypothesis, nhung can duoc canonical hoa lai truoc khi public hoac thong diep ra ngoai.
+
+## 2. Business baseline tu workshop (giu lai de tham chieu)
 
 ### 2.1 Pricing annual
 | Plan | Currency | Annual price | Notes |
@@ -47,18 +51,34 @@ Khoa cac tham so so hoc quan trong de tranh tre execution:
 | Error rate budget | < 1.0% 5xx |
 | Incident response target | P1 ack <= 60 phut |
 
-## 3. Acceptance rules
-1. Tat ca o "TBD" phai duoc lock trong workshop OC-07.
-2. Neu khong lock duoc, item do dua vao V1.1 voi owner va deadline.
-3. Khong cho phep trien khai production pricing khi con TBD o muc pricing/quota/trial.
+## 3. Runtime truth quan sat duoc trong code (2026-04-18)
+| Muc | Runtime truth hien tai | He qua |
+|---|---|---|
+| Plan names | `free`, `pro`, `enterprise` | Khong giong ten package business Community / Pro Individual / Pro Team |
+| Quota field trong DPIPlan | `max_api_calls_per_month` | Lech voi bang quota/day o tren |
+| Fallback Free plan | Dang seed 5000 calls/thang trong runtime fallback | Khong khop 300/day baseline |
+| Trial/grace wording | Chua co 1 nguon canonical duy nhat giua cac docs | Khong du an toan de dua ra public messaging |
 
-## 4. Decision log
-| Item | Decision | Owner | Deadline |
+## 4. Danh gia tung cum tham so
+| Cum tham so | Gia tri business baseline | Runtime truth | Trang thai quyet dinh |
 |---|---|---|---|
-| Pricing annual | Locked from answers (2A/3C/4A) | Product + Growth | 2026-04-14 |
-| Quota defaults | Locked from answers + finalized baseline | Tech Lead | 2026-04-14 |
-| Trial/Grace | Locked from answers (9A/10A/11/12B) | Product | 2026-04-14 |
-| Pro SLO baseline | Locked from answers (13A/14A/15B/16A) | Tech Lead + Compliance | 2026-04-14 |
+| Pricing annual | Co baseline VND | Chua thay binding runtime ro rang | Chua final de public |
+| Quota Community/Pro | Bang ngay | Runtime nghieng ve thang | Dang lech, can lock lai |
+| Trial/grace | 7 ngay + 7 ngay | Chua duoc xac nhan end-to-end la canonical | Dang mo |
+| SLO | Co baseline | Chua thay public enforcement artifact tuong ung | Baseline noi bo |
 
-## 5. Next review checkpoint
-- Review target: 2026-04-14 (weekly governance checkpoint).
+## 5. Acceptance rules sau governance refresh
+1. Khong goi tai lieu nay la "fully locked" nua cho den khi runtime truth duoc dong bo.
+2. Khong cho phep public pricing/quota/trial neu con do lech giua business baseline va runtime implementation.
+3. Moi thong diep public phai noi theo so canonical cuoi cung trong bo OC-13/14/15, khong copy truc tiep bang so nay khi chua duoc tai-khoa.
+
+## 6. Decision log sau cap nhat
+| Item | Trang thai 2026-04-18 | Owner |
+|---|---|---|
+| Pricing annual | Baseline con gia tri, chua public-final | Product + Growth |
+| Quota defaults | Khong con duoc xem la runtime-canonical | Tech Lead |
+| Trial/Grace | Can lock lai wording + runtime contract | Product + Tech |
+| Pro SLO baseline | Giu lam noi bo, chua dung cho public commitment | Tech Lead + Compliance |
+
+## 7. Next review checkpoint
+- Review target: lock lai quota/trial canonical truoc moi quyet dinh publish/community hardening.

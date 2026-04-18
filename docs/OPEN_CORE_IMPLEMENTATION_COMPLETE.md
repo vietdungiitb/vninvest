@@ -1,5 +1,10 @@
 # OpenCore Implementation - COMPLETED ✅
 
+HISTORICAL ARTIFACT NOTICE (2026-04-18)
+- Tai lieu nay ghi lai mot moc implementation som, khong phai ban tom tat authoritative cho tinh hinh OpenCore hien tai.
+- Cac khang dinh "PRODUCTION READY" trong file nay chi con gia tri lich su.
+- Dung bo tai lieu OC-13, OC-14, OC-15, OC-11, OC-12 de danh gia hien trang va quyet dinh tiep theo.
+
 **Date**: 2026-04-07  
 **Status**: PRODUCTION READY  
 **Sessions**: 2  

@@ -2,122 +2,69 @@
 
 Doc ID: OC-12
 Ngay tao: 2026-04-07
-Trang thai: Draft ready for coding approval
+Ngay cap nhat: 2026-04-18
+Trang thai: Rebaselined after partial implementation in runtime
 Related docs: OPEN_CORE_00_INDEX.md, OPEN_CORE_02_DECISION_RECORD_V1.md, OPEN_CORE_03_EXECUTION_PLAN_90D.md, OPEN_CORE_05_FEATURE_BOUNDARY_MATRIX_V1.md, OPEN_CORE_11_NUMERIC_LOCK_SHEET_V1.md
 
 ## 1. Muc tieu
 Chuyen OC-11 (pricing/quota/trial/SLO) thanh backlog ky thuat co the code ngay, co acceptance criteria ro rang.
 
-## 2. Hien trang code da co (backend)
-1. Da co plan va plan_expires_at trong UserConfig.
-2. Da co resolver: resolve_user_entitlements(user) va DRF permission classes.
-3. Da co auth/me tra ve plan + entitlements cho frontend.
-4. Da co mot so gate theo plan o API va websocket.
+## 2. Hien trang runtime da co (2026-04-18)
+1. Da co runtime models/logic cho DPIPlan, DPILicense, DPIEntitlement, usage metrics, analytics, billing, admin va API.
+2. Da co runtime plan names `free`, `pro`, `enterprise` trong code OpenCore.
+3. Da co quota/accounting lane, nhung representation hien tai nghieng ve monthly counters thay vi chi la daily contract.
+4. Da co hardening gan day de fallback tao Free plan an toan khi bang seed chua san.
+5. Bai toan hien tai la canonicalization + hardening + package boundary, khong con la draft coding checklist thuần tuy.
 
-## 3. Mapping V1 de implementation
-1. Community -> free
-2. Pro Individual -> pro
-3. Pro Team -> premium
+## 3. Mapping package/business -> runtime hien tai
+1. Community -> `free`
+2. Pro Individual -> `pro`
+3. Pro Team -> `enterprise`
 4. admin giu nguyen la he thong noi bo
 
-Note: Mapping nay dung de ra code V1 nhanh, chua doi ten plan trong DB.
+Note:
+- Mapping tren phan anh runtime truth hien tai.
+- Ten `enterprise` trong code KHONG nen tu dong duoc xem la final public packaging name.
 
-## 4. Scope code V1 (must-have)
-1. Entitlement contract V1
-- Mo rong resolve_user_entitlements(user) de tra them:
-  - tier: community | pro_individual | pro_team | admin
-  - quota_caps: api_calls_per_day, ai_regenerate_per_day, whale_symbols_max, exports_per_day
-  - trial_state: none | trial_active | grace_active | expired
-  - trial_ends_at, grace_ends_at
+## 4. Nhung gi da co gia tri va nen giu
+1. Runtime entitlement/quota lane da ton tai va co the tiep tuc harden.
+2. Co mo hinh 403/429 + analytics/usage tracking de tiep tuc chuan hoa contract.
+3. Co trial/grace/business logic mot phan, nhung chua nen xem la canonical neu chua doi chieu xong tai lieu va runtime.
 
-2. Quota accounting service
-- Tao service dung chung (vi du: quota_service.py):
-  - consume(user, quota_key, amount=1) -> allow/deny + remaining + reset_at
-  - get_usage(user, quota_key)
-  - reset theo ngay (timezone Asia/Ho_Chi_Minh)
-- Redis-first + DB fallback (neu Redis loi van an toan).
+## 5. Khoang trong canonical can lock truoc khi them code lon
+1. Quota unit canonical
+- Chot ro API calls/day hay API calls/month la contract chinh.
 
-3. API protection and response contract
-- Gate cac endpoint premium theo entitlements (khong hard-code plan string tai nhieu noi).
-- Khi vuot quota: tra HTTP 429 va payload thong nhat:
-  - code: quota_exceeded
-  - quota_key
-  - limit
-  - remaining
-  - reset_at
+2. Feature key catalog
+- Can co bang canonical feature_key -> package -> endpoint/module -> response/gate mode.
 
-4. Trial + grace lifecycle
-- Them lifecycle logic:
-  - trial 7 ngay, quota = 70% Pro Individual
-  - grace 7 ngay sau trial/paid expiry
-  - het grace: khoa premium, giu free flow
-- Job hang ngay (Celery beat) de cap nhat trial/grace status.
+3. Trial/grace contract
+- Chot duration, quota ratio, downgrade behavior, message text duoc phep public.
 
-5. Observability and audit
-- Metric toi thieu:
-  - entitlement_resolve_total
-  - quota_consume_total{quota_key,result}
-  - quota_exceeded_total{quota_key,plan}
-- Log audit khi doi plan/trial/grace status.
+4. Self-host Pro enforcement model
+- Chot boundary giua entitlement trong app va commercial moat o package/service/image.
 
-## 5. Scope code V1 (should-have)
-1. Endpoint auth/me bo sung quota snapshot de frontend show banner.
-2. Them endpoint self-service usage summary (read-only).
-3. Feature flag rollout:
-- ENABLE_OPEN_CORE_QUOTA_ENFORCEMENT (default false)
-- ENABLE_OPEN_CORE_TRIAL_GRACE (default false)
+5. Community package boundary
+- Chot ro module nao duoc public, module nao chi ton tai private/compiled/service-side.
 
-## 6. Data model changes de du kien
-1. Khong doi bang UserConfig cho V1 wave 1 (tan dung plan + expires).
-2. Them bang usage counters neu can DB fallback ben vung:
-- UserQuotaUsage(user, date, quota_key, used, updated_at)
-3. Them bang trial state neu can lifecycle ro rang:
-- UserPlanLifecycle(user, trial_starts_at, trial_ends_at, grace_ends_at, source)
+## 6. Cong viec ky thuat uu tien sau khi da lock canonical decisions
+1. Chuan hoa response contract cho 403/429 theo 1 helper trung tam.
+2. Doi bo hard-code plan string/indicator gate sang bang entitlement/feature map trung tam.
+3. Chot quota accounting service theo don vi canonical va ghi ro reset semantics.
+4. Chot trial/grace scheduler contract va test matrix.
+5. Them quota snapshot/usage summary co dinh nghia ro cho frontend.
 
-## 7. File-level implementation checklist
-1. backend/portfolio/permissions.py
-- Centralize entitlement map + quota map theo tier.
-- Tra ve contract entitlements V1 day du.
+## 7. Danh gia data model hien tai
+1. Hien tai da co DPIPlan/DPILicense/DPIEntitlement/DPIQuotaTracker; khong nen them bang moi chi de bua docs khi canonical contract chua lock.
+2. Neu quyet dinh canonical quota/day duoc giu, co the can layer chuyen doi hoac them cap reset/accounting ro hon.
+3. Neu quyet dinh tiep tuc quota/month la runtime canonical, OC-11 va thong diep pricing/quota phai duoc cap nhat theo huong do.
 
-2. backend/portfolio/views.py
-- Doi cac gate hard-code plan sang helper entitlement.
-- Chuan hoa 429 response cho quota exceeded.
+## 8. Acceptance criteria cho decision checkpoint
+1. Team co the chi ra 1 bang map ro giua package business va runtime plan names.
+2. Team co the tra loi quota contract chinh la theo ngay hay theo thang ma khong mau thuan giua docs va code.
+3. Team co the chi ra module/endpoint nao la Community-safe.
+4. Team co the chi ra self-host Pro se duoc phan phoi theo mo hinh nao.
+5. Team co the chi ra cac assertion "ready/live/production" nao con gia tri, assertion nao chi la historical artifact.
 
-3. backend/portfolio/consumers.py
-- Ap entitlement gating thong nhat voi REST APIs.
-
-4. backend/config/settings.py and backend/.env.example
-- Khai bao feature flags va quota defaults by tier.
-
-5. backend/portfolio/tasks.py (hoac module task phu hop)
-- Cron daily xu ly trial/grace transitions.
-
-6. backend/portfolio/tests/
-- Unit tests: entitlement map, quota consume, trial/grace transitions.
-- API tests: 200/403/429 theo plan va quota.
-- Websocket tests: masking/gating theo tier.
-
-## 8. Acceptance criteria (go/no-go)
-1. Community khong truy cap duoc premium endpoints.
-2. Pro Individual dung quota dung theo OC-11.
-3. Trial users co 70% quota Pro Individual.
-4. Qua grace thi premium bi khoa, free flow van dung duoc.
-5. Tat ca gate response dung mot contract (403/429) va co test.
-6. Tat feature flags thi he thong quay ve behavior cu.
-
-## 9. Execution slices de code nhanh
-1. Slice A (1-2 ngay): entitlement contract + mapping + tests.
-2. Slice B (1-2 ngay): quota service + API 429 contract + tests.
-3. Slice C (1 ngay): trial/grace scheduler + tests.
-4. Slice D (0.5-1 ngay): metrics + log audit + rollout flag.
-
-## 10. Blockers can owner xac nhan truoc khi code
-1. Xac nhan mapping plan V1 (free/pro/premium) nhu Muc 3.
-2. Xac nhan rollout strategy: bat flag tren staging truoc, production sau.
-3. Xac nhan legal wording final lock cho trial/grace message text.
-
-## 11. Ready-to-code gate
-Neu 3 blocker o Muc 10 duoc xac nhan, nhom co the vao code ngay theo Slice A -> D.
-
-## 12. Next review checkpoint
-- Target review: 2026-04-08 (day 2 execution log update in OC-03).
+## 9. Next review checkpoint
+- Target review: sau khi owner chot canonical quota/trial/self-host decisions va truoc khi bat ky lane public/community nao duoc green-light.
