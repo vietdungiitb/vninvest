@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18ae - Relax dev/deploy review gate and align required governance check
+
+Muc tieu:
+- Bo yeu cau approval/review tren ruleset `dev` va `deploy` theo yeu cau van hanh.
+- Dam bao check bat buoc `Governance Release Gate / governance-postgres-regression` thuc su chay cho PR vao `dev`.
+
+Danh sach tep cap nhat:
+- .github/workflows/governance-release-gate.yml (MODIFIED - bo sung trigger `dev` cho `push` va `pull_request`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Ruleset API da cap nhat `required_approving_review_count=0` cho `OpenCore Protection - dev` va `OpenCore Protection - deploy`.
+- Workflow governance gate duoc bo sung trigger `dev` de context check bat buoc co mat tren PR vao `dev`.
+
+Validation:
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232122` => `required_approving_review_count: 0`.
+- `gh api repos/vietdungiitb/vninvest/rulesets/15232124` => `required_approving_review_count: 0`.
+- PR #1 truoc do bi block boi missing governance check context; sau patch workflow se tao check context day du tren PR vao `dev`.
+
 ## Entry 2026-04-18ad - Add README_DRAFT in separate housekeeping commit
 
 Muc tieu:

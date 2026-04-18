@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Dev/Deploy Ruleset Review Gate Relax + Governance Check Alignment (2026-04-18)
+- .github/workflows/governance-release-gate.yml (MODIFIED - trigger them `dev` cho push/pull_request de tao context check governance-postgres-regression tren PR vao dev)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Ruleset update qua GitHub API: `OpenCore Protection - dev` va `OpenCore Protection - deploy` da dat `required_approving_review_count = 0`
+- Status: IN PROGRESS (dang day commit len PR de kich hoat lai required checks va merge)
+
 ### README_DRAFT Separate Commit (2026-04-18)
 - README_DRAFT.md (NEW - draft README content added as separate housekeeping commit by user selection)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
