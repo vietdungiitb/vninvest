@@ -1,5 +1,30 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18af - Heatmap tooltip null-crash + responsive resize recovery hotfix
+
+Muc tieu:
+- Sua loi runtime `TooltipHTMLContent.js: Cannot set properties of null (setting 'innerHTML')` tren ECharts heatmap khi resize man hinh.
+- Dam bao heatmap tu dong co gian dung sau khi thu hep/trang thai cua so thay doi.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/PortfolioHeatmap.jsx`
+  - Bo sung `ResizeObserver` + `window resize` listener de chu dong goi `chart.resize()` khi container thay doi kich thuoc.
+  - Them `safeResizeChart()` de `hideTip` truoc resize, tranh race-condition tooltip khi ECharts dang cap nhat DOM tooltip.
+  - Chuyen `tooltip.appendToBody` tu `true` sang `false` de tranh mat node tooltip khi layout thay doi manh.
+  - Bo sung `alwaysShowContent: false` va trigger resize khi doi mode (`treemap/sunburst`) hoac doi metric size.
+  - Gan `ref` vao chart component va chart container de thao tac resize on dinh.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Validation:
+- `get_errors` tren `frontend/src/components/PortfolioHeatmap.jsx`: khong co loi.
+- Manual behavior expected:
+  - Khong con crash tooltip khi co/doi kich thuoc cua so.
+  - Heatmap tu dong reflow ve dung layout ban dau sau resize.
+
 ## Entry 2026-04-18ae - Relax dev/deploy review gate and align required governance check
 
 Muc tieu:

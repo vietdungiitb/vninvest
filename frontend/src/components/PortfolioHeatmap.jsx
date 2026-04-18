@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from '../context/LangContext';
 
@@ -46,6 +46,62 @@ export default function PortfolioHeatmap({ holdings, title }) {
   const [viewMode, setViewMode] = useState('treemap');
   const [sizeMetric, setSizeMetric] = useState('weight');
   const HEATMAP_HEIGHT = 420;
+  const chartComponentRef = useRef(null);
+  const chartContainerRef = useRef(null);
+  const resizeRafRef = useRef(0);
+
+  const safeResizeChart = useCallback(() => {
+    const chart = chartComponentRef.current?.getEchartsInstance?.();
+    if (!chart || chart.isDisposed?.()) {
+      return;
+    }
+
+    try {
+      chart.dispatchAction({ type: 'hideTip' });
+    } catch (_err) {
+      // Ignore tooltip action errors during transient resize/dispose timing.
+    }
+
+    chart.resize({
+      animation: {
+        duration: 0,
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    const scheduleResize = () => {
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      resizeRafRef.current = requestAnimationFrame(() => {
+        safeResizeChart();
+      });
+    };
+
+    const observer = new ResizeObserver(() => {
+      scheduleResize();
+    });
+
+    if (chartContainerRef.current) {
+      observer.observe(chartContainerRef.current);
+    }
+
+    window.addEventListener('resize', scheduleResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', scheduleResize);
+      if (resizeRafRef.current) {
+        cancelAnimationFrame(resizeRafRef.current);
+      }
+      resizeRafRef.current = 0;
+    };
+  }, [safeResizeChart]);
+
+  useEffect(() => {
+    safeResizeChart();
+  }, [safeResizeChart, viewMode, sizeMetric, hierarchicalData.length]);
 
   const toNumber = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -295,8 +351,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
       trigger: 'item',
       triggerOn: 'mousemove',
       renderMode: 'html',
-      appendToBody: true,
+      appendToBody: false,
       enterable: false,
+      alwaysShowContent: false,
       showDelay: 40,
       hideDelay: 120,
       transitionDuration: 0.08,
@@ -619,13 +676,17 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       </div>
 
-      <div className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
+      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
+          ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
           notMerge={true}
           lazyUpdate={false}
           opts={{ renderer: 'canvas' }}
+          onChartReady={() => {
+            safeResizeChart();
+          }}
         />
         
         <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">

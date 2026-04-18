@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Heatmap Tooltip Null-Crash + Responsive Resize Recovery Hotfix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - harden tooltip lifecycle during resize + add ResizeObserver-driven chart.resize)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (ready for manual UI verification on resize/zoom flow)
+
 ### Dev/Deploy Ruleset Review Gate Relax + Governance Check Alignment (2026-04-18)
 - .github/workflows/governance-release-gate.yml (MODIFIED - trigger them `dev` cho push/pull_request de tao context check governance-postgres-regression tren PR vao dev)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ae)
