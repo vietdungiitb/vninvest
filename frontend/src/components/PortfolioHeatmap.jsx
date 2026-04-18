@@ -94,8 +94,17 @@ export default function PortfolioHeatmap({ holdings, title }) {
       window.removeEventListener('resize', scheduleResize);
       if (resizeRafRef.current) {
         cancelAnimationFrame(resizeRafRef.current);
+        resizeRafRef.current = 0;
       }
-      resizeRafRef.current = 0;
+      
+      const chart = chartComponentRef.current?.getEchartsInstance?.();
+      if (chart && !chart.isDisposed()) {
+        try {
+          chart.dispatchAction({ type: 'hideTip' });
+        } catch (_) {
+          // Ignore tip action errors during unmount race.
+        }
+      }
     };
   }, [safeResizeChart]);
 
