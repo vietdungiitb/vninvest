@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Support Ticket Frontend Regression Tests (2026-04-18)
+- frontend/src/pages/Support.test.jsx (NEW - focused regression tests for support user/staff flows)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx` pass 4/4, `get_errors` clean.
+- Status: COMPLETED (support page now has frontend regression guard for user + staff workflow)
+
 ### Support Ticket Implementation Slice 2 - Staff Web Workflow (2026-04-18)
 - backend/portfolio/auth_views.py (MODIFIED - expose `is_staff` and `is_superuser` in `/api/auth/me`)
 - frontend/src/context/PortfolioContext.jsx (MODIFIED - persist staff role flags in auth state)

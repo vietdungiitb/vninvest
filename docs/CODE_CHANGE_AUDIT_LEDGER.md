@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18ak - Support Ticket frontend regression tests
+
+Muc tieu:
+- Bo sung regression test cho support portal de giu on dinh luong user/staff tren frontend sau cac dot refactor tiep theo.
+- Bao ve 3 nhom hanh vi chinh: empty state user, tao ticket moi, va staff queue workflow.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Support.test.jsx (NEW - focused frontend regression tests for support page)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Them 4 test frontend cho trang support:
+  - Render form tao ticket khi user chua co ticket.
+  - Tao ticket moi tu user portal.
+  - Staff queue co the assign/save workflow.
+  - Staff reply dung staff endpoint trong queue mode.
+
+Validation:
+- `get_errors` tren `frontend/src/pages/Support.test.jsx`: khong co loi.
+- `npm test -- --watchAll=false --runInBand src/pages/Support.test.jsx`: 4/4 pass.
+- Ghi chu pham vi: day la focused regression suite, chua cover het attachment flow va backend error matrix o UI.
+
 ## Entry 2026-04-18aj - Support Ticket implementation slice 2 (staff web workflow)
 
 Muc tieu:
