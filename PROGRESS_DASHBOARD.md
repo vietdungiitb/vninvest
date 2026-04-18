@@ -103,7 +103,14 @@
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-16)
+## ✅ AUDIT FILE LIST (2026-04-18)
+
+### Sprint Kickoff Package - Team Onboarding (2026-04-18)
+- docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone doc for team prep, reading roadmaps, checklists, standup templates, success metrics)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: READY FOR DISTRIBUTION (Fri 2026-04-19)
 
 ### Sprint Week 4 Planning - Legal Bundle & Closure (2026-04-18)
 - docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md (NEW - week 4 legal finalization + post-sprint steering review + GO/NO-GO gate)

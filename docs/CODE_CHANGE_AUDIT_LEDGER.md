@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18z - Create sprint kickoff package + team onboarding guide
+
+Muc tieu:
+- Tao integration doc cuoi cung cong hien tat ca 6 documents sprint planning (OC-22 through OC-27).
+- Cung cap clear reading roadmap, checklists, deadlines cho moi role (PO, Tech, Backend, Frontend, QA).
+- Chuan bi team 100% cho Monday kickoff.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone onboarding doc)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Tao OC-28 comprehensive kickoff guide (1200+ lines):
+  * Executive overview (5 min read)
+  * Role-specific reading paths (35-65 min per role)
+  * Week-by-week decision snapshot
+  * Pre-kickoff checklist for all 5 roles (Sun EOD deadline)
+  * Monday standup agenda + template
+  * Daily standup template (15 min each)
+  * Success metrics dashboard (per week)
+  * Quick reference decision cards
+  * FAQ + troubleshooting
+  * Full document linkage map
+  * Final pre-kickoff tech checklist
+- Status: READY FOR TEAM DISTRIBUTION (Fri 2026-04-19)
+- Target: All team members complete reading + prep by Sun 2026-04-21 EOD
+- Monday 09:00: Team kickoff standup starts sprint
+
 ## Entry 2026-04-18y - Create sprint week 4 planning for legal bundle finalization
 
 Muc tieu:

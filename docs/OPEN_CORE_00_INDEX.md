@@ -46,6 +46,7 @@ Nguyen tac quan tri tai lieu (bat buoc):
 27. OC-25 (executive checklist + approval): OPEN_CORE_25_SPRINT_EXECUTIVE_CHECKLIST_20260418.md (AWAITING APPROVAL)
 28. OC-26 (sprint week 3 community + self-host): OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md (PLANNING)
 29. OC-27 (sprint week 4 legal bundle): OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md (PLANNING)
+30. OC-28 (sprint kickoff package + team onboarding): OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (READY FOR DISTRIBUTION)
 
 ## 3. Thu tu doc de ra quyet dinh nhanh
 1. Bat dau tu OC-15 neu can mot ban tong hop de ra quyet dinh.
