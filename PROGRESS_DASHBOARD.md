@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### One-Command Sync to vninvest-core (2026-04-18)
+- scripts/ops/sync_vninvest_core.ps1 (NEW - script dong bo snapshot sang repo private vninvest-core: copy, commit, push)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: READY TO USE (chay 1 lenh la sync)
+
 ### Sprint Kickoff Package - Team Onboarding (2026-04-18)
 - docs/OPEN_CORE_28_SPRINT_KICKOFF_PACKAGE_20260418.md (NEW - capstone doc for team prep, reading roadmaps, checklists, standup templates, success metrics)
 - docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-28 vao canonical index)

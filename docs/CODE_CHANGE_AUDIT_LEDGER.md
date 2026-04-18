@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18aa - Add one-command sync script for vninvest-core snapshot
+
+Muc tieu:
+- Tao script 1-lenh de dong bo snapshot sang repo private `vninvest-core`.
+- Chuan hoa quy trinh de nhung lan sau chi can chay script thay vi lam thu cong nhieu buoc.
+- Include file backlog theo yeu cau user cho dot commit hien tai.
+
+Danh sach tep cap nhat:
+- scripts/ops/sync_vninvest_core.ps1 (NEW - one-command sync script, snapshot + commit + push)
+- docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Script su dung snapshot seed repo de tranh loi push full-history.
+- Co tham so cau hinh: source path, seed path, target repo URL, target branch.
+- Co co che `-SkipPush` de test local an toan truoc khi day remote.
+- Script tu dong:
+  * Don seed working tree (giu `.git`)
+  * Copy snapshot tu source repo bang robocopy
+  * Commit neu co thay doi
+  * Push len `origin/main` neu khong bat `-SkipPush`
+
 ## Entry 2026-04-18z - Create sprint kickoff package + team onboarding guide
 
 Muc tieu:
