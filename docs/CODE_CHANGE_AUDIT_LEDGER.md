@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18t - Create OpenCore hardening sprint plan (21-day roadmap)
+
+Muc tieu:
+- Tao chi tiet implementation roadmap de chot 5 quyet dinh then chot (OC-15 §6).
+- Lay approval tu PO truoc khi bat tay code.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-22 chi tiet 5 quyet dinh: quota unit, package mapping, community package boundary, self-host pro model, legal bundle.
+- Timeline: 21 ngay (2026-04-22 -> 2026-05-09).
+- Resource allocation + risk mitigation.
+- Target outcome: OC-13 RED -> YELLOW/GREEN; ready for public repo.
+- Status: PROPOSAL - awaiting PO/Tech Lead approval.
+
 ## Entry 2026-04-18s - Refine OpenCore audit report for canonical governance alignment
 
 Muc tieu:
