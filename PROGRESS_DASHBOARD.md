@@ -105,6 +105,22 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Data Pipeline / Pandas / SQL Optimization Implementation (2026-04-18)
+- backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hotspot, toi uu vectorized path)
+- backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve scope symbols bang SQL projection + backward-compatible alert alias fields)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - tai su dung symbol normalization helper, bo iterrows tren cache path)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (MODIFIED - cap nhat execution summary + validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: Django check pass, focused regression tests pass tren hotspot.
+- Status: READY FOR DEPLOYMENT CANDIDATE (can bo sung benchmark p95/query-count de dong dau production-ready theo KPI)
+
+### Data Pipeline / Pandas / SQL Optimization Plan (2026-04-18)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (NEW - ke hoach chi tiet toi uu hotspot du lieu, KPI before/after, phase A-D, risk/rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: WAITING REVIEW (plan only, chua code)
+
 ### One-Command Sync to vninvest-core (2026-04-18)
 - scripts/ops/sync_vninvest_core.ps1 (NEW - script dong bo snapshot sang repo private vninvest-core: copy, commit, push)
 - docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)

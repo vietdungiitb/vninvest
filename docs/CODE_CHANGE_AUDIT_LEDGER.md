@@ -1,5 +1,55 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18ac - Data pipeline/Pandas/SQL optimization implementation (DP-01 execute)
+
+Muc tieu:
+- Thuc thi optimization theo ke hoach DP-01 voi uu tien SQL projection/filtering va Pandas vectorized.
+- Giam Python-loop overhead tren hot path va giu nguyen business output.
+- Bo sung backward compatibility cho whale aggregate payload de dam bao test/client legacy.
+
+Danh sach tep cap nhat:
+- backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hot path, toi uu loop/vectorized)
+- backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve symbol scope, them alert alias fields de backward compatibility)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - chuan hoa symbol helper, bo iterrows tren cache path)
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (MODIFIED - cap nhat execution summary + validation evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Analytics:
+  - `_wavg_cost_for_symbol`: `itertuples()` thay cho `iterrows()` va bo sort lai khong can thiet.
+  - `compute_nav_series`: bo `apply(axis=1)`, thay bang map sign vectorized.
+- Market data service:
+  - `_resolve_whale_feed_symbols`: gom helper normalize, resolve watchlist/tracked bang SQL projection (`values_list`), bo prefetch relation khong can.
+  - `_build_aggregate_event_payload*`: them `alert_at`, `alert_first_seen_at`, `alert_age_seconds`.
+- Tasks prefetch:
+  - Them `_normalized_symbol_set` dung chung.
+  - `_cache_ticker_rows_from_dataframe`: bo `iterrows`, dung dict-record iteration.
+  - `_distinct_symbols`: tai su dung helper normalize.
+
+Validation:
+- Django system check: pass.
+- Focused regression tests: pass tren cac luong whale aggregate scope/watchlist/dedup, analytics risk metrics, prefetch normalization + realtime universe shard.
+- Ghi chu: 1 test whale aggregate co tinh khong on dinh khi chay batch do stream state, chay rieng pass sau fix compatibility fields.
+
+## Entry 2026-04-18ab - Data pipeline/Pandas/SQL optimization plan (DP-01)
+
+Muc tieu:
+- Lap ke hoach day du toi uu data pipeline theo chien luoc SQL projection + Pandas vectorized.
+- Chot pham vi hotspot va KPI before/after de duyet truoc khi code implementation.
+
+Danh sach tep cap nhat:
+- docs/DATA_PIPELINE_PANDAS_SQL_OPTIMIZATION_PLAN_20260418.md (NEW - ke hoach chi tiet DP-01, phases A-D, KPI, risk, rollback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Xac dinh 4 hotspot uu tien: market_data_service, analytics, tasks_prefetch, admin insights.
+- Chia ke hoach 4 phase: baseline -> SQL optimization -> Pandas vectorization -> validation.
+- Dinh nghia KPI duyet: p95, query count, CPU time va acceptance criteria.
+- Bo sung bang baseline/after de dien trong qua trinh thuc thi.
+- Chot quy tac: khong doi API contract, uu tien tinh dung output business.
+
 ## Entry 2026-04-18aa - Add one-command sync script for vninvest-core snapshot
 
 Muc tieu:
