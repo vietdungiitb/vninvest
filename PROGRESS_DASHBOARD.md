@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Sprint Week 1 Execution Plan - Quota Decision (2026-04-18)
+- docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md (NEW - detailed week 1 tasks + resource allocation + daily standup talking points)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-23 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### OpenCore Hardening Sprint Plan - 21 Days Roadmap (2026-04-18)
 - docs/OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (NEW - proposal chi tiet 5 quyet dinh + timeline + resources)
 - docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-22 vao bo canonical)

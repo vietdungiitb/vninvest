@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18u - Create sprint week 1 backlog for Decision 1 (quota unit canonical)
+
+Muc tieu:
+- Tao chi tiet sprint week 1 roadmap va tasks de chot Decision 1.
+- Lam san sang de kick off standup Mon 2026-04-22.
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-23 chi tiet 4 phase: Analysis (Mon), Docs Update (Tue), Tests (Wed), Integration (Thu-Fri).
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (docs) + 3.1-3.2 (tests) + 4.1-4.3 (PR/merge).
+- Resource: 1 PO (40%), 1 Tech Lead (100%), 1 Backend (50%), 1 QA (30%) = 3.5 person-days.
+- Success criteria: Decision approved, OC-05/06/11 coherent, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR SPRINT KICKOFF.
+
 ## Entry 2026-04-18t - Create OpenCore hardening sprint plan (21-day roadmap)
 
 Muc tieu:
