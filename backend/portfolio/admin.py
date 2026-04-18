@@ -359,9 +359,9 @@ def _fetch_live_workspace_data(symbol):
     """Lấy ticker live + depth thật từ vnstock (chạy trong thread riêng, timeout 8s)."""
     result = {'ticker': None, 'depth': None}
     try:
-        from vnstock import Vnstock
-        stock = Vnstock().stock(symbol=symbol, source='VCI')
-        df = stock.trading.price_board(symbols_list=[symbol])
+        from .adapters.vnstock_adapter import fetch_price_board_dataframe
+
+        df = fetch_price_board_dataframe([symbol], anchor_symbol=symbol)
         if df is not None and not df.empty:
             def _f(val):
                 try:
@@ -392,8 +392,8 @@ def _fetch_live_workspace_data(symbol):
                 'high_price': _f(mt.get('highest')),
                 'low_price': _f(mt.get('lowest')),
                 'volume': _i(mt.get('accumulated_volume')),
-                'ceiling_price': _f(ls.get('ceiling_price')),
-                'floor_price': _f(ls.get('floor_price')),
+                'ceiling_price': _f(ls.get('ceiling')) or _f(mt.get('ceiling_price')),
+                'floor_price': _f(ls.get('floor')) or _f(mt.get('floor_price')),
                 'last_date': timezone.now().strftime('%d/%m/%Y %H:%M'),
                 'source': 'live',
             }

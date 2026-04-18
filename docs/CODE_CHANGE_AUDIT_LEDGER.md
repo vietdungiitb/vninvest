@@ -1,5 +1,36 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18au - Vnstock adapter regression hardening and docs package finalization
+
+Muc tieu:
+- Chot production-ready cho batch refactor vnstock adapter voi bo test backend xanh toan bo.
+- Loai bo brittle assertion trong admin workspace test de phu hop copy hien tai cua template.
+- Dong bo goi tai lieu runtime-config va vnstock compatibility vao cung mot moc audit commit-ready.
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - centralized wrappers for listing/fundamental/ownership/sector flows + upstream payload warning handling)
+- backend/portfolio/admin.py (MODIFIED - workspace data retrieval uses adapter pathway)
+- backend/portfolio/services.py (MODIFIED - sector/group/exchange lookups moved to adapter wrappers)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - adapter regression coverage for wrappers and fallback warning path)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - stabilize assertions with current template labels)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - service-level regression tests for vnstock refactor routes)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - canonical schema regression tests for standardized adapter methods)
+- PLAN_PHASE3_E2E_AI_ADVISORY_20260418.md (NEW - phase-3 execution checkpoint for AI advisory runtime)
+- docs/AUDIT_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config audit package)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical runtime-config contract)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - implementation plan for runtime prompt config)
+- docs/PROJECT_DEVELOPMENT_FRAMEWORK_BLUEPRINT.md (NEW - delivery framework blueprint)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (NEW - technical specification)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnstock core compatibility audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnstock_refactor portfolio.tests.test_vnstock_adapter_standardized_methods -v 1` => 9/9 PASS.
+- `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` => 29/29 PASS.
+
+---
+
 ## Entry 2026-04-18at - AI Advisory prompt_config production-ready UI hardening
 
 Muc tieu:

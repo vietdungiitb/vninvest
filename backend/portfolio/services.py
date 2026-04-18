@@ -1834,11 +1834,13 @@ def fetch_market_sectors_and_groups() -> dict:
             print(sector['name'], len(sector['symbols']))
     """
     try:
-        from vnstock import Vnstock
-        stock = Vnstock().stock(symbol='ACB', source='VCI')
+        from .adapters.vnstock_adapter import (
+            fetch_symbols_by_group_series,
+            fetch_symbols_by_industries_dataframe,
+        )
 
         # --- 1. Lấy 25 nhóm ngành ICB ---
-        df = stock.listing.symbols_by_industries()
+        df = fetch_symbols_by_industries_dataframe(anchor_symbol='ACB', source='VCI')
         # df columns: symbol, industry_code, industry_name
 
         sectors = []
@@ -1860,7 +1862,7 @@ def fetch_market_sectors_and_groups() -> dict:
         cap_groups = []
         for group_code, description, color in _CAP_GROUP_DEFS:
             try:
-                series = stock.listing.symbols_by_group(group_code)
+                series = fetch_symbols_by_group_series(group_code, anchor_symbol='ACB', source='VCI')
                 cap_groups.append({
                     'name': group_code,
                     'group_type': 'MARKET_CAP',
@@ -2128,9 +2130,9 @@ def _fetch_exchange_lookup(timeout: int = 20) -> dict:
 
     def _worker():
         try:
-            from vnstock import Vnstock
-            stock = Vnstock().stock(symbol='ACB', source='VCI')
-            df = stock.listing.symbols_by_exchange()
+            from .adapters.vnstock_adapter import fetch_symbols_by_exchange_dataframe
+
+            df = fetch_symbols_by_exchange_dataframe(anchor_symbol='ACB', source='VCI')
             result.update({
                 row['symbol'].upper().strip(): {
                     'company_name': row.get('organ_name', '') or '',

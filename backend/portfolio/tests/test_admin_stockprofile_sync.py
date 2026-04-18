@@ -4,7 +4,9 @@ from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+import pandas as pd
 
+from portfolio import admin as portfolio_admin
 from portfolio.models import DailyPrice, SecuritiesGroup, SecuritiesItem, StockProfile, TrackedSymbol, WatchlistGroup, WatchlistItem
 
 
@@ -68,9 +70,9 @@ class AdminStockProfileSyncTests(TestCase):
         self.assertContains(response, 'Chi tiết mã ACB')
         self.assertContains(response, 'Ngan hang ACB')
         self.assertContains(response, 'Tóm tắt kỹ thuật')
-        self.assertContains(response, 'Biểu đồ nến EOD 48 phiên gần nhất')
+        self.assertContains(response, 'Biểu đồ nến EOD')
         self.assertContains(response, 'Trung tính')
-        self.assertContains(response, 'Độ sâu giả lập')
+        self.assertContains(response, 'Độ sâu thị trường')
         self.assertContains(response, 'Ngan hang')
 
     def test_admin_navigation_links_to_workspace_from_related_models(self):
@@ -99,3 +101,29 @@ class AdminStockProfileSyncTests(TestCase):
         workspace_url = reverse('admin:stock-profile-workspace', args=['VCB'])
         self.assertContains(item_response, workspace_url)
         self.assertContains(price_response, workspace_url)
+
+    @patch('portfolio.adapters.vnstock_adapter.fetch_price_board_dataframe')
+    def test_fetch_live_workspace_data_uses_adapter_price_board(self, mock_fetch_price_board):
+        mock_fetch_price_board.return_value = pd.DataFrame(
+            [[118.4, 119.2, 120.0, 117.3, 121.0, 116.0, 1500000, 119.0, 20000, 119.5, 18000]],
+            columns=pd.MultiIndex.from_tuples([
+                ('listing', 'ref_price'),
+                ('match', 'match_price'),
+                ('match', 'highest'),
+                ('match', 'lowest'),
+                ('listing', 'ceiling'),
+                ('listing', 'floor'),
+                ('match', 'accumulated_volume'),
+                ('bid_ask', 'bid_1_price'),
+                ('bid_ask', 'bid_1_volume'),
+                ('bid_ask', 'ask_1_price'),
+                ('bid_ask', 'ask_1_volume'),
+            ]),
+        )
+
+        result = portfolio_admin._fetch_live_workspace_data('FPT')
+
+        mock_fetch_price_board.assert_called_once_with(['FPT'], anchor_symbol='FPT')
+        self.assertEqual(result['ticker']['current_price'], 119.2)
+        self.assertEqual(result['ticker']['ceiling_price'], 121.0)
+        self.assertEqual(result['depth']['rows'][0]['bid_price'], '119,00')

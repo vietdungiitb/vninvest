@@ -159,6 +159,26 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Vnstock Adapter Regression Hardening + Runtime Docs Package Finalization (2026-04-18)
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - harden centralized vnstock wrappers and payload warning path)
+- backend/portfolio/admin.py (MODIFIED - admin workspace live data flow uses adapter entrypoints)
+- backend/portfolio/services.py (MODIFIED - sectors/groups/exchange listing queries routed via adapter)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - expanded regression tests for adapter wrappers/fallback warnings)
+- backend/portfolio/tests/test_admin_stockprofile_sync.py (MODIFIED - updated brittle assertions to current workspace template labels)
+- backend/portfolio/tests/test_services_vnstock_refactor.py (NEW - regression guard for services vnstock refactor behavior)
+- backend/portfolio/tests/test_vnstock_adapter_standardized_methods.py (NEW - standardized adapter schema/source regression tests)
+- PLAN_PHASE3_E2E_AI_ADVISORY_20260418.md (NEW - phase-3 execution checklist)
+- docs/AUDIT_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config audit report)
+- docs/CANONICAL_AI_ADVISORY_RUNTIME_CONFIG_CONTRACT_20260418.md (NEW - canonical runtime contract)
+- docs/PLAN_AI_ADVISORY_RUNTIME_CONFIG_20260418.md (NEW - runtime config implementation plan)
+- docs/PROJECT_DEVELOPMENT_FRAMEWORK_BLUEPRINT.md (NEW - project development framework blueprint)
+- docs/SPEC_AI_ADVISORY_RUNTIME_PROMPT_CONFIG_20260418.md (NEW - runtime prompt_config technical spec)
+- docs/VNSTOCK_CORE_COMPATIBILITY_AUDIT_20260418.md (NEW - vnstock core compatibility audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_admin_stockprofile_sync portfolio.tests.test_services_vnstock_refactor portfolio.tests.test_vnstock_adapter_standardized_methods -v 1` pass 9/9; `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_adapters -v 1` pass 29/29.
+- Status: COMPLETED (backend vnstock refactor package and associated runtime documentation are commit-ready)
+
 ### AI Advisory prompt_config - Production-ready UI Hardening (2026-04-18)
 - frontend/src/pages/StockDetail.jsx (MODIFIED - remove duplicate enabled-sources render; keep single summary badge section with translated labels)
 - frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - full i18n for settings drawer labels/descriptions/summary)
