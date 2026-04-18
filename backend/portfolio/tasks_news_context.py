@@ -81,7 +81,46 @@ def _fetch_news_context_for_advisory(symbol: str, max_items: int = 4) -> str:
                 if str(row.get('title') or '').strip()
             ]
 
-        # Ưu tiên 2: Google News RSS nếu cache trống
+        # Ưu tiên 2: vnstock dùng source từ runtime config (KBS/VCI/TCBS/SSI theo cài đặt hệ thống)
+        if not items:
+            try:
+                from portfolio.adapters.vnstock_adapter import _build_stock_client, _run_with_timeout
+                from portfolio.vnstock_runtime_config import get_vnstock_runtime_settings
+
+                runtime = get_vnstock_runtime_settings()
+                sources_to_try = runtime.get('fallback_sources') or [runtime.get('price_board_source', 'KBS')]
+
+                import pandas as _pd
+
+                for source in sources_to_try:
+                    try:
+                        def _fetch(src=source):
+                            stock_client = _build_stock_client(symbol=symbol, source=src)
+                            return stock_client.company.news()
+
+                        raw = _run_with_timeout(_fetch, timeout=6)
+                        if raw is not None and not (hasattr(raw, 'empty') and raw.empty):
+                            rows = raw.to_dict(orient='records') if hasattr(raw, 'to_dict') else (raw if isinstance(raw, list) else [])
+                            parsed = []
+                            for row in rows[:max_items]:
+                                title = str(row.get('title') or row.get('subject') or row.get('headline') or '').strip()
+                                source_name = str(row.get('source') or row.get('publisher') or source).strip()
+                                raw_date = row.get('published_date') or row.get('publishedDate') or row.get('date') or ''
+                                try:
+                                    date_str = str(_pd.Timestamp(raw_date).date()) if raw_date else ''
+                                except Exception:
+                                    date_str = str(raw_date)[:10] if raw_date else ''
+                                if title:
+                                    parsed.append({'title': title, 'source': source_name, 'date': date_str})
+                            if parsed:
+                                items = parsed
+                                break
+                    except Exception as exc:
+                        logger.debug('_fetch_news_context_for_advisory: vnstock %s failed for %s: %s', source, symbol, exc)
+            except Exception as exc:
+                logger.debug('_fetch_news_context_for_advisory: vnstock unavailable for %s: %s', symbol, exc)
+
+        # Ưu tiên 3: Google News RSS (fallback cuối, không phụ thuộc vnstock)
         if not items:
             items = _fetch_google_news_rss(symbol, max_items=max_items * 2)
 
