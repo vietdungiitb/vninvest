@@ -172,6 +172,29 @@ CI dang enforce quy dinh nay tai workflow `large-file-guard`.
 
 Tai lieu audit tap trung hien tai: `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
 
+## Quy Trinh Co Dinh: Sync `vninvest-core` (khong can hoi lai)
+
+Mac dinh tu nay:
+1. Phat trien feature o repo chinh `vninvest` (branch `dev`/feature branch).
+2. Khi can test truc quan truoc public, dong bo sang repo private `vninvest-core` bang script.
+3. Khong mirror tu dong moi commit sang `vninvest-core`; dong bo theo dot review/test.
+
+Lenh chuan (1 lenh):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ops\sync_vninvest_core.ps1
+```
+
+Lenh dry-run (khong push):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\ops\sync_vninvest_core.ps1 -SkipPush
+```
+
+Ghi chu:
+- Script tao snapshot o `C:\Mujoco Projects\vninvest-core-seed`, commit neu co thay doi, roi push len `https://github.com/vietdungiitb/vninvest-core.git` (branch `main`).
+- Neu can tuy bien (path, repo URL, branch, commit message), xem tham so trong `scripts/ops/sync_vninvest_core.ps1`.
+
 ---
 
 ## Tài Liệu Kỹ Thuật

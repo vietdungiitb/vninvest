@@ -10,6 +10,7 @@ Muc tieu:
 Danh sach tep cap nhat:
 - scripts/ops/sync_vninvest_core.ps1 (NEW - one-command sync script, snapshot + commit + push)
 - docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- README.md (MODIFIED - ghi quy trinh co dinh sync vninvest-core de su dung ve sau)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 

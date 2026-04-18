@@ -108,6 +108,7 @@
 ### One-Command Sync to vninvest-core (2026-04-18)
 - scripts/ops/sync_vninvest_core.ps1 (NEW - script dong bo snapshot sang repo private vninvest-core: copy, commit, push)
 - docs/FEATURE_PLAN_SUPPORT_TICKET_SYSTEM_20260418.md (NEW - include theo yeu cau user)
+- README.md (MODIFIED - them quy trinh co dinh sync vninvest-core de lan sau chay script, khong can hoi lai)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aa)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 - Status: READY TO USE (chay 1 lenh la sync)
