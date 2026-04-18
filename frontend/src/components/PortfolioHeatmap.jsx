@@ -375,6 +375,15 @@ export default function PortfolioHeatmap({ holdings, title }) {
       formatter: (params) => {
         const data = params?.data;
         if (!data) return '';
+        
+        // Extract tree path (e.g., Sector / Symbol)
+        const treePathInfo = params.treePathInfo || [];
+        const treePath = [];
+        for (let i = 1; i < treePathInfo.length; i++) {
+          if (treePathInfo[i].name) treePath.push(treePathInfo[i].name);
+        }
+        const pathString = treePath.join(' / ');
+
         // Guard: ECharts virtual root node (created internally when data is array) has children but no name
         if (data.children && !data.name) return '';
 
@@ -397,6 +406,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           return `
             <div class="heatmap-tooltip">
               <div class="heatmap-tooltip__header">
+                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${pathString}</span>
                 <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
               </div>
               <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
@@ -438,13 +448,11 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     if (viewMode === 'sunburst') {
       return {
-        backgroundColor: 'transparent',
         animation: false,
         animationDuration: 0,
         animationDurationUpdate: 0,
         animationEasingUpdate: 'linear',
         tooltip,
-        visualMap: piecewiseVisualMap,
         series: [
           {
             type: 'sunburst',
@@ -542,7 +550,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
       animationDurationUpdate: 0,
       animationEasingUpdate: 'linear',
       tooltip,
-      visualMap: piecewiseVisualMap,
       series: [
         {
           type: 'treemap',
