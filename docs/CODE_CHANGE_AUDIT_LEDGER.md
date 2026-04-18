@@ -1,5 +1,72 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18y - Create sprint week 4 planning for legal bundle finalization
+
+Muc tieu:
+- Tao chi tiet sprint week 4 roadmap + Decision 5 finalization (legal bundle).
+- Chuan bi cho steering committee review (Mon 2026-05-19).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-27 chi tiet Decision 5 (legal bundle: Apache 2.0 + ToS + Privacy + Disclaimer).
+- 4 phase timeline: drafting (Mon-Tue) + legal review (Wed) + deployment (Thu) + final merge (Fri).
+- License selection: Apache 2.0 (recommended for commercial + self-host use).
+- Terms/Privacy/Disclaimer doc scopes + estimated lengths.
+- Post-sprint: steering committee review Mon 2026-05-19, GO/NO-GO decision for public launch.
+- Success criteria: All 5 decisions locked, OC-13 gates updated (4 YELLOW, 1 GREEN), sprint 100% complete.
+- Resource: 1 PO (15%), 1 Tech Lead (10%) = minimal (legal is bottleneck).
+- Status: READY FOR PLANNING (Mon 2026-05-13).
+
+## Entry 2026-04-18x - Create sprint week 3 planning for community package + self-host licensing
+
+Muc tieu:
+- Tao chi tiet sprint week 3 roadmap (2 decisions: community package boundary + self-host pro model).
+- Chuan bi truoc khi Week 2 ket thuc (Friday 2026-05-03).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-26 chi tiet 2 parallel decisions:
+  * Decision 3: Community V1 package (endpoint allowlist + feature gates)
+  * Decision 4: Self-host Pro model (entitlement licensing + CLI)
+- Phase breakdown (7 phases total across 2 decisions): analysis/design + implementation + frontend + tests/docs + merge.
+- Task assignments: 30+ tasks across backend/frontend/QA.
+- Success criteria: 5+ endpoints gated, licensing module complete, >90% tests, OC-13 gates YELLOW.
+- Resource: 1 PO (25%), 1 Tech Lead (100%), 1 Backend (60%), 1 Frontend (25%), 1 QA (15%) = 6.5 person-days.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-05-06).
+
+## Entry 2026-04-18w - Create sprint week 2 planning for package mapping decision
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
 ## Entry 2026-04-18v - Create sprint week 2 backlog for Decision 2 (package mapping)
 
 Muc tieu:

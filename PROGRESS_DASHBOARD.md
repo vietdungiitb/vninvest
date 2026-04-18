@@ -105,6 +105,24 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Sprint Week 4 Planning - Legal Bundle & Closure (2026-04-18)
+- docs/OPEN_CORE_27_SPRINT_WEEK4_LEGAL_BUNDLE_20260513.md (NEW - week 4 legal finalization + post-sprint steering review + GO/NO-GO gate)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-27 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Week 3 Planning - Community Package & Self-Host (2026-04-18)
+- docs/OPEN_CORE_26_SPRINT_WEEK3_COMMUNITY_SELFHOST_20260506.md (NEW - week 3 detailed roadmap 2 decisions: community package allowlist + self-host licensing model)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-26 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+### Sprint Executive Approval Checklist (2026-04-18)
+- docs/OPEN_CORE_25_SPRINT_EXECUTIVE_CHECKLIST_20260418.md (NEW - executive summary + approval gate for 21-day sprint + week-by-week success criteria)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-25 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Sprint Week 2 Planning - Package Mapping Decision (2026-04-18)
 - docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md (NEW - week 2 detailed roadmap 5 phases, resource + success criteria)
 - docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-24 vao bo canonical)
