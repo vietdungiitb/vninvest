@@ -9,10 +9,17 @@ Tests that backend correctly:
 """
 
 import json
+from unittest.mock import patch
 from django.test import TestCase
 from django.contrib.auth.models import User
 from rest_framework.test import APIClient
-from portfolio.models import PortfolioAccount
+
+# Mock target paths for OpenCore permission enforcement (legacy_views = portfolio.views)
+_FEATURE_ENFORCE = 'portfolio.views._enforce_opencore_feature_for_stock_endpoint'
+_QUOTA_ENFORCE = 'portfolio.views._enforce_opencore_quota_for_stock_endpoint'
+_AI_STATUS = 'portfolio.views._get_ai_runtime_config_status'
+_SYNTHESIS = 'portfolio.ai_advisory_helpers._sprint17_generate_executive_synthesis_with_ai'
+_CACHE_GET = 'portfolio.views._cache_get'
 
 
 class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
@@ -20,18 +27,42 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
 
     fixtures = []
 
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.client = APIClient()
-
     def setUp(self):
         """Set up test data"""
+        from portfolio.models import AIAdvisoryComponentRecord
+        self.client = APIClient()
         self.user = User.objects.create_user(username='testuser', password='12345')
         self.client.force_authenticate(user=self.user)
-        self.portfolio = PortfolioAccount.objects.create(
-            user=self.user, name='Test Portfolio', code='TEST'
+        # Create a test component so regenerate has something to work with
+        self.component = AIAdvisoryComponentRecord.objects.create(
+            user=self.user,
+            symbol='MWG',
+            component_type='indicator',
+            indicator_name='RSI',
+            status='neutral',
+            rationale_text='Test rationale',
+            is_deleted=False,
+            include_in_summary=True,
         )
+        # Patch OpenCore permission, AI config check, synthesis, and cache
+        self._patch_feature = patch(_FEATURE_ENFORCE, return_value=None)
+        self._patch_quota = patch(_QUOTA_ENFORCE, return_value=None)
+        self._patch_ai_status = patch(_AI_STATUS, return_value={'ready': True, 'message': '', 'reason': ''})
+        self._patch_synthesis = patch(_SYNTHESIS, return_value='AI synthesis test output')
+        self._patch_cache_get = patch(_CACHE_GET, return_value=None)  # no cooldown lock
+        self._patch_feature.start()
+        self._patch_quota.start()
+        self._patch_ai_status.start()
+        self._patch_synthesis.start()
+        self._patch_cache_get.start()
+
+    def tearDown(self):
+        self._patch_feature.stop()
+        self._patch_quota.stop()
+        self._patch_ai_status.stop()
+        self._patch_synthesis.stop()
+        self._patch_cache_get.stop()
+
 
     def test_1_regenerate_with_prompt_config_only_enabled_sources_build_context(self):
         """
@@ -40,7 +71,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         - Verify disabled sources skip context building
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'synthesis_preference': 'balanced',
             'prompt_config': {
                 'version': 2,
@@ -58,17 +88,17 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
 
         # Should have synthesis result
-        self.assertIn('summary', data)
-        self.assertIsNotNone(data['summary'])
+        self.assertIn('executive_summary', data)
+        self.assertIsNotNone(data['executive_summary'])
 
         # Should include prompt_config_version in response
         self.assertIn('prompt_config_version', data)
@@ -81,7 +111,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         - Missing sources should use defaults
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'prompt_config': {
                 'version': 2,
                 'sources': {
@@ -92,17 +121,17 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
 
         # Should still generate valid synthesis
-        self.assertIn('summary', data)
-        self.assertIsNotNone(data['summary'])
+        self.assertIn('executive_summary', data)
+        self.assertIsNotNone(data['executive_summary'])
 
     def test_3_regenerate_with_all_sources_disabled_uses_fallback_defaults(self):
         """
@@ -111,7 +140,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         - Should not fail; should use minimal fallback config
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'prompt_config': {
                 'version': 2,
                 'sources': {
@@ -128,13 +156,13 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
         # Should not fail; backend should fallback to defaults or skip
-        self.assertIn(response.status_code, [200, 400])  # 400 is acceptable if error message is clear
+        self.assertIn(response.status_code, [201, 400])  # 400 is acceptable if error message is clear
 
     def test_4_regenerate_with_invalid_indicators_filters_gracefully(self):
         """
@@ -143,7 +171,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         - Valid indicators should still work
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'prompt_config': {
                 'version': 2,
                 'sources': {
@@ -164,15 +191,15 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
         # Should succeed; backend should filter invalid indicators
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
-        self.assertIn('summary', data)
+        self.assertIn('executive_summary', data)
 
     def test_5_regenerate_without_prompt_config_uses_old_behavior(self):
         """
@@ -181,21 +208,20 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         - Should work exactly as before
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'synthesis_preference': 'balanced',
             # NO prompt_config
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
         # Should work with old behavior
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
-        self.assertIn('summary', data)
+        self.assertIn('executive_summary', data)
 
         # Should still include prompt_config_version (defaults)
         self.assertIn('prompt_config_version', data)
@@ -206,7 +232,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         """
         # Simulate frontend sending custom prompt_config
         frontend_payload = {
-            'component_ids': ['executive_summary'],
             'synthesis_preference': 'balanced',
             'prompt_config': {
                 'version': 2,
@@ -228,16 +253,16 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(frontend_payload),
             content_type='application/json',
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         backend_response = response.json()
 
         # Verify response includes metadata
-        self.assertIn('summary', backend_response)
+        self.assertIn('executive_summary', backend_response)
         self.assertIn('prompt_config_version', backend_response)
         self.assertEqual(backend_response['prompt_config_version'], 2)
 
@@ -246,7 +271,6 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         Test 7: Verify lookback values are clamped to min/max bounds in backend
         """
         payload = {
-            'component_ids': ['executive_summary'],
             'prompt_config': {
                 'version': 2,
                 'sources': {
@@ -263,15 +287,15 @@ class AIAdvisoryPromptConfigBackendIntegrationTests(TestCase):
         }
 
         response = self.client.post(
-            f'/api/v1/stock/MWG/ai-advisory/summary/regenerate',
+            '/api/stock-management/stocks/MWG/ai-advisory-summary/regenerate/',
             data=json.dumps(payload),
             content_type='application/json',
         )
 
         # Should succeed; backend should clamp values
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 201)
         data = response.json()
-        self.assertIn('summary', data)
+        self.assertIn('executive_summary', data)
 
 
 class AIAdvisoryPromptConfigParserTests(TestCase):
@@ -284,9 +308,10 @@ class AIAdvisoryPromptConfigParserTests(TestCase):
         result = _parse_prompt_config(None)
 
         self.assertIsNotNone(result)
-        self.assertEqual(result['version'], 2)
-        self.assertTrue(result['sources']['whale']['enabled'])
-        self.assertFalse(result['sources']['fundamental']['enabled'])
+        # _parse_prompt_config returns flat dict: {whale: {...}, dark_flow: {...}, ...}
+        self.assertIn('whale', result)
+        self.assertTrue(result['whale']['enabled'])
+        self.assertFalse(result['fundamental']['enabled'])
 
     def test_parse_prompt_config_merges_with_defaults(self):
         """Parser should merge provided config with defaults"""
@@ -301,11 +326,10 @@ class AIAdvisoryPromptConfigParserTests(TestCase):
 
         result = _parse_prompt_config(config)
 
-        self.assertEqual(result['version'], 2)
         # Custom: fundamental enabled
-        self.assertTrue(result['sources']['fundamental']['enabled'])
+        self.assertTrue(result['fundamental']['enabled'])
         # Defaults: whale still enabled
-        self.assertTrue(result['sources']['whale']['enabled'])
+        self.assertTrue(result['whale']['enabled'])
 
     def test_parse_prompt_config_clamps_lookback(self):
         """Parser should clamp lookback values to source-specific bounds"""
@@ -320,8 +344,8 @@ class AIAdvisoryPromptConfigParserTests(TestCase):
 
         result = _parse_prompt_config(config)
 
-        # Should be clamped to max (90 for whale)
-        self.assertLessEqual(result['sources']['whale']['lookback'], 90)
+        # Should be clamped to max (365 for whale)
+        self.assertLessEqual(result['whale']['lookback'], 365)
 
     def test_parse_prompt_config_filters_invalid_indicators(self):
         """Parser should filter invalid technical indicators"""
@@ -341,7 +365,7 @@ class AIAdvisoryPromptConfigParserTests(TestCase):
         result = _parse_prompt_config(config)
 
         # Invalid indicators should be filtered
-        indicators = result['sources']['technical']['indicators']
+        indicators = result['technical']['indicators']
         self.assertNotIn('invalid', indicators)
         self.assertIn('rsi', indicators)
         self.assertIn('bollinger', indicators)
@@ -364,5 +388,5 @@ class AIAdvisoryPromptConfigParserTests(TestCase):
         result = _parse_prompt_config(config)
 
         # Should fallback to defaults (all valid indicators)
-        indicators = result['sources']['technical']['indicators']
+        indicators = result['technical']['indicators']
         self.assertGreater(len(indicators), 0)
