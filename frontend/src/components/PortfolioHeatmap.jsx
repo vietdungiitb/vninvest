@@ -456,7 +456,19 @@ export default function PortfolioHeatmap({ holdings, title }) {
             nodeClick: false,
             universalTransition: false,
             stateAnimation: { duration: 0 },
-            emphasis: { disabled: true },
+            emphasis: {
+              disabled: false,
+              itemStyle: {
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                shadowBlur: 15,
+                shadowColor: 'rgba(255, 255, 255, 0.45)',
+              },
+              label: {
+                show: true,
+                fontWeight: 'bold',
+              },
+            },
             itemStyle: {
               borderColor: 'rgba(2, 6, 23, 0.78)',
               borderWidth: 1.5,
@@ -553,7 +565,17 @@ export default function PortfolioHeatmap({ holdings, title }) {
           visibleMin: 0,
           childrenVisibleMin: 0,
           emphasis: {
-            disabled: true,
+            disabled: false,
+            itemStyle: {
+              borderWidth: 2,
+              borderColor: '#ffffff',
+              shadowBlur: 12,
+              shadowColor: 'rgba(255, 255, 255, 0.4)',
+            },
+            label: {
+              show: true,
+              fontWeight: '900',
+            },
           },
           label: {
             show: true,
@@ -597,9 +619,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
           levels: [
             {
               itemStyle: {
-                borderColor: 'rgba(15, 23, 42, 0.9)',
-                borderWidth: 2,
-                gapWidth: 2,
+                borderColor: 'rgba(15, 23, 42, 0.95)',
+                borderWidth: 4,
+                gapWidth: 4,
               },
               upperLabel: {
                 show: true,
@@ -608,12 +630,19 @@ export default function PortfolioHeatmap({ holdings, title }) {
                 fontWeight: 800,
                 fontSize: 10,
                 padding: [0, 0, 0, 8],
-                backgroundColor: 'rgba(12, 22, 40, 0.76)',
+                backgroundColor: 'rgba(12, 22, 40, 0.82)',
               },
             },
             {
               itemStyle: {
-                borderColor: 'rgba(30, 58, 95, 0.48)',
+                borderColor: 'rgba(30, 58, 95, 0.35)',
+                borderWidth: 1.5,
+                gapWidth: 1.5,
+              },
+            },
+            {
+              itemStyle: {
+                borderColor: 'rgba(30, 58, 95, 0.25)',
                 borderWidth: 1,
                 gapWidth: 1,
               },

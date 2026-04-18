@@ -1,8 +1,28 @@
 diff --git a/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js b/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js
-index 63dc24f..b3db69b 100644
+index 63dc24f..4410e97 100644
 --- a/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js
 +++ b/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js
-@@ -304,6 +304,9 @@ var TooltipHTMLContent = /** @class */function () {
+@@ -257,6 +257,9 @@ var TooltipHTMLContent = /** @class */function () {
+    * Update when tooltip is rendered
+    */
+   TooltipHTMLContent.prototype.update = function (tooltipModel) {
++    if (!this.el) {
++      return;
++    }
+     // FIXME
+     // Move this logic to ec main?
+     if (!this._container) {
+@@ -280,6 +283,9 @@ var TooltipHTMLContent = /** @class */function () {
+     // this.hide();
+   };
+   TooltipHTMLContent.prototype.show = function (tooltipModel, nearPointColor) {
++    if (!this.el) {
++      return;
++    }
+     clearTimeout(this._hideTimeout);
+     clearTimeout(this._longHideTimeout);
+     var el = this.el;
+@@ -304,6 +310,9 @@ var TooltipHTMLContent = /** @class */function () {
    };
    TooltipHTMLContent.prototype.setContent = function (content, markers, tooltipModel, borderColor, arrowPosition) {
      var el = this.el;
@@ -12,3 +32,13 @@ index 63dc24f..b3db69b 100644
      if (content == null) {
        el.innerHTML = '';
        return;
+@@ -368,6 +377,9 @@ var TooltipHTMLContent = /** @class */function () {
+     this.moveTo(ratioX * this._zr.getWidth(), ratioY * this._zr.getHeight());
+   };
+   TooltipHTMLContent.prototype.hide = function () {
++    if (!this.el) {
++      return;
++    }
+     var _this = this;
+     var style = this.el.style;
+     if (this._enableDisplayTransition) {
