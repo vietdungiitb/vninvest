@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### README_DRAFT Separate Commit (2026-04-18)
+- README_DRAFT.md (NEW - draft README content added as separate housekeeping commit by user selection)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Status: COMPLETED (no runtime code impact)
+
 ### Data Pipeline / Pandas / SQL Optimization Implementation (2026-04-18)
 - backend/portfolio/analytics.py (MODIFIED - bo iterrows/apply tren hotspot, toi uu vectorized path)
 - backend/portfolio/market_data_service.py (MODIFIED - toi uu resolve scope symbols bang SQL projection + backward-compatible alert alias fields)

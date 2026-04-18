@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18ad - Add README_DRAFT in separate housekeeping commit
+
+Muc tieu:
+- Dua `README_DRAFT.md` vao version control theo xac nhan option 2 cua user.
+- Tach thanh commit rieng de de audit va rollback neu can.
+
+Danh sach tep cap nhat:
+- README_DRAFT.md (NEW - ban nhap README tong hop tam thoi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Add `README_DRAFT.md` vao repository o commit rieng.
+- Khong thay doi runtime code/backend/frontend.
+
+Validation:
+- `git status` xac nhan thay doi scope housekeeping + audit docs.
+
 ## Entry 2026-04-18ac - Data pipeline/Pandas/SQL optimization implementation (DP-01 execute)
 
 Muc tieu:
