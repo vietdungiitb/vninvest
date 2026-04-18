@@ -723,6 +723,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
       <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
+          key={`${viewMode}-${hierarchicalData?.length || 0}-${i18n.language}`}
           ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
