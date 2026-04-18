@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18al - Lock /api/auth/me contract for staff flags
+
+Muc tieu:
+- Khoa contract backend cho `/api/auth/me` de dam bao frontend support queue luon nhan duoc co `is_staff`/`is_superuser` on dinh.
+- Tranh regression vo tinh khi refactor auth response schema o cac sprint tiep theo.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - add assertions for `is_staff`/`is_superuser` on `/api/auth/me`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Bo sung assertion cho user thuong: `is_staff=False`, `is_superuser=False`.
+- Them test moi cho superuser: `/api/auth/me` phai tra `is_staff=True`, `is_superuser=True`.
+
+Validation:
+- `get_errors` tren file test: khong co loi.
+- `python backend/manage.py test portfolio.tests.test_api_routes_auth_profile`: 7/7 pass.
+
 ## Entry 2026-04-18ak - Support Ticket frontend regression tests
 
 Muc tieu:

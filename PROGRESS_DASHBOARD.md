@@ -105,6 +105,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Auth Contract Hardening - /api/auth/me Staff Flags (2026-04-18)
+- backend/portfolio/tests/test_api_routes_auth_profile.py (MODIFIED - lock `is_staff`/`is_superuser` contract in auth/me tests)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `python backend/manage.py test portfolio.tests.test_api_routes_auth_profile` pass 7/7, `get_errors` clean.
+- Status: COMPLETED (auth payload contract for support staff mode is now regression-protected)
+
 ### Support Ticket Frontend Regression Tests (2026-04-18)
 - frontend/src/pages/Support.test.jsx (NEW - focused regression tests for support user/staff flows)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ak)

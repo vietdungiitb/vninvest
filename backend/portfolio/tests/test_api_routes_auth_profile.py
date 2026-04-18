@@ -90,6 +90,8 @@ class ApiRouteAuthProfileTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['username'], self.username)
+        self.assertFalse(response.data['is_staff'])
+        self.assertFalse(response.data['is_superuser'])
         self.assertEqual(response.data['plan'], 'premium')
         self.assertEqual(response.data['whale_alert_threshold'], 750.0)
         self.assertIn({'action': 'read', 'subject': 'WhaleAdvisory'}, response.data['abilities'])
@@ -124,3 +126,22 @@ class ApiRouteAuthProfileTests(APITestCase):
         self.assertEqual(response.data['entitlements']['quota_caps']['exports_per_day'], 0)
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory'])
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
+
+    def test_auth_me_endpoint_returns_staff_flags_for_superuser(self):
+        admin_user = User.objects.create_superuser(
+            username='auth_me_admin',
+            email='auth-me-admin@example.com',
+            password='Admin@123456',
+        )
+        UserConfig.objects.update_or_create(
+            user=admin_user,
+            defaults={'email_verified': True},
+        )
+        self.client.force_authenticate(user=admin_user)
+
+        response = self.client.get('/api/auth/me/')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['username'], 'auth_me_admin')
+        self.assertTrue(response.data['is_staff'])
+        self.assertTrue(response.data['is_superuser'])
