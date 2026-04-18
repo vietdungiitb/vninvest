@@ -105,6 +105,21 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Support Ticket Implementation Slice 2 - Staff Web Workflow (2026-04-18)
+- backend/portfolio/auth_views.py (MODIFIED - expose `is_staff` and `is_superuser` in `/api/auth/me`)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - persist staff role flags in auth state)
+- frontend/src/pages/Support.jsx (MODIFIED - add staff queue mode, filters, patch/reply workflow)
+- frontend/src/components/support/SupportTicketList.jsx (MODIFIED - requester-aware staff queue cards)
+- frontend/src/components/support/TicketMetaPanel.jsx (MODIFIED - show requester and assignee in staff mode)
+- frontend/src/components/support/SupportQueueFilters.jsx (NEW - queue filters for staff)
+- frontend/src/components/support/StaffTicketActions.jsx (NEW - assign/status/priority controls)
+- frontend/src/i18n/vi.js (MODIFIED - support staff labels/messages)
+- frontend/src/i18n/en.js (MODIFIED - support staff labels/messages)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean on touched files.
+- Status: COMPLETED (staff can triage and respond from `/support` without leaving the portal)
+
 ### Support Ticket Implementation Slice 1 - Backend + User Portal (2026-04-18)
 - backend/config/settings.py (MODIFIED - register app support + add throttle scopes)
 - backend/config/urls.py (MODIFIED - expose /api/support route + api root entry)

@@ -26,13 +26,15 @@ export default function SupportTicketList({
   loading,
   onSelect,
   t,
+  showRequester = false,
+  emptyMessage,
 }) {
   if (loading) {
     return <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">{t('support.loadingTickets')}</div>;
   }
 
   if (!tickets.length) {
-    return <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">{t('support.emptyList')}</div>;
+    return <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-4 text-sm text-slate-400">{emptyMessage || t('support.emptyList')}</div>;
   }
 
   return (
@@ -56,9 +58,14 @@ export default function SupportTicketList({
               </span>
             </div>
             <p className="mt-1 truncate text-sm font-semibold text-slate-100">{ticket.subject}</p>
+            {showRequester && (
+              <p className="mt-1 truncate text-[11px] text-slate-400">
+                {t('support.requester')}: {ticket.requester_username || '—'}
+              </p>
+            )}
             <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
               <span className={priorities[ticket.priority] || 'text-slate-300'}>{t(`support.priority.${ticket.priority}`, { defaultValue: ticket.priority })}</span>
-              <span>{new Date(ticket.updated_at).toLocaleString('vi-VN')}</span>
+              <span>{new Date(ticket.updated_at).toLocaleString()}</span>
             </div>
           </button>
         );

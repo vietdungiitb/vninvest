@@ -1,5 +1,37 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18aj - Support Ticket implementation slice 2 (staff web workflow)
+
+Muc tieu:
+- Mo rong support portal de staff xu ly ticket truc tiep tren web, khong can dung admin/API thuan.
+- Dong bo role `is_staff` vao auth state frontend de route support co the hien thi queue van hanh trong cung 1 man hinh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/auth_views.py (MODIFIED - expose `is_staff` and `is_superuser` in `/api/auth/me`)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - persist role flags in `userIdentity`)
+- frontend/src/pages/Support.jsx (MODIFIED - add staff queue mode, filters, staff reply/patch workflow)
+- frontend/src/components/support/SupportTicketList.jsx (MODIFIED - requester-aware queue cards + empty override)
+- frontend/src/components/support/TicketMetaPanel.jsx (MODIFIED - show requester/assignee in staff mode)
+- frontend/src/components/support/SupportQueueFilters.jsx (NEW - staff queue filters)
+- frontend/src/components/support/StaffTicketActions.jsx (NEW - assign/status/priority workflow)
+- frontend/src/i18n/vi.js (MODIFIED - add support staff workflow labels)
+- frontend/src/i18n/en.js (MODIFIED - add support staff workflow labels)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh:
+- Backend/auth:
+  - `/api/auth/me` tra them `is_staff`, `is_superuser` de frontend xac dinh che do van hanh hop le.
+- Frontend:
+  - Support page co 2 mode cho staff: `User portal` va `Staff queue`.
+  - Staff queue ho tro loc theo search/status/priority va bo loc `chi ticket cua toi`.
+  - Staff co the nhan ticket, bo phu trach, doi status, doi priority va reply ngay tren ticket thread.
+  - Meta panel hien them requester/assignee trong che do staff.
+
+Validation:
+- `get_errors` tren backend/frontend files lien quan: khong co loi.
+- Ghi chu pham vi: slice nay mo rong web workflow cho staff; chua lam dashboard SLA rieng/board phan trang nang cao.
+
 ## Entry 2026-04-18ai - Support Ticket implementation slice 1 (backend + user portal)
 
 Muc tieu:

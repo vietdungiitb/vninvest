@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function TicketMetaPanel({ ticket, t, onReopen, reopenLoading }) {
+export default function TicketMetaPanel({ ticket, t, onReopen, reopenLoading, showStaffFields = false }) {
   if (!ticket) {
     return null;
   }
@@ -14,6 +14,8 @@ export default function TicketMetaPanel({ ticket, t, onReopen, reopenLoading }) 
         <p><span className="text-slate-500">{t('support.statusLabel')}:</span> {t(`support.status.${ticket.status}`, { defaultValue: ticket.status })}</p>
         <p><span className="text-slate-500">{t('support.priorityLabel')}:</span> {t(`support.priority.${ticket.priority}`, { defaultValue: ticket.priority })}</p>
         <p><span className="text-slate-500">{t('support.category')}:</span> {t(`support.categoryOptions.${ticket.category}`, { defaultValue: ticket.category })}</p>
+        {showStaffFields && <p><span className="text-slate-500">{t('support.requester')}:</span> {ticket.requester_username || '—'}</p>}
+        {showStaffFields && <p><span className="text-slate-500">{t('support.assignee')}:</span> {ticket.assignee_username || '—'}</p>}
       </div>
       {canReopen && (
         <div className="mt-3">

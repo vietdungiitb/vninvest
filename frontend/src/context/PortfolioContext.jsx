@@ -36,7 +36,7 @@ export function PortfolioProvider({ children }) {
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
-  const [userIdentity, setUserIdentity] = useState({ username: '', email: '' });
+  const [userIdentity, setUserIdentity] = useState({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
   const [ability, setAbility] = useState(() => createAbilityFromRules([]));
 
   const logout = useCallback(() => {
@@ -49,7 +49,7 @@ export function PortfolioProvider({ children }) {
     setActivePortfolioId(null);
     setUserConfig(null);
     setUserPlan('free');
-    setUserIdentity({ username: '', email: '' });
+    setUserIdentity({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
     setAbility(createAbilityFromRules([]));
   }, []);
 
@@ -76,8 +76,11 @@ export function PortfolioProvider({ children }) {
       setUserPlan(meResult.value.data.plan || 'free');
       setAbility(createAbilityFromRules(meResult.value.data.abilities || []));
       setUserIdentity({
+        id: meResult.value.data.id || null,
         username: meResult.value.data.username || '',
         email: meResult.value.data.email || '',
+        isStaff: Boolean(meResult.value.data.is_staff),
+        isSuperuser: Boolean(meResult.value.data.is_superuser),
       });
     } else {
       if (meResult.reason?.response?.status === 401) {

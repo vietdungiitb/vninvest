@@ -4,18 +4,25 @@ import {
   createSupportTicket,
   getSupportTicketDetail,
   listSupportTickets,
+  listStaffSupportTickets,
+  patchStaffSupportTicket,
   reopenSupportTicket,
+  replyStaffSupportTicket,
   replySupportTicket,
 } from '../api/support';
+import SupportQueueFilters from '../components/support/SupportQueueFilters';
+import StaffTicketActions from '../components/support/StaffTicketActions';
 import SupportTicketList from '../components/support/SupportTicketList';
 import TicketComposer from '../components/support/TicketComposer';
 import TicketCreationForm from '../components/support/TicketCreationForm';
 import TicketMetaPanel from '../components/support/TicketMetaPanel';
 import TicketThread from '../components/support/TicketThread';
 import { useI18n } from '../context/LangContext';
+import { usePortfolio } from '../context/PortfolioContext';
 
 export default function Support() {
   const { t } = useI18n();
+  const { userIdentity } = usePortfolio();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [tickets, setTickets] = useState([]);
@@ -27,6 +34,15 @@ export default function Support() {
   const [reopenLoading, setReopenLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [creatingNew, setCreatingNew] = useState(false);
+  const [staffMode, setStaffMode] = useState(false);
+  const [staffFilters, setStaffFilters] = useState({
+    search: '',
+    status: '',
+    priority: '',
+    mineOnly: false,
+  });
+
+  const isStaffUser = Boolean(userIdentity?.isStaff);
 
   const selectedTicketId = useMemo(
     () => searchParams.get('ticketId') || '',
@@ -37,14 +53,22 @@ export default function Support() {
     setLoadingTickets(true);
     setErrorMessage('');
     try {
-      const response = await listSupportTickets({ page_size: 50 });
+      const response = staffMode
+        ? await listStaffSupportTickets({
+          page_size: 50,
+          q: staffFilters.search || undefined,
+          status: staffFilters.status || undefined,
+          priority: staffFilters.priority || undefined,
+          assignee_id: staffFilters.mineOnly ? userIdentity?.id : undefined,
+        })
+        : await listSupportTickets({ page_size: 50 });
       const rows = response.data?.results || [];
       setTickets(rows);
 
       if (!rows.length) {
         setSelectedTicket(null);
         setThreadMessages([]);
-        setCreatingNew(true);
+        setCreatingNew(!staffMode);
         return;
       }
 
@@ -83,7 +107,7 @@ export default function Support() {
 
   useEffect(() => {
     loadTickets();
-  }, []);
+  }, [staffMode, staffFilters.search, staffFilters.status, staffFilters.priority, staffFilters.mineOnly, userIdentity?.id]);
 
   useEffect(() => {
     if (selectedTicket?.id) {
@@ -95,6 +119,10 @@ export default function Support() {
     setCreatingNew(false);
     setSelectedTicket(ticket);
     setSearchParams({ ticketId: ticket.id });
+  };
+
+  const handleStaffFilterChange = (field, value) => {
+    setStaffFilters((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleCreateTicket = async (payload) => {
@@ -118,11 +146,32 @@ export default function Support() {
     setSubmitting(true);
     setErrorMessage('');
     try {
-      await replySupportTicket(selectedTicket.id, payload);
+      if (staffMode && isStaffUser) {
+        await replyStaffSupportTicket(selectedTicket.id, payload);
+      } else {
+        await replySupportTicket(selectedTicket.id, payload);
+      }
       await loadTicketDetail(selectedTicket.id);
       await loadTickets();
     } catch (error) {
       setErrorMessage(error?.response?.data?.detail || t('support.replyFailed'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleStaffPatch = async (payload) => {
+    if (!selectedTicket?.id) {
+      return;
+    }
+    setSubmitting(true);
+    setErrorMessage('');
+    try {
+      await patchStaffSupportTicket(selectedTicket.id, payload);
+      await loadTicketDetail(selectedTicket.id);
+      await loadTickets();
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.detail || t('support.staffActions.updateFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -152,6 +201,31 @@ export default function Support() {
         <p className="mt-1 text-sm text-slate-400">{t('support.pageSubtitle')}</p>
       </div>
 
+      {isStaffUser && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setStaffMode(false);
+              setCreatingNew(false);
+            }}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${!staffMode ? 'border-cyan-500/60 bg-cyan-500/15 text-cyan-200' : 'border-slate-700 bg-slate-900/55 text-slate-300 hover:border-slate-600'}`}
+          >
+            {t('support.tabs.userPortal')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setStaffMode(true);
+              setCreatingNew(false);
+            }}
+            className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${staffMode ? 'border-amber-500/60 bg-amber-500/15 text-amber-200' : 'border-slate-700 bg-slate-900/55 text-slate-300 hover:border-slate-600'}`}
+          >
+            {t('support.tabs.staffQueue')}
+          </button>
+        </div>
+      )}
+
       {errorMessage && (
         <div className="rounded-lg border border-rose-700/70 bg-rose-900/20 px-3 py-2 text-sm text-rose-200">
           {errorMessage}
@@ -161,34 +235,43 @@ export default function Support() {
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_1fr]">
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{t('support.myTickets')}</h2>
-            <button
-              type="button"
-              onClick={() => {
-                setCreatingNew(true);
-                setSelectedTicket(null);
-                setThreadMessages([]);
-                setSearchParams({});
-              }}
-              className="rounded-lg border border-emerald-600 bg-emerald-600/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-600/30"
-            >
-              {t('support.newTicketCta')}
-            </button>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-300">{staffMode ? t('support.queueTitle') : t('support.myTickets')}</h2>
+            {!staffMode && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatingNew(true);
+                  setSelectedTicket(null);
+                  setThreadMessages([]);
+                  setSearchParams({});
+                }}
+                className="rounded-lg border border-emerald-600 bg-emerald-600/20 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition-colors hover:bg-emerald-600/30"
+              >
+                {t('support.newTicketCta')}
+              </button>
+            )}
           </div>
+          {staffMode && <SupportQueueFilters filters={staffFilters} onChange={handleStaffFilterChange} t={t} />}
           <SupportTicketList
             tickets={tickets}
             selectedTicketId={selectedTicket?.id || ''}
             loading={loadingTickets}
             onSelect={handleSelectTicket}
             t={t}
+            showRequester={staffMode}
+            emptyMessage={staffMode ? t('support.emptyStaffList') : t('support.emptyList')}
           />
         </div>
 
         <div className="space-y-3">
-          {creatingNew || !selectedTicket ? (
+          {(creatingNew || !selectedTicket) && !staffMode ? (
             <div>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-300">{t('support.createFirstTicket')}</h2>
               <TicketCreationForm onCreateTicket={handleCreateTicket} loading={submitting} t={t} />
+            </div>
+          ) : !selectedTicket ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-900/40 p-6 text-sm text-slate-400">
+              {t('support.selectTicketHint')}
             </div>
           ) : (
             <>
@@ -198,7 +281,17 @@ export default function Support() {
                 t={t}
                 onReopen={handleReopen}
                 reopenLoading={reopenLoading}
+                showStaffFields={staffMode}
               />
+              {staffMode && isStaffUser && (
+                <StaffTicketActions
+                  ticket={selectedTicket}
+                  currentUserId={userIdentity?.id}
+                  loading={submitting}
+                  onApply={handleStaffPatch}
+                  t={t}
+                />
+              )}
               <TicketThread messages={threadMessages} loading={loadingThread} t={t} />
               <TicketComposer disabled={submitting} onSubmit={handleReply} t={t} />
             </>
