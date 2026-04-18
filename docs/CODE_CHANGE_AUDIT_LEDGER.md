@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18s - Refine OpenCore audit report for canonical governance alignment
+
+Muc tieu:
+- Chinh lai khuyen nghi trong bao cao audit de tranh xung dot voi authoritative docs lane.
+- Lam ro rang Quota Drift la rui ro can xu ly truoc public launch.
+
+Danh sach tep cap nhat:
+- docs/AUDIT_OPEN_CORE_DOCS_20260418.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Nang muc do rui ro Quota Drift tu Thap len Trung binh va gan ro vai tro blocker cho public launch den khi OC-13 het RED.
+- Dieu chinh khuyen nghi lam sach docs cu theo huong precise archive cho historical artifacts, khong archive dien rong OC-01..OC-10 neu con baseline tham chieu.
+
 ## Entry 2026-04-18r - Ruleset apply success + 422 hardening for setup script
 
 Muc tieu:
