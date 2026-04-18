@@ -159,6 +159,13 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### VNInvest Project Delivery Playbook Standardization Report (2026-04-18)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (NEW - quy trinh xay dung du an vninvest sat thuc te: 8 giai doan SDLC, stack high-scale, mandatory rules, release gates, checklist DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: tai lieu governance/process only, khong thay doi runtime code.
+- Status: COMPLETED (report co the dung lam khuon mau cho cac du an tiep theo)
+
 ### Vnstock Adapter Regression Hardening + Runtime Docs Package Finalization (2026-04-18)
 - backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - harden centralized vnstock wrappers and payload warning path)
 - backend/portfolio/admin.py (MODIFIED - admin workspace live data flow uses adapter entrypoints)

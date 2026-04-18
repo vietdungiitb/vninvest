@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18av - VNInvest project delivery playbook standardization report
+
+Muc tieu:
+- Chuyen hoa blueprint tong quat thanh playbook thuc thi sat voi thuc te vninvest.
+- Bo sung day du giai doan trien khai, cong nghe ap dung, release gates va mandatory governance rules.
+
+Danh sach tep cap nhat:
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (NEW - production-ready delivery playbook for vninvest with Plan-First, Test Pyramid, Audit workflow, stack mapping, and DoD checklists)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Day la cap nhat tai lieu governance/process, khong thay doi runtime code.
+- Da doi chieu noi dung voi blueprint goc va quy dinh hien hanh trong README (plan-first, anti-fat-file, audit mandatory).
+
+---
+
 ## Entry 2026-04-18au - Vnstock adapter regression hardening and docs package finalization
 
 Muc tieu:
