@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18aw - Governance lock: vninvest playbook mandatory no-exception
+
+Muc tieu:
+- Khoa quy trinh phat trien vninvest theo playbook o muc bat buoc, khong ngoai le.
+- Dam bao tat ca contributor nhin thay policy nay ngay trong tai lieu goc va README.
+
+Danh sach tep cap nhat:
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add no-exception mandatory policy declaration and merge gating statement)
+- README.md (MODIFIED - add mandatory delivery playbook policy section for all development work)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Day la cap nhat governance policy va documentation, khong thay doi runtime code.
+- Policy lock duoc cong bo tai 2 diem vao/chinh: playbook + README.
+
+---
+
 ## Entry 2026-04-18av - VNInvest project delivery playbook standardization report
 
 Muc tieu:

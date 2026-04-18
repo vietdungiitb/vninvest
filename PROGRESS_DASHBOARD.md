@@ -159,6 +159,14 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Governance Lock - Delivery Playbook Mandatory No-Exception (2026-04-18)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - them tuyen bo bat buoc khong ngoai le cho toan bo hoat dong phat trien)
+- README.md (MODIFIED - them muc policy bat buoc tuan thu delivery playbook)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: governance/documentation update only, khong thay doi runtime code.
+- Status: COMPLETED (policy no-exception da duoc khoa o cap do repository governance)
+
 ### VNInvest Project Delivery Playbook Standardization Report (2026-04-18)
 - docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (NEW - quy trinh xay dung du an vninvest sat thuc te: 8 giai doan SDLC, stack high-scale, mandatory rules, release gates, checklist DoD)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18av)

@@ -2,6 +2,19 @@
 
 Tai lieu nay chuan hoa quy trinh xay dung du an vninvest sat voi thuc te trien khai hien tai, duoc suy ra tu blueprint chung va cac quy tac governance da ap dung trong repo.
 
+## TUYEN BO BAT BUOC (NO-EXCEPTION POLICY)
+
+Tu ngay 2026-04-18, moi hoat dong phat trien trong vninvest bat buoc tuan thu day du tai lieu nay.
+
+Khong co ngoai le cho bat ky doi tuong nao:
+- Feature moi.
+- Bugfix.
+- Hotfix production.
+- Refactor noi bo.
+- Tai lieu governance lien quan den trien khai.
+
+Neu mot thay doi khong dap ung day du gate trong playbook (Plan-First, Test Pyramid, Audit Ledger, Release Gate), thay doi do khong du dieu kien merge va khong duoc xem la hoan tat.
+
 ---
 
 ## 1) Muc tieu va pham vi

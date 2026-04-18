@@ -147,6 +147,12 @@ cd frontend
 npm run build   # → build/ ready, 0 errors
 ```
 
+## Quy Dinh Bat Buoc: Delivery Playbook (Khong Ngoai Le)
+
+- Tu ngay 2026-04-18, toan bo phat trien vninvest bat buoc tuan thu quy trinh trong `docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md`.
+- Pham vi ap dung: feature, bugfix, hotfix, refactor, va moi thay doi co anh huong den runtime/governance.
+- Bat ky thay doi nao khong dap ung day du Plan-First, Test Pyramid, Audit Ledger va Release Gate deu khong du dieu kien merge.
+
 ## Quy Dinh Bat Buoc: Anti-Fat-File
 
 Quy dinh nay la bat buoc cho toan bo backend/frontend de tranh tai dien monolith va refactor lon ve sau.
