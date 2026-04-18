@@ -105,6 +105,12 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-16)
 
+### Sprint Week 2 Planning - Package Mapping Decision (2026-04-18)
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md (NEW - week 2 detailed roadmap 5 phases, resource + success criteria)
+- docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-24 vao bo canonical)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
 ### Sprint Week 1 Execution Plan - Quota Decision (2026-04-18)
 - docs/OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md (NEW - detailed week 1 tasks + resource allocation + daily standup talking points)
 - docs/OPEN_CORE_00_INDEX.md (MODIFIED - add OC-23 vao bo canonical)

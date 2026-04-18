@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18v - Create sprint week 2 backlog for Decision 2 (package mapping)
+
+Muc tieu:
+- Tao chi tiet sprint week 2 roadmap va tasks de chot Decision 2.
+- Chuan bi truoc khi Week 1 ket thuc (Friday 2026-04-26).
+
+Danh sach tep cap nhat:
+- docs/OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md
+- docs/OPEN_CORE_00_INDEX.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat chinh:
+- Tao OC-24 chi tiet 5 phase: Analysis (Mon) + Schema (Tue) + Frontend (Wed) + Tests/Docs (Thu) + Merge (Fri).
+- Decision A (recommended): Option A - explicit 1-1 mapping + display_name field.
+- Task breakdown: 1.1-1.3 (analysis) + 2.1-2.3 (schema) + 3.1-3.3 (frontend) + 4.1-4.3 (tests/docs) + 5.1-5.2 (merge).
+- Resource: 1 PO (20%), 1 Tech Lead (100%), 1 Backend (50%), 1 Frontend (40%) = 3 person-days.
+- Success criteria: Decision approved, DPIPlan updated, mapping constants, tests >90%, PR merged by Fri EOD.
+- Daily standup talking points provided.
+- Status: READY FOR PLANNING (Mon 2026-04-29).
+- Dependency: OC-23 must be complete by Fri 2026-04-26.
+
 ## Entry 2026-04-18u - Create sprint week 1 backlog for Decision 1 (quota unit canonical)
 
 Muc tieu:

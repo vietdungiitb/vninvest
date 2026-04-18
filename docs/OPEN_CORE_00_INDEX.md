@@ -42,6 +42,7 @@ Nguyen tac quan tri tai lieu (bat buoc):
 23. OC-21 (branch protection setup): OPEN_CORE_21_BRANCH_PROTECTION_OC19_SETUP_20260418.md
 24. OC-22 (hardening sprint 21 days): OPEN_CORE_22_HARDENING_SPRINT_21DAY_PLAN_20260418.md (PROPOSAL awaiting approval)
 25. OC-23 (sprint week 1 quota decision): OPEN_CORE_23_SPRINT_WEEK1_QUOTA_DECISION_20260422.md (READY FOR EXECUTION)
+26. OC-24 (sprint week 2 package mapping): OPEN_CORE_24_SPRINT_WEEK2_PACKAGE_MAPPING_20260429.md (PLANNING)
 
 ## 3. Thu tu doc de ra quyet dinh nhanh
 1. Bat dau tu OC-15 neu can mot ban tong hop de ra quyet dinh.
