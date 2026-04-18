@@ -33,6 +33,32 @@ def sync_stockprofile_api(request):
 
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
+def sync_stock_profiles_from_snapshot_api(request):
+    """
+    POST /api/admin-ops/stockprofile/sync-snapshot/
+    Trigger đồng bộ StockProfile.industry + company_name từ MarketSnapshot (KBS).
+    Đồng thời ghi dữ liệu static vào Redis để heatmap đọc nhanh.
+    Yêu cầu is_staff.
+    """
+    from portfolio.tasks_stock_profile_sync import sync_stock_profiles_from_snapshot
+
+    symbols_raw = request.data.get('symbols')
+    symbols = [s.strip().upper() for s in symbols_raw if s] if isinstance(symbols_raw, list) else None
+
+    result = sync_stock_profiles_from_snapshot.delay(symbols=symbols)
+    return Response(
+        {
+            'success': True,
+            'message': 'Task đồng bộ StockProfile từ MarketSnapshot đã được enqueue.',
+            'task_id': result.id,
+            'symbols_requested': len(symbols) if symbols else 'all',
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
 def sync_market_groups_api(request):
     """
     POST /api/admin-ops/market-groups/sync/

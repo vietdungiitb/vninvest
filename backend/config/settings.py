@@ -565,6 +565,17 @@ if _OPENCORE_ENABLED:
         "schedule": crontab(hour=7, minute=0),  # Daily at 7am UTC
     }
 
+# Sync StockProfile.industry + company_name từ MarketSnapshot lúc 07:15 ICT hằng ngày
+STOCK_PROFILE_SYNC_ENABLED = os.getenv("STOCK_PROFILE_SYNC_ENABLED", "True").lower() == "true"
+if STOCK_PROFILE_SYNC_ENABLED:
+    from celery.schedules import crontab as _crontab_profile_sync
+    CELERY_BEAT_SCHEDULE["sync-stock-profiles-from-snapshot"] = {
+        "task": "portfolio.tasks_stock_profile_sync.sync_stock_profiles_from_snapshot",
+        # 07:15 ICT = 00:15 UTC (ICT = UTC+7)
+        "schedule": _crontab_profile_sync(hour=0, minute=15),
+        "options": {"expires": 3600},
+    }
+
 # Sprint35 Layer 3: Portfolio Daily News Digest sau 16:05 ICT (Mon-Fri)
 PORTFOLIO_NEWS_DIGEST_ENABLED = os.getenv("PORTFOLIO_NEWS_DIGEST_ENABLED", "True").lower() == "true"
 PORTFOLIO_NEWS_DIGEST_BATCH_SIZE = _env_int("PORTFOLIO_NEWS_DIGEST_BATCH_SIZE", 200)

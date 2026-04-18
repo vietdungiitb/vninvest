@@ -449,6 +449,7 @@ class TrackedSymbolSerializer(serializers.Serializer):
     added_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
     industry = serializers.CharField(required=False, allow_null=True)
+    company_name = serializers.CharField(required=False, allow_null=True)
 
 
 class PriceAlertRuleSerializer(serializers.ModelSerializer):

@@ -662,6 +662,30 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
     raise ExternalSystemException('vnstock unknown error', code='vnstock_error')
 
 
+def fetch_heatmap_snapshot(symbols_list: list[str]) -> list[dict]:
+    """Lấy snapshot heatmap từ MarketSnapshot (private vnstock).
+
+    Trả về list[dict] với 8 field chuẩn:
+        symbol, current_price, prev_price, change_pct,
+        volume, market_cap, industry, company_name
+
+    - price_unit mặc định: nghìn VND (chuẩn HoSE)
+    - market_cap: tỷ VND
+    - industry: tên ngành tiếng Việt (fallback "Khác")
+
+    Trả về [] nếu không lấy được dữ liệu.
+    """
+    if not symbols_list:
+        return []
+    try:
+        from vnstock.api.snapshot import MarketSnapshot
+        snap = MarketSnapshot()
+        return snap.heatmap_data(symbols_list)
+    except Exception as exc:
+        logger.warning('fetch_heatmap_snapshot failed: %s', exc)
+        return []
+
+
 def fetch_financial_ratio_dataframe(
     symbol: str,
     *,

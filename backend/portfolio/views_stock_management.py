@@ -183,22 +183,53 @@ class TrackedSymbolListCreateView(APIView):
         symbols = [t.symbol for t in tracked]
         changes = get_price_changes(symbols) if symbols else {}
         
-        # Optimized industry lookup
-        profiles = {}
+        # Heatmap static data: đọc từ Redis trước (cache-first), fallback về DB
+        profiles: dict[str, dict] = {}
         if symbols:
-            profiles = {
-                p['symbol']: p['industry'] or 'Khác'
-                for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'industry')
+            from django.core.cache import cache as _cache
+            from portfolio.tasks_stock_profile_sync import heatmap_static_cache_key, _HEATMAP_STATIC_TTL
+
+            cache_keys = {s: heatmap_static_cache_key(s) for s in symbols}
+            cached = _cache.get_many(list(cache_keys.values()))  # batch O(1) Redis hit
+
+            redis_hits = {
+                sym: cached[key]
+                for sym, key in cache_keys.items()
+                if key in cached
             }
+            profiles.update(redis_hits)
+
+            # DB fallback cho các mã chưa có trong Redis
+            missing = [s for s in symbols if s not in profiles]
+            if missing:
+                db_rows = StockProfile.objects.filter(symbol__in=missing).values(
+                    'symbol', 'industry', 'company_name'
+                )
+                lazy_cache: dict[str, dict] = {}
+                for p in db_rows:
+                    entry = {
+                        'industry': p['industry'] or 'Khác',
+                        'company_name': p['company_name'] or p['symbol'],
+                    }
+                    profiles[p['symbol']] = entry
+                    lazy_cache[heatmap_static_cache_key(p['symbol'])] = entry
+                # Lazy-fill Redis với dữ liệu từ DB để lần sau không cần DB
+                if lazy_cache:
+                    try:
+                        _cache.set_many(lazy_cache, timeout=_HEATMAP_STATIC_TTL)
+                    except Exception:
+                        pass
 
         rows = []
         for ts in tracked:
             grp = ts.source_group
             info = changes.get(ts.symbol, {})
+            static = profiles.get(ts.symbol, {})
             rows.append({
                 'id': ts.id,
                 'symbol': ts.symbol,
-                'industry': profiles.get(ts.symbol, 'Khác'),
+                'industry': static.get('industry', 'Khác'),
+                'company_name': static.get('company_name', ts.symbol),
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
                 'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
