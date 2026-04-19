@@ -1840,7 +1840,7 @@ def fetch_market_sectors_and_groups() -> dict:
         )
 
         # --- 1. Lấy 25 nhóm ngành ICB ---
-        df = fetch_symbols_by_industries_dataframe(anchor_symbol='ACB', source='KBS')
+        df = fetch_symbols_by_industries_dataframe(anchor_symbol='ACB')
         # df columns: symbol, industry_code, industry_name
 
         sectors = []
@@ -1862,7 +1862,7 @@ def fetch_market_sectors_and_groups() -> dict:
         cap_groups = []
         for group_code, description, color in _CAP_GROUP_DEFS:
             try:
-                series = fetch_symbols_by_group_series(group_code, anchor_symbol='ACB', source='KBS')
+                series = fetch_symbols_by_group_series(group_code, anchor_symbol='ACB')
                 cap_groups.append({
                     'name': group_code,
                     'group_type': 'MARKET_CAP',
@@ -2132,7 +2132,7 @@ def _fetch_exchange_lookup(timeout: int = 20) -> dict:
         try:
             from .adapters.vnstock_adapter import fetch_symbols_by_exchange_dataframe
 
-            df = fetch_symbols_by_exchange_dataframe(anchor_symbol='ACB', source='KBS')
+            df = fetch_symbols_by_exchange_dataframe(anchor_symbol='ACB')
             result.update({
                 row['symbol'].upper().strip(): {
                     'company_name': row.get('organ_name', '') or '',
