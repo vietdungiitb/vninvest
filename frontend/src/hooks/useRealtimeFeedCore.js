@@ -75,6 +75,8 @@ function mergeQuote(prev, update) {
     market_code: update.market_code ?? prev.market_code,
     data_semantic: update.data_semantic ?? prev.data_semantic,
     source: update.source ?? prev.source,
+    // market_cap_bn là dữ liệu tĩnh từ StockProfile, không có trong WS tick → giữ nguyên từ initial load
+    market_cap_bn: prev.market_cap_bn ?? null,
   };
 }
 

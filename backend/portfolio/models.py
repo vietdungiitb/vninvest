@@ -67,6 +67,11 @@ class StockProfile(models.Model):
     company_name = models.CharField(max_length=255, verbose_name='Tên công ty')
     industry = models.CharField(max_length=100, verbose_name='Ngành')
     exchange = models.CharField(max_length=20, verbose_name='Sàn giao dịch')
+    market_cap_bn = models.DecimalField(
+        max_digits=20, decimal_places=4,
+        null=True, blank=True,
+        verbose_name='Vốn hóa (tỷ VND)',
+    )
     listed_date = models.DateField(null=True, blank=True, verbose_name='Ngày niêm yết')
     is_active = models.BooleanField(default=True, verbose_name='Đang giao dịch')
     updated_at = models.DateTimeField(auto_now=True)
