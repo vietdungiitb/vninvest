@@ -41,10 +41,26 @@ const PIECEWISE_VISUAL_MAP = {
   },
 };
 
+const TREEMAP_LEVELS = [
+  {
+    itemStyle: {
+      borderWidth: 0,
+      gapWidth: 5,
+    },
+  },
+  {
+    itemStyle: {
+      borderColor: 'rgba(15, 23, 10, 0.55)',
+      borderWidth: 1.5,
+      gapWidth: 1.5,
+    },
+  },
+];
+
 export default function PortfolioHeatmap({ holdings, title }) {
   const { t, locale, localeTag } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
-  const [sizeMetric, setSizeMetric] = useState('weight');
+  const [sizeMetric, setSizeMetric] = useState('cap');
   const HEATMAP_HEIGHT = 420;
   const chartComponentRef = useRef(null);
   const chartContainerRef = useRef(null);
@@ -55,13 +71,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
     if (!chart || chart.isDisposed?.()) {
       return;
     }
-
-    try {
-      chart.dispatchAction({ type: 'hideTip' });
-    } catch (_err) {
-      // Ignore tooltip action errors during transient resize/dispose timing.
-    }
-
+    // NOTE: Do NOT dispatch hideTip here — it kills the tooltip on every
+    // resize / realtime data update, making tooltip permanently invisible.
     chart.resize({
       animation: {
         duration: 0,
@@ -309,52 +320,42 @@ export default function PortfolioHeatmap({ holdings, title }) {
     return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? price.toFixed(2) : '\u2014'} VND}`;
   }, [maxLeafSize]);
 
-  // Use stable module-level constants
-  const heatScaleColors = HEAT_SCALE_COLORS;
-  const piecewiseVisualMap = PIECEWISE_VISUAL_MAP;
-
-  const buildTooltipSparkline = useCallback((values, strokeColor, symbolKey = 'default') => {
+  // Build inline SVG sparkline for tooltip chart
+  const buildSparklineSvg = useCallback((values, width = 160, height = 40) => {
     const points = (Array.isArray(values) ? values : [])
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value) && value > 0)
+      .map((v) => Number(v))
+      .filter((v) => Number.isFinite(v) && v > 0)
       .slice(-24);
 
-    if (points.length < 2) {
-      return `<div class="heatmap-tooltip__spark">${t('dashboardRealtime.heatmapTooltipNoData24h', { defaultValue: 'Chưa đủ dữ liệu 24h' })}</div>`;
-    }
+    if (points.length < 2) return '';
 
-    const min = Math.min(...points);
-    const max = Math.max(...points);
-    const gradientId = `heatmapSparkFill-${String(symbolKey || 'default').replace(/[^a-zA-Z0-9_-]/g, '')}`;
-    const width = 176;
-    const height = 40;
-    const span = Math.max(max - min, 1);
-    const linePoints = points
-      .map((value, index) => {
-        const x = (index / Math.max(points.length - 1, 1)) * width;
-        const y = height - 6 - (((value - min) / span) * (height - 12));
-        return `${x.toFixed(1)},${y.toFixed(1)}`;
-      })
-      .join(' ');
-    const polygon = `0,${height - 4} ${linePoints} ${width},${height - 4}`;
-    const latest = points[points.length - 1];
-
-    return `
-      <div class="heatmap-tooltip__spark">
-        <div class="heatmap-tooltip__spark-caption">${t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Trend 24h' })} • ${t('dashboardRealtime.heatmapTooltipLast', { defaultValue: 'Last' })}: ${Math.round(latest).toLocaleString(localeTag || 'vi-VN')}</div>
-        <svg width="176" height="40" viewBox="0 0 176 40" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${strokeColor}" stop-opacity="0.35"></stop>
-              <stop offset="100%" stop-color="${strokeColor}" stop-opacity="0.05"></stop>
-            </linearGradient>
-          </defs>
-          <polygon points="${polygon}" fill="url(#${gradientId})"></polygon>
-          <polyline points="${linePoints}" fill="none" stroke="${strokeColor}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></polyline>
-        </svg>
-      </div>
-    `;
-  }, [localeTag, t]);
+    const minV = Math.min(...points);
+    const maxV = Math.max(...points);
+    const range = maxV - minV || 1;
+    const padX = 4;
+    const padY = 4;
+    const innerW = width - padX * 2;
+    const innerH = height - padY * 2;
+    const toX = (i) => (padX + (i / (points.length - 1)) * innerW).toFixed(1);
+    const toY = (v) => (padY + innerH - ((v - minV) / range) * innerH).toFixed(1);
+    const polyPoints = points.map((v, i) => `${toX(i)},${toY(v)}`).join(' ');
+    const lastX = toX(points.length - 1);
+    const lastY = toY(points[points.length - 1]);
+    const isUp = points[points.length - 1] >= points[0];
+    const lineColor = isUp ? '#4ade80' : '#f87171';
+    const dotColor = isUp ? '#86efac' : '#fca5a5';
+    // Filled area path
+    const areaPath = `M${toX(0)},${toY(points[0])} ` +
+      points.map((v, i) => `L${toX(i)},${toY(v)}`).join(' ') +
+      ` L${lastX},${height} L${padX},${height} Z`;
+    return [
+      `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg" style="display:block;margin:6px 0 2px">`,
+      `<path d="${areaPath}" fill="${lineColor}" fill-opacity="0.12"/>`,
+      `<polyline points="${polyPoints}" fill="none" stroke="${lineColor}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>`,
+      `<circle cx="${lastX}" cy="${lastY}" r="3" fill="${dotColor}" stroke="rgba(10,18,35,0.8)" stroke-width="1"/>`,
+      `</svg>`,
+    ].join('');
+  }, []);
 
   const option = useMemo(() => {
     const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
@@ -367,86 +368,92 @@ export default function PortfolioHeatmap({ holdings, title }) {
     const marketCapLabel = t('dashboardRealtime.heatmapTooltipMarketCap', { defaultValue: 'Vốn hóa' });
     const volumeLabel = t('dashboardRealtime.heatmapTooltipVolume', { defaultValue: 'Khối lượng' });
 
+    const industryLabel = t('dashboardRealtime.heatmapTooltipIndustry', { defaultValue: 'Ngành' });
+    const trendLabel = t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Xu hướng 24h' });
+
     const tooltip = {
+      show: true,
       trigger: 'item',
       triggerOn: 'mousemove',
-      renderMode: 'html',
-      appendToBody: false,
+      appendToBody: true,
       enterable: false,
       alwaysShowContent: false,
       showDelay: 40,
-      hideDelay: 120,
-      transitionDuration: 0.08,
-      backgroundColor: 'rgba(10, 18, 35, 0.96)',
+      hideDelay: 150,
+      transitionDuration: 0,
+      backgroundColor: 'rgba(10, 18, 35, 0.97)',
       borderColor: 'rgba(71, 85, 105, 0.72)',
       borderWidth: 1,
-      confine: true,
-      extraCssText: 'box-shadow: 0 8px 24px rgba(2, 6, 23, 0.5); border-radius: 10px; pointer-events:none; will-change:transform; backface-visibility:hidden;',
       textStyle: { color: '#e2e8f0', fontSize: 12 },
+      extraCssText: 'pointer-events:none; box-shadow:0 8px 32px rgba(0,0,0,0.72); border-radius:10px; z-index:9999;',
       formatter: (params) => {
+        try {
         const data = params?.data;
-        if (!data) return '';
-        
-        // Industry Path Logic
+        if (!data) return `<div style="padding:8px 12px"><b style="color:#f8fafc">${params?.name || ''}</b></div>`;
+
+        // Industry path
         const treePathInfo = params.treePathInfo || [];
-        let industryPath = '';
+        let industryName = '';
         if (treePathInfo.length > 1) {
-          // hierarchical case (Sunburst)
-          industryPath = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
+          industryName = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
         } else {
-          // flat case (Treemap)
-          industryPath = data.industry || fallbackIndustryLabel;
+          const raw = data.industry;
+          industryName = (raw && raw !== 'undefined' && raw !== 'null') ? raw : fallbackIndustryLabel;
         }
 
-        // Sector/Industry Node (has children)
+        // Sector/Industry group node (has children)
         if (data.children) {
-          return `
-            <div class="heatmap-tooltip">
-              <div class="heatmap-tooltip__header">
-                <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${groupLabel}</span>
-                <b>${data.name}</b>
-              </div>
-              <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
-              <div class="heatmap-tooltip__row">
-                <span>${averageChangeLabel}</span>
-                <span style="color:${data.changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : data.changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1'}; font-weight:700;">
-                  ${formatPercent(data.changePct)}
-                </span>
-              </div>
-            </div>
-          `;
+          const secChange = Number(data.changePct || 0);
+          const secColor = secChange >= 0 ? '#4ade80' : '#f87171';
+          return [
+            `<div style="padding:10px 14px;min-width:180px">`,
+            `<div style="font-size:13px;font-weight:800;color:#f8fafc;margin-bottom:4px">${data.name}</div>`,
+            `<div style="color:#94a3b8;font-size:11px">${averageChangeLabel}:`,
+            ` <b style="color:${secColor}">${formatPercent(secChange)}</b></div>`,
+            `</div>`,
+          ].join('');
         }
 
-        // Stock Node (Leaf)
+        // Leaf (stock) node
         const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
-        const changeColor = changePct > 0 ? FINTECH_HEAT_COLORS.upStrong : (changePct < 0 ? FINTECH_HEAT_COLORS.downStrong : '#cbd5e1');
+        const pctColor = changePct > 0 ? '#4ade80' : changePct < 0 ? '#f87171' : '#94a3b8';
+        const pctBg = changePct > 0 ? 'rgba(74,222,128,0.12)' : changePct < 0 ? 'rgba(248,113,113,0.12)' : 'rgba(148,163,184,0.1)';
+        const livePrice = toNumber(data.livePrice);
+        const mcap = toNumber(data.marketCap);
+        const vol = Math.round(toNumber(data.volume));
+        const sparkSvg = buildSparklineSvg(data.sparkline24);
+        const hasSpark = sparkSvg.length > 0;
 
-        return `
-          <div class="heatmap-tooltip">
-            <div class="heatmap-tooltip__header">
-              <span style="font-size:10px; color:#94a3b8; display:block; margin-bottom:2px;">${industryPath}</span>
-              <b>${data.name}</b>${data.companyName && data.companyName !== data.name ? ` — ${data.companyName}` : ''}
-            </div>
-            <div style="border-top:1px solid rgba(71,85,105,0.45); margin:6px 0;"></div>
-            
-            <div class="heatmap-tooltip__row">
-              <span>${currentPriceLabel}</span>
-              <span style="color:${changeColor}; font-weight:700;">
-                ${toNumber(data.livePrice).toFixed(2)} VND (${formatPercent(changePct)})
-              </span>
-            </div>
-            <div class="heatmap-tooltip__row">
-              <span>${marketCapLabel}</span>
-              <span style="color:#f8fafc; font-weight:700;">${(toNumber(data.marketCap) / 1e9).toFixed(1)}B VND</span>
-            </div>
-            <div class="heatmap-tooltip__row">
-              <span>${volumeLabel}</span>
-              <span style="color:#f8fafc; font-weight:700;">${Math.round(toNumber(data.volume)).toLocaleString(localeTag || 'vi-VN')}</span>
-            </div>
-
-            ${buildTooltipSparkline(data.sparkline24, changePct >= 0 ? FINTECH_HEAT_COLORS.upStrong : FINTECH_HEAT_COLORS.downStrong, data.symbol)}
-          </div>
-        `;
+        return [
+          `<div style="min-width:210px;max-width:260px;font-family:inherit">`,
+          // Header bar
+          `<div style="background:rgba(15,23,42,0.9);padding:10px 14px 8px;border-bottom:1px solid rgba(71,85,105,0.35)">`,
+          `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">`,
+          `<span style="font-size:15px;font-weight:900;color:#f8fafc;letter-spacing:0.04em">${data.name}</span>`,
+          `<span style="font-size:12px;font-weight:700;color:${pctColor};background:${pctBg};padding:2px 7px;border-radius:6px">${formatPercent(changePct)}</span>`,
+          `</div>`,
+          data.companyName && data.companyName !== data.name
+            ? `<div style="font-size:10px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.companyName}</div>`
+            : '',
+          `<div style="font-size:10px;color:#475569;margin-top:1px">${industryName}</div>`,
+          `</div>`,
+          // Sparkline chart area
+          hasSpark
+            ? `<div style="padding:4px 14px 0;background:rgba(10,18,35,0.7)">${sparkSvg}<div style="font-size:9px;color:#475569;text-align:right;margin-top:-2px;padding-bottom:4px">${trendLabel}</div></div>`
+            : '',
+          // Stats
+          `<div style="padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">`,
+          `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${currentPriceLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${livePrice > 0 ? livePrice.toFixed(2) : '—'} <span style="font-size:10px;color:#94a3b8">VND</span></div></div>`,
+          `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${volumeLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${vol > 0 ? vol.toLocaleString(localeTag || 'vi-VN') : '—'}</div></div>`,
+          mcap > 0
+            ? `<div style="grid-column:1/-1"><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${marketCapLabel}</div><div style="font-size:11px;font-weight:600;color:#cbd5e1">${(mcap / 1e9).toFixed(1)}B VND</div></div>`
+            : '',
+          `</div>`,
+          `</div>`,
+        ].join('');
+        } catch (_err) {
+          return `<div style="padding:8px 12px"><b style="color:#f8fafc">${params?.name || ''}</b></div>`;
+        }
       },
     };
 
@@ -572,9 +579,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
           breadcrumb: { show: false },
           sort: 'desc',
           squareRatio: 0.5,
-          leafDepth: 0,
-          visibleMin: 0,
+          visibleMin: 1,
           childrenVisibleMin: 0,
+          levels: TREEMAP_LEVELS,
           emphasis: {
             disabled: false,
             itemStyle: {
@@ -622,15 +629,10 @@ export default function PortfolioHeatmap({ holdings, title }) {
             },
           },
           upperLabel: { show: false },
-          itemStyle: {
-            borderColor: 'rgba(15, 23, 10, 0.55)',
-            borderWidth: 1.5,
-            gapWidth: 1.5,
-          },
-          levels: [],
         },
       ],
-  }, [viewMode, chartData, buildLeafLabel, buildTooltipSparkline, formatPercent, localeTag, t]);
+    };
+  }, [viewMode, chartData, buildLeafLabel, buildSparklineSvg, formatPercent, localeTag, t]);
 
   if (!chartData.flat.length) {
     return (
