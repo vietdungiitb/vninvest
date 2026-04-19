@@ -93,8 +93,8 @@ def sync_stock_profiles_from_snapshot(self, symbols: list[str] | None = None):
                 continue
             industry = str(row.get("industry") or "").strip() or "Khác"
             company_name = str(row.get("company_name") or "").strip() or symbol
-            # market_cap từ vnstock trả về đơn vị tỷ VND
-            raw_cap = row.get("market_cap")
+            # market_cap_bn (hoặc market_cap legacy) trả về đơn vị tỷ VND
+            raw_cap = row.get("market_cap_bn") or row.get("market_cap")
             try:
                 market_cap_bn = float(raw_cap) if raw_cap is not None else None
             except (TypeError, ValueError):
