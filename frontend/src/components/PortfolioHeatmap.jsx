@@ -73,7 +73,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
     }
     // NOTE: Do NOT dispatch hideTip here — it kills the tooltip on every
     // resize / realtime data update, making tooltip permanently invisible.
+    // Pass explicit width from container to bypass CSS percentage ambiguity
+    // that caused canvas to lock at 339px on initial render.
+    const container = chartContainerRef.current;
+    const explicitWidth = container ? Math.max(container.clientWidth - 20, 120) : undefined;
     chart.resize({
+      width: explicitWidth,
       animation: {
         duration: 0,
       },
@@ -392,6 +397,16 @@ export default function PortfolioHeatmap({ holdings, title }) {
       borderWidth: 1,
       textStyle: { color: '#e2e8f0', fontSize: 12 },
       extraCssText: 'pointer-events:none; box-shadow:0 8px 32px rgba(0,0,0,0.72); border-radius:10px; z-index:9999;',
+      // Custom position: offset from cursor without relying on ECharts scroll-offset
+      // calculation (appendToBody + scrolled page causes position mismatch).
+      position: (point, _params, _dom, _rect, size) => {
+        const [x, y] = point;
+        const [w, h] = size.contentSize;
+        const [vw, vh] = size.viewSize;
+        const tx = x + w + 20 <= vw ? x + 16 : x - w - 10;
+        const ty = Math.max(8, Math.min(y - Math.floor(h / 3), vh - h - 8));
+        return [tx, ty];
+      },
       formatter: (params) => {
         try {
         const data = params?.data;
@@ -711,13 +726,15 @@ export default function PortfolioHeatmap({ holdings, title }) {
           lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
           onChartReady={() => {
-            // Double RAF: ensure browser has completed flex/grid layout
-            // before ECharts reads container dimensions for resize.
+            // Immediate attempt + progressive fallbacks:
+            // flex layout may not be complete when onChartReady fires.
+            safeResizeChart();
             requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                safeResizeChart();
-              });
+              safeResizeChart();
+              requestAnimationFrame(safeResizeChart);
             });
+            // setTimeout 150ms catches cases where flex/grid settles late
+            setTimeout(safeResizeChart, 150);
           }}
         />
         
