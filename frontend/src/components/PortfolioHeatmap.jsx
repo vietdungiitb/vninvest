@@ -180,10 +180,16 @@ export default function PortfolioHeatmap({ holdings, title }) {
     (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
-      const marketCap = toNumber(h.live_market_cap || h.market_cap);
-      
+      // market_cap_bn (tỷ VND) từ static profile sync; live_market_cap từ quote feed (thường = 0)
+      const marketCapFromProfile = toNumber(h.market_cap_bn) * 1e9; // tỷ → VND
+      const marketCap = toNumber(h.live_market_cap || h.market_cap) || marketCapFromProfile;
+
       const sizeByWeight = liveValue > 0 ? liveValue : snapshotValue;
-      const sizeByCap = marketCap > 0 ? marketCap : sizeByWeight;
+      // Nếu không có market cap thực → ước tính từ giá × số lượng (proxy, tốt hơn equal weight)
+      const priceProxy = toNumber(h.live_current_price || h.current_price);
+      const qtyProxy = toNumber(h.quantity || h.shares);
+      const estimatedCap = priceProxy > 0 && qtyProxy > 0 ? priceProxy * qtyProxy : sizeByWeight;
+      const sizeByCap = marketCap > 0 ? marketCap : estimatedCap;
       const size = sizeMetric === 'cap' ? sizeByCap : sizeByWeight;
 
       if (size <= 0) return;
@@ -697,15 +703,21 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
       <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
         <ReactECharts
-          key={`${viewMode}-${chartData.flat.length}-${locale}`}
+          key={`${viewMode}-${locale}`}
           ref={chartComponentRef}
           option={option}
           style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
-          notMerge={true}
-          lazyUpdate={false}
+          notMerge={false}
+          lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
           onChartReady={() => {
-            safeResizeChart();
+            // Double RAF: ensure browser has completed flex/grid layout
+            // before ECharts reads container dimensions for resize.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                safeResizeChart();
+              });
+            });
           }}
         />
         
