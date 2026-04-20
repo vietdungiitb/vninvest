@@ -23,6 +23,7 @@ def _generate_news_digest_for_user(user) -> dict:
     today = _tz.localdate()
 
     if PortfolioNewsDigest.objects.filter(user=user, date=today).exists():
+        logger.info('news_digest skip user=%s reason=already_exists date=%s', user.id, today)
         return {'skipped': True, 'reason': 'already_exists'}
 
     symbols = list(
@@ -32,6 +33,7 @@ def _generate_news_digest_for_user(user) -> dict:
         .order_by('symbol')[:20]
     )
     if not symbols:
+        logger.info('news_digest skip user=%s reason=empty_watchlist', user.id)
         return {'skipped': True, 'reason': 'empty_watchlist'}
 
     news_by_symbol: dict[str, str] = {}
@@ -43,6 +45,7 @@ def _generate_news_digest_for_user(user) -> dict:
             total_items += ctx.count('\n- ')
 
     if not news_by_symbol:
+        logger.info('news_digest skip user=%s reason=no_news_available symbols=%s', user.id, symbols)
         return {'skipped': True, 'reason': 'no_news_available', 'symbols': symbols}
 
     try:
@@ -66,6 +69,7 @@ def _generate_news_digest_for_user(user) -> dict:
             user=user_config,
         )
     except ValueError as exc:
+        logger.info('news_digest skip user=%s reason=%s', user.id, exc)
         return {'skipped': True, 'reason': str(exc)}
     except Exception as exc:
         logger.warning('sprint35: AI digest generation failed for user=%s: %s', user.id, exc)
