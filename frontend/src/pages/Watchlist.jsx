@@ -1,8 +1,8 @@
-/**
+﻿/**
  * pages/Watchlist.jsx
- * Radar thị trường — tách rõ 2 lớp dùng dữ liệu:
- * 1) Nhóm thị trường để quét rộng theo ngành/vốn hóa/chủ đề.
- * 2) Danh sách theo dõi để bám sát realtime.
+ * Radar thá»‹ trÆ°á»ng â€” tÃ¡ch rÃµ 2 lá»›p dÃ¹ng dá»¯ liá»‡u:
+ * 1) NhÃ³m thá»‹ trÆ°á»ng Ä‘á»ƒ quÃ©t rá»™ng theo ngÃ nh/vá»‘n hÃ³a/chá»§ Ä‘á».
+ * 2) Danh sÃ¡ch theo dÃµi Ä‘á»ƒ bÃ¡m sÃ¡t realtime.
  */
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,82 +16,15 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import RealtimeDebugPanel from '../components/RealtimeDebugPanel';
-import { RealtimeQuoteTable, COLUMN_PRESETS } from '../components/RealtimeQuoteTable';
-
-function severityTone(severity) {
-  if (severity === 'extreme') return 'bg-rose-500 text-white border-rose-400/40';
-  if (severity === 'high') return 'bg-amber-400 text-slate-950 border-amber-300/40';
-  if (severity === 'medium') return 'bg-cyan-400 text-slate-950 border-cyan-300/40';
-  return 'bg-slate-800 text-slate-200 border-slate-600/40';
-}
-
-function severityLabel(severity, t) {
-  const normalizedSeverity = String(severity || '').toLowerCase();
-  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
-  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
-  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
-  return t('whaleHub.severityLow');
-}
-
-function mergeTickerIntoItem(item, update) {
-  if (item.symbol !== update.symbol) {
-    return item;
-  }
-
-  const realtimeDate = update.last_date ?? update.ts;
-
-  return {
-    ...item,
-    current_price: update.current_price ?? update.price ?? item.current_price,
-    prev_price: update.prev_price ?? item.prev_price,
-    change_value: update.change_value ?? item.change_value,
-    change_pct: update.change_pct ?? item.change_pct,
-    last_date: realtimeDate ?? item.last_date,
-    updated_at: realtimeDate ?? item.updated_at,
-    freshness_seconds: update.freshness_seconds ?? item.freshness_seconds,
-    stale: update.stale ?? item.stale,
-  };
-}
-
-function toFiniteNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function resolveWatchlistPriceScale(currentPrice, prevPrice) {
-  const current = toFiniteNumber(currentPrice);
-  const prev = toFiniteNumber(prevPrice);
-
-  if (current === null || current <= 0) {
-    return 1;
-  }
-
-  // Dashboard/Watchlist quy ước hiển thị nghìn VNĐ.
-  // Nếu giá snapshot ở mức VNĐ tuyệt đối (>= 2000), scale về nghìn VNĐ.
-  if (current >= 2000) {
-    return 0.001;
-  }
-
-  if (prev !== null && prev > 0 && prev >= 2000) {
-    return 0.001;
-  }
-
-  return 1;
-}
-
-function ChangeCell({ value }) {
-  if (value === null || value === undefined) {
-    return <span className="text-gray-600 text-xs">—</span>;
-  }
-  const isUp = value > 0;
-  const isDown = value < 0;
-  const color = isUp ? 'text-green-400' : isDown ? 'text-red-400' : 'text-gray-400';
-  return (
-    <span className={`${color} font-medium tabular-nums`}>
-      {isUp ? '+' : ''}{typeof value === 'number' ? value.toFixed(2) : value}
-    </span>
-  );
-}
+import { RealtimeQuoteTable } from '../components/RealtimeQuoteTable';
+import SmartRadarTable from '../components/watchlist/SmartRadarTable';
+import PriceAlertModule from '../components/watchlist/PriceAlertModule';
+import WatchlistManagementPanel from '../components/watchlist/WatchlistManagementPanel';
+import { ChangeCell } from '../components/watchlist/WatchlistCells';
+import {
+  severityTone, severityLabel, mergeTickerIntoItem,
+  isPriceAlertMatched, extractApiErrorMessage, applyStrategyFilter,
+} from '../utils/watchlistHelpers';
 
 function PctCell({ pct, emptyLabel }) {
   if (pct === null || pct === undefined) {
@@ -107,44 +40,8 @@ function PctCell({ pct, emptyLabel }) {
 }
 
 function formatPrice(val, formatNumberFn) {
-  if (val === null || val === undefined) return <span className="text-gray-600">—</span>;
+  if (val === null || val === undefined) return <span className="text-gray-600">â€”</span>;
   return <span className="text-gray-200 tabular-nums">{formatNumberFn(val)}</span>;
-}
-
-function isPriceAlertMatched(rule, currentPrice) {
-  const targetPrice = Number(rule?.target_price);
-  const normalizedCurrentPrice = Number(currentPrice);
-  if (!Number.isFinite(targetPrice) || !Number.isFinite(normalizedCurrentPrice)) {
-    return false;
-  }
-
-  return rule.condition === 'ABOVE'
-    ? normalizedCurrentPrice >= targetPrice
-    : normalizedCurrentPrice <= targetPrice;
-}
-
-function extractApiErrorMessage(error, fallbackMessage) {
-  const payload = error?.response?.data;
-
-  if (!payload) {
-    return fallbackMessage;
-  }
-  if (typeof payload === 'string') {
-    return payload;
-  }
-  if (typeof payload.detail === 'string' && payload.detail.trim()) {
-    return payload.detail;
-  }
-
-  const firstField = Object.values(payload).find((value) => value != null);
-  if (typeof firstField === 'string') {
-    return firstField;
-  }
-  if (Array.isArray(firstField) && firstField.length > 0) {
-    return String(firstField[0]);
-  }
-
-  return fallbackMessage;
 }
 
 export default function WatchlistPage() {
@@ -176,7 +73,7 @@ export default function WatchlistPage() {
   const [syncCooldownSeconds, setSyncCooldownSeconds] = useState(0);
   const [syncingStockProfile, setSyncingStockProfile] = useState(false);
 
-  // Mã Theo dõi state
+  // MÃ£ Theo dÃµi state
   const [trackedSymbols, setTrackedSymbols] = useState([]);
   const [trackedLoading, setTrackedLoading] = useState(false);
   const [priceAlerts, setPriceAlerts] = useState([]);
@@ -206,6 +103,11 @@ export default function WatchlistPage() {
   const [trackedSymbolSearch, setTrackedSymbolSearch] = useState('');
   const [trackedPageSize, setTrackedPageSize] = useState(20);
   const [trackedPage, setTrackedPage] = useState(1);
+  // Phase B: strategy filter
+  const [strategyFilter, setStrategyFilter] = useState('all');
+  // Phase A: sparkline price history (ring buffer per symbol, max 30 ticks)
+  const priceHistoryRef = useRef({});
+  const getSparklinePrices = useCallback((symbol) => priceHistoryRef.current[symbol] || [], []);
   const triggeringAlertIdsRef = useRef(new Set());
   const syncCooldownIntervalRef = useRef(null);
 
@@ -253,7 +155,7 @@ export default function WatchlistPage() {
     }
   };
 
-  // Form thêm Mã Theo dõi
+  // Form thÃªm MÃ£ Theo dÃµi
   const [srcGroupId, setSrcGroupId] = useState('');
   const [addSymbol, setAddSymbol] = useState('');
   const [addThresholdMillion, setAddThresholdMillion] = useState('');
@@ -334,6 +236,21 @@ export default function WatchlistPage() {
     lastEventAt: lastRealtimeAt,
     latestWhaleAlert,
   } = useRealtimeFeed({ symbols: allRealtimeSymbols, pollInterval: 5000 });
+
+  // Phase A: accumulate sparkline price history per symbol (max 30 ticks)
+  useEffect(() => {
+    if (!quotesBySymbol) return;
+    Object.entries(quotesBySymbol).forEach(([symbol, quote]) => {
+      const price = Number(quote?.current_price ?? quote?.price);
+      if (!Number.isFinite(price) || price <= 0) return;
+      if (!priceHistoryRef.current[symbol]) priceHistoryRef.current[symbol] = [];
+      const buf = priceHistoryRef.current[symbol];
+      if (buf.length === 0 || buf[buf.length - 1] !== price) {
+        buf.push(price);
+        if (buf.length > 30) buf.shift();
+      }
+    });
+  }, [quotesBySymbol]);
 
   const groupsWithRealtime = useMemo(
     () => groups.map((group) => ({
@@ -417,8 +334,13 @@ export default function WatchlistPage() {
     }
     return true;
   });
+  // Phase B: apply strategy filter (RSI/RVOL/MA20/Whale) on top of data filter
+  const strategyFilteredTracked = useMemo(
+    () => applyStrategyFilter(filteredByDataTrackedSymbolsWithRealtime, strategyFilter),
+    [filteredByDataTrackedSymbolsWithRealtime, strategyFilter],
+  );
   const sortedTrackedSymbolsWithRealtime = useMemo(() => {
-    const rows = [...filteredByDataTrackedSymbolsWithRealtime];
+    const rows = [...strategyFilteredTracked];
     const scoreThreshold = (item) => (item.whale_alert_threshold_million == null ? -1 : Number(item.whale_alert_threshold_million));
     const scoreNumber = (value) => {
       const parsed = Number(value);
@@ -476,7 +398,7 @@ export default function WatchlistPage() {
     }
     rows.sort((a, b) => String(a.symbol || '').localeCompare(String(b.symbol || '')));
     return rows;
-  }, [filteredByDataTrackedSymbolsWithRealtime, trackedSortBy]);
+  }, [strategyFilteredTracked, trackedSortBy]);
   const trackedTotalPages = Math.max(1, Math.ceil(sortedTrackedSymbolsWithRealtime.length / trackedPageSize));
   const trackedCurrentPage = Math.min(trackedPage, trackedTotalPages);
   const pagedTrackedSymbolsWithRealtime = useMemo(() => {
@@ -503,9 +425,9 @@ export default function WatchlistPage() {
     const activeKey = splitIndex > 0 ? normalized.slice(0, splitIndex) : 'symbol';
     const activeDirection = splitIndex > 0 ? normalized.slice(splitIndex + 1) : 'asc';
     if (activeKey !== key) {
-      return '↕';
+      return 'â†•';
     }
-    return activeDirection === 'asc' ? '↑' : '↓';
+    return activeDirection === 'asc' ? 'â†‘' : 'â†“';
   }, [trackedSortBy]);
   const trackedSymbolMap = new Map(trackedSymbolsWithRealtime.map((item) => [item.symbol, item]));
   const trackedSymbolSet = new Set(trackedSymbolsWithRealtime.map((item) => item.symbol));
@@ -604,9 +526,9 @@ export default function WatchlistPage() {
 
   const getGroupSortIndicator = useCallback((key) => {
     if (groupSort.key !== key) {
-      return '↕';
+      return 'â†•';
     }
-    return groupSort.direction === 'asc' ? '↑' : '↓';
+    return groupSort.direction === 'asc' ? 'â†‘' : 'â†“';
   }, [groupSort]);
   const activeGroupUntrackedCount = activeGroupItems.filter((item) => !trackedSymbolSet.has(item.symbol)).length;
 
@@ -966,19 +888,19 @@ export default function WatchlistPage() {
 
     const normalizedSymbol = String(priceAlertForm.symbol || '').toUpperCase().trim();
     if (!normalizedSymbol) {
-      setPriceAlertError(t('watchlist.symbolRequired', { defaultValue: 'Vui lòng nhập mã chứng khoán.' }));
+      setPriceAlertError(t('watchlist.symbolRequired', { defaultValue: 'Vui lÃ²ng nháº­p mÃ£ chá»©ng khoÃ¡n.' }));
       return;
     }
 
     const targetPrice = Number(priceAlertForm.targetPrice);
     if (!Number.isFinite(targetPrice) || targetPrice <= 0) {
-      setPriceAlertError(t('watchlist.targetPriceValidation', { defaultValue: 'Giá mục tiêu phải là số > 0.' }));
+      setPriceAlertError(t('watchlist.targetPriceValidation', { defaultValue: 'GiÃ¡ má»¥c tiÃªu pháº£i lÃ  sá»‘ > 0.' }));
       return;
     }
 
     const cooldownSeconds = Number(priceAlertForm.cooldownSeconds || 0);
     if (!Number.isFinite(cooldownSeconds) || cooldownSeconds < 0) {
-      setPriceAlertError(t('watchlist.cooldownValidation', { defaultValue: 'Cooldown phải là số >= 0.' }));
+      setPriceAlertError(t('watchlist.cooldownValidation', { defaultValue: 'Cooldown pháº£i lÃ  sá»‘ >= 0.' }));
       return;
     }
 
@@ -1111,11 +1033,11 @@ export default function WatchlistPage() {
             </span>
           )}
           <span className="text-gray-300 tabular-nums">
-            {formatNumber(latestWhaleAlert.matched_value || 0)} VNĐ
+            {formatNumber(latestWhaleAlert.matched_value || 0)} VNÄ
           </span>
           {(latestWhaleAlert.display_score != null || latestWhaleAlert.event_score != null) && (
             <span className="text-xs text-gray-400">
-              Score {latestWhaleAlert.display_score ?? '—'} / Event {latestWhaleAlert.event_score ?? '—'}
+              Score {latestWhaleAlert.display_score ?? 'â€”'} / Event {latestWhaleAlert.event_score ?? 'â€”'}
             </span>
           )}
           {(() => {
@@ -1183,7 +1105,7 @@ export default function WatchlistPage() {
         <div className="flex gap-5">
           {/* Sidebar */}
           <aside className="w-52 flex-shrink-0 space-y-0.5">
-            {/* Danh sách theo dõi cá nhân */}
+            {/* Danh sÃ¡ch theo dÃµi cÃ¡ nhÃ¢n */}
             <button
               onClick={() => setView('tracked')}
               className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors border ${
@@ -1207,7 +1129,7 @@ export default function WatchlistPage() {
               </div>
             </button>
 
-            {/* Divider + Nhóm thị trường label */}
+            {/* Divider + NhÃ³m thá»‹ trÆ°á»ng label */}
             <div className="pt-3 pb-1 px-1">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">{t('watchlist.marketGroups')}</p>
             </div>
@@ -1262,517 +1184,175 @@ export default function WatchlistPage() {
                   </span>
                 </div>
 
-                <form onSubmit={handleAddTracked} className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4">
-                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px_180px_120px] gap-3">
-                    <div>
-                      <label htmlFor="tracked-add-symbol" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
-                        {t('watchlist.stockSymbol')}
-                      </label>
-                      <input
-                        id="tracked-add-symbol"
-                        name="tracked_add_symbol"
-                        value={addSymbol}
-                        onChange={(e) => setAddSymbol(e.target.value.toUpperCase())}
-                        placeholder={t('watchlist.symbolExample')}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="tracked-source-group" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
-                        {t('watchlist.sourceGroup')}
-                      </label>
-                      <select
-                        id="tracked-source-group"
-                        name="tracked_source_group"
-                        value={srcGroupId}
-                        onChange={(e) => setSrcGroupId(e.target.value)}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      >
-                        <option value="">{t('watchlist.noSourceGroup')}</option>
-                        {groupsWithRealtime.map((group) => (
-                          <option key={group.id} value={group.id}>{group.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="tracked-threshold-override" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">
-                        {t('watchlist.whaleThresholdOverride')}
-                      </label>
-                      <input
-                        id="tracked-threshold-override"
-                        name="tracked_threshold_override"
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={addThresholdMillion}
-                        onChange={(e) => setAddThresholdMillion(e.target.value)}
-                        placeholder={t('watchlist.useGlobalThreshold')}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        disabled={addingSymbol}
-                        className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        {addingSymbol ? t('watchlist.addingSymbol') : t('watchlist.addSymbol')}
-                      </button>
-                    </div>
-                  </div>
-                  {symbolError && <p className="text-sm text-red-400 mt-3">{symbolError}</p>}
-                </form>
+                <WatchlistManagementPanel
+                  t={t}
+                  formatNumber={formatNumber}
+                  groupsWithRealtime={groupsWithRealtime}
+                  srcGroupId={srcGroupId}
+                  setSrcGroupId={setSrcGroupId}
+                  addSymbol={addSymbol}
+                  setAddSymbol={setAddSymbol}
+                  addThresholdMillion={addThresholdMillion}
+                  setAddThresholdMillion={setAddThresholdMillion}
+                  addingSymbol={addingSymbol}
+                  symbolError={symbolError}
+                  onAddTracked={handleAddTracked}
+                  bulkThresholdMillion={bulkThresholdMillion}
+                  setBulkThresholdMillion={setBulkThresholdMillion}
+                  trackedBulkAction={trackedBulkAction}
+                  onBulkSetThreshold={handleBulkSetTrackedThreshold}
+                  onBulkClearThreshold={handleBulkClearTrackedThreshold}
+                />
 
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 mb-4 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-100 uppercase tracking-wider">{t('watchlist.personalPriceAlerts')}</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {t('watchlist.personalPriceAlertsDesc')}
-                      </p>
-                    </div>
-                    {priceAlertMsg && <span className="text-xs text-blue-300">{priceAlertMsg}</span>}
-                  </div>
-
-                  <form onSubmit={handleCreatePriceAlert} className="grid grid-cols-1 lg:grid-cols-[1fr_180px_1fr_180px_140px] gap-3">
-                    <div>
-                      <label htmlFor="price-alert-symbol" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.stockSymbol')}</label>
-                      <input
-                        id="price-alert-symbol"
-                        name="price_alert_symbol"
-                        value={priceAlertForm.symbol}
-                        onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, symbol: e.target.value.toUpperCase() }))}
-                        placeholder={t('watchlist.symbolExample')}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="price-alert-condition" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.condition')}</label>
-                      <select
-                        id="price-alert-condition"
-                        name="price_alert_condition"
-                        value={priceAlertForm.condition}
-                        onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, condition: e.target.value }))}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      >
-                        <option value="ABOVE">{t('watchlist.above')}</option>
-                        <option value="BELOW">{t('watchlist.below')}</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label htmlFor="price-alert-target-price" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.targetPrice')}</label>
-                      <input
-                        id="price-alert-target-price"
-                        name="price_alert_target_price"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={priceAlertForm.targetPrice}
-                        onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, targetPrice: e.target.value }))}
-                        placeholder="120000"
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="price-alert-cooldown-seconds" className="block text-xs uppercase tracking-wider text-gray-500 mb-2">{t('watchlist.cooldownSeconds')}</label>
-                      <input
-                        id="price-alert-cooldown-seconds"
-                        name="price_alert_cooldown_seconds"
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={priceAlertForm.cooldownSeconds}
-                        onChange={(e) => setPriceAlertForm((prev) => ({ ...prev, cooldownSeconds: e.target.value }))}
-                        className="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100 outline-none focus:border-brand-600"
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <button
-                        type="submit"
-                        disabled={priceAlertSaving}
-                        className="w-full bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
-                      >
-                        {priceAlertSaving ? t('watchlist.seeding') : t('watchlist.addAlert')}
-                      </button>
-                    </div>
-                  </form>
-
-                  {priceAlertError && <p className="text-sm text-red-400">{priceAlertError}</p>}
-
-                  {triggeredPriceAlerts.length > 0 && (
-                    <div className="rounded-xl border border-blue-900/50 bg-blue-950/20 px-4 py-3">
-                      <p className="text-xs uppercase tracking-wider text-blue-300 mb-2">{t('watchlist.recentTriggers')}</p>
-                      <div className="space-y-2 text-sm">
-                        {triggeredPriceAlerts.map((alert) => (
-                          <div key={`${alert.id}-${alert.triggered_at}`} className="flex flex-wrap items-center gap-3 text-gray-300">
-                            <span className="font-semibold text-gray-100">{alert.symbol}</span>
-                            <span>{alert.condition === 'ABOVE' ? t('watchlist.above') : t('watchlist.below')}</span>
-                            <span className="tabular-nums">{formatNumber(alert.target_price)} VNĐ</span>
-                            <span className="text-xs text-gray-500">{formatDateTime(alert.triggered_at)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl overflow-hidden">
-                    {priceAlertsLoading ? (
-                      <div className="py-8 text-center text-gray-500 text-sm">{t('watchlist.loadingPriceAlerts')}</div>
-                    ) : priceAlertsWithRealtime.length === 0 ? (
-                      <div className="py-8 text-center text-gray-500 text-sm">{t('watchlist.emptyPriceAlerts')}</div>
-                    ) : (
-                      <>
-                        <p className="px-4 pt-3 text-[11px] text-gray-500">{t('watchlist.priceUnitHint')}</p>
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-gray-800">
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableSymbol')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCondition')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableTarget')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCurrentPrice')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableStatus')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableCooldown')}</th>
-                              <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableLastTrigger')}</th>
-                              <th className="px-4 py-3 text-right text-xs text-gray-500 uppercase tracking-wider font-medium whitespace-nowrap">{t('watchlist.tableActions')}</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-800/60">
-                            {priceAlertsWithRealtime.map((rule) => (
-                              <tr key={rule.id} className="hover:bg-gray-900/40 transition-colors">
-                                <td className="px-4 py-3 font-bold text-blue-300">{rule.symbol}</td>
-                                <td className="px-4 py-3 text-gray-300">{priceAlertConditionLabels[rule.condition]}</td>
-                                <td className="px-4 py-3 text-gray-300 tabular-nums">{formatQuotePrice(rule.target_price)}</td>
-                                <td className="px-4 py-3 text-gray-300 tabular-nums">
-                                  {(rule.current_price !== null && rule.current_price !== undefined)
-                                    ? formatQuotePrice(rule.current_price)
-                                    : '—'}
-                                </td>
-                                <td className="px-4 py-3">
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                                    !rule.is_active
-                                      ? 'bg-gray-800 text-gray-400'
-                                      : isPriceAlertMatched(rule, rule.current_price) && !rule.stale
-                                        ? 'bg-blue-900/40 text-blue-300'
-                                        : 'bg-emerald-900/30 text-emerald-300'
-                                  }`}>
-                                    {!rule.is_active ? t('watchlist.paused') : isPriceAlertMatched(rule, rule.current_price) && !rule.stale ? t('watchlist.hitThreshold') : t('watchlist.tracking')}
-                                  </span>
-                                </td>
-                                <td className="px-4 py-3 text-gray-400">{rule.cooldown_seconds}s</td>
-                                <td className="px-4 py-3 text-xs text-gray-500 whitespace-nowrap">{formatDateTime(rule.last_triggered_at)}</td>
-                                <td className="px-4 py-3 text-right">
-                                  <div className="flex items-center justify-end gap-3">
-                                    <button
-                                      onClick={() => handleTogglePriceAlert(rule)}
-                                      className="text-xs text-gray-300 hover:text-gray-100 font-semibold"
-                                    >
-                                      {rule.is_active ? t('watchlist.pause') : t('watchlist.activate')}
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeletePriceAlert(rule)}
-                                      className="text-xs text-red-400 hover:text-red-300 font-semibold"
-                                    >
-                                      {t('watchlist.delete')}
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </>
-                    )}
-                  </div>
-                </div>
+                <PriceAlertModule
+                  t={t}
+                  formatNumber={formatNumber}
+                  formatQuotePrice={formatQuotePrice}
+                  formatDateTime={formatDateTime}
+                  priceAlerts={priceAlerts}
+                  priceAlertsWithRealtime={priceAlertsWithRealtime}
+                  priceAlertsLoading={priceAlertsLoading}
+                  priceAlertForm={priceAlertForm}
+                  setPriceAlertForm={setPriceAlertForm}
+                  priceAlertSaving={priceAlertSaving}
+                  priceAlertError={priceAlertError}
+                  priceAlertMsg={priceAlertMsg}
+                  triggeredPriceAlerts={triggeredPriceAlerts}
+                  priceAlertConditionLabels={priceAlertConditionLabels}
+                  onCreatePriceAlert={handleCreatePriceAlert}
+                  onTogglePriceAlert={handleTogglePriceAlert}
+                  onDeletePriceAlert={handleDeletePriceAlert}
+                />
 
                 <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                  {trackedLoading ? (
-                    <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.loadingTracked')}</div>
-                  ) : trackedSymbolsWithRealtime.length === 0 ? (
-                    <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.emptyTracked')}</div>
-                  ) : (
-                    <div>
-                      <div className="px-4 pt-4 pb-3 border-b border-gray-800/70 space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
-                            {[
-                              { key: 'all', label: t('watchlist.thresholdFilterAll', { count: formatNumber(trackedSymbolsWithRealtime.length) }) },
-                              { key: 'symbol', label: t('watchlist.thresholdFilterSymbol', { count: formatNumber(trackedWithOverrideCount) }) },
-                              { key: 'user', label: t('watchlist.thresholdFilterUser', { count: formatNumber(trackedWithUserDefaultCount) }) },
-                            ].map((option) => (
-                              <button
-                                key={option.key}
-                                onClick={() => setTrackedThresholdFilter(option.key)}
-                                className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-                                  trackedThresholdFilter === option.key
-                                    ? 'bg-blue-700 text-white'
-                                    : 'text-gray-400 hover:text-gray-100'
-                                }`}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                          </div>
-
-                          <select
-                            id="tracked-sort-by"
-                            name="tracked_sort_by"
-                            aria-label={t('watchlist.sortSymbolAsc')}
-                            value={trackedSortBy}
-                            onChange={(e) => setTrackedSortBy(e.target.value)}
-                            className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
-                          >
-                            <option value="symbol_asc">{t('watchlist.sortSymbolAsc')}</option>
-                            <option value="symbol_desc">{t('watchlist.sortSymbolDesc')}</option>
-                            <option value="threshold_desc">{t('watchlist.sortThresholdDesc')}</option>
-                            <option value="threshold_asc">{t('watchlist.sortThresholdAsc')}</option>
-                            <option value="current_price_desc">{t('watchlist.sortPriceDesc')}</option>
-                            <option value="current_price_asc">{t('watchlist.sortPriceAsc')}</option>
-                            <option value="change_pct_desc">{t('watchlist.sortPctDesc')}</option>
-                            <option value="change_pct_asc">{t('watchlist.sortPctAsc')}</option>
-                            <option value="updated_at_desc">{t('watchlist.sortUpdatedDesc')}</option>
-                            <option value="updated_at_asc">{t('watchlist.sortUpdatedAsc')}</option>
-                          </select>
-                        </div>
-
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <input
-                              id="tracked-symbol-search"
-                              name="tracked_symbol_search"
-                              aria-label={t('watchlist.searchSymbolPlaceholder')}
-                              type="text"
-                              value={trackedSymbolSearch}
-                              onChange={(e) => setTrackedSymbolSearch(e.target.value.toUpperCase())}
-                              placeholder={t('watchlist.searchSymbolPlaceholder')}
-                              className="w-52 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
-                            />
-                            <select
-                              id="tracked-data-filter"
-                              name="tracked_data_filter"
-                              aria-label={t('watchlist.dataFilterAll')}
-                              value={trackedDataFilter}
-                              onChange={(e) => setTrackedDataFilter(e.target.value)}
-                              className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
-                            >
-                              <option value="all">{t('watchlist.dataFilterAll')}</option>
-                              <option value="synced">{t('watchlist.dataFilterSynced')}</option>
-                              <option value="stale">{t('watchlist.dataFilterStale')}</option>
-                              <option value="gainers">{t('watchlist.dataFilterGainers')}</option>
-                              <option value="losers">{t('watchlist.dataFilterLosers')}</option>
-                              <option value="flat">{t('watchlist.dataFilterFlat')}</option>
-                            </select>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-400">
-                            <span>{t('watchlist.pageSize')}</span>
-                            <select
-                              id="tracked-page-size"
-                              name="tracked_page_size"
-                              aria-label={t('watchlist.pageSize')}
-                              value={trackedPageSize}
-                              onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
-                              className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
-                            >
-                              {[10, 15, 20, 50, 100].map((size) => (
-                                <option key={size} value={size}>{size}</option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                          <input
-                            id="tracked-bulk-threshold"
-                            name="tracked_bulk_threshold"
-                            aria-label={t('watchlist.bulkThresholdPlaceholder')}
-                            type="number"
-                            min="1"
-                            step="1"
-                            value={bulkThresholdMillion}
-                            onChange={(e) => setBulkThresholdMillion(e.target.value)}
-                            placeholder={t('watchlist.bulkThresholdPlaceholder')}
-                            className="w-44 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
-                          />
+                  <div className="px-4 pt-4 pb-3 border-b border-gray-800/70 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
+                        {[
+                          { key: 'all', label: t('watchlist.thresholdFilterAll', { count: formatNumber(trackedSymbolsWithRealtime.length) }) },
+                          { key: 'symbol', label: t('watchlist.thresholdFilterSymbol', { count: formatNumber(trackedWithOverrideCount) }) },
+                          { key: 'user', label: t('watchlist.thresholdFilterUser', { count: formatNumber(trackedWithUserDefaultCount) }) },
+                        ].map((option) => (
                           <button
-                            onClick={handleBulkSetTrackedThreshold}
-                            disabled={trackedBulkAction != null}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-700/80 hover:bg-emerald-700 text-white disabled:opacity-50"
+                            key={option.key}
+                            onClick={() => setTrackedThresholdFilter(option.key)}
+                            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+                              trackedThresholdFilter === option.key
+                                ? 'bg-blue-700 text-white'
+                                : 'text-gray-400 hover:text-gray-100'
+                            }`}
                           >
-                            {trackedBulkAction === 'set' ? t('watchlist.saving') : t('watchlist.bulkSetThreshold')}
+                            {option.label}
                           </button>
-                          <button
-                            onClick={handleBulkClearTrackedThreshold}
-                            disabled={trackedBulkAction != null}
-                            className="text-xs font-semibold px-3 py-1.5 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 disabled:opacity-50"
-                          >
-                            {trackedBulkAction === 'clear' ? t('watchlist.saving') : t('watchlist.bulkClearThreshold')}
-                          </button>
-                        </div>
+                        ))}
                       </div>
-
-                      {sortedTrackedSymbolsWithRealtime.length === 0 ? (
-                        <div className="py-10 text-center text-gray-500 text-sm">{t('watchlist.noMatchFilter')}</div>
-                      ) : (
-                        <div>
-                          <RealtimeQuoteTable
-                            quotes={pagedTrackedSymbolsWithRealtime}
-                            columns={[
-                              {
-                                key: 'symbol',
-                                label: t('watchlist.tableSymbol'),
-                                sortable: true,
-                                width: '100px',
-                                render: (item) => (
-                                  <td className="px-4 py-3">
-                                    <button
-                                      onClick={() => openStockWorkspace(item.symbol)}
-                                      className="font-bold text-sm px-2 py-0.5 rounded bg-brand-900/40 text-brand-300 hover:text-brand-200 transition-colors"
-                                    >
-                                      {item.symbol}
-                                    </button>
-                                  </td>
-                                ),
-                              },
-                              {
-                                key: 'source_group_name',
-                                label: t('watchlist.sourceGroup'),
-                                sortable: false,
-                                width: '180px',
-                                render: (item) => (
-                                  <td
-                                    className="w-[180px] max-w-[180px] px-4 py-3 text-gray-400 text-xs truncate"
-                                    title={item.source_group_name || t('watchlist.manualAdded')}
-                                  >
-                                    {item.source_group_name || t('watchlist.manualAdded')}
-                                  </td>
-                                ),
-                              },
-                              {
-                                key: 'current_price',
-                                label: t('watchlist.tableCurrentPrice'),
-                                sortable: true,
-                                width: '120px',
-                              },
-                              {
-                                key: 'change_value',
-                                label: t('watchlist.tableChange'),
-                                sortable: true,
-                                width: '100px',
-                                render: (item) => (
-                                  <td className="px-4 py-3"><ChangeCell value={item.change_value} /></td>
-                                ),
-                              },
-                              {
-                                key: 'change_pct',
-                                label: t('watchlist.tablePctChange'),
-                                sortable: true,
-                                width: '120px',
-                              },
-                              {
-                                key: 'whale_alert_threshold_million',
-                                label: t('watchlist.whaleThresholdColumn'),
-                                sortable: false,
-                                width: '150px',
-                                render: (item) => (
-                                  <td className="px-4 py-3 text-xs">
-                                    {editingTrackedId === item.id ? (
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          step="1"
-                                          value={editingTrackedThresholdValue}
-                                          onChange={(e) => setEditingTrackedThresholdValue(e.target.value)}
-                                          placeholder={t('watchlist.useGlobalThreshold')}
-                                          className="w-24 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-brand-600"
-                                        />
-                                        <button
-                                          onClick={() => handleSaveTrackedThreshold(item)}
-                                          disabled={updatingTrackedId === item.id}
-                                          className="text-xs text-emerald-300 hover:text-emerald-200 font-semibold disabled:opacity-50"
-                                        >
-                                          {updatingTrackedId === item.id ? t('watchlist.saving') : t('watchlist.save')}
-                                        </button>
-                                        <button
-                                          onClick={handleCancelTrackedThresholdEdit}
-                                          disabled={updatingTrackedId === item.id}
-                                          className="text-xs text-gray-300 hover:text-gray-100 font-semibold disabled:opacity-50"
-                                        >
-                                          {t('watchlist.cancel')}
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <button
-                                        onClick={() => handleStartTrackedThresholdEdit(item)}
-                                        className="text-gray-300 tabular-nums whitespace-nowrap hover:text-blue-200"
-                                        title={t('watchlist.editThreshold')}
-                                      >
-                                        {item.whale_alert_threshold_million == null ? '—' : `${formatNumber(item.whale_alert_threshold_million)}M`}
-                                      </button>
-                                    )}
-                                  </td>
-                                ),
-                              },
-                              {
-                                key: 'updated_at',
-                                label: t('watchlist.tableUpdatedAt'),
-                                sortable: true,
-                                width: '120px',
-                                render: (item) => (
-                                  <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                                    {item.updated_at ? formatDateTime(item.updated_at) : '—'}
-                                  </td>
-                                ),
-                              },
-                            ]}
-                            customRowActions={[
-                              {
-                                key: 'delete',
-                                label: t('watchlist.delete'),
-                              },
-                            ]}
-                            onAction={(symbol, actionKey) => {
-                              if (actionKey === 'delete') {
-                                const item = pagedTrackedSymbolsWithRealtime.find((t) => t.symbol === symbol);
-                                if (item) {
-                                  handleDeleteTracked(item.id, item.symbol);
-                                }
-                              }
-                            }}
-                            maxHeight="600px"
-                            showHint={true}
-                            emptyMessage={t('watchlist.noMatchFilter')}
-                          />
-                          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-t border-gray-800 bg-gray-950/50 text-xs text-gray-400">
-                            <span>
-                              {t('watchlist.paginationSummary', {
-                                from: formatNumber((trackedCurrentPage - 1) * trackedPageSize + 1),
-                                to: formatNumber(Math.min(trackedCurrentPage * trackedPageSize, sortedTrackedSymbolsWithRealtime.length)),
-                                total: formatNumber(sortedTrackedSymbolsWithRealtime.length),
-                              })}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => setTrackedPage((prev) => Math.max(1, prev - 1))}
-                                disabled={trackedCurrentPage <= 1}
-                                className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
-                              >
-                                {t('watchlist.prevPage')}
-                              </button>
-                              <span>{t('watchlist.pageLabel', { page: formatNumber(trackedCurrentPage), total: formatNumber(trackedTotalPages) })}</span>
-                              <button
-                                onClick={() => setTrackedPage((prev) => Math.min(trackedTotalPages, prev + 1))}
-                                disabled={trackedCurrentPage >= trackedTotalPages}
-                                className="px-2.5 py-1 rounded border border-gray-700 text-gray-300 disabled:opacity-40"
-                              >
-                                {t('watchlist.nextPage')}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                      <select
+                        id="tracked-sort-by"
+                        name="tracked_sort_by"
+                        aria-label={t('watchlist.sortSymbolAsc')}
+                        value={trackedSortBy}
+                        onChange={(e) => setTrackedSortBy(e.target.value)}
+                        className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                      >
+                        <option value="symbol_asc">{t('watchlist.sortSymbolAsc')}</option>
+                        <option value="symbol_desc">{t('watchlist.sortSymbolDesc')}</option>
+                        <option value="threshold_desc">{t('watchlist.sortThresholdDesc')}</option>
+                        <option value="threshold_asc">{t('watchlist.sortThresholdAsc')}</option>
+                        <option value="current_price_desc">{t('watchlist.sortPriceDesc')}</option>
+                        <option value="current_price_asc">{t('watchlist.sortPriceAsc')}</option>
+                        <option value="change_pct_desc">{t('watchlist.sortPctDesc')}</option>
+                        <option value="change_pct_asc">{t('watchlist.sortPctAsc')}</option>
+                        <option value="updated_at_desc">{t('watchlist.sortUpdatedDesc')}</option>
+                        <option value="updated_at_asc">{t('watchlist.sortUpdatedAsc')}</option>
+                      </select>
                     </div>
-                  )}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <input
+                          id="tracked-symbol-search"
+                          name="tracked_symbol_search"
+                          aria-label={t('watchlist.searchSymbolPlaceholder')}
+                          type="text"
+                          value={trackedSymbolSearch}
+                          onChange={(e) => setTrackedSymbolSearch(e.target.value.toUpperCase())}
+                          placeholder={t('watchlist.searchSymbolPlaceholder')}
+                          className="w-52 bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                        />
+                        <select
+                          id="tracked-data-filter"
+                          name="tracked_data_filter"
+                          aria-label={t('watchlist.dataFilterAll')}
+                          value={trackedDataFilter}
+                          onChange={(e) => setTrackedDataFilter(e.target.value)}
+                          className="bg-gray-950 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                        >
+                          <option value="all">{t('watchlist.dataFilterAll')}</option>
+                          <option value="synced">{t('watchlist.dataFilterSynced')}</option>
+                          <option value="stale">{t('watchlist.dataFilterStale')}</option>
+                          <option value="gainers">{t('watchlist.dataFilterGainers')}</option>
+                          <option value="losers">{t('watchlist.dataFilterLosers')}</option>
+                          <option value="flat">{t('watchlist.dataFilterFlat')}</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span>{t('watchlist.pageSize')}</span>
+                        <select
+                          id="tracked-page-size"
+                          name="tracked_page_size"
+                          aria-label={t('watchlist.pageSize')}
+                          value={trackedPageSize}
+                          onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
+                          className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
+                        >
+                          {[10, 15, 20, 50, 100].map((size) => (
+                            <option key={size} value={size}>{size}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <SmartRadarTable
+                    t={t}
+                    formatNumber={formatNumber}
+                    formatQuotePrice={formatQuotePrice}
+                    formatDateTime={formatDateTime}
+                    pagedTracked={pagedTrackedSymbolsWithRealtime}
+                    sortedTracked={sortedTrackedSymbolsWithRealtime}
+                    trackedTotalPages={trackedTotalPages}
+                    trackedCurrentPage={trackedCurrentPage}
+                    trackedPageSize={trackedPageSize}
+                    setTrackedPage={setTrackedPage}
+                    strategyFilter={strategyFilter}
+                    setStrategyFilter={setStrategyFilter}
+                    trackedSymbolsWithRealtime={trackedSymbolsWithRealtime}
+                    trackedSortBy={trackedSortBy}
+                    toggleTrackedSort={(key) => {
+                      setTrackedSortBy((prev) => {
+                        const splitIndex = String(prev || 'symbol_asc').lastIndexOf('_');
+                        const prevKey = splitIndex > 0 ? prev.slice(0, splitIndex) : 'symbol';
+                        const prevDir = splitIndex > 0 ? prev.slice(splitIndex + 1) : 'asc';
+                        return prevKey === key ? `${key}_${prevDir === 'asc' ? 'desc' : 'asc'}` : `${key}_asc`;
+                      });
+                    }}
+                    getTrackedSortIndicator={(key) => {
+                      const s = String(trackedSortBy || 'symbol_asc');
+                      const si = s.lastIndexOf('_');
+                      const ak = si > 0 ? s.slice(0, si) : 'symbol';
+                      const ad = si > 0 ? s.slice(si + 1) : 'asc';
+                      return ak !== key ? 'â†•' : ad === 'asc' ? 'â†‘' : 'â†“';
+                    }}
+                    editingTrackedId={editingTrackedId}
+                    editingTrackedThresholdValue={editingTrackedThresholdValue}
+                    setEditingTrackedThresholdValue={setEditingTrackedThresholdValue}
+                    updatingTrackedId={updatingTrackedId}
+                    onStartEdit={handleStartTrackedThresholdEdit}
+                    onSaveThreshold={handleSaveTrackedThreshold}
+                    onCancelEdit={handleCancelTrackedThresholdEdit}
+                    onOpenStock={openStockWorkspace}
+                    onDelete={(id, symbol) => handleDeleteTracked(id, symbol)}
+                    getSparklinePrices={getSparklinePrices}
+                    trackedLoading={trackedLoading}
+                  />
                 </div>
               </div>
             ) : activeGroup ? (
@@ -1799,7 +1379,7 @@ export default function WatchlistPage() {
                     <span className="text-gray-500">{t('watchlist.stocksCount', { count: formatNumber(activeGroup.items.length) })}</span>
                     <span className="text-green-400">▲ {t('watchlist.upCount', { count: formatNumber(groupStats.up) })}</span>
                     <span className="text-red-400">▼ {t('watchlist.downCount', { count: formatNumber(groupStats.down) })}</span>
-                    <span className="text-gray-500">— {t('watchlist.flatCount', { count: formatNumber(groupStats.flat) })}</span>
+                    <span className="text-gray-500">â€” {t('watchlist.flatCount', { count: formatNumber(groupStats.flat) })}</span>
                     <span className="text-brand-300">{t('watchlist.untrackedCount', { count: formatNumber(activeGroupUntrackedCount) })}</span>
                   </div>
                 )}
@@ -1951,7 +1531,7 @@ export default function WatchlistPage() {
                             width: '120px',
                             render: (item) => (
                               <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                                {item.last_date || '—'}
+                                {item.last_date || 'â€”'}
                               </td>
                             ),
                           },
