@@ -88,5 +88,19 @@ opencore_router.register(r'billing', DPIBillingViewSet, basename='dpi-billing')
 
 urlpatterns += [
     path('opencore/', include(opencore_router.urls), name='opencore-api'),
-]
 
+    # ── PR-3: Sentiment API ──────────────────────────────────────────────────
+    path('stock/<str:symbol>/sentiment/', views.sentiment_detail_api, name='stock-sentiment-detail'),
+
+    # ── PR-4: Notifications / Telegram ──────────────────────────────────────
+    path('notifications/telegram/link/', views.telegram_generate_link, name='telegram-generate-link'),
+    path('notifications/telegram/unlink/', views.telegram_unlink, name='telegram-unlink'),
+    path('notifications/telegram/webhook/', views.telegram_webhook, name='telegram-webhook'),
+    path('notifications/telegram/status/', views.telegram_status, name='telegram-status'),
+    path('notifications/telegram/settings/', views.telegram_settings_update, name='telegram-settings-update'),
+    path('notifications/preferred-symbols/', views.preferred_symbols_list, name='preferred-symbols-list'),
+    path('notifications/preferred-symbols/<str:symbol>/', views.preferred_symbols_delete, name='preferred-symbols-delete'),
+
+    # ── PR-5: Backtest Stats API ─────────────────────────────────────────────
+    path('whale/backtest-stats/', views.backtest_stats_api, name='whale-backtest-stats'),
+]

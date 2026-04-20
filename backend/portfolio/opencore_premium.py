@@ -144,7 +144,66 @@ class PremiumFeatureGate:
     """
     Feature gating based on license plan.
     """
-    
+
+    # ── Feature keys cho Sprint W6/I1/AI4 ────────────────────────────────────
+    # Free: telegram_bot_community, preferred_symbols_crud
+    # Pro+: whale_backtesting, sentiment_analysis, telegram_bot_full
+    _FEATURE_PLAN_MAP = {
+        'whale_backtesting':        'pro',
+        'sentiment_analysis':       'pro',
+        'telegram_bot_full':        'pro',   # Full symbol (no mask), unlimited alerts
+        'telegram_bot_community':   'free',  # Market-wide alerts only
+        'preferred_symbols_crud':   'free',  # Quản lý 3 mã quà tặng
+    }
+
+    _PLAN_HIERARCHY = {'free': 0, 'pro': 1, 'enterprise': 2}
+
+    @staticmethod
+    def _get_user_plan(user) -> str:
+        """Lấy tên plan hiện tại của user từ DPILicense."""
+        try:
+            from portfolio.opencore_dpi import DPILicense
+            lic = DPILicense.objects.filter(
+                user=user, status='active'
+            ).select_related('plan').order_by('-created_at').first()
+            if lic:
+                return str(lic.plan.name).lower()
+        except Exception:
+            pass
+        return 'free'
+
+    @classmethod
+    def can_use_feature(cls, user, feature_key: str) -> bool:
+        """
+        Kiểm tra user có quyền dùng feature_key không.
+        Dùng cho: whale_backtesting, sentiment_analysis, telegram_bot_full, v.v.
+        """
+        required_plan = cls._FEATURE_PLAN_MAP.get(feature_key, 'pro')
+        if required_plan == 'free':
+            return True
+        user_plan = cls._get_user_plan(user)
+        user_level = cls._PLAN_HIERARCHY.get(user_plan, 0)
+        required_level = cls._PLAN_HIERARCHY.get(required_plan, 1)
+        return user_level >= required_level
+
+    @staticmethod
+    def mask_symbol(symbol: str) -> str:
+        """
+        Băm mã CK cho user Free — định nghĩa tập trung tại đây.
+        Quy tắc:
+          len 1-2: 1 ký tự đầu + '*' * còn lại
+          len 3-4: 1 ký tự đầu + '*' * còn lại
+          len >= 5: 2 ký tự đầu + '*' * (len-4) + 2 ký tự cuối
+        Ví dụ: VNM→V**, HP→H*, VN30F1M→VN***1M
+        """
+        s = str(symbol or '').upper().strip()
+        n = len(s)
+        if n <= 0:
+            return s
+        if n <= 4:
+            return s[0] + '*' * (n - 1)
+        return s[:2] + '*' * (n - 4) + s[-2:]
+
     @staticmethod
     def get_available_indicators(plan: str) -> List[str]:
         """Get indicator keys available for plan."""

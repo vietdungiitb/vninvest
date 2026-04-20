@@ -73,12 +73,13 @@ export default function PortfolioHeatmap({ holdings, title }) {
     }
     // NOTE: Do NOT dispatch hideTip here — it kills the tooltip on every
     // resize / realtime data update, making tooltip permanently invisible.
-    // Pass explicit width from container to bypass CSS percentage ambiguity
-    // that caused canvas to lock at 339px on initial render.
+    // No padding subtraction — container has no padding so full width is correct.
     const container = chartContainerRef.current;
-    const explicitWidth = container ? Math.max(container.clientWidth - 20, 120) : undefined;
+    const explicitWidth = container ? Math.max(Math.floor(container.getBoundingClientRect().width), 120) : undefined;
+    const explicitHeight = container ? Math.max(Math.floor(container.getBoundingClientRect().height), 200) : undefined;
     chart.resize({
       width: explicitWidth,
+      height: explicitHeight,
       animation: {
         duration: 0,
       },
@@ -99,15 +100,28 @@ export default function PortfolioHeatmap({ holdings, title }) {
       scheduleResize();
     });
 
-    if (chartContainerRef.current) {
-      observer.observe(chartContainerRef.current);
+    const container = chartContainerRef.current;
+    if (container) {
+      observer.observe(container);
+      if (container.parentElement) {
+        observer.observe(container.parentElement);
+      }
     }
+
+    // Initial render can race with flex/grid sizing; retry a few times to
+    // ensure ECharts hitbox matches visual tiles.
+    const settleTimer = window.setInterval(scheduleResize, 180);
+    const settleStopTimer = window.setTimeout(() => {
+      window.clearInterval(settleTimer);
+    }, 2200);
 
     window.addEventListener('resize', scheduleResize);
 
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', scheduleResize);
+      window.clearInterval(settleTimer);
+      window.clearTimeout(settleStopTimer);
       if (resizeRafRef.current) {
         cancelAnimationFrame(resizeRafRef.current);
         resizeRafRef.current = 0;
@@ -385,8 +399,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
     const tooltip = {
       show: true,
       trigger: 'item',
-      triggerOn: 'mousemove',
+      triggerOn: 'mousemove|click',
       appendToBody: true,
+      confine: false,
       enterable: false,
       alwaysShowContent: false,
       showDelay: 40,
@@ -708,12 +723,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       </div>
 
-      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
+      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT }}>
         <ReactECharts
           key={`${viewMode}-${locale}`}
           ref={chartComponentRef}
           option={option}
-          style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
+          style={{ height: HEATMAP_HEIGHT, width: '100%' }}
           notMerge={false}
           lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
@@ -727,6 +742,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
             });
             // setTimeout 150ms catches cases where flex/grid settles late
             setTimeout(safeResizeChart, 150);
+            setTimeout(safeResizeChart, 420);
+            setTimeout(safeResizeChart, 900);
           }}
         />
         

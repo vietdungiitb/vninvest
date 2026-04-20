@@ -266,6 +266,32 @@ class RuntimeVnstockConfigSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class WhaleAdvisorySerializer(serializers.ModelSerializer):
+    symbol = serializers.SerializerMethodField()
+
+    def get_symbol(self, obj):
+        """
+        PR-6: mask_symbol tại tầng Serializer — an toàn tuyệt đối.
+        User Free → ký hiệu bị băm (VNM → V**).
+        Áp dụng khi symbol không nằm trong preferred_symbols (max 3 mã quà tặng).
+        """
+        request = self.context.get('request')
+        if request is None:
+            return obj.symbol
+        try:
+            from portfolio.opencore_premium import PremiumFeatureGate
+            if PremiumFeatureGate.can_use_feature(request.user, 'telegram_bot_full'):
+                return obj.symbol  # Pro/Enterprise: trả symbol thật
+            # Free: kiểm tra preferred_symbols
+            try:
+                preferred = list(request.user.telegram_profile.preferred_symbols or [])
+            except Exception:
+                preferred = []
+            if obj.symbol in preferred:
+                return obj.symbol  # Nằm trong 3 mã quà tặng → hiện thật
+            return PremiumFeatureGate.mask_symbol(obj.symbol)
+        except Exception:
+            return obj.symbol  # Fallback an toàn
+
     class Meta:
         model = WhaleAdvisory
         fields = [

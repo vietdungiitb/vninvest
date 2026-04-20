@@ -591,6 +591,26 @@ if PORTFOLIO_NEWS_DIGEST_ENABLED:
         "options": {"expires": 3600},  # bỏ qua nếu task cũ vẫn đang chạy
     }
 
+# ── PR-2: W6 Whale Signal Backtesting — 16:30 ICT = 09:30 UTC (Mon-Fri) ────
+SIGNAL_VERIFICATION_ENABLED = os.getenv("SIGNAL_VERIFICATION_ENABLED", "True").lower() == "true"
+if SIGNAL_VERIFICATION_ENABLED:
+    from celery.schedules import crontab as _crontab_sigver
+    CELERY_BEAT_SCHEDULE["verify-signals-daily"] = {
+        "task": "portfolio.tasks_signal_verification.verify_signals_daily",
+        "schedule": _crontab_sigver(hour=9, minute=30, day_of_week='1-5'),  # 16:30 ICT
+        "options": {"expires": 3600},
+    }
+
+# ── PR-3: AI4 Sentiment Analysis — mỗi 30 phút ──────────────────────────────
+SENTIMENT_SYNC_ENABLED = os.getenv("SENTIMENT_SYNC_ENABLED", "True").lower() == "true"
+SENTIMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("SENTIMENT_SYNC_INTERVAL_MINUTES", "30"))
+if SENTIMENT_SYNC_ENABLED:
+    CELERY_BEAT_SCHEDULE["sync-news-sentiment"] = {
+        "task": "portfolio.tasks_sentiment.sync_news_sentiment",
+        "schedule": timedelta(minutes=max(SENTIMENT_SYNC_INTERVAL_MINUTES, 15)),
+        "options": {"expires": SENTIMENT_SYNC_INTERVAL_MINUTES * 60},
+    }
+
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 REALTIME_DEFAULT_WHALE_THRESHOLD = _env_int("REALTIME_DEFAULT_WHALE_THRESHOLD", 500000000)

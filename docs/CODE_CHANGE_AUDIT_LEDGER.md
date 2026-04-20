@@ -1,5 +1,111 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-18bc - Heatmap tooltip rendering stabilization
+
+Muc tieu:
+- Dam bao tooltip cua heatmap hien thi on dinh trong ca Treemap va Sunburst.
+- Loai bo phu thuoc vao HTML tooltip DOM cua ECharts de tranh loi lifecycle/dispose va mat tooltip.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - switch tooltip from fragile HTML mode to stable rich-text formatter while preserving stock/industry/price/volume/trend info)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `get_errors` clean tren `frontend/src/components/PortfolioHeatmap.jsx`.
+- `npm run build` trong `frontend/` => PASS.
+
+---
+
+## Entry 2026-04-18bb - Heatmap treemap aligned to official flat-data pattern
+
+Muc tieu:
+- Dieu chinh che do Treemap theo mau ECharts chinh thuc: du lieu phang khong group, styling thong qua `levels`, giu Sunburst tiep tuc dung cau truc group.
+- Giam do mong manh cua treemap config khi render danh sach co phieu phang.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - adopt flat-data treemap `levels` configuration; keep grouped sunburst untouched)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - align treemap technical note with official flat-data pattern)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - document move from brittle `leafDepth` approach to sample-style `levels` approach)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Follow-up required: frontend production build after treemap option refactor.
+- Expected runtime behavior: Treemap renders flat stock tiles without industry grouping; Sunburst retains grouped industry hierarchy.
+
+---
+
+## Entry 2026-04-18ba - Heatmap treemap leaf-depth regression fix
+
+Muc tieu:
+- Sua loi heatmap khong hien thi ma co phieu trong che do Treemap.
+- Dong bo tai lieu heatmap voi implementation dung sau khi xac dinh root cause la `leafDepth=0` chi render implicit root node.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - set treemap `leafDepth` to `1` so stock leaf nodes render normally)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - correct treemap implementation note and remediation record)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - add verified root-cause note for `leafDepth` regression)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Expected runtime fix: Treemap now renders stock tiles and labels instead of a single root container.
+- Follow-up verification to run: frontend production build and visual smoke on Dashboard heatmap.
+
+---
+
+## Entry 2026-04-18az - start_dev seed logging cleanup for vnstock stderr noise
+
+Muc tieu:
+- Loai bo `NativeCommandError` gia trong `start_dev.ps1` khi `seed_securities_groups` in log vnstock qua stderr nhung van thanh cong.
+- Giu log seed hien thi cho nguoi dung duoi dang output thuong, khong bi nham voi loi PowerShell.
+
+Danh sach tep cap nhat:
+- start_dev.ps1 (MODIFIED - capture `seed_securities_groups` docker exec output through `cmd /c` and replay as normal console logs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PowerShell parser check: `start_dev.ps1 parse: OK`.
+- Docker dev stack da duoc update thanh cong; backend/frontend smoke checks OK.
+
+---
+
+## Entry 2026-04-18ay - start_dev backend readiness check robustification (State-less inspect safe)
+
+Muc tieu:
+- Khac phuc triệt để loi `docker inspect` template parsing (`map has no entry for key \"State\"`) trong luong cho backend khoi dong.
+- Loai bo phu thuoc vao Go-template field access truc tiep tren output inspect de tranh NativeCommandError tren PowerShell.
+
+Danh sach tep cap nhat:
+- start_dev.ps1 (MODIFIED - replace format-template health query with safe JSON inspect parser + fallback statuses `healthy`, `running-no-healthcheck`, `no-healthcheck`, `unknown`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PowerShell parser check: `start_dev.ps1 parse: OK`.
+- Readiness loop now supports containers without `State.Health` and avoids hard-fail template exceptions.
+
+---
+
+## Entry 2026-04-18ax - start_dev healthcheck inspect hardening
+
+Muc tieu:
+- Sua loi `docker inspect --format='{{.State.Health.Status}}'` trong `start_dev.ps1` gay fail khi container khong co truong `State.Health`.
+- Dam bao script startup khong bi ngat boi template parsing error trong PowerShell.
+
+Danh sach tep cap nhat:
+- start_dev.ps1 (MODIFIED - guard docker inspect format with conditional template to support both healthcheck and non-healthcheck containers)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PowerShell parser check: `start_dev.ps1 parse: OK`.
+- Runtime behavior expectation: neu container co healthcheck -> tra `healthy/unhealthy`; neu khong co -> tra `no-healthcheck` thay vi throw template error.
+
+---
+
 ## Entry 2026-04-18aw - Governance lock: vninvest playbook mandatory no-exception
 
 Muc tieu:
