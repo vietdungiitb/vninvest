@@ -1,9 +1,9 @@
 import React from 'react';
 import { useI18n } from '../../context/LangContext';
 import AllocationPieChart from '../AllocationPieChart';
-import PortfolioDigestPanel from '../PortfolioDigestPanel';
+import ModernPortfolioDigest from './ModernPortfolioDigest';
 
-export default function ModernSidebar({ portfolioId, alerts, breadth, analytics, loading }) {
+export default function ModernSidebar({ portfolioId, alerts, breadth, analytics, digest, loading }) {
   const { t } = useI18n();
 
   const metrics = [
@@ -61,8 +61,8 @@ export default function ModernSidebar({ portfolioId, alerts, breadth, analytics,
       </div>
 
       {/* AI News Digest */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-1">
-        <PortfolioDigestPanel />
+      <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden">
+        <ModernPortfolioDigest digest={digest} loading={loading} />
       </div>
 
       {/* Live Alerts Stream (Compact Footer or dedicated module) */}

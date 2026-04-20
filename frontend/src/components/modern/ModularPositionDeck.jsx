@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useI18n } from '../../context/LangContext';
 import HoldingsTable from '../HoldingsTable';
+import OptimizationModal from './OptimizationModal';
 
 export default function ModularPositionDeck({ holdings, loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
   const { t } = useI18n();
@@ -30,6 +31,8 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
 
     return { score: total, grade, color };
   }, [analytics]);
+
+  const [showOptimization, setShowOptimization] = useState(false);
 
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: '📋' },
@@ -186,12 +189,26 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                       </div>
                    </div>
 
-                   <button className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20">
+                   <button 
+                      onClick={() => setShowOptimization(true)}
+                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20"
+                   >
                       Tối ưu hóa danh mục với AI
                    </button>
                 </div>
              </div>
           </div>
+        )}
+
+        {showOptimization && (
+           <OptimizationModal 
+              onClose={() => setShowOptimization(false)}
+              holdings={holdings}
+              technicals={technicals}
+              analytics={analytics}
+              currentScore={healthStats.score}
+              alerts={alerts}
+           />
         )}
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals } from '../../api/client';
+import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest } from '../../api/client';
 import { useI18n } from '../../context/LangContext';
 import useRealtimeFeed from '../../hooks/useRealtimeFeed';
 import { buildLiveHoldingsOverlay } from '../../utils/dashboardRealtimeSelectors';
@@ -19,6 +19,7 @@ export default function ModernDashboard() {
   const [holdings, setHoldings] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [technicals, setTechnicals] = useState(null);
+  const [digest, setDigest] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const monitoredSymbols = useMemo(() => {
@@ -54,12 +55,14 @@ export default function ModernDashboard() {
         getHoldings(activePortfolioId),
         getAnalytics(activePortfolioId),
         getPortfolioTechnicals(activePortfolioId),
+        getPortfolioNewsDigest(),
       ]);
 
       if (results[0].status === 'fulfilled') setSummary(results[0].value.data);
       if (results[1].status === 'fulfilled') setHoldings(results[1].value.data);
       if (results[2].status === 'fulfilled') setAnalytics(results[2].value.data);
       if (results[3].status === 'fulfilled') setTechnicals(results[3].value.data?.technicals || []);
+      if (results[4].status === 'fulfilled') setDigest(results[4].value.data);
     } catch (err) {
       console.error('ModernDashboard data fetch error:', err);
     } finally {
@@ -119,6 +122,8 @@ export default function ModernDashboard() {
                 quotesBySymbol={quotesBySymbol}
                 technicals={technicals}
                 alerts={alerts}
+                analytics={analytics}
+                digest={digest}
              />
           </div>
         </div>
@@ -130,6 +135,7 @@ export default function ModernDashboard() {
               alerts={alerts}
               breadth={realtimeMarketBreadth}
               analytics={analytics}
+              digest={digest}
               loading={loading}
            />
         </div>
