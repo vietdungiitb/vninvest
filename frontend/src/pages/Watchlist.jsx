@@ -97,6 +97,7 @@ export default function WatchlistPage() {
   const [groupSort, setGroupSort] = useState({ key: 'symbol', direction: 'asc' });
   const [groupPageSize, setGroupPageSize] = useState(20);
   const [groupPage, setGroupPage] = useState(1);
+  const [sidebarGroupPage, setSidebarGroupPage] = useState(1);
   const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
   const [trackedSortBy, setTrackedSortBy] = useState('symbol_asc');
   const [trackedDataFilter, setTrackedDataFilter] = useState('all');
@@ -1134,38 +1135,71 @@ export default function WatchlistPage() {
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">{t('watchlist.marketGroups')}</p>
             </div>
 
-            {/* Group list */}
-            {groupsWithRealtime.map((g) => {
-              const isActive = g.id === view;
-              const upCount = g.items.filter((i) => i.change_pct > 0).length;
-              const downCount = g.items.filter((i) => i.change_pct < 0).length;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => setView(g.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
-                    isActive ? 'bg-gray-800 border-gray-600' : 'border-transparent hover:bg-gray-900/70'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: g.color }}
-                    />
-                    <span className={`text-sm font-medium truncate ${
-                      isActive ? 'text-gray-100' : 'text-gray-400'
-                    }`}>
-                      {g.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
-                    <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(g.items.length) })}</span>
-                    {upCount > 0 && <span className="text-green-500">▲{upCount}</span>}
-                    {downCount > 0 && <span className="text-red-500">▼{downCount}</span>}
-                  </div>
-                </button>
+            {/* Group list — paginated */}
+            {(() => {
+              const SIDEBAR_PAGE_SIZE = 10;
+              const totalSidebarPages = Math.ceil(groupsWithRealtime.length / SIDEBAR_PAGE_SIZE);
+              const pagedGroups = groupsWithRealtime.slice(
+                (sidebarGroupPage - 1) * SIDEBAR_PAGE_SIZE,
+                sidebarGroupPage * SIDEBAR_PAGE_SIZE,
               );
-            })}
+              return (
+                <>
+                  {pagedGroups.map((g) => {
+                    const isActive = g.id === view;
+                    const upCount = g.items.filter((i) => i.change_pct > 0).length;
+                    const downCount = g.items.filter((i) => i.change_pct < 0).length;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => setView(g.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
+                          isActive ? 'bg-gray-800 border-gray-600' : 'border-transparent hover:bg-gray-900/70'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: g.color }}
+                          />
+                          <span className={`text-sm font-medium truncate ${
+                            isActive ? 'text-gray-100' : 'text-gray-400'
+                          }`}>
+                            {g.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
+                          <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(g.items.length) })}</span>
+                          {upCount > 0 && <span className="text-green-500">▲{upCount}</span>}
+                          {downCount > 0 && <span className="text-red-500">▼{downCount}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {totalSidebarPages > 1 && (
+                    <div className="flex items-center justify-between pt-2 pb-1 px-1">
+                      <button
+                        onClick={() => setSidebarGroupPage((p) => Math.max(1, p - 1))}
+                        disabled={sidebarGroupPage <= 1}
+                        className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        &#8249;
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        {sidebarGroupPage}/{totalSidebarPages}
+                      </span>
+                      <button
+                        onClick={() => setSidebarGroupPage((p) => Math.min(totalSidebarPages, p + 1))}
+                        disabled={sidebarGroupPage >= totalSidebarPages}
+                        className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        &#8250;
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </aside>
 
           {/* Main content */}
