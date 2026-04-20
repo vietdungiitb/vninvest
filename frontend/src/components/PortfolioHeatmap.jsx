@@ -226,10 +226,14 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
 
       let size;
       if (sizeMetric === 'cap') {
-        // Vốn hóa: ưu tiên market_cap_bn profile (chính xác) > feed > ước tính
+        // Vốn hóa: ưu tiên profile > realtime feed > ước tính.
+        // Watchlist-only symbols thường chưa có quantity/market_value, nên nếu cap chưa hydrate
+        // thì vẫn cần một nominal size để heatmap không biến mất hoàn toàn.
         size = marketCapFromProfile > 0 ? marketCapFromProfile
              : marketCapFromFeed > 0 ? marketCapFromFeed
-             : estimatedCap;
+             : estimatedCap > 0 ? estimatedCap
+             : h.is_holding ? Math.max(portfolioValue, 1)
+             : watchlistNominalWeight;
       } else {
         // Tỷ trọng: holdings theo giá trị danh mục thực; watchlist hiển thị nominal bằng nhau
         size = h.is_holding ? portfolioValue : watchlistNominalWeight;
@@ -738,7 +742,9 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
   if (!chartData.flat.length) {
     return (
       <div className="bg-gray-950/50 backdrop-blur-md border border-gray-800 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[300px]">
-        <div className="mb-3 h-10 w-10 rounded-full border-2 border-slate-700 border-t-cyan-400 animate-spin" />
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-700 bg-slate-900/70 text-slate-400">
+          ⊞
+        </div>
         <p className="text-gray-400 text-sm font-medium">{t('dashboardRealtime.heatmapEmpty', { defaultValue: 'Chưa có dữ liệu heatmap cho danh mục này.' })}</p>
       </div>
     );
