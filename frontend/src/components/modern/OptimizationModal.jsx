@@ -4,6 +4,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
   const [strategy, setStrategy] = useState('conservative'); // 'conservative' | 'aggressive'
   const [acknowledged, setAcknowledged] = useState({}); // { symbol: true }
   const [expandedSymbol, setExpandedSymbol] = useState(null);
+  const [confirmCount, setConfirmCount] = useState(null); // null | number — toast state
 
   // Configuration based on strategy
   const config = useMemo(() => {
@@ -17,12 +18,13 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
     if (!holdings || !technicals) return [];
 
     const techs = (technicals || []).reduce((acc, t) => ({ ...acc, [t.symbol]: t }), {});
-    
+    const totalValue = holdings.reduce((sum, item) => sum + (item.market_value || 0), 0);
+
     return holdings.map(h => {
       const symbol = h.symbol.trim().toUpperCase();
       const tech = techs[symbol];
       const rsi = tech?.rsi_14;
-      const weight = h.unrealized_pl_pct !== undefined ? (h.market_value / (holdings.reduce((sum, item) => sum + item.market_value, 0)) * 100) : 0;
+      const weight = (h.market_value > 0 && totalValue > 0) ? (h.market_value / totalValue * 100) : 0;
       
       let action = 'HOLD';
       let reason = '';
@@ -160,7 +162,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
                     <span className="text-[9px] text-slate-500 uppercase">RSI Signal</span>
                     <div className="flex items-center gap-2">
                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                          <div className={`h-full ${rec.rsi > 70 ? 'bg-rose-500' : rec.rsi < 30 ? 'bg-emerald-500' : 'bg-sky-500'}`} style={{ width: `${rec.rsi}%` }} />
+                          <div className={`h-full ${rec.rsi > 70 ? 'bg-rose-500' : rec.rsi < 30 ? 'bg-emerald-500' : 'bg-sky-500'}`} style={{ width: `${rec.rsi ?? 0}%` }} />
                        </div>
                        <span className="text-xs font-bold text-slate-300">{rec.rsi?.toFixed(0)}</span>
                     </div>
@@ -185,19 +187,31 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
 
         {/* Footer Section */}
         <div className="p-6 bg-slate-950/50 border-t border-slate-800 flex items-center justify-between">
-          <p className="text-[11px] text-slate-500 italic max-w-md">
-            * Các gợi ý này mang tính chất tham khảo dựa trên thuật toán tối ưu hóa tài sản. Vui lòng kiểm tra lại trước khi thực hiện giao dịch thực tế.
-          </p>
+          {confirmCount !== null ? (
+            <p className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+              <span>✓</span> Đã ghi nhận {confirmCount} gợi ý — đang đóng...
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-500 italic max-w-md">
+              * Các gợi ý này mang tính chất tham khảo dựa trên thuật toán tối ưu hóa tài sản. Vui lòng kiểm tra lại trước khi thực hiện giao dịch thực tế.
+            </p>
+          )}
           <div className="flex items-center gap-3">
              <button 
                 onClick={onClose}
-                className="px-6 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors"
+                disabled={confirmCount !== null}
+                className="px-6 py-2 text-xs font-bold text-slate-400 hover:text-slate-200 transition-colors disabled:opacity-40"
              >
                 Đóng
              </button>
              <button 
-                onClick={onClose}
-                className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-95"
+                disabled={confirmCount !== null}
+                onClick={() => {
+                  const count = Object.values(acknowledged).filter(Boolean).length;
+                  setConfirmCount(count);
+                  setTimeout(onClose, 1500);
+                }}
+                className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-lg shadow-emerald-900/30 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
              >
                 Xác nhận & Ghi nhận
              </button>
