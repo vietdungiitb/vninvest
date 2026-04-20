@@ -230,6 +230,20 @@ textarea {
   animation: rtFlashDown 0.42s ease-out;
 }
 
+/* ── Watchlist Price Flash (td level) ──────────────────────────────────── */
+@keyframes pFlashUp {
+  0%   { background-color: rgba(16, 185, 129, 0.00); color: inherit; }
+  15%  { background-color: rgba(16, 185, 129, 0.22); color: #6ee7b7; }
+  100% { background-color: rgba(16, 185, 129, 0.00); color: inherit; }
+}
+@keyframes pFlashDown {
+  0%   { background-color: rgba(244, 63, 94, 0.00);  color: inherit; }
+  15%  { background-color: rgba(244, 63, 94, 0.22);  color: #fb7185; }
+  100% { background-color: rgba(244, 63, 94, 0.00);  color: inherit; }
+}
+.price-flash-up   { animation: pFlashUp   0.7s ease-out; }
+.price-flash-down { animation: pFlashDown 0.7s ease-out; }
+
 .v2-panel {
   border: 1px solid var(--v2-shell-border);
   background: var(--v2-shell-bg);

@@ -6,11 +6,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { fetchLegalPages } from '../api/client';
+import { useInterface } from '../context/InterfaceContext';
 import Sidebar from './Sidebar';
 import TopNav from './TopNav';
 
 export default function Layout() {
   const { t, locale } = useI18n();
+  const { uiMode } = useInterface();
 
   // Legal pages state
   const [legalPages, setLegalPages] = useState([]);
@@ -31,7 +33,7 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
-      <Sidebar />
+      {uiMode !== 'modern' && <Sidebar />}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
         <main className="panel-scrollbar flex-1 overflow-y-auto bg-slate-950">

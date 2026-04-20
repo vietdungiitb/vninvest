@@ -611,6 +611,15 @@ if SENTIMENT_SYNC_ENABLED:
         "options": {"expires": SENTIMENT_SYNC_INTERVAL_MINUTES * 60},
     }
 
+# ── Watchlist Strategy Indicators — mỗi 10 giây (Phase B) ──────────────────
+WATCHLIST_INDICATORS_ENABLED = os.getenv("WATCHLIST_INDICATORS_ENABLED", "True").lower() == "true"
+if WATCHLIST_INDICATORS_ENABLED:
+    CELERY_BEAT_SCHEDULE["compute-watchlist-indicators"] = {
+        "task": "portfolio.compute_watchlist_indicators",
+        "schedule": timedelta(seconds=10),
+        "options": {"expires": 9},  # bỏ qua nếu task cũ chưa xong
+    }
+
 # Realtime feature flags (Sprint 11)
 REALTIME_ENABLED = os.getenv("REALTIME_ENABLED", "False").lower() == "true"
 REALTIME_DEFAULT_WHALE_THRESHOLD = _env_int("REALTIME_DEFAULT_WHALE_THRESHOLD", 500000000)

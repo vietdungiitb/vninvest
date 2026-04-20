@@ -55,6 +55,64 @@ function StrategyFilterBar({ t, strategyFilter, setStrategyFilter, filteredCount
   );
 }
 
+// ─── Quick Alert Popover ──────────────────────────────────────────────────────
+
+function QuickAlertPopover({ symbol, currentPrice, onSubmit, onClose }) {
+  const [condition, setCondition] = useState('ABOVE');
+  const [targetPrice, setTargetPrice] = useState(currentPrice != null ? String(Math.round(currentPrice)) : '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const price = Number(targetPrice);
+    if (!Number.isFinite(price) || price <= 0) return;
+    setSaving(true);
+    try {
+      await onSubmit({ symbol, condition, targetPrice: price });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 bg-blue-950/30 border border-blue-800/50 rounded-lg px-4 py-3">
+      <span className="text-xs font-bold text-blue-300 whitespace-nowrap">🔔 Đặt alert {symbol}</span>
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-center gap-2">
+        <select
+          value={condition}
+          onChange={(e) => setCondition(e.target.value)}
+          className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-blue-500"
+        >
+          <option value="ABOVE">Vượt lên trên</option>
+          <option value="BELOW">Giảm xuống dưới</option>
+        </select>
+        <input
+          type="number"
+          value={targetPrice}
+          onChange={(e) => setTargetPrice(e.target.value)}
+          placeholder="Giá mục tiêu"
+          className="w-28 bg-gray-950 border border-gray-700 rounded px-2 py-1 text-xs text-gray-100 outline-none focus:border-blue-500"
+        />
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-3 py-1 bg-blue-700 hover:bg-blue-600 disabled:opacity-50 text-white text-xs font-bold rounded transition-colors"
+        >
+          {saving ? 'Đang lưu...' : 'Lưu'}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold rounded transition-colors"
+        >
+          Huỷ
+        </button>
+      </form>
+    </div>
+  );
+}
+
 // ─── Price Flash Hook ─────────────────────────────────────────────────────────
 
 function usePriceFlash(price) {
@@ -109,6 +167,7 @@ const TrackedRow = memo(function TrackedRow({
   onCancelEdit,
   onOpenStock,
   onDelete,
+  onQuickAlert,
   sparklinePrices,
   showIndicators,
 }) {
@@ -220,12 +279,21 @@ const TrackedRow = memo(function TrackedRow({
 
       {/* Actions */}
       <td className="px-4 py-3 text-right">
-        <button
-          onClick={() => onDelete(item.id, item.symbol)}
-          className="text-xs text-red-400 hover:text-red-300 font-semibold"
-        >
-          {t('watchlist.delete')}
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => onQuickAlert(item.symbol)}
+            className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
+            title="Đặt cảnh báo giá nhanh"
+          >
+            🔔
+          </button>
+          <button
+            onClick={() => onDelete(item.id, item.symbol)}
+            className="text-xs text-red-400 hover:text-red-300 font-semibold"
+          >
+            {t('watchlist.delete')}
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -239,7 +307,8 @@ const TrackedRow = memo(function TrackedRow({
     prevProps.item.rvol === nextProps.item.rvol &&
     prevProps.item.whale_alert_threshold_million === nextProps.item.whale_alert_threshold_million &&
     prevProps.editingTrackedId === nextProps.editingTrackedId &&
-    prevProps.sparklinePrices === nextProps.sparklinePrices
+    prevProps.sparklinePrices === nextProps.sparklinePrices &&
+    prevProps.onQuickAlert === nextProps.onQuickAlert
   );
 });
 
@@ -317,6 +386,7 @@ export default function SmartRadarTable({
   // Actions
   onOpenStock,
   onDelete,
+  onQuickAlert,
   // Sparklines
   getSparklinePrices,
   // Loading
@@ -325,6 +395,8 @@ export default function SmartRadarTable({
 }) {
   // Determine if backend is sending indicators (any row has rsi_14 non-null)
   const showIndicators = pagedTracked.some((item) => item.rsi_14 != null);
+  const [quickAlertRowSymbol, setQuickAlertRowSymbol] = useState(null);
+  const totalCols = showIndicators ? 12 : 9;
 
   if (trackedLoading) {
     return (
@@ -369,25 +441,39 @@ export default function SmartRadarTable({
             />
             <tbody>
               {pagedTracked.map((item) => (
-                <TrackedRow
-                  key={item.symbol}
-                  item={item}
-                  t={t}
-                  formatNumber={formatNumber}
-                  formatQuotePrice={formatQuotePrice}
-                  formatDateTime={formatDateTime}
-                  editingTrackedId={editingTrackedId}
-                  editingTrackedThresholdValue={editingTrackedThresholdValue}
-                  setEditingTrackedThresholdValue={setEditingTrackedThresholdValue}
-                  updatingTrackedId={updatingTrackedId}
-                  onStartEdit={onStartEdit}
-                  onSaveThreshold={onSaveThreshold}
-                  onCancelEdit={onCancelEdit}
-                  onOpenStock={onOpenStock}
-                  onDelete={onDelete}
-                  sparklinePrices={getSparklinePrices(item.symbol)}
-                  showIndicators={showIndicators}
-                />
+                <React.Fragment key={item.symbol}>
+                  <TrackedRow
+                    item={item}
+                    t={t}
+                    formatNumber={formatNumber}
+                    formatQuotePrice={formatQuotePrice}
+                    formatDateTime={formatDateTime}
+                    editingTrackedId={editingTrackedId}
+                    editingTrackedThresholdValue={editingTrackedThresholdValue}
+                    setEditingTrackedThresholdValue={setEditingTrackedThresholdValue}
+                    updatingTrackedId={updatingTrackedId}
+                    onStartEdit={onStartEdit}
+                    onSaveThreshold={onSaveThreshold}
+                    onCancelEdit={onCancelEdit}
+                    onOpenStock={onOpenStock}
+                    onDelete={onDelete}
+                    onQuickAlert={(sym) => setQuickAlertRowSymbol((prev) => prev === sym ? null : sym)}
+                    sparklinePrices={getSparklinePrices(item.symbol)}
+                    showIndicators={showIndicators}
+                  />
+                  {quickAlertRowSymbol === item.symbol && (
+                    <tr className="bg-blue-950/10">
+                      <td colSpan={totalCols} className="px-4 py-2">
+                        <QuickAlertPopover
+                          symbol={item.symbol}
+                          currentPrice={item.current_price}
+                          onSubmit={onQuickAlert}
+                          onClose={() => setQuickAlertRowSymbol(null)}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

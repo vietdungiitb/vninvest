@@ -95,14 +95,14 @@ export default function WatchlistPage() {
   const [groupDataFilter, setGroupDataFilter] = useState('all');
   const [groupSymbolSearch, setGroupSymbolSearch] = useState('');
   const [groupSort, setGroupSort] = useState({ key: 'symbol', direction: 'asc' });
-  const [groupPageSize, setGroupPageSize] = useState(20);
+  const [groupPageSize, setGroupPageSize] = useState(10);
   const [groupPage, setGroupPage] = useState(1);
   const [sidebarGroupPage, setSidebarGroupPage] = useState(1);
   const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
   const [trackedSortBy, setTrackedSortBy] = useState('symbol_asc');
   const [trackedDataFilter, setTrackedDataFilter] = useState('all');
   const [trackedSymbolSearch, setTrackedSymbolSearch] = useState('');
-  const [trackedPageSize, setTrackedPageSize] = useState(20);
+  const [trackedPageSize, setTrackedPageSize] = useState(10);
   const [trackedPage, setTrackedPage] = useState(1);
   // Phase B: strategy filter
   const [strategyFilter, setStrategyFilter] = useState('all');
@@ -166,6 +166,7 @@ export default function WatchlistPage() {
   const [editingTrackedId, setEditingTrackedId] = useState(null);
   const [editingTrackedThresholdValue, setEditingTrackedThresholdValue] = useState('');
   const [symbolError, setSymbolError] = useState('');
+  const [watchlistTab, setWatchlistTab] = useState('table'); // 'table' | 'manage' | 'alerts'
 
   const loadGroups = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -669,10 +670,14 @@ export default function WatchlistPage() {
         thresholdValue = parsedThreshold;
       }
 
+      const justAddedSymbol = addSymbol;
       await addTrackedSymbol(addSymbol, srcGroupId ? Number(srcGroupId) : null, thresholdValue);
       setAddSymbol('');
       setAddThresholdMillion('');
       await fetchTracked();
+      setWatchlistTab('table');
+      setTrackedSymbolSearch(justAddedSymbol);
+      setTimeout(() => setTrackedSymbolSearch(''), 3000);
     } catch (err) {
       setSymbolError(err.response?.data?.detail || t('watchlist.addSymbolFailed', { symbol: addSymbol }));
     } finally {
@@ -925,6 +930,25 @@ export default function WatchlistPage() {
       setTimeout(() => setPriceAlertMsg(''), 4000);
     }
   };
+
+  const handleQuickCreatePriceAlert = useCallback(async ({ symbol, condition, targetPrice }) => {
+    try {
+      const payload = {
+        symbol: symbol.toUpperCase().trim(),
+        condition,
+        target_price: Number(targetPrice),
+        cooldown_seconds: 300,
+        is_active: true,
+      };
+      await createPriceAlert(payload);
+      await fetchPriceAlerts();
+      setSyncMsg(t('watchlist.createdPriceAlert'));
+      setTimeout(() => setSyncMsg(''), 3000);
+    } catch (err) {
+      setSyncMsg(extractApiErrorMessage(err, t('watchlist.createPriceAlertFailed')));
+      setTimeout(() => setSyncMsg(''), 4000);
+    }
+  }, [fetchPriceAlerts, t]);
 
   const handleTogglePriceAlert = async (rule) => {
     try {
@@ -1218,7 +1242,46 @@ export default function WatchlistPage() {
                   </span>
                 </div>
 
-                <WatchlistManagementPanel
+                {/* Tab bar */}
+                <div className="flex items-center gap-1 bg-gray-900/70 border border-gray-800 rounded-xl p-1 mb-4 w-fit">
+                  <button
+                    onClick={() => setWatchlistTab('table')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'table'
+                        ? 'bg-brand-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>📊</span> Bảng giá
+                  </button>
+                  <button
+                    onClick={() => setWatchlistTab('manage')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'manage'
+                        ? 'bg-brand-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>⚙️</span> Quản lý mã
+                  </button>
+                  <button
+                    onClick={() => setWatchlistTab('alerts')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'alerts'
+                        ? 'bg-blue-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>🔔</span> Cảnh báo giá
+                    {priceAlerts.length > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
+                        {priceAlerts.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {watchlistTab === 'manage' && <WatchlistManagementPanel
                   t={t}
                   formatNumber={formatNumber}
                   groupsWithRealtime={groupsWithRealtime}
@@ -1236,9 +1299,9 @@ export default function WatchlistPage() {
                   trackedBulkAction={trackedBulkAction}
                   onBulkSetThreshold={handleBulkSetTrackedThreshold}
                   onBulkClearThreshold={handleBulkClearTrackedThreshold}
-                />
+                />}
 
-                <PriceAlertModule
+                {watchlistTab === 'alerts' && <PriceAlertModule
                   t={t}
                   formatNumber={formatNumber}
                   formatQuotePrice={formatQuotePrice}
@@ -1256,9 +1319,9 @@ export default function WatchlistPage() {
                   onCreatePriceAlert={handleCreatePriceAlert}
                   onTogglePriceAlert={handleTogglePriceAlert}
                   onDeletePriceAlert={handleDeletePriceAlert}
-                />
+                />}
 
-                <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                {watchlistTab === 'table' && <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b border-gray-800/70 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
@@ -1335,10 +1398,10 @@ export default function WatchlistPage() {
                           name="tracked_page_size"
                           aria-label={t('watchlist.pageSize')}
                           value={trackedPageSize}
-                          onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
+                          onChange={(e) => setTrackedPageSize(Number(e.target.value) || 10)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                         >
-                          {[10, 15, 20, 50, 100].map((size) => (
+                          {[5, 10, 15, 20].map((size) => (
                             <option key={size} value={size}>{size}</option>
                           ))}
                         </select>
@@ -1386,8 +1449,9 @@ export default function WatchlistPage() {
                     onDelete={(id, symbol) => handleDeleteTracked(id, symbol)}
                     getSparklinePrices={getSparklinePrices}
                     trackedLoading={trackedLoading}
+                    onQuickAlert={handleQuickCreatePriceAlert}
                   />
-                </div>
+                </div>}
               </div>
             ) : activeGroup ? (
               // Group detail table
@@ -1493,10 +1557,10 @@ export default function WatchlistPage() {
                           name="group_page_size"
                           aria-label={t('watchlist.pageSize')}
                           value={groupPageSize}
-                          onChange={(e) => setGroupPageSize(Number(e.target.value) || 20)}
+                          onChange={(e) => setGroupPageSize(Number(e.target.value) || 10)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                         >
-                          {[10, 15, 20, 50, 100].map((size) => (
+                          {[5, 10, 15, 20].map((size) => (
                             <option key={size} value={size}>{size}</option>
                           ))}
                         </select>

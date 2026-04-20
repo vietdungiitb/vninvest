@@ -45,6 +45,7 @@ urlpatterns = [
     path('portfolios/<int:portfolio_id>/equity-curve/', views.EquityCurveView.as_view(), name='portfolio-equity-curve'),
     path('portfolios/<int:portfolio_id>/allocation/', views.AllocationView.as_view(), name='portfolio-allocation'),
     path('portfolios/<int:portfolio_id>/analytics/', views.PortfolioAnalyticsView.as_view(), name='portfolio-analytics'),
+    path('portfolios/<int:portfolio_id>/technicals/', views.PortfolioTechnicalView.as_view(), name='portfolio-technicals'),
     path('portfolios/<int:portfolio_id>/sync/', views.SyncPricesView.as_view(), name='portfolio-sync'),
 
     # --- Watchlist (giữ lại cho tương thích cũ, sẽ chuyển sang stock-management) ---

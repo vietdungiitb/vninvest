@@ -28,6 +28,20 @@ def _iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _get_indicator_cache(symbol: str) -> dict:
+    """Lấy indicator cache từ Redis (tính bởi Celery task). Safe – không raise."""
+    try:
+        import json
+        from django.core.cache import cache
+        cache_key = f"watchlist_indicator:{symbol.upper()}"
+        raw = cache.get(cache_key)
+        if raw:
+            return json.loads(raw) if isinstance(raw, str) else raw
+    except Exception:
+        pass
+    return {}
+
+
 def _normalize_signal_side(side_value: str) -> str:
     side_raw = str(side_value or "").strip().lower()
     if side_raw in ("buy", "bu", "b"):
@@ -120,6 +134,8 @@ def build_ticker_payload(symbol: str, trades_df: pd.DataFrame, seq: int, contrac
 
     ts_iso = _iso_now()
 
+    indicators = _get_indicator_cache(symbol)
+
     return {
         "event_type": "ticker_update",
         "contract_version": contract_version,
@@ -134,6 +150,11 @@ def build_ticker_payload(symbol: str, trades_df: pd.DataFrame, seq: int, contrac
         "stale": False,
         "source": "ws_stream",
         "seq": seq,
+        # Phase B: kỹ thuật indicators từ Celery cache
+        "rsi_14": indicators.get("rsi_14"),
+        "ma20_dist_pct": indicators.get("ma20_dist_pct"),
+        "rvol": indicators.get("rvol"),
+        "indicator_ts": indicators.get("indicator_ts"),
     }
 
 

@@ -20,6 +20,7 @@ import UserConfig from './pages/UserConfig';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
+import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function LoginPage() {
@@ -55,38 +56,40 @@ export default function App() {
     <BrowserRouter>
       <PortfolioProvider>
         <LangProvider>
-          <RealtimeProvider>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route path="reset-password" element={<ResetPassword />} />
-              <Route path="/" element={<ProtectedLayout />}>
-                <Route index element={<Navigate to="/dashboard" replace />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="upgrade" element={<Upgrade />} />
-                <Route path="stocks/:symbol" element={<StockDetail />} />
-                <Route
-                  path="ai-advisory"
-                  element={(
-                    <ProtectedRoute action="read" subject="WhaleAdvisory">
-                      <WhaleAdvisory />
-                    </ProtectedRoute>
-                  )}
-                />
-                <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
-                <Route path="whale-alerts" element={<WhaleAlertsHub />} />
-                <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
-                <Route path="transactions" element={<Transactions />} />
-                <Route path="support" element={<Support />} />
-                <Route path="watchlist" element={<Watchlist />} />
-                <Route path="admin-ops" element={<AdminOps />} />
-                <Route path="screener" element={<Screener />} />
-                <Route path="portfolios" element={<PortfolioManagement />} />
-                <Route path="settings" element={<UserConfig />} />
-              </Route>
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </RealtimeProvider>
+          <InterfaceProvider>
+            <RealtimeProvider>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="reset-password" element={<ResetPassword />} />
+                <Route path="/" element={<ProtectedLayout />}>
+                  <Route index element={<Navigate to="/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="upgrade" element={<Upgrade />} />
+                  <Route path="stocks/:symbol" element={<StockDetail />} />
+                  <Route
+                    path="ai-advisory"
+                    element={(
+                      <ProtectedRoute action="read" subject="WhaleAdvisory">
+                        <WhaleAdvisory />
+                      </ProtectedRoute>
+                    )}
+                  />
+                  <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
+                  <Route path="whale-alerts" element={<WhaleAlertsHub />} />
+                  <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
+                  <Route path="transactions" element={<Transactions />} />
+                  <Route path="support" element={<Support />} />
+                  <Route path="watchlist" element={<Watchlist />} />
+                  <Route path="admin-ops" element={<AdminOps />} />
+                  <Route path="screener" element={<Screener />} />
+                  <Route path="portfolios" element={<PortfolioManagement />} />
+                  <Route path="settings" element={<UserConfig />} />
+                </Route>
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </RealtimeProvider>
+          </InterfaceProvider>
         </LangProvider>
       </PortfolioProvider>
     </BrowserRouter>
