@@ -251,6 +251,20 @@ class TrackedSymbolListCreateView(APIView):
         if not symbol:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Validate format: 1–10 ký tự chữ in hoa và số
+        if not symbol.isalnum() or len(symbol) > 10:
+            return Response(
+                {'detail': 'Mã chứng khoán không hợp lệ. Chỉ chấp nhận 1–10 ký tự chữ in hoa và số.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate existence: kiểm tra StockProfile nếu bảng đã được sync (graceful degradation khi bảng rỗng)
+        if StockProfile.objects.exists() and not StockProfile.objects.filter(symbol=symbol).exists():
+            return Response(
+                {'detail': f'Mã {symbol} không tồn tại trong hệ thống. Vui lòng kiểm tra lại mã chứng khoán.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             threshold_million = _parse_tracked_symbol_threshold_million(request.data.get('whale_alert_threshold_million'))
         except ValueError as exc:

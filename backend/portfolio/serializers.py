@@ -515,6 +515,20 @@ class WatchlistItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'group', 'group_name', 'symbol', 'added_at']
         read_only_fields = ['id', 'group', 'added_at']
 
+    def validate_symbol(self, value):
+        value = value.upper().strip()
+        # Validate format: 1–10 ký tự chữ in hoa và số
+        if not value.isalnum() or len(value) > 10:
+            raise serializers.ValidationError(
+                'Mã chứng khoán không hợp lệ. Chỉ chấp nhận 1–10 ký tự chữ in hoa và số.'
+            )
+        # Validate existence: kiểm tra StockProfile nếu bảng đã được sync
+        if StockProfile.objects.exists() and not StockProfile.objects.filter(symbol=value).exists():
+            raise serializers.ValidationError(
+                f'Mã {value} không tồn tại trong hệ thống. Vui lòng kiểm tra lại mã chứng khoán.'
+            )
+        return value
+
 class StockProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StockProfile
