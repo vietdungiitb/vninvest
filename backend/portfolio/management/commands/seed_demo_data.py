@@ -147,12 +147,13 @@ class Command(BaseCommand):
             },
         )
 
+        # Giá cơ sở DailyPrice phải ở đơn vị THOUSAND_VND (canonical)
         symbols = {
-            'FPT': {'company_name': 'CTCP FPT', 'industry': 'Công nghệ', 'exchange': 'HOSE', 'base': Decimal('116000')},
-            'HPG': {'company_name': 'CTCP Tập đoàn Hòa Phát', 'industry': 'Thép', 'exchange': 'HOSE', 'base': Decimal('28500')},
-            'VNM': {'company_name': 'CTCP Sữa Việt Nam', 'industry': 'Tiêu dùng', 'exchange': 'HOSE', 'base': Decimal('70100')},
-            'VCB': {'company_name': 'Ngân hàng TMCP Ngoại thương Việt Nam', 'industry': 'Ngân hàng', 'exchange': 'HOSE', 'base': Decimal('88500')},
-            'MWG': {'company_name': 'CTCP Đầu tư Thế Giới Di Động', 'industry': 'Bán lẻ', 'exchange': 'HOSE', 'base': Decimal('61000')},
+            'FPT': {'company_name': 'CTCP FPT', 'industry': 'Công nghệ', 'exchange': 'HOSE', 'base': Decimal('116')},
+            'HPG': {'company_name': 'CTCP Tập đoàn Hòa Phát', 'industry': 'Thép', 'exchange': 'HOSE', 'base': Decimal('28.5')},
+            'VNM': {'company_name': 'CTCP Sữa Việt Nam', 'industry': 'Tiêu dùng', 'exchange': 'HOSE', 'base': Decimal('70.1')},
+            'VCB': {'company_name': 'Ngân hàng TMCP Ngoại thương Việt Nam', 'industry': 'Ngân hàng', 'exchange': 'HOSE', 'base': Decimal('88.5')},
+            'MWG': {'company_name': 'CTCP Đầu tư Thế Giới Di Động', 'industry': 'Bán lẻ', 'exchange': 'HOSE', 'base': Decimal('61')},
         }
 
         for symbol, info in symbols.items():
@@ -166,15 +167,16 @@ class Command(BaseCommand):
                 },
             )
             for idx in range(40):
-                close_price = info['base'] + Decimal((idx % 5) * 150 - 300)
+                # Variation ±0.3 nghìn VND (= ±300 VND per step), canonical THOUSAND_VND
+                close_price = info['base'] + Decimal(str((idx % 5) * 150 - 300)) / Decimal('1000')
                 price_date = date.today() - timedelta(days=idx + 1)
                 DailyPrice.objects.update_or_create(
                     symbol=symbol,
                     date=price_date,
                     defaults={
-                        'open_price': close_price - Decimal('400'),
-                        'high_price': close_price + Decimal('700'),
-                        'low_price': close_price - Decimal('950'),
+                        'open_price': close_price - Decimal('0.4'),
+                        'high_price': close_price + Decimal('0.7'),
+                        'low_price': close_price - Decimal('0.95'),
                         'close_price': close_price,
                         'volume': 900000 + idx * 15000,
                     },
@@ -208,13 +210,14 @@ class Command(BaseCommand):
         )
 
         transactions = [
-            {'sub_account': cash_subaccount, 'symbol': 'FPT', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=28), 'price': Decimal('108000'), 'quantity': Decimal('50'), 'fee': Decimal('15000')},
-            {'sub_account': cash_subaccount, 'symbol': 'VNM', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=18), 'price': Decimal('67500'), 'quantity': Decimal('30'), 'fee': Decimal('10000')},
-            {'sub_account': cash_subaccount, 'symbol': 'VNM', 'transaction_type': Transaction.TransactionType.DIVIDEND, 'date': date.today() - timedelta(days=7), 'price': Decimal('1800'), 'quantity': Decimal('30'), 'fee': Decimal('0')},
-            {'sub_account': special_subaccount, 'symbol': 'VCB', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=20), 'price': Decimal('86000'), 'quantity': Decimal('35'), 'fee': Decimal('12000')},
-            {'sub_account': margin_subaccount, 'symbol': 'HPG', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=23), 'price': Decimal('27000'), 'quantity': Decimal('120'), 'fee': Decimal('12000')},
-            {'sub_account': margin_subaccount, 'symbol': 'MWG', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=15), 'price': Decimal('57500'), 'quantity': Decimal('70'), 'fee': Decimal('12000')},
-            {'sub_account': margin_subaccount, 'symbol': 'HPG', 'transaction_type': Transaction.TransactionType.SELL, 'date': date.today() - timedelta(days=4), 'price': Decimal('28200'), 'quantity': Decimal('20'), 'fee': Decimal('10000')},
+            # Giá giao dịch phải ở đơn vị THOUSAND_VND (canonical)
+            {'sub_account': cash_subaccount, 'symbol': 'FPT', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=28), 'price': Decimal('108'), 'quantity': Decimal('50'), 'fee': Decimal('15')},
+            {'sub_account': cash_subaccount, 'symbol': 'VNM', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=18), 'price': Decimal('67.5'), 'quantity': Decimal('30'), 'fee': Decimal('10')},
+            {'sub_account': cash_subaccount, 'symbol': 'VNM', 'transaction_type': Transaction.TransactionType.DIVIDEND, 'date': date.today() - timedelta(days=7), 'price': Decimal('1.8'), 'quantity': Decimal('30'), 'fee': Decimal('0')},
+            {'sub_account': special_subaccount, 'symbol': 'VCB', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=20), 'price': Decimal('86'), 'quantity': Decimal('35'), 'fee': Decimal('12')},
+            {'sub_account': margin_subaccount, 'symbol': 'HPG', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=23), 'price': Decimal('27'), 'quantity': Decimal('120'), 'fee': Decimal('12')},
+            {'sub_account': margin_subaccount, 'symbol': 'MWG', 'transaction_type': Transaction.TransactionType.BUY, 'date': date.today() - timedelta(days=15), 'price': Decimal('57.5'), 'quantity': Decimal('70'), 'fee': Decimal('12')},
+            {'sub_account': margin_subaccount, 'symbol': 'HPG', 'transaction_type': Transaction.TransactionType.SELL, 'date': date.today() - timedelta(days=4), 'price': Decimal('28.2'), 'quantity': Decimal('20'), 'fee': Decimal('10')},
         ]
 
         for tx in transactions:

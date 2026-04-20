@@ -285,10 +285,11 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def _create_daily_prices(self, symbols, num_days):
-        """Generate historical daily price data."""
+        """Generate historical daily price data. Prices in THOUSAND_VND canonical."""
         created = 0
         for symbol in symbols:
-            base_price = Decimal(str(BASE_PRICES.get(symbol, 50000)))
+            # BASE_PRICES are in VND — divide by 1000 for canonical THOUSAND_VND storage
+            base_price = Decimal(str(BASE_PRICES.get(symbol, 50000))) / Decimal('1000')
             volatility = uniform(0.5, 2.0)  # Daily volatility %
 
             for offset in range(num_days):
@@ -300,9 +301,9 @@ class Command(BaseCommand):
                     symbol=symbol,
                     date=price_date,
                     defaults={
-                        'open_price': close - Decimal(str(random() * 500)),
-                        'high_price': close + Decimal(str(random() * 1000)),
-                        'low_price': close - Decimal(str(random() * 1000)),
+                        'open_price': close - Decimal(str(random() * 0.5)),
+                        'high_price': close + Decimal(str(random() * 1)),
+                        'low_price': close - Decimal(str(random() * 1)),
                         'close_price': close,
                         'volume': randint(500000, 5000000),
                     },
@@ -344,11 +345,12 @@ class Command(BaseCommand):
                 defaults={'type': SubAccount.TypeChoices.MARGIN, 'margin_ratio': Decimal('0.500')},
             )
 
-            # Create sample transactions
+            # Create sample transactions — prices in THOUSAND_VND canonical
             symbols = list(BASE_PRICES.keys())
             shuffle(symbols)
             for i, symbol in enumerate(symbols[:8]):  # 8 random tickers
-                base_price = Decimal(str(BASE_PRICES[symbol]))
+                # BASE_PRICES are in VND — divide by 1000 for canonical THOUSAND_VND
+                base_price = Decimal(str(BASE_PRICES[symbol])) / Decimal('1000')
                 
                 # Buy transaction
                 Transaction.objects.get_or_create(
@@ -356,9 +358,9 @@ class Command(BaseCommand):
                     symbol=symbol,
                     transaction_type=Transaction.TransactionType.BUY,
                     date=date.today() - timedelta(days=randint(10, 100)),
-                    price=base_price + Decimal(str(random() * 1000)),
+                    price=base_price + Decimal(str(random())),
                     quantity=Decimal(str(randint(10, 500))),
-                    fee=Decimal(str(randint(5000, 50000))),
+                    fee=Decimal(str(randint(5, 50))),
                 )
                 
                 # Sell transaction for some
@@ -368,9 +370,9 @@ class Command(BaseCommand):
                         symbol=symbol,
                         transaction_type=Transaction.TransactionType.SELL,
                         date=date.today() - timedelta(days=randint(1, 5)),
-                        price=base_price + Decimal(str(random() * 1000)),
+                        price=base_price + Decimal(str(random())),
                         quantity=Decimal(str(randint(5, 200))),
-                        fee=Decimal(str(randint(5000, 50000))),
+                        fee=Decimal(str(randint(5, 50))),
                     )
 
             # Create snapshots
