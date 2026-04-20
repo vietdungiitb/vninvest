@@ -276,4 +276,16 @@ from .whale_feed_helpers import (
     _resolve_whale_feed_symbols,
 )
 
+# ── PR-3/4/5: Sentiment, Notifications, Backtest ────────────────────────────
+from .views_sentiment import sentiment_detail_api
+from .views_notifications import (
+    telegram_generate_link,
+    telegram_unlink,
+    telegram_webhook,
+    telegram_status,
+    telegram_settings_update,
+    preferred_symbols_list,
+    preferred_symbols_delete,
+)
+from .views_backtest import backtest_stats_api
 

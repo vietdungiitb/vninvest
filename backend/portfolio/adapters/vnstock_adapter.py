@@ -707,24 +707,118 @@ def fetch_price_board_dataframe(symbols_list: list[str], anchor_symbol: str, sou
 
 
 def fetch_heatmap_snapshot(symbols_list: list[str]) -> list[dict]:
-    """Lấy snapshot heatmap từ MarketSnapshot (private vnstock).
+    """Lấy snapshot heatmap từ vnstock 1.0.1 APIs (KBS source).
 
-    Trả về list[dict] với 8 field chuẩn:
-        symbol, current_price, prev_price, change_pct,
-        volume, market_cap, industry, company_name
+    Trả về list[dict] với các field:
+        symbol, market_cap_bn, industry, company_name, current_price, change_pct
 
-    - price_unit mặc định: nghìn VND (chuẩn HoSE)
-    - market_cap: tỷ VND
+    - market_cap_bn: tỷ VND = outstanding_shares × close_price / 1e9
     - industry: tên ngành tiếng Việt (fallback "Khác")
+
+    Chiến lược:
+    1. price_board (batch, 1 call) → close_price cho tất cả mã
+    2. Listing.symbols_by_industries() (1 call) → industry mapping
+    3. Listing.all_symbols() (1 call) → company_name mapping
+    4. company.overview() song song (ThreadPoolExecutor) → outstanding_shares
 
     Trả về [] nếu không lấy được dữ liệu.
     """
     if not symbols_list:
         return []
     try:
-        from vnstock.api.snapshot import MarketSnapshot
-        snap = MarketSnapshot()
-        return snap.heatmap_data(symbols_list)
+        from vnstock import Vnstock, Listing
+
+        symbols = [s.strip().upper() for s in symbols_list if s]
+
+        # 1. Batch price_board via KBS
+        price_map: dict[str, float] = {}
+        try:
+            stock_client = Vnstock().stock(symbols[0], source='KBS')
+            pb = stock_client.trading.price_board(symbols_list=symbols)
+            if isinstance(pb, pd.DataFrame) and not pb.empty:
+                for _, row in pb.iterrows():
+                    sym = str(row.get('symbol', '') or '').strip().upper()
+                    close = float(row.get('close_price', 0) or 0)
+                    if sym and close > 0:
+                        price_map[sym] = close
+        except Exception as exc:
+            logger.warning('fetch_heatmap_snapshot: price_board lỗi: %s', exc)
+
+        # 2. Industry mapping via Listing
+        industry_map: dict[str, str] = {}
+        try:
+            ls = Listing()
+            ind_df = ls.symbols_by_industries()
+            if isinstance(ind_df, pd.DataFrame) and not ind_df.empty:
+                for _, row in ind_df.iterrows():
+                    sym = str(row.get('symbol', '') or '').strip().upper()
+                    ind = str(row.get('industry_name', '') or '').strip()
+                    if sym:
+                        industry_map[sym] = ind or 'Khác'
+        except Exception as exc:
+            logger.warning('fetch_heatmap_snapshot: industry_map lỗi: %s', exc)
+
+        # 3. Company name mapping via all_symbols
+        name_map: dict[str, str] = {}
+        try:
+            sym_df = Listing().all_symbols(show_log=False)
+            if isinstance(sym_df, pd.DataFrame) and not sym_df.empty:
+                for _, row in sym_df.iterrows():
+                    sym = str(row.get('symbol', '') or '').strip().upper()
+                    name = str(row.get('organ_name', '') or '').strip()
+                    if sym:
+                        name_map[sym] = name or sym
+        except Exception as exc:
+            logger.warning('fetch_heatmap_snapshot: name_map lỗi: %s', exc)
+
+        # 4. Per-symbol outstanding_shares via company.overview() (song song, tối đa 5 luồng)
+        outstanding_map: dict[str, int] = {}
+
+        def _fetch_outstanding(sym: str) -> tuple[str, int]:
+            try:
+                ov = Vnstock().stock(sym, source='KBS').company.overview()
+                if isinstance(ov, pd.DataFrame) and not ov.empty:
+                    val = ov.iloc[0].get('outstanding_shares', 0)
+                    shares = int(float(val or 0))
+                    return sym, shares
+            except Exception as exc:
+                logger.debug('fetch_heatmap_snapshot: overview lỗi %s: %s', sym, exc)
+            return sym, 0
+
+        with cf.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(_fetch_outstanding, sym): sym for sym in symbols}
+            for future in cf.as_completed(futures, timeout=60):
+                try:
+                    sym, shares = future.result()
+                    if shares > 0:
+                        outstanding_map[sym] = shares
+                except Exception as exc:
+                    logger.debug('fetch_heatmap_snapshot: future lỗi: %s', exc)
+
+        # 5. Tổng hợp kết quả
+        results = []
+        for sym in symbols:
+            close_price = price_map.get(sym, 0)
+            outstanding = outstanding_map.get(sym, 0)
+            market_cap_bn: float | None = None
+            if outstanding > 0 and close_price > 0:
+                market_cap_bn = round(outstanding * close_price / 1e9, 4)
+
+            results.append({
+                'symbol': sym,
+                'market_cap_bn': market_cap_bn,
+                'industry': industry_map.get(sym, 'Khác'),
+                'company_name': name_map.get(sym, sym),
+                'current_price': round(close_price / 1000, 4),  # VND → nghìn VND
+                'change_pct': 0,
+            })
+
+        ok_count = sum(1 for r in results if r['market_cap_bn'] is not None)
+        logger.info(
+            'fetch_heatmap_snapshot: OK %d mã, %d có market_cap_bn', len(results), ok_count
+        )
+        return results
+
     except Exception as exc:
         logger.warning('fetch_heatmap_snapshot failed: %s', exc)
         return []

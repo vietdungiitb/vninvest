@@ -18,9 +18,9 @@
 - Update `ReactECharts` configuration:
     - **Treemap**:
         - Use `flatData`.
-        - Disable `levels` (sets border/gap to 0 for groups).
-        - Set `leafDepth` to 0.
-        - Simplified borders for stock tiles.
+        - Use sample-style `levels` configuration for the implicit root + flat stock leaf layer.
+        - Do not depend on sector grouping or explicit `leafDepth` traversal.
+        - Keep stock tiles in one continuous flat grid.
     - **Sunburst**:
         - Use `groupedData`.
         - Maintain multi-level rendering.
@@ -43,4 +43,4 @@
 ### Post-audit Remediation (2026-04-18)
 - Fixed heatmap runtime safety by replacing undefined `i18n.language` usage with context `locale`.
 - Enforced strict Market Cap sorting order across Treemap and Sunburst while preserving size metric toggle for tile sizing.
-- Aligned Treemap config with plan by setting `leafDepth` to `0`.
+- Corrected Treemap config to follow the official flat-data pattern with `levels`, avoiding reliance on `leafDepth` for flat stock rendering.

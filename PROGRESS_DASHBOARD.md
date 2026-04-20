@@ -159,6 +159,52 @@
 
 ## ✅ AUDIT FILE LIST (2026-04-18)
 
+### Heatmap Tooltip Rendering Stabilization (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - tooltip switched to stable rich-text formatter, still showing symbol/company, industry, price, market cap, volume, and 24h trend summary)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: `get_errors` clean; `npm run build` pass.
+- Status: COMPLETED (heatmap tooltip can render reliably without HTML tooltip lifecycle crashes)
+
+### Heatmap Treemap Aligned to Official Flat-Data Pattern (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - treemap now follows ECharts sample-style flat `data` + `levels`; sunburst grouping preserved)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - align treemap implementation note to official flat-data pattern)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - note migration away from brittle `leafDepth`-based setup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: follow-up frontend build required after treemap option refactor.
+- Status: COMPLETED (Treemap uses flat-data/no-group pattern while Sunburst still uses grouped hierarchy)
+
+### Heatmap Treemap Leaf-Depth Regression Fix (2026-04-18)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - set treemap `leafDepth=1` so stock leaf nodes display instead of the implicit root node)
+- docs/HEATMAP_REFACTOR_HYBRID_STABILITY.md (MODIFIED - align treemap implementation note with corrected runtime behavior)
+- docs/WALKTHROUGH_HEATMAP_STABILITY_REFACTOR_20260418.md (MODIFIED - add verified `leafDepth` root-cause note)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: root cause identified from runtime symptom (single root panel with hidden leaves); follow-up frontend build/smoke verification required.
+- Status: COMPLETED (Treemap leaf nodes are configured to render correctly again)
+
+### start_dev Seed Logging Cleanup for vnstock stderr Noise (2026-04-18)
+- start_dev.ps1 (MODIFIED - capture `seed_securities_groups` output via `cmd /c` to avoid false `NativeCommandError` on successful seed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: PowerShell parser validation pass (`start_dev.ps1 parse: OK`); Docker dev stack update completed with backend/frontend smoke checks OK.
+- Status: COMPLETED (seed log noise no longer masquerades as a PowerShell error)
+
+### start_dev Backend Readiness Check Robustification (2026-04-18)
+- start_dev.ps1 (MODIFIED - doi health-check polling sang docker inspect JSON parsing an toan, khong truy cap truc tiep `.State.Health` bang template)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: PowerShell parser validation pass (`start_dev.ps1 parse: OK`).
+- Status: COMPLETED (khac phuc triet de loi `map has no entry for key "State"` trong start script)
+
+### start_dev Healthcheck Inspect Hardening (2026-04-18)
+- start_dev.ps1 (MODIFIED - harden docker inspect health status query with conditional template to avoid missing `State.Health` runtime error)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-18ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- Validation: PowerShell parser validation pass (`start_dev.ps1 parse: OK`).
+- Status: COMPLETED (startup script no longer crashes on containers without healthcheck metadata)
+
 ### Governance Lock - Delivery Playbook Mandatory No-Exception (2026-04-18)
 - docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - them tuyen bo bat buoc khong ngoai le cho toan bo hoat dong phat trien)
 - README.md (MODIFIED - them muc policy bat buoc tuan thu delivery playbook)

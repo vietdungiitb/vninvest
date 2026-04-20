@@ -289,20 +289,26 @@ class HoldingsView(APIView):
 
     def get(self, request, portfolio_id):
         portfolio = generics.get_object_or_404(Portfolio, pk=portfolio_id, user=request.user)
-        df = compute_holdings(portfolio)
+
+        period = request.query_params.get('period', '1D')
+        if period not in ('1D', '5D', '1M', 'YTD'):
+            period = '1D'
+
+        from datetime import date as _date
+        cache_key = f'holdings:{portfolio_id}:{period}:{_date.today().isoformat()}'
+        ttl = 300 if period == '1D' else 3600
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return Response(cached)
+
+        df = compute_holdings(portfolio, period=period)
         holding_list = df.to_dict(orient='records') if not df.empty else []
-        
-        if holding_list:
-            symbols = [h['symbol'] for h in holding_list]
-            profiles = {
-                p['symbol']: p['industry'] or 'Khác' 
-                for p in StockProfile.objects.filter(symbol__in=symbols).values('symbol', 'industry')
-            }
-            for h in holding_list:
-                h['industry'] = profiles.get(h['symbol'], 'Khác')
-                
+
         serializer = HoldingSerializer(holding_list, many=True)
-        return Response(serializer.data)
+        result = serializer.data
+        cache.set(cache_key, result, ttl)
+        return Response(result)
 
 
 class SummaryView(APIView):

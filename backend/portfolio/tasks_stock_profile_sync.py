@@ -93,12 +93,22 @@ def sync_stock_profiles_from_snapshot(self, symbols: list[str] | None = None):
                 continue
             industry = str(row.get("industry") or "").strip() or "Khác"
             company_name = str(row.get("company_name") or "").strip() or symbol
+            # market_cap_bn (hoặc market_cap legacy) trả về đơn vị tỷ VND
+            raw_cap = row.get("market_cap_bn") or row.get("market_cap")
+            try:
+                market_cap_bn = float(raw_cap) if raw_cap is not None else None
+            except (TypeError, ValueError):
+                market_cap_bn = None
 
             try:
-                changed = StockProfile.objects.filter(symbol=symbol).update(
-                    industry=industry,
-                    company_name=company_name,
-                )
+                update_fields = {
+                    "industry": industry,
+                    "company_name": company_name,
+                }
+                if market_cap_bn is not None:
+                    update_fields["market_cap_bn"] = market_cap_bn
+
+                changed = StockProfile.objects.filter(symbol=symbol).update(**update_fields)
                 if not changed:
                     # Mã chưa có trong DB → tạo mới (upsert)
                     StockProfile.objects.update_or_create(
@@ -106,15 +116,19 @@ def sync_stock_profiles_from_snapshot(self, symbols: list[str] | None = None):
                         defaults={
                             "industry": industry,
                             "company_name": company_name,
+                            "market_cap_bn": market_cap_bn,
                             "exchange": "",
                         },
                     )
                 updated += 1
                 # Tích lũy vào batch Redis
-                redis_batch[heatmap_static_cache_key(symbol)] = {
+                redis_entry = {
                     "industry": industry,
                     "company_name": company_name,
                 }
+                if market_cap_bn is not None:
+                    redis_entry["market_cap_bn"] = market_cap_bn
+                redis_batch[heatmap_static_cache_key(symbol)] = redis_entry
             except Exception as exc:
                 logger.warning(
                     "sync_stock_profiles: Lỗi khi update %s: %s", symbol, exc

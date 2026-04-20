@@ -10,10 +10,10 @@ import { useI18n } from '../context/LangContext';
 
 // Stable references outside component — prevents useMemo from recomputing on every render
 const FINTECH_HEAT_COLORS = {
-  upStrong: '#089981',
-  upSoft: '#1B5E20',
-  downStrong: '#F23645',
-  downSoft: '#7F1D1D',
+  upStrong: '#00FFBB',   // Neon Emerald
+  upSoft: '#00CC99',
+  downStrong: '#FF3344', // Electric Red
+  downSoft: '#FF6677',
   neutral: '#2A2E39',
 };
 
@@ -73,7 +73,13 @@ export default function PortfolioHeatmap({ holdings, title }) {
     }
     // NOTE: Do NOT dispatch hideTip here — it kills the tooltip on every
     // resize / realtime data update, making tooltip permanently invisible.
+    // No padding subtraction — container has no padding so full width is correct.
+    const container = chartContainerRef.current;
+    const explicitWidth = container ? Math.max(Math.floor(container.getBoundingClientRect().width), 120) : undefined;
+    const explicitHeight = container ? Math.max(Math.floor(container.getBoundingClientRect().height), 200) : undefined;
     chart.resize({
+      width: explicitWidth,
+      height: explicitHeight,
       animation: {
         duration: 0,
       },
@@ -94,15 +100,28 @@ export default function PortfolioHeatmap({ holdings, title }) {
       scheduleResize();
     });
 
-    if (chartContainerRef.current) {
-      observer.observe(chartContainerRef.current);
+    const container = chartContainerRef.current;
+    if (container) {
+      observer.observe(container);
+      if (container.parentElement) {
+        observer.observe(container.parentElement);
+      }
     }
+
+    // Initial render can race with flex/grid sizing; retry a few times to
+    // ensure ECharts hitbox matches visual tiles.
+    const settleTimer = window.setInterval(scheduleResize, 180);
+    const settleStopTimer = window.setTimeout(() => {
+      window.clearInterval(settleTimer);
+    }, 2200);
 
     window.addEventListener('resize', scheduleResize);
 
     return () => {
       observer.disconnect();
       window.removeEventListener('resize', scheduleResize);
+      window.clearInterval(settleTimer);
+      window.clearTimeout(settleStopTimer);
       if (resizeRafRef.current) {
         cancelAnimationFrame(resizeRafRef.current);
         resizeRafRef.current = 0;
@@ -177,20 +196,42 @@ export default function PortfolioHeatmap({ holdings, title }) {
     const sectors = {};
     const flatList = [];
 
+    // Pre-pass: tính avg giá trị danh mục của holdings để làm nominal cho watchlist (weight mode)
+    const holdingPortfolioValues = (holdings || [])
+      .filter(h => h.is_holding)
+      .map(h => {
+        const v = toNumber(h.live_market_value);
+        const s = toNumber(h.market_value);
+        return v > 0 ? v : s;
+      })
+      .filter(v => v > 0);
+    const avgHoldingPortfolioValue = holdingPortfolioValues.length > 0
+      ? holdingPortfolioValues.reduce((acc, v) => acc + v, 0) / holdingPortfolioValues.length
+      : 1;
+    // Watchlist trong weight mode: nominal = 15% avg holding → hiển thị rõ nhưng nhỏ hơn holdings
+    const watchlistNominalWeight = Math.max(avgHoldingPortfolioValue * 0.15, 1);
+
     (holdings || []).forEach((h) => {
       const liveValue = toNumber(h.live_market_value);
       const snapshotValue = toNumber(h.market_value);
-      // market_cap_bn (tỷ VND) từ static profile sync; live_market_cap từ quote feed (thường = 0)
+      // market_cap_bn (tỷ VND) từ static profile sync — nguồn chính xác nhất
       const marketCapFromProfile = toNumber(h.market_cap_bn) * 1e9; // tỷ → VND
-      const marketCap = toNumber(h.live_market_cap || h.market_cap) || marketCapFromProfile;
-
-      const sizeByWeight = liveValue > 0 ? liveValue : snapshotValue;
-      // Nếu không có market cap thực → ước tính từ giá × số lượng (proxy, tốt hơn equal weight)
+      const marketCapFromFeed = toNumber(h.live_market_cap || h.market_cap);
       const priceProxy = toNumber(h.live_current_price || h.current_price);
       const qtyProxy = toNumber(h.quantity || h.shares);
-      const estimatedCap = priceProxy > 0 && qtyProxy > 0 ? priceProxy * qtyProxy : sizeByWeight;
-      const sizeByCap = marketCap > 0 ? marketCap : estimatedCap;
-      const size = sizeMetric === 'cap' ? sizeByCap : sizeByWeight;
+      const portfolioValue = h.is_holding ? (liveValue > 0 ? liveValue : snapshotValue) : 0;
+      const estimatedCap = priceProxy > 0 && qtyProxy > 0 ? priceProxy * qtyProxy : portfolioValue;
+
+      let size;
+      if (sizeMetric === 'cap') {
+        // Vốn hóa: ưu tiên market_cap_bn profile (chính xác) > feed > ước tính
+        size = marketCapFromProfile > 0 ? marketCapFromProfile
+             : marketCapFromFeed > 0 ? marketCapFromFeed
+             : estimatedCap;
+      } else {
+        // Tỷ trọng: holdings theo giá trị danh mục thực; watchlist hiển thị nominal bằng nhau
+        size = h.is_holding ? portfolioValue : watchlistNominalWeight;
+      }
 
       if (size <= 0) return;
 
@@ -205,7 +246,8 @@ export default function PortfolioHeatmap({ holdings, title }) {
       const isExtreme = Math.abs(changePct) >= 3;
       const tileStyle = resolveHeatTileStyle(changePct);
 
-      const sortMarketCap = marketCap > 0 ? marketCap : sizeByCap;
+      const resolvedMarketCap = marketCapFromProfile > 0 ? marketCapFromProfile : marketCapFromFeed;
+      const sortMarketCap = resolvedMarketCap > 0 ? resolvedMarketCap : estimatedCap;
 
       const leafNode = {
         id: `symbol:${symbol}`,
@@ -215,10 +257,14 @@ export default function PortfolioHeatmap({ holdings, title }) {
         industry,
         isHolding: Boolean(h.is_holding),
         livePrice: toNumber(h.live_current_price || h.current_price),
-        marketCap,
+        marketCap: resolvedMarketCap,
         sortMarketCap,
         volume: toNumber(h.live_volume || h.volume),
         sparkline24: Array.isArray(h.sparkline24) ? h.sparkline24 : [],
+        quantity: h.is_holding ? toNumber(h.quantity) : null,
+        avgCost: h.is_holding ? toNumber(h.avg_cost) : null,
+        unrealizedPl: h.is_holding ? toNumber(h.live_unrealized_pl ?? h.unrealized_pl) : null,
+        unrealizedPlPct: h.is_holding ? toNumber(h.live_unrealized_pl_pct ?? h.unrealized_pl_pct) : null,
         sizeValue: size,
         changePct,
         value: [size, changePct], // [size, change]
@@ -226,7 +272,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
           color: tileStyle.fill,
           borderColor: h.is_holding ? 'rgba(250, 204, 21, 0.75)' : 'rgba(15, 23, 42, 0.32)',
           borderWidth: h.is_holding ? 2 : 1,
-          shadowBlur: isExtreme ? 10 : 0,
+          shadowBlur: isExtreme ? 15 : 0,
           shadowColor: isExtreme ? tileStyle.glow : 'rgba(0, 0, 0, 0)',
         },
       };
@@ -250,16 +296,25 @@ export default function PortfolioHeatmap({ holdings, title }) {
       sectors[industry].weightedChange += size * changePct;
     });
 
-    // Calculate Global Normalization (Bloomberg Style)
-    // We want to compress huge outliers (VCB/HPG) so they don't eat 90% of the screen,
-    // but still clearly indicate their relative rank.
-    const allSizes = flatList.map(l => l.sizeValue);
-    const minSize = allSizes.length ? Math.min(...allSizes) : 1;
-    const sqrtMin = Math.sqrt(Math.max(minSize, 1));
+    // Rank-score normalization (1–100):
+    // - Sắp xếp tất cả mã theo sizeValue tăng dần → gán rank 1..n
+    // - Map rank → score trong [RANK_MIN, 100] theo công thức tuyến tính
+    // - Tile nhỏ nhất luôn = RANK_MIN (không bao giờ ẩn), lớn nhất = 100
+    // - Thứ tự tương đối được bảo toàn (VCB > HPG > MBS)
+    // - Tỷ lệ diện tích tối đa là 100/RANK_MIN = 20:1, hợp lý để hiển thị
+    const RANK_MIN = 5; // score thấp nhất để tile nhỏ nhất vẫn readable
+    const sorted = [...flatList].sort((a, b) => a.sizeValue - b.sizeValue);
+    const rankMap = new Map();
+    sorted.forEach((node, idx) => {
+      const n = sorted.length;
+      const score = n === 1
+        ? 100
+        : RANK_MIN + ((idx) / (n - 1)) * (100 - RANK_MIN);
+      rankMap.set(node.id, Math.round(score * 10) / 10); // giữ 1 chữ số thập phân
+    });
 
     const normalizeNode = (node) => {
-      const sqrtRaw = Math.sqrt(Math.max(node.sizeValue, 1));
-      const normalizedDisplaySize = Math.max(sqrtRaw / Math.max(sqrtMin, 1), 1);
+      const normalizedDisplaySize = rankMap.get(node.id) ?? RANK_MIN;
       return {
         ...node,
         value: [normalizedDisplaySize, node.changePct],
@@ -317,7 +372,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
     const sizeValue = Array.isArray(leaf.value) ? toNumber(leaf.value[0]) : toNumber(leaf.value);
     const ratio = sizeValue / maxLeafSize;
 
-    if (ratio < 0.18) {
+    if (ratio < 0.3) {
       return `{symbol|${leaf.name}}`;
     }
     if (ratio < 0.42) {
@@ -363,6 +418,19 @@ export default function PortfolioHeatmap({ holdings, title }) {
     ].join('');
   }, []);
 
+  const dispatchSyncEvent = useCallback((params) => {
+    const data = params?.data;
+    if (!data || data.children) return; // bỏ qua sector node
+    window.dispatchEvent(new CustomEvent('vninvest:sync:interaction', {
+      detail: {
+        timestamp: Date.now(),
+        symbol: data.symbol || data.name,
+        source: 'PortfolioHeatmap',
+        action: 'select',
+      },
+    }));
+  }, []);
+
   const option = useMemo(() => {
     const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
     if (!dataSet || dataSet.length === 0) return null;
@@ -376,12 +444,17 @@ export default function PortfolioHeatmap({ holdings, title }) {
 
     const industryLabel = t('dashboardRealtime.heatmapTooltipIndustry', { defaultValue: 'Ngành' });
     const trendLabel = t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Xu hướng 24h' });
+    const quantityLabel = t('dashboardRealtime.heatmapTooltipQuantity', { defaultValue: 'Số lượng CP' });
+    const avgCostLabel = t('dashboardRealtime.heatmapTooltipAvgCost', { defaultValue: 'Giá vốn TB' });
+    const unrealizedPlLabel = t('dashboardRealtime.heatmapTooltipUnrealizedPl', { defaultValue: 'Lãi/Lỗ chưa TH' });
+    const holdingTagLabel = t('dashboardRealtime.heatmapTooltipHoldingTag', { defaultValue: 'Đang nắm giữ' });
 
     const tooltip = {
       show: true,
       trigger: 'item',
-      triggerOn: 'mousemove',
+      triggerOn: 'click',
       appendToBody: true,
+      confine: false,
       enterable: false,
       alwaysShowContent: false,
       showDelay: 40,
@@ -395,7 +468,9 @@ export default function PortfolioHeatmap({ holdings, title }) {
       formatter: (params) => {
         try {
         const data = params?.data;
-        if (!data) return `<div style="padding:8px 12px"><b style="color:#f8fafc">${params?.name || ''}</b></div>`;
+        // Guard: bỏ qua virtual root node (ECharts treemap tạo ra khi hover vào gap)
+        if (!data || !data.name || data.name === 'undefined') return '';
+        if (!params.name || params.name === 'undefined') return '';
 
         // Industry path
         const treePathInfo = params.treePathInfo || [];
@@ -429,6 +504,12 @@ export default function PortfolioHeatmap({ holdings, title }) {
         const vol = Math.round(toNumber(data.volume));
         const sparkSvg = buildSparklineSvg(data.sparkline24);
         const hasSpark = sparkSvg.length > 0;
+        const qty = data.quantity;
+        const avgCostVal = toNumber(data.avgCost);
+        const unrealizedPl = data.unrealizedPl;
+        const unrealizedPlPct = toNumber(data.unrealizedPlPct);
+        const plColor = unrealizedPl > 0 ? '#4ade80' : unrealizedPl < 0 ? '#f87171' : '#94a3b8';
+        const plBg = unrealizedPl > 0 ? 'rgba(74,222,128,0.12)' : unrealizedPl < 0 ? 'rgba(248,113,113,0.12)' : 'rgba(148,163,184,0.1)';
 
         return [
           `<div style="min-width:210px;max-width:260px;font-family:inherit">`,
@@ -447,14 +528,27 @@ export default function PortfolioHeatmap({ holdings, title }) {
           hasSpark
             ? `<div style="padding:4px 14px 0;background:rgba(10,18,35,0.7)">${sparkSvg}<div style="font-size:9px;color:#475569;text-align:right;margin-top:-2px;padding-bottom:4px">${trendLabel}</div></div>`
             : '',
-          // Stats
-          `<div style="padding:8px 14px 10px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">`,
+          // Stats grid
+          `<div style="padding:8px 14px 6px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">`,
           `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${currentPriceLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${livePrice > 0 ? livePrice.toFixed(2) : '—'} <span style="font-size:10px;color:#94a3b8">VND</span></div></div>`,
           `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${volumeLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${vol > 0 ? vol.toLocaleString(localeTag || 'vi-VN') : '—'}</div></div>`,
           mcap > 0
             ? `<div style="grid-column:1/-1"><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${marketCapLabel}</div><div style="font-size:11px;font-weight:600;color:#cbd5e1">${(mcap / 1e9).toFixed(1)}B VND</div></div>`
             : '',
           `</div>`,
+          // Holdings section (chỉ hiển thị khi đang nắm giữ)
+          data.isHolding && (qty > 0 || avgCostVal > 0 || unrealizedPl !== null)
+            ? [
+                `<div style="margin:0 14px 8px;padding:8px 10px;background:rgba(250,204,21,0.06);border:1px solid rgba(250,204,21,0.18);border-radius:8px">`,
+                `<div style="font-size:9px;color:#fbbf24;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">▣ ${holdingTagLabel}</div>`,
+                `<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 10px">`,
+                qty > 0 ? `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${quantityLabel}</div><div style="font-size:11px;font-weight:700;color:#e2e8f0">${qty.toLocaleString(localeTag || 'vi-VN')}</div></div>` : '',
+                avgCostVal > 0 ? `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${avgCostLabel}</div><div style="font-size:11px;font-weight:700;color:#e2e8f0">${avgCostVal.toFixed(2)} <span style="font-size:9px;color:#94a3b8">VND</span></div></div>` : '',
+                unrealizedPl !== null ? `<div style="grid-column:1/-1;margin-top:2px"><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${unrealizedPlLabel}</div><div style="font-size:12px;font-weight:700;color:${plColor};background:${plBg};padding:2px 6px;border-radius:5px;display:inline-block;margin-top:1px">${unrealizedPl > 0 ? '+' : ''}${(unrealizedPl / 1000).toFixed(0)}K <span style="font-size:10px;opacity:0.8">(${unrealizedPlPct > 0 ? '+' : ''}${unrealizedPlPct.toFixed(2)}%)</span></div></div>` : '',
+                `</div>`,
+                `</div>`,
+              ].join('')
+            : '',
           `</div>`,
         ].join('');
         } catch (_err) {
@@ -603,7 +697,6 @@ export default function PortfolioHeatmap({ holdings, title }) {
           },
           label: {
             show: true,
-            position: 'inside',
             align: 'center',
             verticalAlign: 'middle',
             formatter: buildLeafLabel,
@@ -615,7 +708,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
                 fontSize: 14,
                 lineHeight: 16,
                 textShadowBlur: 3,
-                textShadowColor: 'rgba(2, 6, 23, 0.7)',
+                textShadowColor: 'rgba(0, 0, 0, 0.7)',
                 align: 'center',
               },
               pct: {
@@ -673,7 +766,7 @@ export default function PortfolioHeatmap({ holdings, title }) {
               onClick={() => setSizeMetric('weight')}
               className={`px-3 py-1 text-[10px] font-black rounded-full transition-all duration-300 ${sizeMetric === 'weight' ? 'bg-cyan-500 text-white shadow-[0_0_16px_rgba(6,182,212,0.35)]' : 'text-slate-400 hover:text-slate-200'}`}
             >
-              {t('dashboardRealtime.heatmapSizeWeight', { defaultValue: 'Weight' })}
+              {t('dashboardRealtime.heatmapSizeWeight', { defaultValue: 'Giá trị' })}
             </button>
             <button
               onClick={() => setSizeMetric('cap')}
@@ -701,36 +794,41 @@ export default function PortfolioHeatmap({ holdings, title }) {
         </div>
       </div>
 
-      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT, padding: '10px' }}>
+      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT }}>
         <ReactECharts
-          key={`${viewMode}-${locale}`}
+          key={`${viewMode}-${sizeMetric}-${locale}`}
           ref={chartComponentRef}
           option={option}
-          style={{ height: HEATMAP_HEIGHT - 20, width: '100%' }}
+          style={{ height: HEATMAP_HEIGHT, width: '100%' }}
           notMerge={false}
           lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
+          onEvents={{ click: dispatchSyncEvent }}
           onChartReady={() => {
-            // Double RAF: ensure browser has completed flex/grid layout
-            // before ECharts reads container dimensions for resize.
+            // Immediate attempt + progressive fallbacks:
+            // flex layout may not be complete when onChartReady fires.
+            safeResizeChart();
             requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                safeResizeChart();
-              });
+              safeResizeChart();
+              requestAnimationFrame(safeResizeChart);
             });
+            // setTimeout 150ms catches cases where flex/grid settles late
+            setTimeout(safeResizeChart, 150);
+            setTimeout(safeResizeChart, 420);
+            setTimeout(safeResizeChart, 900);
           }}
         />
         
         <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#089981] shadow-[0_0_6px_rgba(8,153,129,0.38)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#00FFBB] shadow-[0_0_8px_rgba(0,255,187,0.45)]" />
             <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendUp', { defaultValue: 'Tăng' })}
             </span>
           </div>
           <div className="w-px h-3 bg-slate-700" />
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#F23645] shadow-[0_0_6px_rgba(242,54,69,0.36)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FF3344] shadow-[0_0_8px_rgba(255,51,68,0.45)]" />
             <span className="text-[9px] text-slate-400 font-black tracking-tighter uppercase">
               {t('dashboardRealtime.heatmapLegendDown', { defaultValue: 'Giảm' })}
             </span>

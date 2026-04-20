@@ -44,6 +44,59 @@ function Invoke-Compose {
     docker compose --env-file $ComposeEnvFile -p $ProjectName @ComposeFiles @args
 }
 
+function Get-ContainerHealthStatus {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ContainerName
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    $nativeCommandErrPrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
+    if ($nativeCommandErrPrefVar) {
+        $previousNativeCommandErrPref = $nativeCommandErrPrefVar.Value
+        $PSNativeCommandUseErrorActionPreference = $false
+    }
+    $ErrorActionPreference = "Continue"
+
+    try {
+        $inspectJson = docker inspect $ContainerName 2>$null | Out-String
+        if ($LASTEXITCODE -ne 0 -or -not $inspectJson) {
+            return $null
+        }
+
+        $inspectObj = $inspectJson | ConvertFrom-Json
+        if ($inspectObj -is [array]) {
+            $inspectObj = $inspectObj | Select-Object -First 1
+        }
+        if (-not $inspectObj) {
+            return $null
+        }
+
+        if (-not ($inspectObj.PSObject.Properties.Name -contains "State") -or -not $inspectObj.State) {
+            return "unknown"
+        }
+
+        if (($inspectObj.State.PSObject.Properties.Name -contains "Health") -and $inspectObj.State.Health) {
+            return [string]$inspectObj.State.Health.Status
+        }
+
+        if (($inspectObj.State.PSObject.Properties.Name -contains "Status") -and [string]$inspectObj.State.Status -eq "running") {
+            return "running-no-healthcheck"
+        }
+
+        return "no-healthcheck"
+    }
+    catch {
+        return $null
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+        if ($nativeCommandErrPrefVar) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativeCommandErrPref
+        }
+    }
+}
+
 # ── Down mode ─────────────────────────────────────────────────────────────────
 if ($Down) {
     Write-Step "Dừng và xóa containers (volumes giữ nguyên)"
@@ -129,13 +182,13 @@ $healthy = $false
 
 for ($i = 1; $i -le $maxRetries; $i++) {
     Start-Sleep -Seconds $retryDelay
-    $status = docker inspect --format='{{.State.Health.Status}}' "vninvest-dev-backend" 2>$null
+    $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-backend"
     if (-not $status) {
         # fallback: compose tạo tên có suffix
-        $status = docker inspect --format='{{.State.Health.Status}}' "vninvest-dev-backend-1" 2>$null
+        $status = Get-ContainerHealthStatus -ContainerName "vninvest-dev-backend-1"
     }
     Write-Host "  [$i/$maxRetries] backend health: $status"
-    if ($status -eq "healthy") {
+    if ($status -eq "healthy" -or $status -eq "running-no-healthcheck") {
         $healthy = $true
         break
     }
@@ -200,7 +253,10 @@ print('Created admin / test@123456' if created else 'Updated admin password -> t
 
         # Seed securities groups (VN30, sectors) nếu chưa có
         Write-Host "  Seed securities groups..."
-        docker exec $backendContainer python manage.py seed_securities_groups 2>&1
+        $seedGroupOutput = cmd /c "docker exec $backendContainer python manage.py seed_securities_groups 2>&1"
+        if ($seedGroupOutput) {
+            $seedGroupOutput | ForEach-Object { Write-Host $_ }
+        }
         if ($LASTEXITCODE -ne 0) {
             throw "Seed securities groups thất bại (exit code: $LASTEXITCODE)."
         }

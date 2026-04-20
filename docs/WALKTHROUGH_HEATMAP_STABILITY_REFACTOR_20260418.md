@@ -29,6 +29,7 @@ The heatmap now uses a dual-data approach depending on the `viewMode`:
 - Confirmed that the `key` prop correctly resets the chart instance on mode changes.
 - Fixed runtime i18n safety by replacing undefined language references with `locale` from context.
 - Updated tooltip captions to use i18n keys in both Vietnamese and English dictionaries.
+- Corrected Treemap to use the official flat-data + `levels` pattern after runtime verification showed the prior `leafDepth` approach was brittle for this dataset shape.
 
 ### Visual Audit (Constructive)
 - **Treemap**: Confirmed that it displays a single, dense grid with sharp borders between stocks and no sector overlapping labels.

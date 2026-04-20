@@ -981,13 +981,6 @@ function IntradayMatchedPanel({ symbol, liveVolume }) {
         )}
       </div>
 
-      {/* AI Advisory Prompt Config Settings Drawer */}
-      <AIAdvisoryPromptConfigDrawer
-        isOpen={advisoryPromptConfigShowSettings}
-        onClose={() => setAdvisoryPromptConfigShowSettings(false)}
-        config={advisoryPromptConfig}
-        onConfigChange={setAdvisoryPromptConfig}
-      />
     </section>
   );
 }
@@ -1535,14 +1528,14 @@ function _getDefaultPromptConfig() {
   return {
     version: 2,
     sources: {
-      whale: { enabled: true },
-      dark_flow: { enabled: true },
-      technical: { enabled: true, indicators: ['rsi', 'bollinger', 'vols'] },
-      news: { enabled: true },
-      market: { enabled: true },
-      fundamental: { enabled: false },
-      ownership: { enabled: false },
-      sector: { enabled: false },
+      whale:       { enabled: true,  lookback: 180 },
+      dark_flow:   { enabled: true,  lookback: 90 },
+      technical:   { enabled: true,  lookback: 30, indicators: ['rsi', 'bollinger', 'vols'] },
+      news:        { enabled: true,  lookback: 14 },
+      market:      { enabled: true,  lookback: 7 },
+      fundamental: { enabled: false, lookback: 90 },
+      ownership:   { enabled: false, lookback: 365 },
+      sector:      { enabled: false, lookback: 60 },
     },
   };
 }
@@ -3111,14 +3104,14 @@ export default function StockDetail() {
                   {activeInsightTab === 'advisory'
                     ? t('stockDetail.advisorySession')
                     : activeInsightTab === 'advanced'
-                      ? 'Nang cao'
+                      ? t('stockDetail.advancedTab')
                       : t('stockNews.sectionLabel')}
                 </p>
                 <h2 className="mt-1 text-lg font-semibold text-slate-100">
                   {activeInsightTab === 'advisory'
                     ? t('stockDetail.aiAdvisoryFor', { symbol: normalizedSymbol })
                     : activeInsightTab === 'advanced'
-                      ? `Nang cao ${normalizedSymbol}`
+                      ? `${t('stockDetail.advancedTab')} ${normalizedSymbol}`
                       : `${t('stockNews.sectionLabel')} ${normalizedSymbol}`}
                 </h2>
               </div>
@@ -3155,7 +3148,17 @@ export default function StockDetail() {
                         : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
                     }`}
                   >
-                    Nang cao
+                    {t('stockDetail.advancedTab')}
+                  </button>
+                ) : null}
+                {activeInsightTab === 'advisory' ? (
+                  <button
+                    type="button"
+                    onClick={() => setAdvisoryPromptConfigShowSettings(true)}
+                    className="rounded-full border border-blue-700/60 bg-blue-500/10 px-3 py-1 text-xs text-blue-300 hover:bg-blue-500/20"
+                    title="AI Advisory Settings"
+                  >
+                    ⚙️ {t('stockDetail.settings')}
                   </button>
                 ) : null}
                 {activeInsightTab === 'advisory' && advisoryChartContextState.used !== null ? (
@@ -3201,121 +3204,7 @@ export default function StockDetail() {
                     <span>
                       {advisorySession.created_at ? new Date(advisorySession.created_at).toLocaleString(undefined) : '—'}
                     </span>
-                    <span className="text-slate-600">• {t('stockDetail.tabsCount', { count: advisoryComponents.length })}</span>
-                    <span className="text-slate-600">• {t('stockDetail.tabsUsedCount', { count: (advisoryComponents.filter((item) => item.include_in_summary)).length })}</span>
-                    <button
-                      type="button"
-                      onClick={handleGenerateAdvisoryComponents}
-                      disabled={advisoryGeneratingComponents || advisoryLoading}
-                      className="btn-secondary ml-auto"
-                    >
-                      {advisoryGeneratingComponents ? t('stockDetail.creatingTabs') : t('stockDetail.createAiTabs')}
-                    </button>
                   </div>
-
-                  {/* Observability moved to Advanced tab for admin/staff only. */}
-
-                  {advisoryDeletedComponents.length > 0 ? (
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">{t('stockDetail.deletedTabs')}</p>
-                        <button
-                          type="button"
-                          onClick={handleClearDeletedAdvisoryComponents}
-                          disabled={advisoryClearingDeleted}
-                          className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20 disabled:opacity-60"
-                        >
-                          {advisoryClearingDeleted ? 'Clearing...' : 'Clear Deleted Tabs'}
-                        </button>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {advisoryDeletedComponents.map((item) => (
-                          <button
-                            key={item.id}
-                            type="button"
-                            onClick={() => handleRestoreAdvisoryComponent(item.id)}
-                            disabled={advisoryComponentBusyId === item.id}
-                            className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1 text-xs text-slate-300 hover:border-cyan-500/60 hover:text-cyan-300"
-                          >
-                            {t('stockDetail.restoreTab')} {item.indicator_name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-2">
-                    <div className="flex flex-wrap gap-2">
-                      {advisoryComponents.length === 0 ? (
-                        <p className="px-2 py-1 text-xs text-slate-500">{t('stockDetail.noComponentTabs')}</p>
-                      ) : advisoryComponents.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => setActiveAdvisoryComponentId(item.id)}
-                          className={`rounded-full border px-3 py-1 text-xs transition-colors ${
-                            activeAdvisoryComponent?.id === item.id
-                              ? 'border-cyan-500/70 bg-cyan-500/10 text-cyan-300'
-                              : 'border-slate-700 bg-slate-900/70 text-slate-300 hover:border-slate-500'
-                          }`}
-                        >
-                          {item.indicator_name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {activeAdvisoryComponent ? (
-                    <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-200">{activeAdvisoryComponent.indicator_name}</p>
-                          <p className="text-[11px] text-slate-500">
-                            {activeAdvisoryComponent.created_at ? new Date(activeAdvisoryComponent.created_at).toLocaleString(undefined) : '—'}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 text-[11px] text-slate-300">
-                            {advisoryStatusLabel(activeAdvisoryComponent.status, t)}
-                          </span>
-                          <span className="rounded-full border border-amber-700/70 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
-                            {activeAdvisoryComponent.confidence_score}/10
-                          </span>
-                          <span className="rounded-full border border-emerald-700/70 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300">
-                            {advisoryActionLabel(activeAdvisoryComponent.suggested_action, t)}
-                          </span>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-xs leading-6 text-slate-300 whitespace-pre-line">{activeAdvisoryComponent.rationale_text || t('stockDetail.noExtraDescription')}</p>
-
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleComponentInclude(activeAdvisoryComponent.id)}
-                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
-                          className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-200 hover:bg-slate-800/70"
-                        >
-                          {activeAdvisoryComponent.include_in_summary ? t('stockDetail.excludeFromSummary') : t('stockDetail.includeInSummary')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRefreshActiveAdvisoryComponent(activeAdvisoryComponent.id)}
-                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
-                          className="rounded-full border border-cyan-700/60 bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300 hover:bg-cyan-500/20"
-                        >
-                          {t('stockDetail.refreshTab')}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteAdvisoryComponent(activeAdvisoryComponent.id)}
-                          disabled={advisoryComponentBusyId === activeAdvisoryComponent.id}
-                          className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20"
-                        >
-                          {t('stockDetail.deleteTab')}
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
 
                   <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2">
@@ -3338,17 +3227,8 @@ export default function StockDetail() {
                         </select>
                         <button
                           type="button"
-                          onClick={() => setAdvisoryPromptConfigShowSettings(true)}
-                          disabled={advisoryRegeneratingSummary}
-                          className="rounded-full border border-blue-700/60 bg-blue-500/10 px-3 py-1 text-xs text-blue-300 hover:bg-blue-500/20 disabled:opacity-60"
-                          title="AI Advisory Settings"
-                        >
-                          ⚙️ {t('stockDetail.settings') || 'Settings'}
-                        </button>
-                        <button
-                          type="button"
                           onClick={handleRegenerateExecutiveSummary}
-                          disabled={advisoryRegeneratingSummary || advisoryComponents.length === 0}
+                          disabled={advisoryRegeneratingSummary}
                           className="btn-secondary"
                         >
                           {advisoryRegeneratingSummary ? t('stockDetail.summarizing') : t('stockDetail.regenerateSummary')}
@@ -3359,7 +3239,7 @@ export default function StockDetail() {
                           disabled={advisoryDeletingSummary || !advisoryExecutiveSummary}
                           className="rounded-full border border-rose-700/60 bg-rose-500/10 px-3 py-1 text-xs text-rose-300 hover:bg-rose-500/20 disabled:opacity-60"
                         >
-                          {advisoryDeletingSummary ? 'Dang xoa...' : 'Xoa thong tin tong hop'}
+                          {advisoryDeletingSummary ? 'Đang xóa...' : t('stockDetail.deleteExecutiveSummary')}
                         </button>
                       </div>
                     </div>
@@ -3576,6 +3456,13 @@ export default function StockDetail() {
         loading={financialsLoading}
         selectedYear={financialsYear}
         onYearChange={setFinancialsYear}
+      />
+      {/* AI Advisory Prompt Config Settings Drawer */}
+      <AIAdvisoryPromptConfigDrawer
+        isOpen={advisoryPromptConfigShowSettings}
+        onClose={() => setAdvisoryPromptConfigShowSettings(false)}
+        config={advisoryPromptConfig}
+        onConfigChange={setAdvisoryPromptConfig}
       />
     </div>
   );

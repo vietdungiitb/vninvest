@@ -203,13 +203,14 @@ class TrackedSymbolListCreateView(APIView):
             missing = [s for s in symbols if s not in profiles]
             if missing:
                 db_rows = StockProfile.objects.filter(symbol__in=missing).values(
-                    'symbol', 'industry', 'company_name'
+                    'symbol', 'industry', 'company_name', 'market_cap_bn'
                 )
                 lazy_cache: dict[str, dict] = {}
                 for p in db_rows:
                     entry = {
                         'industry': p['industry'] or 'Khác',
                         'company_name': p['company_name'] or p['symbol'],
+                        'market_cap_bn': float(p['market_cap_bn']) if p['market_cap_bn'] is not None else None,
                     }
                     profiles[p['symbol']] = entry
                     lazy_cache[heatmap_static_cache_key(p['symbol'])] = entry
@@ -230,6 +231,7 @@ class TrackedSymbolListCreateView(APIView):
                 'symbol': ts.symbol,
                 'industry': static.get('industry', 'Khác'),
                 'company_name': static.get('company_name', ts.symbol),
+                'market_cap_bn': static.get('market_cap_bn'),  # tỷ VND từ vnstock sync
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
                 'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,

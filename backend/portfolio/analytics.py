@@ -21,7 +21,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
-from .models import DailyPrice, Transaction
+from .models import DailyPrice, StockProfile, Transaction
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ def _wavg_cost_for_symbol(group: pd.DataFrame) -> dict:
 # Bước 3: Holdings DataFrame + Unrealized P/L (vectorized)
 # ---------------------------------------------------------------------------
 
-def compute_holdings(portfolio) -> pd.DataFrame:
+def compute_holdings(portfolio, period: str = '1D') -> pd.DataFrame:
     """
     Tính toàn bộ vị thế đang nắm giữ + các chỉ số P/L.
 
@@ -176,11 +176,14 @@ def compute_holdings(portfolio) -> pd.DataFrame:
         2. GroupBy symbol → _wavg_cost_for_symbol() (tuần tự, nhưng không có DB I/O)
         3. Load giá mới nhất → join vào DataFrame
         4. Vectorized: tính market_value, unrealized_pl, unrealized_pl_pct cho tất cả mã cùng lúc
+        3b-extra. Tính change_period_pct cho period > 1D (1 bulk query duy nhất)
+        3c. Join StockProfile (industry, market_cap_bn) — 1 query duy nhất, không N+1
 
     Returns DataFrame với các columns:
         symbol, quantity, avg_cost, cost_basis, current_price,
         market_value, unrealized_pl, unrealized_pl_pct,
-        realized_pl, dividends_received
+        realized_pl, dividends_received, change_period_pct,
+        industry, market_cap_bn
     """
     df_txs = load_transactions_df(portfolio)
     if df_txs.empty:
@@ -253,6 +256,67 @@ def compute_holdings(portfolio) -> pd.DataFrame:
 
     # Cột NaN (chưa có giá) → None khi serialize
     df_holdings = df_holdings.where(pd.notna(df_holdings), other=None)
+
+    # --- Bước 3b-extra: change_period_pct cho period > 1D (1 bulk query duy nhất, không N+1) ---
+    PERIOD_DAYS = {'1D': 1, '5D': 5, '1M': 21, 'YTD': 90}
+    n_days = PERIOD_DAYS.get(period, 1)
+    symbols_list = df_holdings['symbol'].tolist()
+
+    if n_days > 1 and symbols_list:
+        ref_date = date.today() - timedelta(days=n_days + 3)  # +3 buffer cho ngày không giao dịch
+        prices_range_qs = (
+            DailyPrice.objects.filter(
+                symbol__in=symbols_list,
+                date__gte=ref_date,
+            )
+            .values('symbol', 'date', 'close_price')
+            .order_by('symbol', 'date')
+        )
+        df_range = pd.DataFrame.from_records(prices_range_qs)
+        if not df_range.empty:
+            df_range['date'] = pd.to_datetime(df_range['date'])
+            df_range['close_price'] = df_range['close_price'].astype(float)
+            df_latest = df_range.groupby('symbol').last()[['close_price']].rename(
+                columns={'close_price': 'price_latest'}
+            )
+            df_prev = df_range.groupby('symbol').first()[['close_price']].rename(
+                columns={'close_price': 'price_prev'}
+            )
+            df_period = df_latest.join(df_prev)
+            df_period['change_period_pct'] = np.where(
+                df_period['price_prev'] != 0,
+                ((df_period['price_latest'] - df_period['price_prev']) / df_period['price_prev'] * 100).round(4),
+                0.0,
+            )
+            df_holdings = df_holdings.merge(
+                df_period[['change_period_pct']].reset_index(),
+                on='symbol', how='left',
+            )
+        else:
+            df_holdings['change_period_pct'] = None
+    else:
+        df_holdings['change_period_pct'] = None  # period=1D dùng live feed từ market_data_service
+
+    # --- Bước 3c: Join StockProfile (industry, market_cap_bn) — 1 query duy nhất, không N+1 ---
+    if symbols_list:
+        profiles_qs = StockProfile.objects.filter(
+            symbol__in=symbols_list
+        ).values('symbol', 'industry', 'market_cap_bn')
+        df_profiles = (
+            pd.DataFrame.from_records(profiles_qs)
+            if profiles_qs.exists()
+            else pd.DataFrame(columns=['symbol', 'industry', 'market_cap_bn'])
+        )
+        if not df_profiles.empty:
+            df_holdings = df_holdings.merge(df_profiles, on='symbol', how='left')
+            df_holdings['industry'] = df_holdings['industry'].fillna('Khác')
+            df_holdings['market_cap_bn'] = df_holdings['market_cap_bn'].fillna(0).astype(float)
+        else:
+            df_holdings['industry'] = 'Khác'
+            df_holdings['market_cap_bn'] = 0.0
+    else:
+        df_holdings['industry'] = 'Khác'
+        df_holdings['market_cap_bn'] = 0.0
 
     df_holdings.sort_values('symbol', inplace=True)
     return df_holdings

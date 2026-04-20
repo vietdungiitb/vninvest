@@ -67,6 +67,11 @@ class StockProfile(models.Model):
     company_name = models.CharField(max_length=255, verbose_name='Tên công ty')
     industry = models.CharField(max_length=100, verbose_name='Ngành')
     exchange = models.CharField(max_length=20, verbose_name='Sàn giao dịch')
+    market_cap_bn = models.DecimalField(
+        max_digits=20, decimal_places=4,
+        null=True, blank=True,
+        verbose_name='Vốn hóa (tỷ VND)',
+    )
     listed_date = models.DateField(null=True, blank=True, verbose_name='Ngày niêm yết')
     is_active = models.BooleanField(default=True, verbose_name='Đang giao dịch')
     updated_at = models.DateTimeField(auto_now=True)
@@ -2222,3 +2227,133 @@ class SystemSetting(models.Model):
 
     def __str__(self):
         return f'{self.key} = {self.value}'
+
+
+# ---------------------------------------------------------------------------
+# PR-1 — Sprint W6 / I1 / AI4 Foundation Models
+# ---------------------------------------------------------------------------
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
+
+
+class SignalVerification(models.Model):
+    """
+    W6 — Lưu kết quả hậu kiểm hiệu quả tín hiệu Whale / Order Flow sau T+3.
+    Worker: tasks_signal_verification.verify_signals_daily (16:30 ICT mỗi ngày).
+    """
+    content_type            = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+        verbose_name='Loại model nguồn',
+    )
+    object_id               = models.PositiveIntegerField(verbose_name='ID tín hiệu gốc')
+    original_signal         = GenericForeignKey('content_type', 'object_id')
+
+    symbol                  = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
+    signal_price            = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='Giá tại thời điểm phát tín hiệu')
+    t3_price                = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='Giá đóng cửa T+3')
+    vnindex_price_at_signal = models.DecimalField(max_digits=15, decimal_places=2, verbose_name='VNIndex tại T0 (lúc phát tín hiệu)')
+    vnindex_price_t3        = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True, verbose_name='VNIndex tại T+3')
+    alpha_score             = models.DecimalField(max_digits=9, decimal_places=4, null=True, blank=True, verbose_name='Alpha (stock return - VNIndex return)')
+    is_success              = models.BooleanField(default=False, verbose_name='Tín hiệu đúng?')
+    data_warning            = models.BooleanField(default=False, verbose_name='Cảnh báo dữ liệu lệch >1%')
+    processed_at            = models.DateTimeField(auto_now_add=True, verbose_name='Thời điểm hậu kiểm')
+
+    class Meta:
+        verbose_name = 'Hậu kiểm tín hiệu'
+        verbose_name_plural = 'Hậu kiểm tín hiệu'
+        ordering = ['-processed_at']
+        indexes = [
+            models.Index(fields=['symbol', 'is_success'], name='idx_sigver_symbol_success'),
+            models.Index(fields=['processed_at'], name='idx_sigver_processed_at'),
+            models.Index(fields=['content_type', 'object_id'], name='idx_sigver_ct_objid'),
+        ]
+
+    def __str__(self):
+        status = '✓' if self.is_success else '✗'
+        return f'{status} {self.symbol} alpha={self.alpha_score} @ {self.processed_at:%Y-%m-%d}'
+
+
+class TelegramProfile(models.Model):
+    """
+    I1 — Hồ sơ Telegram của user: định danh và cấu hình thông báo.
+    Liên kết tài khoản qua deep link OTP (TTL 15 phút, lưu trong Redis).
+    """
+    class PriorityThreshold(models.IntegerChoices):
+        HIGH_CRITICAL_ONLY = 1, 'Chỉ High/Critical'
+        HIGH_AND_NORMAL    = 2, 'High + Normal'
+        ALL                = 3, 'Tất cả'
+
+    user                = models.OneToOneField(User, on_delete=models.CASCADE, related_name='telegram_profile', verbose_name='Tài khoản')
+    telegram_user_id    = models.BigIntegerField(unique=True, verbose_name='Telegram User ID')
+    chat_id             = models.BigIntegerField(verbose_name='Chat ID')
+    is_verified         = models.BooleanField(default=False, verbose_name='Đã xác thực?')
+    priority_threshold  = models.IntegerField(
+        choices=PriorityThreshold.choices,
+        default=PriorityThreshold.HIGH_AND_NORMAL,
+        verbose_name='Ngưỡng cảnh báo tối thiểu',
+    )
+    mute_until          = models.DateTimeField(null=True, blank=True, verbose_name='Tắt thông báo đến')
+    last_interacted_at  = models.DateTimeField(auto_now=True, verbose_name='Tương tác lần cuối')
+    preferred_symbols   = models.JSONField(default=list, blank=True, verbose_name='Mã ưu tiên (max 3, quà tặng Free)')
+
+    class Meta:
+        verbose_name = 'Telegram Profile'
+        verbose_name_plural = 'Telegram Profiles'
+
+    def __str__(self):
+        return f'{self.user.username} → chat_id={self.chat_id} verified={self.is_verified}'
+
+    def is_muted(self):
+        from django.utils import timezone
+        return self.mute_until is not None and self.mute_until > timezone.now()
+
+
+class SentimentLog(models.Model):
+    """
+    AI4 — Chuỗi thời gian điểm tâm lý tin tức cho mỗi mã CK.
+    Worker: tasks_sentiment.sync_news_sentiment (mỗi 30 phút).
+    symbol='GLOBAL' dành cho sentiment thị trường chung.
+    """
+    class SourceType(models.TextChoices):
+        NEWS   = 'news',   'Tin tức'
+        SOCIAL = 'social', 'Mạng xã hội'
+        WEB    = 'web',    'Web tổng hợp'
+
+    symbol          = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK (hoặc GLOBAL)')
+    sentiment_score = models.DecimalField(max_digits=5, decimal_places=2, verbose_name='Điểm tâm lý (-1.00 đến 1.00)')
+    source_type     = models.CharField(max_length=20, choices=SourceType.choices, default=SourceType.NEWS, verbose_name='Loại nguồn')
+    headline_count  = models.IntegerField(default=0, verbose_name='Số tiêu đề đã phân tích')
+    ai_reasoning    = models.TextField(blank=True, default='', verbose_name='Lý do chấm điểm (tóm tắt AI)')
+    token_cost      = models.IntegerField(default=0, verbose_name='Chi phí token AI')
+    captured_at     = models.DateTimeField(auto_now_add=True, verbose_name='Thời điểm phân tích')
+
+    class Meta:
+        verbose_name = 'Log tâm lý thị trường'
+        verbose_name_plural = 'Log tâm lý thị trường'
+        ordering = ['-captured_at']
+        indexes = [
+            models.Index(fields=['symbol', '-captured_at'], name='idx_sentiment_sym_time'),
+        ]
+
+    def __str__(self):
+        return f'{self.symbol} score={self.sentiment_score} @ {self.captured_at:%Y-%m-%d %H:%M}'
+
+
+class NewsSourceWeight(models.Model):
+    """
+    AI4 — Trọng số độ tin cậy của từng nguồn tin khi tổng hợp Sentiment.
+    Trọng số 1.0 = bình thường; > 1.0 = ưu tiên cao; < 1.0 = ưu tiên thấp.
+    """
+    source_name = models.CharField(max_length=100, unique=True, verbose_name='Tên nguồn (cafef, vietstock, opennews, ...)')
+    weight      = models.FloatField(default=1.0, verbose_name='Trọng số (0.0 – 2.0)')
+    is_active   = models.BooleanField(default=True, verbose_name='Đang hoạt động?')
+
+    class Meta:
+        verbose_name = 'Trọng số nguồn tin'
+        verbose_name_plural = 'Trọng số nguồn tin'
+        ordering = ['-weight']
+
+    def __str__(self):
+        status = '✓' if self.is_active else '✗'
+        return f'{status} {self.source_name} weight={self.weight}'
