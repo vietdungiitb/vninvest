@@ -548,10 +548,10 @@ if _OPENCORE_ENABLED:
         "schedule": crontab(day_of_month=1, hour=_OPENCORE_QUOTA_RESET_HOUR, minute=5),
     }
     
-    # Create daily analytics snapshots at midnight UTC
+    # Tạo analytics snapshot hằng ngày lúc 00:00 ICT (nửa đêm giờ Việt Nam)
     CELERY_BEAT_SCHEDULE["opencore-analytics-snapshot"] = {
         "task": "portfolio.opencore_celery_tasks.create_analytics_snapshots",
-        "schedule": crontab(hour=0, minute=0),  # Midnight UTC
+        "schedule": crontab(hour=0, minute=0),  # 00:00 ICT — CELERY_TIMEZONE = 'Asia/Ho_Chi_Minh'
     }
     
     # Check for over-quota users every hour
@@ -566,10 +566,10 @@ if _OPENCORE_ENABLED:
         "schedule": timedelta(days=7),
     }
     
-    # Process trial/grace plan lifecycle transitions daily (7am UTC)
+    # Xử lý vòng đời plan hằng ngày lúc 07:00 ICT
     CELERY_BEAT_SCHEDULE["opencore-process-plan-lifecycle"] = {
         "task": "portfolio.tasks.process_plan_lifecycle_transitions",
-        "schedule": crontab(hour=7, minute=0),  # Daily at 7am UTC
+        "schedule": crontab(hour=7, minute=0),  # 07:00 ICT — CELERY_TIMEZONE = 'Asia/Ho_Chi_Minh'
     }
 
 # Sync StockProfile.industry + company_name từ MarketSnapshot lúc 07:15 ICT hằng ngày
@@ -578,8 +578,8 @@ if STOCK_PROFILE_SYNC_ENABLED:
     from celery.schedules import crontab as _crontab_profile_sync
     CELERY_BEAT_SCHEDULE["sync-stock-profiles-from-snapshot"] = {
         "task": "portfolio.tasks_stock_profile_sync.sync_stock_profiles_from_snapshot",
-        # 07:15 ICT = 00:15 UTC (ICT = UTC+7)
-        "schedule": _crontab_profile_sync(hour=0, minute=15),
+        # 07:15 ICT — dùng trực tiếp vì CELERY_TIMEZONE = TIME_ZONE = 'Asia/Ho_Chi_Minh'
+        "schedule": _crontab_profile_sync(hour=7, minute=15),
         "options": {"expires": 3600},
     }
 
@@ -601,7 +601,8 @@ if SIGNAL_VERIFICATION_ENABLED:
     from celery.schedules import crontab as _crontab_sigver
     CELERY_BEAT_SCHEDULE["verify-signals-daily"] = {
         "task": "portfolio.tasks_signal_verification.verify_signals_daily",
-        "schedule": _crontab_sigver(hour=9, minute=30, day_of_week='1-5'),  # 16:30 ICT
+        # 16:30 ICT — dùng trực tiếp vì CELERY_TIMEZONE = TIME_ZONE = 'Asia/Ho_Chi_Minh'
+        "schedule": _crontab_sigver(hour=16, minute=30, day_of_week='1-5'),
         "options": {"expires": 3600},
     }
 
