@@ -185,3 +185,34 @@ class RealtimeGatewayTests(TransactionTestCase):
         self.assertEqual(event['payload']['event_type'], 'ticker_update')
         self.assertEqual(event['payload']['symbol'], 'FPT')
         self.assertEqual(event['payload']['price'], 75.4)
+
+    @override_settings(REALTIME_BROADCAST_DEGRADE_ENABLED=True, REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD=1)
+    def test_stream_broadcaster_degrades_payload_when_backpressure_high(self):
+        mock_sender = MagicMock()
+        mock_channel_layer = MagicMock()
+
+        with (
+            patch('channels.layers.get_channel_layer', return_value=mock_channel_layer),
+            patch('asgiref.sync.async_to_sync', return_value=mock_sender),
+            patch('portfolio.realtime.stream_consumers.get_realtime_metric', return_value=10),
+        ):
+            consumer = WsBroadcastConsumer()
+            consumer.process_batch(
+                'FPT',
+                [
+                    (
+                        '1-0',
+                        {
+                            'ts': '2026-04-03T09:30:00+07:00',
+                            'price': '75.4',
+                            'volume': '100',
+                            'side': 'BUY',
+                        },
+                    )
+                ],
+            )
+
+        group_name, event = mock_sender.call_args.args
+        self.assertEqual(group_name, 'ticker_FPT')
+        self.assertTrue(event['payload'].get('degraded'))
+        self.assertEqual(event['payload']['symbol'], 'FPT')

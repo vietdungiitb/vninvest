@@ -61,11 +61,15 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
   const { t, locale, localeTag } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
   const [sizeMetric, setSizeMetric] = useState('cap');
-  const HEATMAP_HEIGHT = compact
-    ? (viewMode === 'sunburst' ? 380 : 340)
-    : (viewMode === 'sunburst' ? 480 : 420);
+  const [selectedSymbol, setSelectedSymbol] = useState(null);
+  const [detailAnchor, setDetailAnchor] = useState(null);
+  const HEATMAP_MIN_HEIGHT = compact
+    ? (viewMode === 'sunburst' ? 300 : 300)
+    : (viewMode === 'sunburst' ? 500 : 460);
   const chartComponentRef = useRef(null);
   const chartContainerRef = useRef(null);
+  const heatmapShellRef = useRef(null);
+  const detailCardRef = useRef(null);
   const resizeRafRef = useRef(0);
 
   const safeResizeChart = useCallback(() => {
@@ -129,16 +133,26 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
         resizeRafRef.current = 0;
       }
       
-      const chart = chartComponentRef.current?.getEchartsInstance?.();
-      if (chart && !chart.isDisposed()) {
-        try {
-          chart.dispatchAction({ type: 'hideTip' });
-        } catch (_) {
-          // Ignore tip action errors during unmount race.
-        }
-      }
     };
   }, [safeResizeChart]);
+
+  useEffect(() => {
+    if (!selectedSymbol) {
+      return undefined;
+    }
+
+    const handlePointerDownOutside = (event) => {
+      if (!heatmapShellRef.current?.contains(event.target)) {
+        setSelectedSymbol(null);
+        setDetailAnchor(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDownOutside);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDownOutside);
+    };
+  }, [selectedSymbol]);
 
   const toNumber = (value) => {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -352,6 +366,38 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
   }, [holdings, sizeMetric]);
 
   useEffect(() => {
+    if (!selectedSymbol) {
+      return;
+    }
+    const stillExists = chartData.flat.some((leaf) => leaf.symbol === selectedSymbol);
+    if (!stillExists) {
+      setSelectedSymbol(null);
+      setDetailAnchor(null);
+    }
+  }, [chartData.flat, selectedSymbol]);
+
+  const selectedLeaf = useMemo(
+    () => chartData.flat.find((leaf) => leaf.symbol === selectedSymbol) || null,
+    [chartData.flat, selectedSymbol],
+  );
+
+  useEffect(() => {
+    if (!selectedLeaf || !detailAnchor || !chartContainerRef.current || !detailCardRef.current) {
+      return;
+    }
+
+    const containerRect = chartContainerRef.current.getBoundingClientRect();
+    const cardRect = detailCardRef.current.getBoundingClientRect();
+    const padding = 12;
+    const clampedLeft = clamp(detailAnchor.left, (cardRect.width / 2) + padding, containerRect.width - (cardRect.width / 2) - padding);
+    const clampedTop = clamp(detailAnchor.top, (cardRect.height / 2) + padding, containerRect.height - (cardRect.height / 2) - padding);
+
+    if (Math.abs(clampedLeft - detailAnchor.left) > 1 || Math.abs(clampedTop - detailAnchor.top) > 1) {
+      setDetailAnchor({ left: clampedLeft, top: clampedTop });
+    }
+  }, [detailAnchor, selectedLeaf]);
+
+  useEffect(() => {
     safeResizeChart();
   }, [safeResizeChart, viewMode, sizeMetric, chartData.flat.length]);
 
@@ -424,6 +470,15 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     ].join('');
   }, []);
 
+  const formatCompactNumber = useCallback((value, digits = 1) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric <= 0) return '\u2014';
+    return new Intl.NumberFormat(localeTag || 'vi-VN', {
+      notation: 'compact',
+      maximumFractionDigits: digits,
+    }).format(numeric);
+  }, [localeTag]);
+
   const dispatchSyncEvent = useCallback((params) => {
     const data = params?.data;
     if (!data || data.children) return; // bỏ qua sector node
@@ -437,130 +492,36 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     }));
   }, []);
 
+  const handleHeatmapClick = useCallback((params) => {
+    const data = params?.data;
+    if (!data || data.children) {
+      return;
+    }
+
+    const nativeEvent = params?.event?.event || params?.event;
+    const offsetX = Number(nativeEvent?.offsetX);
+    const offsetY = Number(nativeEvent?.offsetY);
+    const container = chartContainerRef.current;
+
+    if (container && Number.isFinite(offsetX) && Number.isFinite(offsetY)) {
+      setDetailAnchor({ left: offsetX, top: offsetY });
+    } else if (container) {
+      const rect = container.getBoundingClientRect();
+      setDetailAnchor({ left: rect.width / 2, top: rect.height / 2 });
+    }
+
+    setSelectedSymbol(data.symbol || data.name);
+    dispatchSyncEvent(params);
+  }, [dispatchSyncEvent]);
+
   const option = useMemo(() => {
     const dataSet = viewMode === 'sunburst' ? chartData.grouped : chartData.flat;
     if (!dataSet || dataSet.length === 0) return null;
 
-    const fallbackIndustryLabel = t('dashboardRealtime.heatmapTooltipIndustryFallback', { defaultValue: 'Khác' });
-    const groupLabel = t('dashboardRealtime.heatmapTooltipGroupLabel', { defaultValue: 'Nhóm ngành' });
-    const averageChangeLabel = t('dashboardRealtime.heatmapTooltipAverageChange', { defaultValue: 'Biến động b.quân' });
-    const currentPriceLabel = t('dashboardRealtime.heatmapTooltipCurrentPrice', { defaultValue: 'Giá hiện tại' });
-    const marketCapLabel = t('dashboardRealtime.heatmapTooltipMarketCap', { defaultValue: 'Vốn hóa' });
-    const volumeLabel = t('dashboardRealtime.heatmapTooltipVolume', { defaultValue: 'Khối lượng' });
-
-    const industryLabel = t('dashboardRealtime.heatmapTooltipIndustry', { defaultValue: 'Ngành' });
-    const trendLabel = t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Xu hướng 24h' });
-    const quantityLabel = t('dashboardRealtime.heatmapTooltipQuantity', { defaultValue: 'Số lượng CP' });
-    const avgCostLabel = t('dashboardRealtime.heatmapTooltipAvgCost', { defaultValue: 'Giá vốn TB' });
-    const unrealizedPlLabel = t('dashboardRealtime.heatmapTooltipUnrealizedPl', { defaultValue: 'Lãi/Lỗ chưa TH' });
-    const holdingTagLabel = t('dashboardRealtime.heatmapTooltipHoldingTag', { defaultValue: 'Đang nắm giữ' });
-
     const tooltip = {
-      show: true,
+      show: false,
       trigger: 'item',
-      triggerOn: 'mousemove|click',
-      appendToBody: false,
-      confine: true,
-      enterable: false,
-      alwaysShowContent: false,
-      showDelay: 40,
-      hideDelay: 150,
-      transitionDuration: 0,
-      backgroundColor: 'rgba(10, 18, 35, 0.97)',
-      borderColor: 'rgba(71, 85, 105, 0.72)',
-      borderWidth: 1,
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
-      extraCssText: 'pointer-events:none; box-shadow:0 8px 32px rgba(0,0,0,0.72); border-radius:10px; z-index:9999;',
-      formatter: (params) => {
-        try {
-        const data = params?.data;
-        // Guard: bỏ qua virtual root node (ECharts treemap tạo ra khi hover vào gap)
-        if (!data || !data.name || data.name === 'undefined') return '';
-        if (!params.name || params.name === 'undefined') return '';
-
-        // Industry path
-        const treePathInfo = params.treePathInfo || [];
-        let industryName = '';
-        if (treePathInfo.length > 1) {
-          industryName = treePathInfo.slice(1, -1).map(p => p.name).join(' / ');
-        } else {
-          const raw = data.industry;
-          industryName = (raw && raw !== 'undefined' && raw !== 'null') ? raw : fallbackIndustryLabel;
-        }
-
-        // Sector/Industry group node (has children)
-        if (data.children) {
-          const secChange = Number(data.changePct || 0);
-          const secColor = secChange >= 0 ? '#4ade80' : '#f87171';
-          return [
-            `<div style="padding:10px 14px;min-width:180px">`,
-            `<div style="font-size:13px;font-weight:800;color:#f8fafc;margin-bottom:4px">${data.name}</div>`,
-            `<div style="color:#94a3b8;font-size:11px">${averageChangeLabel}:`,
-            ` <b style="color:${secColor}">${formatPercent(secChange)}</b></div>`,
-            `</div>`,
-          ].join('');
-        }
-
-        // Leaf (stock) node
-        const changePct = Array.isArray(data.value) ? data.value[1] : Number(data.changePct || 0);
-        const pctColor = changePct > 0 ? '#4ade80' : changePct < 0 ? '#f87171' : '#94a3b8';
-        const pctBg = changePct > 0 ? 'rgba(74,222,128,0.12)' : changePct < 0 ? 'rgba(248,113,113,0.12)' : 'rgba(148,163,184,0.1)';
-        const livePrice = toNumber(data.livePrice);
-        const mcap = toNumber(data.marketCap);
-        const vol = Math.round(toNumber(data.volume));
-        const sparkSvg = buildSparklineSvg(data.sparkline24);
-        const hasSpark = sparkSvg.length > 0;
-        const qty = data.quantity;
-        const avgCostVal = toNumber(data.avgCost);
-        const unrealizedPl = data.unrealizedPl;
-        const unrealizedPlPct = toNumber(data.unrealizedPlPct);
-        const plColor = unrealizedPl > 0 ? '#4ade80' : unrealizedPl < 0 ? '#f87171' : '#94a3b8';
-        const plBg = unrealizedPl > 0 ? 'rgba(74,222,128,0.12)' : unrealizedPl < 0 ? 'rgba(248,113,113,0.12)' : 'rgba(148,163,184,0.1)';
-
-        return [
-          `<div style="min-width:210px;max-width:260px;font-family:inherit">`,
-          // Header bar
-          `<div style="background:rgba(15,23,42,0.9);padding:10px 14px 8px;border-bottom:1px solid rgba(71,85,105,0.35)">`,
-          `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">`,
-          `<span style="font-size:15px;font-weight:900;color:#f8fafc;letter-spacing:0.04em">${data.name}</span>`,
-          `<span style="font-size:12px;font-weight:700;color:${pctColor};background:${pctBg};padding:2px 7px;border-radius:6px">${formatPercent(changePct)}</span>`,
-          `</div>`,
-          data.companyName && data.companyName !== data.name
-            ? `<div style="font-size:10px;color:#64748b;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${data.companyName}</div>`
-            : '',
-          `<div style="font-size:10px;color:#475569;margin-top:1px">${industryName}</div>`,
-          `</div>`,
-          // Sparkline chart area
-          hasSpark
-            ? `<div style="padding:4px 14px 0;background:rgba(10,18,35,0.7)">${sparkSvg}<div style="font-size:9px;color:#475569;text-align:right;margin-top:-2px;padding-bottom:4px">${trendLabel}</div></div>`
-            : '',
-          // Stats grid
-          `<div style="padding:8px 14px 6px;display:grid;grid-template-columns:1fr 1fr;gap:4px 12px">`,
-          `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${currentPriceLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${livePrice > 0 ? livePrice.toFixed(2) : '—'} <span style="font-size:10px;color:#94a3b8">VND</span></div></div>`,
-          `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${volumeLabel}</div><div style="font-size:12px;font-weight:700;color:#e2e8f0">${vol > 0 ? vol.toLocaleString(localeTag || 'vi-VN') : '—'}</div></div>`,
-          mcap > 0
-            ? `<div style="grid-column:1/-1"><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.06em">${marketCapLabel}</div><div style="font-size:11px;font-weight:600;color:#cbd5e1">${(mcap / 1e9).toFixed(1)}B VND</div></div>`
-            : '',
-          `</div>`,
-          // Holdings section (chỉ hiển thị khi đang nắm giữ)
-          data.isHolding && (qty > 0 || avgCostVal > 0 || unrealizedPl !== null)
-            ? [
-                `<div style="margin:0 14px 8px;padding:8px 10px;background:rgba(250,204,21,0.06);border:1px solid rgba(250,204,21,0.18);border-radius:8px">`,
-                `<div style="font-size:9px;color:#fbbf24;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px">▣ ${holdingTagLabel}</div>`,
-                `<div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 10px">`,
-                qty > 0 ? `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${quantityLabel}</div><div style="font-size:11px;font-weight:700;color:#e2e8f0">${qty.toLocaleString(localeTag || 'vi-VN')}</div></div>` : '',
-                avgCostVal > 0 ? `<div><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${avgCostLabel}</div><div style="font-size:11px;font-weight:700;color:#e2e8f0">${avgCostVal.toFixed(2)} <span style="font-size:9px;color:#94a3b8">VND</span></div></div>` : '',
-                unrealizedPl !== null ? `<div style="grid-column:1/-1;margin-top:2px"><div style="font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:0.05em">${unrealizedPlLabel}</div><div style="font-size:12px;font-weight:700;color:${plColor};background:${plBg};padding:2px 6px;border-radius:5px;display:inline-block;margin-top:1px">${unrealizedPl > 0 ? '+' : ''}${(unrealizedPl / 1000).toFixed(0)}K <span style="font-size:10px;opacity:0.8">(${unrealizedPlPct > 0 ? '+' : ''}${unrealizedPlPct.toFixed(2)}%)</span></div></div>` : '',
-                `</div>`,
-                `</div>`,
-              ].join('')
-            : '',
-          `</div>`,
-        ].join('');
-        } catch (_err) {
-          return `<div style="padding:8px 12px"><b style="color:#f8fafc">${params?.name || ''}</b></div>`;
-        }
-      },
+      triggerOn: 'none',
     };
 
     if (viewMode === 'sunburst') {
@@ -577,7 +538,7 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
             data: chartData.grouped,
             sort: 'desc',
             center: ['50%', '50%'],
-            radius: ['7%', '92%'],
+            radius: ['5%', '92%'],
             nodeClick: false,
             universalTransition: false,
             stateAnimation: { duration: 0 },
@@ -599,7 +560,9 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
               borderWidth: 1.5,
             },
             label: {
-              rotate: 'radial',
+              rotate: 0,
+              align: 'center',
+              verticalAlign: 'middle',
               minAngle: 5,
               formatter: (params) => {
                 if (params?.data?.children) return params.name;
@@ -633,8 +596,8 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
                 },
               },
               {
-                r0: '7%',
-                r: '48%',
+                r0: '5%',
+                r: '46%',
                 itemStyle: {
                   borderColor: 'rgba(2, 6, 23, 0.82)',
                   borderWidth: 2,
@@ -647,11 +610,16 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
                 },
               },
               {
-                r0: '50%',
+                r0: '48%',
                 r: '92%',
                 itemStyle: {
                   borderColor: 'rgba(2, 6, 23, 0.72)',
                   borderWidth: 1.5,
+                },
+                label: {
+                  rotate: 0,
+                  align: 'center',
+                  verticalAlign: 'middle',
                 },
               },
             ],
@@ -703,8 +671,10 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
           },
           label: {
             show: true,
+            position: ['50%', '50%'],
             align: 'center',
             verticalAlign: 'middle',
+            padding: 0,
             formatter: buildLeafLabel,
             overflow: 'truncate',
             rich: {
@@ -751,7 +721,7 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
   }
 
   return (
-    <div className="group relative bg-slate-900/76 backdrop-blur-[12px] border border-slate-700/68 rounded-2xl flex flex-col overflow-hidden transition-all duration-500 hover:border-slate-500/80 shadow-2xl">
+    <div ref={heatmapShellRef} className="group relative h-full min-h-0 bg-slate-900/76 backdrop-blur-[12px] border border-slate-700/68 rounded-2xl flex flex-col overflow-hidden transition-all duration-500 hover:border-slate-500/80 shadow-2xl">
       {/* Decorative background glow */}
       <div className="absolute -top-24 -left-24 w-64 h-64 bg-cyan-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-cyan-500/10 transition-colors duration-700" />
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-700" />
@@ -809,16 +779,16 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
         </div>
       </div>
 
-      <div ref={chartContainerRef} className="relative z-10" style={{ height: HEATMAP_HEIGHT }}>
+      <div ref={chartContainerRef} className="relative z-10 flex-1 min-h-0" style={{ minHeight: HEATMAP_MIN_HEIGHT }}>
         <ReactECharts
           key={`${viewMode}-${sizeMetric}-${locale}`}
           ref={chartComponentRef}
           option={option}
-          style={{ height: HEATMAP_HEIGHT, width: '100%' }}
+          style={{ height: '100%', minHeight: HEATMAP_MIN_HEIGHT, width: '100%' }}
           notMerge={false}
           lazyUpdate={true}
           opts={{ renderer: 'canvas' }}
-          onEvents={{ click: dispatchSyncEvent }}
+          onEvents={{ click: handleHeatmapClick }}
           onChartReady={() => {
             // Immediate attempt + progressive fallbacks:
             // flex layout may not be complete when onChartReady fires.
@@ -833,6 +803,93 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
             setTimeout(safeResizeChart, 900);
           }}
         />
+
+        {selectedLeaf && detailAnchor && (
+          <div
+            ref={detailCardRef}
+            className="absolute z-20 w-[240px] max-w-[calc(100%-24px)] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-slate-600/80 bg-slate-950/95 shadow-[0_18px_48px_rgba(2,6,23,0.72)] backdrop-blur-xl"
+            style={{ left: detailAnchor.left, top: detailAnchor.top }}
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-700/70 px-3 py-2.5">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-black tracking-[0.14em] text-slate-50">{selectedLeaf.symbol}</span>
+                  <span className={`rounded-md px-2 py-0.5 text-[10px] font-black ${selectedLeaf.changePct > 0 ? 'bg-emerald-500/15 text-emerald-300' : selectedLeaf.changePct < 0 ? 'bg-rose-500/15 text-rose-300' : 'bg-slate-700/60 text-slate-300'}`}>
+                    {formatPercent(selectedLeaf.changePct)}
+                  </span>
+                </div>
+                {selectedLeaf.companyName && selectedLeaf.companyName !== selectedLeaf.symbol && (
+                  <div className="truncate text-[10px] text-slate-400">{selectedLeaf.companyName}</div>
+                )}
+                <div className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-slate-500">{selectedLeaf.industry || t('dashboardRealtime.heatmapTooltipIndustryFallback', { defaultValue: 'Khác' })}</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSymbol(null);
+                  setDetailAnchor(null);
+                }}
+                className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-[10px] font-black text-slate-400 transition-colors hover:border-slate-500 hover:text-slate-200"
+              >
+                {t('common.close', { defaultValue: 'Đóng' })}
+              </button>
+            </div>
+
+            {Array.isArray(selectedLeaf.sparkline24) && selectedLeaf.sparkline24.length > 1 && (
+              <div className="border-b border-slate-800/70 bg-slate-950/60 px-3 pt-2 pb-1.5">
+                <div dangerouslySetInnerHTML={{ __html: buildSparklineSvg(selectedLeaf.sparkline24, 214, 42) }} />
+                <div className="-mt-0.5 text-right text-[9px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                  {t('dashboardRealtime.heatmapTooltipTrend24h', { defaultValue: 'Xu hướng 24h' })}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2 px-3 py-3 text-[11px]">
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipCurrentPrice', { defaultValue: 'Giá hiện tại' })}</div>
+                <div className="mt-0.5 font-bold text-slate-100">{selectedLeaf.livePrice > 0 ? `${selectedLeaf.livePrice.toFixed(2)} VND` : '\u2014'}</div>
+              </div>
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipVolume', { defaultValue: 'Khối lượng' })}</div>
+                <div className="mt-0.5 font-bold text-slate-100">{selectedLeaf.volume > 0 ? Math.round(selectedLeaf.volume).toLocaleString(localeTag || 'vi-VN') : '\u2014'}</div>
+              </div>
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipMarketCap', { defaultValue: 'Vốn hóa' })}</div>
+                <div className="mt-0.5 font-bold text-slate-100">{formatCompactNumber(selectedLeaf.marketCap || selectedLeaf.sortMarketCap)}</div>
+              </div>
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{sizeMetric === 'cap' ? t('dashboardRealtime.heatmapSizeCap', { defaultValue: 'Cap' }) : t('dashboardRealtime.heatmapSizeWeight', { defaultValue: 'Giá trị' })}</div>
+                <div className="mt-0.5 font-bold text-slate-100">{formatCompactNumber(selectedLeaf.sizeValue, 2)}</div>
+              </div>
+            </div>
+
+            {selectedLeaf.isHolding && (selectedLeaf.quantity > 0 || selectedLeaf.avgCost > 0 || selectedLeaf.unrealizedPl !== null) && (
+              <div className="mx-3 mb-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2.5">
+                <div className="mb-2 text-[9px] font-black uppercase tracking-[0.18em] text-amber-300">
+                  {t('dashboardRealtime.heatmapTooltipHoldingTag', { defaultValue: 'Đang nắm giữ' })}
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-[11px]">
+                  <div>
+                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipQuantity', { defaultValue: 'Số lượng CP' })}</div>
+                    <div className="mt-0.5 font-bold text-slate-100">{selectedLeaf.quantity > 0 ? selectedLeaf.quantity.toLocaleString(localeTag || 'vi-VN') : '\u2014'}</div>
+                  </div>
+                  <div>
+                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipAvgCost', { defaultValue: 'Giá vốn TB' })}</div>
+                    <div className="mt-0.5 font-bold text-slate-100">{selectedLeaf.avgCost > 0 ? `${selectedLeaf.avgCost.toFixed(2)} VND` : '\u2014'}</div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{t('dashboardRealtime.heatmapTooltipUnrealizedPl', { defaultValue: 'Lãi/Lỗ chưa TH' })}</div>
+                    <div className={`mt-0.5 inline-flex rounded-md px-2 py-1 font-bold ${selectedLeaf.unrealizedPl > 0 ? 'bg-emerald-500/15 text-emerald-300' : selectedLeaf.unrealizedPl < 0 ? 'bg-rose-500/15 text-rose-300' : 'bg-slate-700/60 text-slate-300'}`}>
+                      {selectedLeaf.unrealizedPl !== null
+                        ? `${selectedLeaf.unrealizedPl > 0 ? '+' : ''}${formatCompactNumber(Math.abs(selectedLeaf.unrealizedPl), 2)} (${selectedLeaf.unrealizedPlPct > 0 ? '+' : ''}${selectedLeaf.unrealizedPlPct.toFixed(2)}%)`
+                        : '\u2014'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         
         <div className="absolute bottom-5 right-5 flex items-center gap-4 bg-slate-950/88 px-4 py-1.5 rounded-2xl border border-slate-700/85 shadow-2xl backdrop-blur-xl pointer-events-none transition-transform group-hover:scale-105">
           <div className="flex items-center gap-2">

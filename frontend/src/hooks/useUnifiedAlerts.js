@@ -375,12 +375,12 @@ export default function useUnifiedAlerts({
       to: item.to || (item.source === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
     }));
 
-    const combinedWithBackend = backendNormalized.length > 0
-      ? backendNormalized
-      : combined;
+    const combinedWithBackend = [...backendNormalized, ...combined];
     const seen = new Set();
     const deduped = combinedWithBackend.filter((item) => {
-      const key = `${item.source}-${item.symbol}-${item.headline}`;
+      const normalizedTs = toStableAlertTimestamp(item.ts) || 'na';
+      const fallbackId = `${item.source || 'unknown'}-${item.symbol || 'NA'}-${item.headline || 'no-headline'}-${normalizedTs}`;
+      const key = String(item.id || fallbackId);
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
@@ -445,8 +445,8 @@ export default function useUnifiedAlerts({
       return true;
     });
 
-    return filtered.slice(0, pageSize);
-  }, [unifiedAlerts, sourceFilter, severityFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol, pageSize]);
+    return filtered;
+  }, [unifiedAlerts, sourceFilter, severityFilter, audienceFilter, holdings, trackedSymbolNames, isMutedSymbol]);
 
   const scopedUnifiedAlerts = useMemo(() => {
     return unifiedAlerts.filter((item) => {

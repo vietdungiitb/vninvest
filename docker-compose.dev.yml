@@ -23,6 +23,8 @@ services:
       retries: 5
     networks:
       - vninvest_network
+    mem_limit: ${DB_MEM_LIMIT:-1g}
+    cpus: ${DB_CPUS:-1.0}
 
   redis:
     container_name: vninvest-dev-redis
@@ -38,6 +40,8 @@ services:
       retries: 5
     networks:
       - vninvest_network
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-0.75}
 
   mailpit:
     container_name: vninvest-dev-mailpit
@@ -88,6 +92,8 @@ services:
       start_period: 30s
     networks:
       - vninvest_network
+    mem_limit: ${BACKEND_MEM_LIMIT:-1g}
+    cpus: ${BACKEND_CPUS:-1.0}
 
   celery_worker:
     container_name: vninvest-dev-celery-worker
@@ -123,6 +129,8 @@ services:
     restart: "no"
     networks:
       - vninvest_network
+    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-1200m}
+    cpus: ${CELERY_WORKER_CPUS:-1.5}
 
   celery_beat:
     container_name: vninvest-dev-celery-beat
@@ -158,6 +166,8 @@ services:
     restart: "no"
     networks:
       - vninvest_network
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
+    cpus: ${CELERY_BEAT_CPUS:-0.5}
 
   frontend:
     container_name: vninvest-dev-frontend
@@ -175,6 +185,8 @@ services:
     restart: "no"
     networks:
       - vninvest_network
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
+    cpus: ${FRONTEND_CPUS:-0.5}
 
 volumes:
   postgres_data:

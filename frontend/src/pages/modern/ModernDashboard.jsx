@@ -9,7 +9,9 @@ import SmartStatsHeader from '../../components/modern/SmartStatsHeader';
 import ModularPositionDeck from '../../components/modern/ModularPositionDeck';
 import ModernSidebar from '../../components/modern/ModernSidebar';
 import PortfolioHeatmap from '../../components/PortfolioHeatmap';
-import EquityVsBenchmarkChart from '../../components/EquityVsBenchmarkChart';
+import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
+import useUnifiedAlerts from '../../hooks/useUnifiedAlerts';
+import usePersistentAlertState from '../../hooks/usePersistentAlertState';
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
@@ -26,6 +28,10 @@ export default function ModernDashboard() {
   const [technicals, setTechnicals] = useState(null);
   const [digest, setDigest] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
+  const [audienceFilter, setAudienceFilter] = useState('all');
+  const [unifiedPageSize, setUnifiedPageSize] = useState(5);
 
   const holdingSymbols = useMemo(
     () => holdings.map((h) => normalizeSymbol(h.symbol)).filter(Boolean),
@@ -43,8 +49,19 @@ export default function ModernDashboard() {
   const {
     quotesBySymbol,
     alerts,
+    lastEventAt,
+    darkFlowAlerts,
     realtimeStatus
-  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 10 });
+  } = useRealtimeFeed({ symbols: monitoredSymbols, maxAlerts: 20 });
+
+  const {
+    readAlertIds,
+    criticalSoundEnabled,
+    markAlertAsRead,
+    isMutedSymbol,
+    muteSymbolFor30m,
+    toggleCriticalSound,
+  } = usePersistentAlertState();
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
 
@@ -124,6 +141,43 @@ export default function ModernDashboard() {
     }, { up: 0, down: 0, flat: 0 });
   }, [monitoredSymbols, quotesBySymbol]);
 
+  const {
+    filteredUnifiedAlerts,
+    alertSummary,
+    currentUnifiedPage,
+    hasPreviousUnifiedPage,
+    backendUnifiedHasMore,
+    loadingMoreUnified,
+    goToFirstUnifiedPage,
+    goToPreviousUnifiedPage,
+    goToNextUnifiedPage,
+  } = useUnifiedAlerts({
+    alerts,
+    darkFlowAlerts,
+    monitoredSymbols,
+    quotesBySymbol,
+    holdings,
+    trackedSymbolNames,
+    enableSnapshot: isAuthenticated && Boolean(activePortfolioId),
+    lastEventAt,
+    sourceFilter,
+    severityFilter,
+    audienceFilter,
+    pageSize: unifiedPageSize,
+    isMutedSymbol,
+    formatNumber: (value) => Number(value || 0).toLocaleString('vi-VN'),
+    t,
+  });
+
+  const unreadUnifiedCount = useMemo(
+    () => filteredUnifiedAlerts.filter((item) => !readAlertIds.has(item.id)).length,
+    [filteredUnifiedAlerts, readAlertIds],
+  );
+
+  const toggleSeverityFilterFromSummary = useCallback((targetFilter) => {
+    setSeverityFilter((prev) => (prev === targetFilter ? 'all' : targetFilter));
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || !activePortfolioId) return;
     setLoading(true);
@@ -163,55 +217,76 @@ export default function ModernDashboard() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-slate-950 text-slate-200">
       {/* 1. Global High-Density Header */}
-      <SmartStatsHeader 
-        summary={summary} 
-        loading={loading} 
-        realtimeBreadth={realtimeMarketBreadth} 
+      <SmartStatsHeader
+        summary={summary}
+        loading={loading}
+        realtimeBreadth={realtimeMarketBreadth}
         onRefresh={fetchData}
       />
 
       {/* 2. Main Workspace Layout */}
-      <div className="flex-1 flex p-4 gap-4 overflow-hidden relative">
-        
-        {/* Left: Charts & Positions (65%) */}
-        <div className="w-[65%] flex flex-col gap-4 overflow-hidden">
-          
-          {/* Visual Hub: Heatmap & Equity Curve Side-by-Side */}
-          <div className="h-[48%] grid grid-cols-2 gap-4 shrink-0">
-            <div className="bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1">
-               <PortfolioHeatmap 
-                  holdings={heatmapData} 
+      <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4">
+        <div className="grid min-h-full grid-cols-1 items-start gap-4 xl:grid-cols-3">
+          <div className="min-w-0 xl:col-span-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:h-[526px]">
+              <div className="h-[526px] min-w-0 bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1 lg:h-full">
+                <PortfolioHeatmap
+                  holdings={heatmapData}
                   title="Theo dõi Dòng tiền"
                   compact={true}
-               />
-            </div>
-            <div className="bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-3 flex flex-col">
-               <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2">Đường cong tăng trưởng</h4>
-               <div className="flex-1 min-h-0">
-                  <EquityVsBenchmarkChart portfolioId={activePortfolioId} hideTitle={true} />
-               </div>
-            </div>
-          </div>
+                />
+              </div>
 
-          {/* Positional Deck: Tabbed Holdings */}
-          <div className="flex-1 overflow-hidden">
-             <ModularPositionDeck 
-                holdings={liveHoldings} 
+              <div className="h-[526px] min-w-0 overflow-hidden lg:h-full">
+                <UnifiedAlertCenter
+                  alerts={filteredUnifiedAlerts}
+                  alertSummary={alertSummary}
+                  readAlertIds={readAlertIds}
+                  markAlertAsRead={markAlertAsRead}
+                  muteSymbolFor30m={muteSymbolFor30m}
+                  severityFilter={severityFilter}
+                  setSeverityFilter={setSeverityFilter}
+                  onSeverityFilterChange={toggleSeverityFilterFromSummary}
+                  criticalSoundEnabled={criticalSoundEnabled}
+                  toggleCriticalSound={toggleCriticalSound}
+                  currentUnifiedPage={currentUnifiedPage}
+                  hasPreviousUnifiedPage={hasPreviousUnifiedPage}
+                  backendUnifiedHasMore={backendUnifiedHasMore}
+                  loadingMoreUnified={loadingMoreUnified}
+                  goToFirstUnifiedPage={goToFirstUnifiedPage}
+                  goToPreviousUnifiedPage={goToPreviousUnifiedPage}
+                  goToNextUnifiedPage={goToNextUnifiedPage}
+                  pageSize={unifiedPageSize}
+                  setPageSize={setUnifiedPageSize}
+                  sourceFilter={sourceFilter}
+                  setSourceFilter={setSourceFilter}
+                  audienceFilter={audienceFilter}
+                  setAudienceFilter={setAudienceFilter}
+                  unreadCount={unreadUnifiedCount}
+                  showSummaryChips={true}
+                  minHeightClass="h-full"
+                  className="h-full overflow-hidden"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4 min-h-[420px] min-w-0 overflow-hidden">
+              <ModularPositionDeck
+                holdings={heatmapData.filter((h) => h.is_holding)}
                 loading={loading}
                 quotesBySymbol={quotesBySymbol}
                 technicals={technicals}
                 alerts={alerts}
                 analytics={analytics}
                 digest={digest}
-             />
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Right: Sidebar Analytics (35%) */}
-        <div className="w-[35%] overflow-hidden h-full">
-           <ModernSidebar 
+          <div className="h-full min-h-[460px] min-w-0 self-start xl:col-span-1">
+            <ModernSidebar
               portfolioId={activePortfolioId}
               alerts={alerts}
               breadth={realtimeMarketBreadth}
@@ -219,7 +294,8 @@ export default function ModernDashboard() {
               digest={digest}
               loading={loading}
               portfolioSymbols={monitoredSymbols}
-           />
+            />
+          </div>
         </div>
       </div>
     </div>

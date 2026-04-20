@@ -48,6 +48,11 @@ class CacheAdapterTests(SimpleTestCase):
 class VnstockAdapterTests(SimpleTestCase):
     databases = {'default'}
 
+    def setUp(self):
+        super().setUp()
+        vnstock_adapter._VNSTOCK_PROVIDER_CACHE.clear()
+        vnstock_adapter._VNSTOCK_STOCK_CLIENT_CACHE.clear()
+
     @patch('portfolio.adapters.vnstock_adapter.get_vnstock_runtime_settings', return_value={})
     def test_resolve_price_board_sources_keeps_order_and_dedup(self, _mock_settings):
         with patch.dict('os.environ', {'VNSTOCK_PRICE_BOARD_FALLBACK_SOURCES': 'KBS,VCI,KBS'}):
@@ -111,6 +116,62 @@ class VnstockAdapterTests(SimpleTestCase):
             vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
 
         self.assertEqual(ctx.exception.code, 'vnstock_rate_limited')
+
+    @patch('portfolio.adapters.vnstock_adapter._import_vnstock')
+    def test_build_stock_client_reuses_cached_instance_when_enabled(self, mock_import):
+        class _Provider:
+            def __init__(self):
+                self.calls = 0
+
+            def stock(self, symbol, source):
+                self.calls += 1
+                return {'symbol': symbol, 'source': source, 'instance': self.calls}
+
+        provider = _Provider()
+        mock_import.return_value = lambda: provider
+
+        with patch.dict(
+            'os.environ',
+            {
+                'VNSTOCK_PROVIDER_CACHE_ENABLED': 'True',
+                'VNSTOCK_CLIENT_CACHE_ENABLED': 'True',
+                'VNSTOCK_PROVIDER_CACHE_TTL_SECONDS': '900',
+                'VNSTOCK_CLIENT_CACHE_TTL_SECONDS': '900',
+            },
+            clear=False,
+        ):
+            first = vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+            second = vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+
+        self.assertEqual(provider.calls, 1)
+        self.assertEqual(first, second)
+
+    @patch('portfolio.adapters.vnstock_adapter._import_vnstock')
+    def test_build_stock_client_does_not_cache_when_disabled(self, mock_import):
+        class _Provider:
+            def __init__(self):
+                self.calls = 0
+
+            def stock(self, symbol, source):
+                self.calls += 1
+                return {'symbol': symbol, 'source': source, 'instance': self.calls}
+
+        provider = _Provider()
+        mock_import.return_value = lambda: provider
+
+        with patch.dict(
+            'os.environ',
+            {
+                'VNSTOCK_PROVIDER_CACHE_ENABLED': 'False',
+                'VNSTOCK_CLIENT_CACHE_ENABLED': 'False',
+            },
+            clear=False,
+        ):
+            first = vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+            second = vnstock_adapter._build_stock_client(symbol='FPT', source='VCI')
+
+        self.assertEqual(provider.calls, 2)
+        self.assertNotEqual(first['instance'], second['instance'])
 
     @patch('portfolio.adapters.vnstock_adapter.logger.warning')
     @patch('portfolio.adapters.vnstock_adapter._import_vnstock')

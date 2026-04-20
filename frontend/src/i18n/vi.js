@@ -361,7 +361,11 @@ const vi = {
       unrealizedPL: 'Lãi/Lỗ chưa chốt',
       realizedPL: 'Lãi/Lỗ đã chốt',
       dividends: 'Cổ tức',
+      trend: 'Xu hướng',
+      costVsCurrent: 'Giá vốn/Hiện tại',
+      performance: 'Hiệu suất',
     },
+    unitThousand: 'NGHÌN VND',
   },
   allocation: {
     title: 'Phân bổ danh mục',

@@ -2,6 +2,7 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
+from django.core.cache import cache
 
 from portfolio.tasks_prefetch import _read_offpeak_ingest_history
 from portfolio.tasks_whale_preflight_cache import (
@@ -55,6 +56,7 @@ def admin_runtime_kpi_api(request):
     from time import time as _time
     from portfolio.observability import get_market_observability_snapshot
     from config.health import build_prefetch_health_snapshot
+    from portfolio.tasks_prefetch import _metric_cache_key
 
     celery_alive = False
     celery_active_queues: list = []
@@ -71,11 +73,28 @@ def admin_runtime_kpi_api(request):
     obs_snapshot = get_market_observability_snapshot()
     prefetch_snapshot = build_prefetch_health_snapshot()
 
+    def _read_prefetch_metric(metric_name: str) -> int:
+        try:
+            return int(cache.get(_metric_cache_key(metric_name)) or 0)
+        except Exception:
+            return 0
+
+    prefetch_scheduler_metrics = {
+        'runs_total': _read_prefetch_metric('scheduler_runs_total'),
+        'enqueued_total': _read_prefetch_metric('scheduler_enqueued_total'),
+        'skipped_due_to_interval_total': _read_prefetch_metric('scheduler_skipped_due_to_interval_total'),
+        'empty_shard_total': _read_prefetch_metric('scheduler_empty_shard_total'),
+        'disabled_tier_total': _read_prefetch_metric('scheduler_disabled_tier_total'),
+        'stale_snapshot_total': _read_prefetch_metric('scheduler_stale_snapshot_total'),
+        'estimated_upstream_calls_per_minute_total': _read_prefetch_metric('realtime_upstream_calls_per_minute'),
+    }
+
     return Response(
         {
             'sampled_at': _time(),
             'market_observability': obs_snapshot,
             'prefetch_health': prefetch_snapshot,
+            'prefetch_scheduler_metrics': prefetch_scheduler_metrics,
             'celery': {
                 'alive': celery_alive,
                 'active_workers': celery_active_queues,

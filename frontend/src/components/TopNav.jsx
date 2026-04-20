@@ -34,7 +34,7 @@ function NavGroup({ label, items, icon }) {
 export default function TopNav() {
   const { t, locale, setLanguage } = useI18n();
   const { ability, userIdentity } = usePortfolio();
-  const { uiMode, toggleUiMode } = useInterface();
+  const { uiMode, toggleUiMode, modernLeftSidebarOpen, toggleModernLeftSidebar } = useInterface();
 
   const signalItems = [
     { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') },
@@ -59,6 +59,17 @@ export default function TopNav() {
     <header className="relative z-[70] h-[62px] shrink-0 overflow-visible border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
       <div className="flex h-full items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
+          {uiMode === 'modern' && (
+            <button
+              type="button"
+              onClick={toggleModernLeftSidebar}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-700/90 bg-slate-900/72 text-slate-200 transition-colors hover:border-emerald-600 hover:text-emerald-300"
+              aria-label={modernLeftSidebarOpen ? t('layout.collapseMenu') : t('layout.expandMenu')}
+              title={modernLeftSidebarOpen ? t('layout.collapseMenu') : t('layout.expandMenu')}
+            >
+              <span className="text-sm leading-none">{modernLeftSidebarOpen ? '◀' : '▶'}</span>
+            </button>
+          )}
           <NavLink to="/dashboard" className={({ isActive }) => groupLinkClass(isActive)}>
             {t('layout.nav.group.dashboard')}
           </NavLink>
