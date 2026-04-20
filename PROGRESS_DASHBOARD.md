@@ -4,6 +4,18 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-20)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fallback nominal size cho watchlist-only symbols, bo spinner gia loading trong empty state)
+- frontend/src/components/TopNav.jsx (MODIFIED - nang z-index dropdown/menu de tranh bi sticky header de len)
+- frontend/src/components/modern/SmartStatsHeader.jsx (MODIFIED - noi nut refresh vao fetchData va harden breadth progress ratios)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - empty state cho portfolio khong co holdings + AI Health Score empty state dung nghia)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - loc live alerts theo monitored symbols cua danh muc)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - pass refresh callback va monitored symbols xuong header/sidebar)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+---
+
 ## 🚀 LATEST UPDATE (2026-04-18 ~15:30) - AI ADVISORY CANONICAL prompt_config INTEGRATION ✅
 
 ### AI Advisory Runtime Configuration (prompt_config v2) - COMPLETE ✅

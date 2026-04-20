@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-20a - Shared heatmap watchlist fallback + Modern workstation stabilization
+
+Muc tieu:
+- Dam bao heatmap hien thi duoc cho ca portfolio chi co watchlist/tracked symbols, khong phu thuoc vao holdings.
+- On dinh giao dien Modern Workstation: dropdown menu khong bi che, nut refresh header hoat dong, empty state ro rang hon va alert stream duoc loc dung theo danh muc dang theo doi.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fallback nominal size cho watchlist-only symbols o che do Von hoa; doi spinner empty state thanh static empty indicator)
+- frontend/src/components/TopNav.jsx (MODIFIED - tang stacking context cho nav header va dropdown menus de khong bi SmartStatsHeader de len)
+- frontend/src/components/modern/SmartStatsHeader.jsx (MODIFIED - wire nut refresh header vao `onRefresh`, harden breadth ratio tinh toan voi tong = 0, giam z-index sticky header de khong che TopNav)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - them empty state overview hop le cho portfolio khong co holdings, link den Transactions, va AI tab hien trang thai `Chua co du lieu phan tich` thay vi score 0 gia)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - filter live alerts theo monitored symbols cua dashboard thay vi hien global stream)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - pass `onRefresh` vao header va `portfolioSymbols` vao sidebar)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `get_errors` clean tren 5 file Modern vua sua va `frontend/src/components/PortfolioHeatmap.jsx`.
+- Frontend production build trong Docker => PASS.
+- Frontend container local da duoc rebuild va recreate thanh cong voi image moi.
+
+---
+
 ## Entry 2026-04-18bc - Heatmap tooltip rendering stabilization
 
 Muc tieu:
