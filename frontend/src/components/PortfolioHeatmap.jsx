@@ -454,9 +454,9 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     const tooltip = {
       show: true,
       trigger: 'item',
-      triggerOn: 'click',
-      appendToBody: true,
-      confine: false,
+      triggerOn: 'mousemove|click',
+      appendToBody: false,
+      confine: true,
       enterable: false,
       alwaysShowContent: false,
       showDelay: 40,
