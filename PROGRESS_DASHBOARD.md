@@ -5,6 +5,7 @@
 ---
 
 ## ✅ AUDIT FILE LIST (2026-04-20)
+- docker-compose.dev.yml (MODIFIED - chuan hoa explicit dev network/volume names de tranh split-network drift frontend/backend)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fallback nominal size cho watchlist-only symbols, bo spinner gia loading trong empty state)
 - frontend/src/components/TopNav.jsx (MODIFIED - nang z-index dropdown/menu de tranh bi sticky header de len)
 - frontend/src/components/modern/SmartStatsHeader.jsx (MODIFIED - noi nut refresh vao fetchData va harden breadth progress ratios)

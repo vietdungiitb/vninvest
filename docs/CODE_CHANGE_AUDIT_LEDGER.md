@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-20b - Dev compose topology standardization
+
+Muc tieu:
+- Loai bo runtime drift khi frontend/backend cua dev stack bi tach sang hai network khac nhau do chay compose invocation khong dong nhat.
+- Chuan hoa `docker-compose.dev.yml` de moi service dev luon dung chung explicit network va volume names, giup recreate stack on dinh va de du doan hon.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add explicit `vninvest_network` to all dev services, declare canonical network name `vninvest-dev_vninvest_network`, and pin `redis_data` external volume name)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` => PASS.
+- Canonical recreate => db healthy, redis healthy, backend healthy, frontend started.
+- Frontend proxy check via `http://localhost:8080/api/health/` => 200.
+
+---
+
 ## Entry 2026-04-20a - Shared heatmap watchlist fallback + Modern workstation stabilization
 
 Muc tieu:

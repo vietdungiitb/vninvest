@@ -21,6 +21,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - vninvest_network
 
   redis:
     container_name: vninvest-dev-redis
@@ -34,10 +36,14 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - vninvest_network
 
   mailpit:
     container_name: vninvest-dev-mailpit
     image: axllent/mailpit:latest
+    networks:
+      - vninvest_network
 
   backend:
     container_name: vninvest-dev-backend
@@ -80,6 +86,8 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    networks:
+      - vninvest_network
 
   celery_worker:
     container_name: vninvest-dev-celery-worker
@@ -113,6 +121,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"
+    networks:
+      - vninvest_network
 
   celery_beat:
     container_name: vninvest-dev-celery-beat
@@ -146,6 +156,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"
+    networks:
+      - vninvest_network
 
   frontend:
     container_name: vninvest-dev-frontend
@@ -161,8 +173,18 @@ services:
     ports:
       - "${FRONTEND_PORT:-80}:80"
     restart: "no"
+    networks:
+      - vninvest_network
 
 volumes:
   postgres_data:
     external: true
     name: vninvest-dev_postgres_data
+  redis_data:
+    external: true
+    name: vninvest-dev_redis_data
+
+networks:
+  vninvest_network:
+    name: vninvest-dev_vninvest_network
+    driver: bridge
