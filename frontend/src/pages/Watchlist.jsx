@@ -1562,10 +1562,12 @@ export default function WatchlistPage() {
                             key: 'last_date',
                             label: t('watchlist.date'),
                             sortable: true,
-                            width: '120px',
+                            width: '72px',
                             render: (item) => (
-                              <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                                {item.last_date || 'â€”'}
+                              <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                {item.last_date
+                                  ? `${item.last_date.slice(8)}/${item.last_date.slice(5, 7)}`
+                                  : '\u2014'}
                               </td>
                             ),
                           },
@@ -1573,12 +1575,12 @@ export default function WatchlistPage() {
                             key: 'actions',
                             label: t('watchlist.tableActions'),
                             sortable: false,
-                            width: '280px',
+                            width: '140px',
                             render: (item) => (
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-3 py-3 text-right">
                                 {trackedSymbolSet.has(item.symbol) ? (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300 whitespace-nowrap">
                                       {t('watchlist.tracked')}
                                     </span>
                                     <button
@@ -1589,9 +1591,10 @@ export default function WatchlistPage() {
                                           handleDeleteTracked(trackedItem.id, item.symbol);
                                         }
                                       }}
-                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+                                      title={t('watchlist.removeFromTracked')}
+                                      className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors whitespace-nowrap"
                                     >
-                                      {t('watchlist.removeFromTracked')}
+                                      {t('watchlist.removeFromTrackedShort')}
                                     </button>
                                   </div>
                                 ) : (
@@ -1601,9 +1604,10 @@ export default function WatchlistPage() {
                                       handleAddTrackedFromGroup(item.symbol, activeGroup.id);
                                     }}
                                     disabled={!!addingFromGroup[item.symbol]}
-                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
+                                    title={t('watchlist.addToTracked')}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors whitespace-nowrap"
                                   >
-                                    {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTracked')}
+                                    {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTrackedShort')}
                                   </button>
                                 )}
                               </td>

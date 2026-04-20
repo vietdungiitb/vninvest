@@ -1090,6 +1090,8 @@ const en = {
     tracked: 'Tracked',
     removeFromTracked: 'Remove from tracked',
     addToTracked: 'Add to tracked',
+    removeFromTrackedShort: 'Untrack',
+    addToTrackedShort: 'Track',
   },
   whaleAlertsDashboard: {
     sourceRedisStream: 'Redis stream',
