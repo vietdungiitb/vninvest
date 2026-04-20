@@ -95,13 +95,14 @@ export default function WatchlistPage() {
   const [groupDataFilter, setGroupDataFilter] = useState('all');
   const [groupSymbolSearch, setGroupSymbolSearch] = useState('');
   const [groupSort, setGroupSort] = useState({ key: 'symbol', direction: 'asc' });
-  const [groupPageSize, setGroupPageSize] = useState(20);
+  const [groupPageSize, setGroupPageSize] = useState(10);
   const [groupPage, setGroupPage] = useState(1);
+  const [sidebarGroupPage, setSidebarGroupPage] = useState(1);
   const [trackedThresholdFilter, setTrackedThresholdFilter] = useState('all');
   const [trackedSortBy, setTrackedSortBy] = useState('symbol_asc');
   const [trackedDataFilter, setTrackedDataFilter] = useState('all');
   const [trackedSymbolSearch, setTrackedSymbolSearch] = useState('');
-  const [trackedPageSize, setTrackedPageSize] = useState(20);
+  const [trackedPageSize, setTrackedPageSize] = useState(10);
   const [trackedPage, setTrackedPage] = useState(1);
   // Phase B: strategy filter
   const [strategyFilter, setStrategyFilter] = useState('all');
@@ -165,6 +166,7 @@ export default function WatchlistPage() {
   const [editingTrackedId, setEditingTrackedId] = useState(null);
   const [editingTrackedThresholdValue, setEditingTrackedThresholdValue] = useState('');
   const [symbolError, setSymbolError] = useState('');
+  const [watchlistTab, setWatchlistTab] = useState('table'); // 'table' | 'manage' | 'alerts'
 
   const loadGroups = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -668,10 +670,14 @@ export default function WatchlistPage() {
         thresholdValue = parsedThreshold;
       }
 
+      const justAddedSymbol = addSymbol;
       await addTrackedSymbol(addSymbol, srcGroupId ? Number(srcGroupId) : null, thresholdValue);
       setAddSymbol('');
       setAddThresholdMillion('');
       await fetchTracked();
+      setWatchlistTab('table');
+      setTrackedSymbolSearch(justAddedSymbol);
+      setTimeout(() => setTrackedSymbolSearch(''), 3000);
     } catch (err) {
       setSymbolError(err.response?.data?.detail || t('watchlist.addSymbolFailed', { symbol: addSymbol }));
     } finally {
@@ -925,6 +931,25 @@ export default function WatchlistPage() {
     }
   };
 
+  const handleQuickCreatePriceAlert = useCallback(async ({ symbol, condition, targetPrice }) => {
+    try {
+      const payload = {
+        symbol: symbol.toUpperCase().trim(),
+        condition,
+        target_price: Number(targetPrice),
+        cooldown_seconds: 300,
+        is_active: true,
+      };
+      await createPriceAlert(payload);
+      await fetchPriceAlerts();
+      setSyncMsg(t('watchlist.createdPriceAlert'));
+      setTimeout(() => setSyncMsg(''), 3000);
+    } catch (err) {
+      setSyncMsg(extractApiErrorMessage(err, t('watchlist.createPriceAlertFailed')));
+      setTimeout(() => setSyncMsg(''), 4000);
+    }
+  }, [fetchPriceAlerts, t]);
+
   const handleTogglePriceAlert = async (rule) => {
     try {
       const res = await updatePriceAlert(rule.id, { is_active: !rule.is_active });
@@ -1134,38 +1159,71 @@ export default function WatchlistPage() {
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">{t('watchlist.marketGroups')}</p>
             </div>
 
-            {/* Group list */}
-            {groupsWithRealtime.map((g) => {
-              const isActive = g.id === view;
-              const upCount = g.items.filter((i) => i.change_pct > 0).length;
-              const downCount = g.items.filter((i) => i.change_pct < 0).length;
-              return (
-                <button
-                  key={g.id}
-                  onClick={() => setView(g.id)}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
-                    isActive ? 'bg-gray-800 border-gray-600' : 'border-transparent hover:bg-gray-900/70'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: g.color }}
-                    />
-                    <span className={`text-sm font-medium truncate ${
-                      isActive ? 'text-gray-100' : 'text-gray-400'
-                    }`}>
-                      {g.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
-                    <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(g.items.length) })}</span>
-                    {upCount > 0 && <span className="text-green-500">▲{upCount}</span>}
-                    {downCount > 0 && <span className="text-red-500">▼{downCount}</span>}
-                  </div>
-                </button>
+            {/* Group list — paginated */}
+            {(() => {
+              const SIDEBAR_PAGE_SIZE = 10;
+              const totalSidebarPages = Math.ceil(groupsWithRealtime.length / SIDEBAR_PAGE_SIZE);
+              const pagedGroups = groupsWithRealtime.slice(
+                (sidebarGroupPage - 1) * SIDEBAR_PAGE_SIZE,
+                sidebarGroupPage * SIDEBAR_PAGE_SIZE,
               );
-            })}
+              return (
+                <>
+                  {pagedGroups.map((g) => {
+                    const isActive = g.id === view;
+                    const upCount = g.items.filter((i) => i.change_pct > 0).length;
+                    const downCount = g.items.filter((i) => i.change_pct < 0).length;
+                    return (
+                      <button
+                        key={g.id}
+                        onClick={() => setView(g.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors border ${
+                          isActive ? 'bg-gray-800 border-gray-600' : 'border-transparent hover:bg-gray-900/70'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: g.color }}
+                          />
+                          <span className={`text-sm font-medium truncate ${
+                            isActive ? 'text-gray-100' : 'text-gray-400'
+                          }`}>
+                            {g.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5 pl-[18px] text-xs">
+                          <span className="text-gray-600">{t('watchlist.stocksCount', { count: formatNumber(g.items.length) })}</span>
+                          {upCount > 0 && <span className="text-green-500">▲{upCount}</span>}
+                          {downCount > 0 && <span className="text-red-500">▼{downCount}</span>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {totalSidebarPages > 1 && (
+                    <div className="flex items-center justify-between pt-2 pb-1 px-1">
+                      <button
+                        onClick={() => setSidebarGroupPage((p) => Math.max(1, p - 1))}
+                        disabled={sidebarGroupPage <= 1}
+                        className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        &#8249;
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        {sidebarGroupPage}/{totalSidebarPages}
+                      </span>
+                      <button
+                        onClick={() => setSidebarGroupPage((p) => Math.min(totalSidebarPages, p + 1))}
+                        disabled={sidebarGroupPage >= totalSidebarPages}
+                        className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:text-gray-100 hover:bg-gray-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      >
+                        &#8250;
+                      </button>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </aside>
 
           {/* Main content */}
@@ -1184,7 +1242,46 @@ export default function WatchlistPage() {
                   </span>
                 </div>
 
-                <WatchlistManagementPanel
+                {/* Tab bar */}
+                <div className="flex items-center gap-1 bg-gray-900/70 border border-gray-800 rounded-xl p-1 mb-4 w-fit">
+                  <button
+                    onClick={() => setWatchlistTab('table')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'table'
+                        ? 'bg-brand-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>📊</span> Bảng giá
+                  </button>
+                  <button
+                    onClick={() => setWatchlistTab('manage')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'manage'
+                        ? 'bg-brand-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>⚙️</span> Quản lý mã
+                  </button>
+                  <button
+                    onClick={() => setWatchlistTab('alerts')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+                      watchlistTab === 'alerts'
+                        ? 'bg-blue-700 text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-100 hover:bg-gray-800/60'
+                    }`}
+                  >
+                    <span>🔔</span> Cảnh báo giá
+                    {priceAlerts.length > 0 && (
+                      <span className="ml-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-blue-600 text-white rounded-full leading-none">
+                        {priceAlerts.length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                {watchlistTab === 'manage' && <WatchlistManagementPanel
                   t={t}
                   formatNumber={formatNumber}
                   groupsWithRealtime={groupsWithRealtime}
@@ -1202,9 +1299,9 @@ export default function WatchlistPage() {
                   trackedBulkAction={trackedBulkAction}
                   onBulkSetThreshold={handleBulkSetTrackedThreshold}
                   onBulkClearThreshold={handleBulkClearTrackedThreshold}
-                />
+                />}
 
-                <PriceAlertModule
+                {watchlistTab === 'alerts' && <PriceAlertModule
                   t={t}
                   formatNumber={formatNumber}
                   formatQuotePrice={formatQuotePrice}
@@ -1222,9 +1319,9 @@ export default function WatchlistPage() {
                   onCreatePriceAlert={handleCreatePriceAlert}
                   onTogglePriceAlert={handleTogglePriceAlert}
                   onDeletePriceAlert={handleDeletePriceAlert}
-                />
+                />}
 
-                <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+                {watchlistTab === 'table' && <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
                   <div className="px-4 pt-4 pb-3 border-b border-gray-800/70 space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="flex flex-wrap items-center gap-2 bg-gray-900/70 border border-gray-800 rounded-lg p-1 w-fit">
@@ -1301,10 +1398,10 @@ export default function WatchlistPage() {
                           name="tracked_page_size"
                           aria-label={t('watchlist.pageSize')}
                           value={trackedPageSize}
-                          onChange={(e) => setTrackedPageSize(Number(e.target.value) || 20)}
+                          onChange={(e) => setTrackedPageSize(Number(e.target.value) || 10)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                         >
-                          {[10, 15, 20, 50, 100].map((size) => (
+                          {[5, 10, 15, 20].map((size) => (
                             <option key={size} value={size}>{size}</option>
                           ))}
                         </select>
@@ -1352,8 +1449,9 @@ export default function WatchlistPage() {
                     onDelete={(id, symbol) => handleDeleteTracked(id, symbol)}
                     getSparklinePrices={getSparklinePrices}
                     trackedLoading={trackedLoading}
+                    onQuickAlert={handleQuickCreatePriceAlert}
                   />
-                </div>
+                </div>}
               </div>
             ) : activeGroup ? (
               // Group detail table
@@ -1459,10 +1557,10 @@ export default function WatchlistPage() {
                           name="group_page_size"
                           aria-label={t('watchlist.pageSize')}
                           value={groupPageSize}
-                          onChange={(e) => setGroupPageSize(Number(e.target.value) || 20)}
+                          onChange={(e) => setGroupPageSize(Number(e.target.value) || 10)}
                           className="bg-gray-950 border border-gray-800 rounded-lg px-2 py-1.5 text-xs text-gray-100 outline-none focus:border-brand-600"
                         >
-                          {[10, 15, 20, 50, 100].map((size) => (
+                          {[5, 10, 15, 20].map((size) => (
                             <option key={size} value={size}>{size}</option>
                           ))}
                         </select>
@@ -1528,10 +1626,12 @@ export default function WatchlistPage() {
                             key: 'last_date',
                             label: t('watchlist.date'),
                             sortable: true,
-                            width: '120px',
+                            width: '72px',
                             render: (item) => (
-                              <td className="px-4 py-3 text-gray-600 text-xs whitespace-nowrap">
-                                {item.last_date || 'â€”'}
+                              <td className="px-3 py-3 text-gray-500 text-xs whitespace-nowrap">
+                                {item.last_date
+                                  ? `${item.last_date.slice(8)}/${item.last_date.slice(5, 7)}`
+                                  : '\u2014'}
                               </td>
                             ),
                           },
@@ -1539,12 +1639,12 @@ export default function WatchlistPage() {
                             key: 'actions',
                             label: t('watchlist.tableActions'),
                             sortable: false,
-                            width: '280px',
+                            width: '140px',
                             render: (item) => (
-                              <td className="px-4 py-3 text-right">
+                              <td className="px-3 py-3 text-right">
                                 {trackedSymbolSet.has(item.symbol) ? (
-                                  <div className="flex items-center justify-end gap-2">
-                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-brand-900/30 text-brand-300 whitespace-nowrap">
                                       {t('watchlist.tracked')}
                                     </span>
                                     <button
@@ -1555,9 +1655,10 @@ export default function WatchlistPage() {
                                           handleDeleteTracked(trackedItem.id, item.symbol);
                                         }
                                       }}
-                                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors"
+                                      title={t('watchlist.removeFromTracked')}
+                                      className="text-xs font-semibold px-2 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-200 transition-colors whitespace-nowrap"
                                     >
-                                      {t('watchlist.removeFromTracked')}
+                                      {t('watchlist.removeFromTrackedShort')}
                                     </button>
                                   </div>
                                 ) : (
@@ -1567,9 +1668,10 @@ export default function WatchlistPage() {
                                       handleAddTrackedFromGroup(item.symbol, activeGroup.id);
                                     }}
                                     disabled={!!addingFromGroup[item.symbol]}
-                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors"
+                                    title={t('watchlist.addToTracked')}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white transition-colors whitespace-nowrap"
                                   >
-                                    {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTracked')}
+                                    {addingFromGroup[item.symbol] ? t('watchlist.addingSymbol') : t('watchlist.addToTrackedShort')}
                                   </button>
                                 )}
                               </td>

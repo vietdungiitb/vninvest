@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
+import { useInterface } from '../context/InterfaceContext';
 
 function groupLinkClass(isActive) {
   return `inline-flex items-center rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
@@ -33,6 +34,7 @@ function NavGroup({ label, items, icon }) {
 export default function TopNav() {
   const { t, locale, setLanguage } = useI18n();
   const { ability, userIdentity } = usePortfolio();
+  const { uiMode, toggleUiMode } = useInterface();
 
   const signalItems = [
     { to: '/ai-advisory', label: t('layout.nav.aiAdvisory') },
@@ -66,6 +68,18 @@ export default function TopNav() {
         </div>
 
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={toggleUiMode}
+            className={`btn-pill gap-1.5 border-slate-700/90 px-3 py-1 text-xs transition-all ${
+              uiMode === 'modern' ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/50' : 'bg-slate-900 text-slate-300'
+            }`}
+            title={uiMode === 'modern' ? 'Switch to Classic' : 'Switch to Modern Workstation'}
+          >
+            <span>{uiMode === 'modern' ? '📊' : '🖥️'}</span>
+            <span className="font-bold">{uiMode === 'modern' ? 'WORKSTATION' : 'CLASSIC'}</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setLanguage(locale === 'vi' ? 'en' : 'vi')}

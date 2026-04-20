@@ -177,6 +177,8 @@ export const getAllocationBySector = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/allocation/?by=sector`);
 export const getAnalytics = (portfolioId, days = 365) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/analytics/?days=${days}`);
+export const getPortfolioTechnicals = (portfolioId) =>
+  apiClient.get(`/portfolio/portfolios/${portfolioId}/technicals/`);
 
 // --- Sync ---
 export const syncPrices = (portfolioId, days = 30) =>

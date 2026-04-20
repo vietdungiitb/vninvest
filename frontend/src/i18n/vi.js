@@ -1093,6 +1093,8 @@ const vi = {
     tracked: 'Đã theo dõi',
     removeFromTracked: 'Bỏ khỏi DS theo dõi',
     addToTracked: 'Đưa vào DS theo dõi',
+    removeFromTrackedShort: 'Bỏ theo dõi',
+    addToTrackedShort: 'Theo dõi',
   },
   whaleAlertsDashboard: {
     sourceRedisStream: 'Redis stream',
