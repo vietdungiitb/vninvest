@@ -1,15 +1,82 @@
 import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import HoldingsTable from '../HoldingsTable';
 import OptimizationModal from './OptimizationModal';
 
+const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
+
+function PaginationBar({ total, page, size, onPageChange, onSizeChange }) {
+  const totalPages = Math.max(1, Math.ceil(total / size));
+  const from = total === 0 ? 0 : (page - 1) * size + 1;
+  const to = Math.min(page * size, total);
+  return (
+    <div className="flex items-center justify-between px-3 py-2 border-t border-slate-800/60 bg-slate-900/50 text-[11px] text-slate-500 shrink-0">
+      <div className="flex items-center gap-1">
+        <span className="mr-1">Hiển thị</span>
+        {PAGE_SIZE_OPTIONS.map((s) => (
+          <button
+            key={s}
+            onClick={() => onSizeChange(s)}
+            className={`px-2 py-0.5 rounded transition-all ${
+              size === s
+                ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30'
+                : 'hover:bg-slate-800 hover:text-slate-300'
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <span>{from}–{to} / {total}</span>
+        <div className="flex items-center gap-1">
+          <button
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            className="px-1.5 py-0.5 rounded hover:bg-slate-800 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            ‹
+          </button>
+          <span className="tabular-nums">{page}/{totalPages}</span>
+          <button
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+            className="px-1.5 py-0.5 rounded hover:bg-slate-800 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ModularPositionDeck({ holdings, loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('overview');
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (size) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   // Logic for Health Score Calculation
   const healthStats = useMemo(() => {
-    if (!analytics) return { score: 0, grade: 'N/A', color: 'text-slate-500' };
+    const hasAnalytics = analytics && [
+      analytics.sharpe_ratio,
+      analytics.alpha_annual_pct,
+      analytics.max_drawdown_pct,
+    ].some((value) => value !== null && value !== undefined);
+
+    if (!hasAnalytics) return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
     
     const sharpe = analytics.sharpe_ratio || 0;
     const alpha = analytics.alpha_annual_pct || 0;
@@ -29,7 +96,7 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
     else if (total >= 60) { grade = 'C'; color = 'text-amber-400'; }
     else if (total >= 40) { grade = 'D'; color = 'text-orange-400'; }
 
-    return { score: total, grade, color };
+    return { hasData: true, score: total, grade, color };
   }, [analytics]);
 
   const [showOptimization, setShowOptimization] = useState(false);
@@ -42,8 +109,29 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
   ];
 
   // Filter alerts for symbols in current portfolio
-  const portfolioSymbols = new Set(holdings.map(h => h.symbol.trim().toUpperCase()));
-  const filteredWhaleAlerts = (alerts || []).filter(a => portfolioSymbols.has(a.symbol.trim().toUpperCase()));
+  const portfolioSymbols = new Set(
+    holdings.map((holding) => String(holding?.symbol || '').trim().toUpperCase()).filter(Boolean),
+  );
+  const filteredWhaleAlerts = (alerts || []).filter((alert) => {
+    const symbol = String(alert?.symbol || '').trim().toUpperCase();
+    return symbol && portfolioSymbols.has(symbol);
+  });
+
+  // Paginated slices
+  const pagedHoldings = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return holdings.slice(start, start + pageSize);
+  }, [holdings, currentPage, pageSize]);
+
+  const pagedTechnicals = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return (technicals || []).slice(start, start + pageSize);
+  }, [technicals, currentPage, pageSize]);
+
+  const pagedWhaleAlerts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredWhaleAlerts.slice(start, start + pageSize);
+  }, [filteredWhaleAlerts, currentPage, pageSize]);
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
@@ -52,7 +140,7 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleTabChange(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
               activeTab === tab.id
                 ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30'
@@ -68,66 +156,117 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden p-2">
         {activeTab === 'overview' && (
-          <div className="h-full overflow-y-auto panel-scrollbar">
-             <HoldingsTable holdings={holdings} loading={loading} />
+          <div className="h-full flex flex-col overflow-hidden">
+             <div className="flex-1 overflow-y-auto panel-scrollbar">
+               {!loading && holdings.length === 0 ? (
+                 <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center text-slate-500">
+                   <div className="text-4xl opacity-30">📭</div>
+                   <div>
+                     <p className="text-base font-semibold text-slate-300">Chưa có vị thế nắm giữ</p>
+                     <p className="mt-1 max-w-md text-sm text-slate-500">
+                       Watchlist vẫn hoạt động bình thường. Nếu muốn bật thêm thống kê vị thế, hãy thêm giao dịch tại trang Transactions.
+                     </p>
+                   </div>
+                   <Link
+                     to="/transactions"
+                     className="rounded-lg border border-emerald-500/30 bg-emerald-600/15 px-4 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-600/25"
+                   >
+                     Mở Transactions
+                   </Link>
+                 </div>
+               ) : (
+                 <HoldingsTable holdings={pagedHoldings} loading={loading} />
+               )}
+             </div>
+             {!loading && holdings.length > 0 && (
+               <PaginationBar
+                 total={holdings.length}
+                 page={currentPage}
+                 size={pageSize}
+                 onPageChange={setCurrentPage}
+                 onSizeChange={handlePageSizeChange}
+               />
+             )}
           </div>
         )}
 
         {activeTab === 'technical' && (
-          <div className="h-full overflow-y-auto panel-scrollbar">
-             <table className="w-full text-left border-collapse">
-               <thead>
-                 <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
-                   <th className="px-3 py-2">Mã</th>
-                   <th className="px-3 py-2 text-right">RSI (14)</th>
-                   <th className="px-3 py-2 text-right">SMA20</th>
-                   <th className="px-3 py-2 text-right">SMA50</th>
-                   <th className="px-3 py-2 text-right">Momentum</th>
-                 </tr>
-               </thead>
-               <tbody className="text-xs">
-                 {loading ? (
-                   <tr><td colSpan="5" className="text-center py-4 animate-pulse">Đang tải...</td></tr>
-                 ) : technicals?.map((tech, idx) => (
-                   <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                     <td className="px-3 py-2 font-bold text-slate-200">{tech.symbol}</td>
-                     <td className={`px-3 py-2 text-right font-bold ${tech.rsi_14 > 70 ? 'text-rose-400' : tech.rsi_14 < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                       {tech.rsi_14 || '--'}
-                     </td>
-                     <td className="px-3 py-2 text-right text-slate-400">{tech.sma20?.toLocaleString('vi-VN')}</td>
-                     <td className="px-3 py-2 text-right text-slate-400">{tech.sma50?.toLocaleString('vi-VN')}</td>
-                     <td className={`px-3 py-2 text-right font-bold ${tech.momentum_20d_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                       {tech.momentum_20d_pct?.toFixed(2)}%
-                     </td>
+          <div className="h-full flex flex-col overflow-hidden">
+             <div className="flex-1 overflow-y-auto panel-scrollbar">
+               <table className="w-full text-left border-collapse">
+                 <thead>
+                   <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
+                     <th className="px-3 py-2">Mã</th>
+                     <th className="px-3 py-2 text-right">RSI (14)</th>
+                     <th className="px-3 py-2 text-right">SMA20</th>
+                     <th className="px-3 py-2 text-right">SMA50</th>
+                     <th className="px-3 py-2 text-right">Momentum</th>
                    </tr>
-                 ))}
-                 {(!technicals || technicals.length === 0) && !loading && (
-                   <tr><td colSpan="5" className="text-center py-4 text-slate-600 italic">Không có dữ liệu kỹ thuật.</td></tr>
-                 )}
-               </tbody>
-             </table>
+                 </thead>
+                 <tbody className="text-xs">
+                   {loading ? (
+                     <tr><td colSpan="5" className="text-center py-4 animate-pulse">Đang tải...</td></tr>
+                   ) : pagedTechnicals.map((tech, idx) => (
+                     <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                       <td className="px-3 py-2 font-bold text-slate-200">{tech.symbol}</td>
+                       <td className={`px-3 py-2 text-right font-bold ${tech.rsi_14 > 70 ? 'text-rose-400' : tech.rsi_14 < 30 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                         {tech.rsi_14 || '--'}
+                       </td>
+                       <td className="px-3 py-2 text-right text-slate-400">{tech.sma20?.toLocaleString('vi-VN')}</td>
+                       <td className="px-3 py-2 text-right text-slate-400">{tech.sma50?.toLocaleString('vi-VN')}</td>
+                       <td className={`px-3 py-2 text-right font-bold ${tech.momentum_20d_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                         {tech.momentum_20d_pct?.toFixed(2)}%
+                       </td>
+                     </tr>
+                   ))}
+                   {(!technicals || technicals.length === 0) && !loading && (
+                     <tr><td colSpan="5" className="text-center py-4 text-slate-600 italic">Không có dữ liệu kỹ thuật.</td></tr>
+                   )}
+                 </tbody>
+               </table>
+             </div>
+             {!loading && technicals && technicals.length > 0 && (
+               <PaginationBar
+                 total={technicals.length}
+                 page={currentPage}
+                 size={pageSize}
+                 onPageChange={setCurrentPage}
+                 onSizeChange={handlePageSizeChange}
+               />
+             )}
           </div>
         )}
 
         {activeTab === 'whale' && (
-          <div className="h-full overflow-y-auto panel-scrollbar p-2">
-             <div className="space-y-4">
-                {filteredWhaleAlerts.map((alert, idx) => (
-                  <div key={idx} className="bg-slate-900/40 border-l-2 border-emerald-500 p-3 flex flex-col gap-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-emerald-400 font-bold">{alert.symbol}</span>
-                      <span className="text-[10px] text-slate-500">{alert.time || 'Vừa xong'}</span>
+          <div className="h-full flex flex-col overflow-hidden">
+             <div className="flex-1 overflow-y-auto panel-scrollbar p-2">
+               <div className="space-y-4">
+                  {pagedWhaleAlerts.map((alert, idx) => (
+                    <div key={idx} className="bg-slate-900/40 border-l-2 border-emerald-500 p-3 flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-emerald-400 font-bold">{alert.symbol}</span>
+                        <span className="text-[10px] text-slate-500">{alert.time || 'Vừa xong'}</span>
+                      </div>
+                      <p className="text-xs text-slate-300">{alert.message || 'Phát hiện dòng tiền lớn nhập cuộc.'}</p>
                     </div>
-                    <p className="text-xs text-slate-300">{alert.message || 'Phát hiện dòng tiền lớn nhập cuộc.'}</p>
-                  </div>
-                ))}
-                {filteredWhaleAlerts.length === 0 && (
-                   <div className="flex flex-col items-center justify-center py-12 text-slate-600">
-                     <span className="text-3xl mb-2">🐋</span>
-                     <p className="text-sm italic">Đang quét dòng tiền "Cá mập" riêng cho danh mục này...</p>
-                   </div>
-                )}
+                  ))}
+                  {filteredWhaleAlerts.length === 0 && (
+                     <div className="flex flex-col items-center justify-center py-12 text-slate-600">
+                       <span className="text-3xl mb-2">🐋</span>
+                       <p className="text-sm italic">Đang quét dòng tiền "Cá mập" riêng cho danh mục này...</p>
+                     </div>
+                  )}
+               </div>
              </div>
+             {filteredWhaleAlerts.length > 0 && (
+               <PaginationBar
+                 total={filteredWhaleAlerts.length}
+                 page={currentPage}
+                 size={pageSize}
+                 onPageChange={setCurrentPage}
+                 onSizeChange={handlePageSizeChange}
+               />
+             )}
           </div>
         )}
 
@@ -138,28 +277,38 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                 <div className="flex flex-col items-center justify-center p-6 bg-slate-900/40 border border-slate-800 rounded-2xl relative overflow-hidden">
                    <div className="absolute top-0 right-0 p-3 opacity-10 text-4xl">🤖</div>
                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-6">Portfolio Health Score</h4>
-                   
-                   <div className="relative flex items-center justify-center w-32 h-32">
-                     {/* Circular Track */}
-                     <svg className="w-full h-full transform -rotate-90">
-                       <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
-                       <circle 
-                         cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
-                         strokeDasharray={364.4} 
-                         strokeDashoffset={364.4 - (364.4 * healthStats.score) / 100}
-                         className={`${healthStats.color} transition-all duration-1000 ease-out`}
-                       />
-                     </svg>
-                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className={`text-3xl font-black ${healthStats.color}`}>{healthStats.score}</span>
-                        <span className="text-[10px] text-slate-500">/ 100</span>
-                     </div>
-                   </div>
+                   {healthStats.hasData ? (
+                     <>
+                       <div className="relative flex items-center justify-center w-32 h-32">
+                         <svg className="w-full h-full transform -rotate-90">
+                           <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                           <circle 
+                             cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
+                             strokeDasharray={364.4} 
+                             strokeDashoffset={364.4 - (364.4 * healthStats.score) / 100}
+                             className={`${healthStats.color} transition-all duration-1000 ease-out`}
+                           />
+                         </svg>
+                         <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className={`text-3xl font-black ${healthStats.color}`}>{healthStats.score}</span>
+                            <span className="text-[10px] text-slate-500">/ 100</span>
+                         </div>
+                       </div>
 
-                   <div className="mt-6 flex flex-col items-center">
-                      <span className={`text-4xl font-black mb-1 ${healthStats.color}`}>{healthStats.grade}</span>
-                      <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Thanh khoản & Hiệu suất</span>
-                   </div>
+                       <div className="mt-6 flex flex-col items-center">
+                          <span className={`text-4xl font-black mb-1 ${healthStats.color}`}>{healthStats.grade}</span>
+                          <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Thanh khoản & Hiệu suất</span>
+                       </div>
+                     </>
+                   ) : (
+                     <div className="flex min-h-[220px] flex-col items-center justify-center text-center text-slate-500">
+                       <div className="mb-3 text-4xl opacity-25">🧠</div>
+                       <p className="text-sm font-semibold text-slate-300">Chưa có dữ liệu phân tích</p>
+                       <p className="mt-1 max-w-xs text-xs text-slate-500">
+                         Health Score sẽ xuất hiện khi danh mục có đủ dữ liệu analytics để tính Sharpe, Alpha và drawdown.
+                       </p>
+                     </div>
+                   )}
                 </div>
 
                 {/* Right: AI Synthesis */}
@@ -170,7 +319,7 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                         AI Commentary
                       </h5>
                       <p className="text-sm text-slate-300 leading-relaxed italic">
-                        "{digest?.digest_summary || 'Đang phân tích các mã nắm giữ để đưa ra nhận định tối ưu...'}"
+                        "{digest?.digest_summary || 'Chưa có bản tóm tắt AI cho danh mục này. Hệ thống sẽ hiển thị khi có đủ dữ liệu tổng hợp.'}"
                       </p>
                    </div>
 
@@ -178,13 +327,13 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                       <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                          <span className="text-[9px] text-slate-500 uppercase block mb-1">Rủi ro (Sharpe)</span>
                          <span className={`text-sm font-bold ${analytics?.sharpe_ratio >= 1.5 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                           {analytics?.sharpe_ratio || 'N/A'}
+                          {analytics?.sharpe_ratio ?? 'N/A'}
                          </span>
                       </div>
                       <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
                          <span className="text-[9px] text-slate-500 uppercase block mb-1">Sụt giảm tối đa</span>
                          <span className="text-sm font-bold text-rose-400">
-                           {analytics?.max_drawdown_pct || 0}%
+                          {analytics?.max_drawdown_pct ?? 'N/A'}{analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : ''}
                          </span>
                       </div>
                    </div>

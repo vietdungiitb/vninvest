@@ -12,7 +12,7 @@ import TopNav from './TopNav';
 
 export default function Layout() {
   const { t, locale } = useI18n();
-  const { uiMode } = useInterface();
+  const { uiMode, modernLeftSidebarOpen } = useInterface();
 
   // Legal pages state
   const [legalPages, setLegalPages] = useState([]);
@@ -34,6 +34,15 @@ export default function Layout() {
   return (
     <div className="flex h-screen overflow-hidden bg-slate-950">
       {uiMode !== 'modern' && <Sidebar />}
+      {uiMode === 'modern' && (
+        <div
+          className={`hidden shrink-0 overflow-hidden transition-[width] duration-300 xl:block ${
+            modernLeftSidebarOpen ? 'w-[260px] border-r border-slate-800' : 'w-0 border-r-0'
+          }`}
+        >
+          <Sidebar />
+        </div>
+      )}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
         <main className="panel-scrollbar flex-1 overflow-y-auto bg-slate-950">

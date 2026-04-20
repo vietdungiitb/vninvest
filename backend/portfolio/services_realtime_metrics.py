@@ -48,6 +48,8 @@ REALTIME_STREAM_GAUGE_METRICS = (
 REALTIME_STREAM_COUNTER_METRICS = (
     'realtime_stream_reclaim_total',
     'realtime_stream_reclaim_errors_total',
+    'realtime_channel_over_capacity_total',
+    'realtime_broadcast_degrade_activations_total',
 )
 
 
@@ -244,6 +246,8 @@ def build_realtime_metrics_snapshot() -> dict:
             'pending_depth': metrics.get('realtime_stream_pending_depth', {}),
             'reclaim_total': metrics.get('realtime_stream_reclaim_total', {}),
             'reclaim_errors_total': metrics.get('realtime_stream_reclaim_errors_total', {}),
+            'channel_over_capacity_total': metrics.get('realtime_channel_over_capacity_total', {}),
+            'broadcast_degrade_activations_total': metrics.get('realtime_broadcast_degrade_activations_total', {}),
         },
         'raw': metrics,
     }
@@ -315,6 +319,8 @@ def build_prometheus_metrics_text() -> str:
         pending_depth = int((stream_data.get('pending_depth', {}) or {}).get(group) or 0)
         reclaim_total = int((stream_data.get('reclaim_total', {}) or {}).get(group) or 0)
         reclaim_errors_total = int((stream_data.get('reclaim_errors_total', {}) or {}).get(group) or 0)
+        over_capacity_total = int((stream_data.get('channel_over_capacity_total', {}) or {}).get(group) or 0)
+        degrade_activations_total = int((stream_data.get('broadcast_degrade_activations_total', {}) or {}).get(group) or 0)
 
         lines.append('# HELP vninvest_realtime_stream_pending_depth Current pending depth observed for stream consumer group')
         lines.append('# TYPE vninvest_realtime_stream_pending_depth gauge')
@@ -327,6 +333,14 @@ def build_prometheus_metrics_text() -> str:
         lines.append('# HELP vninvest_realtime_stream_reclaim_errors_total Total reclaim errors by consumer group')
         lines.append('# TYPE vninvest_realtime_stream_reclaim_errors_total counter')
         lines.append(f'vninvest_realtime_stream_reclaim_errors_total{{group="{group}"}} {reclaim_errors_total}')
+
+        lines.append('# HELP vninvest_realtime_channel_over_capacity_total Total channel layer over-capacity errors by consumer group')
+        lines.append('# TYPE vninvest_realtime_channel_over_capacity_total counter')
+        lines.append(f'vninvest_realtime_channel_over_capacity_total{{group="{group}"}} {over_capacity_total}')
+
+        lines.append('# HELP vninvest_realtime_broadcast_degrade_activations_total Total broadcast degrade activations by consumer group')
+        lines.append('# TYPE vninvest_realtime_broadcast_degrade_activations_total counter')
+        lines.append(f'vninvest_realtime_broadcast_degrade_activations_total{{group="{group}"}} {degrade_activations_total}')
 
     return '\n'.join(lines) + '\n'
 
@@ -351,6 +365,8 @@ def reset_realtime_metrics_for_test():
             'realtime_stream_pending_depth',
             'realtime_stream_reclaim_total',
             'realtime_stream_reclaim_errors_total',
+            'realtime_channel_over_capacity_total',
+            'realtime_broadcast_degrade_activations_total',
         ]
         suffixes = list(REALTIME_ENDPOINTS) + list(REALTIME_STREAM_GROUPS)
         

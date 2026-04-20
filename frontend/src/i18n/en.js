@@ -358,7 +358,11 @@ const en = {
       unrealizedPL: 'Unrealized P/L',
       realizedPL: 'Realized P/L',
       dividends: 'Dividends',
+      trend: 'Trend',
+      costVsCurrent: 'Cost / Current',
+      performance: 'Performance',
     },
+    unitThousand: 'K VND',
   },
   allocation: {
     title: 'Portfolio allocation',

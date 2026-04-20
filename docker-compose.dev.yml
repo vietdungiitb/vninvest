@@ -21,6 +21,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${DB_MEM_LIMIT:-1g}
+    cpus: ${DB_CPUS:-1.0}
 
   redis:
     container_name: vninvest-dev-redis
@@ -34,10 +38,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - vninvest_network
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    cpus: ${REDIS_CPUS:-0.75}
 
   mailpit:
     container_name: vninvest-dev-mailpit
     image: axllent/mailpit:latest
+    networks:
+      - vninvest_network
 
   backend:
     container_name: vninvest-dev-backend
@@ -80,6 +90,10 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    networks:
+      - vninvest_network
+    mem_limit: ${BACKEND_MEM_LIMIT:-1g}
+    cpus: ${BACKEND_CPUS:-1.0}
 
   celery_worker:
     container_name: vninvest-dev-celery-worker
@@ -113,6 +127,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"
+    networks:
+      - vninvest_network
+    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-1200m}
+    cpus: ${CELERY_WORKER_CPUS:-1.5}
 
   celery_beat:
     container_name: vninvest-dev-celery-beat
@@ -146,6 +164,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: "no"
+    networks:
+      - vninvest_network
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-512m}
+    cpus: ${CELERY_BEAT_CPUS:-0.5}
 
   frontend:
     container_name: vninvest-dev-frontend
@@ -161,8 +183,20 @@ services:
     ports:
       - "${FRONTEND_PORT:-80}:80"
     restart: "no"
+    networks:
+      - vninvest_network
+    mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
+    cpus: ${FRONTEND_CPUS:-0.5}
 
 volumes:
   postgres_data:
     external: true
     name: vninvest-dev_postgres_data
+  redis_data:
+    external: true
+    name: vninvest-dev_redis_data
+
+networks:
+  vninvest_network:
+    name: vninvest-dev_vninvest_network
+    driver: bridge

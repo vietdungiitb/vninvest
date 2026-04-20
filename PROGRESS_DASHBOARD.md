@@ -1,6 +1,62 @@
-# 🎯 SPRINT 12 BƯỚC 16 - PROGRESS DASHBOARD
-**Date**: 2026-04-03  
-**Status**: Day 2 - Core implementation complete, validation in progress ✅
+**Date**: 2026-04-20  
+**Status**: VNStock Runtime Hardening Audit COMPLETE & Drift Fixed ✅
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-20)
+- backend/portfolio/tasks_prefetch.py (AUDITED - scheduler counters va response fields verified)
+- backend/portfolio/tasks_realtime.py (AUDITED - intraday poll guards verified)
+- backend/portfolio/realtime/stream_consumers.py (AUDITED - ws broadcaster degrade mode verified)
+- backend/portfolio/services_realtime_metrics.py (AUDITED - hardening counters verified)
+- backend/portfolio/views_admin_runtime.py (AUDITED - prefetch_scheduler_metrics KPI verified)
+- backend/config/settings.py (AUDITED - hardening knobs verified)
+- .env.production (AUDITED & FIXED - escaped $ in SECRET_KEY to resolve d_6e drift)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20j)
+- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md (AUDITED - phase 2-5 complete)
+
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - them provider/client cache manager TTL+LRU, invalidate cache khi bootstrap loi, loai bo khoi tao `Vnstock().stock(...)` truc tiep o heatmap path)
+- backend/config/settings.py (MODIFIED - rebalance cadence mac dinh scheduler/stream/realtime va bo sung channel capacity/expiry + vnstock cache flags)
+- backend/.env.example (MODIFIED - bo sung bien moi cho cadence/channel/cache)
+- backend/.env.production.example (MODIFIED - bo sung bien moi cho cadence/channel/cache cho production)
+- compose.dev.env (MODIFIED - them hardening defaults va resource override vars cho compose)
+- docker-compose.dev.yml (MODIFIED - them `mem_limit`/`cpus` guardrails cho db/redis/backend/celery/frontend)
+- docker-compose.yml (MODIFIED - them `mem_limit`/`cpus` guardrails baseline cho stack base/prod)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - them test cache behavior va reset cache state theo test)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - cap nhat expectation enqueue theo cadence hardening)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md (NEW - implementation plan tong the 12 muc mandatory cho hardening runtime `vnstock`, Celery cadence, Redis Streams, Channels va Docker resource governance)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20e cho planning gate runtime hardening toan repo)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - compact action bar khi mo sidebar: giam padding/rong button-select-input, giam min-width block Shortlist/DS nhom, giu 2 o summary tren 1 dong)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fix runtime `ReferenceError: t is not defined` bang cach khoi phuc `useI18n()` va bind `const { t } = useI18n()`)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - refactor layout: tao left-stack `xl:col-span-2` gom heatmap + unified alert o tren va ModularPositionDeck nam ngay ben duoi, loai bo khoang cach xa do row height bi keo boi cot sidebar)
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - sua lech cot bang Tong quan: bo the `div` dat truc tiep trong `tr` (HTML invalid) va dua freshness stripe vao ben trong o `td` dau tien de header/body can thang cot)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - sua ModularPositionDeck span lai 2 cot ben trai `xl:col-span-2 xl:col-start-1`, khong con chiem toan bo 3 cot)
+- frontend/src/context/InterfaceContext.jsx (MODIFIED - them shared state modernLeftSidebarOpen + persistence localStorage + toggle handler de dieu khien sidebar Modern Dashboard tu TopNav)
+- frontend/src/components/TopNav.jsx (MODIFIED - dua nut thu/phong sidebar thanh icon compact dat cung hang va dung truoc nut Tong quan)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - doi sang doc state sidebar tu InterfaceContext va bo nut toggle dang chu trong workspace)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo sung sidebar trai legacy cho Modern Dashboard, them nut thu gon/mo rong mac dinh thu gon, doi workspace sang grid 3 cot deu va tu co gian theo trang thai sidebar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- backend/portfolio/warmup_cache.py (MODIFIED - bat prefetch bootstrap meta tu startup warmup cho ca success/failure/no-symbol, sua dieu kien skip khi Redis con cache cu, va fix call signature cache ticker rows)
+- backend/portfolio/apps.py (MODIFIED - them startup warmup retry loop de dam bao prefetch duoc kich hoat sau khi DB san sang)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - hop nhat unified alerts tu backend + realtime, dedupe key bo sung timestamp fallback, bo slice client-side thua)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - chuan hoa nhan hien thi sang i18n co default tieng Viet)
+- frontend/src/components/modern/ModernPortfolioDigest.jsx (MODIFIED - chuan hoa text trang thai digest sang i18n co default tieng Viet)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo sung responsive cho workspace de tranh vo layout tren man hinh hep)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - tang chieu cao co dinh cum heatmap + trung tam canh bao hop nhat them ~2cm: `h-[450px]` -> `h-[526px]`)
+- docker-compose.dev.yml (MODIFIED - chuan hoa explicit dev network/volume names de tranh split-network drift frontend/backend)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - them click-pinned detail card thay hover tooltip, doi anchor label treemap vao tam o, cho vung chart flex-fill phan chieu cao con lai de treeview cham sat day module, tang them chieu cao heatmap, can bang lai outer radius sunburst, giu fallback nominal size cho watchlist-only symbols, sua thu tu khai bao callback de het runtime ReferenceError)
+- frontend/src/components/TopNav.jsx (MODIFIED - nang z-index dropdown/menu de tranh bi sticky header de len)
+- frontend/src/components/modern/SmartStatsHeader.jsx (MODIFIED - noi nut refresh vao fetchData va harden breadth progress ratios)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - empty state cho portfolio khong co holdings + AI Health Score empty state dung nghia)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - gop 4 chip muc do vao header de thay the Thanh canh bao hop nhat trong Modern dashboard)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - giam compact min-height de sunburst chiem khung chat hon, giam khoang trang trong)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - loc live alerts theo monitored symbols cua danh muc, dat Duong cong tang truong duoi Chi so Rui ro & Hieu suat, va cho phep sidebar mo rong theo scroll doc cua page)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - gop Thanh canh bao hop nhat vao Trung tam canh bao hop nhat, dat 1 module canh bao duy nhat o top-right, giam chieu cao cum tren, giu nguyen cac module plan v6.2 con lai, va mo khoa scroll doc de cac module ben duoi khong bi khuat)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entries 2026-04-20a, 2026-04-20c and 2026-04-20d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 ---
 

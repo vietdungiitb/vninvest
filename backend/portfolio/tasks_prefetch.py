@@ -469,6 +469,7 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         refresh_seconds = int(topology.get('universe_refresh_seconds', 60))
         snapshot = cache.get(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY)
         if _snapshot_is_stale(snapshot, refresh_seconds=refresh_seconds):
+            _increment_prefetch_metric('scheduler_stale_snapshot_total')
             build_realtime_symbol_universe_snapshot.run()
             snapshot = cache.get(REALTIME_UNIVERSE_SNAPSHOT_CACHE_KEY)
 
@@ -483,10 +484,13 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         now_epoch = int(timezone.now().timestamp())
         enqueued = []
         skipped_due_to_interval = 0
+        skipped_empty_shard = 0
+        skipped_disabled_tier = 0
 
         for tier in ('hot', 'warm', 'cold'):
             tier_plan = plan[tier]
             if not tier_plan.get('enabled'):
+                skipped_disabled_tier += 1
                 continue
 
             shard_count = int(tier_plan.get('shards', 1))
@@ -494,6 +498,7 @@ def schedule_realtime_prefetch_shards(self) -> dict:
             for shard_id in range(shard_count):
                 shard_symbols = cache.get(f'{REALTIME_SHARD_CACHE_PREFIX}:{tier}:{shard_id}') or []
                 if not shard_symbols:
+                    skipped_empty_shard += 1
                     continue
 
                 last_key = f'{REALTIME_SHARD_LAST_ENQUEUE_PREFIX}:{tier}:{shard_id}'
@@ -507,12 +512,18 @@ def schedule_realtime_prefetch_shards(self) -> dict:
                 enqueued.append({'tier': tier, 'shard_id': int(shard_id), 'symbols': len(shard_symbols)})
 
         _increment_prefetch_metric('scheduler_runs_total')
+        _increment_prefetch_metric('scheduler_enqueued_total', amount=len(enqueued))
+        _increment_prefetch_metric('scheduler_skipped_due_to_interval_total', amount=skipped_due_to_interval)
+        _increment_prefetch_metric('scheduler_empty_shard_total', amount=skipped_empty_shard)
+        _increment_prefetch_metric('scheduler_disabled_tier_total', amount=skipped_disabled_tier)
         _increment_prefetch_metric('realtime_upstream_calls_per_minute', amount=max(int(budget_metrics.get('estimated_upstream_calls_per_minute', 0)), 0))
 
         return {
             'status': 'ok',
             'enqueued_total': len(enqueued),
             'skipped_due_to_interval': skipped_due_to_interval,
+            'skipped_empty_shard': skipped_empty_shard,
+            'skipped_disabled_tier': skipped_disabled_tier,
             'enqueued': enqueued,
             'plan': plan,
             'budget': budget_metrics,

@@ -21,6 +21,146 @@ from .cache_adapter import is_rate_limited_error
 logger = logging.getLogger(__name__)
 
 
+_VNSTOCK_PROVIDER_CACHE: dict[str, dict[str, Any]] = {}
+_VNSTOCK_STOCK_CLIENT_CACHE: dict[tuple[str, str], dict[str, Any]] = {}
+_VNSTOCK_CACHE_LOCK = threading.RLock()
+
+
+def _now_epoch() -> float:
+    return time.time()
+
+
+def _read_bool_env(name: str, default_value: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default_value
+    return str(raw).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _provider_cache_enabled() -> bool:
+    return _read_bool_env('VNSTOCK_PROVIDER_CACHE_ENABLED', True)
+
+
+def _client_cache_enabled() -> bool:
+    return _read_bool_env('VNSTOCK_CLIENT_CACHE_ENABLED', True)
+
+
+def _provider_cache_ttl_seconds() -> int:
+    return _resolve_int_env('VNSTOCK_PROVIDER_CACHE_TTL_SECONDS', 900, 30)
+
+
+def _client_cache_ttl_seconds() -> int:
+    return _resolve_int_env('VNSTOCK_CLIENT_CACHE_TTL_SECONDS', 900, 30)
+
+
+def _client_cache_maxsize() -> int:
+    return _resolve_int_env('VNSTOCK_CLIENT_CACHE_MAXSIZE', 512, 16)
+
+
+def _bootstrap_log_suppress_enabled() -> bool:
+    return _read_bool_env('VNSTOCK_BOOTSTRAP_LOG_SUPPRESS_ENABLED', True)
+
+
+def _normalize_source(source: str | None) -> str:
+    normalized = str(source or 'VCI').strip().upper()
+    return normalized or 'VCI'
+
+
+def _normalize_symbol(symbol: str | None) -> str:
+    normalized = str(symbol or '').strip().upper()
+    return normalized
+
+
+def _evict_vnstock_cache_locked(now_epoch: float) -> None:
+    provider_ttl = _provider_cache_ttl_seconds()
+    client_ttl = _client_cache_ttl_seconds()
+
+    for source, entry in list(_VNSTOCK_PROVIDER_CACHE.items()):
+        created_at = float(entry.get('created_at') or 0.0)
+        if now_epoch - created_at > provider_ttl:
+            _VNSTOCK_PROVIDER_CACHE.pop(source, None)
+
+    for key, entry in list(_VNSTOCK_STOCK_CLIENT_CACHE.items()):
+        created_at = float(entry.get('created_at') or 0.0)
+        if now_epoch - created_at > client_ttl:
+            _VNSTOCK_STOCK_CLIENT_CACHE.pop(key, None)
+
+    maxsize = _client_cache_maxsize()
+    if len(_VNSTOCK_STOCK_CLIENT_CACHE) <= maxsize:
+        return
+
+    overflow = len(_VNSTOCK_STOCK_CLIENT_CACHE) - maxsize
+    for cache_key, _entry in sorted(
+        _VNSTOCK_STOCK_CLIENT_CACHE.items(),
+        key=lambda item: float(item[1].get('last_used_at') or 0.0),
+    )[:overflow]:
+        _VNSTOCK_STOCK_CLIENT_CACHE.pop(cache_key, None)
+
+
+def _get_vnstock_provider(source: str):
+    vnstock_cls = _import_vnstock()
+    normalized_source = _normalize_source(source)
+
+    if not _provider_cache_enabled():
+        return vnstock_cls()
+
+    now_epoch = _now_epoch()
+    with _VNSTOCK_CACHE_LOCK:
+        _evict_vnstock_cache_locked(now_epoch)
+        cached = _VNSTOCK_PROVIDER_CACHE.get(normalized_source)
+        if cached is not None:
+            cached['last_used_at'] = now_epoch
+            return cached['instance']
+
+    provider = vnstock_cls()
+    with _VNSTOCK_CACHE_LOCK:
+        _VNSTOCK_PROVIDER_CACHE[normalized_source] = {
+            'instance': provider,
+            'created_at': now_epoch,
+            'last_used_at': now_epoch,
+        }
+    return provider
+
+
+def _get_cached_stock_client(symbol: str, source: str):
+    normalized_source = _normalize_source(source)
+    normalized_symbol = _normalize_symbol(symbol)
+
+    if not normalized_symbol:
+        raise ExternalSystemException('symbol không hợp lệ.', code='vnstock_error')
+
+    if not _client_cache_enabled():
+        provider = _get_vnstock_provider(normalized_source)
+        return provider.stock(symbol=normalized_symbol, source=normalized_source)
+
+    cache_key = (normalized_source, normalized_symbol)
+    now_epoch = _now_epoch()
+
+    with _VNSTOCK_CACHE_LOCK:
+        _evict_vnstock_cache_locked(now_epoch)
+        cached = _VNSTOCK_STOCK_CLIENT_CACHE.get(cache_key)
+        if cached is not None:
+            cached['last_used_at'] = now_epoch
+            return cached['instance']
+
+    provider = _get_vnstock_provider(normalized_source)
+    stock_client = provider.stock(symbol=normalized_symbol, source=normalized_source)
+
+    with _VNSTOCK_CACHE_LOCK:
+        _VNSTOCK_STOCK_CLIENT_CACHE[cache_key] = {
+            'instance': stock_client,
+            'created_at': now_epoch,
+            'last_used_at': now_epoch,
+        }
+    return stock_client
+
+
+def _invalidate_stock_client_cache(source: str, symbol: str) -> None:
+    cache_key = (_normalize_source(source), _normalize_symbol(symbol))
+    with _VNSTOCK_CACHE_LOCK:
+        _VNSTOCK_STOCK_CLIENT_CACHE.pop(cache_key, None)
+
+
 _FUNDAMENTAL_SNAPSHOT_SCHEMA = [
     'symbol',
     'period',
@@ -328,12 +468,29 @@ def _log_upstream_payload_warning(*, source: str, symbol: str, operation: str, e
 
 
 def _build_stock_client(symbol: str, source: str = 'VCI'):
-    vnstock_cls = _import_vnstock()
+    normalized_source = _normalize_source(source)
+    normalized_symbol = _normalize_symbol(symbol)
     try:
-        return vnstock_cls().stock(symbol=symbol, source=source)
+        return _get_cached_stock_client(symbol=normalized_symbol, source=normalized_source)
+    except ExternalSystemException:
+        _invalidate_stock_client_cache(normalized_source, normalized_symbol)
+        raise
     except (Exception, SystemExit) as exc:
+        _invalidate_stock_client_cache(normalized_source, normalized_symbol)
         if isinstance(exc, Exception):
-            _log_upstream_payload_warning(source=source, symbol=symbol, operation='stock_client_init', exc=exc)
+            _log_upstream_payload_warning(
+                source=normalized_source,
+                symbol=normalized_symbol,
+                operation='stock_client_init',
+                exc=exc,
+            )
+            if not _bootstrap_log_suppress_enabled():
+                logger.warning(
+                    'vnstock stock_client bootstrap failed source=%s symbol=%s error=%s',
+                    normalized_source,
+                    normalized_symbol,
+                    exc,
+                )
         code = 'vnstock_rate_limited' if is_rate_limited_error(exc) else 'vnstock_error'
         raise ExternalSystemException(str(exc), code=code) from exc
 
@@ -726,14 +883,17 @@ def fetch_heatmap_snapshot(symbols_list: list[str]) -> list[dict]:
     if not symbols_list:
         return []
     try:
-        from vnstock import Vnstock, Listing
+        try:
+            from vnstock import Listing
+        except ImportError as exc:
+            raise ExternalSystemException('vnstock chưa được cài đặt.', code='vnstock_missing') from exc
 
         symbols = [s.strip().upper() for s in symbols_list if s]
 
         # 1. Batch price_board via KBS
         price_map: dict[str, float] = {}
         try:
-            stock_client = Vnstock().stock(symbols[0], source='KBS')
+            stock_client = _build_stock_client(symbol=symbols[0], source='KBS')
             pb = stock_client.trading.price_board(symbols_list=symbols)
             if isinstance(pb, pd.DataFrame) and not pb.empty:
                 for _, row in pb.iterrows():
@@ -776,7 +936,7 @@ def fetch_heatmap_snapshot(symbols_list: list[str]) -> list[dict]:
 
         def _fetch_outstanding(sym: str) -> tuple[str, int]:
             try:
-                ov = Vnstock().stock(sym, source='KBS').company.overview()
+                ov = _build_stock_client(symbol=sym, source='KBS').company.overview()
                 if isinstance(ov, pd.DataFrame) and not ov.empty:
                     val = ov.iloc[0].get('outstanding_shares', 0)
                     shares = int(float(val or 0))

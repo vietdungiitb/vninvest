@@ -1,5 +1,185 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-20i - VNStock runtime hardening phase 2-5 completion
+
+Muc tieu:
+- Hoan tat phan con lai cua runtime hardening: scheduler churn observability, giam overlap prefetch-vs-intraday polling, WS broadcast degrade mode, va KPI gate cho admin ops.
+- Chot test gate + docker deploy gate cho backend/celery de san sang audit tong the.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_prefetch.py (MODIFIED - bo sung metrics scheduler: stale snapshot, enqueued total, skipped_due_to_interval total, empty_shard total, disabled_tier total)
+- backend/portfolio/tasks_realtime.py (MODIFIED - them guardrails intraday polling: disable flag, symbol limit, skip khi prefetch cache con fresh)
+- backend/portfolio/realtime/stream_consumers.py (MODIFIED - them broadcaster degrade mode theo pending depth/batch threshold + metric over capacity)
+- backend/portfolio/services_realtime_metrics.py (MODIFIED - mo rong snapshot/prometheus voi channel_over_capacity va broadcast_degrade activations)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - expose prefetch scheduler KPI block trong admin runtime kpi api)
+- backend/config/settings.py (MODIFIED - them knobs cho intraday overlap control va broadcast degrade batch threshold)
+- backend/.env.example (MODIFIED - bo sung bien moi cho intraday overlap + degrade batch threshold)
+- backend/.env.production.example (MODIFIED - bo sung bien moi cho intraday overlap + degrade batch threshold)
+- compose.dev.env (MODIFIED - bo sung defaults dev cho intraday overlap + degrade batch threshold)
+- backend/portfolio/tests/test_realtime_ops_metrics_api.py (MODIFIED - cap nhat test metrics moi va on dinh assert gauge bien dong)
+- backend/portfolio/tests/test_realtime_gateway.py (MODIFIED - them test ws broadcaster degrade payload khi backpressure)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - cap nhat expectation enqueued_total phu hop fixture interval)
+- backend/portfolio/tests/test_tasks_realtime.py (NEW - test prefetch freshness guard va intraday disabled fast-exit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_adapters portfolio.tests.test_ticker_prefetch_task portfolio.tests.test_realtime_ops_metrics_api portfolio.tests.test_realtime_gateway portfolio.tests.test_tasks_realtime` (61 tests, OK).
+- PASSED: `get_errors` clean tren toan bo file backend/test vua sua.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat`.
+
+## Entry 2026-04-20h - VNStock runtime hardening phase 0-1 execution
+
+Muc tieu:
+- Giam khoi tao lap `Vnstock()` tren duong nong adapter de ha CPU churn va log spam bootstrap.
+- Rebalance cadence runtime mac dinh cho prefetch/realtime/stream va bo sung channel capacity guardrails.
+- Dat compose-level resource limits de tranh over-commit RAM/CPU tren DB/Redis/Celery.
+
+Danh sach tep cap nhat:
+- backend/portfolio/adapters/vnstock_adapter.py (MODIFIED - add provider/client cache manager with TTL+LRU eviction, cache invalidation on bootstrap failure, remove direct `Vnstock().stock(...)` usage in heatmap path)
+- backend/config/settings.py (MODIFIED - adjust safer default cadence, add channel layer capacity/expiry knobs, add vnstock cache env flags)
+- backend/.env.example (MODIFIED - document new cadence/channel/cache flags)
+- backend/.env.production.example (MODIFIED - document production-ready cadence/channel/cache flags)
+- compose.dev.env (MODIFIED - add hardening defaults and compose resource override variables)
+- docker-compose.dev.yml (MODIFIED - add per-service `mem_limit`/`cpus` guardrails for dev stack)
+- docker-compose.yml (MODIFIED - add per-service `mem_limit`/`cpus` guardrails for base/prod stack)
+- backend/portfolio/tests/test_adapters.py (MODIFIED - add cache behavior tests and reset cache state per test)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - align scheduler enqueue expectation with hardened cadence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_adapters portfolio.tests.test_ticker_prefetch_task` (47 tests, OK).
+- PASSED: `get_errors` clean on updated backend code/test files.
+
+## Entry 2026-04-20g - Auto bootstrap prefetch meta on startup
+
+Muc tieu:
+- Dam bao prefetch health khong bi treo trang thai `Chua co meta` sau khi Docker restart trong truong hop Redis con giu cache cu.
+- Sua luong warmup startup de thuc su cache du lieu ticker hot tier va publish meta snapshot ngay khi backend boot.
+- Them retry warmup sau startup de vuot qua race condition DB chua san sang tai thoi diem AppConfig.ready.
+
+Danh sach tep cap nhat:
+- backend/portfolio/warmup_cache.py (MODIFIED - fix hot symbol extraction to read from cache snapshot instead of task return value; fix should_run_warmup to only skip when meta has symbols>0; add startup prefetch meta for all branches)
+- backend/portfolio/apps.py (MODIFIED - start background warmup retry loop on startup until prefetch meta is available)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on warmup_cache.py and apps.py - no errors
+- PASSED: POST-RESTART health check: `status: ok`, `reason: ok`, `symbols: 37`, `cached: 37`, `sample_cache_hits: 12/12`, `freshness_seconds: 41`
+- Root cause confirmed: build_realtime_symbol_universe_snapshot() stores rows in Redis cache (not in return value); warmup_cache was reading return value which had no rows.
+
+## Entry 2026-04-20f - Modern dashboard functional correctness fixes
+
+Muc tieu:
+- Sua cac loi logic va UX duoc phat hien trong review Modern dashboard: hop nhat alert backend+realtime dung cach, dedupe an toan hon, bo gioi han slice client thua, bo sung responsive layout va i18n cho cac nhan hardcode.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - merge backend/local unified alerts instead of backend override, strengthen dedupe key with timestamp fallback, remove redundant client-side page slicing)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - responsive workspace layout for smaller viewports while preserving fixed top module height on lg+)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - replace hardcoded labels/messages with i18n defaults)
+- frontend/src/components/modern/ModernPortfolioDigest.jsx (MODIFIED - replace hardcoded digest texts with i18n defaults)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Pending `get_errors` across modified Modern files.
+- Pending frontend rebuild/restart for visual verification.
+
+## Entry 2026-04-20e - Increase fixed top workspace height by 2cm
+
+Muc tieu:
+- Tang them chieu cao co dinh cho 2 module top row (`Theo doi Dong tien` va `Trung tam canh bao hop nhat`) de de quan sat chart va stream canh bao hon sau lan rut gon truoc do.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - increase fixed top visual hub height from `h-[450px]` to `h-[526px]`, ~+2cm)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Pending `get_errors` on `frontend/src/pages/modern/ModernDashboard.jsx`.
+- Pending frontend rebuild/restart for visual verification.
+
+## Entry 2026-04-20d - Modern dashboard alert workspace repositioning
+
+Muc tieu:
+- Giu nguyen cac module theo plan v6.2 cua Modern dashboard, dong thoi dat `Thanh canh bao hop nhat` va `Trung tam canh bao hop nhat` vao o top-right cu.
+- Chuyen `Duong cong tang truong` xuong cot phai ngay duoi `Chi so Rui ro & Hieu suat` ma khong anh huong toi AI Bot, ModernPortfolioDigest va cac module v6.2 khac.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - merge UnifiedAlertBar into a single UnifiedAlertCenter workspace in Modern top-right slot and reduce top workspace height)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - move 4 severity chips beneath unified center hint so summary and stream live in one panel)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - reduce compact heatmap minimum height so sunburst fills panel without large empty space)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - place `EquityVsBenchmarkChart` below risk/performance section and allow sidebar modules to extend naturally for page-level vertical scroll)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Pending `get_errors` on edited Modern layout files after merging unified alert summary into one panel and reducing top workspace height.
+- Pending frontend rebuild/restart for visual verification.
+
+---
+
+## Entry 2026-04-20c - Modern heatmap click-card interaction and label centering
+
+Muc tieu:
+- Khoi phuc co che xem chi tiet heatmap bang click vao ma co phieu thay vi hover tooltip de tranh mat trang thai khi re chuot ra khoi chart.
+- Can giua label ma trong treemap theo truc doc va tang khong gian module Modern de sunburst khong bi cham day khung.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - replace hover tooltip with click-pinned detail card, move treemap label anchor to tile center, change chart area to flex-fill remaining module height so treeview reaches bottom edge, enlarge sunburst canvas height, rebalance sunburst radii, fix callback declaration order causing runtime ReferenceError in production bundle)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - increase visual hub height further so compact heatmap has balanced top/bottom margins in sunburst mode)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `get_errors` clean tren `frontend/src/components/PortfolioHeatmap.jsx` va `frontend/src/pages/modern/ModernDashboard.jsx`.
+- Frontend dev container rebuilt/restarted thanh cong voi bundle moi sau khi sua runtime error.
+
+---
+
+## Entry 2026-04-20b - Dev compose topology standardization
+
+Muc tieu:
+- Loai bo runtime drift khi frontend/backend cua dev stack bi tach sang hai network khac nhau do chay compose invocation khong dong nhat.
+- Chuan hoa `docker-compose.dev.yml` de moi service dev luon dung chung explicit network va volume names, giup recreate stack on dinh va de du doan hon.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add explicit `vninvest_network` to all dev services, declare canonical network name `vninvest-dev_vninvest_network`, and pin `redis_data` external volume name)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml config` => PASS.
+- Canonical recreate => db healthy, redis healthy, backend healthy, frontend started.
+- Frontend proxy check via `http://localhost:8080/api/health/` => 200.
+
+---
+
+## Entry 2026-04-20a - Shared heatmap watchlist fallback + Modern workstation stabilization
+
+Muc tieu:
+- Dam bao heatmap hien thi duoc cho ca portfolio chi co watchlist/tracked symbols, khong phu thuoc vao holdings.
+- On dinh giao dien Modern Workstation: dropdown menu khong bi che, nut refresh header hoat dong, empty state ro rang hon va alert stream duoc loc dung theo danh muc dang theo doi.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - fallback nominal size cho watchlist-only symbols o che do Von hoa; doi spinner empty state thanh static empty indicator)
+- frontend/src/components/TopNav.jsx (MODIFIED - tang stacking context cho nav header va dropdown menus de khong bi SmartStatsHeader de len)
+- frontend/src/components/modern/SmartStatsHeader.jsx (MODIFIED - wire nut refresh header vao `onRefresh`, harden breadth ratio tinh toan voi tong = 0, giam z-index sticky header de khong che TopNav)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - them empty state overview hop le cho portfolio khong co holdings, link den Transactions, va AI tab hien trang thai `Chua co du lieu phan tich` thay vi score 0 gia)
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - filter live alerts theo monitored symbols cua dashboard thay vi hien global stream)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - pass `onRefresh` vao header va `portfolioSymbols` vao sidebar)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-20a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- `get_errors` clean tren 5 file Modern vua sua va `frontend/src/components/PortfolioHeatmap.jsx`.
+- Frontend production build trong Docker => PASS.
+- Frontend container local da duoc rebuild va recreate thanh cong voi image moi.
+
+---
+
 ## Entry 2026-04-18bc - Heatmap tooltip rendering stabilization
 
 Muc tieu:
@@ -4158,6 +4338,31 @@ Ghi chu verify:
 - Can test truc tiep bang click sidebar trong luc Dashboard dang co realtime updates.
 - Ky vong: click menu doi noi dung ngay, khong can bam Enter o thanh dia chi.
 
+## Entry 2026-04-20e - VNStock runtime hardening master plan (repo-wide planning gate)
+
+Mục tiêu:
+- Khóa implementation plan tổng thể cho bài toán runtime hardening liên quan `vnstock`, Celery cadence, Redis Streams, Channels và Docker resource governance.
+- Tránh tiếp tục vá lẻ từng lỗi CPU/log/over-capacity/DB pressure mà không xử lý nguyên nhân kiến trúc.
+
+Nội dung cập nhật chính:
+- Tạo file plan chuẩn 12 mục mandatory theo policy:
+  - `docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md`
+- Plan đã chốt rõ:
+  - root-cause adapter bootstrap lặp tại `vnstock_adapter.py`
+  - rebalancing scheduler/polling/stream cadence
+  - channel capacity + degrade strategy
+  - docker resource limits + rollback plan
+  - test matrix, soak gate, canary gate, ownership và timeline
+
+Danh sách tệp cập nhật:
+- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md (NEW)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Kết quả kiểm tra:
+- Đây là mốc planning gate theo `IMPLEMENTATION_PLANNING_POLICY.md`.
+- Chưa có thay đổi runtime code trong entry này.
+
 ## Entry 2026-04-15 - Add mandatory implementation planning governance
 
 Pham vi:
@@ -4380,3 +4585,37 @@ Danh sach tep da sua:
 
 Ghi chu verify:
 - Static diagnostics: khong co loi tren cac file frontend vua sua.
+
+---
+
+## Entry 2026-04-20j - VNStock Runtime Hardening Final Audit & Drift Fix
+
+Tham chiếu implementation plan:
+- docs/IMPLEMENTATION_PLAN_VNSTOCK_RUNTIME_HARDENING_20260420.md
+
+Phạm vi:
+- Audit tổng thể kỹ thuật Phases 2-5 của gói VNStock Runtime Hardening.
+- Fix lỗi cấu hình drift gây ra cảnh báo `biến d_6e chưa set` trong môi trường Docker Compose.
+
+Danh sách tệp đã audit/sửa:
+- backend/portfolio/tasks_prefetch.py (Phase 2)
+- backend/portfolio/tasks_realtime.py (Phase 2)
+- backend/portfolio/realtime/stream_consumers.py (Phase 3)
+- backend/portfolio/services_realtime_metrics.py (Phase 3/5)
+- backend/portfolio/views_admin_runtime.py (Phase 5)
+- backend/config/settings.py (Hardening knobs)
+- .env.production (Fixed d_6e drift)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (This log)
+
+Nội dung cập nhật chính:
+- **Audit Phases 2-5**: Xác nhận đầy đủ logic scheduler tiered interval, intraday prefetch freshness guard, WS broadcast degrade mode, và Admin KPI metrics.
+- **Fix "d_6e" drift**: Escape ký tự `$` thành `$$` trong `DJANGO_SECRET_KEY` tại `.env.production`. Docker Compose trước đó hiểu lầm `$d_6e` là một biến môi trường cần substitution.
+
+Kết quả verify:
+- Backend tests PASS: `61 tests, OK` (portfolio.tests.test_adapters, test_tasks_realtime, etc.)
+- Configuration check: Lỗi cảnh báo `d_6e` đã được xử lý triệt để tại cấp khai báo.
+- System stability: Dev stack vận hành ổn định với đầy đủ guardrails runtime.
+
+Trạng thái:
+- **COMPLETE & AUDITED**. Hệ thống sẵn sàng cho giai đoạn soak testing 24/48h trước khi rollout production.
+

@@ -2,7 +2,7 @@ import React from 'react';
 import { useI18n } from '../../context/LangContext';
 import { usePortfolio } from '../../context/PortfolioContext';
 
-export default function SmartStatsHeader({ summary, loading, realtimeBreadth }) {
+export default function SmartStatsHeader({ summary, loading, realtimeBreadth, onRefresh }) {
   const { t } = useI18n();
   const { portfolios, activePortfolioId, setActivePortfolioId } = usePortfolio();
 
@@ -10,10 +10,10 @@ export default function SmartStatsHeader({ summary, loading, realtimeBreadth }) 
   const dayPL = summary?.total_unrealized_pl || 0;
   const dayPLPct = summary?.total_unrealized_pl_pct || 0;
 
-  const activePortfolio = portfolios.find(p => p.id === activePortfolioId);
+  const breadthTotal = (realtimeBreadth?.up || 0) + (realtimeBreadth?.down || 0) + (realtimeBreadth?.flat || 0);
 
   return (
-    <div className="flex items-center justify-between bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 py-2 sticky top-0 z-50">
+    <div className="sticky top-0 z-30 flex items-center justify-between bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 py-2">
       {/* Portfolio Selector & Name */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
@@ -75,15 +75,15 @@ export default function SmartStatsHeader({ summary, loading, realtimeBreadth }) 
              <div className="flex h-1.5 w-32 rounded-full overflow-hidden bg-slate-800">
                 <div 
                   className="bg-emerald-500 h-full transition-all duration-500" 
-                  style={{ width: `${(realtimeBreadth?.up / (realtimeBreadth?.up + realtimeBreadth?.down + realtimeBreadth?.flat || 1)) * 100}%` }}
+                  style={{ width: `${((realtimeBreadth?.up || 0) / (breadthTotal || 1)) * 100}%` }}
                 />
                 <div 
                   className="bg-slate-600 h-full transition-all duration-500" 
-                  style={{ width: `${(realtimeBreadth?.flat / (realtimeBreadth?.up + realtimeBreadth?.down + realtimeBreadth?.flat || 1)) * 100}%` }}
+                  style={{ width: `${((realtimeBreadth?.flat || 0) / (breadthTotal || 1)) * 100}%` }}
                 />
                 <div 
                   className="bg-rose-500 h-full transition-all duration-500" 
-                  style={{ width: `${(realtimeBreadth?.down / (realtimeBreadth?.up + realtimeBreadth?.down + realtimeBreadth?.flat || 1)) * 100}%` }}
+                  style={{ width: `${((realtimeBreadth?.down || 0) / (breadthTotal || 1)) * 100}%` }}
                 />
              </div>
              <span className="text-[10px] font-bold text-slate-300 ml-1">
@@ -94,7 +94,11 @@ export default function SmartStatsHeader({ summary, loading, realtimeBreadth }) 
 
         {/* Global Action */}
         <div className="flex items-center gap-2 border-l border-slate-800 pl-4">
-           <button className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-all" title="Sync All">
+           <button
+             onClick={() => onRefresh?.()}
+             className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-emerald-400 transition-all"
+             title="Làm mới dữ liệu"
+           >
              🔄
            </button>
            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Realtime Active" />

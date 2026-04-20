@@ -2985,20 +2985,20 @@ export default function StockDetail() {
 
         {/* Action bar: shortlist / watchlist / alert */}
         <div className="border-t border-slate-800/80 px-4 py-3">
-          <div className="flex flex-wrap items-stretch gap-2">
+          <div className="flex flex-wrap items-stretch gap-1.5">
             <button
               onClick={handleToggleTracked}
               disabled={!!actionLoading}
-              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
+              className={`btn-${overview.is_tracked ? 'secondary' : 'primary'} shrink-0 whitespace-nowrap px-4 py-2 ${!!actionLoading ? 'opacity-50' : ''}`}
             >
               {actionLoading === 'tracked' ? t('stockDetail.updating') : overview.is_tracked ? t('stockDetail.untrack') : t('stockDetail.trackRealtime')}
             </button>
 
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto lg:min-w-[280px]">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto lg:min-w-[250px]">
               <select
                 value={selectedWatchlistGroupId}
                 onChange={(event) => setSelectedWatchlistGroupId(event.target.value)}
-                className="min-w-[120px] flex-1 bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
+                className="min-w-[100px] flex-1 bg-transparent px-2 py-1 text-sm text-slate-200 outline-none"
               >
                 {availableWatchlistGroups.length === 0 ? (
                   <option value="">{t('stockDetail.noMoreWatchlist')}</option>
@@ -3011,36 +3011,36 @@ export default function StockDetail() {
               <button
                 onClick={handleAddToWatchlist}
                 disabled={!!actionLoading || availableWatchlistGroups.length === 0}
-                className={`btn-accent shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-accent shrink-0 whitespace-nowrap px-4 py-2 ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'watchlist-add' ? t('stockDetail.saving') : t('stockDetail.saveToGroup')}
               </button>
             </div>
 
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-1.5 rounded-full border border-slate-700 bg-slate-950/75 px-2 py-1.5 lg:w-auto lg:min-w-[250px]">
               <input
                 value={alertTargetPrice}
                 onChange={(event) => setAlertTargetPrice(event.target.value)}
                 placeholder={t('stockDetail.alertPriceLevel')}
-                className="w-[120px] min-w-[120px] bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                className="w-[104px] min-w-[104px] bg-transparent px-2 py-1 text-sm text-slate-100 outline-none placeholder:text-slate-600"
               />
               <button
                 onClick={handleCreateAlert}
                 disabled={!!actionLoading}
-                className={`btn-success shrink-0 whitespace-nowrap px-5 py-2.5 ${!!actionLoading ? 'opacity-50' : ''}`}
+                className={`btn-success shrink-0 whitespace-nowrap px-4 py-2 ${!!actionLoading ? 'opacity-50' : ''}`}
               >
                 {actionLoading === 'alert' ? t('stockDetail.creating') : t('stockDetail.createAlert')}
               </button>
             </div>
 
-            <div className="ml-auto w-full xl:w-auto xl:min-w-[368px] grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-950/75 px-3 py-2 text-[12px]">
-              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2.5 py-1">
+            <div className="ml-auto w-full lg:w-auto lg:min-w-[300px] grid grid-cols-2 gap-1.5 rounded-xl border border-slate-700 bg-slate-950/75 px-2.5 py-1.5 text-[11px]">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1">
                 <p className="text-label">{t('stockDetail.shortlist')}</p>
                 <p className={`mt-0.5 font-medium ${overview.is_tracked ? 'text-emerald-300' : 'text-slate-400'}`}>
                   {overview.is_tracked ? t('stockDetail.tracked') : t('stockDetail.notTracked')}
                 </p>
               </div>
-              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2.5 py-1">
+              <div className="rounded-lg border border-slate-700 bg-slate-900/70 px-2 py-1">
                 <p className="text-label">{t('stockDetail.groupList', { count: overview.watchlist_memberships.length })}</p>
                 {overview.watchlist_memberships.length > 0 ? (
                   <p className="mt-0.5 text-amber-300 truncate" title={overview.watchlist_memberships.map((item) => item.group_name).join(', ')}>

@@ -3,6 +3,19 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { normalizeSeverity } from '../hooks/useUnifiedAlerts';
 
+function SummaryChip({ label, count, tone, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`v2-chip-focus rounded-md border px-3 py-1.5 text-left transition-all duration-150 hover:-translate-y-[1px] hover:brightness-110 ${tone} ${active ? 'ring-1 ring-offset-0 ring-white/30' : ''}`}
+    >
+      <p className="text-[10px] uppercase tracking-[0.12em] opacity-85">{label}</p>
+      <p className="mt-0.5 text-[18px] font-bold leading-none tabular-nums">{count}</p>
+    </button>
+  );
+}
+
 function sourceTone(source) {
   if (source === 'whale') return 'border-cyan-700/80 bg-cyan-950/40 text-cyan-200';
   if (source === 'dark_flow') return 'border-violet-700/80 bg-violet-950/35 text-violet-200';
@@ -26,11 +39,13 @@ function severityTone(severity) {
 
 export default function UnifiedAlertCenter({
   alerts,
+  alertSummary,
   readAlertIds,
   markAlertAsRead,
   muteSymbolFor30m,
   severityFilter,
   setSeverityFilter,
+  onSeverityFilterChange,
   criticalSoundEnabled,
   toggleCriticalSound,
   currentUnifiedPage,
@@ -46,11 +61,15 @@ export default function UnifiedAlertCenter({
   setSourceFilter,
   audienceFilter,
   setAudienceFilter,
+  unreadCount,
+  showSummaryChips = false,
+  minHeightClass = 'min-h-[580px]',
   className = '',
 }) {
   const { t, formatDateTime, formatNumber } = useI18n();
   const [activeWorkspaceTab, setActiveWorkspaceTab] = React.useState('alerts');
   const safeAlerts = React.useMemo(() => (Array.isArray(alerts) ? alerts : []), [alerts]);
+  const unreadAlertCount = unreadCount ?? safeAlerts.filter((item) => !readAlertIds.has(item.id)).length;
 
   const severityFilters = [
     { value: 'all', label: t('dashboardRealtime.filterAll') },
@@ -64,7 +83,7 @@ export default function UnifiedAlertCenter({
   ];
 
   return (
-    <section className={`v2-panel flex min-h-[580px] flex-col rounded-xl ${className}`.trim()}>
+    <section className={`v2-panel flex ${minHeightClass} flex-col rounded-xl ${className}`.trim()}>
       <div className="border-b border-slate-800/90 px-4 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -81,10 +100,43 @@ export default function UnifiedAlertCenter({
             </Link>
           ) : (
             <span className="text-sm font-semibold text-amber-300">
-              {t('dashboardRealtime.unreadAlerts', { count: formatNumber(safeAlerts.filter((item) => !readAlertIds.has(item.id)).length) })}
+              {t('dashboardRealtime.unreadAlerts', { count: formatNumber(unreadAlertCount) })}
             </span>
           )}
         </div>
+
+        {showSummaryChips && activeWorkspaceTab === 'alerts' && (
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <SummaryChip
+              label={t('dashboardRealtime.severityCritical')}
+              count={formatNumber(alertSummary?.critical || 0)}
+              tone="border-rose-700/70 bg-rose-950/35 text-rose-200"
+              active={severityFilter === 'critical_only'}
+              onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('critical_only') : setSeverityFilter('critical_only'))}
+            />
+            <SummaryChip
+              label={t('dashboardRealtime.severityHigh')}
+              count={formatNumber(alertSummary?.high || 0)}
+              tone="border-amber-700/70 bg-amber-950/30 text-amber-200"
+              active={severityFilter === 'high_only'}
+              onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('high_only') : setSeverityFilter('high_only'))}
+            />
+            <SummaryChip
+              label={t('dashboardRealtime.severityMedium')}
+              count={formatNumber(alertSummary?.medium || 0)}
+              tone="border-cyan-700/70 bg-cyan-950/25 text-cyan-200"
+              active={severityFilter === 'medium_only'}
+              onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('medium_only') : setSeverityFilter('medium_only'))}
+            />
+            <SummaryChip
+              label={t('dashboardRealtime.severityLow')}
+              count={formatNumber(alertSummary?.low || 0)}
+              tone="border-slate-700 bg-slate-900 text-slate-300"
+              active={severityFilter === 'low_only'}
+              onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('low_only') : setSeverityFilter('low_only'))}
+            />
+          </div>
+        )}
 
         <div className="mt-3 inline-flex rounded-lg border border-slate-700 bg-slate-950/70 p-1 text-[11px]">
           <button

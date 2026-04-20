@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone as py_timezone
 import logging
 
 from celery import shared_task
@@ -11,6 +12,25 @@ from portfolio.models import TrackedSymbol, UserConfig
 from portfolio.observability import record_whale_dedup_observation, record_whale_event_observation
 
 logger = logging.getLogger(__name__)
+
+
+def _is_prefetch_cache_fresh(symbol: str, freshness_seconds: int) -> bool:
+    try:
+        ticker_payload = cache.get(f'ticker:{symbol}')
+        if not isinstance(ticker_payload, dict):
+            return False
+        if str(ticker_payload.get('source') or '').strip().lower() != 'prefetch':
+            return False
+        raw_last_date = str(ticker_payload.get('last_date') or '').strip()
+        if not raw_last_date:
+            return False
+        parsed = datetime.fromisoformat(raw_last_date.replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=py_timezone.utc)
+        age_seconds = (datetime.now(tz=py_timezone.utc) - parsed.astimezone(py_timezone.utc)).total_seconds()
+        return age_seconds <= max(int(freshness_seconds or 0), 1)
+    except Exception:
+        return False
 
 
 def _whale_thresholds_for_user(user_id: int | None) -> list[float]:
@@ -42,9 +62,22 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
         return {"status": "skipped", "reason": "lock_held"}
 
     try:
+        poll_enabled = bool(getattr(settings, 'REALTIME_INTRADAY_POLL_ENABLED', True))
+        if not poll_enabled:
+            return {
+                "status": "ok",
+                "symbols": 0,
+                "published": 0,
+                "intraday_disabled": True,
+            }
+
         symbols = tasks_facade.collect_symbols_for_user(user_id=user_id)
         if not symbols:
             return {"status": "ok", "symbols": 0, "published": 0}
+
+        symbol_limit = max(int(getattr(settings, 'REALTIME_INTRADAY_POLL_SYMBOL_LIMIT', 1200)), 1)
+        if len(symbols) > symbol_limit:
+            symbols = symbols[:symbol_limit]
 
         stream_enabled = getattr(settings, "STREAM_REDIS_URL", None)
         producer = None
@@ -76,6 +109,7 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 )
 
         published = 0
+        skipped_prefetch_fresh = 0
         whale_event_publish_flags: dict[str, dict[str, bool]] = {}
         for symbol in symbols:
             normalized_symbol = tasks_facade._normalize_symbol(symbol)
@@ -90,6 +124,12 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 ]
             else:
                 thresholds = runtime_config['thresholds_vnd'] or user_thresholds
+
+            skip_if_fresh_enabled = bool(getattr(settings, 'REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED', True))
+            skip_if_fresh_seconds = max(int(getattr(settings, 'REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS', 8)), 1)
+            if skip_if_fresh_enabled and _is_prefetch_cache_fresh(symbol=symbol, freshness_seconds=skip_if_fresh_seconds):
+                skipped_prefetch_fresh += 1
+                continue
 
             frame = tasks_facade.collect_intraday_frame(symbol)
 
@@ -196,6 +236,11 @@ def collect_and_publish_realtime(self, user_id: int | None = None) -> dict:
                 published += 1
 
         logger.info("Realtime publish completed: symbols=%d published=%d", len(symbols), published)
-        return {"status": "ok", "symbols": len(symbols), "published": published}
+        return {
+            "status": "ok",
+            "symbols": len(symbols),
+            "published": published,
+            "skipped_prefetch_fresh": skipped_prefetch_fresh,
+        }
     finally:
         cache.delete(lock_key)

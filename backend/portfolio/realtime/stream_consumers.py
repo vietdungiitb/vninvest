@@ -22,7 +22,7 @@ import redis
 from django.conf import settings
 from django.utils import timezone as dj_tz
 from portfolio.price_units import PriceSource, normalize_quote_price_to_canonical
-from portfolio.services_realtime_metrics import increment_realtime_metric, set_realtime_metric
+from portfolio.services_realtime_metrics import get_realtime_metric, increment_realtime_metric, set_realtime_metric
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +280,49 @@ class WsBroadcastConsumer(TickConsumerBase):
     group_name = "ws-broadcaster"
     consumer_name = "ws-broadcaster-1"
 
+    def __init__(self, consumer_name: str | None = None) -> None:
+        super().__init__(consumer_name)
+        # Throttle state: {symbol: (last_price, last_broadcast_ts)}
+        self._last_broadcast: dict[str, tuple[float, float]] = {}
+
+    def _should_skip_broadcast(self, symbol: str, current_price: float) -> bool:
+        """
+        Trả về True nếu nên bỏ qua broadcast (giá không đổi đủ VÀ chưa hết force interval).
+        Đọc ngưỡng từ settings để có thể điều chỉnh qua env mà không cần deploy lại.
+        """
+        min_change_pct = float(getattr(settings, "REALTIME_BROADCAST_MIN_CHANGE_PCT", 0.1))
+        force_interval_s = int(getattr(settings, "REALTIME_BROADCAST_FORCE_INTERVAL_S", 5))
+
+        last = self._last_broadcast.get(symbol)
+        now = time.time()
+
+        if last is None:
+            return False  # lần đầu tiên, luôn broadcast
+
+        last_price, last_ts = last
+
+        # Force broadcast định kỳ để tránh stale
+        if (now - last_ts) >= force_interval_s:
+            return False
+
+        # Bỏ qua nếu giá chưa thay đổi đáng kể
+        if last_price > 0:
+            change_pct = abs((current_price - last_price) / last_price) * 100
+            if change_pct < min_change_pct:
+                increment_realtime_metric('realtime_broadcast_throttled_total', suffix=self.group_name)
+                return True
+
+        return False
+
+    def _degrade_mode_enabled(self, batch_len: int) -> bool:
+        if not bool(getattr(settings, "REALTIME_BROADCAST_DEGRADE_ENABLED", True)):
+            return False
+
+        pending_threshold = max(int(getattr(settings, "REALTIME_BROADCAST_DEGRADE_PENDING_THRESHOLD", 2000)), 1)
+        batch_threshold = max(int(getattr(settings, "REALTIME_BROADCAST_DEGRADE_BATCH_THRESHOLD", 200)), 1)
+        pending_depth = int(get_realtime_metric('realtime_stream_pending_depth', suffix=self.group_name) or 0)
+        return pending_depth >= pending_threshold or batch_len >= batch_threshold
+
     def process_batch(self, symbol: str, messages: list[tuple[str, dict]]) -> None:
         from asgiref.sync import async_to_sync
         from channels.layers import get_channel_layer
@@ -306,6 +349,24 @@ class WsBroadcastConsumer(TickConsumerBase):
         df = pd.DataFrame(rows)
         payload = build_ticker_payload(symbol=symbol, trades_df=df, seq=seq)
 
+        if self._degrade_mode_enabled(batch_len=len(rows)):
+            increment_realtime_metric('realtime_broadcast_degrade_activations_total', suffix=self.group_name)
+            payload = {
+                'event_type': payload.get('event_type', 'ticker_update'),
+                'symbol': payload.get('symbol') or symbol.upper(),
+                'seq': payload.get('seq', seq),
+                'ts': payload.get('ts') or dj_tz.now().isoformat(),
+                'price': payload.get('price'),
+                'change_pct': payload.get('change_pct'),
+                'freshness_seconds': payload.get('freshness_seconds'),
+                'degraded': True,
+            }
+
+        current_price = float(payload.get('price') or 0)
+        if self._should_skip_broadcast(symbol, current_price):
+            return
+        self._last_broadcast[symbol] = (current_price, time.time())
+
         channel_layer = get_channel_layer()
         if channel_layer is None:
             return
@@ -320,6 +381,8 @@ class WsBroadcastConsumer(TickConsumerBase):
                 },
             )
         except Exception as exc:
+            if 'over capacity' in str(exc).lower():
+                increment_realtime_metric('realtime_channel_over_capacity_total', suffix=self.group_name)
             logger.warning("WsBroadcast: group_send(%s) failed: %s", group, exc)
 
 

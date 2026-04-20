@@ -8,17 +8,38 @@ export const InterfaceProvider = ({ children }) => {
     const saved = localStorage.getItem('vninvest_ui_pref');
     return saved === 'modern' ? 'modern' : 'legacy';
   });
+  const [modernLeftSidebarOpen, setModernLeftSidebarOpen] = useState(() => {
+    const saved = localStorage.getItem('vninvest_modern_left_sidebar_open');
+    return saved === '1';
+  });
 
   useEffect(() => {
     localStorage.setItem('vninvest_ui_pref', uiMode);
   }, [uiMode]);
 
+  useEffect(() => {
+    localStorage.setItem('vninvest_modern_left_sidebar_open', modernLeftSidebarOpen ? '1' : '0');
+  }, [modernLeftSidebarOpen]);
+
   const toggleUiMode = () => {
     setUiMode(prev => (prev === 'legacy' ? 'modern' : 'legacy'));
   };
 
+  const toggleModernLeftSidebar = () => {
+    setModernLeftSidebarOpen((prev) => !prev);
+  };
+
   return (
-    <InterfaceContext.Provider value={{ uiMode, setUiMode, toggleUiMode }}>
+    <InterfaceContext.Provider
+      value={{
+        uiMode,
+        setUiMode,
+        toggleUiMode,
+        modernLeftSidebarOpen,
+        setModernLeftSidebarOpen,
+        toggleModernLeftSidebar,
+      }}
+    >
       {children}
     </InterfaceContext.Provider>
   );

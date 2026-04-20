@@ -30,8 +30,8 @@ export default function ModernPortfolioDigest({ digest, loading }) {
       <div className="p-4 text-center">
         <div className="text-2xl mb-2 opacity-20">📰</div>
         <p className="text-[11px] text-slate-500 italic">
-          Bản tin AI đang được chuẩn bị... <br/>
-          (Thường cập nhật sau 16:05 phiên khớp lệnh)
+          {t('dashboardRealtime.digestPreparing', { defaultValue: 'Bản tin AI đang được chuẩn bị...' })} <br/>
+          {t('dashboardRealtime.digestRefreshHint', { defaultValue: '(Thường cập nhật sau 16:05 phiên khớp lệnh)' })}
         </p>
       </div>
     );
@@ -42,7 +42,7 @@ export default function ModernPortfolioDigest({ digest, loading }) {
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 flex items-center gap-2">
           <span className="w-1 h-3 bg-cyan-500 rounded-full" />
-          AI Digest
+          {t('dashboardRealtime.aiDigestTitle', { defaultValue: 'AI Digest' })}
         </h3>
         <span className="text-[9px] text-slate-600 bg-slate-800/50 px-1.5 py-0.5 rounded">
           {digest.date}
