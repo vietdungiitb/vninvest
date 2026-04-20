@@ -20,7 +20,7 @@ function NavGroup({ label, items, icon }) {
         <span className="text-[12px] text-slate-400">{icon}</span>
         {label}
       </button>
-      <div className="invisible absolute left-0 top-[110%] z-40 min-w-[220px] rounded-lg border border-slate-800 bg-slate-950/95 p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
+      <div className="invisible absolute left-0 top-[110%] z-[90] min-w-[220px] rounded-lg border border-slate-800 bg-slate-950/95 p-2 opacity-0 shadow-2xl transition-all group-hover:visible group-hover:opacity-100">
         {items.map((item) => (
           <NavLink key={item.to} to={item.to} className={({ isActive }) => groupLinkClass(isActive)}>
             {item.label}
@@ -56,7 +56,7 @@ export default function TopNav() {
   ].filter((item) => item.to !== '/admin-ops' || ability.can('manage', 'all'));
 
   return (
-    <header className="h-[62px] shrink-0 border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
+    <header className="relative z-[70] h-[62px] shrink-0 overflow-visible border-b border-slate-700/80 bg-gradient-to-r from-slate-950/98 via-slate-900/96 to-slate-950/98 px-4 backdrop-blur-md">
       <div className="flex h-full items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <NavLink to="/dashboard" className={({ isActive }) => groupLinkClass(isActive)}>

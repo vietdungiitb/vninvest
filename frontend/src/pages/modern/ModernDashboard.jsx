@@ -169,6 +169,7 @@ export default function ModernDashboard() {
         summary={summary} 
         loading={loading} 
         realtimeBreadth={realtimeMarketBreadth} 
+        onRefresh={fetchData}
       />
 
       {/* 2. Main Workspace Layout */}
@@ -217,6 +218,7 @@ export default function ModernDashboard() {
               analytics={analytics}
               digest={digest}
               loading={loading}
+              portfolioSymbols={monitoredSymbols}
            />
         </div>
       </div>

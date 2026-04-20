@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useI18n } from '../../context/LangContext';
 import AllocationPieChart from '../AllocationPieChart';
 import ModernPortfolioDigest from './ModernPortfolioDigest';
 
-export default function ModernSidebar({ portfolioId, alerts, breadth, analytics, digest, loading }) {
+export default function ModernSidebar({ portfolioId, alerts, breadth, analytics, digest, loading, portfolioSymbols = [] }) {
   const { t } = useI18n();
+  const trackedSymbolSet = useMemo(
+    () => new Set((portfolioSymbols || []).map((symbol) => String(symbol || '').trim().toUpperCase()).filter(Boolean)),
+    [portfolioSymbols],
+  );
+  const filteredAlerts = useMemo(() => {
+    if (!trackedSymbolSet.size) return [];
+    return (alerts || []).filter((alert) => trackedSymbolSet.has(String(alert?.symbol || '').trim().toUpperCase()));
+  }, [alerts, trackedSymbolSet]);
 
   const metrics = [
     { 
@@ -75,11 +83,11 @@ export default function ModernSidebar({ portfolioId, alerts, breadth, analytics,
             Luồng tín hiệu Live
           </div>
           <span className="text-[9px] px-2 py-0.5 bg-rose-500/10 text-rose-400 rounded-full border border-rose-500/20">
-            {alerts?.length || 0} EVENTS
+            {filteredAlerts.length} EVENTS
           </span>
         </h3>
         <div className="flex-1 space-y-3">
-          {alerts?.slice(0, 5).map((alert, idx) => (
+          {filteredAlerts.slice(0, 5).map((alert, idx) => (
             <div key={idx} className="group text-[11px] border-l-2 border-slate-700 hover:border-emerald-500 pl-4 py-1.5 bg-slate-900/30 hover:bg-slate-900/60 transition-all rounded-r-md">
               <div className="flex justify-between mb-0.5">
                 <span className="font-black text-emerald-400">{alert.symbol}</span>
@@ -88,10 +96,10 @@ export default function ModernSidebar({ portfolioId, alerts, breadth, analytics,
               <p className="text-slate-400 leading-normal line-clamp-1">{alert.message || 'Phát hiện tín hiệu mua/bán từ ví cá mập.'}</p>
             </div>
           ))}
-          {(!alerts || alerts.length === 0) && (
+          {filteredAlerts.length === 0 && (
              <div className="flex flex-col items-center justify-center h-full text-slate-600 text-[11px] italic py-8">
                <div className="mb-2 opacity-20 text-2xl">📡</div>
-               Đang chờ tín hiệu thời gian thực...
+               Chưa có tín hiệu thời gian thực cho các mã đang theo dõi.
              </div>
           )}
         </div>
