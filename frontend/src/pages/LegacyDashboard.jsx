@@ -90,6 +90,8 @@ export default function LegacyDashboard() {
     goToFirstUnifiedPage,
     goToPreviousUnifiedPage,
     goToNextUnifiedPage,
+    goToLastUnifiedPage,
+    hasLastUnifiedPage,
   } = useUnifiedAlerts({
     alerts,
     darkFlowAlerts,
@@ -490,6 +492,8 @@ export default function LegacyDashboard() {
             goToFirstUnifiedPage={goToFirstUnifiedPage}
             goToPreviousUnifiedPage={goToPreviousUnifiedPage}
             goToNextUnifiedPage={goToNextUnifiedPage}
+            goToLastUnifiedPage={goToLastUnifiedPage}
+            hasLastUnifiedPage={hasLastUnifiedPage}
             pageSize={unifiedPageSize}
             setPageSize={setUnifiedPageSize}
             sourceFilter={sourceFilter}

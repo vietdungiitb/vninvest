@@ -253,6 +253,14 @@ export default function useUnifiedAlerts({
     await fetchUnifiedPage(currentPageIndex + 1);
   };
 
+  const goToLastUnifiedPage = async () => {
+    if (loadingMoreUnified) return;
+    const lastKnownIndex = cursorStack.length - 1;
+    if (lastKnownIndex > currentPageIndex) {
+      await fetchUnifiedPage(lastKnownIndex);
+    }
+  };
+
   const mergedAlerts = useMemo(() => {
     const combined = [];
     const seen = new Set();
@@ -552,5 +560,7 @@ export default function useUnifiedAlerts({
     goToFirstUnifiedPage,
     goToPreviousUnifiedPage,
     goToNextUnifiedPage,
+    goToLastUnifiedPage,
+    hasLastUnifiedPage: cursorStack.length - 1 > currentPageIndex,
   };
 }

@@ -22,4 +22,61 @@ This document defines the mandatory interaction protocol between the AI (Antigra
 *   The AI must prioritize integrity and user control over speed of delivery.
 
 ---
-*Last Updated: 2026-04-17*
+
+## 5. Pagination Standard
+
+**Quy định bắt buộc:** Mọi module, trang, hoặc panel có danh sách phân trang đều phải sử dụng component dùng chung sau đây. **Nghiêm cấm tạo inline pagination riêng lẻ.**
+
+### Component chuẩn
+```
+frontend/src/components/shared/PaginationBar.jsx
+```
+
+### Cách dùng
+
+**Offset-mode** (biết tổng số bản ghi — dùng cho danh sách client-side):
+```jsx
+import PaginationBar from '../shared/PaginationBar';
+
+<PaginationBar
+  mode="offset"
+  total={totalItems}
+  page={currentPage}        // 1-based
+  size={pageSize}
+  onPageChange={setCurrentPage}
+  onSizeChange={handleSizeChange}
+/>
+```
+
+**Cursor-mode** (cursor-based API — dùng cho stream/realtime):
+```jsx
+<PaginationBar
+  mode="cursor"
+  currentPage={currentPage}
+  hasPrev={hasPreviousPage}
+  hasNext={hasNextPage}
+  hasLast={hasLastKnownPage}
+  loading={isLoading}
+  onFirst={goToFirst}
+  onPrev={goToPrev}
+  onNext={goToNext}
+  onLast={goToLast}
+  pageSize={pageSize}
+  onSizeChange={setPageSize}
+/>
+```
+
+### Giao diện chuẩn
+- **Page size:** combobox `<select>` với các tùy chọn `[5, 10, 15, 20]`.
+- **Nút điều hướng:** icon SVG (không dùng text), có `title` tooltip. Thứ tự: ⏮ Đầu · ◀ Trước · ▶ Tiếp · ⏭ Cuối.
+- **Nút Tiếp:** hiển thị spinner khi đang loading.
+- **Disable logic:** nút disabled khi không có trang tương ứng.
+
+### Modules đã tuân thủ (cập nhật 2026-04-21)
+| Module | File | Mode |
+|--------|------|------|
+| Trung tâm cảnh báo | `components/UnifiedAlertCenter.jsx` | cursor |
+| Position Deck | `components/modern/ModularPositionDeck.jsx` | offset |
+
+---
+*Last Updated: 2026-04-21*

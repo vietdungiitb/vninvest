@@ -151,6 +151,8 @@ export default function ModernDashboard() {
     goToFirstUnifiedPage,
     goToPreviousUnifiedPage,
     goToNextUnifiedPage,
+    goToLastUnifiedPage,
+    hasLastUnifiedPage,
   } = useUnifiedAlerts({
     alerts,
     darkFlowAlerts,
@@ -258,6 +260,8 @@ export default function ModernDashboard() {
                   goToFirstUnifiedPage={goToFirstUnifiedPage}
                   goToPreviousUnifiedPage={goToPreviousUnifiedPage}
                   goToNextUnifiedPage={goToNextUnifiedPage}
+                  goToLastUnifiedPage={goToLastUnifiedPage}
+                  hasLastUnifiedPage={hasLastUnifiedPage}
                   pageSize={unifiedPageSize}
                   setPageSize={setUnifiedPageSize}
                   sourceFilter={sourceFilter}

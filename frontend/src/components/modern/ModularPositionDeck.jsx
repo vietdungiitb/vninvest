@@ -3,54 +3,9 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import HoldingsTable from '../HoldingsTable';
 import OptimizationModal from './OptimizationModal';
+import PaginationBar from '../shared/PaginationBar';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
-
-function PaginationBar({ total, page, size, onPageChange, onSizeChange }) {
-  const totalPages = Math.max(1, Math.ceil(total / size));
-  const from = total === 0 ? 0 : (page - 1) * size + 1;
-  const to = Math.min(page * size, total);
-  return (
-    <div className="flex items-center justify-between px-3 py-2 border-t border-slate-800/60 bg-slate-900/50 text-[11px] text-slate-500 shrink-0">
-      <div className="flex items-center gap-1">
-        <span className="mr-1">Hiển thị</span>
-        {PAGE_SIZE_OPTIONS.map((s) => (
-          <button
-            key={s}
-            onClick={() => onSizeChange(s)}
-            className={`px-2 py-0.5 rounded transition-all ${
-              size === s
-                ? 'bg-emerald-600/20 text-emerald-400 font-bold border border-emerald-500/30'
-                : 'hover:bg-slate-800 hover:text-slate-300'
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-      <div className="flex items-center gap-3">
-        <span>{from}–{to} / {total}</span>
-        <div className="flex items-center gap-1">
-          <button
-            disabled={page <= 1}
-            onClick={() => onPageChange(page - 1)}
-            className="px-1.5 py-0.5 rounded hover:bg-slate-800 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          >
-            ‹
-          </button>
-          <span className="tabular-nums">{page}/{totalPages}</span>
-          <button
-            disabled={page >= totalPages}
-            onClick={() => onPageChange(page + 1)}
-            className="px-1.5 py-0.5 rounded hover:bg-slate-800 hover:text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-          >
-            ›
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function ModularPositionDeck({ holdings, loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
   const { t } = useI18n();

@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { normalizeSeverity } from '../hooks/useUnifiedAlerts';
+import PaginationBar from './shared/PaginationBar';
 
 function SummaryChip({ label, count, tone, active, onClick }) {
   return (
@@ -55,6 +56,8 @@ export default function UnifiedAlertCenter({
   goToFirstUnifiedPage,
   goToPreviousUnifiedPage,
   goToNextUnifiedPage,
+  goToLastUnifiedPage,
+  hasLastUnifiedPage,
   pageSize,
   setPageSize,
   sourceFilter,
@@ -250,54 +253,20 @@ export default function UnifiedAlertCenter({
             )}
           </div>
 
-          <div className="flex items-center justify-between gap-2 border-t border-slate-800/90 px-3 py-2.5 text-xs">
-            <div className="flex items-center gap-2 text-slate-500">
-              <span>{t('dashboardRealtime.paginationPage', { page: currentUnifiedPage || 1 })}</span>
-              <span>•</span>
-              <span>{t('dashboardRealtime.paginationPageSize')}</span>
-              <div className="flex items-center gap-1">
-                {[5, 10, 15, 20].map((size) => (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => setPageSize(size)}
-                    className={`v2-chip-focus rounded border px-1.5 py-0.5 text-[11px] font-semibold ${pageSize === size
-                      ? 'border-cyan-600 bg-cyan-900/30 text-cyan-200'
-                      : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-200'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={goToFirstUnifiedPage}
-                disabled={!hasPreviousUnifiedPage || loadingMoreUnified}
-                className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
-              >
-                {t('dashboardRealtime.paginationFirst')}
-              </button>
-              <button
-                type="button"
-                onClick={goToPreviousUnifiedPage}
-                disabled={!hasPreviousUnifiedPage || loadingMoreUnified}
-                className="v2-chip-focus rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] font-semibold text-slate-300 hover:border-slate-600 hover:text-slate-100 disabled:opacity-50"
-              >
-                {t('dashboardRealtime.paginationPrev')}
-              </button>
-              <button
-                type="button"
-                onClick={goToNextUnifiedPage}
-                disabled={!backendUnifiedHasMore || loadingMoreUnified}
-                className="v2-chip-focus rounded border border-cyan-700/70 bg-cyan-950/25 px-2 py-1 text-[11px] font-semibold text-cyan-200 hover:bg-cyan-900/35 disabled:opacity-50"
-              >
-                {loadingMoreUnified ? t('dashboardRealtime.loadingMore') : t('dashboardRealtime.paginationNext')}
-              </button>
-            </div>
-          </div>
+          <PaginationBar
+            mode="cursor"
+            currentPage={currentUnifiedPage || 1}
+            hasPrev={hasPreviousUnifiedPage}
+            hasNext={backendUnifiedHasMore}
+            hasLast={hasLastUnifiedPage}
+            loading={loadingMoreUnified}
+            onFirst={goToFirstUnifiedPage}
+            onPrev={goToPreviousUnifiedPage}
+            onNext={goToNextUnifiedPage}
+            onLast={goToLastUnifiedPage}
+            pageSize={pageSize}
+            onSizeChange={setPageSize}
+          />
         </>
       ) : (
         <div className="panel-scrollbar flex-1 overflow-y-auto px-4 py-4">
