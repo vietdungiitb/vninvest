@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import RuntimeVnstockConfig
+from .models import RuntimeVnstockConfig, Transaction
 from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
 
 
@@ -9,6 +9,24 @@ from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
 def invalidate_runtime_vnstock_cache_on_save(sender, instance, **kwargs):
     del sender, instance, kwargs
     invalidate_vnstock_runtime_cache()
+
+
+@receiver(post_save, sender=Transaction)
+def invalidate_holdings_cache_on_transaction(sender, instance, **kwargs):
+    """
+    Khi có Transaction mới/cập nhật → xoá cache holdings của portfolio đó.
+    Cache key format: holdings:{portfolio_id}:{period}:{YYYY-MM-DD}
+    """
+    from django.core.cache import cache
+    from datetime import date
+    try:
+        portfolio_id = instance.sub_account.portfolio_id
+    except Exception:
+        return
+    today = date.today().isoformat()
+    for period in ('1D', '5D', '1M', 'YTD'):
+        cache.delete(f'holdings:{portfolio_id}:{period}:{today}')
+
 
 
 @receiver(post_save, sender='portfolio.WhaleAdvisory')

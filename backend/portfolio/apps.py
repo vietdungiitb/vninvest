@@ -9,7 +9,7 @@ class PortfolioConfig(AppConfig):
     def ready(self):
         from .vnstock_compat import patch_vnstock_finance_init, disable_vnstock_upgrade_notice
         from .opencore_signals import create_dpi_license_for_new_user  # Register signals
-        from .signals import invalidate_runtime_vnstock_cache_on_save  # Register signals
+        from .signals import invalidate_runtime_vnstock_cache_on_save, invalidate_holdings_cache_on_transaction  # Register signals
 
         patch_vnstock_finance_init()
         disable_vnstock_upgrade_notice()
