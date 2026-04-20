@@ -13,7 +13,7 @@ export default function SmartStatsHeader({ summary, loading, realtimeBreadth }) 
   const activePortfolio = portfolios.find(p => p.id === activePortfolioId);
 
   return (
-    <div className="flex items-center justify-between bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 py-2 sticky top-0 z-30">
+    <div className="flex items-center justify-between bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-4 py-2 sticky top-0 z-50">
       {/* Portfolio Selector & Name */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">

@@ -92,13 +92,13 @@ export default function ModernDashboard() {
       />
 
       {/* 2. Main Workspace Layout */}
-      <div className="flex-1 flex overflow-hidden p-4 gap-4">
+      <div className="flex-1 flex p-4 gap-4 overflow-hidden relative">
         
         {/* Left: Charts & Positions (65%) */}
         <div className="w-[65%] flex flex-col gap-4 overflow-hidden">
           
           {/* Visual Hub: Heatmap & Equity Curve Side-by-Side */}
-          <div className="h-[40%] grid grid-cols-2 gap-4">
+          <div className="h-[48%] grid grid-cols-2 gap-4 shrink-0">
             <div className="bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1">
                <PortfolioHeatmap 
                   holdings={liveHoldings} 
