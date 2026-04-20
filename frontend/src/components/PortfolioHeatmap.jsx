@@ -57,11 +57,13 @@ const TREEMAP_LEVELS = [
   },
 ];
 
-export default function PortfolioHeatmap({ holdings, title }) {
+export default function PortfolioHeatmap({ holdings, title, compact }) {
   const { t, locale, localeTag } = useI18n();
   const [viewMode, setViewMode] = useState('treemap');
   const [sizeMetric, setSizeMetric] = useState('cap');
-  const HEATMAP_HEIGHT = 420;
+  const HEATMAP_HEIGHT = compact
+    ? (viewMode === 'sunburst' ? 380 : 340)
+    : (viewMode === 'sunburst' ? 480 : 420);
   const chartComponentRef = useRef(null);
   const chartContainerRef = useRef(null);
   const resizeRafRef = useRef(0);
@@ -743,24 +745,31 @@ export default function PortfolioHeatmap({ holdings, title }) {
   }
 
   return (
-    <div className="group relative bg-slate-900/76 backdrop-blur-[12px] border border-slate-700/68 rounded-2xl flex flex-col overflow-hidden transition-all duration-500 hover:border-slate-500/80 shadow-2xl" style={{ minHeight: HEATMAP_HEIGHT + 96 }}>
+    <div className="group relative bg-slate-900/76 backdrop-blur-[12px] border border-slate-700/68 rounded-2xl flex flex-col overflow-hidden transition-all duration-500 hover:border-slate-500/80 shadow-2xl">
       {/* Decorative background glow */}
       <div className="absolute -top-24 -left-24 w-64 h-64 bg-cyan-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-cyan-500/10 transition-colors duration-700" />
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-700" />
 
       {/* Header */}
-      <div className="px-5 py-3 border-b border-slate-700/55 bg-slate-950/62 flex items-center justify-between z-10">
-        <div className="flex flex-col">
-          <h3 className="text-[10px] sm:text-xs font-black text-slate-200 uppercase tracking-[0.2em] flex items-center gap-2">
-            {title}
-            <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
-          </h3>
-          <p className="text-[9px] text-slate-400/95 font-bold uppercase mt-0.5 tracking-wider">
-            {t('dashboardRealtime.heatmapRealtimeCaption', { defaultValue: 'Biến động theo dõi • Realtime feed' })}
-          </p>
+      <div className="px-5 py-4 border-b border-slate-700/55 bg-slate-950/62 flex flex-col gap-4 z-10">
+        {/* Row 1: Title */}
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-[10px] sm:text-xs font-black text-slate-200 uppercase tracking-[0.2em] flex items-center gap-2">
+              {title}
+              <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            </h3>
+            <p className="text-[9px] text-slate-400/95 font-bold uppercase mt-0.5 tracking-wider">
+              {t('dashboardRealtime.heatmapRealtimeCaption', { defaultValue: 'Biến động theo dõi • Realtime feed' })}
+            </p>
+          </div>
+          <div className="text-[9px] text-slate-500 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-800/50">
+             LIVE FEED
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        {/* Row 2: Controls */}
+        <div className="flex items-center justify-between">
           <div className="flex bg-slate-900/85 p-1 rounded-full border border-slate-700/50 shadow-inner">
             <button
               onClick={() => setSizeMetric('weight')}
@@ -776,20 +785,20 @@ export default function PortfolioHeatmap({ holdings, title }) {
             </button>
           </div>
           <div className="flex bg-slate-900/84 p-1 rounded-xl border border-slate-700/55 shadow-inner">
-          <button 
-            onClick={() => setViewMode('treemap')}
-            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'treemap' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-          >
-            <span style={{ fontSize: '14px' }}>⊞</span>
-            {t('dashboardRealtime.heatmapModeTreemap', { defaultValue: 'Treemap' })}
-          </button>
-          <button 
-            onClick={() => setViewMode('sunburst')}
-            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'sunburst' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
-          >
-            <span style={{ fontSize: '14px' }}>◎</span>
-            {t('dashboardRealtime.heatmapModeSunburst', { defaultValue: 'Sunburst' })}
-          </button>
+            <button 
+              onClick={() => setViewMode('treemap')}
+              className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'treemap' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+            >
+              <span style={{ fontSize: '14px' }}>⊞</span>
+              {t('dashboardRealtime.heatmapModeTreemap', { defaultValue: 'Treemap' })}
+            </button>
+            <button 
+              onClick={() => setViewMode('sunburst')}
+              className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all duration-300 flex items-center gap-2 ${viewMode === 'sunburst' ? 'bg-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.35)] scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}
+            >
+              <span style={{ fontSize: '14px' }}>◎</span>
+              {t('dashboardRealtime.heatmapModeSunburst', { defaultValue: 'Sunburst' })}
+            </button>
           </div>
         </div>
       </div>
