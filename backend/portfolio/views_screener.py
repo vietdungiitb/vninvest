@@ -58,61 +58,58 @@ class ScreenerRuleRunView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rule_id):
+        from .market_data_service import MarketDataService
         rule = generics.get_object_or_404(ScreenerRule, pk=rule_id, user=request.user)
         conditions = rule.rules_json
 
-        from django.db.models import Max, Q
-        latest_dates = DailyPrice.objects.values('symbol').annotate(latest=Max('date'))
-        symbol_date_map = {row['symbol']: row['latest'] for row in latest_dates}
+        # 1. Lấy toàn bộ symbols có dữ liệu (SSOT)
+        all_symbols = MarketDataService.get_universe_symbols()
 
-        if not symbol_date_map:
+        if not all_symbols:
             return Response({'matched': [], 'total_scanned': 0, 'rule_id': rule.id})
 
-        all_symbols = list(symbol_date_map.keys())
-        rows = []
-        chunk_size = 500
-        for i in range(0, len(all_symbols), chunk_size):
-            chunk_syms = all_symbols[i:i + chunk_size]
-            chunk_q = Q()
-            for sym in chunk_syms:
-                chunk_q |= Q(symbol=sym, date=symbol_date_map[sym])
-            rows.extend(
-                DailyPrice.objects.filter(chunk_q).values(
-                    'symbol', 'close_price', 'volume', 'open_price', 'high_price', 'low_price', 'date'
-                )
-            )
+        # 2. Fetch snapshot (Latest Price)
+        # MarketDataService handles chunking and caching internally if optimized, 
+        # or we just use it as the unified access point.
+        latest_rows_map = MarketDataService.get_latest_snapshot(all_symbols)
 
         required_fields = {cond['field'] for cond in conditions}
         needs_history = required_fields & {
-            'rsi_14',
-            'sma20',
-            'sma50',
-            'momentum_20d_pct',
-            'price_vs_sma20_pct',
-            'price_vs_sma50_pct',
-            'range_position_pct',
-            'avg_volume_20',
-            'macd_hist',
-            'volume_rvol',
-            'sma20_vs_sma50_pct',
+            'rsi_14', 'sma20', 'sma50', 'momentum_20d_pct', 
+            'price_vs_sma20_pct', 'price_vs_sma50_pct', 'range_position_pct',
+            'avg_volume_20', 'macd_hist', 'volume_rvol', 'sma20_vs_sma50_pct',
         }
 
+        # 3. Fetch history if needed
         history_map = {}
         if needs_history:
-            from datetime import date as date_cls, timedelta
-
-            cutoff = date_cls.today() - timedelta(days=70)
-            hist_qs = (
-                DailyPrice.objects
-                .filter(symbol__in=all_symbols, date__gte=cutoff)
-                .values('symbol', 'date', 'close_price', 'volume', 'high_price', 'low_price')
-                .order_by('symbol', 'date')
+            # Screener typically needs ~50-70 rows for MA/RSI
+            history_map = MarketDataService.get_historical_indicators(
+                all_symbols,
+                lookback_days=70,
+                include_fields=['date', 'close_price', 'volume', 'high_price', 'low_price']
             )
-            for row in hist_qs:
-                sym = row['symbol']
-                if sym not in history_map:
-                    history_map[sym] = []
-                history_map[sym].append(row)
+
+        matched = []
+        rows_to_scan = latest_rows_map.values()
+        total_scanned = len(rows_to_scan)
+        
+        for row in rows_to_scan:
+            sym = row.get('symbol') or next((s for s, r in latest_rows_map.items() if r == row), None)
+            if not sym: continue
+            
+            # Adapting snapshot format
+            adapter_row = {**row, 'symbol': sym}
+            tech = _screener_build_technical(sym, adapter_row, history_map)
+            
+            if all(_apply_screener_condition(tech.get(c['field']), c['op'], c['value']) for c in conditions):
+                matched.append(
+                    {
+                        'symbol': sym,
+                        'date': str(row['date']),
+                        **tech,
+                    }
+                )
 
         matched = []
         total_scanned = len(rows)

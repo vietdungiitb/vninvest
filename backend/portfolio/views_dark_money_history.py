@@ -120,16 +120,20 @@ def _normalize_tick_side(value) -> str:
 
 
 def _build_reference_price_by_trade_date(symbol: str, trade_dates: list[date]) -> dict[date, float]:
+    from .market_data_service import MarketDataService
     normalized_dates = sorted({d for d in trade_dates if d})
     if not normalized_dates:
         return {}
 
-    rows = list(
-        DailyPrice.objects
-        .filter(symbol=symbol, date__lt=normalized_dates[-1] + timedelta(days=1))
-        .order_by('date')
-        .values('date', 'close_price')
+    # MDSU Canonical path: fetch historical prices in batch
+    # We fetch up to the last trade date to build the mapping
+    data_map = MarketDataService.get_ohlcv_batch(
+        [symbol], 
+        end_date=normalized_dates[-1],
+        fields=['date', 'close_price']
     )
+    rows = data_map.get(symbol.upper(), [])
+    
     if not rows:
         return {}
 

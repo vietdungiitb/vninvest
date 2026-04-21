@@ -39,18 +39,29 @@ def _get_n_trading_days_ago(n: int, anchor: date) -> date:
 
 def _get_ipo_trading_day_count(symbol: str, as_of: date) -> int:
     """Ước tính số ngày giao dịch của symbol tính đến as_of từ DailyPrice."""
-    from portfolio.models import DailyPrice
-    return DailyPrice.objects.filter(symbol=symbol, date__lte=as_of).count()
+    from .market_data_service import MarketDataService
+    # Fetch price history up to as_of to count trading days
+    data = MarketDataService.get_ohlcv_batch(
+        [symbol], 
+        end_date=as_of,
+        fields=['date']
+    ).get(symbol.upper(), [])
+    return len(data)
 
 
 def _get_close_price(symbol: str, target_date: date):
     """Trả về close_price của symbol vào target_date hoặc None."""
-    from portfolio.models import DailyPrice
-    try:
-        dp = DailyPrice.objects.get(symbol=symbol, date=target_date)
-        return dp.close_price
-    except DailyPrice.DoesNotExist:
-        return None
+    from .market_data_service import MarketDataService
+    rows = MarketDataService.get_ohlcv_batch(
+        [symbol], 
+        start_date=target_date, 
+        end_date=target_date, 
+        fields=['close_price']
+    ).get(symbol.upper(), [])
+    
+    if rows:
+        return rows[0].get('close_price')
+    return None
 
 
 def _validate_price(symbol: str, price: Decimal, target_date: date) -> bool:

@@ -134,4 +134,19 @@ import PaginationBar from '../shared/PaginationBar';
 - Neu phat hien conflict ket qua giua hai luong, phai quy ve SSOT va xoa luong non-SSOT truoc khi merge.
 
 ---
+
+## 8. Mandatory Campaign Closure Documentation
+
+**Quy định bắt buộc:** Ngay sau khi hoàn thành việc triển khai code (Execution) và đóng lại một chiến dịch/giai đoạn (Campaign Closure), AI **BẮT BUỘC** phải ghi lại toàn bộ tài liệu phục vụ việc audit và nghiệm thu thành các file vật lý trong thư mục `docs/`.
+
+### Yêu cầu thực thi
+- **Thời điểm**: Ngay sau khi đạt Definition of Done (DoD) và trước khi kết thúc phiên làm việc/bàn giao kết quả cuối cùng.
+- **Danh mục tài liệu bắt buộc**:
+  - `IMPLEMENTATION_PLAN_*.md`: Phản ánh đúng trạng thái thực thi cuối cùng.
+  - `TECH_SPEC_*.md`: Đặc tả kỹ thuật chi tiết của giải pháp đã triển khai.
+  - `TASKBOARD_*.md`: Ghi nhận trạng thái hoàn thành của từng đầu việc (100% DONE).
+  - `WALKTHROUGH_*.md`: Báo cáo tổng kết, bằng chứng verify, screenshot/recording (nếu có).
+- **Nguyên tắc**: Đây là quy định cứng, **không có ngoại lệ**. Việc chỉ cung cấp tài liệu dưới dạng artifact tạm thời mà không lưu vào `docs/` được coi là vi phạm quy trình.
+
+---
 *Last Updated: 2026-04-21*

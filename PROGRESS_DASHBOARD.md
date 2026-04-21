@@ -1,5 +1,45 @@
-**Date**: 2026-04-20  
-**Status**: VNStock Runtime Hardening Audit COMPLETE & Drift Fixed ✅
+**Date**: 2026-04-21  
+**Status**: MDSU Phase 4 SSOT Migration 100% COMPLETE ✅ — Platform-wide Market Data SSOT Achieved
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21y)
+- docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (NEW - actionable checklist to close remaining business read-path direct DailyPrice queries)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: checklist doc created with task groups for migration, gate hardening, verification, and DoD.
+- PASSED: checklist scope aligns with latest audit findings of remaining business call-sites.
+- NOTE: No runtime code changed in this task.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21x)
+- docs/IMPLEMENTATION_PLAN_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - plan 4 phase, KPI table, migration scope, rollback strategy)
+- docs/TECH_SPEC_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - class design, canonical rules, migration mapping, contract test spec, gate test spec, Redis key convention)
+- docs/TASKBOARD_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - 30 tasks across 4 phases, DoD per phase, release gate checklist G1-G7)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: audit scan xác nhận 13 call-site nghiệp vụ DailyPrice trong 7 module.
+- PASSED: Mandatory Triad (Plan + Tech Spec + Taskboard) hoàn chỉnh đủ để coder bắt tay Phase 0.
+- NOTE: Không có code thay đổi — chờ confirm để tiến hành Phase 0.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21w)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add mandatory MDSU governance: MarketDataService canonical gateway, anti-fragmentation rules, checklist gates, and official technology naming)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add mandatory MDSU compliance map for planning, DoR/DoD market-data gates, and MDSU governance appendix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: project process docs now explicitly define this architecture program as `MDSU - Market Data Service Unification`.
+- PASSED: governance blocks direct `DailyPrice` access outside canonical `MarketDataService` path for migrated scopes.
+- PASSED: pre-code/pre-merge checklist now includes mandatory MDSU compliance evidence.
 
 
 ---

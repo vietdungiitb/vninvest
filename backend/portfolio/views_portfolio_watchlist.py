@@ -362,24 +362,27 @@ class EquityCurveView(APIView):
 
         nav_df['portfolio_pct'] = ((nav_df['value'].astype(float) / base_nav) - 1) * 100
 
+        from .market_data_service import MarketDataService
         start_date = nav_df['date'].iloc[0].date()
         end_date = nav_df['date'].iloc[-1].date()
-        bench_qs = (
-            DailyPrice.objects
-            .filter(symbol='VNINDEX', date__gte=start_date, date__lte=end_date)
-            .order_by('date')
-            .values('date', 'close_price')
+        
+        # MDSU Canonical path for benchmark data
+        bench_data_map = MarketDataService.get_ohlcv_batch(
+            ['VNINDEX'], 
+            start_date=start_date, 
+            end_date=end_date,
+            fields=['date', 'close_price']
         )
+        
+        bench_list = bench_data_map.get('VNINDEX', [])
         bench_map = {}
-        if bench_qs.exists():
-            bench_list = list(bench_qs)
-            if bench_list:
-                base_bench = float(bench_list[0]['close_price'])
-                if base_bench > 0:
-                    for row in bench_list:
-                        bench_map[str(row['date'])] = round(
-                            (float(row['close_price']) / base_bench - 1) * 100, 2
-                        )
+        if bench_list:
+            base_bench = float(bench_list[0]['close_price'])
+            if base_bench > 0:
+                for row in bench_list:
+                    bench_map[str(row['date'])] = round(
+                        (float(row['close_price']) / base_bench - 1) * 100, 2
+                    )
 
         points = []
         for _, row in nav_df.iterrows():

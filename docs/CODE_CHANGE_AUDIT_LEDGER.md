@@ -1,5 +1,83 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21z - Finalize Phase 4 MDSU SSOT Closure (100% Compliance)
+
+Mục tiêu:
+- Thực thi di chuyển 10 call-site còn sót trong `analytics.py`, `ai_context.py`, `services.py`, và `tasks_signal_verification.py`.
+- Harden gate test nâng cấp lên 14 module và regex nghiêm ngặt cho toàn bộ business read-path.
+- Đạt 100% SSOT cho luồng đọc dữ liệu thị trường (Market Data).
+
+Danh sách tệp cập nhật:
+- backend/portfolio/analytics.py (MODIFIED - migrated 4 call-sites)
+- backend/portfolio/ai_advisory_helpers.py (MODIFIED - migrated 2 call-sites)
+- backend/portfolio/ai_context.py (MODIFIED - migrated 1 call-site)
+- backend/portfolio/tasks_signal_verification.py (MODIFIED - migrated 2 call-sites)
+- backend/portfolio/services.py (MODIFIED - migrated 3 call-sites)
+- backend/portfolio/tests/test_mdsu_gate.py (MODIFIED - hardened to 14 modules, strict regex)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21z)
+- PROGRESS_DASHBOARD.md (MODIFIED - mark 100% completion)
+- docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (MODIFIED - mark all items as PASSED)
+
+Validation:
+- PASSED: 8/8 tests (parity + gate) pass 100%.
+- PASSED: Repo-wide scan xác nhận 0 direct query trong business read-path.
+- PASSED: Gate test fail đúng khi inject direct query.
+
+## Entry 2026-04-21y - Create execution checklist for MDSU Phase 4 SSOT closure
+
+Mục tiêu:
+- Tạo checklist thực thi chi tiết để đóng các call-site `DailyPrice.objects` còn sót trong business read-path.
+- Chuẩn hóa bước hardening gate test để ngăn regression sau khi đã migrate.
+- Thiết lập Definition of Done rõ ràng cho Phase 4 trước khi vào coding.
+
+Danh sách tệp cập nhật:
+- docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (NEW - implementation checklist for migration, gate hardening, verification, and DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: checklist bám đúng các call-site còn sót đã được audit thực tế.
+- PASSED: checklist có đầy đủ nhóm việc migration, gate test hardening, test verification, và audit closure.
+- NOTE: Đây là bước chuẩn bị thực thi (không thay đổi code runtime).
+
+## Entry 2026-04-21x - Create Mandatory Triad planning pack for MDSU v1
+
+Mục tiêu:
+- Tạo bộ tài liệu kế hoạch thực thi đầy đủ cho chương trình MDSU (Market Data Service Unification).
+- Xác định chính xác 13 call-site cần migrate qua audit scan thực tế codebase.
+- Định nghĩa API canonical, caching design, contract tests, gate tests và release criteria.
+
+Danh sách tệp cập nhật:
+- docs/IMPLEMENTATION_PLAN_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - plan 4 phase, KPI table, migration scope, rollback strategy)
+- docs/TECH_SPEC_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - class design, canonical rules, migration mapping, contract test spec, gate test spec, Redis key convention)
+- docs/TASKBOARD_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - 30 tasks across 4 phases, DoD per phase, release gate checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: audit scan xác nhận 13 call-site nghiệp vụ trong 7 module (loại trừ tests, admin, management commands).
+- PASSED: planning pack đầy đủ theo Mandatory Triad governance (Plan + Tech Spec + Taskboard).
+- PASSED: Tech Spec có đủ code design cho MarketDataService class, contract tests, và gate tests để coder bắt tay làm ngay.
+- NOTE: Chưa có code thay đổi — đây là planning pack, chờ "đồng ý" để vào Phase 0.
+
+## Entry 2026-04-21w - Enforce mandatory MDSU governance in project process docs
+
+Mục tiêu:
+- Chuan hoa ten cong nghe/chien luoc dai phau du lieu thi truong thanh `MDSU - Market Data Service Unification`.
+- Ghi thanh quy dinh bat buoc trong tai lieu quy trinh xay dung du an.
+- Them merge gate va checklist compliance de ngan tai phat truy van `DailyPrice` phan manh.
+
+Danh sách tệp cập nhật:
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add mandatory MDSU rules, checklist gates, and naming section)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add MDSU compliance map in plan template, DoR/DoD updates, and appendix governance)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: playbook now contains mandatory policy for `MarketDataService` as canonical gateway for market data.
+- PASSED: planning policy now requires MDSU compliance map for any scope touching `DailyPrice`/OHLCV/indicators.
+- PASSED: governance now defines merge blockers when MDSU compliance evidence is missing.
+
 ## Entry 2026-04-21v - Implement Slice 6 (AI monitor mode)
 
 Mục tiêu:
