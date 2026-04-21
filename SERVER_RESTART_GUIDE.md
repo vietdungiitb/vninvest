@@ -131,6 +131,20 @@ curl -i http://localhost/admin/
 curl -i http://localhost/api/health/
 ```
 
+### Bước 8.1: Seed dữ liệu theo chuẩn production-safe
+
+```bash
+# Chỉ seed dữ liệu tham chiếu (an toàn cho production)
+docker compose exec backend python manage.py seed_environment --profile reference
+
+# Nếu cần demo smoke có chủ đích: bật cờ cho 1 lần chạy
+docker compose exec backend python manage.py seed_environment --profile demo-smoke --allow-production --dry-run
+```
+
+Lưu ý:
+- Khi `DJANGO_DEBUG=False`, các command demo seed mặc định bị chặn để tránh bơm dữ liệu test nhầm vào production.
+- Có thể bật `ALLOW_DEMO_SEED=true` trong env nếu muốn mở quyền tạm thời theo runbook.
+
 ### Bước 9: Kiểm Tra Logs Chi Tiết Nếu Gặp Lỗi
 
 ```bash

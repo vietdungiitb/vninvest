@@ -1,1038 +1,159 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  getUserConfig,
-  getTrackedSymbols,
-  refreshWhaleAdvisory,
-  deleteCurrentWhaleAdvisory,
-  getWhaleAdvisories,
-  getAdvisoryAutoRefreshInfo,
-  getAIOptions,
-  testAIConnection,
-  updateUserConfig,
-  getWhaleAdvisorySymbolStats,
-} from '../api/client';
+import React, { useEffect, useMemo, useState } from 'react';
 import { usePortfolio } from '../context/PortfolioContext';
-import Can from '../components/Can';
 import { useI18n } from '../context/LangContext';
-import RecommendationCardExplainability from '../components/advisory/RecommendationCardExplainability';
-import DataFreshnessBadge from '../components/advisory/DataFreshnessBadge';
-import ActionChecklist from '../components/advisory/ActionChecklist';
 import RiskModeSelector from '../components/advisory/RiskModeSelector';
 import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
 import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
 
-function fmtCurrency(value) {
-  return Number(value || 0).toLocaleString(undefined);
+// Modular Components
+import WhaleAdvisoryBentoHeader from '../components/advisory/WhaleAdvisoryBentoHeader';
+import WhaleSymbolSidebar from '../components/advisory/WhaleSymbolSidebar';
+import WhaleAdvisoryCommandPanel from '../components/advisory/WhaleAdvisoryCommandPanel';
+import { useWhaleAdvisoryData } from '../hooks/useWhaleAdvisoryData';
+
+function fmtTime(ts) {
+  if (!ts) return '--:--';
+  return new Date(ts).toLocaleTimeString();
 }
 
-function fmtCompact(value) {
-  const n = Number(value || 0);
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}T`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString(undefined);
-}
-
-function fmtTime(value) {
-  if (!value) return '—';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(undefined);
-}
-
-const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
-
-function inferConfidence(advisory) {
-  if (!advisory) return null;
-  if (advisory.confidence !== null && advisory.confidence !== undefined) {
-    const parsed = Number(advisory.confidence);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  const summary = String(advisory.ai_summary || '');
-  const matched = summary.match(/(\d{1,3})%/);
-  if (!matched) return null;
-  const parsed = Number(matched[1]);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function getFreshnessSeconds(ts) {
-  if (!ts) return null;
-  const ms = new Date(ts).getTime();
-  if (Number.isNaN(ms)) return null;
-  return Math.max(0, Math.floor((Date.now() - ms) / 1000));
-}
-
-function getRealtimeStatusByFreshness(secondsAgo) {
-  if (secondsAgo === null || secondsAgo === undefined) return 'idle';
-  if (secondsAgo <= 30) return 'live';
-  if (secondsAgo <= 120) return 'polling';
-  return 'idle';
-}
-
-function getThresholdSourceLabel(value, t) {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'symbol_override') {
-    return t('watchlist.thresholdSourceSymbol');
-  }
-  return t('watchlist.thresholdSourceUser');
-}
-
-// ─── Thống kê mỗi mã ────────────────────────────────────────────
-function buildSymbolStats(items) {
-  const map = {};
-  for (const item of items) {
-    const sym = item.symbol;
-    if (!map[sym]) {
-      map[sym] = { symbol: sym, buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0 };
-    }
-    const side = (item.side || '').toUpperCase();
-    if (side === 'BUY') map[sym].buyCount += 1;
-    else if (side === 'SELL') map[sym].sellCount += 1;
-    map[sym].totalValue += Number(item.matched_value || 0);
-    map[sym].totalVolume += Number(item.volume || 0);
-    map[sym].count += 1;
-  }
-  // šắp theo tổng giá trị (cao nhất trước)
-  return Object.values(map).sort((a, b) => b.totalValue - a.totalValue);
-}
-
-// ─── Ô cột trái: thông tin mã ──────────────────────────────────
-function SymbolCell({ stats, isActive, onClick }) {
-  const { t } = useI18n();
-  const avgValue = stats.count > 0 ? stats.totalValue / stats.count : 0;
-  const whaleAvgPrice = stats.totalVolume > 0 ? stats.totalValue / stats.totalVolume : 0;
-  const totalOrders = stats.buyCount + stats.sellCount;
-  const buyRatio = totalOrders > 0 ? (stats.buyCount / totalOrders) * 100 : 0;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`w-full text-left p-4 transition-colors ${
-        isActive
-          ? 'bg-cyan-950/40 border-l-2 border-cyan-400'
-          : 'hover:bg-slate-800/60 border-l-2 border-transparent'
-      }`}
-    >
-      {/* Tên mã */}
-      <p className={`text-sm font-bold ${isActive ? 'text-cyan-300' : 'text-slate-100'}`}>
-        {stats.symbol}
-      </p>
-
-      {/* Số lệnh mua/bán */}
-      <div className="mt-1.5 flex flex-wrap gap-3 text-xs">
-        <span className="flex items-center gap-1 text-emerald-400">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          {t('whaleHub.buy')}: {stats.buyCount}
-        </span>
-        <span className="flex items-center gap-1 text-rose-400">
-          <span className="inline-block h-1.5 w-1.5 rounded-full bg-rose-400" />
-          {t('whaleHub.sell')}: {stats.sellCount}
-        </span>
-      </div>
-
-      {/* Bar mua/bán */}
-      {totalOrders > 0 && (
-        <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-rose-900/60">
-          <div
-            className="h-full rounded-full bg-emerald-500 transition-all"
-            style={{ width: `${buyRatio}%` }}
-          />
-        </div>
-      )}
-
-      {/* Giá trị trung bình */}
-      <p className="mt-2 text-xs text-slate-400">
-        {t('whaleHub.avgOrder')}: <span className="font-medium text-slate-200">{fmtCompact(avgValue)} VND</span>
-      </p>
-      {whaleAvgPrice > 0 && (
-        <p className="mt-0.5 text-xs text-cyan-400">
-          {t('whaleHub.avgPrice')}: <span className="font-medium">{whaleAvgPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })} VND/CP</span>
-        </p>
-      )}
-      <p className="mt-0.5 text-xs text-slate-500">
-        {t('whaleHub.totalOrders', { count: stats.count })} · {fmtCompact(stats.totalValue)} VND
-      </p>
-    </button>
-  );
-}
-
-// ─── Ô cột phải: AI Advisory tương ứng ────────────────────────
-function AdvisoryCell({ item, symbol, onRefresh, onDeleteCurrent, refreshing, deleting, rowMessage }) {
-  const { t } = useI18n();
-  const advisory = item || {};
-  const resolvedSymbol = String(symbol || item?.symbol || '').toUpperCase();
-  const hasAdvisory = Boolean(item);
-  const side = (advisory.side || '').toUpperCase();
-  const isBuy = side === 'BUY';
-  const freshnessSeconds = getFreshnessSeconds(advisory.created_at);
-  const realtimeStatus = getRealtimeStatusByFreshness(freshnessSeconds);
-
-  return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-            isBuy ? 'bg-emerald-900/60 text-emerald-300' : 'bg-rose-900/60 text-rose-300'
-          }`}>
-            {side || 'UNKNOWN'}
-          </span>
-          {advisory.severity && advisory.severity !== 'info' && (
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-              advisory.severity === 'urgent' ? 'bg-red-900/70 text-red-300 animate-pulse'
-              : 'bg-amber-900/60 text-amber-300'
-            }`}>
-              {advisory.severity === 'urgent'
-                ? t('whaleAdvisory.severityUrgent')
-                : t('whaleAdvisory.severityWarning')}
-            </span>
-          )}
-          {advisory.advisory_type === 'reversal' && (
-            <span className="rounded-full bg-fuchsia-900/50 px-2 py-0.5 text-[10px] font-bold uppercase text-fuchsia-300">
-              {t('whaleAdvisory.advisoryTypeReversal')}
-            </span>
-          )}
-          <span className="text-xs font-semibold text-slate-100">
-            {fmtCompact(advisory.matched_value)} VND
-          </span>
-        </div>
-        <div className="flex flex-col items-end gap-0.5 text-[11px] text-slate-500">
-          <span>{fmtTime(advisory.created_at)}</span>
-          <span className="tracking-widest">{[advisory.ai_provider || 'openclaw', advisory.ai_model || 'default'].join(' / ')}</span>
-          {advisory.source && (
-            <span className={`rounded px-1.5 py-0.5 text-[10px] ${
-              advisory.source === 'periodic_job' ? 'bg-slate-800 text-slate-400'
-              : advisory.source === 'user_refresh' ? 'bg-cyan-900/40 text-cyan-400'
-              : 'bg-indigo-900/40 text-indigo-400'
-            }`}>
-              {advisory.source === 'periodic_job' ? 'Auto' : advisory.source === 'user_refresh' ? 'Manual' : advisory.source}
-              {advisory.refresh_count > 0 && ` ×${advisory.refresh_count}`}
-            </span>
-          )}
-          {advisory.threshold_source && (
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
-              {t('watchlist.thresholdSourceColumn')}: {getThresholdSourceLabel(advisory.threshold_source, t)}
-            </span>
-          )}
-          {Array.isArray(advisory.merged_sources) && advisory.merged_sources.length > 1 ? (
-            <span className="rounded bg-violet-900/40 px-1.5 py-0.5 text-[10px] text-violet-300">
-              Merged: {advisory.merged_sources.join(' + ')}
-            </span>
-          ) : null}
-          {advisory.primary_source ? (
-            <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-slate-300">
-              Primary: {advisory.primary_source}
-            </span>
-          ) : null}
-          <DataFreshnessBadge
-            lastEventAt={advisory.created_at}
-            realtimeStatus={realtimeStatus}
-            compact
-          />
-        </div>
-      </div>
-
-      <div className="mt-3">
-        {hasAdvisory ? (
-          <RecommendationCardExplainability
-            advisory={advisory}
-            freshnessSeconds={freshnessSeconds}
-            realtimeStatus={realtimeStatus}
-          />
-        ) : (
-          <div className="rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-400">
-            {t('whaleAdvisory.noAdvisory')}
-          </div>
-        )}
-      </div>
-
-      {/* AI Summary */}
-      <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
-        <p className="text-xs leading-6 whitespace-pre-line text-slate-300">
-          {hasAdvisory ? (advisory.ai_summary || t('whaleHub.noAiSummary')) : t('whaleAdvisory.noAdvisory')}
-        </p>
-      </div>
-
-      {/* AI Detail (Premium) */}
-      <Can
-        I="read"
-        a="WhaleAdvisoryDetail"
-        fallback={
-          <Link
-            to="/upgrade"
-            className="mt-2 inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300"
-          >
-            🔒 {t('whaleHub.deepAnalysis')}
-          </Link>
-        }
-      >
-        {hasAdvisory && advisory.ai_detail ? (
-          <div className="mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
-            <p className="text-xs leading-6 whitespace-pre-line text-slate-400">
-              {advisory.ai_detail}
-            </p>
-          </div>
-        ) : null}
-      </Can>
-
-      {/* Liên kết nhanh */}
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-800 pt-3">
-        <button
-          type="button"
-          onClick={() => onRefresh?.(resolvedSymbol)}
-          disabled={Boolean(refreshing) || Boolean(deleting)}
-          className="btn-secondary inline-flex items-center justify-center text-[11px]"
-        >
-          {refreshing ? t('whaleAdvisory.refreshing') : t('whaleAdvisory.refreshAi')}
-        </button>
-        <button
-          type="button"
-          onClick={() => onDeleteCurrent?.(resolvedSymbol)}
-          disabled={!hasAdvisory || Boolean(refreshing) || Boolean(deleting)}
-          className="inline-flex items-center justify-center rounded-md border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-[11px] text-rose-300 transition hover:bg-rose-900/40 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {deleting ? 'Đang xóa...' : 'Xóa advisory hiện tại'}
-        </button>
-        <Link
-          to={`/whale-alerts/${resolvedSymbol}`}
-          className="btn-secondary inline-flex items-center justify-center text-[11px]"
-        >
-          {t('whaleHub.openSymbolDashboard')}
-        </Link>
-        <Link
-          to={`/stocks/${resolvedSymbol}`}
-          className="btn-secondary inline-flex items-center justify-center text-[11px]"
-        >
-          {t('whaleHub.openStockWorkspace')}
-        </Link>
-      </div>
-      {rowMessage ? (
-        <p className="mt-2 text-xs text-cyan-300">{rowMessage}</p>
-      ) : null}
-
-      {hasAdvisory ? (
-        <div className="mt-3">
-          <ActionChecklist
-            symbol={resolvedSymbol}
-            isBlocked={freshnessSeconds !== null && freshnessSeconds > 120}
-            blockedReason={
-              freshnessSeconds !== null && freshnessSeconds > 120
-                ? t('actionChecklist.blockedDefault', { defaultValue: 'Dữ liệu không đủ tin cậy để tiến hành. Hãy làm mới và xem lại khuyến nghị.' })
-                : ''
-            }
-            onProceed={() => onRefresh?.(resolvedSymbol)}
-          />
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-// ─── Hàng của bảng ────────────────────────────────────────────
-function TableRow({ stats, allItems, isFirst, isLast }) {
-  const { t } = useI18n();
-  const symbolItems = allItems.filter(i => i.symbol === stats.symbol);
-  // Lấy advisory mới nhất của mã này
-  const latest = symbolItems[0] || null;
-
-  return (
-    <div className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${
-      isFirst ? '' : 'border-t border-slate-800'
-    }`}>
-      {/* Cột trái */}
-      <div className="flex items-start">
-        <SymbolCell stats={stats} isActive={false} onClick={() => {}} />
-      </div>
-
-      {/* Cột phải */}
-      <div>
-        {latest ? (
-          <AdvisoryCell item={latest} />
-        ) : (
-          <div className="flex h-full items-center p-4 text-xs text-slate-600">
-            {t('whaleAdvisory.noAdvisory')}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Page ──────────────────────────────────────────────────
+/**
+ * WhaleAdvisory — The Agentic Command Center (2026)
+ * Orchestrates the modular bento-grid layout for whale intelligence.
+ */
 export default function WhaleAdvisory() {
   const { userPlan } = usePortfolio();
   const { t } = useI18n();
-  const [items, setItems] = useState([]);
-  const [trackedSymbols, setTrackedSymbols] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [pendingRefreshSymbols, setPendingRefreshSymbols] = useState({});
-  const [pendingDeleteSymbols, setPendingDeleteSymbols] = useState({});
-  const [rowMessages, setRowMessages] = useState({});
-  const [refreshMessage, setRefreshMessage] = useState('');
-  const [riskMode, setRiskMode] = useState(() => {
-    const stored = localStorage.getItem('vninvest:risk-mode');
-    if (stored === 'conservative' || stored === 'balanced' || stored === 'aggressive') {
-      return stored;
-    }
-    return 'balanced';
-  });
-  const [riskModeNotice, setRiskModeNotice] = useState('');
+
+  const [riskMode, setRiskMode] = useState(() => localStorage.getItem('vninvest:risk-mode') || 'balanced');
   const [activeSymbol, setActiveSymbol] = useState('');
   const [symbolSearch, setSymbolSearch] = useState('');
-  const [advisoryFilter, setAdvisoryFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('symbol_asc');
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
 
-  // Selected symbol auto-refresh quota
-  const [refreshInfo, setRefreshInfo] = useState(null);
+  const {
+    items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
+    pendingDeleteSymbols, rowMessages, fetchData, loadRefreshInfo,
+    handleRefreshAdvisory, handleDeleteAdvisory
+  } = useWhaleAdvisoryData(watchlistOnly);
 
-    // Advisory list filters
-    const [watchlistOnly, setWatchlistOnly] = useState(false);
+  // Sync risk mode
+  useEffect(() => localStorage.setItem('vninvest:risk-mode', riskMode), [riskMode]);
 
-  // State for whale symbol statistics (from IntradayTick source)
-  const [symbolStats, setSymbolStats] = useState([]);
-  const [statsLoading, setStatsLoading] = useState(false);
-  
-  const fetchWhaleStats = useCallback(async () => {
-    setStatsLoading(true);
-    try {
-      const resp = await getWhaleAdvisorySymbolStats({
-        window: 'session',
-      });
-      if (resp.data?.stats) {
-        setSymbolStats(resp.data.stats);
-      }
-    } catch (err) {
-      console.error('Failed to fetch whale stats:', err);
-      setSymbolStats([]);
-    } finally {
-      setStatsLoading(false);
-    }
-  }, []);
-  
-  const fetchDataSnapshot = useCallback(async () => {
-    const [advisoryResp, trackedResp] = await Promise.all([
-      getWhaleAdvisories(watchlistOnly ? { watchlist_only: 'true', contract: 'canonical' } : { contract: 'canonical' }),
-      getTrackedSymbols(),
-    ]);
-    const advisoryData = advisoryResp?.data;
-    const canonicalItems = Array.isArray(advisoryData?.items) ? advisoryData.items : [];
-    const advisories = canonicalItems.map((item) => ({
-      id: item?.advisory_id,
-      symbol: item?.symbol,
-      side: item?.recommendation || 'UNKNOWN',
-      ai_summary: item?.summary_text || '',
-      ai_detail: item?.detail_text || '',
-      ai_provider: item?.ai_provider || 'openclaw',
-      ai_model: item?.ai_model || 'default',
-      created_at: item?.created_at,
-      source: item?.source,
-      severity: item?.risk_level || null,
-      confidence: item?.confidence,
-      next_refresh_at: item?.freshness?.next_refresh_at || null,
-      matched_value: 0,
-      refresh_count: 0,
-    }));
-    const tracked = trackedResp.data || [];
-    setItems(advisories);
-    setTrackedSymbols(tracked);
-    return advisories;
-  }, [watchlistOnly]);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      await fetchDataSnapshot();
-    } catch (err) {
-      setError(err.response?.data?.detail || t('whaleAdvisory.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchDataSnapshot, t]);
-
+  // Load refresh info dynamically
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-  
+    if (activeSymbol) loadRefreshInfo(activeSymbol);
+  }, [activeSymbol, loadRefreshInfo]);
+
+  // Derived filtered stats based on search
+  const filteredStats = useMemo(() => {
+    let list = Array.isArray(symbolStats) ? symbolStats : [];
+    if (symbolSearch) {
+      const q = symbolSearch.toLowerCase();
+      list = list.filter(s => (s.symbol || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [symbolStats, symbolSearch]);
+
+  // F4 Guard: Fix ActiveSymbol desync when filtering
   useEffect(() => {
-    fetchWhaleStats();
-    // Refresh stats every 30 seconds to stay current with whale alerts
-    const interval = setInterval(() => {
-      fetchWhaleStats();
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [fetchWhaleStats]);
-
-  useEffect(() => {
-    const onAdvisoryInvalidated = () => {
-      fetchDataSnapshot();
-    };
-    window.addEventListener(ADVISORY_INVALIDATION_EVENT, onAdvisoryInvalidated);
-    return () => {
-      window.removeEventListener(ADVISORY_INVALIDATION_EVENT, onAdvisoryInvalidated);
-    };
-  }, [fetchDataSnapshot]);
-
-  const ensureAiConfigured = useCallback(async (symbol) => {
-    try {
-      const cfgResp = await getUserConfig();
-      const cfg = cfgResp?.data || {};
-      const ready = Boolean(cfg.ai_ready);
-      if (ready) {
-        return true;
-      }
-      setRowMessages((prev) => ({
-        ...prev,
-        [symbol]: cfg.ai_config_message || t('whaleAdvisory.configRequired'),
-      }));
-      return false;
-    } catch (err) {
-      setRowMessages((prev) => ({
-        ...prev,
-        [symbol]: err?.response?.data?.message || err?.response?.data?.detail || t('whaleAdvisory.configCheckFailed'),
-      }));
-      return false;
-    }
-  }, [t]);
-
-  const handleLoadRefreshInfo = useCallback(async (symbol) => {
-    if (!symbol) return;
-    try {
-      const resp = await getAdvisoryAutoRefreshInfo(symbol);
-      setRefreshInfo(resp?.data || null);
-    } catch (_) {
-      setRefreshInfo(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeSymbol) {
-      handleLoadRefreshInfo(activeSymbol);
-    } else {
-      setRefreshInfo(null);
-    }
-  }, [activeSymbol, handleLoadRefreshInfo]);
-
-  const handleRefreshAdvisory = useCallback(async (symbol) => {
-    if (!symbol) return;
-    if (pendingRefreshSymbols[symbol]) {
-      return;
-    }
-    if (!(await ensureAiConfigured(symbol))) {
-      return;
-    }
-    const baselineMs = (() => {
-      const latestForSymbol = items
-        .filter((entry) => String(entry?.symbol || '').toUpperCase() === symbol)
-        .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())[0];
-      const parsed = latestForSymbol?.created_at ? new Date(latestForSymbol.created_at).getTime() : 0;
-      return Number.isFinite(parsed) ? parsed : 0;
-    })();
-
-    setPendingRefreshSymbols((prev) => ({ ...prev, [symbol]: true }));
-    setRowMessages((prev) => ({ ...prev, [symbol]: '' }));
-    try {
-      const resp = await refreshWhaleAdvisory(symbol);
-      setRowMessages((prev) => ({
-        ...prev,
-        [symbol]: resp?.data?.message || t('whaleAdvisory.refreshQueued', { symbol }),
-      }));
-
-      let done = false;
-      for (let attempt = 0; attempt < 12; attempt += 1) {
-        const advisories = await fetchDataSnapshot();
-        const latestForSymbol = advisories
-          .filter((entry) => String(entry?.symbol || '').toUpperCase() === symbol)
-          .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())[0];
-        const currentMs = latestForSymbol?.created_at ? new Date(latestForSymbol.created_at).getTime() : 0;
-        if (Number.isFinite(currentMs) && currentMs > baselineMs) {
-          done = true;
-          break;
-        }
-        await new Promise((resolve) => window.setTimeout(resolve, 5000));
-      }
-
-      if (!done) {
-        setRowMessages((prev) => ({
-          ...prev,
-          [symbol]: t('whaleAdvisory.refreshQueued', { symbol }),
-        }));
-      }
-      window.dispatchEvent(new CustomEvent(ADVISORY_INVALIDATION_EVENT, { detail: { symbol } }));
-    } catch (err) {
-      const message = err?.response?.data?.message || err?.response?.data?.detail || t('whaleAdvisory.refreshFailed');
-      setRowMessages((prev) => ({ ...prev, [symbol]: message }));
-    } finally {
-      setPendingRefreshSymbols((prev) => {
-        const next = { ...prev };
-        delete next[symbol];
-        return next;
-      });
-    }
-  }, [ensureAiConfigured, fetchDataSnapshot, items, pendingRefreshSymbols, t]);
-
-  const handleDeleteCurrentAdvisory = useCallback(async (symbol) => {
-    if (!symbol) return;
-    if (pendingDeleteSymbols[symbol] || pendingRefreshSymbols[symbol]) {
-      return;
-    }
-
-    setPendingDeleteSymbols((prev) => ({ ...prev, [symbol]: true }));
-    setRowMessages((prev) => ({ ...prev, [symbol]: '' }));
-    try {
-      const resp = await deleteCurrentWhaleAdvisory(symbol);
-      await fetchDataSnapshot();
-      setRowMessages((prev) => ({
-        ...prev,
-        [symbol]: resp?.data?.message || 'Đã xóa advisory hiện tại.',
-      }));
-    } catch (err) {
-      const message = err?.response?.data?.message || err?.response?.data?.detail || 'Không thể xóa advisory hiện tại.';
-      setRowMessages((prev) => ({ ...prev, [symbol]: message }));
-    } finally {
-      setPendingDeleteSymbols((prev) => {
-        const next = { ...prev };
-        delete next[symbol];
-        return next;
-      });
-    }
-  }, [fetchDataSnapshot, pendingDeleteSymbols, pendingRefreshSymbols]);
-
-  const filteredItems = useMemo(() => {
-    if (riskMode === 'aggressive') return items;
-    return items.filter((item) => {
-      const confidence = inferConfidence(item);
-      if (confidence === null) return riskMode !== 'conservative';
-      if (riskMode === 'conservative') return confidence >= 70;
-      return confidence >= 40;
-    });
-  }, [items, riskMode]);
-
-  const trackedSymbolList = useMemo(() => {
-    const seen = new Set();
-    const symbols = [];
-    (trackedSymbols || []).forEach((item) => {
-      const symbol = String(item?.symbol || '').trim().toUpperCase();
-      if (!symbol || seen.has(symbol)) return;
-      seen.add(symbol);
-      symbols.push(symbol);
-    });
-    return symbols;
-  }, [trackedSymbols]);
-
-  // Use fetched whale stats from IntradayTick source (consistent with Whale Alerts)
-  // Fall back to advisory aggregation if stats endpoint fails
-  const symbolStatsMap = useMemo(() => {
-    if (symbolStats && symbolStats.length > 0) {
-      // Map fetched stats by symbol for consistent data with Whale Alerts Hub
-      return Object.fromEntries(
-        (symbolStats || []).map((row) => {
-          const mapped = {
-            symbol: row.symbol,
-            buyCount: row.buyCount || 0,
-            sellCount: row.sellCount || 0,
-            totalValue: row.totalValue || 0,
-            totalVolume: row.totalVolume || 0,
-            count: row.count || 0,
-            avgOrderValue: row.avgOrderValue || 0,
-            buyRatio: row.buyRatio || 0,
-          };
-          return [row.symbol, mapped];
-        })
-      );
-    }
-    // Fallback: compute from advisory items (old behavior)
-    const stats = buildSymbolStats(filteredItems);
-    return Object.fromEntries((stats || []).map((row) => [row.symbol, row]));
-  }, [symbolStats, filteredItems]);
-
-  const latestBySymbol = useMemo(() => {
-    const sorted = [...filteredItems].sort((a, b) => {
-      const ta = new Date(a?.created_at || 0).getTime();
-      const tb = new Date(b?.created_at || 0).getTime();
-      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
-    });
-    const map = {};
-    sorted.forEach((item) => {
-      const symbol = String(item?.symbol || '').trim().toUpperCase();
-      if (!symbol || map[symbol]) return;
-      map[symbol] = item;
-    });
-    return map;
-  }, [filteredItems]);
-
-  const advisoryRows = useMemo(() => {
-    return trackedSymbolList.map((symbol) => {
-      const stats = symbolStatsMap[symbol] || {
-        symbol,
-        buyCount: 0,
-        sellCount: 0,
-        totalValue: 0,
-        totalVolume: 0,
-        count: 0,
-      };
-      const latest = latestBySymbol[symbol] || null;
-      const latestTs = latest?.created_at || null;
-      return {
-        symbol,
-        stats,
-        latest,
-        hasAdvisory: Boolean(latest),
-        latestTs,
-        confidence: inferConfidence(latest),
-      };
-    });
-  }, [latestBySymbol, symbolStatsMap, trackedSymbolList]);
-
-  const searchedRows = useMemo(() => {
-    const keyword = String(symbolSearch || '').trim().toUpperCase();
-    if (!keyword) return advisoryRows;
-    return advisoryRows.filter((row) => row.symbol.includes(keyword));
-  }, [advisoryRows, symbolSearch]);
-
-  const filteredRows = useMemo(() => {
-    if (advisoryFilter === 'with_advisory') {
-      return searchedRows.filter((row) => row.hasAdvisory);
-    }
-    if (advisoryFilter === 'no_advisory') {
-      return searchedRows.filter((row) => !row.hasAdvisory);
-    }
-    if (advisoryFilter === 'buy_dominant') {
-      return searchedRows.filter((row) => row.stats.buyCount > row.stats.sellCount);
-    }
-    if (advisoryFilter === 'sell_dominant') {
-      return searchedRows.filter((row) => row.stats.sellCount > row.stats.buyCount);
-    }
-    return searchedRows;
-  }, [advisoryFilter, searchedRows]);
-
-  const sortedRows = useMemo(() => {
-    const rows = [...filteredRows];
-    const safeDate = (value) => {
-      if (!value) return 0;
-      const parsed = new Date(value).getTime();
-      return Number.isFinite(parsed) ? parsed : 0;
-    };
-    const safeNumber = (value) => (Number.isFinite(Number(value)) ? Number(value) : -Infinity);
-
-    if (sortBy === 'symbol_desc') {
-      rows.sort((a, b) => b.symbol.localeCompare(a.symbol));
-      return rows;
-    }
-    if (sortBy === 'value_desc') {
-      rows.sort((a, b) => safeNumber(b.stats.totalValue) - safeNumber(a.stats.totalValue));
-      return rows;
-    }
-    if (sortBy === 'value_asc') {
-      rows.sort((a, b) => safeNumber(a.stats.totalValue) - safeNumber(b.stats.totalValue));
-      return rows;
-    }
-    if (sortBy === 'recent_desc') {
-      rows.sort((a, b) => safeDate(b.latestTs) - safeDate(a.latestTs));
-      return rows;
-    }
-    if (sortBy === 'recent_asc') {
-      rows.sort((a, b) => safeDate(a.latestTs) - safeDate(b.latestTs));
-      return rows;
-    }
-    if (sortBy === 'confidence_desc') {
-      rows.sort((a, b) => safeNumber(b.confidence) - safeNumber(a.confidence));
-      return rows;
-    }
-    rows.sort((a, b) => a.symbol.localeCompare(b.symbol));
-    return rows;
-  }, [filteredRows, sortBy]);
-
-  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedRows.slice(start, start + pageSize);
-  }, [currentPage, pageSize, sortedRows]);
-
-  useEffect(() => {
-    localStorage.setItem('vninvest:risk-mode', riskMode);
-    setRiskModeNotice(t('riskMode.updatedNotice', { defaultValue: 'View updated by risk mode' }));
-    const id = window.setTimeout(() => setRiskModeNotice(''), 2500);
-    return () => window.clearTimeout(id);
-  }, [riskMode, t]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [symbolSearch, advisoryFilter, sortBy, pageSize]);
-
-  useEffect(() => {
-    if (!sortedRows.length) {
+    if (!activeSymbol && filteredStats.length > 0) {
+      setActiveSymbol(filteredStats[0].symbol);
+    } else if (activeSymbol && filteredStats.length > 0) {
+      const stillExists = filteredStats.some(s => s.symbol === activeSymbol);
+      if (!stillExists) setActiveSymbol(filteredStats[0].symbol);
+    } else if (filteredStats.length === 0) {
       setActiveSymbol('');
-      return;
     }
-    if (!activeSymbol || !sortedRows.some((row) => row.symbol === activeSymbol)) {
-      setActiveSymbol(sortedRows[0].symbol);
-    }
-  }, [activeSymbol, sortedRows]);
+  }, [activeSymbol, filteredStats]);
+
+  const activeItem = useMemo(() => {
+    if (!activeSymbol) return null;
+    return items.filter(i => i.symbol === activeSymbol).sort((a,b) => new Date(b.created_at) - new Date(a.created_at))[0];
+  }, [activeSymbol, items]);
+  
+  const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-5 p-4 xl:px-5">
-      {/* Header */}
-      <section className="card-section px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-label">{t('whaleAdvisory.intelligence')}</p>
-            <h1 className="mt-2 text-2xl font-semibold text-slate-100">{t('whaleAdvisory.title')}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-              {t('whaleAdvisory.description')}{' '}
-              <span className="font-semibold text-cyan-300">{userPlan || 'free'}</span>.
-            </p>
-            <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-cyan-800/60 bg-cyan-950/20 px-3 py-1 text-[11px] text-cyan-200">
-              <span className={`inline-block h-1.5 w-1.5 rounded-full ${statsLoading ? 'bg-amber-300 animate-pulse' : 'bg-cyan-300'}`} />
-              <span>Nguồn thống kê: Realtime IntradayTick</span>
-              <span className="text-cyan-400/80">|</span>
-              <span>{statsLoading ? 'Đang đồng bộ...' : 'Đồng bộ với Whale Alerts'}</span>
-            </div>
-          </div>
-          <button type="button" onClick={fetchData} className="btn-primary">
-            {t('whaleAdvisory.refresh')}
-          </button>
+    <div className="mx-auto max-w-[1800px] p-4 lg:p-8 space-y-6 min-h-screen bg-slate-950/20">
+      <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
+
+      {error ? (
+        <div className="p-20 text-center neon-glass-panel border-rose-500/20">
+          <div className="text-rose-500 mb-4 scale-150 inline-block text-4xl">⚠️</div>
+          <p className="text-slate-300 font-bold text-lg">{error}</p>
+          <button onClick={fetchData} className="mt-6 px-6 py-2 bg-slate-800 rounded-xl text-cyan-400 hover:bg-slate-700 transition-all">{t('common.retry')}</button>
         </div>
-      </section>
-
-      {error && (
-        <section className="rounded-2xl border border-rose-800/60 bg-rose-950/20 px-5 py-4 text-sm text-rose-200">
-          {error}
-        </section>
-      )}
-
-      {refreshMessage && (
-        <section className="rounded-2xl border border-cyan-800/60 bg-cyan-950/20 px-5 py-4 text-sm text-cyan-200">
-          {refreshMessage}
-        </section>
-      )}
-
-      {/* Advisory quota info for active symbol */}
-      {activeSymbol && refreshInfo && (
-        <section className="card-section px-5 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-slate-200">{activeSymbol}</span>
-              <span>—</span>
-              <span>
-                {t('whaleAdvisory.quotaAutoRefresh')}{' '}
-                <span className={refreshInfo.auto_refreshes_remaining_today === 0 ? 'text-rose-400' : 'text-cyan-300'}>
-                  {refreshInfo.auto_refreshes_used_today ?? '—'} / {refreshInfo.advisory_max_auto_refreshes_per_day ?? '—'}
-                </span>
-              </span>
-              <span className="text-slate-600">|</span>
-              <span>
-                {t('whaleAdvisory.quotaTokens')}{' '}
-                <span className={(refreshInfo.tokens_remaining_today ?? 0) < 500 ? 'text-amber-400' : 'text-slate-300'}>
-                  {(refreshInfo.tokens_remaining_today ?? 0).toLocaleString()}
-                </span>
-              </span>
-            </div>
-            {refreshInfo.next_refresh_at && (
-              <span className="text-slate-500">
-                {t('whaleAdvisory.nextRefreshAt')}{' '}
-                <span className="text-slate-300">{fmtTime(refreshInfo.next_refresh_at)}</span>
-              </span>
-            )}
-          </div>
-        </section>
-      )}
-
-      <section className="card-section px-5 py-4 space-y-3">
-        <RiskModeSelector
-          symbol={activeSymbol || sortedRows[0]?.symbol || ''}
-          value={riskMode}
-          onChange={setRiskMode}
-        />
-        {riskModeNotice && (
-          <p className="text-xs text-cyan-300">{riskModeNotice}</p>
-        )}
-      </section>
-
-      <section className="card-section px-5 py-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              value={symbolSearch}
-              onChange={(e) => setSymbolSearch(e.target.value.toUpperCase())}
-              placeholder={t('whaleAdvisory.searchSymbolPlaceholder')}
-              className="w-56 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-500"
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[82vh]">
+          <div className="lg:row-span-2 overflow-hidden flex flex-col">
+            <WhaleSymbolSidebar 
+              symbolStats={symbolStats} symbolSearch={symbolSearch} setSymbolSearch={setSymbolSearch}
+              activeSymbol={activeSymbol} setActiveSymbol={setActiveSymbol}
+              page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
             />
-            <select
-              value={advisoryFilter}
-              onChange={(e) => setAdvisoryFilter(e.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-            >
-              <option value="all">{t('whaleAdvisory.filterAll')}</option>
-              <option value="with_advisory">{t('whaleAdvisory.filterWithAdvisory')}</option>
-              <option value="no_advisory">{t('whaleAdvisory.filterNoAdvisory')}</option>
-              <option value="buy_dominant">{t('whaleAdvisory.filterBuyDominant')}</option>
-              <option value="sell_dominant">{t('whaleAdvisory.filterSellDominant')}</option>
-            </select>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
-            >
-              <option value="symbol_asc">{t('whaleAdvisory.sortSymbolAsc')}</option>
-              <option value="symbol_desc">{t('whaleAdvisory.sortSymbolDesc')}</option>
-              <option value="value_desc">{t('whaleAdvisory.sortValueDesc')}</option>
-              <option value="value_asc">{t('whaleAdvisory.sortValueAsc')}</option>
-              <option value="recent_desc">{t('whaleAdvisory.sortRecentDesc')}</option>
-              <option value="recent_asc">{t('whaleAdvisory.sortRecentAsc')}</option>
-              <option value="confidence_desc">{t('whaleAdvisory.sortConfidenceDesc')}</option>
-            </select>
           </div>
-            <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-400 select-none">
-              <input
-                type="checkbox"
-                className="h-3.5 w-3.5 rounded border-slate-600 bg-slate-800 text-cyan-500"
-                checked={watchlistOnly}
-                onChange={(e) => setWatchlistOnly(e.target.checked)}
-              />
-              {t('whaleAdvisory.watchlistOnly')}
-            </label>
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <span>{t('whaleAdvisory.pageSize')}</span>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value) || 20)}
-              className="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-100"
-            >
-              {[10, 15, 20, 50, 100].map((size) => (
-                <option key={size} value={size}>{size}</option>
-              ))}
-            </select>
+
+          <div className="lg:col-span-2 overflow-hidden flex flex-col h-full transition-all duration-500 animate-in fade-in" key={`panel-${activeSymbol}`}>
+            <WhaleAdvisoryCommandPanel 
+              item={activeItem} activeSymbol={activeSymbol}
+              onRefresh={handleRefreshAdvisory} onDeleteCurrent={handleDeleteAdvisory}
+              refreshing={!!pendingRefreshSymbols[activeSymbol]} deleting={!!pendingDeleteSymbols[activeSymbol]}
+              rowMessage={rowMessages[activeSymbol]}
+            />
+          </div>
+
+          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden transition-all duration-500 animate-in fade-in fill-mode-backwards" key={`details-${activeSymbol}`} style={{ animationDelay: '100ms' }}>
+             <div className={`neon-glass-panel p-6 flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">{t('whaleAdvisory.riskCalibration')}</h3>
+                <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
+             </div>
+             <div className={`neon-glass-panel p-6 overflow-hidden flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex justify-between">
+                   <span>{t('whaleAdvisory.temporalHistory')}</span>
+                   <span className="text-cyan-500/50">{t('whaleAdvisory.lastCycles', {count: 5})}</span>
+                </h3>
+                <div className="flex-1 overflow-y-auto panel-scrollbar">
+                  <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
+                </div>
+             </div>
+             
+             <div className="md:col-span-2 neon-glass-panel p-6 overflow-hidden flex flex-col">
+                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">
+                  {t('whaleAdvisory.operationalTelemetry')}
+                </h3>
+                <div className="flex-1 overflow-y-auto panel-scrollbar">
+                  <TrustTelemetryPanel />
+                </div>
+             </div>
           </div>
         </div>
-      </section>
-
-      {/* Bảng */}
-      <section className="card-section overflow-hidden">
-        {/* Table Header */}
-        <div className="grid grid-cols-[220px_1fr] divide-x divide-slate-800 border-b border-slate-700 bg-slate-900/70">
-          <div className="px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              {t('whaleAdvisory.tableSymbolStats')}
-            </p>
-          </div>
-          <div className="px-4 py-3">
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-400">
-              {t('whaleAdvisory.tableLatest')}
-            </p>
-          </div>
-        </div>
-
-        {/* Rows */}
-        {loading ? (
-          <div>
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${
-                  i > 0 ? 'border-t border-slate-800' : ''
-                }`}
-              >
-                <div className="p-4">
-                  <div className="h-4 w-16 animate-pulse rounded bg-slate-800" />
-                  <div className="mt-2 h-3 w-24 animate-pulse rounded bg-slate-800" />
-                  <div className="mt-1 h-3 w-20 animate-pulse rounded bg-slate-800" />
-                </div>
-                <div className="p-4">
-                  <div className="h-4 w-32 animate-pulse rounded bg-slate-800" />
-                  <div className="mt-2 h-12 animate-pulse rounded bg-slate-800" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : sortedRows.length === 0 ? (
-          <div className="px-5 py-12 text-center">
-            <p className="text-sm text-slate-400">
-              {trackedSymbolList.length === 0 ? t('whaleAdvisory.emptyTrackedTitle') : t('whaleAdvisory.noMatchFilter')}
-            </p>
-            <p className="mt-2 text-xs text-slate-600">
-              {trackedSymbolList.length === 0 ? t('whaleAdvisory.emptyTrackedDescription') : t('whaleAdvisory.emptyDescription')}
-            </p>
-          </div>
-        ) : (
-          <div>
-            {pagedRows.map((row, idx) => {
-              const latest = row.latest;
-              const isActive = activeSymbol === row.symbol;
-
-              return (
-                <div key={row.symbol} className={`grid grid-cols-[220px_1fr] divide-x divide-slate-800 ${idx > 0 ? 'border-t border-slate-800' : ''}`}>
-                  {/* Cột trái */}
-                  <div>
-                    <SymbolCell
-                      stats={row.stats}
-                      isActive={isActive}
-                      onClick={() => setActiveSymbol(row.symbol)}
-                    />
-                  </div>
-
-                  {/* Cột phải: Advisory mới nhất */}
-                  <div>
-                    <AdvisoryCell
-                      item={latest}
-                      symbol={row.symbol}
-                      onRefresh={handleRefreshAdvisory}
-                      onDeleteCurrent={handleDeleteCurrentAdvisory}
-                      refreshing={Boolean(pendingRefreshSymbols[row.symbol])}
-                      deleting={Boolean(pendingDeleteSymbols[row.symbol])}
-                      rowMessage={rowMessages[row.symbol] || ''}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800 bg-slate-900/60 px-4 py-3 text-xs text-slate-400">
-              <span>
-                {t('whaleAdvisory.paginationSummary', {
-                  from: ((currentPage - 1) * pageSize) + 1,
-                  to: Math.min(currentPage * pageSize, sortedRows.length),
-                  total: sortedRows.length,
-                })}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                  disabled={currentPage <= 1}
-                  className="rounded border border-slate-700 px-2.5 py-1 text-slate-200 disabled:opacity-40"
-                >
-                  {t('whaleAdvisory.prevPage')}
-                </button>
-                <span>{t('whaleAdvisory.pageLabel', { page: currentPage, total: totalPages })}</span>
-                <button
-                  type="button"
-                  onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage >= totalPages}
-                  className="rounded border border-slate-700 px-2.5 py-1 text-slate-200 disabled:opacity-40"
-                >
-                  {t('whaleAdvisory.nextPage')}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {activeSymbol && (
-        <section className="card-section px-5 py-4">
-          <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
-        </section>
       )}
 
-      <section className="card-section px-5 py-4">
-        <TrustTelemetryPanel />
-      </section>
+      {activeSymbol && refreshInfo && (
+        <footer className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 px-8 py-5 text-[10px] uppercase font-black tracking-widest text-slate-500 bg-slate-900/60 rounded-[2.5rem] border border-slate-800/40 backdrop-blur-xl shadow-2xl">
+           <div className="flex items-center gap-3">
+              <span className="text-slate-600">{t('whaleAdvisory.tokensRemaining')}</span>
+              <span className="text-cyan-400 font-mono text-xs scale-110">{(refreshInfo.tokens_remaining_today || 0).toLocaleString()}</span>
+           </div>
+           <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+           <div className="flex items-center gap-3">
+              <span className="text-slate-600">{t('whaleAdvisory.dailyRefreshQuota')}</span>
+              <span className="px-3 py-1 bg-slate-950 rounded-lg text-emerald-400 font-mono text-xs">
+                {refreshInfo.auto_refreshes_used_today || 0} <span className="text-slate-700 mx-1">/</span> {refreshInfo.advisory_max_auto_refreshes_per_day || 0}
+              </span>
+           </div>
+           {refreshInfo.next_refresh_at && (
+             <>
+               <div className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+               <div className="flex items-center gap-3">
+                  <span className="text-slate-600">{t('whaleAdvisory.nextCycle')}</span>
+                  <span className="text-amber-400 font-mono text-xs italic">{fmtTime(refreshInfo.next_refresh_at)}</span>
+               </div>
+             </>
+           )}
+        </footer>
+      )}
     </div>
   );
 }

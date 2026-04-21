@@ -4,6 +4,78 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21f)
+- backend/entrypoint.sh (MODIFIED - fix `set -eu` -> `set -e; set -u` de tuong thich POSIX sh/dash, sua crash backend container khi khoi dong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21f)
+
+Validation:
+- PASSED: Backend container khong con crash voi `Illegal option -` sau khi rebuild.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21e)
+- frontend/src/i18n/vi.js (MODIFIED - Viet hoa cac label Whale Advisory con lai trong locale mac dinh)
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - append final localization hygiene result va final verdict PASS CLEAN)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Whale Advisory `vi` locale khong con label giao dien mac dinh bi tron tieng Anh trong flow dang audit.
+- PASSED: `get_errors` clean tren nhom file frontend Phase 0-1 sau hygiene update.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21d)
+- backend/portfolio/seed_governance.py (NEW - helper guard demo seed tren production-like runtime)
+- backend/portfolio/models.py (MODIFIED - them model SeedExecutionLog cho truy vet seed runs)
+- backend/portfolio/migrations/0046_seedexecutionlog.py (NEW - migration SeedExecutionLog)
+- backend/portfolio/management/commands/seed_demo_data.py (MODIFIED - them cờ `--allow-production` va guard production)
+- backend/portfolio/management/commands/seed_comprehensive_demo.py (MODIFIED - them cờ `--allow-production`, them `--random-seed` de deterministic)
+- backend/portfolio/management/commands/seed_whale_mission_control.py (MODIFIED - them cờ `--allow-production` va guard production)
+- backend/portfolio/management/commands/seed_environment.py (NEW - orchestration command seed theo profile reference/demo-smoke/demo-load + dry-run + audit log)
+- backend/portfolio/tests/test_seed_environment_standardization.py (NEW - test guard production va dry-run logging)
+- README.md (MODIFIED - bo sung seed policy cho production)
+- SERVER_RESTART_GUIDE.md (MODIFIED - bo sung buoc seed production-safe)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_seed_environment_standardization -v 2` => 4/4 PASS.
+- PASSED: `get_errors` clean on modified backend files.
+- NOTE: direct PostgreSQL-backed test run on local terminal failed due to database connection timeout, not due to code regression.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21g)
+- docs/AUDIT_WHALE_ADVISORY_PHASE_2_3_20260421.md (NEW - Phase 2 & 3 execution report)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - Refactor bento-grid class context)
+- frontend/src/components/advisory/AgenticThoughtStream.jsx (NEW - Thought streaming component)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - Integration of AgenticThoughtStream)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21c)
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - mark status as PASS, update checklists)
+- frontend/src/i18n/en.js (MODIFIED - merged duplicate whaleAdvisory objects)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - text => i18n keys)
+- frontend/src/components/advisory/WhaleSymbolSidebar.jsx (MODIFIED - text => i18n keys)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - text => i18n keys)
+- frontend/src/hooks/useWhaleAdvisoryData.js (NEW - trich xuat data/state logic tu WhaleAdvisory.jsx)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - giam duoi 200 dong, text => i18n keys, them guard fix sync activeSymbol)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21b)
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - ghi day du re-audit phase 0-1, findings theo severity, pass/fail matrix, NO-GO gate va checklist fix cho doi lap trinh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21)
 - docs/AI_CODING_REGULATION.md (MODIFIED - them quy dinh bat buoc auto-audit khi file .md trong docs tao moi/bi thay doi, ap dung khong phu thuoc tac nhan)
 - docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - bo sung nguyen tac + no-exception clause cho trigger auto-audit docs markdown)

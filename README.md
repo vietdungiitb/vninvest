@@ -51,6 +51,24 @@ npm start   # http://localhost:3000
 - Redis: `redis-server` → `localhost:6379`
 - Cấu hình tại `backend/.env` (xem `backend/.env.example`)
 
+### Seed Policy Cho Production
+
+- Command chuẩn hóa: `python manage.py seed_environment --profile <reference|demo-smoke|demo-load>`
+- Production-safe mặc định: các profile demo bị chặn khi `DJANGO_DEBUG=False`.
+- Chỉ cho phép demo seed trên production khi có chủ đích:
+  - Cách 1: set `ALLOW_DEMO_SEED=true`
+  - Cách 2: thêm cờ `--allow-production`
+
+Ví dụ:
+
+```powershell
+# Seed dữ liệu tham chiếu an toàn cho production
+python manage.py seed_environment --profile reference
+
+# Xem trước kế hoạch demo smoke mà không ghi DB
+python manage.py seed_environment --profile demo-smoke --dry-run
+```
+
 ### Operational Runbook
 
 Để ticker API chạy theo fast path `source=prefetch` thay vì fallback DB, cần đủ 4 thành phần:

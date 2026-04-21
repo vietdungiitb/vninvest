@@ -15,6 +15,7 @@ from portfolio.models import (
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
 )
+from portfolio.seed_governance import assert_demo_seed_allowed
 
 
 class Command(BaseCommand):
@@ -30,12 +31,16 @@ class Command(BaseCommand):
         parser.add_argument('--analyst-username', default='whale_analyst', help='Username for the seeded analyst account.')
         parser.add_argument('--supervisor-username', default='whale_supervisor', help='Username for the seeded supervisor account.')
         parser.add_argument('--password', default='Test@123456', help='Password applied to both seeded users.')
+        parser.add_argument('--allow-production', action='store_true', help='Allow demo seed on production-like environment.')
 
     def handle(self, *args, **options):
         analyst_username = options['analyst_username']
         supervisor_username = options['supervisor_username']
         password = options['password']
         reset = options['reset']
+        allow_production = bool(options.get('allow_production'))
+
+        assert_demo_seed_allowed(command_name='seed_whale_mission_control', allow_production_flag=allow_production)
 
         with transaction.atomic():
             analyst = self._ensure_user(

@@ -24,6 +24,7 @@ from portfolio.models import (
     WatchlistItem,
     WhaleAdvisory,
 )
+from portfolio.seed_governance import assert_demo_seed_allowed
 
 
 class Command(BaseCommand):
@@ -34,6 +35,7 @@ class Command(BaseCommand):
         parser.add_argument('--password', default='Test@123456', help='Main demo password.')
         parser.add_argument('--reset', action='store_true', help='Reset existing domain demo data for the user first.')
         parser.add_argument('--no-alerts', action='store_true', help='Skip seeding WhaleAdvisory and IntradayTick (use with real feed).')
+        parser.add_argument('--allow-production', action='store_true', help='Allow demo seed on production-like environment.')
 
     def _resolve_demo_tick_datetimes(self, count: int) -> list[datetime]:
         phase_meta = resolve_market_phase()
@@ -96,6 +98,9 @@ class Command(BaseCommand):
         password = options['password']
         reset = options['reset']
         no_alerts = options['no_alerts']
+        allow_production = bool(options.get('allow_production'))
+
+        assert_demo_seed_allowed(command_name='seed_demo_data', allow_production_flag=allow_production)
 
         user, created = User.objects.get_or_create(
             username=username,

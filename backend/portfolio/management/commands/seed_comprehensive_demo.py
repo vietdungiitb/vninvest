@@ -17,6 +17,7 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from random import choice, randint, random, shuffle, uniform
 import logging
+import random as random_module
 
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
@@ -43,6 +44,7 @@ from portfolio.models import (
     WatchlistItem,
     WhaleAdvisory,
 )
+from portfolio.seed_governance import assert_demo_seed_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,8 @@ class Command(BaseCommand):
         parser.add_argument('--signals', type=int, default=200, help='Number of order flow signals')
         parser.add_argument('--components', type=int, default=100, help='Number of AI advisory components')
         parser.add_argument('--reset', action='store_true', help='Clear existing demo data first')
+        parser.add_argument('--random-seed', type=int, default=20260421, help='Deterministic random seed for reproducible dataset.')
+        parser.add_argument('--allow-production', action='store_true', help='Allow demo seed on production-like environment.')
 
     def handle(self, *args, **options):
         num_users = options['users']
@@ -141,8 +145,15 @@ class Command(BaseCommand):
         num_signals = options['signals']
         num_components = options['components']
         reset = options['reset']
+        random_seed = int(options.get('random_seed') or 0)
+        allow_production = bool(options.get('allow_production'))
+
+        assert_demo_seed_allowed(command_name='seed_comprehensive_demo', allow_production_flag=allow_production)
+
+        random_module.seed(random_seed)
 
         self.stdout.write('🚀 Starting comprehensive demo data seeding...\n')
+        self.stdout.write(f'🎲 Random seed: {random_seed}')
 
         if reset:
             self.stdout.write('🧹 Resetting existing demo data...')

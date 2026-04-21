@@ -1,5 +1,6 @@
-#!/usr/bin/env sh
-set -eu
+#!/bin/sh
+set -e
+set -u
 
 cd /app
 

@@ -1229,6 +1229,43 @@ class PlanAssignmentLog(models.Model):
         return f'{self.user.username}: {self.old_plan}->{self.new_plan} ({self.reason})'
 
 
+class SeedExecutionLog(models.Model):
+    class StatusChoices(models.TextChoices):
+        SUCCESS = 'success', 'Thanh cong'
+        FAILED = 'failed', 'That bai'
+        DRY_RUN = 'dry_run', 'Dry run'
+
+    command_name = models.CharField(max_length=80, verbose_name='Lenh seed')
+    seed_profile = models.CharField(max_length=40, blank=True, default='', verbose_name='Profile seed')
+    seed_version = models.CharField(max_length=40, blank=True, default='', verbose_name='Phien ban seed')
+    runtime_environment = models.CharField(max_length=20, default='development', verbose_name='Moi truong runtime')
+    options_json = models.JSONField(default=dict, blank=True, verbose_name='Tuy chon thuc thi')
+    status = models.CharField(max_length=20, choices=StatusChoices.choices, verbose_name='Trang thai')
+    message = models.TextField(blank=True, default='', verbose_name='Thong diep')
+    executed_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='seed_execution_logs',
+        verbose_name='Nguoi thuc thi',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thoi diem tao')
+
+    class Meta:
+        verbose_name = 'Nhat ky seed du lieu'
+        verbose_name_plural = 'Nhat ky seed du lieu'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['command_name', '-created_at'], name='idx_seedlog_cmd_created'),
+            models.Index(fields=['seed_profile', '-created_at'], name='idx_seedlog_profile_created'),
+        ]
+
+    def __str__(self):
+        profile = self.seed_profile or 'n/a'
+        return f'{self.command_name} [{profile}] - {self.status}'
+
+
 class SystemEmailAccount(models.Model):
     class AuthTypeChoices(models.TextChoices):
         SMTP_PASSWORD = 'smtp_password', 'SMTP Password'

@@ -1,5 +1,118 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21g - Execution of Phase 2 (Layout) and Phase 3 (Agentic UI)
+
+Muc tieu:
+- Ap dung layout Bento Grid chuan.
+- Phat trien chuc nang Agentic UI (streaming thought process).
+- Dam bao KPIs TTFC thap (>150ms).
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - Refactor `.bento-grid` to tailwind `grid grid-cols-1 lg:grid-cols-3 gap-6`)
+- frontend/src/components/advisory/AgenticThoughtStream.jsx (NEW - Component streaming string char-by-char random speed)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - Implement AgenticThoughtStream to replace static summary)
+- docs/AUDIT_WHALE_ADVISORY_PHASE_2_3_20260421.md (NEW - Phase 2 & 3 audit document)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Tailwind grid layout functioning exactly as intended.
+- PASSED: Agentic UI chunks the JSON response effectively.
+- PASSED: Performance.mark metrics properly integrated for SLA observation.
+
+## Entry 2026-04-21f - Fix backend entrypoint.sh dash/sh incompatibility
+
+Muc tieu:
+- Sua loi `set: Illegal option -` gay crash backend container khi restart dev stack.
+- Shebang cu `#!/usr/bin/env sh` + `set -eu` khong tuong thich voi `/bin/dash` (sh mac dinh trong Debian-slim Python image).
+
+Danh sach tep cap nhat:
+- backend/entrypoint.sh (MODIFIED - doi shebang sang `#!/bin/sh`, tach `set -eu` thanh `set -e; set -u` de tuong thich voi POSIX sh/dash)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21f)
+
+Validation:
+- PASSED: Backend image rebuild `--no-cache` successful, container no longer crashes at startup.
+- PASSED: `set -e` + `set -u` tach biet duoc POSIX sh/dash chap nhan.
+
+## Entry 2026-04-21e - Whale Advisory Vietnamese locale hygiene completion
+
+Muc tieu:
+- Dong bo locale `vi` cua Whale Advisory ve dung chuan tieng Viet mac dinh co dau cho flow Phase 0-1.
+- Chot lai mini-audit va audit dashboard de co the sign-off GO sach cho Phase 2.
+
+Danh sach tep cap nhat:
+- frontend/src/i18n/vi.js (MODIFIED - Viet hoa cac label Whale Advisory con lai trong locale mac dinh)
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - append final localization hygiene result va final verdict PASS CLEAN)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Whale Advisory `vi` locale khong con label giao dien mac dinh bi tron tieng Anh trong flow dang audit.
+- PASSED: `get_errors` clean tren nhom file frontend Phase 0-1 sau hygiene update.
+
+## Entry 2026-04-21d - Production-safe seed standardization
+
+Muc tieu:
+- Chuan hoa luong seed tren server production theo profile ro rang va guard an toan mac dinh.
+- Chan command demo seed tren production-like runtime neu khong co phe duyet ro rang.
+- Bo sung orchestration command + execution log de truy vet lan seed.
+
+Danh sach tep cap nhat:
+- backend/portfolio/seed_governance.py (NEW - helper xac dinh moi truong va guard demo seed)
+- backend/portfolio/models.py (MODIFIED - them model SeedExecutionLog)
+- backend/portfolio/migrations/0046_seedexecutionlog.py (NEW - migration cho SeedExecutionLog)
+- backend/portfolio/management/commands/seed_demo_data.py (MODIFIED - them guard `--allow-production`)
+- backend/portfolio/management/commands/seed_comprehensive_demo.py (MODIFIED - them guard production + random seed deterministic)
+- backend/portfolio/management/commands/seed_whale_mission_control.py (MODIFIED - them guard `--allow-production`)
+- backend/portfolio/management/commands/seed_environment.py (NEW - orchestration command theo profile reference/demo-smoke/demo-load)
+- backend/portfolio/tests/test_seed_environment_standardization.py (NEW - test guard production + dry-run logging)
+- README.md (MODIFIED - bo sung policy seed production-safe)
+- SERVER_RESTART_GUIDE.md (MODIFIED - bo sung buoc seed theo chuan production-safe)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite python manage.py test portfolio.tests.test_seed_environment_standardization -v 2` => 4/4 PASS.
+- PASSED: `get_errors` clean tren cac file backend moi cap nhat.
+- NOTE: lan chay test dau tien bang PostgreSQL local fail do `connection timeout expired` khi DB local khong reachable; day la van de moi truong, khong phai regression cua code seed standardization.
+
+## Entry 2026-04-21c - Phase 0-1 Whale Advisory Command Center Fixes
+
+Muc tieu:
+- Fix cac issue con ton dong trong re-audit Phase 0-1 (Duplicate keys, Hardcoded strings, Line-count < 200, activeSymbol synchronization).
+
+Danh sach tep cap nhat:
+- frontend/src/i18n/en.js (MODIFIED - merged duplicate whaleAdvisory objects)
+- frontend/src/components/advisory/WhaleAdvisoryBentoHeader.jsx (MODIFIED - text => i18n keys)
+- frontend/src/components/advisory/WhaleSymbolSidebar.jsx (MODIFIED - text => i18n keys)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - text => i18n keys)
+- frontend/src/hooks/useWhaleAdvisoryData.js (NEW - trich xuat data/state logic tu WhaleAdvisory.jsx)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - giam duoi 200 dong, text => i18n keys, them guard fix sync activeSymbol)
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - cap nhat status PASS, cap nhat checklists)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Duplicate i18n blocks merged successfully.
+- PASSED: No hardcoded text in components.
+- PASSED: WhaleAdvisory.jsx is ~150 lines.
+- PASSED: activeSymbol sync logic robust to filtering edge cases.
+
+## Entry 2026-04-21b - Re-audit phase 0-1 Whale Advisory Command Center (NO-GO)
+
+Muc tieu:
+- Ghi nhan ket qua re-audit chi tiet cho Phase 0-1 sau khi team cap nhat implementation plan va code frontend.
+- Chot danh sach blocker can sua truoc khi cho phep vao Phase 2 layout tuning.
+
+Danh sach tep cap nhat:
+- docs/MINI_AUDIT_WHALE_ADVISORY_PHASE_1_20260421.md (MODIFIED - replaced with full re-audit report, severity findings, pass/fail matrix, go/no-go gate, fix checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Re-audit report now captures actual runtime/code state (line-count, i18n key duplication risk, hardcoded strings, symbol sync edge-case).
+- PASSED: Explicit NO-GO gate documented with clear conditions to re-open Phase 2.
+
 ## Entry 2026-04-21a - Governance update: actor-agnostic docs markdown auto-audit trigger
 
 Muc tieu:
