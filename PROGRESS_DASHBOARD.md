@@ -4,6 +4,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21t)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 4 Whale selector tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Whale tab consumes scope-driven symbol options from unified toolbar flow.
+- PASSED: `selectedSymbol=all` fallback policy remains single-symbol and deterministic.
+- PASSED: no additional runtime code changed in this entry (documentation/audit synchronization only).
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21s)
 - frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - replace holdings-only Overview with unified mixed-source table, add source badges, and enforce holdings-only position metrics)
 - frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for unified overview table headers and badges)

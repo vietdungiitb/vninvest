@@ -47,10 +47,10 @@ Definition of done:
 
 ## Slice 4 — Whale tab selector integration
 
-- [ ] Feed whale symbol options from current scope
-- [ ] Support tracked/watchlist symbols in combobox
-- [ ] Handle `selectedSymbol = all` with single-symbol fallback policy
-- [ ] Keep chart single-symbol only
+- [x] Feed whale symbol options from current scope
+- [x] Support tracked/watchlist symbols in combobox
+- [x] Handle `selectedSymbol = all` with single-symbol fallback policy
+- [x] Keep chart single-symbol only
 
 Definition of done:
 - Whale bubble chart can open symbols outside holdings.

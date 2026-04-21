@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21t - Confirm Slice 4 (Whale tab selector integration) completed
+
+Mục tiêu:
+- Chốt trạng thái thực thi Slice 4 theo taskboard để đồng bộ tài liệu với runtime behavior hiện tại.
+- Xác nhận Whale tab đã chạy đúng single-symbol semantics trên symbol universe theo scope selector.
+
+Danh sách tệp cập nhật:
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 4 checklist items completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `WhaleBubbleChart` nhận `symbolOptions` từ scope hiện tại qua `ModularPositionDeck`.
+- PASSED: khi `selectedSymbol = all`, chart tự fallback về symbol hợp lệ đầu tiên trong universe hiện tại.
+- PASSED: chart vẫn giữ chế độ single-symbol, không render bubble đa mã đồng thời.
+- NOTE: entry này là documentation sync theo trạng thái runtime đã triển khai, không thêm code runtime mới.
+
 ## Entry 2026-04-21s - Implement Slice 3 (Overview tab refactor)
 
 Mục tiêu:
