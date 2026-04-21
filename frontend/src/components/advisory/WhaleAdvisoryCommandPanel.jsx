@@ -34,61 +34,81 @@ export default function WhaleAdvisoryCommandPanel({
       <div className="p-6 border-b border-slate-800/60 bg-slate-900/40">
          <div className="flex items-start justify-between">
             <div>
-               <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-black tracking-tighter text-white">
-                    {resolvedSymbol || t('whaleAdvisory.selectFallback')}
-                  </h2>
-                  {hasAdvisory && (
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-500 ${
-                      isBuy 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
-                        : 'bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
-                    }`}>
-                      {side}
-                    </span>
-                  )}
-               </div>
-               <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full ${hasAdvisory ? 'bg-cyan-500 animate-pulse' : 'bg-slate-700'}`} />
-                    {t('whaleAdvisory.lastAnalysis', { time: fmtTime(advisory.created_at) })}
+                <div className="flex items-center gap-3 mb-2">
+                   <h2 className="text-2xl font-black tracking-tighter text-white">
+                     {resolvedSymbol || t('whaleAdvisory.selectFallback')}
+                   </h2>
+                   {hasAdvisory && (
+                     <div className="flex gap-2">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-500 ${
+                          isBuy 
+                            ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)]' 
+                            : 'bg-rose-500/20 text-rose-400 border-rose-500/30 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
+                        }`}>
+                          {side}
+                        </span>
+                        {advisory.is_discovery && (
+                           <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-500/20 text-amber-500 border border-amber-500/30 animate-pulse">
+                             {advisory.discovery_bucket || 'Discovery'}
+                           </span>
+                        )}
+                     </div>
+                   )}
+                </div>
+                <div className="flex items-center gap-3">
+                   <span className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                     <div className={`w-1.5 h-1.5 rounded-full ${hasAdvisory ? 'bg-cyan-500 animate-pulse' : 'bg-slate-700'}`} />
+                     {t('whaleAdvisory.lastAnalysis', { time: fmtTime(advisory.created_at) })}
+                   </span>
+                </div>
+             </div>
+             
+             <div className="flex gap-2">
+                <button 
+                 onClick={() => onRefresh?.(resolvedSymbol)}
+                 disabled={refreshing || !resolvedSymbol}
+                 className={`relative px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all overflow-hidden group ${
+                   refreshing 
+                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
+                   : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-95'
+                 }`}
+                >
+                  <span className="relative z-10">
+                    {refreshing ? t('common.loading') : t('whaleAdvisory.smartRefresh')}
                   </span>
-               </div>
-            </div>
-            
-            <div className="flex gap-2">
-               <button 
-                onClick={() => onRefresh?.(resolvedSymbol)}
-                disabled={refreshing || !resolvedSymbol}
-                className={`relative px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all overflow-hidden group ${
-                  refreshing 
-                  ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                  : 'bg-cyan-600 text-white hover:bg-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] active:scale-95'
-                }`}
-               >
-                 <span className="relative z-10">
-                   {refreshing ? t('common.loading') : t('whaleAdvisory.smartRefresh')}
-                 </span>
-                 {!refreshing && (
-                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
-                 )}
-               </button>
-            </div>
-         </div>
-      </div>
+                  {!refreshing && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+                  )}
+                </button>
+             </div>
+          </div>
+       </div>
 
       {/* Main Content Area - Scrollable */}
       <div className="flex-1 overflow-y-auto panel-scrollbar p-6 space-y-6 bg-slate-950/10">
         
         {/* Top Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/40 backdrop-blur-sm group relative overflow-hidden">
+             <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('whaleAdvisory.whaleIntensity')}</div>
+             <div className="flex items-end gap-2">
+               <div className="text-lg font-black text-white font-mono">{advisory.whale_intensity || 0}%</div>
+               <div className="flex-1 h-1.5 bg-slate-800 rounded-full mb-1.5 overflow-hidden">
+                  <div 
+                   className={`h-full transition-all duration-1000 ${advisory.whale_intensity > 75 ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.6)]'}`}
+                   style={{ width: `${advisory.whale_intensity || 0}%` }}
+                  />
+               </div>
+             </div>
+             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 -translate-x-full group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
+          </div>
           <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/40 backdrop-blur-sm">
              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('whaleAdvisory.confidenceScore')}</div>
              <div className="text-lg font-black text-cyan-400 font-mono">{advisory.confidence || 0}%</div>
           </div>
           <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/40 backdrop-blur-sm">
              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('whaleAdvisory.trackingStatus')}</div>
-             <div className="text-sm font-bold text-slate-300 uppercase">{hasAdvisory ? t('whaleAdvisory.active') : t('whaleAdvisory.standby')}</div>
+             <div className="text-sm font-bold text-slate-300 uppercase">{hasAdvisory ? (advisory.is_discovery ? 'Discovery' : t('whaleAdvisory.active')) : t('whaleAdvisory.standby')}</div>
           </div>
           <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/40 backdrop-blur-sm">
              <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">{t('whaleAdvisory.valueReference')}</div>

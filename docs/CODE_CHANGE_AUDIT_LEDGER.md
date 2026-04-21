@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21ac - Final smoke alignment for Whale Advisory audit closure
+
+Mục tiêu:
+- Chot vong xac minh cuoi sau khi sua schema `WhaleAdvisory` va dang ky route `market-discovery-hub`.
+- Xac nhan lai latency audit, HTTP whale orders route, WebSocket discovery route, va phan tich ro trang thai feature gate cua discovery hub.
+- Dong bo ho so audit de khong con chenh lech giua code, route, schema va bang chung runtime.
+
+Danh sach tep cap nhat:
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - refresh final measured latency and smoke findings)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py migrate portfolio 0048` ap schema cho `discovery_bucket` va `whale_intensity` tren `WhaleAdvisory`.
+- PASSED: `python manage.py test portfolio.tests.test_discovery_engine portfolio.tests.test_latency portfolio.tests.test_realtime_gateway -v 2` => 10/10 PASS.
+- PASSED: latency audit moi nhat ghi nhan `Broadcast Function Latency: 2.26 ms`.
+- PASSED: smoke snippet xac nhan `/api/portfolio/whale/orders/AUDIT/` => 200, `/ws/realtime/` nhan `market_discovery_event` dung payload, va `/api/portfolio/market-discovery-hub/` da resolve route thanh cong.
+- NOTE: `/api/portfolio/market-discovery-hub/` hien tra `403 feature_locked` duoi OpenCore entitlement hien tai; day la policy gate, khong con la loi missing route/runtime.
+
+## Entry 2026-04-21ab - Audit alignment and latency hardening for Whale Advisory master pack
+
+Mục tiêu:
+- Dong bo `views_whale_orders.py` voi nguong dong tu `WhaleSignalEngine.resolve_threshold_vnd` va loai bo semantics threshold co dinh con sot lai.
+- Can chinh lai master Tech Spec de WebSocket contract phan anh dung payload discovery ma frontend thuc te nhan.
+- Bo sung script do latency + unit test audit de co chung cu hieu nang cho broadcast discovery truoc nghiem thu cuoi.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - dynamic threshold classification for bubble `is_large`)
+- backend/portfolio/tests/test_latency.py (MODIFIED - in-memory channel layer latency audit test with console evidence)
+- scratch/latency_probe.py (MODIFIED - standalone latency probe aligned with audit test semantics)
+- docs/TASKBOARD_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - add Phase 6 Audit Alignment & Hardening)
+- docs/TECH_SPEC_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - correct WebSocket payload contract for market discovery events)
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - replace generic latency claim with tested evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_latency -v 2` => `Broadcast Function Latency: 2.26 ms`.
+- PASSED: latency audit remains safely below acceptance threshold `< 250 ms`.
+- PASSED: diagnostics (`get_errors`) clean on changed code and documentation files.
+
 ## Entry 2026-04-21aa - Recover backend runtime after partial services refactor drift
 
 Mục tiêu:

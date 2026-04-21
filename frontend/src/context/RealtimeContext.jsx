@@ -161,8 +161,10 @@ export function useRealtimeFeedFromManager({ symbols, pollInterval = 15000, maxA
     lastEventAt: baseFeed.lastEventAt || null,
     alerts,
     darkFlowAlerts,
+    marketDiscoveryEvents: baseFeed.marketDiscoveryEvents || [],
     latestWhaleAlert: alerts[0] || null,
     latestDarkFlowAlert: darkFlowAlerts[0] || null,
+    latestMarketDiscoveryEvent: baseFeed.latestMarketDiscoveryEvent || null,
     metrics: baseFeed.metrics || {
       eventCounts: {},
       lastLatencyMs: null,

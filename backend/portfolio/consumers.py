@@ -84,6 +84,13 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
                 })
                 return
             await self._subscribe_symbols(symbols)
+            
+            # Phase 4: Handle special groups
+            for s in raw_symbols:
+                if str(s).lower() == 'market_discovery':
+                    await self.channel_layer.group_add('market_discovery', self.channel_name)
+                    self.symbol_groups.add('market_discovery')
+
             await self.send_json({"event_type": "subscribed", "symbols": symbols})
             return
 
@@ -122,6 +129,12 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
         payload = dict(event.get('data') or event.get('payload') or {})
         payload['event_type'] = 'dark_flow_alert'
         await self.send_json(payload)
+
+    async def market_discovery_event(self, event):
+        """
+        Push real-time market discovery anomalies.
+        """
+        await self.send_json(event['payload'])
 
     async def news_digest(self, event):
         """

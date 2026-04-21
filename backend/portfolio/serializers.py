@@ -298,6 +298,7 @@ class WhaleAdvisorySerializer(serializers.ModelSerializer):
             'id', 'symbol', 'matched_value', 'side', 'threshold',
             'ai_summary', 'ai_detail', 'ai_provider', 'ai_model', 'created_at',
             'next_refresh_at', 'refresh_count', 'is_auto_generated', 'source', 'merged_sources', 'primary_source', 'advisory_type', 'severity',
+            'is_discovery', 'discovery_bucket', 'whale_intensity', 'threshold_source',
         ]
         read_only_fields = fields
 

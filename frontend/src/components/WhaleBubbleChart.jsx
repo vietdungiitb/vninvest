@@ -30,7 +30,13 @@ const COLORS = {
   internal: '#64748b',
 };
 
-export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotesBySymbol = {}, symbolOptions = [] }) {
+export default function WhaleBubbleChart({ 
+  selectedSymbol, 
+  holdings = [], 
+  quotesBySymbol = {}, 
+  symbolOptions = [],
+  isEmbedded = false 
+}) {
   const { t } = useI18n();
   const [timeframe, setTimeframe] = useState('session');
   const [showUnit, setShowUnit] = useState('vnd'); // 'vnd' or 'pct'
@@ -227,25 +233,27 @@ export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotes
 
   // Render UI
   return (
-    <div className="flex flex-col gap-4 h-full">
+    <div className={`flex flex-col gap-4 h-full ${isEmbedded ? 'p-0' : 'p-4'}`}>
       {/* Controls */}
-      <div className="flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-        {/* Symbol Selector */}
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.symbol') || 'Mã CK'}</label>
-          <select
-            value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
-            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">-- Chọn mã --</option>
-            {availableSymbols.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className={`flex items-center gap-3 bg-slate-900/60 p-3 rounded-lg border border-slate-800 ${isEmbedded && !selectedSymbol ? 'hidden' : ''}`}>
+        {/* Symbol Selector - Hidden when embedded with a specific symbol */}
+        {(!isEmbedded || !selectedSymbol) && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-slate-400 uppercase">{t('whaleChart.symbol') || 'Mã CK'}</label>
+            <select
+              value={symbol}
+              onChange={(e) => setSymbol(e.target.value)}
+              className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded text-xs font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
+            >
+              <option value="">-- Chọn mã --</option>
+              {availableSymbols.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Timeframe Selector */}
         <div className="flex items-center gap-2">

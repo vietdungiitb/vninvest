@@ -15,15 +15,13 @@ from rest_framework.response import Response
 
 from .models import IntradayTick, TickerSessionClose
 from .permissions import IsProPlan
+from .services import WhaleSignalEngine
 
 
 # Constants
 MARKET_OPEN_HOUR = 9  # 9:00 AM
 MARKET_CLOSE_HOUR = 15  # 3:00 PM (15:00)
 TIMEZONE_VN = pytz.timezone('Asia/Ho_Chi_Minh')
-
-# Default thresholds for categorizing "large" orders (in VND)
-DEFAULT_LARGE_ORDER_THRESHOLD = 1_000_000_000  # 1 billion VND
 
 
 def _get_session_start_time(trade_date):
@@ -60,7 +58,7 @@ def _get_reference_price(symbol: str, trade_date) -> Decimal:
     return None
 
 
-def _calculate_bubbles(orders: list, ref_price: Decimal, session_start_time) -> list:
+def _calculate_bubbles(orders: list, ref_price: Decimal, session_start_time, whale_threshold_vnd: float) -> list:
     """
     Convert IntradayTick orders to bubble chart coordinates.
     
@@ -73,6 +71,7 @@ def _calculate_bubbles(orders: list, ref_price: Decimal, session_start_time) -> 
         List of bubble data dicts with coordinates and metadata
     """
     bubbles = []
+    resolved_threshold_vnd = float(whale_threshold_vnd or 0)
     
     if not ref_price:
         return bubbles
@@ -106,7 +105,7 @@ def _calculate_bubbles(orders: list, ref_price: Decimal, session_start_time) -> 
                 'y_pct': y_pct,  # percentage delta
                 'size': size,
                 'side': order.side,
-                'is_large': matched_value >= DEFAULT_LARGE_ORDER_THRESHOLD,
+                'is_large': resolved_threshold_vnd > 0 and matched_value >= resolved_threshold_vnd,
             }
             bubbles.append(bubble)
         except Exception as e:
@@ -267,18 +266,21 @@ def whale_orders_by_symbol_api(request, symbol: str):
     
     ticks = list(ticks_qs.order_by('trade_date', 'trade_time'))
     
+    # Resolve whale threshold via SSOT Engine
+    whale_threshold_vnd, _ = WhaleSignalEngine.resolve_threshold_vnd(request.user, symbol)
+    
     # Calculate bubbles with coordinates
     session_start = _get_session_start_time(trade_date)
-    bubbles = _calculate_bubbles(ticks, ref_price, session_start)
+    bubbles = _calculate_bubbles(ticks, ref_price, session_start, whale_threshold_vnd)
     
     # Categorize by side
     categorized = _categorize_orders(ticks)
     
     # Build categorized bubble response
     response_orders = {
-        'buy': _calculate_bubbles(categorized['buy'], ref_price, session_start),
-        'sell': _calculate_bubbles(categorized['sell'], ref_price, session_start),
-        'internal': _calculate_bubbles(categorized['internal'], ref_price, session_start),
+        'buy': _calculate_bubbles(categorized['buy'], ref_price, session_start, whale_threshold_vnd),
+        'sell': _calculate_bubbles(categorized['sell'], ref_price, session_start, whale_threshold_vnd),
+        'internal': _calculate_bubbles(categorized['internal'], ref_price, session_start, whale_threshold_vnd),
     }
     
     session_end = _get_session_start_time(trade_date).replace(hour=MARKET_CLOSE_HOUR)

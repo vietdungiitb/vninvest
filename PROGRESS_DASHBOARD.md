@@ -4,6 +4,53 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21ac)
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - synchronize final latency figure and smoke validation notes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py migrate portfolio 0048` completed successfully.
+- PASSED: `python manage.py test portfolio.tests.test_discovery_engine portfolio.tests.test_latency portfolio.tests.test_realtime_gateway -v 2` => 10/10 PASS.
+- PASSED: latest measured latency is `2.26 ms`, still well below `< 250 ms` threshold.
+- PASSED: smoke validation confirms whale orders route and realtime discovery WebSocket are live.
+- NOTE: `GET /api/portfolio/market-discovery-hub/` currently returns `403 feature_locked` under active OpenCore entitlement; route is registered and resolves correctly.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21ab)
+- backend/portfolio/views_whale_orders.py (MODIFIED - enforce dynamic whale threshold for bubble large-order classification)
+- backend/portfolio/tests/test_latency.py (MODIFIED - add automated discovery broadcast latency audit)
+- scratch/latency_probe.py (MODIFIED - align standalone latency probe with audit path)
+- docs/TASKBOARD_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - add Phase 6 Audit Alignment & Hardening)
+- docs/TECH_SPEC_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - fix WebSocket discovery payload contract)
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - record tested latency evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_latency -v 2` => `Broadcast Function Latency: 2.26 ms`.
+- PASSED: measured broadcast latency satisfies `< 250 ms` audit requirement with wide margin.
+- PASSED: changed files are diagnostics-clean.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21aa)
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - remove stale threshold annotation left behind by partial refactor)
+- docker-compose.yml (MODIFIED - align POSTGRES_* env for backend/celery with compose db service)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: backend startup completed with migrations + Gunicorn boot.
+- PASSED: celery worker and celery beat recreated from current image and are healthy.
+- PASSED: `/api/health/` returns 200 from host.
+- NOTE: compose warning for variable `d_6e` remains as non-blocking config hygiene issue.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21y)
 - docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (NEW - actionable checklist to close remaining business read-path direct DailyPrice queries)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21y)

@@ -75,7 +75,13 @@ def whale_advisory_symbol_stats_api(request):
     )
 
     stats_list = []
+    # Get latest advisory for these symbols to enrich with discovery info
+    advisories = {
+        adv.symbol: adv for adv in WhaleAdvisory.objects.filter(symbol__in=symbols).order_by('symbol', '-created_at').distinct('symbol')
+    }
+
     for row in aggregated_rows:
+        symbol = row.get('symbol')
         buy_count = int(row.get('buy_count') or 0)
         sell_count = int(row.get('sell_count') or 0)
         total_count = buy_count + sell_count
@@ -86,15 +92,20 @@ def whale_advisory_symbol_stats_api(request):
         total_volume = int(row.get('total_volume') or 0)
         avg_order_value = total_value / total_count
 
+        adv = advisories.get(symbol)
+
         stats_list.append(
             {
-                'symbol': row.get('symbol'),
+                'symbol': symbol,
                 'buyCount': buy_count,
                 'sellCount': sell_count,
                 'totalValue': total_value,
                 'totalVolume': total_volume,
                 'count': total_count,
                 'avgOrderValue': avg_order_value,
+                'isDiscovery': adv.is_discovery if adv else False,
+                'whaleIntensity': adv.whale_intensity if adv else 0,
+                'discoveryBucket': adv.discovery_bucket if adv else 'standard',
             }
         )
 
@@ -115,6 +126,7 @@ def whale_advisory_symbol_stats_api(request):
 _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_order_flow_api': 'dark_pool_flow',
     'whale_advisory_symbol_stats_api': 'dark_pool_flow',
+    'market_discovery_hub_api': 'dark_pool_flow',
     'stock_ai_advisory_session_api': 'whale_momentum',
     'stock_ai_advisory_components_generate_api': 'sentiment_score',
     'stock_ai_advisory_component_refresh_api': 'sentiment_score',
@@ -128,6 +140,9 @@ _OPENCORE_STOCK_FEATURE_KEYS = {
 
 _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
     'whale_advisory_symbol_stats_api': {
+        'GET': 'api_calls_per_day',
+    },
+    'market_discovery_hub_api': {
         'GET': 'api_calls_per_day',
     },
     'stock_order_flow_api': {
@@ -388,3 +403,57 @@ def stock_order_flow_api(request, symbol: str):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def market_discovery_hub_api(request):
+    """
+    GET /api/portfolio/market-discovery-hub/
+    Tra ve danh sach cac ma co tin hieu Whale Discovery, duoc phan loai vao 
+    cac bucket: 'anomaly', 'potential', 'standard'.
+    """
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'market_discovery_hub_api')
+    if denied_response is not None:
+        return denied_response
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'market_discovery_hub_api')
+    if quota_response is not None:
+        return quota_response
+
+    # Lay top 30 signals discovery moi nhat trong 24h qua
+    one_day_ago = timezone.now() - timedelta(days=1)
+    queryset = WhaleAdvisory.objects.filter(
+        is_discovery=True,
+        created_at__gte=one_day_ago
+    ).select_related('user').order_by('-whale_intensity', '-created_at')[:30]
+
+    discovery_list = []
+    for adv in queryset:
+        discovery_list.append({
+            'id': adv.id,
+            'symbol': adv.symbol,
+            'side': adv.side,
+            'intensity': adv.whale_intensity,
+            'bucket': adv.discovery_bucket,
+            'matched_value': adv.matched_value,
+            'severity': adv.severity,
+            'summary': adv.ai_summary,
+            'created_at': adv.created_at,
+            'is_new_to_market': adv.discovery_bucket != 'standard',
+        })
+
+    # Group by bucket for Bento Grid rendering
+    buckets = {
+        'anomaly': [d for d in discovery_list if d['bucket'] == 'anomaly'],
+        'potential': [d for d in discovery_list if d['bucket'] == 'potential'],
+        'standard': [d for d in discovery_list if d['bucket'] == 'standard'],
+    }
+
+    _track_opencore_stock_endpoint_usage(request, 'market_discovery_hub_api', status.HTTP_200_OK)
+    return Response({
+        'ok': True,
+        'discovery_signals': discovery_list,
+        'buckets': buckets,
+        'timestamp': timezone.now(),
+    }, status=status.HTTP_200_OK)

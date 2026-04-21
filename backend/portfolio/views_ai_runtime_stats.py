@@ -210,7 +210,8 @@ def whale_advisory_symbol_stats_api(request):
 
     stats_list = []
     for symbol in symbols:
-        symbol_threshold_vnd, _ = legacy_views._resolve_user_whale_threshold_vnd(request.user, symbol)
+        from .services import WhaleSignalEngine
+        symbol_threshold_vnd, _ = WhaleSignalEngine.resolve_threshold_vnd(request.user, symbol)
         symbol_ticks = queryset.filter(symbol=symbol, matched_value__gte=symbol_threshold_vnd)
 
         buy_count = symbol_ticks.filter(side__iexact='BUY').count()

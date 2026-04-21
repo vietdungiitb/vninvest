@@ -18,6 +18,7 @@ from portfolio.tasks_whale_persistence import (
     _create_advisory_token_log,
     _create_whale_advisory_record,
 )
+from portfolio.tasks_whale_broadcast import _broadcast_market_discovery_event
 
 
 def _execute_whale_generation_persist_phase(
@@ -98,6 +99,17 @@ def _execute_whale_generation_persist_phase(
     )
 
     start_advisory_phase('persist_advisory')
+    from portfolio.services import WhaleSignalEngine
+    
+    # Discovery Hub Logic: Calculate intensity and candidacy
+    whale_intensity = WhaleSignalEngine.calculate_whale_intensity(
+        value_vnd=matched_value_vnd,
+        threshold_vnd=float(threshold or 0),
+        dark_flow_strength=dark_flow_strength
+    )
+    is_discovery_candidate = WhaleSignalEngine.is_symbol_discovery_candidate(target_user, symbol)
+    discovery_bucket = WhaleSignalEngine.resolve_discovery_bucket(whale_intensity, is_new=is_discovery_candidate)
+
     advisory = _create_whale_advisory_record(
         target_user=target_user,
         symbol=symbol,
@@ -116,6 +128,11 @@ def _execute_whale_generation_persist_phase(
         normalized_primary_source=normalized_primary_source,
         advisory_type_key=advisory_type_key,
         resolved_severity=resolved_severity,
+        # Phase 2 Discovery Fields
+        is_discovery=is_discovery_candidate,
+        discovery_bucket=discovery_bucket,
+        whale_intensity=whale_intensity,
+        threshold_source=normalized_threshold_source,
     )
 
     _create_advisory_token_log(
@@ -125,6 +142,17 @@ def _execute_whale_generation_persist_phase(
         symbol=symbol,
         token_log_source_for_source=_token_log_source_for_advisory_source,
     )
+
+    # Phase 4: Broadcast to global Market Discovery Hub if candidacy met
+    if is_discovery_candidate:
+        _broadcast_market_discovery_event(
+            advisory=advisory,
+            symbol=symbol,
+            side=side,
+            whale_intensity=whale_intensity,
+            discovery_bucket=discovery_bucket,
+        )
+
     end_advisory_phase('persist_advisory')
 
     if not force_refresh:

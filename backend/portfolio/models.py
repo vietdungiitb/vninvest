@@ -1431,6 +1431,8 @@ class WhaleAdvisory(models.Model):
         verbose_name='Nguồn gốc ngưỡng'
     )
     is_discovery      = models.BooleanField(default=False, db_index=True, verbose_name='Phát hiện thị trường?')
+    discovery_bucket  = models.CharField(max_length=30, blank=True, default='standard', verbose_name='Nhóm Discovery')
+    whale_intensity   = models.FloatField(default=0.0, verbose_name='Cường độ cá mập (0-100)')
     ai_summary        = models.TextField(verbose_name='Tóm tắt AI (Pro+)')
     ai_detail         = models.TextField(blank=True, default='', verbose_name='Phân tích chi tiết (Premium+)')
     ai_provider       = models.CharField(max_length=50, default='openclaw', verbose_name='AI provider')

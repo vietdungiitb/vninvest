@@ -3,6 +3,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import RiskModeSelector from '../components/advisory/RiskModeSelector';
 import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
+import WhaleBubbleChart from '../components/WhaleBubbleChart';
 import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
 
 // Modular Components
@@ -30,12 +31,13 @@ export default function WhaleAdvisory() {
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
+  const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
 
   const {
     items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
     pendingDeleteSymbols, rowMessages, fetchData, loadRefreshInfo,
     handleRefreshAdvisory, handleDeleteAdvisory
-  } = useWhaleAdvisoryData(watchlistOnly);
+  } = useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode);
 
   // Sync risk mode
   useEffect(() => localStorage.setItem('vninvest:risk-mode', riskMode), [riskMode]);
@@ -85,53 +87,80 @@ export default function WhaleAdvisory() {
           <button onClick={fetchData} className="mt-6 px-6 py-2 bg-slate-800 rounded-xl text-cyan-400 hover:bg-slate-700 transition-all">{t('common.retry')}</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[82vh]">
-          <div className="lg:row-span-2 overflow-hidden flex flex-col">
-            <WhaleSymbolSidebar 
-              symbolStats={symbolStats} symbolSearch={symbolSearch} setSymbolSearch={setSymbolSearch}
-              activeSymbol={activeSymbol} setActiveSymbol={setActiveSymbol}
-              page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
-            />
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-auto lg:h-[85vh]">
+            {/* Left: Symbol Sidebar (narrow) */}
+            <div className="lg:row-span-2 overflow-hidden flex flex-col">
+              <WhaleSymbolSidebar
+                symbolStats={symbolStats}
+                symbolSearch={symbolSearch}
+                setSymbolSearch={setSymbolSearch}
+                activeSymbol={activeSymbol}
+                setActiveSymbol={setActiveSymbol}
+                page={page}
+                setPage={setPage}
+                pageSize={pageSize}
+                setPageSize={setPageSize}
+              />
+            </div>
 
-          <div className="lg:col-span-2 overflow-hidden flex flex-col h-full transition-all duration-500 animate-in fade-in" key={`panel-${activeSymbol}`}>
-            <WhaleAdvisoryCommandPanel 
-              item={activeItem} activeSymbol={activeSymbol}
-              onRefresh={handleRefreshAdvisory} onDeleteCurrent={handleDeleteAdvisory}
-              refreshing={!!pendingRefreshSymbols[activeSymbol]} deleting={!!pendingDeleteSymbols[activeSymbol]}
-              rowMessage={rowMessages[activeSymbol]}
-            />
-          </div>
+            {/* Right: Main content */}
+            <div className="lg:col-span-1 flex flex-col h-full overflow-hidden" key={`main-${activeSymbol}`}>
+              {/* Command Panel (compact) */}
+              <div className="mb-2">
+                <WhaleAdvisoryCommandPanel
+                  item={activeItem}
+                  activeSymbol={activeSymbol}
+                  onRefresh={handleRefreshAdvisory}
+                  onDeleteCurrent={handleDeleteAdvisory}
+                  refreshing={!!pendingRefreshSymbols[activeSymbol]}
+                  deleting={!!pendingDeleteSymbols[activeSymbol]}
+                  rowMessage={rowMessages[activeSymbol]}
+                />
+              </div>
 
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden transition-all duration-500 animate-in fade-in fill-mode-backwards" key={`details-${activeSymbol}`} style={{ animationDelay: '100ms' }}>
-             <div className={`neon-glass-panel p-6 flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">{t('whaleAdvisory.riskCalibration')}</h3>
-                <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
-             </div>
-             <div className={`neon-glass-panel p-6 overflow-hidden flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex justify-between">
-                   <span>{t('whaleAdvisory.temporalHistory')}</span>
-                   <span className="text-cyan-500/50">{t('whaleAdvisory.lastCycles', {count: 5})}</span>
-                </h3>
-                <div className="flex-1 overflow-y-auto panel-scrollbar">
-                  <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
-                </div>
-             </div>
-             
-             <div className="md:col-span-2 neon-glass-panel p-6 overflow-hidden flex flex-col">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">
-                  {t('whaleAdvisory.operationalTelemetry')}
-                </h3>
-                <div className="flex-1 overflow-y-auto panel-scrollbar">
+              {/* Collapsible Info Panel (Risk + History) */}
+              <div className="mb-2">
+                <button
+                  className="text-xs uppercase font-black text-slate-400 hover:text-cyan-400 transition"
+                  onClick={() => setShowInfo(!showInfo)}
+                >{showInfo ? t('common.hide') : t('common.show')} {t('whaleAdvisory.infoPanel')}</button>
+                {showInfo && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {/* Risk Calibration */}
+                    <div className="neon-glass-panel p-2">
+                      <h4 className="text-[9px] font-black text-slate-500 uppercase mb-1">{t('whaleAdvisory.riskCalibration')}</h4>
+                      <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
+                    </div>
+                    {/* Temporal History */}
+                    <div className="neon-glass-panel p-2 overflow-y-auto max-h-[120px]">
+                      <h4 className="text-[9px] font-black text-slate-500 uppercase mb-1">{t('whaleAdvisory.temporalHistory')}</h4>
+                      <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bubble Chart with overlay telemetry */}
+              <div className="flex-1 min-h-[300px] relative">
+                {activeSymbol ? (
+                  <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
+                ) : (
+                  <div className="flex h-full flex-col items-center justify-center text-slate-600 gap-3 border border-dashed border-slate-800 rounded-3xl">
+                    <div className="text-3xl opacity-20">🐋</div>
+                    <p className="text-[9px] font-black uppercase tracking-widest">{t('whaleChart.selectSymbolToStart')}</p>
+                  </div>
+                )}
+                {/* Telemetry overlay (small) */}
+                <div className="absolute bottom-0 left-0 right-0 bg-slate-900/60 p-1 text-xs text-slate-400">
                   <TrustTelemetryPanel />
                 </div>
-             </div>
+              </div>
+            </div>
           </div>
-        </div>
       )}
 
-      {activeSymbol && refreshInfo && (
-        <footer className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 px-8 py-5 text-[10px] uppercase font-black tracking-widest text-slate-500 bg-slate-900/60 rounded-[2.5rem] border border-slate-800/40 backdrop-blur-xl shadow-2xl">
+      {refreshInfo && (
+        <footer className="flex items-center gap-3 text-slate-500 text-xs mt-4">
            <div className="flex items-center gap-3">
               <span className="text-slate-600">{t('whaleAdvisory.tokensRemaining')}</span>
               <span className="text-cyan-400 font-mono text-xs scale-110">{(refreshInfo.tokens_remaining_today || 0).toLocaleString()}</span>

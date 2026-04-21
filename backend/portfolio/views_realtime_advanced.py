@@ -46,7 +46,8 @@ class WhaleFeedView(APIView):
         if not normalized_symbol or len(normalized_symbol) > 10:
             return Response({'detail': 'Thiếu mã chứng khoán.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        threshold_vnd, threshold_source = _resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
+        from .services import WhaleSignalEngine
+        threshold_vnd, threshold_source = WhaleSignalEngine.resolve_threshold_vnd(request.user, normalized_symbol)
         score_config = resolve_whale_score_config()
         request_now = timezone.now()
 

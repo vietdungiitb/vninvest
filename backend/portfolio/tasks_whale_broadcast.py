@@ -35,6 +35,41 @@ def _broadcast_whale_advisory(
                 'created_at': advisory.created_at.isoformat(),
                 'id': advisory.id,
                 'snapshot_id': advisory.aggregate_snapshot_id,
+                # Phase 4 Discovery Fields
+                'is_discovery': getattr(advisory, 'is_discovery', False),
+                'discovery_bucket': getattr(advisory, 'discovery_bucket', 'standard'),
+                'whale_intensity': getattr(advisory, 'whale_intensity', 0),
+            },
+        },
+    )
+
+
+def _broadcast_market_discovery_event(
+    *,
+    advisory,
+    symbol: str,
+    side: str,
+    whale_intensity: int,
+    discovery_bucket: str,
+) -> None:
+    """
+    Broadcast to a global discovery group. 
+    Dashboard listens to this to show real-time market-wide anomalies.
+    """
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        'market_discovery',
+        {
+            'type': 'market_discovery_event',
+            'payload': {
+                'event_type': 'market_discovery_event',
+                'id': advisory.id,
+                'symbol': symbol,
+                'side': side,
+                'whale_intensity': whale_intensity,
+                'discovery_bucket': discovery_bucket,
+                'ai_summary': advisory.ai_summary,
+                'ts': advisory.created_at.isoformat(),
             },
         },
     )

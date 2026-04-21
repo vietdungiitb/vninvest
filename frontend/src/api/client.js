@@ -386,6 +386,7 @@ export const getWhaleAdvisories = (params = {}) => {
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiClient.get(`/portfolio/ai-advisory/${suffix}`);
 };
+export const getMarketDiscoveryHub = () => apiClient.get('/portfolio/market-discovery-hub/');
 export const getCanonicalAIAdvisory = (symbol) =>
   apiClient.get(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/canonical/`);
 export const refreshWhaleAdvisory = (symbol) =>
