@@ -34,11 +34,11 @@ Definition of done:
 
 ## Slice 3 — Overview tab refactor
 
-- [ ] Decide whether to replace `HoldingsTable` or wrap it conditionally
-- [ ] Create unified symbol table for mixed source rows
-- [ ] Keep position metrics only for holdings rows
-- [ ] Add source badges per row
-- [ ] Add empty state for zero-symbol scope
+- [x] Decide whether to replace `HoldingsTable` or wrap it conditionally
+- [x] Create unified symbol table for mixed source rows
+- [x] Keep position metrics only for holdings rows
+- [x] Add source badges per row
+- [x] Add empty state for zero-symbol scope
 
 Definition of done:
 - Overview no longer assumes every row is a holding.

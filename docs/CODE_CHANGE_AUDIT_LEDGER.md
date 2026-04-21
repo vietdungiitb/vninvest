@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21s - Implement Slice 3 (Overview tab refactor)
+
+Mục tiêu:
+- Hoàn tất Slice 3 để tab `Tổng quan` không còn phụ thuộc cứng vào `HoldingsTable`.
+- Hiển thị bảng hợp nhất cho mixed-source symbols (`holdings`, `tracked`, `watchlist`, `all`).
+- Đảm bảo dữ liệu vị thế chỉ hiển thị cho holdings, non-holding hiển thị `--` đúng semantics.
+
+Danh sách tệp cập nhật:
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - thay thế Overview bằng unified symbol table, thêm source badges, empty state mới, giữ position metrics chỉ cho holdings)
+- frontend/src/i18n/vi.js (MODIFIED - thêm nhãn/tiêu đề cho bảng unified overview và source badge)
+- frontend/src/i18n/en.js (MODIFIED - thêm nhãn/tiêu đề cho bảng unified overview và source badge)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - đánh dấu hoàn thành toàn bộ checklist Slice 3)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean trên các file frontend và i18n vừa thay đổi.
+- PASSED: behavior tab Overview đã chuyển sang row model hợp nhất từ `symbolUniverse`.
+- PASSED: non-holding symbols không hiển thị giả dữ liệu vị thế (quantity/avg_cost/market_value = `--`).
+- PASSED: taskboard Slice 3 được sync trạng thái done.
+
 ## Entry 2026-04-21r - Implement Slice 1 (Universe aggregation) and Slice 2 (Toolbar UI)
 
 Mục tiêu:

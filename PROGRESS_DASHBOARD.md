@@ -4,6 +4,22 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21s)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - replace holdings-only Overview with unified mixed-source table, add source badges, and enforce holdings-only position metrics)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for unified overview table headers and badges)
+- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for unified overview table headers and badges)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 3 checklist items completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed frontend/i18n files.
+- PASSED: Overview now renders unified symbol rows across holdings/tracked/watchlist/all scopes.
+- PASSED: position-specific columns are only shown for holdings rows; non-holding rows use `--`.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21r)
 - backend/portfolio/serializers.py (MODIFIED - `WatchlistGroupSerializer` now returns nested `items` for watchlist symbol aggregation)
 - backend/portfolio/views_portfolio_watchlist.py (MODIFIED - add `prefetch_related('items')` for watchlist group list/detail)

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
-import HoldingsTable from '../HoldingsTable';
 import OptimizationModal from './OptimizationModal';
 import WhaleBubbleChart from '../WhaleBubbleChart';
 import PaginationBar from '../shared/PaginationBar';
@@ -122,6 +121,11 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     [holdings, activeSymbolSet],
   );
 
+  const filteredOverviewRows = useMemo(
+    () => scopedUniverse.filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase())),
+    [scopedUniverse, activeSymbolSet],
+  );
+
   const filteredTechnicals = useMemo(
     () => (technicals || []).filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase())),
     [technicals, activeSymbolSet],
@@ -133,6 +137,11 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     return filteredHoldings.slice(start, start + pageSize);
   }, [filteredHoldings, currentPage, pageSize]);
 
+  const pagedOverviewRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredOverviewRows.slice(start, start + pageSize);
+  }, [filteredOverviewRows, currentPage, pageSize]);
+
   const pagedTechnicals = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredTechnicals.slice(start, start + pageSize);
@@ -142,6 +151,33 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     const start = (currentPage - 1) * pageSize;
     return filteredWhaleAlerts.slice(start, start + pageSize);
   }, [filteredWhaleAlerts, currentPage, pageSize]);
+
+  const fmtNumber = (value, digits = 0) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
+    return Number(value).toLocaleString('vi-VN', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  };
+
+  const fmtSignedPercent = (value, digits = 2) => {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
+    const numeric = Number(value);
+    const sign = numeric > 0 ? '+' : '';
+    return `${sign}${numeric.toFixed(digits)}%`;
+  };
+
+  const sourceBadgeClass = {
+    holdings: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    tracked: 'border-sky-500/30 bg-sky-500/10 text-sky-300',
+    watchlist: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+  };
+
+  const sourceBadgeLabel = {
+    holdings: t('modernDeck.badgeHoldings', { defaultValue: 'Holding' }),
+    tracked: t('modernDeck.badgeTracked', { defaultValue: 'Tracked' }),
+    watchlist: t('modernDeck.badgeWatchlist', { defaultValue: 'Watchlist' }),
+  };
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
@@ -211,25 +247,16 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
       <div className="flex-1 overflow-hidden p-2">
         {activeTab === 'overview' && (
           <div className="h-full flex flex-col overflow-hidden">
-             {symbolScope !== 'holdings' && (
-               <div className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                 {t('modernDeck.overviewScopeHint', { defaultValue: 'Tab Tổng quan hiện đang hiển thị các vị thế holdings nằm trong phạm vi đã chọn. Các dòng monitor cho tracked/watchlist sẽ được bổ sung ở slice bảng hợp nhất tiếp theo.' })}
-               </div>
-             )}
              <div className="flex-1 overflow-y-auto panel-scrollbar">
-               {!loading && filteredHoldings.length === 0 ? (
+               {!loading && filteredOverviewRows.length === 0 ? (
                  <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center text-slate-500">
                    <div className="text-4xl opacity-30">📭</div>
                    <div>
                      <p className="text-base font-semibold text-slate-300">
-                       {symbolScope === 'holdings'
-                         ? 'Chưa có vị thế nắm giữ'
-                         : t('modernDeck.noHoldingsInScope', { defaultValue: 'Phạm vi đã chọn chưa có vị thế holdings' })}
+                       {t('modernDeck.overviewEmptyTitle', { defaultValue: 'Không có mã trong phạm vi đã chọn' })}
                      </p>
                      <p className="mt-1 max-w-md text-sm text-slate-500">
-                       {symbolScope === 'holdings'
-                         ? 'Watchlist vẫn hoạt động bình thường. Nếu muốn bật thêm thống kê vị thế, hãy thêm giao dịch tại trang Transactions.'
-                         : t('modernDeck.scopeEmptyHelp', { defaultValue: 'Bạn vẫn có thể dùng selector để đổi phạm vi mã. Nếu muốn có dữ liệu vị thế thật ở tab này, hãy thêm giao dịch tại trang Transactions.' })}
+                       {t('modernDeck.overviewEmptyHelp', { defaultValue: 'Hãy đổi phạm vi/mã ở toolbar. Nếu muốn có dữ liệu vị thế, bạn có thể thêm giao dịch tại trang Transactions.' })}
                      </p>
                    </div>
                    <Link
@@ -240,12 +267,66 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
                    </Link>
                  </div>
                ) : (
-                 <HoldingsTable holdings={pagedHoldings} loading={loading} />
+                 <table className="w-full text-left border-collapse">
+                   <thead>
+                     <tr className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-wider">
+                       <th className="px-3 py-2">{t('modernDeck.headerSymbol', { defaultValue: 'Mã' })}</th>
+                       <th className="px-3 py-2">{t('modernDeck.headerSource', { defaultValue: 'Nguồn' })}</th>
+                       <th className="px-3 py-2 text-right">{t('modernDeck.headerCurrentPrice', { defaultValue: 'Giá hiện tại' })}</th>
+                       <th className="px-3 py-2 text-right">{t('modernDeck.headerChange', { defaultValue: '% thay đổi' })}</th>
+                       <th className="px-3 py-2 text-right">{t('modernDeck.headerQuantity', { defaultValue: 'Số lượng' })}</th>
+                       <th className="px-3 py-2 text-right">{t('modernDeck.headerAvgCost', { defaultValue: 'Giá vốn TB' })}</th>
+                       <th className="px-3 py-2 text-right">{t('modernDeck.headerMarketValue', { defaultValue: 'Giá trị TT' })}</th>
+                     </tr>
+                   </thead>
+                   <tbody className="text-xs">
+                     {loading && (
+                       <tr>
+                         <td colSpan="7" className="py-4 text-center animate-pulse">{t('modernDeck.loading', { defaultValue: 'Đang tải...' })}</td>
+                       </tr>
+                     )}
+                     {!loading && pagedOverviewRows.map((row) => (
+                       <tr key={row.symbol} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                         <td className="px-3 py-2">
+                           <div className="font-bold text-slate-200">{row.symbol}</div>
+                           <div className="text-[11px] text-slate-500">{row.company_name || '--'}</div>
+                         </td>
+                         <td className="px-3 py-2">
+                           <div className="flex flex-wrap gap-1">
+                             {row.source_tags?.length
+                               ? row.source_tags.map((tag) => (
+                                   <span
+                                     key={`${row.symbol}-${tag}`}
+                                     className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${sourceBadgeClass[tag] || 'border-slate-700 text-slate-300'}`}
+                                   >
+                                     {sourceBadgeLabel[tag] || tag}
+                                   </span>
+                                 ))
+                               : <span className="text-slate-500">--</span>}
+                           </div>
+                         </td>
+                         <td className="px-3 py-2 text-right text-slate-300">{fmtNumber(row.current_price)}</td>
+                         <td className={`px-3 py-2 text-right font-bold ${Number(row.change_pct) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                           {fmtSignedPercent(row.change_pct)}
+                         </td>
+                         <td className="px-3 py-2 text-right text-slate-300">
+                           {row.in_holdings ? fmtNumber(row.quantity) : '--'}
+                         </td>
+                         <td className="px-3 py-2 text-right text-slate-400">
+                           {row.in_holdings ? fmtNumber(row.avg_cost) : '--'}
+                         </td>
+                         <td className="px-3 py-2 text-right text-slate-200 font-bold">
+                           {row.in_holdings ? fmtNumber(row.market_value) : '--'}
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
                )}
              </div>
-             {!loading && filteredHoldings.length > 0 && (
+             {!loading && filteredOverviewRows.length > 0 && (
                <PaginationBar
-                 total={filteredHoldings.length}
+                 total={filteredOverviewRows.length}
                  page={currentPage}
                  size={pageSize}
                  onPageChange={setCurrentPage}
