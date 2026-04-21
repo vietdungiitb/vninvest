@@ -1699,12 +1699,14 @@ def get_price_changes(symbols: list) -> dict:
 
     # Fetch last 30 days of prices for all symbols in a single query
     from datetime import date, timedelta
-    cutoff_date = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
+    today = date.today()
+    cutoff_date = today - timedelta(days=30)
     from .market_data_service import MarketDataService
     data_map = MarketDataService.get_ohlcv_batch(
         upper_symbols,
         start_date=cutoff_date,
-        fields=['symbol', 'close_price', 'date']
+        end_date=today,
+        fields=['close_price', 'date']
     )
     
     from collections import defaultdict
