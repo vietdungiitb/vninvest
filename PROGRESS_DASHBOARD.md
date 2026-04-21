@@ -1,6 +1,22 @@
-**Date**: 2026-04-20  
-**Status**: VNStock Runtime Hardening Audit COMPLETE & Drift Fixed ✅
+**Date**: 2026-04-22  
+**Status**: Backfill Progress Tracking + Watchlist Auth Hardening ✅
 
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ab)
+- backend/portfolio/services_backfill.py (MODIFIED - add optional progress_callback to track phase + rows_processed/rows_total)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - wrap progress_callback to update cache status incrementally with completion_percentage)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - GET /watchlist/groups/ returns empty array for unauthenticated users instead of 401)
+- frontend/src/api/client.js (MODIFIED - add 5-min cache + auth guard + fallback for getWatchlistGroups())
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add backfillProgress state, display progress bar with percentage + metrics during backfill run)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean on all 5 modified files.
+- PASSED: Python syntax valid (services + tasks layers).
+- PASSED: JavaScript syntax valid (API client + AdminOps component).
+- NOTE: rebuild dev stack to test: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat frontend`.
 
 ---
 

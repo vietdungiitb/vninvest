@@ -279,6 +279,13 @@ export default function AdminOps() {
   const [backfillApplyState, setBackfillApplyState] = useState('idle');
   const [backfillApplyTaskId, setBackfillApplyTaskId] = useState('');
   const [backfillMessage, setBackfillMessage] = useState('');
+  const [backfillProgress, setBackfillProgress] = useState({
+    completion_percentage: 0,
+    rows_processed: 0,
+    rows_total: 0,
+    current_symbol: null,
+    phase: null,
+  });
   const backfillApplyPollTimerRef = useRef(null);
 
   const clearSyncCooldownTimer = useCallback((key) => {
@@ -340,7 +347,20 @@ export default function AdminOps() {
         const taskLabel = task.id ? ` (task: ${task.id})` : '';
 
         if (statusValue === 'queued' || statusValue === 'running') {
-          setBackfillMessage(`${task.message || 'Backfill intraday side đang chạy nền.'}${taskLabel}`);
+          const completion = Number(task.completion_percentage || 0);
+          const rowsProcessed = Number(task.rows_processed || 0);
+          const rowsTotal = Number(task.rows_total || 0);
+          const phaseLabel = String(task.phase || 'running').toUpperCase();
+          const currentSymbol = task.current_symbol ? ` [${task.current_symbol}]` : '';
+          
+          setBackfillProgress({
+            completion_percentage: completion,
+            rows_processed: rowsProcessed,
+            rows_total: rowsTotal,
+            current_symbol: task.current_symbol,
+            phase: task.phase,
+          });
+          setBackfillMessage(`${phaseLabel}: ${completion}% (${rowsProcessed}/${rowsTotal})${currentSymbol}`);
           clearBackfillApplyPollTimer();
           backfillApplyPollTimerRef.current = window.setTimeout(pollTaskStatus, 5000);
           return;
@@ -348,6 +368,7 @@ export default function AdminOps() {
 
         clearBackfillApplyPollTimer();
         setBackfillApplyTaskId('');
+        setBackfillProgress({ completion_percentage: 0, rows_processed: 0, rows_total: 0, current_symbol: null, phase: null });
 
         if (statusValue === 'succeeded') {
           setBackfillApplyResult(task.result || null);
@@ -364,6 +385,7 @@ export default function AdminOps() {
         }
         clearBackfillApplyPollTimer();
         setBackfillApplyTaskId('');
+        setBackfillProgress({ completion_percentage: 0, rows_processed: 0, rows_total: 0, current_symbol: null, phase: null });
         setBackfillApplyState('error');
         setBackfillMessage(err?.response?.data?.message || err?.response?.data?.detail || err?.message || t('adminOps.unknownError'));
       }
@@ -2047,7 +2069,22 @@ export default function AdminOps() {
           </div>
 
           {backfillMessage && (
-            <p className={`text-sm ${backfillApplyState === 'error' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-300'}`}>{backfillMessage}</p>
+            <>
+              <p className={`text-sm ${backfillApplyState === 'error' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-300'}`}>{backfillMessage}</p>
+              {(backfillProgress.completion_percentage > 0 && backfillProgress.completion_percentage < 100) && (
+                <div className="mt-3 space-y-2">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-blue-600 dark:bg-blue-500 h-2 transition-all duration-500"
+                      style={{ width: `${backfillProgress.completion_percentage}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {backfillProgress.rows_processed} / {backfillProgress.rows_total} rows • {backfillProgress.phase || 'processing'}
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -58,12 +58,50 @@ def run_intraday_side_backfill_apply(
 
     task_id = str(getattr(self.request, 'id', '') or '')
     started_at = timezone.now().isoformat()
+    
+    def progress_callback(phase, rows_processed, rows_total, current_symbol):
+        """Update task status with progress metrics."""
+        if not task_id:
+            return
+        completion_pct = 0
+        if rows_total > 0:
+            completion_pct = round((rows_processed / rows_total) * 100, 1)
+        
+        status_payload = {
+            'id': task_id,
+            'status': 'running',
+            'queued_at': existing_status.get('queued_at') if 'existing_status' in globals() else None,
+            'started_at': started_at,
+            'finished_at': None,
+            'phase': phase,
+            'rows_processed': rows_processed,
+            'rows_total': rows_total,
+            'completion_percentage': completion_pct,
+            'current_symbol': current_symbol,
+            'message': f'Backfill {phase}: {completion_pct}% ({rows_processed}/{rows_total})',
+            'result': None,
+            'error': None,
+            'params': {
+                'symbols': symbols or [],
+                'start_date': start_date,
+                'end_date': end_date,
+                'threshold': int(threshold or 0),
+                'batch_size': int(batch_size or 2000),
+            },
+        }
+        set_intraday_side_backfill_task_status(task_id, status_payload)
+    
     payload = {
         'id': task_id,
         'status': 'running',
         'queued_at': None,
         'started_at': started_at,
         'finished_at': None,
+        'phase': 'querying',
+        'rows_processed': 0,
+        'rows_total': 0,
+        'completion_percentage': 0,
+        'current_symbol': None,
         'message': 'Backfill intraday side đang chạy nền.',
         'result': None,
         'error': None,
@@ -76,8 +114,8 @@ def run_intraday_side_backfill_apply(
         },
     }
     if task_id:
-        existing = get_intraday_side_backfill_task_status(task_id) or {}
-        payload['queued_at'] = existing.get('queued_at')
+        existing_status = get_intraday_side_backfill_task_status(task_id) or {}
+        payload['queued_at'] = existing_status.get('queued_at')
         set_intraday_side_backfill_task_status(task_id, payload)
 
     try:
@@ -87,6 +125,7 @@ def run_intraday_side_backfill_apply(
             end_date=end_date,
             threshold=int(threshold or 0),
             batch_size=int(batch_size or 2000),
+            progress_callback=progress_callback if task_id else None,
         )
     except Exception as exc:
         failed_payload = {
@@ -105,6 +144,7 @@ def run_intraday_side_backfill_apply(
         **payload,
         'status': 'succeeded',
         'finished_at': timezone.now().isoformat(),
+        'completion_percentage': 100,
         'message': 'Backfill intraday side đã hoàn tất.',
         'result': result,
     }

@@ -189,12 +189,31 @@ export const syncPrices = (portfolioId, days = 30) =>
 // --- Sync StockProfile (trigger backend sync) ---
 export const syncStockProfile = () => apiClient.post('/admin-sync/stockprofile/');
 
-// --- Watchlist ---
+// --- Watchlist Cache & Auth Guard ---
+let watchlistGroupsCache = null;
+let watchlistGroupsCacheTimestamp = 0;
+const WATCHLIST_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const getWatchlistGroups = () => {
   if (!hasAuthTokens()) {
     return Promise.resolve({ data: [] });
   }
-  return apiClient.get('/portfolio/watchlist/groups/');
+
+  const now = Date.now();
+  if (watchlistGroupsCache && now - watchlistGroupsCacheTimestamp < WATCHLIST_GROUPS_CACHE_TTL) {
+    return Promise.resolve({ data: watchlistGroupsCache });
+  }
+
+  return apiClient.get('/portfolio/watchlist/groups/')
+    .then((response) => {
+      watchlistGroupsCache = response.data || [];
+      watchlistGroupsCacheTimestamp = now;
+      return response;
+    })
+    .catch((err) => {
+      console.error('getWatchlistGroups failed:', err);
+      return { data: [] };
+    });
 };
 export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchlist/groups/', data);
 export const updateWatchlistGroup = (id, data) => apiClient.patch(`/portfolio/watchlist/groups/${id}/`, data);

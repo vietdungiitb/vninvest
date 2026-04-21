@@ -215,15 +215,19 @@ def intraday_side_backfill_apply(
     end_date: Optional[str],
     threshold: int = 0,
     batch_size: int = 2000,
+    progress_callback: Optional[callable] = None,
 ) -> dict:
     """
     Apply: cập nhật DB bằng bulk_update theo chunk để tránh SQL param limit.
-    Trả về kết quả.
+    Optional progress_callback(phase, rows_processed, rows_total, current_symbol) để track tiến độ.
     """
     t0 = time.monotonic()
 
     qs = _build_queryset(symbols, start_date, end_date, threshold)
     scope_rows = qs.count()
+
+    if progress_callback:
+        progress_callback(phase="querying", rows_processed=0, rows_total=scope_rows, current_symbol=None)
 
     rows_iter = (
         qs.order_by("symbol", "trade_date", "trade_time", "id")
@@ -236,6 +240,9 @@ def intraday_side_backfill_apply(
         rows_iter, threshold, batch_size, prev_close_cache
     )
 
+    if progress_callback:
+        progress_callback(phase="calculating", rows_processed=scope_rows, rows_total=scope_rows, current_symbol=None)
+
     changed_count = len(changed_ids_to_side)
     updated_total = 0
     symbols_touched = set()
@@ -245,14 +252,23 @@ def intraday_side_backfill_apply(
         chunk_size_update = 2000
 
         with transaction.atomic():
-            for chunk_start in range(0, len(ids_list), chunk_size_update):
+            for chunk_idx, chunk_start in enumerate(range(0, len(ids_list), chunk_size_update)):
                 chunk_ids = ids_list[chunk_start: chunk_start + chunk_size_update]
                 chunk_objs = list(IntradayTick.objects.filter(id__in=chunk_ids).only("id", "side", "symbol"))
+                current_symbol_in_chunk = chunk_objs[0].symbol if chunk_objs else None
                 for obj in chunk_objs:
                     obj.side = changed_ids_to_side[obj.id]
                     symbols_touched.add(obj.symbol)
                 IntradayTick.objects.bulk_update(chunk_objs, ["side"])
                 updated_total += len(chunk_objs)
+
+                if progress_callback:
+                    progress_callback(
+                        phase="updating",
+                        rows_processed=updated_total,
+                        rows_total=changed_count,
+                        current_symbol=current_symbol_in_chunk,
+                    )
 
     duration = round(time.monotonic() - t0, 2)
 

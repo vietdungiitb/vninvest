@@ -1,5 +1,56 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22ab - Backfill progress tracking + watchlist redirect hardening
+
+Muc tieu:
+- Nâng cấp backfill apply: backend track progress theo phase (querying → calculating → updating) + update cache incrementally + frontend display progress bar.
+- Cứng hóa watchlist/groups endpoint: cho phép unauthenticated GET (return empty array), ngăn chặn 401 redirect loop.
+- Thêm cache 5 phút cho watchlist groups để giảm API calls khi user navigate giữa các page.
+
+Trieu chung runtime:
+- Backfill progress không hiển thị -> admin chỉ biết "đang chạy" nhưng không biết bao lâu nữa.
+- Watchlist endpoint trả 401 → proxy redirect → browser ERR_TOO_MANY_REDIRECTS (mặc dù đã có guard ở một số page).
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_backfill.py (MODIFIED - add optional progress_callback, track phase + rows_processed/rows_total)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - wrap progress_callback để update cache incrementally với metrics phase/rows_processed/completion_percentage)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - GET /watchlist/groups/ không require IsAuthenticated, return empty array khi unauthenticated)
+- frontend/src/api/client.js (MODIFIED - add cache layer cho getWatchlistGroups() + auth guard + 5min TTL cache)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add backfillProgress state, parse progress fields từ task status, display progress bar với completion %, rows, phase label)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cai tien:
+1. **Backend backfill service** (`services_backfill.py`):
+   - `intraday_side_backfill_apply()` giờ nhận tham số `progress_callback(phase, rows_processed, rows_total, current_symbol)`.
+   - Callback được gọi 3 lần: start querying (0,N), sau calculating (N,N), rồi updating mỗi chunk (processed, changed_count).
+
+2. **Backend task wrapper** (`tasks_maintenance.py`):
+   - `run_intraday_side_backfill_apply()` tạo closure callback để update cache status mỗi lần progress callback được gọi.
+   - Cache payload bây giờ bao gồm: `phase`, `rows_processed`, `rows_total`, `completion_percentage`, `current_symbol`.
+   - Status từ cache được poll bởi frontend mỗi 5 giây.
+
+3. **Backend watchlist endpoint** (`views_portfolio_watchlist.py`):
+   - `WatchlistGroupListCreateView.get_permissions()` trả rỗng khi GET (không yêu cầu auth), trả `[IsAuthenticated()]` khi POST.
+   - `get_queryset()` trả `WatchlistGroup.objects.none()` nếu user chưa authenticated.
+   - Giáo dạo: endpoint vẫn trả HTTP 200 nhưng với data rỗng, không phải 401 → redirect loop.
+
+4. **Frontend API client** (`client.js`):
+   - `getWatchlistGroups()` dùng in-memory cache với 5 phút TTL.
+   - Fallback: nếu call fails, return `{ data: [] }` thay vì throw.
+   - Vẫn giữ auth guard: nếu không có token, return `{ data: [] }` ngay.
+
+5. **Frontend AdminOps component** (`AdminOps.jsx`):
+   - State mới: `backfillProgress` = `{ completion_percentage, rows_processed, rows_total, current_symbol, phase }`.
+   - Polling loop update `backfillProgress` mỗi khi status thay đổi.
+   - Render progress bar (0-100%) + metrics: "15000 / 45000 rows • UPDATING [VIC]" khi task đang chạy.
+   - Tự động clear progress khi task finish (status ≠ running).
+
+Ket qua verify:
+- PASSED: `get_errors` clean trên 5 files (backend services + task + watchlist views, frontend AdminOps + client).
+- PASSED: syntax validation Python + JavaScript (no parse errors).
+- NOTE: Cần rebuild Docker stack để test changes (đặc biệt backend service layer + frontend polling logic).
+
 ## Entry 2026-04-21ah - Async intraday side backfill apply
 
 Muc tieu:
