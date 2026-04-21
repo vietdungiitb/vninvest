@@ -1,5 +1,21 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21ad - Ban hanh template nguyen tac thiet ke trang chung toan du an
+
+Muc tieu:
+- Tao mot template chuan de dong bo bo cuc, spacing, token mau, va hanh vi tab/panel cho tat ca trang trong he thong.
+- Loai bo tinh trang phan manh giao dien giua cac trang (moi trang mot kieu canh le, margin, top-gap).
+- Cung cap tai lieu san sang rollout de doi code hieu chinh hang loat theo mot form duy nhat.
+
+Danh sach tep cap nhat:
+- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (NEW - template chuan hoa layout/css/margin/color system cho toan du an)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Template bao gom day du layout contract, token css, quy tac bo cuc 3 cot, tab module template, responsive contract va checklist nghiem thu.
+- PASSED: Tai lieu su dung tieng Viet nhat quan va dinh huong rollout theo pha P0-P4.
+
 ## Entry 2026-04-21z - Finalize Phase 4 MDSU SSOT Closure (100% Compliance)
 
 Mục tiêu:
@@ -5103,4 +5119,3 @@ Kết quả verify:
 
 Trạng thái:
 - **COMPLETE & AUDITED**. Hệ thống sẵn sàng cho giai đoạn soak testing 24/48h trước khi rollout production.
-
