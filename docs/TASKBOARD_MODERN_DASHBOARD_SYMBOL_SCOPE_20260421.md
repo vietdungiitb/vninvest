@@ -72,10 +72,10 @@ Definition of done:
 
 ## Slice 6 — AI monitor mode
 
-- [ ] Separate portfolio-only metrics from universe-level AI content
-- [ ] Keep health score only for `holdings`
-- [ ] Add degraded or alternative UI for non-holdings scopes
-- [ ] Document exact fallback behavior if backend AI universe summary is not ready
+- [x] Separate portfolio-only metrics from universe-level AI content
+- [x] Keep health score only for `holdings`
+- [x] Add degraded or alternative UI for non-holdings scopes
+- [x] Document exact fallback behavior if backend AI universe summary is not ready
 
 Definition of done:
 - AI tab no longer mixes portfolio analytics with non-holding scope silently.

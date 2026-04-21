@@ -1,5 +1,26 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21v - Implement Slice 6 (AI monitor mode)
+
+Mục tiêu:
+- Tách semantics AI tab giữa scope `holdings` và scope non-holdings.
+- Giữ Portfolio Health Score + tối ưu hóa danh mục chỉ cho holdings để tránh sai nghĩa dữ liệu.
+- Thêm monitor-mode summary/fallback rõ ràng khi user chọn `tracked/watchlist/all`.
+
+Danh sách tệp cập nhật:
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - split AI tab into holdings mode vs monitor mode, add non-holdings fallback UI and monitor KPIs)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for AI monitor mode)
+- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for AI monitor mode)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 6 checklist completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean trên các file frontend/i18n đã cập nhật.
+- PASSED: Health Score và nút tối ưu hóa chỉ xuất hiện trong `scope=holdings`.
+- PASSED: Với `scope=tracked/watchlist/all`, AI tab hiển thị monitor summary + fallback behavior rõ ràng.
+- NOTE: các metrics monitor non-holdings hiện dựa trên symbol universe + technical momentum hiện có; chưa có backend AI universe summary chuyên biệt.
+
 ## Entry 2026-04-21u - Implement Slice 5 (Technical bulk API)
 
 Mục tiêu:

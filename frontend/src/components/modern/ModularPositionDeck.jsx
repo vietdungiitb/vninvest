@@ -179,6 +179,26 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     watchlist: t('modernDeck.badgeWatchlist', { defaultValue: 'Watchlist' }),
   };
 
+  const isHoldingsScope = symbolScope === 'holdings';
+
+  const aiScopeTitle = useMemo(() => {
+    const option = scopeOptions.find((item) => item.value === symbolScope);
+    return option?.label || t('modernDeck.scopeAll', { defaultValue: 'Tất cả' });
+  }, [scopeOptions, symbolScope, t]);
+
+  const aiMonitorSummary = useMemo(() => {
+    const symbolsCount = symbolOptions.length;
+    const bullishCount = filteredTechnicals.filter((item) => Number(item.momentum_20d_pct) > 0).length;
+    const bearishCount = filteredTechnicals.filter((item) => Number(item.momentum_20d_pct) < 0).length;
+    const neutralCount = Math.max(0, filteredTechnicals.length - bullishCount - bearishCount);
+    return {
+      symbolsCount,
+      bullishCount,
+      bearishCount,
+      neutralCount,
+    };
+  }, [filteredTechnicals, symbolOptions]);
+
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
       {/* Tab Header */}
@@ -401,80 +421,145 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
 
         {activeTab === 'ai' && (
           <div className="h-full overflow-y-auto panel-scrollbar p-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                {/* Left: Score Gauge */}
-                <div className="flex flex-col items-center justify-center p-6 bg-slate-900/40 border border-slate-800 rounded-2xl relative overflow-hidden">
-                   <div className="absolute top-0 right-0 p-3 opacity-10 text-4xl">🤖</div>
-                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-6">Portfolio Health Score</h4>
-                   {healthStats.hasData ? (
-                     <>
-                       <div className="relative flex items-center justify-center w-32 h-32">
-                         <svg className="w-full h-full transform -rotate-90">
-                           <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
-                           <circle 
-                             cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
-                             strokeDasharray={364.4} 
-                             strokeDashoffset={364.4 - (364.4 * healthStats.score) / 100}
-                             className={`${healthStats.color} transition-all duration-1000 ease-out`}
-                           />
-                         </svg>
-                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className={`text-3xl font-black ${healthStats.color}`}>{healthStats.score}</span>
-                            <span className="text-[10px] text-slate-500">/ 100</span>
+             {isHoldingsScope ? (
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                  <div className="flex flex-col items-center justify-center p-6 bg-slate-900/40 border border-slate-800 rounded-2xl relative overflow-hidden">
+                     <div className="absolute top-0 right-0 p-3 opacity-10 text-4xl">🤖</div>
+                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-6">
+                       {t('modernDeck.aiHealthScoreTitle', { defaultValue: 'Portfolio Health Score' })}
+                     </h4>
+                     {healthStats.hasData ? (
+                       <>
+                         <div className="relative flex items-center justify-center w-32 h-32">
+                           <svg className="w-full h-full transform -rotate-90">
+                             <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-800" />
+                             <circle
+                               cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent"
+                               strokeDasharray={364.4}
+                               strokeDashoffset={364.4 - (364.4 * healthStats.score) / 100}
+                               className={`${healthStats.color} transition-all duration-1000 ease-out`}
+                             />
+                           </svg>
+                           <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <span className={`text-3xl font-black ${healthStats.color}`}>{healthStats.score}</span>
+                              <span className="text-[10px] text-slate-500">/ 100</span>
+                           </div>
                          </div>
-                       </div>
 
-                       <div className="mt-6 flex flex-col items-center">
-                          <span className={`text-4xl font-black mb-1 ${healthStats.color}`}>{healthStats.grade}</span>
-                          <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-500">Thanh khoản & Hiệu suất</span>
+                         <div className="mt-6 flex flex-col items-center">
+                            <span className={`text-4xl font-black mb-1 ${healthStats.color}`}>{healthStats.grade}</span>
+                            <span className="text-[10px] uppercase font-bold tracking-tighter text-slate-500">
+                              {t('modernDeck.aiHealthScoreSubtitle', { defaultValue: 'Thanh khoản & Hiệu suất' })}
+                            </span>
+                         </div>
+                       </>
+                     ) : (
+                       <div className="flex min-h-[220px] flex-col items-center justify-center text-center text-slate-500">
+                         <div className="mb-3 text-4xl opacity-25">🧠</div>
+                         <p className="text-sm font-semibold text-slate-300">
+                           {t('modernDeck.aiNoAnalyticsTitle', { defaultValue: 'Chưa có dữ liệu phân tích' })}
+                         </p>
+                         <p className="mt-1 max-w-xs text-xs text-slate-500">
+                           {t('modernDeck.aiNoAnalyticsHelp', { defaultValue: 'Health Score sẽ xuất hiện khi danh mục có đủ dữ liệu analytics để tính Sharpe, Alpha và drawdown.' })}
+                         </p>
                        </div>
-                     </>
-                   ) : (
-                     <div className="flex min-h-[220px] flex-col items-center justify-center text-center text-slate-500">
-                       <div className="mb-3 text-4xl opacity-25">🧠</div>
-                       <p className="text-sm font-semibold text-slate-300">Chưa có dữ liệu phân tích</p>
-                       <p className="mt-1 max-w-xs text-xs text-slate-500">
-                         Health Score sẽ xuất hiện khi danh mục có đủ dữ liệu analytics để tính Sharpe, Alpha và drawdown.
-                       </p>
+                     )}
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                     <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
+                        <h5 className="text-[11px] font-bold text-emerald-400 mb-2 flex items-center gap-2">
+                          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                          {t('modernDeck.aiCommentaryTitle', { defaultValue: 'AI Commentary' })}
+                        </h5>
+                        <p className="text-sm text-slate-300 leading-relaxed italic">
+                          "{digest?.digest_summary || t('modernDeck.aiCommentaryEmpty', { defaultValue: 'Chưa có bản tóm tắt AI cho danh mục này. Hệ thống sẽ hiển thị khi có đủ dữ liệu tổng hợp.' })}"
+                        </p>
                      </div>
-                   )}
-                </div>
 
-                {/* Right: AI Synthesis */}
-                <div className="flex flex-col gap-4">
-                   <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl p-4">
-                      <h5 className="text-[11px] font-bold text-emerald-400 mb-2 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                        AI Commentary
-                      </h5>
-                      <p className="text-sm text-slate-300 leading-relaxed italic">
-                        "{digest?.digest_summary || 'Chưa có bản tóm tắt AI cho danh mục này. Hệ thống sẽ hiển thị khi có đủ dữ liệu tổng hợp.'}"
-                      </p>
+                     <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                           <span className="text-[9px] text-slate-500 uppercase block mb-1">
+                             {t('modernDeck.aiSharpeLabel', { defaultValue: 'Rủi ro (Sharpe)' })}
+                           </span>
+                           <span className={`text-sm font-bold ${analytics?.sharpe_ratio >= 1.5 ? 'text-emerald-400' : 'text-slate-200'}`}>
+                            {analytics?.sharpe_ratio ?? 'N/A'}
+                           </span>
+                        </div>
+                        <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
+                           <span className="text-[9px] text-slate-500 uppercase block mb-1">
+                             {t('modernDeck.aiDrawdownLabel', { defaultValue: 'Sụt giảm tối đa' })}
+                           </span>
+                           <span className="text-sm font-bold text-rose-400">
+                            {analytics?.max_drawdown_pct ?? 'N/A'}{analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : ''}
+                           </span>
+                        </div>
+                     </div>
+
+                     <button
+                        onClick={() => setShowOptimization(true)}
+                        className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20"
+                     >
+                        {t('modernDeck.aiOptimizeButton', { defaultValue: 'Tối ưu hóa danh mục với AI' })}
+                     </button>
+                  </div>
+               </div>
+             ) : (
+               <div className="flex flex-col gap-4">
+                 <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                   {t('modernDeck.aiMonitorModeHint', {
+                     defaultValue: 'AI tab đang ở chế độ monitor theo scope hiện tại. Portfolio Health Score và nút tối ưu hóa chỉ áp dụng cho scope holdings.',
+                   })}
+                 </div>
+
+                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                   <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                     <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                       {t('modernDeck.aiMonitorScopeLabel', { defaultValue: 'Scope hiện tại' })}
+                     </div>
+                     <div className="mt-2 text-lg font-black text-slate-100">{aiScopeTitle}</div>
                    </div>
-
-                   <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                         <span className="text-[9px] text-slate-500 uppercase block mb-1">Rủi ro (Sharpe)</span>
-                         <span className={`text-sm font-bold ${analytics?.sharpe_ratio >= 1.5 ? 'text-emerald-400' : 'text-slate-200'}`}>
-                          {analytics?.sharpe_ratio ?? 'N/A'}
-                         </span>
-                      </div>
-                      <div className="bg-slate-900/60 p-3 rounded-lg border border-slate-800">
-                         <span className="text-[9px] text-slate-500 uppercase block mb-1">Sụt giảm tối đa</span>
-                         <span className="text-sm font-bold text-rose-400">
-                          {analytics?.max_drawdown_pct ?? 'N/A'}{analytics?.max_drawdown_pct !== null && analytics?.max_drawdown_pct !== undefined ? '%' : ''}
-                         </span>
-                      </div>
+                   <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                     <div className="text-[10px] uppercase tracking-wider text-slate-500">
+                       {t('modernDeck.aiMonitorSymbolsLabel', { defaultValue: 'Số mã monitor' })}
+                     </div>
+                     <div className="mt-2 text-2xl font-black text-slate-100">{aiMonitorSummary.symbolsCount}</div>
                    </div>
+                   <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4">
+                     <div className="text-[10px] uppercase tracking-wider text-emerald-300">
+                       {t('modernDeck.aiMonitorBullishLabel', { defaultValue: 'Momentum dương' })}
+                     </div>
+                     <div className="mt-2 text-2xl font-black text-emerald-300">{aiMonitorSummary.bullishCount}</div>
+                   </div>
+                   <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+                     <div className="text-[10px] uppercase tracking-wider text-rose-300">
+                       {t('modernDeck.aiMonitorBearishLabel', { defaultValue: 'Momentum âm' })}
+                     </div>
+                     <div className="mt-2 text-2xl font-black text-rose-300">{aiMonitorSummary.bearishCount}</div>
+                   </div>
+                 </div>
 
-                   <button 
-                      onClick={() => setShowOptimization(true)}
-                      className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-all shadow-lg shadow-emerald-900/20"
-                   >
-                      Tối ưu hóa danh mục với AI
-                   </button>
-                </div>
-             </div>
+                 <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                   <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                     {t('modernDeck.aiMonitorCommentaryTitle', { defaultValue: 'AI Monitor Commentary' })}
+                   </h5>
+                   <p className="text-sm leading-relaxed text-slate-300 italic">
+                     "{digest?.digest_summary || t('modernDeck.aiCommentaryEmpty', { defaultValue: 'Chưa có bản tóm tắt AI cho danh mục này. Hệ thống sẽ hiển thị khi có đủ dữ liệu tổng hợp.' })}"
+                   </p>
+                 </div>
+
+                 <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+                   <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                     {t('modernDeck.aiMonitorFallbackTitle', { defaultValue: 'Fallback behavior (scope non-holdings)' })}
+                   </h5>
+                   <ul className="list-disc pl-5 space-y-1 text-xs text-slate-400">
+                     <li>{t('modernDeck.aiMonitorFallbackLine1', { defaultValue: 'Portfolio Health Score được ẩn để tránh sai semantics.' })}</li>
+                     <li>{t('modernDeck.aiMonitorFallbackLine2', { defaultValue: 'Nút tối ưu hóa danh mục bị tắt ngoài scope holdings.' })}</li>
+                     <li>{t('modernDeck.aiMonitorFallbackLine3', { defaultValue: 'Nội dung AI tập trung theo monitor scope: symbols, momentum technical và digest hiện có.' })}</li>
+                   </ul>
+                 </div>
+               </div>
+             )}
           </div>
         )}
 

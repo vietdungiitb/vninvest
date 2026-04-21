@@ -4,6 +4,22 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21v)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - split AI tab into holdings mode and non-holdings monitor mode with explicit fallback semantics)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for AI monitor labels/fallback lines)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for AI monitor labels/fallback lines)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 6 tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: AI tab no longer shows portfolio-only metrics in non-holdings scopes.
+- PASSED: non-holdings scopes now use monitor-mode summary and documented fallback behavior.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21u)
 - backend/portfolio/views_analytics_extended.py (MODIFIED - add bulk technicals symbol-list endpoint and shared helper pipeline using `_screener_build_technical`)
 - backend/portfolio/views.py (MODIFIED - expose `BulkTechnicalBySymbolsView` for stock-management routing)
