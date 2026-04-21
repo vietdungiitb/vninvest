@@ -1,5 +1,48 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21o - Whale Bubble Chart production-readiness hardening
+
+Muc tieu:
+- Chot production readiness cho Whale Bubble Chart sau khi thay legacy Shark tab.
+- Loai bo loi import path gay fail frontend production build trong Docker.
+- Xac nhan stack dev healthy va endpoint moi da route dung.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - fix relative import path vao `src/context` va `src/hooks` de khong vuot ra ngoai `src/`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml build frontend --no-cache` -> React production build compiled successfully.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d frontend` -> frontend container recreated and started.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` -> backend/frontend/db/redis/celery services healthy.
+- PASSED: `curl http://localhost/api/portfolio/whale/orders/VNM/?timeframe=session` (without token) -> `401` (route reachable, auth guard active as designed).
+
+## Entry 2026-04-21m - Unified alert taxonomy and neon type/severity color unification
+
+Muc tieu:
+- Thong nhat toan bo luong Unified Alert theo mot taxonomy duy nhat: `type` + `severity`.
+- Loai bo mapping mau phan manh giua cac component canh bao.
+- Chuan hoa contract backend de frontend khong can suy dien khong on dinh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/market_data_service.py (MODIFIED - them `type` cho whale, dark flow va market-wide top-tier unified alert items)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - them assertion bo gia tri `type` hop le)
+- frontend/src/utils/alertTaxonomy.js (NEW - helper normalize severity/type, derive type fallback, tone mapping card/badge/chip)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - bo sung `type` cho moi unified alert, normalize backend payload theo helper chung)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - doi tone card sang type+severity, them type badge, dung summary tone helper)
+- frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - dung summary tone helper)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - dong bo tone map va badge voi taxonomy chung)
+- frontend/src/i18n/vi.js (MODIFIED - them key nhan type cho UI)
+- frontend/src/i18n/en.js (MODIFIED - them key nhan type cho UI)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow`.
+- PASSED: `get_errors` clean on changed files.
+- WARNING: Docker compose rebuild command for frontend (`docker compose -f docker-compose.dev.yml up -d --build frontend`) timed out with no completion output in current terminal environment; requires manual daemon health verification.
+
 ## Entry 2026-04-21l - Execute Phase 2 prefetch hardening (legacy purge)
 
 Muc tieu:

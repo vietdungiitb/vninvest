@@ -4,6 +4,54 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21o)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - fix import path to `../context/LangContext` and `../hooks/useOrderBubbleCoordinates` for Docker production build compatibility)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml build frontend --no-cache` compiled successfully.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d frontend` recreated and started frontend container.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` reports backend/frontend/db/redis/celery healthy.
+- PASSED: unauthenticated smoke call to whale endpoint returns `401` as expected (`auth + IsProPlan` guard active).
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21n)
+- start_dev.ps1 (MODIFIED - bo auto `seed_demo_data` khi khoi dong Docker; them co `-SeedDemo` de chi seed demo khi opt-in; tach sync `seed_securities_groups` thanh buoc rieng uu tien du lieu thi truong)
+- docs/SAFE_DEFAULT_SETUP_GUIDE_20260412.md (MODIFIED - cap nhat huong dan Docker dev: mac dinh khong seed demo, chi seed khi dung `-SeedDemo`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: review script flow xac nhan Docker startup mac dinh khong chay `python manage.py seed_demo_data`.
+- PASSED: `seed_securities_groups` van duoc giu de dong bo taxonomy theo du lieu thi truong (khong tao user/portfolio demo).
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21m)
+- backend/portfolio/market_data_service.py (MODIFIED - add unified alert field `type` for whale/dark_flow/market-top-tier payloads)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - validate `type` contract values in unified alerts endpoint test)
+- frontend/src/utils/alertTaxonomy.js (NEW - centralized severity/type normalization + tone mapping + label helper)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - enrich all unified alerts with normalized `type`; consume shared taxonomy utilities)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - switch to type+severity neon tone mapping, add type badge, reuse shared summary chip tones)
+- frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - reuse shared summary chip tone mapping)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - align unified alert cards and summary chips with shared type+severity taxonomy)
+- frontend/src/i18n/vi.js (MODIFIED - add alert type labels `typeBuy/typeSell/typeFlow/typeNeutral`)
+- frontend/src/i18n/en.js (MODIFIED - add alert type labels `typeBuy/typeSell/typeFlow/typeNeutral`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow`.
+- PASSED: `get_errors` clean on all modified backend/frontend files.
+- WARNING: `docker compose -f docker-compose.dev.yml up -d --build frontend` timed out in terminal session; command does not produce completion output in current environment and needs manual verification of Docker daemon responsiveness.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21l)
 - backend/portfolio/tasks_prefetch.py (MODIFIED - remove legacy task `prefetch_ticker_price_board`)
 - backend/portfolio/views_admin_runtime.py (MODIFIED - remove legacy bridge `_legacy_views_module`, switch to direct runtime policy helper imports)
