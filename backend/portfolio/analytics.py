@@ -214,6 +214,7 @@ def compute_holdings(portfolio, period: str = '1D') -> pd.DataFrame:
 
     # --- Bước 3a: Lấy giá đóng cửa mới nhất cho từng mã (1 query duy nhất) ---
     from .market_data_service import MarketDataService
+    symbols = df_holdings['symbol'].tolist()
     latest_snapshots = MarketDataService.get_latest_snapshot(symbols)
     
     # Convert snapshots dict to the list of records format expected by the existing merge logic
