@@ -4,6 +4,77 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21l)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - remove legacy task `prefetch_ticker_price_board`)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - remove legacy bridge `_legacy_views_module`, switch to direct runtime policy helper imports)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - remove obsolete legacy-task tests)
+- backend/portfolio/tests/test_legacy_purge_gate.py (NEW - gate test for forbidden legacy prefetch tokens in runtime files)
+- docs/PHASE2_PREFETCH_HARDENING_PLAN.md (MODIFIED - fix path refs, expand purge-gate scope, update verification list)
+- docs/PHASE2_PREFETCH_TASK_LIST.md (MODIFIED - mark all phase-2 execution tasks completed)
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - add P1 execution status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task portfolio.tests.test_admin_ops portfolio.tests.test_legacy_purge_gate portfolio.tests.test_celery_task_names -v 2` => 45 PASS.
+- PASSED: no legacy bridge usage remains in `views_admin_runtime.py`.
+- PASSED: no runtime reference remains to `prefetch_ticker_price_board` outside gate-test forbidden-token assertions.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21k)
+- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory SSOT regulation for `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add SSOT integration map requirement in planning template + DoR/DoD SSOT checks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Governance docs now enforce one-source-of-truth principle for 4 core intelligence domains.
+- PASSED: Planning workflow now blocks implementation plans that do not map to SSOT or that keep parallel non-SSOT flows.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21j)
+- backend/config/settings.py (MODIFIED - remove legacy beat scheduler branch, force canonical shard scheduler)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - warm prefetch API switched to canonical flow)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - tests updated to patch canonical tasks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops portfolio.tests.test_celery_task_names -v 2` => 31 PASS.
+- PASSED: `get_errors` clean on modified backend files.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21i)
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - rewrite RCA theo chuan SSOT, bo sung corrective actions P0/P1/P2, workstreams, DoD va release gate xoa legacy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: RCA chot nguyen tac mot chuan su that, khong duy tri dual-path legacy.
+- PASSED: Co task board de doi code thuc thi migration va xoa code cu ngay.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21h)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - them `authStateReady` de cho bootstrap auth hoan tat truoc khi danh gia entitlement)
+- frontend/src/components/ProtectedRoute.jsx (MODIFIED - cho readiness truoc khi check `ability.can(...)`, tranh redirect sai sang `/upgrade` khi refresh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: fix huong den dung root-cause redirect race condition.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21f)
 - backend/entrypoint.sh (MODIFIED - fix `set -eu` -> `set -e; set -u` de tuong thich POSIX sh/dash, sua crash backend container khi khoi dong)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21f)

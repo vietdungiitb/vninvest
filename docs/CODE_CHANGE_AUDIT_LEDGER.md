@@ -1,5 +1,94 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21l - Execute Phase 2 prefetch hardening (legacy purge)
+
+Muc tieu:
+- Thuc thi xoa legacy prefetch task va bridge runtime con sot theo Phase 2.
+- Dong bo test gate de ngan tai xuat legacy symbol trong runtime files.
+- Cap nhat ke hoach/task-list/RCA de phan anh trang thai da thuc thi.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_prefetch.py (MODIFIED - remove legacy Celery task `prefetch_ticker_price_board`)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - remove `_legacy_views_module`, switch to direct `runtime_policy_helpers` imports)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - remove obsolete legacy-task tests, keep canonical scheduler coverage)
+- backend/portfolio/tests/test_legacy_purge_gate.py (NEW - gate test scanning runtime files for forbidden legacy tokens)
+- docs/PHASE2_PREFETCH_HARDENING_PLAN.md (MODIFIED - correct paths, expand gate scope, sync verification set)
+- docs/PHASE2_PREFETCH_TASK_LIST.md (MODIFIED - mark executed tasks complete, add mandatory progress sync item)
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - append P1 execution status block)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task portfolio.tests.test_admin_ops portfolio.tests.test_legacy_purge_gate portfolio.tests.test_celery_task_names -v 2` => 45 tests PASS.
+- PASSED: grep check in `backend/portfolio/views_admin_runtime.py` has no `_legacy_views_module`/`legacy_views` usage.
+- PASSED: runtime-scope grep for `prefetch_ticker_price_board` in `backend/portfolio/**` now only appears in gate-test forbidden-token list.
+
+## Entry 2026-04-21k - Add mandatory SSOT regulation for core intelligence domains
+
+Muc tieu:
+- Ghi ro vao quy dinh bat buoc "mot nguon su that" de tranh 1 tinh nang cho 2 ket qua khac nhau.
+- Chot 4 domain SSOT can buoc noi vao khi lap trinh: `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`.
+
+Danh sach tep cap nhat:
+- docs/AI_CODING_REGULATION.md (MODIFIED - add section SSOT domains, implementation requirements, merge gates, prohibited patterns)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add SSOT mandatory principles, plan template item `SSOT integration map`, DoR/DoD SSOT checks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Quy dinh da rang buoc ro 4 domain SSOT va cam dual-pipeline cho cung nghiep vu.
+- PASSED: Policy planning da bat buoc team map SSOT trong plan va verify retire non-SSOT truoc khi dong task.
+
+## Entry 2026-04-21j - SSOT code fix phase 1: retire legacy scheduler branch
+
+Muc tieu:
+- Chuyen runtime prefetch scheduler sang canonical shard flow bat buoc, khong con nhanh else legacy trong Celery beat.
+- Chuyen admin warm prefetch API sang trigger canonical flow thay vi legacy single-scan task.
+- Dong bo test de dam bao behavior moi van on dinh.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py (MODIFIED - remove legacy `prefetch-ticker-price-board` beat branch; force canonical shard scheduler)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - warm prefetch API now runs/queues canonical `build_realtime_symbol_universe_snapshot` + `schedule_realtime_prefetch_shards` flow)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - patch targets updated from legacy prefetch task to canonical scheduler tasks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops portfolio.tests.test_celery_task_names -v 2` => 31 tests PASS.
+- PASSED: `get_errors` clean tren `settings.py`, `views_admin_runtime.py`, `test_admin_ops.py`.
+
+## Entry 2026-04-21i - RCA rewrite theo nguyen tac SSOT va xoa legacy
+
+Muc tieu:
+- Soan lai RCA prefetch incident theo su that da kiem chung runtime.
+- Chot ke hoach thuc thi cho doi code theo nguyen tac mot chuan su that (SSOT).
+- Dat huong thuc thi ro rang: migration ve luong moi va xoa code/endpoint legacy.
+
+Danh sach tep cap nhat:
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - rewrite to execution-ready RCA with SSOT policy, corrective action plan, owner-based workstreams, DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: RCA da bo tung phan suy doan legacy, thay bang facts + action framework co the thuc thi ngay.
+- PASSED: Co du roadmap P0/P1/P2, Workstream owner, DoD va release gate cho viec xoa legacy.
+
+## Entry 2026-04-21h - Fix hard-refresh redirect from /ai-advisory to /upgrade
+
+Muc tieu:
+- Sua race condition entitlement guard khien user refresh tai `/ai-advisory` bi redirect sai sang `/upgrade`.
+- Dam bao ProtectedRoute chi danh gia quyen sau khi auth bootstrap hoan tat.
+
+Danh sach tep cap nhat:
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - them `authStateReady`, quan ly readiness trong bootstrap/login/logout va expose qua context)
+- frontend/src/components/ProtectedRoute.jsx (MODIFIED - cho auth readiness truoc khi check CASL ability, tranh redirect som)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `PortfolioContext.jsx` va `ProtectedRoute.jsx`.
+- PASSED: logic redirect som duoc triet tieu boi guard readiness truoc entitlement check.
+
 ## Entry 2026-04-21g - Execution of Phase 2 (Layout) and Phase 3 (Agentic UI)
 
 Muc tieu:

@@ -1,4 +1,4 @@
-import pandas as pd
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.test import TestCase, SimpleTestCase
@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from portfolio.models import TrackedSymbol, WatchlistGroup, WatchlistItem, PriceAlertRule
 from portfolio.tasks import (
-    prefetch_ticker_price_board,
     _resolve_prefetch_time_profile,
     _resolve_effective_prefetch_settings,
     _prefetch_retry_countdown_with_policy,
@@ -16,142 +15,11 @@ from portfolio.tasks import (
     _resolve_scheduler_plan,
     schedule_realtime_prefetch_shards,
 )
-from portfolio.tasks_prefetch import _cleanup_session_close_retention, _resolve_session_close_date
+from portfolio.tasks_prefetch import (
+    _cleanup_session_close_retention,
+    _resolve_session_close_date,
+)
 from portfolio.models import TickerSessionClose
-
-
-class PrefetchTickerPriceBoardNormalizationTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        # Keep query enabled in tests regardless of local time profile.
-        cache.set(
-            'admin_ops:prefetch_time_policy',
-            {
-                'timezone': 'Asia/Ho_Chi_Minh',
-                'market': {
-                    'open_time': '00:00',
-                    'close_time': '23:59',
-                    'pre_open_minutes': 0,
-                    'post_close_minutes': 0,
-                    'lunch_break': {'enabled': False, 'start': '11:30', 'end': '13:00'},
-                    'weekend_mode': 'offhours',
-                },
-                'profiles': {
-                    'pre_open': {'query_enabled': True, 'interval_seconds': 90, 'batch_size': 10, 'symbol_limit': 20, 'max_retries': 2},
-                    'market_open': {'query_enabled': True, 'interval_seconds': 30, 'batch_size': 20, 'symbol_limit': 40, 'max_retries': 4},
-                    'lunch_break': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
-                    'pre_close': {'query_enabled': True, 'interval_seconds': 60, 'batch_size': 12, 'symbol_limit': 30, 'max_retries': 2},
-                    'post_close': {'query_enabled': True, 'interval_seconds': 180, 'batch_size': 8, 'symbol_limit': 20, 'max_retries': 1},
-                    'offhours': {'query_enabled': True, 'interval_seconds': 600, 'batch_size': 5, 'symbol_limit': 10, 'max_retries': 0},
-                },
-                'rate_limit_guard': {
-                    'jitter_percent': 15.0,
-                    'cooldown_multiplier_on_429': 2.0,
-                    'max_interval_seconds': 1800,
-                },
-            },
-            timeout=300,
-        )
-        self.user = User.objects.create_user(username='prefetch-user', password='Test@123456')
-        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
-
-    @patch('portfolio.tasks.fetch_price_board_dataframe')
-    def test_prefetch_normalizes_vci_prices_to_vnd_before_caching(self, mock_fetch_price_board_dataframe):
-        columns = pd.MultiIndex.from_tuples([
-            ('listing', 'symbol'),
-            ('listing', 'ref_price'),
-            ('match', 'match_price'),
-            ('match', 'highest'),
-            ('match', 'lowest'),
-            ('match', 'open_price'),
-            ('match', 'accumulated_volume'),
-        ])
-        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
-            ['FPT', 78.0, 79.0, 79.5, 77.5, 78.1, 123456],
-        ], columns=columns)
-
-        result = prefetch_ticker_price_board.run()
-
-        self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['cached'], 1)
-
-        cached_ticker = cache.get('ticker:FPT')
-        self.assertIsNotNone(cached_ticker)
-        self.assertEqual(cached_ticker['current_price'], 79.0)
-        self.assertEqual(cached_ticker['prev_price'], 78.0)
-        self.assertEqual(cached_ticker['high_price'], 79.5)
-        self.assertEqual(cached_ticker['low_price'], 77.5)
-        self.assertEqual(cached_ticker['open_price'], 78.1)
-
-    @patch('portfolio.tasks.fetch_price_board_dataframe')
-    def test_prefetch_parses_flat_schema_payload(self, mock_fetch_price_board_dataframe):
-        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
-            {
-                'symbol': 'FPT',
-                'ref_price': 118.0,
-                'match_price': 119.2,
-                'highest': 120.0,
-                'lowest': 117.3,
-                'open_price': 118.4,
-                'accumulated_volume': 987654,
-            }
-        ])
-
-        result = prefetch_ticker_price_board.run()
-
-        self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['cached'], 1)
-        cached_ticker = cache.get('ticker:FPT')
-        self.assertIsNotNone(cached_ticker)
-        self.assertEqual(cached_ticker['current_price'], 119.2)
-        self.assertEqual(cached_ticker['prev_price'], 118.0)
-
-    @patch('portfolio.tasks.fetch_price_board_dataframe')
-    def test_prefetch_marks_parse_zero_cached_when_symbols_exist(self, mock_fetch_price_board_dataframe):
-        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
-            {
-                'foo': 'bar',
-                'unknown_price': 123.0,
-            }
-        ])
-
-        result = prefetch_ticker_price_board.run()
-
-        self.assertEqual(result['symbols'], 1)
-        self.assertEqual(result['cached'], 0)
-        self.assertEqual(result['status'], 'parse_zero_cached')
-        self.assertEqual(result['reason'], 'no_rows_parsed_from_provider_payload')
-
-    @patch('portfolio.tasks.fetch_price_board_dataframe')
-    def test_prefetch_caches_multiple_symbols_from_flat_provider_payload(self, mock_fetch_price_board_dataframe):
-        mock_fetch_price_board_dataframe.return_value = pd.DataFrame([
-            {
-                'symbol': 'FPT',
-                'ref_price': 118.0,
-                'match_price': 119.2,
-                'highest': 120.0,
-                'lowest': 117.3,
-                'open_price': 118.4,
-                'accumulated_volume': 987654,
-            },
-            {
-                'symbol': 'HPG',
-                'ref_price': 25.1,
-                'match_price': 25.6,
-                'highest': 25.8,
-                'lowest': 25.0,
-                'open_price': 25.2,
-                'accumulated_volume': 123456,
-            },
-        ])
-        TrackedSymbol.objects.create(user=self.user, symbol='HPG')
-
-        result = prefetch_ticker_price_board.run()
-
-        self.assertEqual(result['status'], 'ok')
-        self.assertEqual(result['cached'], 2)
-        self.assertIsNotNone(cache.get('ticker:FPT'))
-        self.assertIsNotNone(cache.get('ticker:HPG'))
 
 
 class PrefetchTimePolicyResolverTests(SimpleTestCase):
@@ -421,8 +289,14 @@ class RealtimeUniverseAndShardSchedulerTests(TestCase):
         plan, _ = _resolve_scheduler_plan(snapshot=snapshot, topology=topology)
 
         self.assertEqual(plan['hot']['interval_seconds'], 9)
-        self.assertEqual(plan['warm']['interval_seconds'], 15)
-        self.assertFalse(plan['cold']['enabled'])
+
+
+class PrefetchSchedulerCanonicalConfigTests(SimpleTestCase):
+    def test_celery_beat_uses_canonical_shard_scheduler_only(self):
+        self.assertTrue(getattr(settings, 'TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED', False))
+        self.assertIn('build-realtime-symbol-universe-snapshot', settings.CELERY_BEAT_SCHEDULE)
+        self.assertIn('schedule-realtime-prefetch-shards', settings.CELERY_BEAT_SCHEDULE)
+        self.assertNotIn('prefetch-ticker-price-board', settings.CELERY_BEAT_SCHEDULE)
 
     @patch('portfolio.tasks_prefetch.prefetch_realtime_ticker_shard.apply_async')
     @patch('portfolio.tasks_prefetch._resolve_prefetch_topology')

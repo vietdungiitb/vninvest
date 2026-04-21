@@ -12,7 +12,6 @@ from portfolio.tasks import (
     generate_all_portfolio_news_digests_task,
     generate_whale_advisory_task,
     monitor_whale_config_anomalies,
-    prefetch_ticker_price_board,
     process_expired_onboarding_trials_task,
     process_plan_lifecycle_transitions,
     refresh_whale_config_rollout_status,
@@ -27,7 +26,6 @@ from portfolio.tasks import (
 class CeleryTaskNameStabilityTests(SimpleTestCase):
     def test_public_task_names_remain_stable(self):
         expected_names = {
-            prefetch_ticker_price_board: 'portfolio.tasks.prefetch_ticker_price_board',
             detect_and_store_order_flow: 'portfolio.tasks.detect_and_store_order_flow',
             detect_whale_reversal: 'portfolio.tasks.detect_whale_reversal',
             activate_due_whale_config_rollouts: 'portfolio.tasks.activate_due_whale_config_rollouts',

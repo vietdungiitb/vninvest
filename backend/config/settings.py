@@ -389,26 +389,18 @@ OFFPEAK_VNSTOCK_INGEST_DAYS = _env_int("OFFPEAK_VNSTOCK_INGEST_DAYS", 5)
 OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS = _env_int("OFFPEAK_VNSTOCK_INGEST_MAX_SYMBOLS", 300)
 
 CELERY_BEAT_SCHEDULE = {}
-# Realtime ticker scheduler theo universe + shard (pha 2).
-_TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = os.getenv("TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED", "True").lower() == "true"
-TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = _TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED
+# Realtime ticker scheduler theo universe + shard (canonical path).
+# Legacy single-scan prefetch scheduler is retired to enforce SSOT runtime.
+TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED = True
 _TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS = _env_int("TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS", 3)
-if _TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED:
-    CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = {
-        "task": "portfolio.tasks.build_realtime_symbol_universe_snapshot",
-        "schedule": timedelta(seconds=max(TICKER_UNIVERSE_REFRESH_SECONDS, 10)),
-    }
-    CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
-        "task": "portfolio.tasks.schedule_realtime_prefetch_shards",
-        "schedule": timedelta(seconds=max(_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS, 1)),
-    }
-else:
-    # Legacy prefetch mode (single scan task).
-    _TICKER_PREFETCH_INTERVAL = _env_int("TICKER_PREFETCH_INTERVAL", 20)
-    CELERY_BEAT_SCHEDULE["prefetch-ticker-price-board"] = {
-        "task": "portfolio.tasks.prefetch_ticker_price_board",
-        "schedule": timedelta(seconds=max(_TICKER_PREFETCH_INTERVAL, 10)),
-    }
+CELERY_BEAT_SCHEDULE["build-realtime-symbol-universe-snapshot"] = {
+    "task": "portfolio.tasks.build_realtime_symbol_universe_snapshot",
+    "schedule": timedelta(seconds=max(TICKER_UNIVERSE_REFRESH_SECONDS, 10)),
+}
+CELERY_BEAT_SCHEDULE["schedule-realtime-prefetch-shards"] = {
+    "task": "portfolio.tasks.schedule_realtime_prefetch_shards",
+    "schedule": timedelta(seconds=max(_TICKER_PREFETCH_SCHEDULER_INTERVAL_SECONDS, 1)),
+}
 
 if OFFPEAK_VNSTOCK_INGEST_ENABLED:
     from celery.schedules import crontab as _crontab_offpeak

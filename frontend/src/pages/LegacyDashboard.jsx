@@ -229,22 +229,28 @@ export default function LegacyDashboard() {
         return;
       }
 
-      const tasks = monitoredSymbols.map(async (symbol) => {
-        try {
-          const resp = await getIntradayMatched(symbol, 24);
-          const payload = resp?.data || {};
-          const trades = Array.isArray(payload?.trades) ? payload.trades : [];
-          const points = trades
-            .map((trade) => Number(trade?.price ?? trade?.matched_price ?? trade?.current_price ?? 0))
-            .filter((value) => Number.isFinite(value) && value > 0)
-            .slice(-24);
-          return [symbol, points];
-        } catch {
-          return [symbol, []];
-        }
-      });
-
-      const settled = await Promise.allSettled(tasks);
+      const CONCURRENCY = 3;
+      const results = [];
+      for (let i = 0; i < monitoredSymbols.length; i += CONCURRENCY) {
+        if (cancelled) return;
+        const batch = monitoredSymbols.slice(i, i + CONCURRENCY).map(async (symbol) => {
+          try {
+            const resp = await getIntradayMatched(symbol, 24);
+            const payload = resp?.data || {};
+            const trades = Array.isArray(payload?.trades) ? payload.trades : [];
+            const points = trades
+              .map((trade) => Number(trade?.price ?? trade?.matched_price ?? trade?.current_price ?? 0))
+              .filter((value) => Number.isFinite(value) && value > 0)
+              .slice(-24);
+            return [symbol, points];
+          } catch {
+            return [symbol, []];
+          }
+        });
+        const batchResults = await Promise.allSettled(batch);
+        results.push(...batchResults);
+      }
+      const settled = results;
       if (cancelled) return;
 
       const next = {};
