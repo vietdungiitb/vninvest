@@ -88,9 +88,9 @@ export default function WhaleAdvisory() {
           <button onClick={fetchData} className="mt-6 px-6 py-2 bg-slate-800 rounded-xl text-cyan-400 hover:bg-slate-700 transition-all">{t('common.retry')}</button>
         </div>
       ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-auto lg:h-[85vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-auto">
             {/* Left: Symbol Sidebar (narrow) */}
-            <div className="lg:row-span-2 overflow-hidden flex flex-col">
+            <div className="lg:row-span-2 flex flex-col min-h-[480px]">
               <WhaleSymbolSidebar
                 symbolStats={symbolStats}
                 symbolSearch={symbolSearch}
@@ -105,7 +105,7 @@ export default function WhaleAdvisory() {
             </div>
 
             {/* Right: Main content */}
-            <div className="lg:col-span-1 flex flex-col h-full overflow-hidden" key={`main-${activeSymbol}`}>
+            <div className="lg:col-span-1 flex flex-col min-h-[480px]" key={`main-${activeSymbol}`}>
               {/* Command Panel (compact) */}
               <div className="mb-2">
                 <WhaleAdvisoryCommandPanel
