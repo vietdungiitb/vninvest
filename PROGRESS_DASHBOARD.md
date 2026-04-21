@@ -4,6 +4,32 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21af)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - refactor layout 2 cot trai + 1 cot phai, WhaleSymbolSidebar sang cot phai, support row va support tabs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren file `WhaleAdvisory.jsx` sau refactor.
+- PASSED: bo cuc da dat dung muc tieu command panel span 2 cot trai, sidebar o cot phai.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21ae)
+- docs/IMPLEMENTATION_PLAN_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - implementation plan chi tiet cho layout AI Advisory 2 cot trai + 1 cot phai)
+- docs/TECH_SPEC_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - tech spec rendering/state/responsive contract)
+- docs/TASKBOARD_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - taskboard ready-to-execute cho doi code)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Bo planning pack day du cho doi code trien khai ngay.
+- PASSED: Slice order, owner mapping, release gate va DoD duoc mo ta ro rang.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21o)
 - docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (NEW - template nguyen tac thiet ke trang chung toan du an: css token, le/margin, bo cuc, responsive, tab/panel contract)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ad)

@@ -32,7 +32,7 @@ export default function WhaleAdvisory() {
   const [page, setPage] = useState(1);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
+  const [supportTab, setSupportTab] = useState(() => localStorage.getItem('vninvest:advisory-support-tab') || 'telemetry');
 
   const {
     items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
@@ -42,6 +42,10 @@ export default function WhaleAdvisory() {
 
   // Sync risk mode
   useEffect(() => localStorage.setItem('vninvest:risk-mode', riskMode), [riskMode]);
+
+  useEffect(() => {
+    localStorage.setItem('vninvest:advisory-support-tab', supportTab);
+  }, [supportTab]);
 
   // Load refresh info dynamically
   useEffect(() => {
@@ -78,7 +82,7 @@ export default function WhaleAdvisory() {
   const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
-    <div className="mx-auto max-w-[1800px] pt-24 pb-8 px-4 lg:px-8 space-y-6 min-h-screen bg-slate-950/20">
+    <div className="mx-auto max-w-[1800px] pt-6 pb-8 px-4 lg:px-8 space-y-4 min-h-screen bg-slate-950/20">
       <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
 
       {error ? (
@@ -88,26 +92,10 @@ export default function WhaleAdvisory() {
           <button onClick={fetchData} className="mt-6 px-6 py-2 bg-slate-800 rounded-xl text-cyan-400 hover:bg-slate-700 transition-all">{t('common.retry')}</button>
         </div>
       ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-auto">
-            {/* Left: Symbol Sidebar (narrow) */}
-            <div className="lg:row-span-2 flex flex-col min-h-[480px]">
-              <WhaleSymbolSidebar
-                symbolStats={symbolStats}
-                symbolSearch={symbolSearch}
-                setSymbolSearch={setSymbolSearch}
-                activeSymbol={activeSymbol}
-                setActiveSymbol={setActiveSymbol}
-                page={page}
-                setPage={setPage}
-                pageSize={pageSize}
-                setPageSize={setPageSize}
-              />
-            </div>
-
-            {/* Right: Main content */}
-            <div className="lg:col-span-1 flex flex-col min-h-[480px]" key={`main-${activeSymbol}`}>
-              {/* Command Panel (compact) */}
-              <div className="mb-2">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+              {/* Left 2 columns: advisory command panel for long reading */}
+              <div className="xl:col-span-2 flex flex-col min-h-[560px]" key={`main-${activeSymbol}`}>
                 <WhaleAdvisoryCommandPanel
                   item={activeItem}
                   activeSymbol={activeSymbol}
@@ -119,41 +107,78 @@ export default function WhaleAdvisory() {
                 />
               </div>
 
-              {/* Collapsible Info Panel (Risk + History) */}
-              <div className="mb-2">
-                <button
-                  className="text-xs uppercase font-black text-slate-400 hover:text-cyan-400 transition"
-                  onClick={() => setShowInfo(!showInfo)}
-                >{showInfo ? t('common.hide') : t('common.show')} {t('whaleAdvisory.infoPanel')}</button>
-                {showInfo && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {/* Risk Calibration */}
-                    <div className="neon-glass-panel p-2">
-                      <h4 className="text-[9px] font-black text-slate-500 uppercase mb-1">{t('whaleAdvisory.riskCalibration')}</h4>
-                      <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
+              {/* Right column: symbol sidebar */}
+              <div className="xl:col-span-1 flex flex-col min-h-[560px]">
+                <WhaleSymbolSidebar
+                  symbolStats={symbolStats}
+                  symbolSearch={symbolSearch}
+                  setSymbolSearch={setSymbolSearch}
+                  activeSymbol={activeSymbol}
+                  setActiveSymbol={setActiveSymbol}
+                  page={page}
+                  setPage={setPage}
+                  pageSize={pageSize}
+                  setPageSize={setPageSize}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+              {/* Bubble chart as primary supporting module */}
+              <div className="xl:col-span-2 min-h-[360px]">
+                <div className="h-full neon-glass-panel p-3">
+                  {activeSymbol ? (
+                    <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-slate-600 gap-3 border border-dashed border-slate-800 rounded-3xl">
+                      <div className="text-3xl opacity-20">🐋</div>
+                      <p className="text-[9px] font-black uppercase tracking-widest">{t('whaleChart.selectSymbolToStart')}</p>
                     </div>
-                    {/* Temporal History */}
-                    <div className="neon-glass-panel p-2 overflow-y-auto max-h-[120px]">
-                      <h4 className="text-[9px] font-black text-slate-500 uppercase mb-1">{t('whaleAdvisory.temporalHistory')}</h4>
-                      <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              {/* Bubble Chart with overlay telemetry */}
-              <div className="flex-1 min-h-[300px] relative">
-                {activeSymbol ? (
-                  <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
-                ) : (
-                  <div className="flex h-full flex-col items-center justify-center text-slate-600 gap-3 border border-dashed border-slate-800 rounded-3xl">
-                    <div className="text-3xl opacity-20">🐋</div>
-                    <p className="text-[9px] font-black uppercase tracking-widest">{t('whaleChart.selectSymbolToStart')}</p>
-                  </div>
-                )}
-                {/* Telemetry overlay (small) */}
-                <div className="absolute bottom-0 left-0 right-0 bg-slate-900/60 p-1 text-xs text-slate-400">
-                  <TrustTelemetryPanel />
+              {/* Harmonized support modules */}
+              <div className="xl:col-span-1 min-h-[360px] neon-glass-panel overflow-hidden flex flex-col">
+                <div className="p-2 border-b border-slate-800/60 bg-slate-900/50 grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('telemetry')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'telemetry' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.infoPanel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('risk')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'risk' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.riskCalibration')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('history')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'history' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.temporalHistory')}
+                  </button>
+                </div>
+                <div className="flex-1 p-3 overflow-y-auto panel-scrollbar">
+                  {supportTab === 'telemetry' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <TrustTelemetryPanel />
+                    </div>
+                  )}
+                  {supportTab === 'risk' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
+                    </div>
+                  )}
+                  {supportTab === 'history' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <RecommendationHistoryMini symbol={activeSymbol} limit={6} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

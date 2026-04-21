@@ -1,5 +1,41 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21af - Refactor layout AI Advisory theo bo cuc 2-trai 1-phai
+
+Muc tieu:
+- Trien khai layout moi cho trang AI Advisory theo quyet dinh da duoc phe duyet.
+- Dat `WhaleAdvisoryCommandPanel` chiem 2 cot ben trai de toi uu kha nang doc noi dung dai.
+- Chuyen `WhaleSymbolSidebar` sang cot phai thu 3 va bo tri lai cac module phu tro theo huong can bang.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - doi bo cuc thanh main row 3 cot: command panel span 2 cot trai, sidebar cot phai; them support row va support tabs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `WhaleAdvisory.jsx` khong co loi.
+- PASSED: layout moi giu duoc active symbol logic va refresh info footer.
+- PASSED: support tabs da co persistence qua localStorage (`vninvest:advisory-support-tab`).
+
+## Entry 2026-04-21ae - Planning pack chi tiet cho AI Advisory layout redesign
+
+Muc tieu:
+- Chot bo tai lieu planning-ready de doi code trien khai ngay viec doi bo cuc AI Advisory theo quyet dinh moi.
+- Uu tien kha nang doc noi dung tu van dai: `WhaleAdvisoryCommandPanel` chiem 2 cot ben trai.
+- Chot vi tri co dinh cho `WhaleSymbolSidebar` o cot phai va bo tri lai module phu tro theo huong can bang.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - implementation plan chi tiet theo phase/slice)
+- docs/TECH_SPEC_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - tech spec grid/state/rendering/responsive)
+- docs/TASKBOARD_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - taskboard ready-to-execute cho FE/QA/DevOps)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Planning pack bao phu day du implementation order theo commit slices.
+- PASSED: Taskboard co ID task ro rang, owner, release gate, va Definition of Done.
+- PASSED: Tech Spec mo ta cu the bo cuc 2 cot trai + 1 cot phai, support row, va responsive contract.
+
 ## Entry 2026-04-21ad - Ban hanh template nguyen tac thiet ke trang chung toan du an
 
 Muc tieu:
