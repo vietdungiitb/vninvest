@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from '../context/LangContext';
+import { getWhaleOrdersBySymbol } from '../api/client';
 import { useOrderBubbleCoordinates, formatVND, formatTimeFromMinutes } from '../hooks/useOrderBubbleCoordinates';
 
 const TIMEFRAME_OPTIONS = [
@@ -62,17 +63,8 @@ export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotes
       setError(null);
 
       try {
-        const url = `/api/portfolio/whale/orders/${symbol}/?timeframe=${timeframe}`;
-        const response = await fetch(url, {
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
+        const response = await getWhaleOrdersBySymbol(symbol, { timeframe });
+        const data = response?.data || {};
         if (data.ok) {
           setOrderData(data);
         } else {
@@ -80,7 +72,8 @@ export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotes
         }
       } catch (err) {
         console.error('[WhaleBubbleChart] Fetch error:', err);
-        setError(err.message);
+        const message = err?.response?.data?.error || err?.message || 'Unknown error';
+        setError(message);
       } finally {
         setLoading(false);
       }
