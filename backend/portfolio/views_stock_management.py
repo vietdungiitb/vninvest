@@ -1,4 +1,5 @@
 from decimal import Decimal
+import logging
 
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -13,6 +14,9 @@ from .models import PriceAlertRule, SecuritiesGroup, TrackedSymbol, StockProfile
 from .serializers import PriceAlertRuleSerializer, TrackedSymbolSerializer
 from .view_helpers import _build_group_response, _build_price_alert_rule_row
 from .views_portfolio_watchlist import _acquire_sync_cooldown
+
+
+logger = logging.getLogger(__name__)
 
 
 @method_decorator(csrf_exempt, name='dispatch')
@@ -179,7 +183,20 @@ class TrackedSymbolListCreateView(APIView):
         }
 
     def get(self, request):
-        tracked = list(TrackedSymbol.objects.filter(user=request.user).select_related('source_group'))
+        tracked_qs = TrackedSymbol.objects.filter(user=request.user).select_related('source_group')
+        track_threshold = True
+        try:
+            tracked = list(tracked_qs)
+        except Exception:
+            # Graceful fallback when production DB has not applied newest TrackedSymbol columns yet.
+            logger.exception('tracked-symbols schema drift detected; falling back without threshold column')
+            tracked = list(
+                TrackedSymbol.objects.filter(user=request.user)
+                .select_related('source_group')
+                .only('id', 'symbol', 'source_group', 'added_at', 'updated_at')
+            )
+            track_threshold = False
+
         symbols = [t.symbol for t in tracked]
         changes = get_price_changes(symbols) if symbols else {}
         
@@ -202,15 +219,26 @@ class TrackedSymbolListCreateView(APIView):
             # DB fallback cho các mã chưa có trong Redis
             missing = [s for s in symbols if s not in profiles]
             if missing:
-                db_rows = StockProfile.objects.filter(symbol__in=missing).values(
-                    'symbol', 'industry', 'company_name', 'market_cap_bn'
-                )
+                has_market_cap = True
+                try:
+                    db_rows = StockProfile.objects.filter(symbol__in=missing).values(
+                        'symbol', 'industry', 'company_name', 'market_cap_bn'
+                    )
+                except Exception:
+                    # Backward-compatible fallback if DB schema still lacks market_cap_bn.
+                    logger.exception('stockprofile schema drift detected; fallback without market_cap_bn')
+                    has_market_cap = False
+                    db_rows = StockProfile.objects.filter(symbol__in=missing).values(
+                        'symbol', 'industry', 'company_name'
+                    )
+
                 lazy_cache: dict[str, dict] = {}
                 for p in db_rows:
+                    market_cap_value = p.get('market_cap_bn') if has_market_cap else None
                     entry = {
                         'industry': p['industry'] or 'Khác',
                         'company_name': p['company_name'] or p['symbol'],
-                        'market_cap_bn': float(p['market_cap_bn']) if p['market_cap_bn'] is not None else None,
+                        'market_cap_bn': float(market_cap_value) if market_cap_value is not None else None,
                     }
                     profiles[p['symbol']] = entry
                     lazy_cache[heatmap_static_cache_key(p['symbol'])] = entry
@@ -234,7 +262,11 @@ class TrackedSymbolListCreateView(APIView):
                 'market_cap_bn': static.get('market_cap_bn'),  # tỷ VND từ vnstock sync
                 'source_group_id': grp.id if grp else None,
                 'source_group_name': grp.name if grp else None,
-                'whale_alert_threshold_million': float(ts.whale_alert_threshold_million) if ts.whale_alert_threshold_million is not None else None,
+                'whale_alert_threshold_million': (
+                    float(ts.whale_alert_threshold_million)
+                    if track_threshold and ts.whale_alert_threshold_million is not None
+                    else None
+                ),
                 'current_price': info.get('current_price'),
                 'prev_price': info.get('prev_price'),
                 'change_value': info.get('change_value'),

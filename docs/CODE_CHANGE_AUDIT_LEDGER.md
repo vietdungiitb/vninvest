@@ -1,5 +1,45 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21ah - Async intraday side backfill apply
+
+Muc tieu:
+- Loai bo nguy co gateway timeout khi admin apply backfill `IntradayTick.side` tren scope lon.
+- Chuyen apply sang background Celery task va bo sung API status de frontend theo doi tien trinh hoan tat.
+- Dam bao trang Admin Ops khong cho request dong bo 5 phut roi vo 504 khi backfill du lieu thi truong lon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add async task va cache helpers cho backfill apply status)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - queue backfill apply, fail-fast khi worker offline, add status endpoint)
+- backend/portfolio/views.py (MODIFIED - re-export backfill status API)
+- backend/config/urls.py (MODIFIED - expose backfill status route)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - cover queue/status/worker-unavailable contract)
+- frontend/src/api/client.js (MODIFIED - add backfill status client)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - queue background apply va poll task status den khi co ket qua)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops --keepdb`
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`, `frontend/src/pages/AdminOps.jsx`, `backend/portfolio/tests/test_admin_ops.py`.
+- NOTE: can deploy/rebuild backend + celery worker + frontend de production/dev stack nhan task/background contract moi.
+
+## Entry 2026-04-21ag - Hotfix tracked-symbols 500 under schema drift
+
+Muc tieu:
+- Chan HTTP 500 tai endpoint `/api/stock-management/tracked-symbols/` trong truong hop production chua apply day du migration moi.
+- Dam bao endpoint van tra du lieu tracked symbols thay vi crash khi thieu cot `TrackedSymbol.whale_alert_threshold_million` hoac `StockProfile.market_cap_bn`.
+- Giu backward-compat de he thong van hoat dong on dinh trong giai doan deploy lech schema.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_stock_management.py (MODIFIED - add schema-drift tolerant fallback for tracked symbols and stock profile enrichment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_stock_management.py` sau hotfix.
+- PASSED: logic fallback duoc bo sung cho 2 diem nhay cam schema (`whale_alert_threshold_million`, `market_cap_bn`).
+- NOTE: van can chay migrate production de khoi phuc day du schema va du lieu.
+
 ## Entry 2026-04-21af - Refactor layout AI Advisory theo bo cuc 2-trai 1-phai
 
 Muc tieu:

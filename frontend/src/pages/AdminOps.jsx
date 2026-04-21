@@ -28,6 +28,7 @@ import {
   warmTickerPrefetch,
   adminIntradaySideBackfillPreview,
   adminIntradaySideBackfillApply,
+  adminIntradaySideBackfillStatus,
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
@@ -276,7 +277,9 @@ export default function AdminOps() {
   const [backfillApplyResult, setBackfillApplyResult] = useState(null);
   const [backfillPreviewState, setBackfillPreviewState] = useState('idle');
   const [backfillApplyState, setBackfillApplyState] = useState('idle');
+  const [backfillApplyTaskId, setBackfillApplyTaskId] = useState('');
   const [backfillMessage, setBackfillMessage] = useState('');
+  const backfillApplyPollTimerRef = useRef(null);
 
   const clearSyncCooldownTimer = useCallback((key) => {
     const timerId = syncCooldownTimersRef.current[key];
@@ -302,6 +305,77 @@ export default function AdminOps() {
       });
     }, 1000);
   }, [clearSyncCooldownTimer]);
+
+  const clearBackfillApplyPollTimer = useCallback(() => {
+    if (backfillApplyPollTimerRef.current) {
+      window.clearTimeout(backfillApplyPollTimerRef.current);
+      backfillApplyPollTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => {
+    clearBackfillApplyPollTimer();
+  }, [clearBackfillApplyPollTimer]);
+
+  useEffect(() => {
+    if (!backfillApplyTaskId || backfillApplyState !== 'loading') {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const pollTaskStatus = async () => {
+      try {
+        const resp = await withTimeout(
+          adminIntradaySideBackfillStatus(backfillApplyTaskId),
+          15000,
+          'backfill-apply-status'
+        );
+        if (cancelled) {
+          return;
+        }
+
+        const task = resp.data?.task || {};
+        const statusValue = String(task.status || '').toLowerCase();
+        const taskLabel = task.id ? ` (task: ${task.id})` : '';
+
+        if (statusValue === 'queued' || statusValue === 'running') {
+          setBackfillMessage(`${task.message || 'Backfill intraday side đang chạy nền.'}${taskLabel}`);
+          clearBackfillApplyPollTimer();
+          backfillApplyPollTimerRef.current = window.setTimeout(pollTaskStatus, 5000);
+          return;
+        }
+
+        clearBackfillApplyPollTimer();
+        setBackfillApplyTaskId('');
+
+        if (statusValue === 'succeeded') {
+          setBackfillApplyResult(task.result || null);
+          setBackfillApplyState('done');
+          setBackfillMessage(task.message || 'Backfill intraday side đã hoàn tất.');
+          return;
+        }
+
+        setBackfillApplyState('error');
+        setBackfillMessage(task.error || task.message || t('adminOps.unknownError'));
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        clearBackfillApplyPollTimer();
+        setBackfillApplyTaskId('');
+        setBackfillApplyState('error');
+        setBackfillMessage(err?.response?.data?.message || err?.response?.data?.detail || err?.message || t('adminOps.unknownError'));
+      }
+    };
+
+    pollTaskStatus();
+
+    return () => {
+      cancelled = true;
+      clearBackfillApplyPollTimer();
+    };
+  }, [backfillApplyState, backfillApplyTaskId, clearBackfillApplyPollTimer, t]);
 
   const load = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
@@ -1941,6 +2015,8 @@ export default function AdminOps() {
                   if (!window.confirm(t('adminOps.intradaySideBackfillApplyConfirm'))) return;
                   setBackfillApplyState('loading');
                   setBackfillMessage('');
+                  setBackfillApplyTaskId('');
+                  setBackfillApplyResult(null);
                   try {
                     const symbolList = backfillForm.symbols
                       ? backfillForm.symbols.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
@@ -1953,9 +2029,11 @@ export default function AdminOps() {
                       threshold: parseInt(backfillForm.threshold || '0', 10),
                       batch_size: parseInt(backfillForm.batch_size || '2000', 10),
                     };
-                    const resp = await withTimeout(adminIntradaySideBackfillApply(payload), 300000, 'backfill-apply');
-                    setBackfillApplyResult(resp.data);
-                    setBackfillApplyState('done');
+                    const resp = await withTimeout(adminIntradaySideBackfillApply(payload), 30000, 'backfill-apply');
+                    const taskId = resp.data?.task_id || '';
+                    const taskLabel = taskId ? ` (task: ${taskId})` : '';
+                    setBackfillApplyTaskId(taskId);
+                    setBackfillMessage(`${resp.data?.message || 'Backfill intraday side đang chạy nền.'}${taskLabel}`);
                   } catch (err) {
                     setBackfillMessage(err?.response?.data?.detail || err?.message || t('adminOps.unknownError'));
                     setBackfillApplyState('error');
@@ -1969,7 +2047,7 @@ export default function AdminOps() {
           </div>
 
           {backfillMessage && (
-            <p className="text-sm text-red-500 dark:text-red-400">{backfillMessage}</p>
+            <p className={`text-sm ${backfillApplyState === 'error' ? 'text-red-500 dark:text-red-400' : 'text-blue-600 dark:text-blue-300'}`}>{backfillMessage}</p>
           )}
         </div>
 

@@ -4,6 +4,38 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21ah)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add async task + cache status helpers for intraday side backfill apply)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - queue backfill apply in background and add status endpoint)
+- backend/portfolio/views.py (MODIFIED - export backfill status API)
+- backend/config/urls.py (MODIFIED - register `/api/admin-ops/intraday-side-backfill/status/<task_id>/`)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - add async backfill queue/status coverage)
+- frontend/src/api/client.js (MODIFIED - add backfill status API client)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - poll queued backfill task until final result)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops --keepdb`.
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`, `frontend/src/pages/AdminOps.jsx`, `backend/portfolio/tests/test_admin_ops.py`.
+- NOTE: can rebuild/restart `backend`, `celery_worker`, `celery_beat`, `frontend` trong compose dev de ap dung thay doi runtime.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21ag)
+- backend/portfolio/views_stock_management.py (MODIFIED - schema-drift tolerant fallback for tracked-symbols API when production misses newest columns)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `views_stock_management.py`.
+- PASSED: API layer co fallback cho drift schema (`TrackedSymbol.whale_alert_threshold_million`, `StockProfile.market_cap_bn`) de tranh HTTP 500.
+- NOTE: can chay migrate production de dong bo schema day du va bo fallback can thiet.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21af)
 - frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - refactor layout 2 cot trai + 1 cot phai, WhaleSymbolSidebar sang cot phai, support row va support tabs)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21af)

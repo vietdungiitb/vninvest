@@ -24,6 +24,17 @@ from portfolio.tasks_whale_preflight_cache import (
     _sum_preflight_metrics_window,
 )
 
+
+def _is_celery_worker_available() -> bool:
+    try:
+        from config.celery import app as celery_app
+
+        inspect = celery_app.control.inspect(timeout=1.0)
+        ping_result = inspect.ping() or {}
+        return bool(ping_result)
+    except Exception:
+        return False
+
 def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     if raw_value in (None, ''):
         return default
@@ -1084,7 +1095,11 @@ def admin_intraday_side_backfill_apply_api(request):
       threshold     - giá trị min matched_value (VND), 0 = tất cả
       batch_size    - chunk size (mặc định 2000)
     """
-    from portfolio.services_backfill import intraday_side_backfill_apply
+    from django.utils import timezone
+    from portfolio.tasks_maintenance import (
+        run_intraday_side_backfill_apply,
+        set_intraday_side_backfill_task_status,
+    )
 
     confirm = request.data.get('confirm')
     if str(confirm).strip().lower() not in {'true', '1', 'yes'}:
@@ -1111,15 +1126,71 @@ def admin_intraday_side_backfill_apply_api(request):
     except (TypeError, ValueError):
         batch_size = 2000
 
-    try:
-        result = intraday_side_backfill_apply(
-            symbols=symbols,
-            start_date=start_date,
-            end_date=end_date,
-            threshold=threshold,
-            batch_size=batch_size,
+    if not _is_celery_worker_available():
+        return Response(
+            {
+                'ok': False,
+                'status': 'worker_unavailable',
+                'message': 'Celery worker đang offline. Không thể chạy backfill nền lúc này.',
+            },
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
-    except Exception as exc:
-        return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({'ok': True, **result}, status=status.HTTP_200_OK)
+    task = run_intraday_side_backfill_apply.apply_async(
+        kwargs={
+            'symbols': symbols,
+            'start_date': start_date,
+            'end_date': end_date,
+            'threshold': threshold,
+            'batch_size': batch_size,
+        }
+    )
+    task_id = str(task.id)
+    set_intraday_side_backfill_task_status(
+        task_id,
+        {
+            'id': task_id,
+            'status': 'queued',
+            'queued_at': timezone.now().isoformat(),
+            'started_at': None,
+            'finished_at': None,
+            'message': 'Backfill intraday side đã được đưa vào hàng chờ nền.',
+            'result': None,
+            'error': None,
+            'params': {
+                'symbols': symbols,
+                'start_date': start_date,
+                'end_date': end_date,
+                'threshold': threshold,
+                'batch_size': batch_size,
+            },
+        },
+    )
+    return Response(
+        {
+            'ok': True,
+            'status': 'queued',
+            'task_id': task_id,
+            'message': 'Backfill intraday side đang chạy nền. Vui lòng theo dõi trạng thái tác vụ.',
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def admin_intraday_side_backfill_status_api(request, task_id: str):
+    from portfolio.tasks_maintenance import get_intraday_side_backfill_task_status
+
+    payload = get_intraday_side_backfill_task_status(task_id)
+    if not payload:
+        return Response(
+            {
+                'ok': False,
+                'status': 'not_found',
+                'message': 'Không tìm thấy trạng thái backfill cho task_id đã cung cấp.',
+            },
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    return Response({'ok': True, 'task': payload}, status=status.HTTP_200_OK)

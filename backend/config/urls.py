@@ -81,6 +81,7 @@ urlpatterns = [
     path('api/admin-ops/market-groups/sync/', portfolio_views.sync_market_groups_api, name='admin-ops-market-groups-sync'),
     path('api/admin-ops/intraday-side-backfill/preview/', portfolio_views.admin_intraday_side_backfill_preview_api, name='admin-ops-intraday-side-backfill-preview'),
     path('api/admin-ops/intraday-side-backfill/apply/', portfolio_views.admin_intraday_side_backfill_apply_api, name='admin-ops-intraday-side-backfill-apply'),
+    path('api/admin-ops/intraday-side-backfill/status/<str:task_id>/', portfolio_views.admin_intraday_side_backfill_status_api, name='admin-ops-intraday-side-backfill-status'),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
     path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),
     path('api/ai-config/test-connection/', portfolio_views.ai_test_connection_api, name='ai-test-connection'),

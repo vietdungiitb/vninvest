@@ -5,8 +5,118 @@ import logging
 from celery import shared_task
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+
+
+INTRADAY_SIDE_BACKFILL_STATUS_CACHE_PREFIX = 'admin:intraday-side-backfill:task:'
+INTRADAY_SIDE_BACKFILL_STATUS_TTL_SECONDS = 7 * 24 * 60 * 60
+
+
+def intraday_side_backfill_status_cache_key(task_id: str) -> str:
+    return f'{INTRADAY_SIDE_BACKFILL_STATUS_CACHE_PREFIX}{task_id}'
+
+
+def get_intraday_side_backfill_task_status(task_id: str) -> dict | None:
+    try:
+        payload = cache.get(intraday_side_backfill_status_cache_key(task_id))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def set_intraday_side_backfill_task_status(task_id: str, payload: dict) -> None:
+    try:
+        cache.set(
+            intraday_side_backfill_status_cache_key(task_id),
+            payload,
+            timeout=INTRADAY_SIDE_BACKFILL_STATUS_TTL_SECONDS,
+        )
+    except Exception:
+        logger.warning('Unable to persist intraday side backfill task status for %s', task_id, exc_info=True)
+
+
+@shared_task(
+    bind=True,
+    name='portfolio.tasks.run_intraday_side_backfill_apply',
+    autoretry_for=(),
+    retry_kwargs={"max_retries": 0},
+    time_limit=7200,
+    soft_time_limit=7100,
+)
+def run_intraday_side_backfill_apply(
+    self,
+    *,
+    symbols: list[str] | None = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    threshold: int = 0,
+    batch_size: int = 2000,
+) -> dict:
+    from portfolio.services_backfill import intraday_side_backfill_apply
+
+    task_id = str(getattr(self.request, 'id', '') or '')
+    started_at = timezone.now().isoformat()
+    payload = {
+        'id': task_id,
+        'status': 'running',
+        'queued_at': None,
+        'started_at': started_at,
+        'finished_at': None,
+        'message': 'Backfill intraday side đang chạy nền.',
+        'result': None,
+        'error': None,
+        'params': {
+            'symbols': symbols or [],
+            'start_date': start_date,
+            'end_date': end_date,
+            'threshold': int(threshold or 0),
+            'batch_size': int(batch_size or 2000),
+        },
+    }
+    if task_id:
+        existing = get_intraday_side_backfill_task_status(task_id) or {}
+        payload['queued_at'] = existing.get('queued_at')
+        set_intraday_side_backfill_task_status(task_id, payload)
+
+    try:
+        result = intraday_side_backfill_apply(
+            symbols=symbols or [],
+            start_date=start_date,
+            end_date=end_date,
+            threshold=int(threshold or 0),
+            batch_size=int(batch_size or 2000),
+        )
+    except Exception as exc:
+        failed_payload = {
+            **payload,
+            'status': 'failed',
+            'finished_at': timezone.now().isoformat(),
+            'message': 'Backfill intraday side thất bại.',
+            'error': str(exc),
+        }
+        if task_id:
+            set_intraday_side_backfill_task_status(task_id, failed_payload)
+        logger.exception('run_intraday_side_backfill_apply failed: %s', exc)
+        raise
+
+    success_payload = {
+        **payload,
+        'status': 'succeeded',
+        'finished_at': timezone.now().isoformat(),
+        'message': 'Backfill intraday side đã hoàn tất.',
+        'result': result,
+    }
+    if task_id:
+        set_intraday_side_backfill_task_status(task_id, success_payload)
+    logger.info(
+        'run_intraday_side_backfill_apply completed: task_id=%s updated=%s scope_rows=%s',
+        task_id,
+        result.get('updated'),
+        result.get('scope_rows'),
+    )
+    return result
 
 
 @shared_task(bind=True, name='portfolio.tasks.run_stream_consumer_batch', autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={"max_retries": 0})

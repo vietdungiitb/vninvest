@@ -527,6 +527,8 @@ export const adminIntradaySideBackfillPreview = (payload) =>
   apiClient.post('/admin-ops/intraday-side-backfill/preview/', payload);
 export const adminIntradaySideBackfillApply = (payload) =>
   apiClient.post('/admin-ops/intraday-side-backfill/apply/', payload);
+export const adminIntradaySideBackfillStatus = (taskId) =>
+  apiClient.get(`/admin-ops/intraday-side-backfill/status/${encodeURIComponent(taskId)}/`);
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');
