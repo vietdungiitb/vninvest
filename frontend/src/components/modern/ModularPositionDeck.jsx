@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import HoldingsTable from '../HoldingsTable';
 import OptimizationModal from './OptimizationModal';
+import WhaleBubbleChart from '../WhaleBubbleChart';
 import PaginationBar from '../shared/PaginationBar';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
@@ -194,34 +195,7 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
 
         {activeTab === 'whale' && (
           <div className="h-full flex flex-col overflow-hidden">
-             <div className="flex-1 overflow-y-auto panel-scrollbar p-2">
-               <div className="space-y-4">
-                  {pagedWhaleAlerts.map((alert, idx) => (
-                    <div key={idx} className="bg-slate-900/40 border-l-2 border-emerald-500 p-3 flex flex-col gap-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-emerald-400 font-bold">{alert.symbol}</span>
-                        <span className="text-[10px] text-slate-500">{alert.time || 'Vừa xong'}</span>
-                      </div>
-                      <p className="text-xs text-slate-300">{alert.message || 'Phát hiện dòng tiền lớn nhập cuộc.'}</p>
-                    </div>
-                  ))}
-                  {filteredWhaleAlerts.length === 0 && (
-                     <div className="flex flex-col items-center justify-center py-12 text-slate-600">
-                       <span className="text-3xl mb-2">🐋</span>
-                       <p className="text-sm italic">Đang quét dòng tiền "Cá mập" riêng cho danh mục này...</p>
-                     </div>
-                  )}
-               </div>
-             </div>
-             {filteredWhaleAlerts.length > 0 && (
-               <PaginationBar
-                 total={filteredWhaleAlerts.length}
-                 page={currentPage}
-                 size={pageSize}
-                 onPageChange={setCurrentPage}
-                 onSizeChange={handlePageSizeChange}
-               />
-             )}
+            <WhaleBubbleChart holdings={holdings} quotesBySymbol={quotesBySymbol} />
           </div>
         )}
 
