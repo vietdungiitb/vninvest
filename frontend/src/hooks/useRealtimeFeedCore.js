@@ -502,6 +502,14 @@ export default function useRealtimeFeedCore({
     });
   }, [maxAlerts]);
 
+  const applyDarkFlowAlert = useCallback((payload) => {
+    const nextAlert = normalizeDarkFlowAlert(payload);
+    const nextKey = nextAlert.event_id || `${nextAlert.symbol || 'NA'}-${nextAlert.ts || 'NA'}-${nextAlert.signal_type || 'NA'}`;
+    setDarkFlowAlerts((prev) => {
+      const filtered = prev.filter(
+        (item) => (item.event_id || `${item.symbol || 'NA'}-${item.ts || 'NA'}-${item.signal_type || 'NA'}`) !== nextKey
+      );
+      return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
   }, [maxAlerts]);
 

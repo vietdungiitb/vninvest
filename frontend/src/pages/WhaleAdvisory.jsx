@@ -32,6 +32,7 @@ export default function WhaleAdvisory() {
   const [page, setPage] = useState(1);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
 
   const {
     items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
