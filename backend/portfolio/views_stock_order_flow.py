@@ -9,7 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import IntradayTick, OrderFlowSignal, TrackedSymbol
+from .models import IntradayTick, OrderFlowSignal, TrackedSymbol, WhaleAdvisory
 from .opencore_analytics import track_api_call
 from .opencore_dpi import check_feature_access
 from .permissions import IsProPlan, resolve_user_entitlements
