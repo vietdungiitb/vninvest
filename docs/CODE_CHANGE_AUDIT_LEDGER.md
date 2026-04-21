@@ -1,5 +1,24 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21aa - Recover backend runtime after partial services refactor drift
+
+Mục tiêu:
+- Khôi phục `portfolio.services` về trạng thái importable ổn định sau khi xuất hiện drift do refactor package `services` chưa hoàn tất.
+- Sửa lỗi còn sót trong `views_stock_order_flow.py` để dùng annotation threshold mới mà không giữ biến trung gian đã bị xóa.
+- Đồng bộ biến môi trường DB giữa `db`, `backend`, `celery_worker`, `celery_beat` để chấm dứt lỗi xác thực PostgreSQL khi boot compose stack.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - remove stale threshold annotation and unused ORM imports)
+- docker-compose.yml (MODIFIED - override POSTGRES_* vars for backend/celery services to match compose db service)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker-compose ps` cho thấy `backend`, `celery_worker`, `celery_beat`, `db`, `redis` đều healthy.
+- PASSED: `docker-compose logs backend --tail 40` xác nhận migrations hoàn tất, static files collected, Gunicorn boot thành công.
+- PASSED: `Invoke-WebRequest http://localhost:8000/api/health/` trả về HTTP 200.
+- NOTE: Compose vẫn cảnh báo biến `d_6e` chưa set do ký tự `$` trong `backend/.env.production`; hiện không chặn runtime nhưng nên chuẩn hóa riêng nếu muốn loại warning.
+
 ## Entry 2026-04-21z - Finalize Phase 4 MDSU SSOT Closure (100% Compliance)
 
 Mục tiêu:
@@ -5104,3 +5123,34 @@ Kết quả verify:
 Trạng thái:
 - **COMPLETE & AUDITED**. Hệ thống sẵn sàng cho giai đoạn soak testing 24/48h trước khi rollout production.
 
+
+
+---
+
+## [2026-04-21] Phase 1 SSOT Refactor — WhaleSignalEngine + Docker Fix
+
+### Mục tiêu
+- Tạo class WhaleSignalEngine tập trung hóa logic threshold/side/size cho whale advisory
+- Fix cascading import failures khiến backend + celery không boot được
+- Align DB credentials trong docker-compose
+
+### Files đã sửa
+
+| File | Thay đổi |
+|------|----------|
+| ackend/portfolio/services.py | Append class WhaleSignalEngine (~70 lines); khôi phục flat module (không phải package) |
+| ackend/portfolio/views_stock_order_flow.py | Refactor dùng WhaleSignalEngine.annotate_queryset_with_threshold(); xóa stale symbol_threshold_case reference; clean ORM imports |
+| ackend/portfolio/models.py | Thêm field 	hreshold_source, is_discovery vào WhaleAdvisory; thêm is_market_discovery, discovery_bucket, whale_intensity vào OrderFlowSignal |
+| ackend/portfolio/migrations/0047_add_market_discovery_fields_to_signals.py | Migration mới cho market discovery fields |
+| ackend/portfolio/tests/test_whale_signal_engine.py | Unit tests (5 cases) cho WhaleSignalEngine |
+| docker-compose.yml | Thêm POSTGRES_* env vars override vào backend/celery_worker/celery_beat để fix auth mismatch |
+
+### Vấn đề đã giải quyết
+1. ModuleNotFoundError: No module named 'portfolio.services' — do refactor không hoàn chỉnh tạo services/ package thiếu exports → giữ flat services.py
+2. FATAL: password authentication failed for user "postgres" — .env.production có ThaoLinh@2007, volume DB init với postgres → override bằng compose environment block
+3. Worker cache stale services/__init__.py — rebuild cả 3 image: backend, celery_worker, celery_beat
+
+### Kết quả xác nhận
+- docker-compose ps: tất cả 6 container **healthy**
+- GET /api/health/ → HTTP 200
+- Migration  047_add_market_discovery_fields_to_signals → [X] applied

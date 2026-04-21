@@ -1420,6 +1420,17 @@ class WhaleAdvisory(models.Model):
     matched_value     = models.BigIntegerField(verbose_name='Giá trị khớp lệnh (VNĐ)')
     side              = models.CharField(max_length=10, verbose_name='Chiều lệnh')   # BUY/SELL/UNKNOWN
     threshold         = models.FloatField(default=0, verbose_name='Ngưỡng cá mập')
+    threshold_source  = models.CharField(
+        max_length=20, 
+        choices=[
+            ('user_default', 'User Default'),
+            ('symbol_override', 'Symbol Override'),
+            ('discovery_global', 'Discovery Global'),
+        ],
+        default='user_default',
+        verbose_name='Nguồn gốc ngưỡng'
+    )
+    is_discovery      = models.BooleanField(default=False, db_index=True, verbose_name='Phát hiện thị trường?')
     ai_summary        = models.TextField(verbose_name='Tóm tắt AI (Pro+)')
     ai_detail         = models.TextField(blank=True, default='', verbose_name='Phân tích chi tiết (Premium+)')
     ai_provider       = models.CharField(max_length=50, default='openclaw', verbose_name='AI provider')
@@ -1788,6 +1799,9 @@ class OrderFlowSignal(models.Model):
     components_json   = models.JSONField(default=dict, verbose_name='Chi tiết các thành phần')
     event_id          = models.TextField(null=True, blank=True, db_index=True, unique=True, verbose_name='Event ID (deterministic)')
     severity          = models.CharField(max_length=10, choices=SeverityChoices.choices, default=SeverityChoices.INFO, verbose_name='Mức độ nghiêm trọng')
+    is_market_discovery = models.BooleanField(default=False, db_index=True, verbose_name='Phát hiện thị trường?')
+    discovery_bucket  = models.CharField(max_length=30, blank=True, default='', verbose_name='Nhóm Discovery')
+    whale_intensity   = models.FloatField(default=0.0, verbose_name='Cường độ cá mập (0-1)')
     created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm ghi')
 
     class Meta:

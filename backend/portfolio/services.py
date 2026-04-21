@@ -2267,3 +2267,62 @@ def sync_stock_profiles(requested_by: User | None = None, mode: str = 'all') -> 
             'error': str(exc),
             'log': log,
         }
+
+class WhaleSignalEngine:
+    @staticmethod
+    def resolve_threshold_vnd(user, symbol):
+        from .models import TrackedSymbol, UserConfig
+        override = TrackedSymbol.objects.filter(user=user, symbol=symbol).first()
+        if override and override.whale_alert_threshold_million:
+            return float(override.whale_alert_threshold_million) * 1_000_000, "symbol_override"
+        cfg = UserConfig.objects.filter(user=user).first()
+        threshold_mil = cfg.whale_alert_threshold if cfg else 500
+        return float(threshold_mil) * 1_000_000, "user_default"
+
+    @staticmethod
+    def get_user_threshold_map(user, symbols):
+        from .models import TrackedSymbol, UserConfig
+        cfg = UserConfig.objects.filter(user=user).first()
+        default_threshold = float(cfg.whale_alert_threshold if cfg else 500) * 1_000_000
+        overrides = {
+            row["symbol"]: float(row["whale_alert_threshold_million"]) * 1_000_000
+            for row in TrackedSymbol.objects.filter(
+                user=user, symbol__in=symbols, whale_alert_threshold_million__isnull=False
+            ).values("symbol", "whale_alert_threshold_million")
+        }
+        return {s: overrides.get(s, default_threshold) for s in symbols}
+
+    @staticmethod
+    def classify_side(side_str):
+        s = str(side_str or "").upper()
+        if "BUY" in s or "BS" in s or "B" == s:
+            return "buy"
+        if "SELL" in s or "SD" in s or "S" == s:
+            return "sell"
+        return "neutral"
+
+    @staticmethod
+    def classify_size(value_vnd):
+        from .domain_constants import SHARK_THRESHOLD_VND, WHALE_THRESHOLD_VND
+        if value_vnd >= SHARK_THRESHOLD_VND:
+            return "shark"
+        if value_vnd >= WHALE_THRESHOLD_VND:
+            return "whale"
+        return "small"
+
+    @staticmethod
+    def annotate_queryset_with_threshold(queryset, user, symbols):
+        from django.db.models import Case, When, Value, FloatField
+        from .models import TrackedSymbol, UserConfig
+        cfg = UserConfig.objects.filter(user=user).first()
+        default_threshold = float(cfg.whale_alert_threshold if cfg else 500) * 1_000_000
+        overrides = TrackedSymbol.objects.filter(
+            user=user, symbol__in=symbols, whale_alert_threshold_million__isnull=False
+        ).values("symbol", "whale_alert_threshold_million")
+        whens = [
+            When(symbol=row["symbol"], then=Value(float(row["whale_alert_threshold_million"]) * 1_000_000))
+            for row in overrides
+        ]
+        return queryset.annotate(
+            threshold_vnd=Case(*whens, default=Value(default_threshold), output_field=FloatField())
+        )

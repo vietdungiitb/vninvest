@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import base64
 import logging
 
-from django.db.models import Case, Count, ExpressionWrapper, F, FloatField, Q, Sum, Value, When
+from django.db.models import Count, ExpressionWrapper, F, FloatField, Q, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -14,7 +14,7 @@ from .opencore_analytics import track_api_call
 from .opencore_dpi import check_feature_access
 from .permissions import IsProPlan, resolve_user_entitlements
 from .quota_service import build_quota_exceeded_payload, consume_quota
-from .whale_feed_helpers import _get_user_symbol_threshold_overrides_vnd, _resolve_user_whale_threshold_vnd
+from .services import WhaleSignalEngine
 from portfolio.order_flow import compute_cvd_series, detect_dark_flow
 
 logger = logging.getLogger(__name__)
@@ -60,20 +60,10 @@ def whale_advisory_symbol_stats_api(request):
     else:
         queryset = queryset.filter(trade_date=today_local)
 
-    base_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, symbol=None)
-    symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
-    symbol_threshold_case = Case(
-        *[
-            When(symbol=symbol, then=Value(float(symbol_threshold_overrides.get(symbol, base_threshold_vnd))))
-            for symbol in symbols
-        ],
-        default=Value(float(base_threshold_vnd)),
-        output_field=FloatField(),
-    )
+    queryset = WhaleSignalEngine.annotate_queryset_with_threshold(queryset, request.user, symbols)
 
     aggregated_rows = (
         queryset
-        .annotate(threshold_vnd=symbol_threshold_case)
         .filter(matched_value__gte=F('threshold_vnd'))
         .values('symbol')
         .annotate(
@@ -124,6 +114,7 @@ def whale_advisory_symbol_stats_api(request):
 
 _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_order_flow_api': 'dark_pool_flow',
+    'whale_advisory_symbol_stats_api': 'dark_pool_flow',
     'stock_ai_advisory_session_api': 'whale_momentum',
     'stock_ai_advisory_components_generate_api': 'sentiment_score',
     'stock_ai_advisory_component_refresh_api': 'sentiment_score',
@@ -136,6 +127,9 @@ _OPENCORE_STOCK_FEATURE_KEYS = {
 }
 
 _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
+    'whale_advisory_symbol_stats_api': {
+        'GET': 'api_calls_per_day',
+    },
     'stock_order_flow_api': {
         'GET': 'api_calls_per_day',
         'POST': 'api_calls_per_day',
@@ -288,25 +282,6 @@ def _timeframe_to_minutes(timeframe: str) -> int:
 
     return 30
 
-
-def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshold_vnd: float) -> tuple[float, str]:
-    """
-    F3 Helper: Resolve threshold for first advisory creation.
-    Returns (threshold_vnd, threshold_source) tuple.
-
-    Order of precedence:
-    1. Symbol-specific override (TrackedSymbol.whale_alert_threshold_million)
-    2. User default threshold (UserConfig.whale_alert_threshold)
-    """
-    try:
-        tracked_symbol = TrackedSymbol.objects.get(user=user, symbol=symbol.upper())
-        if tracked_symbol.whale_alert_threshold_million:
-            resolved_threshold = float(tracked_symbol.whale_alert_threshold_million) * 1_000_000
-            return (resolved_threshold, 'symbol_override')
-    except TrackedSymbol.DoesNotExist:
-        pass
-
-    return (user_default_threshold_vnd, 'user_default')
 
 
 @api_view(['GET', 'POST'])
