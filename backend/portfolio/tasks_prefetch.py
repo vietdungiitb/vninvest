@@ -452,6 +452,84 @@ def _snapshot_is_stale(snapshot: dict, refresh_seconds: int) -> bool:
     return (timezone.now() - computed_dt).total_seconds() > max(int(refresh_seconds), 1)
 
 
+def _build_scheduler_sample_symbols(snapshot: dict, limit: int = 12) -> list[str]:
+    rows = (snapshot or {}).get('rows') or []
+    if not isinstance(rows, list):
+        return []
+
+    sample = []
+    seen = set()
+    for row in rows:
+        symbol = str((row or {}).get('symbol') or '').strip().upper()
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+        sample.append(symbol)
+        if len(sample) >= max(int(limit), 1):
+            break
+    return sample
+
+
+def _publish_scheduler_prefetch_meta(
+    *,
+    snapshot: dict,
+    plan: dict,
+    budget_metrics: dict,
+    enqueued: list[dict],
+    skipped_due_to_interval: int,
+    skipped_empty_shard: int,
+    skipped_disabled_tier: int,
+) -> None:
+    now_iso = timezone.now().isoformat()
+    totals = (snapshot or {}).get('totals') or {}
+    source_counts = (snapshot or {}).get('source_counts') or {}
+
+    symbols_total = int(totals.get('all') or 0)
+    sample_symbols = _build_scheduler_sample_symbols(snapshot)
+
+    # Keep `cached` field for backward compatibility with existing AdminOps UI.
+    scheduled_symbols = sum(int(item.get('symbols') or 0) for item in (enqueued or []))
+
+    # Effective interval is used by health endpoint to calculate stale threshold.
+    enabled_intervals = []
+    for tier in ('hot', 'warm', 'cold'):
+        tier_plan = (plan or {}).get(tier) or {}
+        if not tier_plan.get('enabled'):
+            continue
+        enabled_intervals.append(max(int(tier_plan.get('interval_seconds') or 1), 1))
+    effective_interval = min(enabled_intervals) if enabled_intervals else 90
+
+    payload = {
+        'status': 'ok',
+        'reason': 'scheduler_tick',
+        'generated_at': now_iso,
+        'symbols': symbols_total,
+        'cached': scheduled_symbols,
+        'sample_symbols': sample_symbols,
+        'source_counts': source_counts,
+        'scheduler': {
+            'enqueued_total': len(enqueued or []),
+            'skipped_due_to_interval': int(skipped_due_to_interval or 0),
+            'skipped_empty_shard': int(skipped_empty_shard or 0),
+            'skipped_disabled_tier': int(skipped_disabled_tier or 0),
+        },
+        'policy': {
+            'query_enabled': True,
+            'profile': 'market_open',
+            'effective_interval_seconds': int(effective_interval),
+        },
+        'budget': {
+            'estimated_upstream_calls_per_minute': int((budget_metrics or {}).get('estimated_upstream_calls_per_minute') or 0),
+            'soft_cap': int((budget_metrics or {}).get('soft_cap') or 0),
+            'warning_cap': int((budget_metrics or {}).get('warning_cap') or 0),
+            'hard_cap': int((budget_metrics or {}).get('hard_cap') or 0),
+        },
+    }
+
+    timeout_seconds = max(int(effective_interval) * 20, 600)
+    _store_prefetch_meta(payload, timeout=timeout_seconds)
+
+
 @shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards')
 def schedule_realtime_prefetch_shards(self) -> dict:
     runtime_settings = _get_prefetch_runtime_settings()
@@ -518,6 +596,16 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         _increment_prefetch_metric('scheduler_empty_shard_total', amount=skipped_empty_shard)
         _increment_prefetch_metric('scheduler_disabled_tier_total', amount=skipped_disabled_tier)
         _increment_prefetch_metric('realtime_upstream_calls_per_minute', amount=max(int(budget_metrics.get('estimated_upstream_calls_per_minute', 0)), 0))
+
+        _publish_scheduler_prefetch_meta(
+            snapshot=snapshot,
+            plan=plan,
+            budget_metrics=budget_metrics,
+            enqueued=enqueued,
+            skipped_due_to_interval=skipped_due_to_interval,
+            skipped_empty_shard=skipped_empty_shard,
+            skipped_disabled_tier=skipped_disabled_tier,
+        )
 
         return {
             'status': 'ok',
@@ -1363,6 +1451,7 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
     cache_refreshed = 0
     failed_symbols: list[str] = []
 
+    success_symbols = []
     for symbol in symbols:
         normalized_symbol = str(symbol or '').strip().upper()
         if not normalized_symbol:
@@ -1374,12 +1463,19 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
                 start_date=start_date,
                 end_date=end_date,
             )
-            db_created += int(ingest_result.get('created', 0) or 0)
-            db_updated += int(ingest_result.get('updated', 0) or 0)
+            created = int(ingest_result.get('created', 0) or 0)
+            updated = int(ingest_result.get('updated', 0) or 0)
             symbol_errors = int(ingest_result.get('errors', 0) or 0)
+            
+            db_created += created
+            db_updated += updated
             db_errors += symbol_errors
+            
             if symbol_errors > 0:
                 failed_symbols.append(normalized_symbol)
+            else:
+                success_symbols.append(normalized_symbol)
+            
             symbols_ingested += 1
         except Exception as exc:
             logger.warning('offpeak_vnstock_ingest failed for %s: %s', normalized_symbol, exc)
@@ -1387,22 +1483,48 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             failed_symbols.append(normalized_symbol)
             continue
 
-        latest = DailyPrice.objects.filter(symbol=normalized_symbol).order_by('-date').first()
-        if latest is None:
+    if not success_symbols:
+        _cleanup_session_close_retention(runtime_settings=runtime_settings)
+        payload = {
+            'status': 'ok',
+            'trigger': str(trigger or 'manual'),
+            'days': resolved_days,
+            'max_symbols': resolved_max_symbols,
+            'symbols_total': len(symbols),
+            'symbols_ingested': symbols_ingested,
+            'db_created': db_created,
+            'db_updated': db_updated,
+            'db_errors': db_errors,
+            'cache_refreshed': 0,
+            'source_counts': source_counts,
+            'generated_at': timezone.now().isoformat(),
+        }
+        _store_offpeak_ingest_meta(payload)
+        return payload
+
+    # MDSU BATCH REFRESH: Fetch latest 2 rows for all success symbols in one go
+    from portfolio.market_data_service import MarketDataService
+    all_data = MarketDataService.get_historical_indicators(
+        success_symbols, 
+        lookback_days=2,
+        include_fields=['date', 'close_price', 'high_price', 'low_price', 'open_price', 'volume']
+    )
+
+    for normalized_symbol in success_symbols:
+        rows = all_data.get(normalized_symbol, [])
+        if not rows:
             continue
 
-        prev = (
-            DailyPrice.objects.filter(symbol=normalized_symbol, date__lt=latest.date)
-            .order_by('-date')
-            .first()
-        )
+        latest = rows[-1]
+        prev = rows[-2] if len(rows) > 1 else None
 
         try:
-            current_price = float(latest.close_price)
+            current_price = float(latest['close_price']) if latest.get('close_price') is not None else None
         except (TypeError, ValueError):
             current_price = None
+            
         try:
-            prev_price = float(prev.close_price) if prev is not None and prev.close_price is not None else None
+            prev_price = float(prev['close_price']) if prev is not None and prev.get('close_price') is not None else None
         except (TypeError, ValueError):
             prev_price = None
 
@@ -1419,15 +1541,15 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             'prev_price': prev_price,
             'change_value': change_value,
             'change_pct': change_pct,
-            'high_price': float(latest.high_price) if latest.high_price is not None else None,
-            'low_price': float(latest.low_price) if latest.low_price is not None else None,
-            'open_price': float(latest.open_price) if latest.open_price is not None else None,
-            'volume': int(latest.volume) if latest.volume is not None else None,
+            'high_price': float(latest['high_price']) if latest.get('high_price') is not None else None,
+            'low_price': float(latest['low_price']) if latest.get('low_price') is not None else None,
+            'open_price': float(latest['open_price']) if latest.get('open_price') is not None else None,
+            'volume': int(latest['volume']) if latest.get('volume') is not None else None,
             'last_date': timezone.now().isoformat(),
             'freshness_seconds': 0,
             'stale': False,
             'source': 'offpeak_db_ingest',
-            'price_date': latest.date.isoformat(),
+            'price_date': latest['date'].isoformat() if isinstance(latest['date'], date) else str(latest['date']),
             'market_phase': 'offhours',
             'market_code': 'VN_STOCK',
         }
@@ -1449,7 +1571,7 @@ def offpeak_vnstock_ingest(self, days: int | None = None, max_symbols: int | Non
             profile='offhours',
             runtime_settings=runtime_settings,
             source='offpeak_db_ingest',
-            session_date=latest.date,
+            session_date=latest['date'],
         )
         cache_refreshed += 1
 

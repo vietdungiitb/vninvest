@@ -62,7 +62,7 @@ def _build_session_v2_decision_digest(advisory_obj, snapshot_obj) -> dict:
 
 
 def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
-    legacy_views = _legacy_views_module()
+    from .market_data_service import MarketDataService
     normalized_symbol = str(symbol or '').strip().upper()
     if not normalized_symbol:
         return {
@@ -75,17 +75,21 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
             'freshness': {'daily_price_date': None, 'intraday_tick_at': None},
         }
 
-    recent_prices = list(
-        legacy_views.DailyPrice.objects.filter(symbol=normalized_symbol)
-        .order_by('-date')[:80]
+    # MDSU Canonical path: fetch both symbol and benchmark (VNINDEX) in parallel
+    historical_data = MarketDataService.get_historical_indicators(
+        [normalized_symbol, 'VNINDEX'], 
+        lookback_days=80
     )
-    benchmark_prices = list(
-        legacy_views.DailyPrice.objects.filter(symbol='VNINDEX')
-        .order_by('-date')[:80]
-    )
+    
+    recent_prices = historical_data.get(normalized_symbol, [])
+    benchmark_prices = historical_data.get('VNINDEX', [])
 
-    latest_volume = float(recent_prices[0].volume or 0) if recent_prices else 0.0
-    baseline_volumes = [float(item.volume or 0) for item in recent_prices[1:21] if float(item.volume or 0) > 0]
+    latest_price_obj = recent_prices[-1] if recent_prices else None
+    latest_volume = float(latest_price_obj.get('volume') or 0) if latest_price_obj else 0.0
+    
+    # MarketDataService returns ascending by date. 
+    # baseline_volumes should be previous 20 sessions before latest.
+    baseline_volumes = [float(item.get('volume') or 0) for item in recent_prices[-21:-1] if float(item.get('volume') or 0) > 0]
 
     rvol = None
     if latest_volume > 0 and baseline_volumes:
@@ -106,17 +110,18 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
 
     relative_strength_20d_pct = None
     if len(recent_prices) > 20 and len(benchmark_prices) > 20:
-        stock_ret = (float(recent_prices[0].close_price) / float(recent_prices[20].close_price)) - 1.0
-        benchmark_ret = (float(benchmark_prices[0].close_price) / float(benchmark_prices[20].close_price)) - 1.0
+        # Ascending order: [-1] is newest, [-21] is 20 sessions ago
+        stock_ret = (float(recent_prices[-1]['close_price']) / float(recent_prices[-21]['close_price'])) - 1.0
+        benchmark_ret = (float(benchmark_prices[-1]['close_price']) / float(benchmark_prices[-21]['close_price'])) - 1.0
         relative_strength_20d_pct = round((stock_ret - benchmark_ret) * 100.0, 2)
 
     mtf_votes = []
     if len(recent_prices) > 5:
-        mtf_votes.append(float(recent_prices[0].close_price) >= float(recent_prices[5].close_price))
+        mtf_votes.append(float(recent_prices[-1]['close_price']) >= float(recent_prices[-6]['close_price']))
     if len(recent_prices) > 20:
-        mtf_votes.append(float(recent_prices[0].close_price) >= float(recent_prices[20].close_price))
+        mtf_votes.append(float(recent_prices[-1]['close_price']) >= float(recent_prices[-21]['close_price']))
     if len(recent_prices) > 60:
-        mtf_votes.append(float(recent_prices[0].close_price) >= float(recent_prices[60].close_price))
+        mtf_votes.append(float(recent_prices[-1]['close_price']) >= float(recent_prices[-61]['close_price']))
 
     if mtf_votes:
         mtf_confirmation_score = round(sum(1.0 for vote in mtf_votes if vote) / len(mtf_votes), 2)
@@ -132,6 +137,7 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
     else:
         mtf_confirmation_label = 'unknown'
 
+    legacy_views = _legacy_views_module()
     latest_trade = (
         legacy_views.IntradayTick.objects.filter(symbol=normalized_symbol)
         .order_by('-trade_date', '-trade_time')
@@ -156,7 +162,7 @@ def _build_session_v2_benchmark_enrichment(symbol: str) -> dict:
                 if vwap_value > 0:
                     vwap_deviation_pct = round(((float(latest_trade.price) - vwap_value) / vwap_value) * 100.0, 2)
 
-    daily_price_date = str(recent_prices[0].date) if recent_prices else None
+    daily_price_date = str(latest_price_obj['date']) if latest_price_obj else None
     return {
         'vwap_deviation_pct': vwap_deviation_pct,
         'rvol': rvol,

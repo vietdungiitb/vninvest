@@ -1,5 +1,278 @@
-**Date**: 2026-04-20  
-**Status**: VNStock Runtime Hardening Audit COMPLETE & Drift Fixed ✅
+**Date**: 2026-04-21  
+**Status**: MDSU Phase 4 SSOT Migration 100% COMPLETE ✅ — Platform-wide Market Data SSOT Achieved
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21y)
+- docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (NEW - actionable checklist to close remaining business read-path direct DailyPrice queries)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: checklist doc created with task groups for migration, gate hardening, verification, and DoD.
+- PASSED: checklist scope aligns with latest audit findings of remaining business call-sites.
+- NOTE: No runtime code changed in this task.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21x)
+- docs/IMPLEMENTATION_PLAN_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - plan 4 phase, KPI table, migration scope, rollback strategy)
+- docs/TECH_SPEC_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - class design, canonical rules, migration mapping, contract test spec, gate test spec, Redis key convention)
+- docs/TASKBOARD_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - 30 tasks across 4 phases, DoD per phase, release gate checklist G1-G7)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: audit scan xác nhận 13 call-site nghiệp vụ DailyPrice trong 7 module.
+- PASSED: Mandatory Triad (Plan + Tech Spec + Taskboard) hoàn chỉnh đủ để coder bắt tay Phase 0.
+- NOTE: Không có code thay đổi — chờ confirm để tiến hành Phase 0.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21w)
+- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add mandatory MDSU governance: MarketDataService canonical gateway, anti-fragmentation rules, checklist gates, and official technology naming)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add mandatory MDSU compliance map for planning, DoR/DoD market-data gates, and MDSU governance appendix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: project process docs now explicitly define this architecture program as `MDSU - Market Data Service Unification`.
+- PASSED: governance blocks direct `DailyPrice` access outside canonical `MarketDataService` path for migrated scopes.
+- PASSED: pre-code/pre-merge checklist now includes mandatory MDSU compliance evidence.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21v)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - split AI tab into holdings mode and non-holdings monitor mode with explicit fallback semantics)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for AI monitor labels/fallback lines)
+- frontend/src/i18n/en.js (MODIFIED - add English copy for AI monitor labels/fallback lines)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 6 tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: AI tab no longer shows portfolio-only metrics in non-holdings scopes.
+- PASSED: non-holdings scopes now use monitor-mode summary and documented fallback behavior.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21u)
+- backend/portfolio/views_analytics_extended.py (MODIFIED - add bulk technicals symbol-list endpoint and shared helper pipeline using `_screener_build_technical`)
+- backend/portfolio/views.py (MODIFIED - expose `BulkTechnicalBySymbolsView` for stock-management routing)
+- backend/portfolio/urls_stock.py (MODIFIED - register `POST /api/stock-management/technicals/bulk/`)
+- backend/portfolio/tests/test_api_routes_stock_technicals_bulk.py (NEW - contract tests for empty/over-limit/success normalize-dedupe cases)
+- frontend/src/api/client.js (MODIFIED - add `getBulkTechnicalsBySymbols` API helper)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - switch technical data fetch to bulk symbol universe with fallback to holdings technical endpoint)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 5 tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_api_routes_stock_technicals_bulk -v 2` => 3/3 PASS.
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: Technical tab backend path now supports non-holding scopes through symbol-universe bulk query.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21t)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 4 Whale selector tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Whale tab consumes scope-driven symbol options from unified toolbar flow.
+- PASSED: `selectedSymbol=all` fallback policy remains single-symbol and deterministic.
+- PASSED: no additional runtime code changed in this entry (documentation/audit synchronization only).
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21s)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - replace holdings-only Overview with unified mixed-source table, add source badges, and enforce holdings-only position metrics)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for unified overview table headers and badges)
+- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for unified overview table headers and badges)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 3 checklist items completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed frontend/i18n files.
+- PASSED: Overview now renders unified symbol rows across holdings/tracked/watchlist/all scopes.
+- PASSED: position-specific columns are only shown for holdings rows; non-holding rows use `--`.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21r)
+- backend/portfolio/serializers.py (MODIFIED - `WatchlistGroupSerializer` now returns nested `items` for watchlist symbol aggregation)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - add `prefetch_related('items')` for watchlist group list/detail)
+- frontend/src/utils/modernDashboardSymbolUniverse.js (NEW - normalize + merge + dedupe symbol universe for holdings/tracked/watchlist)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fetch watchlist groups and pass unified `symbolUniverse` to modular deck)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - implement scope/symbol toolbar and state-driven filtering)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - support external symbol options/selection from deck toolbar)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for modern deck selectors)
+- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for modern deck selectors)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 1/2 completed items)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: backend/frontend Docker images rebuilt successfully.
+- PASSED: backend/frontend containers restarted successfully and are up (`backend healthy`, `frontend started`).
+- NOTE: automated tests for universe utility are pending in next slice.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21q)
+- docs/IMPLEMENTATION_PLAN_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - implementation plan cho symbol scope selector tại Modern Dashboard, gồm phase rollout, acceptance criteria và risk register)
+- docs/TECH_SPEC_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - technical spec cho unified symbol universe, selector state, tab semantics và bulk technical API)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - taskboard thực thi theo slice cho frontend/backend)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: planning pack đã chốt rõ user requirement thành mô hình `scope + symbol`.
+- PASSED: đã xác định tab `Kỹ thuật` cần backend bulk API và tab `Cá mập` phải giữ single-symbol mode.
+- PASSED: update này chỉ tạo tài liệu planning/audit, chưa thay đổi runtime behavior.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21p)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - publish canonical `ticker:prefetch:meta` from `schedule_realtime_prefetch_shards` to keep AdminOps Prefetch Health synchronized with shard scheduler runtime)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: manual scheduler run returns `status=ok` with shard enqueue summary.
+- PASSED: `GET /api/health/prefetch/` now reports `meta_present=true`, `status=ok`, `freshness_seconds=0`, `sample_cache_hits=12/12`.
+- PASSED: prefetch payload now carries `generated_at`, `symbols`, `cached`, `sample_symbols`, `scheduler`, and `budget` fields for Admin Ops KPI cards.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21o)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - fix import path to `../context/LangContext` and `../hooks/useOrderBubbleCoordinates` for Docker production build compatibility)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml build frontend --no-cache` compiled successfully.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d frontend` recreated and started frontend container.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` reports backend/frontend/db/redis/celery healthy.
+- PASSED: unauthenticated smoke call to whale endpoint returns `401` as expected (`auth + IsProPlan` guard active).
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21n)
+- start_dev.ps1 (MODIFIED - bo auto `seed_demo_data` khi khoi dong Docker; them co `-SeedDemo` de chi seed demo khi opt-in; tach sync `seed_securities_groups` thanh buoc rieng uu tien du lieu thi truong)
+- docs/SAFE_DEFAULT_SETUP_GUIDE_20260412.md (MODIFIED - cap nhat huong dan Docker dev: mac dinh khong seed demo, chi seed khi dung `-SeedDemo`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: review script flow xac nhan Docker startup mac dinh khong chay `python manage.py seed_demo_data`.
+- PASSED: `seed_securities_groups` van duoc giu de dong bo taxonomy theo du lieu thi truong (khong tao user/portfolio demo).
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21m)
+- backend/portfolio/market_data_service.py (MODIFIED - add unified alert field `type` for whale/dark_flow/market-top-tier payloads)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - validate `type` contract values in unified alerts endpoint test)
+- frontend/src/utils/alertTaxonomy.js (NEW - centralized severity/type normalization + tone mapping + label helper)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - enrich all unified alerts with normalized `type`; consume shared taxonomy utilities)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - switch to type+severity neon tone mapping, add type badge, reuse shared summary chip tones)
+- frontend/src/components/UnifiedAlertBar.jsx (MODIFIED - reuse shared summary chip tone mapping)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - align unified alert cards and summary chips with shared type+severity taxonomy)
+- frontend/src/i18n/vi.js (MODIFIED - add alert type labels `typeBuy/typeSell/typeFlow/typeNeutral`)
+- frontend/src/i18n/en.js (MODIFIED - add alert type labels `typeBuy/typeSell/typeFlow/typeNeutral`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow`.
+- PASSED: `get_errors` clean on all modified backend/frontend files.
+- WARNING: `docker compose -f docker-compose.dev.yml up -d --build frontend` timed out in terminal session; command does not produce completion output in current environment and needs manual verification of Docker daemon responsiveness.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21l)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - remove legacy task `prefetch_ticker_price_board`)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - remove legacy bridge `_legacy_views_module`, switch to direct runtime policy helper imports)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - remove obsolete legacy-task tests)
+- backend/portfolio/tests/test_legacy_purge_gate.py (NEW - gate test for forbidden legacy prefetch tokens in runtime files)
+- docs/PHASE2_PREFETCH_HARDENING_PLAN.md (MODIFIED - fix path refs, expand purge-gate scope, update verification list)
+- docs/PHASE2_PREFETCH_TASK_LIST.md (MODIFIED - mark all phase-2 execution tasks completed)
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - add P1 execution status)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task portfolio.tests.test_admin_ops portfolio.tests.test_legacy_purge_gate portfolio.tests.test_celery_task_names -v 2` => 45 PASS.
+- PASSED: no legacy bridge usage remains in `views_admin_runtime.py`.
+- PASSED: no runtime reference remains to `prefetch_ticker_price_board` outside gate-test forbidden-token assertions.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21k)
+- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory SSOT regulation for `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add SSOT integration map requirement in planning template + DoR/DoD SSOT checks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Governance docs now enforce one-source-of-truth principle for 4 core intelligence domains.
+- PASSED: Planning workflow now blocks implementation plans that do not map to SSOT or that keep parallel non-SSOT flows.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21j)
+- backend/config/settings.py (MODIFIED - remove legacy beat scheduler branch, force canonical shard scheduler)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - warm prefetch API switched to canonical flow)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - tests updated to patch canonical tasks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops portfolio.tests.test_celery_task_names -v 2` => 31 PASS.
+- PASSED: `get_errors` clean on modified backend files.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21i)
+- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - rewrite RCA theo chuan SSOT, bo sung corrective actions P0/P1/P2, workstreams, DoD va release gate xoa legacy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: RCA chot nguyen tac mot chuan su that, khong duy tri dual-path legacy.
+- PASSED: Co task board de doi code thuc thi migration va xoa code cu ngay.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21h)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - them `authStateReady` de cho bootstrap auth hoan tat truoc khi danh gia entitlement)
+- frontend/src/components/ProtectedRoute.jsx (MODIFIED - cho readiness truoc khi check `ability.can(...)`, tranh redirect sai sang `/upgrade` khi refresh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: fix huong den dung root-cause redirect race condition.
 
 
 ---

@@ -8,6 +8,8 @@ import re
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
+from typing import Optional
+
 
 from django.conf import settings
 from django.core.cache import cache
@@ -2682,6 +2684,7 @@ class MarketDataService:
         whale_unified = []
         for event in whale_events:
             symbol = str(event.get('symbol') or '').upper()
+            side = str(event.get('side') or '').lower()
             resolved_threshold = float(
                 event.get('threshold')
                 or self._get_user_whale_threshold_vnd(user, symbol=symbol)
@@ -2697,8 +2700,9 @@ class MarketDataService:
                 'symbol': symbol,
                 'source': 'whale',
                 'severity': severity,
+                'type': 'buy' if side == 'buy' else 'sell' if side == 'sell' else 'neutral',
                 'confidence': event.get('display_score'),
-                'headline': 'Large buy flow detected' if str(event.get('side') or '').lower() == 'buy' else 'Large sell flow detected',
+                'headline': 'Large buy flow detected' if side == 'buy' else 'Large sell flow detected',
                 'detail': f"Matched value: {round(matched_value, 2)}",
                 'ts': event.get('ts') or now.isoformat(),
                 'to': f"/whale-alerts/{event.get('symbol')}",
@@ -2732,6 +2736,7 @@ class MarketDataService:
                 'symbol': str(row.symbol or '').upper(),
                 'source': 'dark_flow',
                 'severity': severity,
+                'type': 'flow',
                 'confidence': row.strength,
                 'headline': 'Dark money signal detected',
                 'detail': f"Signal {row.signal_type} | strength={round(float(row.strength or 0.0), 1)}",
@@ -3050,6 +3055,7 @@ class MarketDataService:
                 'symbol': symbol,
                 'source': 'whale',
                 'severity': 'critical',
+                'type': 'buy' if side == 'buy' else 'sell' if side == 'sell' else 'neutral',
                 'confidence': 99,
                 'headline': headline,
                 'detail': f"Top-tier matched value: {round(matched_value, 2)}",
@@ -4126,4 +4132,282 @@ class MarketDataService:
             return None
 
 
-market_data_service = MarketDataService()
+
+    # ------------------------------------------------------------------ #
+    #  MDSU Canonical API (Phase 0)                                      #
+    # ------------------------------------------------------------------ #
+
+    _MDSU_CACHE_VERSION = "v1"
+    _LATEST_TTL = 300
+    _HISTORY_TTL = 3600
+
+    @classmethod
+    def get_universe_symbols(cls) -> list[str]:
+        """
+        Trả về danh sách tất cả các mã chứng khoán (symbols) hiện có trong hệ thống.
+        """
+        latest_dates = (
+            DailyPrice.objects
+            .values('symbol')
+            .annotate(latest=Max('date'))
+        )
+        return [row['symbol'] for row in latest_dates]
+
+    @classmethod
+    def get_latest_snapshot(
+        cls,
+        symbols: list[str],
+        _local_cache: Optional[dict] = None,
+    ) -> dict[str, dict]:
+        """
+        Trả về snapshot giá mới nhất cho danh sách symbols.
+        Canonical: dùng MAX(date) per symbol.
+        """
+        if not symbols:
+            return {}
+
+        symbols = [s.upper() for s in symbols]
+        result = {}
+        missing = []
+
+        # 1. Local context cache
+        if _local_cache is not None:
+            for sym in symbols:
+                key = f"latest:{sym}"
+                if key in _local_cache:
+                    result[sym] = _local_cache[key]
+                else:
+                    missing.append(sym)
+        else:
+            missing = list(symbols)
+
+        # 2. Redis cache
+        redis_missing = []
+        for sym in missing:
+            rkey = cls._redis_key("latest", sym)
+            cached = cache.get(rkey)
+            if cached is not None:
+                result[sym] = cached
+                if _local_cache is not None:
+                    _local_cache[f"latest:{sym}"] = cached
+            else:
+                redis_missing.append(sym)
+
+        if not redis_missing:
+            cls._log_mdsu("get_latest_snapshot", len(symbols), len(symbols) - len(redis_missing), 0)
+            return result
+
+        # 3. DB Query
+        latest_dates = (
+            DailyPrice.objects
+            .filter(symbol__in=redis_missing)
+            .values('symbol')
+            .annotate(latest_date=Max('date'))
+        )
+        date_map = {row['symbol']: row['latest_date'] for row in latest_dates}
+
+        if not date_map:
+            cls._log_mdsu("get_latest_snapshot", len(symbols), len(result), 1)
+            return result
+
+        q = Q()
+        for sym, d in date_map.items():
+            q |= Q(symbol=sym, date=d)
+
+        rows = DailyPrice.objects.filter(q).values(
+            'symbol', 'date', 'close_price', 'open_price',
+            'high_price', 'low_price', 'volume',
+        )
+        for row in rows:
+            data = {
+                'close_price': float(row['close_price']) if row['close_price'] is not None else None,
+                'open_price': float(row['open_price']) if row['open_price'] is not None else None,
+                'high_price': float(row['high_price']) if row['high_price'] is not None else None,
+                'low_price': float(row['low_price']) if row['low_price'] is not None else None,
+                'volume': int(row['volume']) if row['volume'] is not None else None,
+                'date': row['date'],
+            }
+            sym = row['symbol']
+            result[sym] = data
+            cache.set(cls._redis_key("latest", sym), data, cls._LATEST_TTL)
+            if _local_cache is not None:
+                _local_cache[f"latest:{sym}"] = data
+
+        cls._log_mdsu("get_latest_snapshot", len(symbols), len(result), 2)
+        return result
+
+    @classmethod
+    def get_ohlcv_batch(
+        cls,
+        symbols: list[str],
+        start_date: date,
+        end_date: date,
+        fields: Optional[list[str]] = None,
+        _local_cache: Optional[dict] = None,
+    ) -> dict[str, list[dict]]:
+        """
+        Trả về OHLCV lịch sử theo khoảng ngày cho nhiều symbols.
+        """
+        if not symbols:
+            return {}
+
+        symbols = [s.upper() for s in symbols]
+        _fields = fields or ['date', 'close_price', 'volume']
+        cache_key_base = f"{start_date.isoformat()}_{end_date.isoformat()}"
+        result = {}
+        missing = []
+
+        if _local_cache is not None:
+            for sym in symbols:
+                key = f"ohlcv:{sym}:{cache_key_base}"
+                if key in _local_cache:
+                    result[sym] = _local_cache[key]
+                else:
+                    missing.append(sym)
+        else:
+            missing = list(symbols)
+
+        redis_missing = []
+        for sym in missing:
+            rkey = cls._redis_key(f"ohlcv:{cache_key_base}", sym)
+            cached = cache.get(rkey)
+            if cached is not None:
+                result[sym] = cached
+                if _local_cache is not None:
+                    _local_cache[f"ohlcv:{sym}:{cache_key_base}"] = cached
+            else:
+                redis_missing.append(sym)
+
+        if not redis_missing:
+            return result
+
+        rows = (
+            DailyPrice.objects
+            .filter(symbol__in=redis_missing, date__gte=start_date, date__lte=end_date)
+            .order_by('symbol', 'date')
+            .values('symbol', *_fields)
+        )
+
+        grouped: dict[str, list] = {sym: [] for sym in redis_missing}
+        for row in rows:
+            sym = row['symbol']
+            entry = {}
+            for f in _fields:
+                val = row[f]
+                if f in {'close_price', 'open_price', 'high_price', 'low_price'}:
+                    entry[f] = float(val) if val is not None else None
+                elif f == 'volume':
+                    entry[f] = int(val) if val is not None else None
+                else:
+                    entry[f] = val
+            grouped[sym].append(entry)
+
+        for sym, data in grouped.items():
+            result[sym] = data
+            rkey = cls._redis_key(f"ohlcv:{cache_key_base}", sym)
+            cache.set(rkey, data, cls._HISTORY_TTL)
+            if _local_cache is not None:
+                _local_cache[f"ohlcv:{sym}:{cache_key_base}"] = data
+
+        return result
+
+    @classmethod
+    def get_historical_indicators(
+        cls,
+        symbols: list[str],
+        lookback_days: int,
+        include_fields: Optional[list[str]] = None,
+        _local_cache: Optional[dict] = None,
+    ) -> dict[str, list[dict]]:
+        """
+        Trả về lịch sử gần nhất cho tính toán indicator.
+        """
+        if not symbols:
+            return {}
+
+        symbols = [s.upper() for s in symbols]
+        _fields = include_fields or ['date', 'close_price', 'volume']
+        result = {}
+        missing = []
+
+        if _local_cache is not None:
+            for sym in symbols:
+                key = f"hist:{sym}:{lookback_days}"
+                if key in _local_cache:
+                    result[sym] = _local_cache[key]
+                else:
+                    missing.append(sym)
+        else:
+            missing = list(symbols)
+
+        redis_missing = []
+        for sym in missing:
+            rkey = cls._redis_key(f"hist:{lookback_days}", sym)
+            cached = cache.get(rkey)
+            if cached is not None:
+                result[sym] = cached
+                if _local_cache is not None:
+                    _local_cache[f"hist:{sym}:{lookback_days}"] = cached
+            else:
+                redis_missing.append(sym)
+
+        if not redis_missing:
+            return result
+
+        latest_dates = (
+            DailyPrice.objects
+            .filter(symbol__in=redis_missing)
+            .values('symbol')
+            .annotate(latest_date=Max('date'))
+        )
+        date_map = {row['symbol']: row['latest_date'] for row in latest_dates}
+
+        q = Q()
+        for sym, latest in date_map.items():
+            approx_start = latest - timedelta(days=int(lookback_days * 1.6))
+            q |= Q(symbol=sym, date__gte=approx_start, date__lte=latest)
+
+        rows = (
+            DailyPrice.objects
+            .filter(q)
+            .order_by('symbol', 'date')
+            .values('symbol', *_fields)
+        )
+
+        grouped: dict[str, list] = {sym: [] for sym in redis_missing}
+        for row in rows:
+            sym = row['symbol']
+            entry = {}
+            for f in _fields:
+                val = row[f]
+                if f in {'close_price', 'open_price', 'high_price', 'low_price'}:
+                    entry[f] = float(val) if val is not None else None
+                elif f == 'volume':
+                    entry[f] = int(val) if val is not None else None
+                else:
+                    entry[f] = val
+            grouped[sym].append(entry)
+
+        for sym, data in grouped.items():
+            sliced = data[-lookback_days:] if len(data) > lookback_days else data
+            result[sym] = sliced
+            rkey = cls._redis_key(f"hist:{lookback_days}", sym)
+            cache.set(rkey, sliced, cls._LATEST_TTL)
+            if _local_cache is not None:
+                _local_cache[f"hist:{sym}:{lookback_days}"] = sliced
+
+        return result
+
+    @staticmethod
+    def _redis_key(type_key: str, symbol: str) -> str:
+        return f"mdsu:{type_key}:{symbol}:v1"
+
+    @staticmethod
+    def _log_mdsu(method: str, total: int, hits: int, db_queries: int) -> None:
+        logger.debug(
+            "mdsu.%s symbols=%d cache_hits=%d db_queries=%d",
+            method, total, hits, db_queries,
+        )
+
+
+market_data_service = MarketDataService()

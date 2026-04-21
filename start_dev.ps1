@@ -7,7 +7,8 @@
     Script này:
       1. Build và khởi động tất cả Docker services (db, redis, backend, celery, frontend)
       2. Đợi backend healthy
-      3. Seed demo data (testuser / test123) để test trực quan ngay lập tức
+    3. Đồng bộ nhóm mã thị trường (không seed dữ liệu demo)
+    4. Chỉ seed demo khi truyền cờ -SeedDemo
 
     Truy cập sau khi chạy:
     - App:       http://localhost       (username: testuser   / password: Test@123456)
@@ -17,13 +18,15 @@
       - Backend log: docker compose logs -f backend
 
 .USAGE
-    .\start_dev.ps1              # full build + seed
+    .\start_dev.ps1              # full build + up (không seed demo)
     .\start_dev.ps1 -SkipBuild  # chỉ up (đã build rồi)
-    .\start_dev.ps1 -SkipSeed   # build + up không seed
+    .\start_dev.ps1 -SeedDemo   # build + up + seed demo thủ công
+    .\start_dev.ps1 -SkipSeed   # cờ tương thích ngược, ưu tiên không seed
     .\start_dev.ps1 -Down       # dừng và xóa containers
 #>
 param(
     [switch]$SkipBuild,
+    [switch]$SeedDemo,
     [switch]$SkipSeed,
     [switch]$Down
 )
@@ -198,13 +201,30 @@ if (-not $healthy) {
     Write-Host ""
     Write-Host "WARN: Backend chưa healthy sau 2 phút. Kiểm tra log:" -ForegroundColor Yellow
     Write-Host "  docker compose -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=50 backend" -ForegroundColor Yellow
-    Write-Host "Vẫn tiếp tục seed (có thể backend đang chạy nhưng healthcheck chưa pass)..." -ForegroundColor Yellow
+    Write-Host "Vẫn tiếp tục các bước hậu khởi động (có thể backend đang chạy nhưng healthcheck chưa pass)..." -ForegroundColor Yellow
     Start-Sleep -Seconds 10
 }
 
-# ── Seed data ────────────────────────────────────────────────────────────────
-if (-not $SkipSeed) {
-    Write-Step "Seed demo data (testuser + admin + mock whale data)"
+# ── Market taxonomy sync (không phải demo seed) ─────────────────────────────
+Write-Step "Sync securities groups (dữ liệu thị trường)"
+$backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
+if (-not $backendContainer) {
+    Write-Host "WARN: Không tìm thấy container backend đang chạy, bỏ qua sync securities groups." -ForegroundColor Yellow
+} else {
+    Write-Host "  Container: $backendContainer"
+    $seedGroupOutput = cmd /c "docker exec $backendContainer python manage.py seed_securities_groups 2>&1"
+    if ($seedGroupOutput) {
+        $seedGroupOutput | ForEach-Object { Write-Host $_ }
+    }
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARN: seed_securities_groups thất bại (exit code: $LASTEXITCODE). Tiếp tục để không chặn stack." -ForegroundColor Yellow
+    }
+}
+
+# ── Seed demo data (opt-in only) ─────────────────────────────────────────────
+$shouldSeedDemo = $SeedDemo -and (-not $SkipSeed)
+if ($shouldSeedDemo) {
+    Write-Step "Seed demo data (opt-in: -SeedDemo)"
 
     $previousErrorActionPreference = $ErrorActionPreference
     $nativeCommandErrPrefVar = Get-Variable -Name PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue
@@ -214,7 +234,6 @@ if (-not $SkipSeed) {
     }
     $ErrorActionPreference = "Continue"
     try {
-
         # Tìm tên container backend đúng
         $backendContainer = docker ps --filter "name=backend" --filter "status=running" --format "{{.Names}}" 2>$null | Select-Object -First 1
         if (-not $backendContainer) {
@@ -251,16 +270,6 @@ print('Created admin / test@123456' if created else 'Updated admin password -> t
             throw "Seed demo data thất bại (exit code: $LASTEXITCODE)."
         }
 
-        # Seed securities groups (VN30, sectors) nếu chưa có
-        Write-Host "  Seed securities groups..."
-        $seedGroupOutput = cmd /c "docker exec $backendContainer python manage.py seed_securities_groups 2>&1"
-        if ($seedGroupOutput) {
-            $seedGroupOutput | ForEach-Object { Write-Host $_ }
-        }
-        if ($LASTEXITCODE -ne 0) {
-            throw "Seed securities groups thất bại (exit code: $LASTEXITCODE)."
-        }
-
         Write-Host ""
         Write-Host "  Demo accounts:" -ForegroundColor Green
         Write-Host "    testuser  / Test@123456  (user thường, portfolio đầy đủ)" -ForegroundColor Green
@@ -272,6 +281,9 @@ print('Created admin / test@123456' if created else 'Updated admin password -> t
             $PSNativeCommandUseErrorActionPreference = $nativeCommandErrPref
         }
     }
+} else {
+    Write-Step "Bỏ qua seed demo (mặc định dùng dữ liệu thật thị trường)"
+    Write-Host "  Dùng -SeedDemo nếu bạn muốn tạo bộ dữ liệu demo để test UI cục bộ." -ForegroundColor DarkGray
 }
 
 # ── Done ─────────────────────────────────────────────────────────────────────

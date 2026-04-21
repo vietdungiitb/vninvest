@@ -179,6 +179,8 @@ export const getAnalytics = (portfolioId, days = 365) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/analytics/?days=${days}`);
 export const getPortfolioTechnicals = (portfolioId) =>
   apiClient.get(`/portfolio/portfolios/${portfolioId}/technicals/`);
+export const getBulkTechnicalsBySymbols = (symbols = []) =>
+  apiClient.post('/stock-management/technicals/bulk/', { symbols });
 
 // --- Sync ---
 export const syncPrices = (portfolioId, days = 30) =>
@@ -261,6 +263,10 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
+export const getWhaleOrdersBySymbol = (symbol, { timeframe = 'session' } = {}) =>
+  apiClient.get(`/portfolio/whale/orders/${encodeURIComponent(symbol)}/`, {
+    params: { timeframe },
+  });
 export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor, signal } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {

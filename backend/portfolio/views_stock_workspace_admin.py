@@ -226,16 +226,17 @@ class StockWorkspaceChartView(APIView):
                     days = 180
                 days = min(max(days, 7), 1825)
 
-                rows_desc = list(
-                    DailyPrice.objects
-                    .filter(symbol=normalized_symbol)
-                    .order_by('-date')
-                    .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')[:days]
-                )
-                if not rows_desc:
+                from .market_data_service import MarketDataService
+                rows_asc = MarketDataService.get_historical_indicators(
+                    [normalized_symbol], 
+                    lookback_days=days,
+                    include_fields=['date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume']
+                ).get(normalized_symbol, [])
+                
+                if not rows_asc:
                     return Response({'detail': 'Không thể tải dữ liệu biểu đồ.'}, status=status.HTTP_502_BAD_GATEWAY)
 
-                rows = list(reversed(rows_desc))
+                rows = rows_asc
 
                 points = [
                     {

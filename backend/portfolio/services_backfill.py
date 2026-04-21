@@ -37,23 +37,36 @@ def _normalize_side(value) -> str:
 
 
 def _get_previous_close(symbol: str, trade_date, _cache: dict) -> Optional[float]:
+    from django.conf import settings
+    from portfolio.market_data_service import MarketDataService
+
     key = (symbol, trade_date)
     if key in _cache:
         return _cache[key]
-    row = (
-        DailyPrice.objects
-        .filter(symbol=symbol, date__lt=trade_date)
-        .order_by("-date")
-        .values("close_price")
-        .first()
-    )
+
     value = None
-    if row:
-        try:
-            v = float(row.get("close_price") or 0)
-            value = v if v > 0 else None
-        except (TypeError, ValueError):
-            pass
+    if settings.FEATURE_FLAGS.get("MDSU_BACKFILL_ENABLED"):
+        # MDSU Canonical path: use the unified service
+        # Note: Backfill usually happens for today's data, so the latest price in DB is the prev_close.
+        snapshot = MarketDataService.get_latest_snapshot([symbol])
+        if symbol in snapshot:
+            value = snapshot[symbol].get("close_price")
+    else:
+        # Legacy path (to be retired in Phase 3)
+        row = (
+            DailyPrice.objects
+            .filter(symbol=symbol, date__lt=trade_date)
+            .order_by("-date")
+            .values("close_price")
+            .first()
+        )
+        if row:
+            try:
+                v = float(row.get("close_price") or 0)
+                value = v if v > 0 else None
+            except (TypeError, ValueError):
+                pass
+
     _cache[key] = value
     return value
 

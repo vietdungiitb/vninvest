@@ -90,12 +90,20 @@ def load_prices_df(symbols: list[str], start_date: date, end_date: date) -> pd.D
     Tại sao pivot table?
         Để nhân trực tiếp holdings_df × prices_df bằng một lệnh, thay vì lookup dict.
     """
-    qs = DailyPrice.objects.filter(
-        symbol__in=symbols,
-        date__range=(start_date, end_date),
-    ).values('symbol', 'date', 'close_price')
+    from .market_data_service import MarketDataService
+    data_map = MarketDataService.get_ohlcv_batch(
+        symbols, 
+        start_date=start_date, 
+        end_date=end_date,
+        fields=['symbol', 'date', 'close_price']
+    )
+    
+    # Flatten the data map into a list of records for DataFrame consumption
+    qs = []
+    for symbol_data in data_map.values():
+        qs.extend(symbol_data)
 
-    if not qs.exists():
+    if not qs:
         return pd.DataFrame()
 
     df = pd.DataFrame.from_records(qs)
@@ -205,27 +213,15 @@ def compute_holdings(portfolio, period: str = '1D') -> pd.DataFrame:
         return df_holdings
 
     # --- Bước 3a: Lấy giá đóng cửa mới nhất cho từng mã (1 query duy nhất) ---
-    symbols = df_holdings['symbol'].tolist()
-    latest_prices_qs = (
-        DailyPrice.objects
-        .filter(symbol__in=symbols)
-        .order_by('symbol', '-date')
-        .distinct('symbol')
-        .values('symbol', 'close_price')
-    )
-    # distinct('symbol') chỉ hoạt động với PostgreSQL.
-    # Với SQLite dùng subquery thay thế:
-    from django.db.models import OuterRef, Subquery
-    latest_date_sub = (
-        DailyPrice.objects
-        .filter(symbol=OuterRef('symbol'))
-        .order_by('-date')
-        .values('date')[:1]
-    )
-    latest_prices_qs = DailyPrice.objects.filter(
-        symbol__in=symbols,
-        date=Subquery(latest_date_sub),
-    ).values('symbol', 'close_price')
+    from .market_data_service import MarketDataService
+    latest_snapshots = MarketDataService.get_latest_snapshot(symbols)
+    
+    # Convert snapshots dict to the list of records format expected by the existing merge logic
+    latest_prices_qs = [
+        {'symbol': sym, 'close_price': float(snap['close_price'])}
+        for sym, snap in latest_snapshots.items()
+        if snap and snap.get('close_price') is not None
+    ]
 
     df_prices = pd.DataFrame.from_records(latest_prices_qs)
 
@@ -264,14 +260,15 @@ def compute_holdings(portfolio, period: str = '1D') -> pd.DataFrame:
 
     if n_days > 1 and symbols_list:
         ref_date = date.today() - timedelta(days=n_days + 3)  # +3 buffer cho ngày không giao dịch
-        prices_range_qs = (
-            DailyPrice.objects.filter(
-                symbol__in=symbols_list,
-                date__gte=ref_date,
-            )
-            .values('symbol', 'date', 'close_price')
-            .order_by('symbol', 'date')
+        from .market_data_service import MarketDataService
+        data_map = MarketDataService.get_ohlcv_batch(
+            symbols_list,
+            start_date=ref_date,
+            fields=['symbol', 'date', 'close_price']
         )
+        prices_range_qs = []
+        for symbol_prices in data_map.values():
+            prices_range_qs.extend(symbol_prices)
         df_range = pd.DataFrame.from_records(prices_range_qs)
         if not df_range.empty:
             df_range['date'] = pd.to_datetime(df_range['date'])
@@ -802,11 +799,15 @@ def compute_alpha_beta(
     start_date = date_index.min()
     end_date = date_index.max()
 
-    bench_qs = DailyPrice.objects.filter(
-        symbol=benchmark_symbol,
-        date__gte=start_date,
-        date__lte=end_date,
-    ).order_by('date').values_list('date', 'close_price')
+    from .market_data_service import MarketDataService
+    bench_data = MarketDataService.get_ohlcv_batch(
+        [benchmark_symbol],
+        start_date=start_date,
+        end_date=end_date,
+        fields=['date', 'close_price']
+    ).get(benchmark_symbol.upper(), [])
+
+    bench_qs = [(r['date'], r['close_price']) for r in bench_data]
 
     if not bench_qs:
         return None, None

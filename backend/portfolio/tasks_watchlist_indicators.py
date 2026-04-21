@@ -61,30 +61,28 @@ def _rvol(volumes: pd.Series) -> float | None:
     return round(last_vol / avg_vol, 2)
 
 
-def compute_indicators_for_symbol(symbol: str) -> dict | None:
+def compute_indicators_for_symbol(symbol: str, fetched_rows: list[dict] | None = None) -> dict | None:
     """
-    Truy vấn DailyPrice cho một symbol, tính toán indicators.
-    Trả về dict {'rsi_14', 'ma20_dist_pct', 'rvol', 'indicator_ts'} hoặc None.
+    Tính toán indicators cho một symbol.
+    Nếu fetched_rows được cung cấp, sử dụng nó. Nếu không, fallback query (legacy).
     """
-    from portfolio.models import DailyPrice  # deferred import (Django apps loaded)
+    if fetched_rows is not None:
+        rows = fetched_rows
+    else:
+        from portfolio.market_data_service import MarketDataService
+        # Fallback using unified service instead of direct ORM
+        lookback = MIN_RSI_PERIODS + RVOL_LOOKBACK + 10
+        all_data = MarketDataService.get_historical_indicators(
+            [symbol], lookback_days=lookback, 
+            include_fields=['date', 'close_price', 'volume']
+        )
+        rows = all_data.get(symbol.upper(), [])
+
+    if len(rows) < MIN_RSI_PERIODS:
+        return None
 
     try:
-        qs = (
-            DailyPrice.objects.filter(symbol=symbol)
-            .order_by("date")
-            .values_list("date", "close_price", "volume")
-        )
-        rows = list(qs[: -(MIN_RSI_PERIODS + RVOL_LOOKBACK + 5)])  # limit query size
-        # Re-fetch fresh with enough rows
-        rows = list(
-            DailyPrice.objects.filter(symbol=symbol)
-            .order_by("date")
-            .values_list("date", "close_price", "volume")
-        )
-        if len(rows) < MIN_RSI_PERIODS:
-            return None
-
-        df = pd.DataFrame(rows, columns=["date", "close_price", "volume"])
+        df = pd.DataFrame(rows)
         df["close_price"] = pd.to_numeric(df["close_price"], errors="coerce")
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
         df = df.dropna(subset=["close_price"])
@@ -126,13 +124,16 @@ def get_cached_indicators(symbol: str) -> dict:
 def compute_watchlist_indicators(self):
     """
     Tính và cache indicators cho tất cả symbol đang được theo dõi.
-    Chạy mỗi 10 giây theo Celery Beat.
+    Sử dụng MarketDataService để bulk fetch (SSOT).
     """
     from portfolio.models import TrackedSymbol
+    from portfolio.market_data_service import MarketDataService
 
     try:
         symbols = list(
-            TrackedSymbol.objects.values_list("symbol", flat=True).distinct()
+            TrackedSymbol.objects.values_list("symbol", flat=True)
+            .filter(symbol__isnull=False)
+            .distinct()
         )
     except Exception as exc:
         logger.error("compute_watchlist_indicators: cannot load TrackedSymbol: %s", exc)
@@ -141,15 +142,31 @@ def compute_watchlist_indicators(self):
     if not symbols:
         return {"status": "ok", "computed": 0}
 
+    # Bulk fetch historical data (SSOT)
+    # Cần đủ dữ liệu để tính RSI(14) và RVOL(20)
+    lookback = RVOL_LOOKBACK + MIN_RSI_PERIODS + 10
+    all_historical_data = MarketDataService.get_historical_indicators(
+        symbols, 
+        lookback_days=lookback,
+        include_fields=['date', 'close_price', 'volume']
+    )
+
     computed = 0
     for symbol in symbols:
-        result = compute_indicators_for_symbol(symbol)
+        normalized_symbol = symbol.upper()
+        symbol_data = all_historical_data.get(normalized_symbol)
+        
+        if not symbol_data:
+            continue
+            
+        result = compute_indicators_for_symbol(normalized_symbol, fetched_rows=symbol_data)
         if result is not None:
-            cache_key = f"{INDICATOR_CACHE_PREFIX}:{symbol.upper()}"
+            cache_key = f"{INDICATOR_CACHE_PREFIX}:{normalized_symbol}"
             cache.set(cache_key, json.dumps(result), timeout=INDICATOR_CACHE_TTL)
             computed += 1
 
     logger.debug(
-        "compute_watchlist_indicators: computed %d/%d symbols", computed, len(symbols)
+        "compute_watchlist_indicators: computed %d/%d symbols using bulk MDSU", 
+        computed, len(symbols)
     )
     return {"status": "ok", "computed": computed, "total": len(symbols)}

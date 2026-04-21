@@ -8,6 +8,7 @@ app_name = "portfolio_stock"
 urlpatterns = [
     # Quản lý mã chứng khoán
     path("stocks/", views.StockProfileListView.as_view(), name="stock-list"),
+    path("technicals/bulk/", views.BulkTechnicalBySymbolsView.as_view(), name="stock-technicals-bulk"),
         # Sprint35 Layer 3: Portfolio Daily News Digest
         path("portfolio/news-digest/", views.portfolio_news_digest_api, name="portfolio-news-digest"),
     path("stocks/<str:symbol>/overview/", market_views.StockWorkspaceOverviewView.as_view(), name="stock-workspace-overview"),

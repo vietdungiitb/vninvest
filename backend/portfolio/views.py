@@ -276,7 +276,7 @@ from .whale_feed_helpers import (
     _resolve_whale_feed_symbols,
 )
 
-from .views_analytics_extended import PortfolioTechnicalView
+from .views_analytics_extended import PortfolioTechnicalView, BulkTechnicalBySymbolsView
 
 
 # ── PR-3/4/5: Sentiment, Notifications, Backtest ────────────────────────────

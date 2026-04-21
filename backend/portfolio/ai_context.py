@@ -7,7 +7,7 @@ from statistics import pstdev
 from django.utils import timezone
 from django.db.models import Sum, Q, DecimalField, Value
 
-from .models import DailyPrice, IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory, Transaction
+from .models import IntradayTick, OrderFlowSignal, PriceAlertRule, StockProfile, WhaleAdvisory, Transaction
 
 
 def _to_float(value, default=0.0) -> float:
@@ -51,11 +51,14 @@ def build_symbol_ai_context(symbol: str, user=None) -> dict:
         'symbol', 'company_name', 'industry', 'exchange', 'listed_date'
     ).first() or {}
 
-    daily_rows = list(
-        DailyPrice.objects.filter(symbol=normalized_symbol)
-        .order_by('-date')
-        .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')[:30]
-    )
+    from .market_data_service import MarketDataService
+    daily_rows_asc = MarketDataService.get_historical_indicators(
+        [normalized_symbol], 
+        lookback_days=30,
+        include_fields=['date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume']
+    ).get(normalized_symbol, [])
+    
+    daily_rows = list(reversed(daily_rows_asc))
 
     closes = [_to_float(row['close_price']) for row in daily_rows if row.get('close_price') is not None]
     vols = [_to_float(row.get('volume')) for row in daily_rows if row.get('volume') is not None]
@@ -287,4 +290,3 @@ def render_concise_context_for_prompt(context: dict) -> str:
         lines.append(f"Your position: {portfolio_pos.get('shares_owned', 0)} shares @ avg {portfolio_pos.get('avg_buy_price', 0):.2f} | P&L: {portfolio_pos.get('unrealized_pnl', 0):+,.0f} ({portfolio_pos.get('unrealized_pnl_pct', 0):+.1f}%)")
     
     return "\n".join(lines)
-

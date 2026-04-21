@@ -3302,8 +3302,10 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('results', response.data)
         self.assertGreaterEqual(len(response.data['results']), 1)
         sources = {item.get('source') for item in response.data['results']}
+        types = {item.get('type') for item in response.data['results']}
         self.assertIn('dark_flow', sources)
         self.assertIn('whale', sources)
+        self.assertTrue(types.issubset({'buy', 'sell', 'flow', 'neutral'}))
         self.assertEqual(response.data['meta']['contract_version'], '2.0')
     @patch('portfolio.market_data_service.market_data_service.get_whale_feed_aggregate')
     def test_unified_alerts_endpoint_respects_severity_min_filter(self, mock_whale_aggregate):

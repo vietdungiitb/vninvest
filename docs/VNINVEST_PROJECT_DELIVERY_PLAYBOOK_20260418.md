@@ -148,6 +148,7 @@ Bat buoc sau moi task hoan tat:
 1. Cap nhat docs/CODE_CHANGE_AUDIT_LEDGER.md.
 2. Cap nhat PROGRESS_DASHBOARD.md (audit file list dong bo).
 3. Liet ke day du file modified/new + validation evidence.
+4. **Campaign Closure Persistence (Mandatory):** Ghi lai toan bo bo tai lieu (Plan, Tech Spec, Taskboard, Walkthrough) thanh cac file `.md` vật lý trong thu muc `docs/`.
 
 Task duoc xem la chua dong vong neu thieu 1 trong 2 tai lieu tren.
 
@@ -218,6 +219,26 @@ Testing/Quality:
 8. Non-regression policy:
 - Moi bug fix can co regression test neu thuc te cho phep.
 
+9. Market Data SSOT policy (MDSU):
+- Moi logic truy van gia/chi bao cho `DailyPrice` phai di qua `MarketDataService` (service facade duy nhat).
+- Cam query truc tiep `DailyPrice.objects.filter/order_by/annotate` tai views/tasks/backfill modules nghiep vu.
+- Bat buoc dung API canonical cua service: `get_ohlcv_batch`, `get_latest_snapshot`, `get_historical_indicators`.
+
+10. Data interpretation policy:
+- Dinh nghia `latest`, `reference`, `indicator window` la contract canonical, khong duoc tu dinh nghia lai theo module.
+- Bat buoc khai bao timezone/trading-date policy va missing-candle policy trong tech spec khi thay doi.
+
+11. Migration safety policy (strangler):
+- Refactor MDSU phai rollout theo feature flag theo module, cam big-bang rewrite.
+- Bat buoc co parity checks old/new va rollback switch cho tung phase.
+
+12. Caching policy (hybrid):
+- Cho luong batch lon: dung local-context cache de tranh query lap trong 1 request/job.
+- Cho luong cross-request: dung Redis cache co TTL/version key ro rang va invalidation theo trading date.
+
+13. Campaign Closure Persistence policy:
+- Ngay sau khi hoan tat triển khai và đóng chiến dịch, AI BAT BUOC phai luu toan bo tai lieu audit/nghiem thu thanh file vat ly trong `docs/`. Nghiem cam chi de duoi dang artifact tam thoi.
+
 ---
 
 ## 5) Workflow thuc thi chuan (day-to-day)
@@ -233,7 +254,8 @@ Testing/Quality:
 Definition of Done (DoD):
 - Acceptance criteria dat.
 - Test evidence day du.
-- Audit docs da cap nhat.
+- Audit docs da cap nhat (Audit Ledger + Progress Dashboard).
+- **Campaign Closure Docs persisted to `docs/` folder.**
 - Khong co blocker P0/P1.
 - Rollback notes san sang.
 
@@ -246,6 +268,7 @@ Pre-code checklist:
 - [ ] Plan approved (neu Level A/B).
 - [ ] Contract + migration strategy defined.
 - [ ] Test strategy by layer defined.
+- [ ] Neu co `DailyPrice`/market indicators: da co MDSU plan (service API + cache + feature flag + parity test).
 
 Pre-merge checklist:
 - [ ] Unit tests pass.
@@ -253,6 +276,8 @@ Pre-merge checklist:
 - [ ] E2E/UAT critical path pass (neu scope can).
 - [ ] Security/permission checks pass.
 - [ ] Audit ledger + progress dashboard updated.
+- [ ] Khong con query truc tiep `DailyPrice` o module vua thay doi (da map qua `MarketDataService`).
+- [ ] Da co evidence p95/query-count/cache-hit old vs new cho scope MDSU.
 
 Post-deploy checklist:
 - [ ] Health endpoints green.
@@ -274,3 +299,22 @@ Post-deploy checklist:
 Ket luan:
 - Blueprint da duoc nang cap thanh playbook thuc thi sat vninvest.
 - Neu tuan thu day du 8 giai doan + mandatory rules, quy trinh se dat muc production-ready on dinh va truy vet duoc.
+
+---
+
+## 8) Cong nghe dai phau du lieu thi truong (Mandatory Naming)
+
+Ten chuan de dung trong toan bo tai lieu du an:
+- `MDSU - Market Data Service Unification`.
+
+MDSU la to hop 5 thuc hanh kien truc bat buoc:
+1. `Service Layer Architecture`: mot service facade truy cap gia/chi bao.
+2. `Single Source of Truth (SSOT)`: mot dinh nghia canonical cho latest/reference/indicator.
+3. `Strangler Fig Migration Pattern`: thay the dan theo module bang feature flag.
+4. `Hybrid Caching`: local context cache + Redis cache co version/TTL.
+5. `Canonical Data Access Contract`: contract API du lieu thi truong dung chung toan he thong.
+
+Quy tac governance bat buoc:
+- Moi Implementation Plan lien quan market data phai ghi ro feature thuoc chuong trinh `MDSU`.
+- Moi PR lien quan market data phai co muc "MDSU compliance" (YES/NO + evidence).
+- Neu khong dat MDSU compliance thi khong du dieu kien merge.

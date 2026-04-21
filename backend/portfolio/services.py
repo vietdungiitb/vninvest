@@ -1656,14 +1656,9 @@ def get_latest_price(symbol: str) -> Decimal | None:
     Trả về giá đóng cửa mới nhất của `symbol` từ bảng DailyPrice.
     Trả về None nếu chưa có dữ liệu.
     """
-    record = (
-        DailyPrice.objects
-        .filter(symbol=symbol.upper())
-        .order_by('-date')
-        .values('close_price')
-        .first()
-    )
-    return record['close_price'] if record else None
+    from .market_data_service import MarketDataService
+    snapshot = MarketDataService.get_latest_snapshot([symbol.upper()]).get(symbol.upper())
+    return snapshot.get('close_price') if snapshot else None
 
 
 def get_price_series(symbol: str, start_date: date, end_date: date) -> list[dict]:
@@ -1672,15 +1667,17 @@ def get_price_series(symbol: str, start_date: date, end_date: date) -> list[dict
     dạng [{'date': '2024-01-02', 'close': 12345.00}, ...].
     Dùng cho biểu đồ Line Chart ở Bước 5.
     """
-    qs = (
-        DailyPrice.objects
-        .filter(symbol=symbol.upper(), date__range=(start_date, end_date))
-        .order_by('date')
-        .values('date', 'close_price')
-    )
+    from .market_data_service import MarketDataService
+    rows = MarketDataService.get_ohlcv_batch(
+        [symbol.upper()], 
+        start_date=start_date, 
+        end_date=end_date, 
+        fields=['date', 'close_price']
+    ).get(symbol.upper(), [])
+    
     return [
         {'date': str(r['date']), 'close': float(r['close_price'])}
-        for r in qs
+        for r in rows
     ]
 
 
@@ -1701,16 +1698,18 @@ def get_price_changes(symbols: list) -> dict:
     } for sym in upper_symbols}
 
     # Fetch last 30 days of prices for all symbols in a single query
-    cutoff_date = timezone.now().date() - timedelta(days=30)
-    qs = DailyPrice.objects.filter(
-        symbol__in=upper_symbols,
-        date__gte=cutoff_date
-    ).order_by('symbol', '-date').values('symbol', 'close_price', 'date')
-
+    from .market_data_service import MarketDataService
+    data_map = MarketDataService.get_ohlcv_batch(
+        upper_symbols,
+        start_date=cutoff_date,
+        fields=['symbol', 'close_price', 'date']
+    )
+    
     from collections import defaultdict
     prices_by_symbol = defaultdict(list)
-    for row in qs:
-        prices_by_symbol[row['symbol']].append(row)
+    for sym, rows in data_map.items():
+        # Service returns ascending; logic below uses prices[0] as latest and prices[1] as prev
+        prices_by_symbol[sym] = list(reversed(rows))
 
     for symbol in upper_symbols:
         prices = prices_by_symbol.get(symbol, [])

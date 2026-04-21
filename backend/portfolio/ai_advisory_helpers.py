@@ -953,9 +953,15 @@ def _build_whale_context_for_prompt(user, symbol: str, lookback_days: int = 180)
     elif previous_30d_value > 0 and recent_30d_value < previous_30d_value * 0.85:
         whale_trend = 'giam'
 
-    turnover_rows = list(
-        DailyPrice.objects.filter(symbol=normalized_symbol).order_by('-date').values('close_price', 'volume')[:lookback_days]
-    )
+    from .market_data_service import MarketDataService
+    turnover_rows_asc = MarketDataService.get_historical_indicators(
+        [normalized_symbol], 
+        lookback_days=lookback_days,
+        include_fields=['close_price', 'volume']
+    ).get(normalized_symbol, [])
+    
+    # Existing logic expects descending order for latest_close and aggregation
+    turnover_rows = list(reversed(turnover_rows_asc))
     latest_close = _safe_float(turnover_rows[0].get('close_price')) if turnover_rows else 0.0
     scale_factor, _ = _resolve_price_scale_factor(symbol=normalized_symbol, overview=None, latest_close=latest_close)
     estimated_turnover = sum(
@@ -1034,11 +1040,17 @@ def _build_technical_context_for_prompt(
     if not normalized_symbol:
         return ''
 
-    rows_desc = list(
-        DailyPrice.objects.filter(symbol=normalized_symbol)
-        .order_by('-date')
-        .values('date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume')[:90]
-    )
+    from .market_data_service import MarketDataService
+    rows_asc = MarketDataService.get_historical_indicators(
+        [normalized_symbol], 
+        lookback_days=90,
+        include_fields=['date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume']
+    ).get(normalized_symbol, [])
+    
+    if not rows_asc:
+        return ''
+    
+    rows_desc = list(reversed(rows_asc))
     if not rows_desc:
         return ''
 

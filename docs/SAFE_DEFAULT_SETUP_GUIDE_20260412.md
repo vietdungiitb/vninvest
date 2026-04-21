@@ -44,11 +44,20 @@ Mac dinh local:
 `start_dev.ps1` da duoc cap nhat de:
 - tu kiem tra `backend/.env.dev`
 - tu goi `scripts/dev-setup.ps1` neu file chua ton tai
+- mac dinh KHONG seed demo data khi khoi dong Docker
+- chi seed demo khi truyen co `-SeedDemo`
 
 Mac dinh Docker dev:
 - Postgres host: `db`
 - Redis host: `redis`
 - Mail fallback host: `mailpit`
+- Data mode: uu tien du lieu thi truong that (khong auto seed demo)
+
+Neu can bo du lieu demo de smoke UI cuc bo:
+
+```powershell
+.\start_dev.ps1 -SeedDemo
+```
 
 ## 4) Quy tac an toan SECRET_KEY
 

@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { getAggregateWhaleFeed, getUnifiedAlerts } from '../api/client';
 import { buildDashboardRealtimeQuoteList } from '../utils/dashboardRealtimeViewModel';
+import {
+  normalizeAlertSeverity,
+  normalizeAlertType,
+  deriveAlertType,
+  severityWeight,
+} from '../utils/alertTaxonomy';
 
 const DEFAULT_UNIFIED_ALERTS_PAGE_SIZE = 10;
 
@@ -17,22 +23,6 @@ function fmtBil(value, formatNumberFn) {
   if (v >= 1_000_000_000) return `${(v / 1_000_000_000).toFixed(1)}T`;
   if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(0)}Tr`;
   return formatNumberSafe(v, formatNumberFn);
-}
-
-function normalizeUnifiedSeverity(value, fallback = 'medium') {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'critical' || normalized === 'extreme') return 'critical';
-  if (normalized === 'high') return 'high';
-  if (normalized === 'medium') return 'medium';
-  if (normalized === 'low') return 'low';
-  return fallback;
-}
-
-function severityWeight(severity) {
-  if (severity === 'critical') return 4;
-  if (severity === 'high') return 3;
-  if (severity === 'medium') return 2;
-  return 1;
 }
 
 function localizeUnifiedHeadline(headline, t) {
@@ -91,7 +81,7 @@ function toStableAlertTimestamp(...values) {
 }
 
 export function normalizeSeverity(value, fallback = 'medium') {
-  return normalizeUnifiedSeverity(value, fallback);
+  return normalizeAlertSeverity(value, fallback);
 }
 
 export default function useUnifiedAlerts({
@@ -293,7 +283,7 @@ export default function useUnifiedAlerts({
     const whaleAlerts = mergedAlerts.map((alert) => {
       const side = String(alert.side || '').toLowerCase();
       const isBuy = side === 'buy';
-      const severity = normalizeUnifiedSeverity(alert.severity, 'high');
+      const severity = normalizeAlertSeverity(alert.severity, 'high');
       const valueText = fmtBil(alert.matched_value, formatNumber);
       return {
         id: `whale-${alert.event_id || `${alert.symbol}-${alert.ts}`}`,
@@ -301,6 +291,7 @@ export default function useUnifiedAlerts({
         ts: alert.ts,
         source: 'whale',
         severity,
+        type: isBuy ? 'buy' : 'sell',
         headline: isBuy ? t('dashboardRealtime.unifiedHeadlineWhaleBuy') : t('dashboardRealtime.unifiedHeadlineWhaleSell'),
         detail: t('dashboardRealtime.unifiedDetailWhaleValue', { value: valueText }),
         confidence: alert.display_score ?? alert.event_score ?? null,
@@ -323,6 +314,7 @@ export default function useUnifiedAlerts({
         ts: alert.ts,
         source: 'dark_flow',
         severity,
+        type: 'flow',
         headline: t('dashboardRealtime.unifiedHeadlineDarkFlow'),
         detail: alert.description || t('dashboardRealtime.unifiedDetailDarkFlowFallback'),
         confidence,
@@ -343,6 +335,7 @@ export default function useUnifiedAlerts({
           ts: stableTs,
           source: 'price_shock',
           severity,
+          type: pct >= 0 ? 'buy' : 'sell',
           headline: pct >= 0
             ? t('dashboardRealtime.unifiedHeadlinePriceJump')
             : t('dashboardRealtime.unifiedHeadlinePriceDrop'),
@@ -363,6 +356,7 @@ export default function useUnifiedAlerts({
           ts: stableTs,
           source: 'stale_quote',
           severity: 'low',
+          type: 'neutral',
           headline: t('dashboardRealtime.unifiedHeadlineStaleQuote'),
           detail: t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: formatNumber(item.freshness_seconds ?? 0) }),
           confidence: null,
@@ -376,7 +370,16 @@ export default function useUnifiedAlerts({
       symbol: item.symbol,
       ts: item.ts,
       source: item.source,
-      severity: item.severity,
+      severity: normalizeAlertSeverity(item.severity, 'medium'),
+      type: normalizeAlertType(
+        item.type,
+        deriveAlertType({
+          source: item.source,
+          side: item.side,
+          headline: item.headline,
+          changePct: item.change_pct,
+        }),
+      ),
       headline: localizeUnifiedHeadline(item.headline, t),
       detail: item.detail,
       confidence: item.confidence ?? null,
@@ -416,7 +419,7 @@ export default function useUnifiedAlerts({
 
     const passesSeverity = (severity) => {
       if (severityFilter === 'all') return true;
-      const normalizedSeverity = normalizeUnifiedSeverity(severity, 'medium');
+      const normalizedSeverity = normalizeAlertSeverity(severity, 'medium');
       const value = severityRank[normalizedSeverity];
       if (severityFilter === 'critical_only') return normalizedSeverity === 'critical';
       if (severityFilter === 'high_only') return normalizedSeverity === 'high';
@@ -482,7 +485,7 @@ export default function useUnifiedAlerts({
 
   const alertSummary = useMemo(() => {
     return scopedUnifiedAlerts.reduce((acc, item) => {
-      const normalized = normalizeUnifiedSeverity(item.severity, 'medium');
+      const normalized = normalizeAlertSeverity(item.severity, 'medium');
       acc[normalized] += 1;
       acc.total += 1;
       return acc;
@@ -532,7 +535,7 @@ export default function useUnifiedAlerts({
         });
       }
       const record = symbolMap.get(item.symbol);
-      const sev = normalizeUnifiedSeverity(item.severity, 'medium');
+      const sev = normalizeAlertSeverity(item.severity, 'medium');
       record.total += 1;
       record[sev] += 1;
     });
