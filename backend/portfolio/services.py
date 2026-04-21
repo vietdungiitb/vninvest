@@ -1698,6 +1698,8 @@ def get_price_changes(symbols: list) -> dict:
     } for sym in upper_symbols}
 
     # Fetch last 30 days of prices for all symbols in a single query
+    from datetime import date, timedelta
+    cutoff_date = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
     from .market_data_service import MarketDataService
     data_map = MarketDataService.get_ohlcv_batch(
         upper_symbols,
@@ -2326,3 +2328,44 @@ class WhaleSignalEngine:
         return queryset.annotate(
             threshold_vnd=Case(*whens, default=Value(default_threshold), output_field=FloatField())
         )
+
+    @staticmethod
+    def calculate_whale_intensity(value_vnd, threshold_vnd, dark_flow_strength=None):
+        """
+        Calculate a 0-100 intensity score.
+        50% weighting on Value/Threshold ratio.
+        50% weighting on Dark Flow Strength.
+        """
+        if not threshold_vnd or threshold_vnd <= 0:
+            threshold_vnd = 500_000_000
+
+        # 1. Value/Threshold Ratio (Cap at 2.0x for max score of 50 in this component)
+        ratio = value_vnd / threshold_vnd
+        ratio_score = min(ratio * 25, 50.0)
+
+        # 2. Dark Flow Strength (Direct 0-100 map to 0-50 component)
+        strength_score = (float(dark_flow_strength or 0) / 100.0) * 50.0
+
+        return int(min(ratio_score + strength_score, 100))
+
+    @staticmethod
+    def is_symbol_discovery_candidate(user, symbol):
+        """
+        Discoverable if symbol is NOT in the user's active tracked symbols.
+        """
+        if not user or not user.is_authenticated:
+            return True
+        from .models import TrackedSymbol
+        exists = TrackedSymbol.objects.filter(user=user, symbol=symbol.upper()).exists()
+        return not exists
+
+    @staticmethod
+    def resolve_discovery_bucket(intensity, is_new=True):
+        """
+        Resolve bucket based on intensity and whether the symbol is new to the user.
+        """
+        if intensity >= 85:
+            return 'anomaly'
+        if is_new and intensity >= 60:
+            return 'potential'
+        return 'standard'
