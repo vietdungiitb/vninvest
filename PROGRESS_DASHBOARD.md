@@ -172,6 +172,18 @@ Validation:
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21o)
+- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (NEW - template nguyen tac thiet ke trang chung toan du an: css token, le/margin, bo cuc, responsive, tab/panel contract)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da ban hanh bo template chung de doi code su dung lam chuan khi hieu chinh tat ca trang.
+- PASSED: Template day du phan layout contract + css utility mau + checklist nghiem thu.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21n)
 - start_dev.ps1 (MODIFIED - bo auto `seed_demo_data` khi khoi dong Docker; them co `-SeedDemo` de chi seed demo khi opt-in; tach sync `seed_securities_groups` thanh buoc rieng uu tien du lieu thi truong)
 - docs/SAFE_DEFAULT_SETUP_GUIDE_20260412.md (MODIFIED - cap nhat huong dan Docker dev: mac dinh khong seed demo, chi seed khi dung `-SeedDemo`)
