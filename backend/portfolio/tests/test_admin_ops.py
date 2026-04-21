@@ -214,7 +214,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertIn(resp.status_code, [status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN])
 
     @patch('config.health.build_prefetch_health_snapshot')
-    @patch('portfolio.tasks.prefetch_ticker_price_board.apply_async')
+    @patch('portfolio.tasks.schedule_realtime_prefetch_shards.apply_async')
     def test_staff_can_queue_async_prefetch_warm(self, mock_apply_async, mock_prefetch_snapshot):
         class _Task:
             id = 'task-123'
@@ -228,13 +228,20 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.data['task_id'], 'task-123')
 
     @patch('config.health.build_prefetch_health_snapshot')
-    @patch('portfolio.tasks.prefetch_ticker_price_board.run')
+    @patch('portfolio.tasks.schedule_realtime_prefetch_shards.run')
+    @patch('portfolio.tasks.build_realtime_symbol_universe_snapshot.run')
     def test_sync_warm_prefetch_returns_payload_without_http_503_on_non_ok(
         self,
-        mock_prefetch_run,
+        mock_universe_run,
+        mock_schedule_run,
         mock_prefetch_snapshot,
     ):
-        mock_prefetch_run.return_value = {
+        mock_universe_run.return_value = {
+            'status': 'ok',
+            'all_symbols': 4,
+            'hot_symbols': 4,
+        }
+        mock_schedule_run.return_value = {
             'status': 'parse_zero_cached',
             'reason': 'no_rows_parsed_from_provider_payload',
             'cached': 0,
@@ -250,7 +257,7 @@ class AdminOpsWarmPrefetchTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertFalse(resp.data['ok'])
         self.assertFalse(resp.data['queued'])
-        self.assertEqual(resp.data['result']['status'], 'parse_zero_cached')
+        self.assertEqual(resp.data['result']['scheduler']['status'], 'parse_zero_cached')
 
     @patch('config.health.build_prefetch_health_snapshot')
     @patch('portfolio.tasks.offpeak_vnstock_ingest.apply_async')

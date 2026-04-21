@@ -75,7 +75,6 @@ from portfolio.tasks_whale_advisory import (
     ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX,
 )
 from portfolio.tasks_prefetch import (
-    prefetch_ticker_price_board,
     offpeak_vnstock_ingest,
     build_realtime_symbol_universe_snapshot,
     schedule_realtime_prefetch_shards,

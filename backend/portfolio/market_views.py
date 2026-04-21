@@ -82,7 +82,24 @@ class IntradayMatchedView(BaseMarketDataView):
                 page_size=query_data['page_size'],
             )
         except Exception as exc:
-            return self.handle_exception_response(exc)
+            response = self.handle_exception_response(exc)
+            if response.status_code != status.HTTP_502_BAD_GATEWAY:
+                return response
+            # Keep stock detail UI responsive when upstream intraday source is flaky.
+            return Response(
+                {
+                    'symbol': str(symbol or '').strip().upper(),
+                    'trades': [],
+                    'total': 0,
+                    'source': 'intraday_degraded',
+                    'stale': True,
+                    'fallback_reason': 'backend_502_guard',
+                    'fetched_at': None,
+                    'source_event_at': None,
+                    'detail': 'intraday_degraded_fallback',
+                },
+                status=status.HTTP_200_OK,
+            )
         return Response(payload)
 
 

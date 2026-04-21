@@ -12,6 +12,8 @@ Muc tieu la: ro pham vi, ro trach nhiem, ro thu tu thuc hien, ro dieu kien dung/
 - Ke hoach phai duoc luu trong `docs/` va duoc tham chieu trong audit ledger.
 - Khong duoc merge khi thieu cac muc mandatory trong ke hoach.
 - Bat ky file `.md` nao trong `docs/` khi tao moi hoac thay doi noi dung deu phai kich hoat auto-audit va lap bao cao chi tiet, khong phu thuoc file do USER, AI, script hay git merge/pull tao ra.
+- Moi feature lien quan du lieu thi truong/phan tich bat buoc map ve SSOT domains: `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`.
+- Nghiem cam tao luong tinh toan song song cho cung nghiep vu neu da co SSOT.
 
 ## Khi nao bat buoc lap ke hoach
 
@@ -88,6 +90,11 @@ Vi du:
 - Owner chinh, reviewer, approver.
 - Moc thoi gian tung phase.
 
+13. SSOT integration map (mandatory)
+- Feature nay noi vao domain SSOT nao (`vnstock adapter` / `whale alert` / `darkmoney flow` / `ai advisory`).
+- Call-site, endpoint, cache key, model nao la canonical cua domain.
+- Danh sach luong cu/du lieu cu can retire de tranh 2 ket qua cho 1 nghiep vu.
+
 ## Definition of Ready (DoR)
 
 Chi duoc bat dau code khi tat ca dieu kien sau dat:
@@ -96,6 +103,7 @@ Chi duoc bat dau code khi tat ca dieu kien sau dat:
 - Da chot scope/non-scope.
 - Da co testing strategy va rollback strategy.
 - Da xac nhan owner + reviewer.
+- Da co SSOT integration map va xac nhan khong mo them parallel pipeline.
 
 ## Definition of Done (DoD)
 
@@ -105,6 +113,7 @@ Chi duoc dong task khi tat ca dieu kien sau dat:
 - Da verify theo checklist test.
 - Da cap nhat `docs/CODE_CHANGE_AUDIT_LEDGER.md` day du file-list + ket qua verify.
 - Da dinh kem tham chieu den file ke hoach trong entry audit.
+- Da xac nhan khong con non-SSOT flow cho nghiep vu vua trien khai (hoac da co ke hoach retire ro rang kem deadline).
 
 ## Quy trinh thuc thi chuan
 

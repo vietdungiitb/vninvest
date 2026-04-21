@@ -30,9 +30,11 @@ export function PortfolioProvider({ children }) {
   const [activePortfolioId, setActivePortfolioId] = useState(null);
   const initialAccessToken = localStorage.getItem('access_token');
   const initialRefreshToken = localStorage.getItem('refresh_token');
+  const hasInitialTokens = Boolean(initialAccessToken && initialRefreshToken);
   const [accessToken, setAccessToken] = useState(initialAccessToken);
   const [refreshTokenValue, setRefreshTokenValue] = useState(initialRefreshToken);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!initialAccessToken && !!initialRefreshToken);
+  const [isAuthenticated, setIsAuthenticated] = useState(hasInitialTokens);
+  const [authStateReady, setAuthStateReady] = useState(!hasInitialTokens);
   const [userConfig, setUserConfig] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userPlan, setUserPlan] = useState('free');
@@ -51,6 +53,7 @@ export function PortfolioProvider({ children }) {
     setUserPlan('free');
     setUserIdentity({ id: null, username: '', email: '', isStaff: false, isSuperuser: false });
     setAbility(createAbilityFromRules([]));
+    setAuthStateReady(true);
   }, []);
 
   const saveTokens = useCallback((access, refresh) => {
@@ -62,6 +65,7 @@ export function PortfolioProvider({ children }) {
     setAccessToken(access);
     setRefreshTokenValue(nextRefresh);
     setIsAuthenticated(true);
+    setAuthStateReady(false);
   }, []);
 
   const syncAuthState = useCallback(async () => {
@@ -216,15 +220,24 @@ export function PortfolioProvider({ children }) {
 
     const bootstrap = async () => {
       if (!isAuthenticated || !accessToken) {
+        setAuthStateReady(true);
         return;
       }
 
+      setAuthStateReady(false);
+
       const ok = await syncAuthState();
       if (!ok || cancelled) {
+        if (!cancelled) {
+          setAuthStateReady(true);
+        }
         return;
       }
 
       await fetchPortfolios();
+      if (!cancelled) {
+        setAuthStateReady(true);
+      }
     };
 
     bootstrap();
@@ -239,6 +252,7 @@ export function PortfolioProvider({ children }) {
     activePortfolioId,
     setActivePortfolioId,
     isAuthenticated,
+    authStateReady,
     login,
     register,
     resendVerification,
@@ -258,7 +272,7 @@ export function PortfolioProvider({ children }) {
     updateSubAccount,
     deleteSubAccount,
   }), [
-    portfolios, activePortfolioId, isAuthenticated, login, register,
+    portfolios, activePortfolioId, isAuthenticated, authStateReady, login, register,
     resendVerification, logout, refreshAccessToken, userConfig,
     updateUserConfig, loading, fetchPortfolios, userPlan, userIdentity,
     ability, createPortfolio, updatePortfolio, deletePortfolio,

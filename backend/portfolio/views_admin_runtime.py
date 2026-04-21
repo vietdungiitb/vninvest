@@ -5,6 +5,15 @@ from rest_framework.response import Response
 from django.core.cache import cache
 
 from portfolio.tasks_prefetch import _read_offpeak_ingest_history
+from portfolio.runtime_policy_helpers import (
+    _get_runtime_governance_delta_thresholds,
+    _get_runtime_prefetch_settings,
+    _get_runtime_prefetch_time_policy,
+    _prefetch_time_policy_rulebook,
+    _set_runtime_governance_delta_thresholds,
+    _set_runtime_prefetch_settings,
+    _set_runtime_prefetch_time_policy,
+)
 from portfolio.tasks_whale_preflight_cache import (
     WHALE_PREFLIGHT_KPI_SCHEMA_VERSION,
     WHALE_PREFLIGHT_METRIC_NAMES,
@@ -14,13 +23,6 @@ from portfolio.tasks_whale_preflight_cache import (
     _read_preflight_metrics_window,
     _sum_preflight_metrics_window,
 )
-
-
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
-
 
 def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     if raw_value in (None, ''):
@@ -444,15 +446,14 @@ def admin_system_ai_settings_api(request):
     from .ai_options import ADVISORY_CAPABILITY, is_model_allowed_for_capability, is_valid_model, is_valid_provider
     from .models import SystemAISettings, SystemAISettingsAuditLog
 
-    legacy_views = _legacy_views_module()
     settings_obj = SystemAISettings.get_active()
     if settings_obj is None:
         settings_obj = SystemAISettings.objects.create(name='default', is_active=True)
 
     def _serialize(obj):
-        governance_thresholds = legacy_views._get_runtime_governance_delta_thresholds()
-        prefetch_runtime_settings = legacy_views._get_runtime_prefetch_settings()
-        prefetch_time_policy = legacy_views._get_runtime_prefetch_time_policy()
+        governance_thresholds = _get_runtime_governance_delta_thresholds()
+        prefetch_runtime_settings = _get_runtime_prefetch_settings()
+        prefetch_time_policy = _get_runtime_prefetch_time_policy()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -504,14 +505,14 @@ def admin_system_ai_settings_api(request):
                 },
             },
             'prefetch_time_policy': prefetch_time_policy,
-            'prefetch_time_policy_rulebook': legacy_views._prefetch_time_policy_rulebook(),
+            'prefetch_time_policy_rulebook': _prefetch_time_policy_rulebook(),
             'updated_at': obj.updated_at.isoformat() if obj.updated_at else None,
         }
 
     def _snapshot(obj):
-        governance_thresholds = legacy_views._get_runtime_governance_delta_thresholds()
-        prefetch_runtime_settings = legacy_views._get_runtime_prefetch_settings()
-        prefetch_time_policy = legacy_views._get_runtime_prefetch_time_policy()
+        governance_thresholds = _get_runtime_governance_delta_thresholds()
+        prefetch_runtime_settings = _get_runtime_prefetch_settings()
+        prefetch_time_policy = _get_runtime_prefetch_time_policy()
         return {
             'id': obj.id,
             'name': obj.name,
@@ -561,11 +562,11 @@ def admin_system_ai_settings_api(request):
 
     try:
         if governance_thresholds_payload is not None:
-            legacy_views._set_runtime_governance_delta_thresholds(governance_thresholds_payload)
+            _set_runtime_governance_delta_thresholds(governance_thresholds_payload)
         if prefetch_runtime_settings_payload is not None:
-            legacy_views._set_runtime_prefetch_settings(prefetch_runtime_settings_payload)
+            _set_runtime_prefetch_settings(prefetch_runtime_settings_payload)
         if prefetch_time_policy_payload is not None:
-            legacy_views._set_runtime_prefetch_time_policy(prefetch_time_policy_payload)
+            _set_runtime_prefetch_time_policy(prefetch_time_policy_payload)
         settings_obj.full_clean()
         settings_obj.save()
     except (ValidationError, ValueError) as exc:
@@ -883,14 +884,28 @@ def warm_ticker_prefetch_api(request):
       - mode=sync: chạy ngay trong request để debug/verify.
     """
     from config.health import build_prefetch_health_snapshot
-    from portfolio.tasks import prefetch_ticker_price_board
+    from portfolio.tasks import (
+        build_realtime_symbol_universe_snapshot,
+        schedule_realtime_prefetch_shards,
+    )
 
     mode = str(request.query_params.get('mode') or request.data.get('mode') or 'async').strip().lower()
 
     if mode == 'sync':
-        result = prefetch_ticker_price_board.run()
+        universe_result = build_realtime_symbol_universe_snapshot.run()
+        schedule_result = schedule_realtime_prefetch_shards.run()
+        result = {
+            'status': 'ok',
+            'flow': 'canonical_realtime_prefetch',
+            'universe': universe_result,
+            'scheduler': schedule_result,
+        }
         snapshot = build_prefetch_health_snapshot()
-        ok = result.get('status') == 'ok'
+        ok = bool(
+            result.get('status') == 'ok'
+            and isinstance(schedule_result, dict)
+            and schedule_result.get('status') in {'ok', 'skipped_lock'}
+        )
         return Response(
             {
                 'queued': False,
@@ -902,12 +917,13 @@ def warm_ticker_prefetch_api(request):
             status=status.HTTP_200_OK,
         )
 
-    task = prefetch_ticker_price_board.apply_async(countdown=0)
+    task = schedule_realtime_prefetch_shards.apply_async(countdown=0)
     return Response(
         {
             'queued': True,
             'mode': 'async',
             'task_id': task.id,
+            'flow': 'canonical_realtime_prefetch',
             'prefetch': build_prefetch_health_snapshot(),
         },
         status=status.HTTP_202_ACCEPTED,

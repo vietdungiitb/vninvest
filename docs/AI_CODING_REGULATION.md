@@ -106,4 +106,31 @@ import PaginationBar from '../shared/PaginationBar';
 | Position Deck | `components/modern/ModularPositionDeck.jsx` | offset |
 
 ---
+
+## 7. Single Source of Truth (SSOT) for Core Intelligence Flows (Mandatory)
+
+**Quy dinh bat buoc:** Moi tinh nang moi hoac sua doi tinh nang lien quan du lieu thi truong/phan tich phai noi vao dung nguon SSOT duoi day. Khong duoc tao luong du lieu song song cho cung nghiep vu.
+
+### 7.1. SSOT domains bat buoc
+- `vnstock adapter` la SSOT cho du lieu market provider (quote/price-board/intraday provider access).
+- `whale alert` la SSOT cho logic canh bao whale theo pipeline hien hanh.
+- `darkmoney flow` la SSOT cho logic dong tien lon/dong tien toi theo pipeline hien hanh.
+- `ai advisory` la SSOT cho logic tong hop/phan tich/khuyen nghi AI advisory.
+
+### 7.2. Yeu cau implementation
+- Moi feature lien quan toi domain nao phai consume du lieu va contract tu SSOT domain do.
+- Khong duoc duplicate nghiep vu cung domain o mot module khac de tinh toan lai ket qua.
+- Khong duoc dung endpoint/cache/model song song neu da co endpoint/cache/model canonical cua domain.
+- Neu can transform du lieu phuc vu UI, transform o lop presentation, khong thay doi su that nghiep vu cua SSOT.
+
+### 7.3. Nghiêm cam
+- Cam tao "ban sao" pipeline cho whale alert, darkmoney flow, ai advisory, hoac provider call bypass `vnstock adapter`.
+- Cam de hai nguon tinh toan cung mot chi so va co the cho hai ket qua khac nhau.
+
+### 7.4. Dieu kien merge bat buoc
+- PR phai chi ro feature dang noi vao domain SSOT nao.
+- Neu co thay doi contract, phai cap nhat dong bo test + docs + audit ledger.
+- Neu phat hien conflict ket qua giua hai luong, phai quy ve SSOT va xoa luong non-SSOT truoc khi merge.
+
+---
 *Last Updated: 2026-04-21*
