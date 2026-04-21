@@ -4,6 +4,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21p)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - publish canonical `ticker:prefetch:meta` from `schedule_realtime_prefetch_shards` to keep AdminOps Prefetch Health synchronized with shard scheduler runtime)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: manual scheduler run returns `status=ok` with shard enqueue summary.
+- PASSED: `GET /api/health/prefetch/` now reports `meta_present=true`, `status=ok`, `freshness_seconds=0`, `sample_cache_hits=12/12`.
+- PASSED: prefetch payload now carries `generated_at`, `symbols`, `cached`, `sample_symbols`, `scheduler`, and `budget` fields for Admin Ops KPI cards.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21o)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - fix import path to `../context/LangContext` and `../hooks/useOrderBubbleCoordinates` for Docker production build compatibility)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21o)

@@ -452,6 +452,84 @@ def _snapshot_is_stale(snapshot: dict, refresh_seconds: int) -> bool:
     return (timezone.now() - computed_dt).total_seconds() > max(int(refresh_seconds), 1)
 
 
+def _build_scheduler_sample_symbols(snapshot: dict, limit: int = 12) -> list[str]:
+    rows = (snapshot or {}).get('rows') or []
+    if not isinstance(rows, list):
+        return []
+
+    sample = []
+    seen = set()
+    for row in rows:
+        symbol = str((row or {}).get('symbol') or '').strip().upper()
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+        sample.append(symbol)
+        if len(sample) >= max(int(limit), 1):
+            break
+    return sample
+
+
+def _publish_scheduler_prefetch_meta(
+    *,
+    snapshot: dict,
+    plan: dict,
+    budget_metrics: dict,
+    enqueued: list[dict],
+    skipped_due_to_interval: int,
+    skipped_empty_shard: int,
+    skipped_disabled_tier: int,
+) -> None:
+    now_iso = timezone.now().isoformat()
+    totals = (snapshot or {}).get('totals') or {}
+    source_counts = (snapshot or {}).get('source_counts') or {}
+
+    symbols_total = int(totals.get('all') or 0)
+    sample_symbols = _build_scheduler_sample_symbols(snapshot)
+
+    # Keep `cached` field for backward compatibility with existing AdminOps UI.
+    scheduled_symbols = sum(int(item.get('symbols') or 0) for item in (enqueued or []))
+
+    # Effective interval is used by health endpoint to calculate stale threshold.
+    enabled_intervals = []
+    for tier in ('hot', 'warm', 'cold'):
+        tier_plan = (plan or {}).get(tier) or {}
+        if not tier_plan.get('enabled'):
+            continue
+        enabled_intervals.append(max(int(tier_plan.get('interval_seconds') or 1), 1))
+    effective_interval = min(enabled_intervals) if enabled_intervals else 90
+
+    payload = {
+        'status': 'ok',
+        'reason': 'scheduler_tick',
+        'generated_at': now_iso,
+        'symbols': symbols_total,
+        'cached': scheduled_symbols,
+        'sample_symbols': sample_symbols,
+        'source_counts': source_counts,
+        'scheduler': {
+            'enqueued_total': len(enqueued or []),
+            'skipped_due_to_interval': int(skipped_due_to_interval or 0),
+            'skipped_empty_shard': int(skipped_empty_shard or 0),
+            'skipped_disabled_tier': int(skipped_disabled_tier or 0),
+        },
+        'policy': {
+            'query_enabled': True,
+            'profile': 'market_open',
+            'effective_interval_seconds': int(effective_interval),
+        },
+        'budget': {
+            'estimated_upstream_calls_per_minute': int((budget_metrics or {}).get('estimated_upstream_calls_per_minute') or 0),
+            'soft_cap': int((budget_metrics or {}).get('soft_cap') or 0),
+            'warning_cap': int((budget_metrics or {}).get('warning_cap') or 0),
+            'hard_cap': int((budget_metrics or {}).get('hard_cap') or 0),
+        },
+    }
+
+    timeout_seconds = max(int(effective_interval) * 20, 600)
+    _store_prefetch_meta(payload, timeout=timeout_seconds)
+
+
 @shared_task(bind=True, name='portfolio.tasks.schedule_realtime_prefetch_shards')
 def schedule_realtime_prefetch_shards(self) -> dict:
     runtime_settings = _get_prefetch_runtime_settings()
@@ -518,6 +596,16 @@ def schedule_realtime_prefetch_shards(self) -> dict:
         _increment_prefetch_metric('scheduler_empty_shard_total', amount=skipped_empty_shard)
         _increment_prefetch_metric('scheduler_disabled_tier_total', amount=skipped_disabled_tier)
         _increment_prefetch_metric('realtime_upstream_calls_per_minute', amount=max(int(budget_metrics.get('estimated_upstream_calls_per_minute', 0)), 0))
+
+        _publish_scheduler_prefetch_meta(
+            snapshot=snapshot,
+            plan=plan,
+            budget_metrics=budget_metrics,
+            enqueued=enqueued,
+            skipped_due_to_interval=skipped_due_to_interval,
+            skipped_empty_shard=skipped_empty_shard,
+            skipped_disabled_tier=skipped_disabled_tier,
+        )
 
         return {
             'status': 'ok',

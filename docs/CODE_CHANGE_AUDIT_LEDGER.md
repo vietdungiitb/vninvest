@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21p - Prefetch health metadata restored for shard scheduler
+
+Muc tieu:
+- Sua tinh trang Admin Ops hien thi `Chua co meta` du scheduler dang chay deu.
+- Dong bo luong shard scheduler (SSOT) voi health snapshot key `ticker:prefetch:meta`.
+- Khoi phuc KPI `Freshness`, `Cache hits`, `Ticker Prefetch` cho luong runtime moi.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_prefetch.py (MODIFIED - add scheduler meta publisher, sample symbols builder, and write `ticker:prefetch:meta` on each scheduler tick)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `schedule_realtime_prefetch_shards.run()` returns `status=ok` and enqueued shards.
+- PASSED: `GET /api/health/prefetch/` now returns `meta_present=true`, `status=ok`, `freshness_seconds=0`, `sample_cache_hits=12/12`.
+- PASSED: payload `prefetch` now includes `generated_at`, `symbols`, `cached`, `sample_symbols`, and scheduler metadata for Admin Ops rendering.
+
 ## Entry 2026-04-21o - Whale Bubble Chart production-readiness hardening
 
 Muc tieu:
