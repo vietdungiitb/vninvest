@@ -1050,12 +1050,18 @@ def admin_intraday_side_backfill_preview_api(request):
         batch_size = 2000
 
     try:
+        max_preview_rows = max(1000, int(request.data.get('max_preview_rows') or 100_000))
+    except (TypeError, ValueError):
+        max_preview_rows = 100_000
+
+    try:
         result = intraday_side_backfill_preview(
             symbols=symbols,
             start_date=start_date,
             end_date=end_date,
             threshold=threshold,
             batch_size=batch_size,
+            max_preview_rows=max_preview_rows,
         )
     except Exception as exc:
         return Response({'detail': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

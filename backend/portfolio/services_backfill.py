@@ -173,15 +173,22 @@ def intraday_side_backfill_preview(
     end_date: Optional[str],
     threshold: int = 0,
     batch_size: int = 2000,
+    max_preview_rows: int = 100_000,
 ) -> dict:
     """
     Dry-run: tính scope, changed, transitions, distribution, sample — không ghi DB.
+    Giới hạn max_preview_rows để tránh timeout khi dataset lớn.
     """
     qs = _build_queryset(symbols, start_date, end_date, threshold)
     scope_rows = qs.count()
 
+    is_capped = scope_rows > max_preview_rows
+    preview_qs = qs.order_by("symbol", "trade_date", "trade_time", "id")
+    if is_capped:
+        preview_qs = preview_qs[:max_preview_rows]
+
     rows_iter = (
-        qs.order_by("symbol", "trade_date", "trade_time", "id")
+        preview_qs
         .values("id", "symbol", "trade_date", "trade_time", "price", "volume", "side")
         .iterator(chunk_size=batch_size)
     )
@@ -197,6 +204,8 @@ def intraday_side_backfill_preview(
         "inferred_distribution": dict(inferred_counter),
         "transitions": dict(transition_counter),
         "sample_rows": changed_preview,
+        "is_capped": is_capped,
+        "preview_rows_scanned": min(scope_rows, max_preview_rows),
     }
 
 
