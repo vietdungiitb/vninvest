@@ -229,11 +229,24 @@ def whale_orders_by_symbol_api(request, symbol: str):
         # Try yesterday if today's reference is not found
         ref_price = _get_reference_price(symbol, trade_date - timedelta(days=1))
     
+    # If still no ref_price, return empty response (graceful degradation)
     if not ref_price:
-        return Response(
-            {'ok': False, 'error': f'Reference price not found for {symbol}'},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        session_start = _get_session_start_time(trade_date)
+        session_end = session_start.replace(hour=MARKET_CLOSE_HOUR)
+        return Response({
+            'ok': True,
+            'symbol': symbol,
+            'ref_price': None,
+            'session_start': session_start.isoformat(),
+            'session_end': session_end.isoformat(),
+            'timeframe': timeframe,
+            'data_range': {
+                'start': start_dt.isoformat(),
+                'end': end_dt.isoformat(),
+            },
+            'orders': {'buy': [], 'sell': [], 'internal': []},
+            'message': f'No reference price data available for {symbol}',
+        })
     
     # Fetch intraday ticks within the time range
     start_date = start_dt.date()
