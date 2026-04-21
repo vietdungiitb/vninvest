@@ -2682,6 +2682,7 @@ class MarketDataService:
         whale_unified = []
         for event in whale_events:
             symbol = str(event.get('symbol') or '').upper()
+            side = str(event.get('side') or '').lower()
             resolved_threshold = float(
                 event.get('threshold')
                 or self._get_user_whale_threshold_vnd(user, symbol=symbol)
@@ -2697,8 +2698,9 @@ class MarketDataService:
                 'symbol': symbol,
                 'source': 'whale',
                 'severity': severity,
+                'type': 'buy' if side == 'buy' else 'sell' if side == 'sell' else 'neutral',
                 'confidence': event.get('display_score'),
-                'headline': 'Large buy flow detected' if str(event.get('side') or '').lower() == 'buy' else 'Large sell flow detected',
+                'headline': 'Large buy flow detected' if side == 'buy' else 'Large sell flow detected',
                 'detail': f"Matched value: {round(matched_value, 2)}",
                 'ts': event.get('ts') or now.isoformat(),
                 'to': f"/whale-alerts/{event.get('symbol')}",
@@ -2732,6 +2734,7 @@ class MarketDataService:
                 'symbol': str(row.symbol or '').upper(),
                 'source': 'dark_flow',
                 'severity': severity,
+                'type': 'flow',
                 'confidence': row.strength,
                 'headline': 'Dark money signal detected',
                 'detail': f"Signal {row.signal_type} | strength={round(float(row.strength or 0.0), 1)}",
@@ -3050,6 +3053,7 @@ class MarketDataService:
                 'symbol': symbol,
                 'source': 'whale',
                 'severity': 'critical',
+                'type': 'buy' if side == 'buy' else 'sell' if side == 'sell' else 'neutral',
                 'confidence': 99,
                 'headline': headline,
                 'detail': f"Top-tier matched value: {round(matched_value, 2)}",

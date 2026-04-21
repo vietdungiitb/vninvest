@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 import { normalizeSeverity } from '../hooks/useUnifiedAlerts';
 import PaginationBar from './shared/PaginationBar';
+import {
+  alertCardTone,
+  alertTypeBadgeTone,
+  alertSourceBadgeTone,
+  alertSeveritySummaryTone,
+  alertTypeLabel,
+} from '../utils/alertTaxonomy';
 
 function SummaryChip({ label, count, tone, active, onClick }) {
   return (
@@ -17,25 +24,11 @@ function SummaryChip({ label, count, tone, active, onClick }) {
   );
 }
 
-function sourceTone(source) {
-  if (source === 'whale') return 'border-cyan-700/80 bg-cyan-950/40 text-cyan-200';
-  if (source === 'dark_flow') return 'border-violet-700/80 bg-violet-950/35 text-violet-200';
-  if (source === 'price_shock') return 'border-amber-700/80 bg-amber-950/35 text-amber-200';
-  return 'border-slate-700 bg-slate-900 text-slate-300';
-}
-
 function sourceLabel(source, t) {
   if (source === 'whale') return t('dashboardRealtime.sourceWhale');
   if (source === 'dark_flow') return t('dashboardRealtime.sourceDarkFlow');
   if (source === 'price_shock') return t('dashboardRealtime.sourcePriceShock');
   return t('dashboardRealtime.sourceStaleQuote');
-}
-
-function severityTone(severity) {
-  if (severity === 'critical') return 'border-rose-600/70 bg-rose-950/45 text-rose-200';
-  if (severity === 'high') return 'border-amber-600/70 bg-amber-950/35 text-amber-200';
-  if (severity === 'medium') return 'border-cyan-700/70 bg-cyan-950/25 text-cyan-200';
-  return 'border-slate-700 bg-slate-900 text-slate-300';
 }
 
 export default function UnifiedAlertCenter({
@@ -113,28 +106,28 @@ export default function UnifiedAlertCenter({
             <SummaryChip
               label={t('dashboardRealtime.severityCritical')}
               count={formatNumber(alertSummary?.critical || 0)}
-              tone="border-rose-700/70 bg-rose-950/35 text-rose-200"
+              tone={alertSeveritySummaryTone('critical')}
               active={severityFilter === 'critical_only'}
               onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('critical_only') : setSeverityFilter('critical_only'))}
             />
             <SummaryChip
               label={t('dashboardRealtime.severityHigh')}
               count={formatNumber(alertSummary?.high || 0)}
-              tone="border-amber-700/70 bg-amber-950/30 text-amber-200"
+              tone={alertSeveritySummaryTone('high')}
               active={severityFilter === 'high_only'}
               onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('high_only') : setSeverityFilter('high_only'))}
             />
             <SummaryChip
               label={t('dashboardRealtime.severityMedium')}
               count={formatNumber(alertSummary?.medium || 0)}
-              tone="border-cyan-700/70 bg-cyan-950/25 text-cyan-200"
+              tone={alertSeveritySummaryTone('medium')}
               active={severityFilter === 'medium_only'}
               onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('medium_only') : setSeverityFilter('medium_only'))}
             />
             <SummaryChip
               label={t('dashboardRealtime.severityLow')}
               count={formatNumber(alertSummary?.low || 0)}
-              tone="border-slate-700 bg-slate-900 text-slate-300"
+              tone={alertSeveritySummaryTone('low')}
               active={severityFilter === 'low_only'}
               onClick={() => (onSeverityFilterChange ? onSeverityFilterChange('low_only') : setSeverityFilter('low_only'))}
             />
@@ -179,13 +172,16 @@ export default function UnifiedAlertCenter({
                 {safeAlerts.map((alert, index) => {
                   const severity = normalizeSeverity(alert.severity, 'medium');
                   const isUnread = !readAlertIds.has(alert.id);
+                  const cardTone = alertCardTone(alert.type, severity);
+                  const typeTone = alertTypeBadgeTone(alert.type);
+                  const sourceTone = alertSourceBadgeTone(alert.source);
                   return (
                     <Link
                       key={alert.id || `${alert.symbol}-${alert.ts}-${index}`}
                       to={alert.to || `/stocks/${alert.symbol}`}
                       className="block"
                     >
-                      <div className={`rounded-xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(148,163,184,0.08)] transition-all duration-150 hover:-translate-y-[1px] hover:shadow-lg ${severityTone(severity)}`}>
+                      <div className={`rounded-xl border px-3 py-2.5 shadow-[inset_0_1px_0_rgba(148,163,184,0.08)] transition-all duration-150 hover:-translate-y-[1px] hover:shadow-lg ${cardTone}`}>
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-[14px] font-black tracking-wide text-white">{alert.symbol || 'N/A'}</span>
                           <div className="flex items-center gap-2">
@@ -194,7 +190,10 @@ export default function UnifiedAlertCenter({
                                 {t('dashboardRealtime.badgeNew')}
                               </span>
                             )}
-                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${sourceTone(alert.source)}`}>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${typeTone}`}>
+                              {alertTypeLabel(alert.type, t)}
+                            </span>
+                            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] ${sourceTone}`}>
                               {sourceLabel(alert.source, t)}
                             </span>
                           </div>

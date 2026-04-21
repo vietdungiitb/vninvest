@@ -6,24 +6,17 @@ import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
 import { useI18n } from '../context/LangContext';
 import useUnifiedAlerts, { normalizeSeverity } from '../hooks/useUnifiedAlerts';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
+import {
+  alertCardTone,
+  alertTypeBadgeTone,
+  alertSourceBadgeTone,
+  alertSeveritySummaryTone,
+  alertTypeLabel,
+} from '../utils/alertTaxonomy';
 
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function unifiedSeverityTone(severity) {
-  if (severity === 'critical') return 'border-rose-600/70 bg-rose-950/45 text-rose-200';
-  if (severity === 'high') return 'border-amber-600/70 bg-amber-950/35 text-amber-200';
-  if (severity === 'medium') return 'border-yellow-700/70 bg-yellow-950/25 text-yellow-200';
-  return 'border-slate-700 bg-slate-950 text-slate-300';
-}
-
-function sourceTone(source) {
-  if (source === 'dark_flow') return 'border-violet-800/80 bg-violet-950/35 text-violet-200';
-  if (source === 'price_shock') return 'border-cyan-800/80 bg-cyan-950/35 text-cyan-200';
-  if (source === 'stale_quote') return 'border-amber-800/80 bg-amber-950/35 text-amber-200';
-  return 'border-emerald-800/80 bg-emerald-950/35 text-emerald-200';
 }
 
 function sourceLabel(source, t) {
@@ -335,19 +328,19 @@ export default function DashboardRealtimePanel({
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button type="button" onClick={() => toggleSeverityFilterFromSummary('critical_only')} className={`rounded-lg border bg-rose-950/35 px-3 py-2 text-left ${severityFilter === 'critical_only' ? 'border-rose-400' : 'border-rose-700/60'}`}>
+                <button type="button" onClick={() => toggleSeverityFilterFromSummary('critical_only')} className={`rounded-lg border px-3 py-2 text-left ${alertSeveritySummaryTone('critical')} ${severityFilter === 'critical_only' ? 'ring-1 ring-white/30' : ''}`}>
                   <p className="text-[11px] uppercase tracking-wider text-rose-300">{t('dashboardRealtime.severityCritical')}</p>
                   <p className="mt-1 text-lg font-bold text-rose-100">{formatNumber(alertSummary.critical)}</p>
                 </button>
-                <button type="button" onClick={() => toggleSeverityFilterFromSummary('high_only')} className={`rounded-lg border bg-amber-950/35 px-3 py-2 text-left ${severityFilter === 'high_only' ? 'border-amber-400' : 'border-amber-700/60'}`}>
+                <button type="button" onClick={() => toggleSeverityFilterFromSummary('high_only')} className={`rounded-lg border px-3 py-2 text-left ${alertSeveritySummaryTone('high')} ${severityFilter === 'high_only' ? 'ring-1 ring-white/30' : ''}`}>
                   <p className="text-[11px] uppercase tracking-wider text-amber-300">{t('dashboardRealtime.severityHigh')}</p>
                   <p className="mt-1 text-lg font-bold text-amber-100">{formatNumber(alertSummary.high)}</p>
                 </button>
-                <button type="button" onClick={() => toggleSeverityFilterFromSummary('medium_only')} className={`rounded-lg border bg-yellow-950/25 px-3 py-2 text-left ${severityFilter === 'medium_only' ? 'border-yellow-400' : 'border-yellow-700/60'}`}>
+                <button type="button" onClick={() => toggleSeverityFilterFromSummary('medium_only')} className={`rounded-lg border px-3 py-2 text-left ${alertSeveritySummaryTone('medium')} ${severityFilter === 'medium_only' ? 'ring-1 ring-white/30' : ''}`}>
                   <p className="text-[11px] uppercase tracking-wider text-yellow-300">{t('dashboardRealtime.severityMedium')}</p>
                   <p className="mt-1 text-lg font-bold text-yellow-100">{formatNumber(alertSummary.medium)}</p>
                 </button>
-                <button type="button" onClick={() => toggleSeverityFilterFromSummary('low_only')} className={`rounded-lg border bg-slate-950 px-3 py-2 text-left ${severityFilter === 'low_only' ? 'border-slate-400' : 'border-slate-700'}`}>
+                <button type="button" onClick={() => toggleSeverityFilterFromSummary('low_only')} className={`rounded-lg border px-3 py-2 text-left ${alertSeveritySummaryTone('low')} ${severityFilter === 'low_only' ? 'ring-1 ring-white/30' : ''}`}>
                   <p className="text-[11px] uppercase tracking-wider text-slate-300">{t('dashboardRealtime.severityLow')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-100">{formatNumber(alertSummary.low)}</p>
                 </button>
@@ -390,14 +383,18 @@ export default function DashboardRealtimePanel({
                     {filteredUnifiedAlerts.map((alert, index) => {
                       const severity = normalizeSeverity(alert.severity, 'medium');
                       const isUnread = !readAlertIds.has(alert.id);
+                      const cardTone = alertCardTone(alert.type, severity);
+                      const typeTone = alertTypeBadgeTone(alert.type);
+                      const sourceTone = alertSourceBadgeTone(alert.source);
                       return (
                         <Link key={alert.id || `${alert.symbol}-${alert.ts}-${index}`} to={alert.to || `/stocks/${alert.symbol}`} className="block">
-                          <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${unifiedSeverityTone(severity)}`}>
+                          <div className={`relative overflow-hidden rounded-xl border px-3 py-2.5 text-[12px] transition-colors hover:brightness-110 ${cardTone}`}>
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[13px] font-bold text-white">{alert.symbol || 'N/A'}</span>
                               <div className="flex items-center gap-2">
                                 {isUnread && <span className="rounded-full border border-cyan-700/70 bg-cyan-950/35 px-2 py-0.5 text-[10px] font-bold uppercase text-cyan-200">{t('dashboardRealtime.badgeNew')}</span>}
-                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${sourceTone(alert.source)}`}>{sourceLabel(alert.source, t)}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${typeTone}`}>{alertTypeLabel(alert.type, t)}</span>
+                                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${sourceTone}`}>{sourceLabel(alert.source, t)}</span>
                               </div>
                             </div>
                             <div className="mt-1 flex items-baseline justify-between gap-2">

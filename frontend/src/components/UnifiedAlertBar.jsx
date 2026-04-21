@@ -1,5 +1,6 @@
 import React from 'react';
 import { useI18n } from '../context/LangContext';
+import { alertSeveritySummaryTone } from '../utils/alertTaxonomy';
 
 function SummaryChip({ label, count, tone, active, onClick }) {
   return (
@@ -40,28 +41,28 @@ export default function UnifiedAlertBar({
         <SummaryChip
           label={t('dashboardRealtime.severityCritical')}
           count={formatNumber(alertSummary.critical || 0)}
-          tone="border-rose-700/70 bg-rose-950/35 text-rose-200"
+          tone={alertSeveritySummaryTone('critical')}
           active={severityFilter === 'critical_only'}
           onClick={() => onSeverityFilterChange('critical_only')}
         />
         <SummaryChip
           label={t('dashboardRealtime.severityHigh')}
           count={formatNumber(alertSummary.high || 0)}
-          tone="border-amber-700/70 bg-amber-950/30 text-amber-200"
+          tone={alertSeveritySummaryTone('high')}
           active={severityFilter === 'high_only'}
           onClick={() => onSeverityFilterChange('high_only')}
         />
         <SummaryChip
           label={t('dashboardRealtime.severityMedium')}
           count={formatNumber(alertSummary.medium || 0)}
-          tone="border-cyan-700/70 bg-cyan-950/25 text-cyan-200"
+          tone={alertSeveritySummaryTone('medium')}
           active={severityFilter === 'medium_only'}
           onClick={() => onSeverityFilterChange('medium_only')}
         />
         <SummaryChip
           label={t('dashboardRealtime.severityLow')}
           count={formatNumber(alertSummary.low || 0)}
-          tone="border-slate-700 bg-slate-900 text-slate-300"
+          tone={alertSeveritySummaryTone('low')}
           active={severityFilter === 'low_only'}
           onClick={() => onSeverityFilterChange('low_only')}
         />
