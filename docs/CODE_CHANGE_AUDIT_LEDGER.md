@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21u - Implement Slice 5 (Technical bulk API)
+
+Mục tiêu:
+- Triển khai endpoint backend lấy technical indicators theo danh sách symbols (không phụ thuộc holdings).
+- Tái sử dụng logic `_screener_build_technical` để đảm bảo đồng nhất công thức tính technical.
+- Nối Modern Dashboard Technical tab sang luồng bulk symbols để hỗ trợ `tracked/watchlist/all`.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/views_analytics_extended.py (MODIFIED - add `_normalize_symbol_list`, `_build_symbol_technicals`, `BulkTechnicalBySymbolsView`)
+- backend/portfolio/views.py (MODIFIED - export `BulkTechnicalBySymbolsView` via central views module)
+- backend/portfolio/urls_stock.py (MODIFIED - add route `POST /api/stock-management/technicals/bulk/`)
+- backend/portfolio/tests/test_api_routes_stock_technicals_bulk.py (NEW - API tests cho empty symbols, over-limit, normalize/dedupe success path)
+- frontend/src/api/client.js (MODIFIED - add `getBulkTechnicalsBySymbols(symbols)`)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fetch technicals via bulk symbols from holdings+tracked+watchlist, fallback portfolio technicals khi bulk lỗi)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 5 checklist completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_api_routes_stock_technicals_bulk -v 2` => 3 tests PASS.
+- PASSED: `get_errors` clean trên toàn bộ file backend/frontend vừa thay đổi.
+- PASSED: endpoint mới reject danh sách rỗng và reject vượt cap 100 symbols.
+- PASSED: payload success normalize uppercase + dedupe symbols trước khi tính technicals.
+
 ## Entry 2026-04-21t - Confirm Slice 4 (Whale tab selector integration) completed
 
 Mục tiêu:

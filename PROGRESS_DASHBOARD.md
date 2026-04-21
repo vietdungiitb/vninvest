@@ -4,6 +4,25 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21u)
+- backend/portfolio/views_analytics_extended.py (MODIFIED - add bulk technicals symbol-list endpoint and shared helper pipeline using `_screener_build_technical`)
+- backend/portfolio/views.py (MODIFIED - expose `BulkTechnicalBySymbolsView` for stock-management routing)
+- backend/portfolio/urls_stock.py (MODIFIED - register `POST /api/stock-management/technicals/bulk/`)
+- backend/portfolio/tests/test_api_routes_stock_technicals_bulk.py (NEW - contract tests for empty/over-limit/success normalize-dedupe cases)
+- frontend/src/api/client.js (MODIFIED - add `getBulkTechnicalsBySymbols` API helper)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - switch technical data fetch to bulk symbol universe with fallback to holdings technical endpoint)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 5 tasks completed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_api_routes_stock_technicals_bulk -v 2` => 3/3 PASS.
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: Technical tab backend path now supports non-holding scopes through symbol-universe bulk query.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21t)
 - docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 4 Whale selector tasks completed)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21t)

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest, getTrackedSymbols, getWatchlistGroups } from '../../api/client';
+import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest, getTrackedSymbols, getWatchlistGroups, getBulkTechnicalsBySymbols } from '../../api/client';
 import { useI18n } from '../../context/LangContext';
 import useRealtimeFeed from '../../hooks/useRealtimeFeed';
 import { buildLiveHoldingsOverlay } from '../../utils/dashboardRealtimeSelectors';
@@ -211,10 +211,46 @@ export default function ModernDashboard() {
       if (results[0].status === 'fulfilled') setSummary(results[0].value.data);
       if (results[1].status === 'fulfilled') setHoldings(results[1].value.data);
       if (results[2].status === 'fulfilled') setAnalytics(results[2].value.data);
-      if (results[3].status === 'fulfilled') setTechnicals(results[3].value.data?.technicals || []);
       if (results[4].status === 'fulfilled') setDigest(results[4].value.data);
       if (results[5].status === 'fulfilled') setTrackedSymbols(results[5].value.data || []);
       if (results[6].status === 'fulfilled') setWatchlistGroups(results[6].value.data || []);
+
+      const fallbackTechnicals = results[3].status === 'fulfilled'
+        ? (results[3].value.data?.technicals || [])
+        : [];
+
+      const nextHoldings = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
+      const nextTracked = results[5].status === 'fulfilled' ? (results[5].value.data || []) : [];
+      const nextWatchlistGroups = results[6].status === 'fulfilled' ? (results[6].value.data || []) : [];
+
+      const symbolSet = new Set();
+      nextHoldings.forEach((item) => {
+        const symbol = normalizeSymbol(item?.symbol);
+        if (symbol) symbolSet.add(symbol);
+      });
+      nextTracked.forEach((item) => {
+        const symbol = normalizeSymbol(item?.symbol);
+        if (symbol) symbolSet.add(symbol);
+      });
+      nextWatchlistGroups.forEach((group) => {
+        (group?.items || []).forEach((item) => {
+          const symbol = normalizeSymbol(item?.symbol);
+          if (symbol) symbolSet.add(symbol);
+        });
+      });
+
+      const bulkSymbols = Array.from(symbolSet);
+      if (!bulkSymbols.length) {
+        setTechnicals([]);
+      } else {
+        try {
+          const bulkResp = await getBulkTechnicalsBySymbols(bulkSymbols);
+          setTechnicals(bulkResp.data?.technicals || []);
+        } catch (bulkErr) {
+          console.warn('Bulk technicals fallback to portfolio endpoint:', bulkErr);
+          setTechnicals(fallbackTechnicals);
+        }
+      }
     } catch (err) {
       console.error('ModernDashboard data fetch error:', err);
     } finally {

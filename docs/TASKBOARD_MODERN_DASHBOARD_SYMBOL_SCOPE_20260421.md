@@ -59,11 +59,11 @@ Definition of done:
 
 ## Slice 5 — Technical bulk API
 
-- [ ] Add backend endpoint for technicals by symbol list
-- [ ] Reuse `_screener_build_technical` logic for arbitrary symbols
-- [ ] Add request validation and list cap
-- [ ] Add API tests
-- [ ] Integrate frontend technical tab with new endpoint
+- [x] Add backend endpoint for technicals by symbol list
+- [x] Reuse `_screener_build_technical` logic for arbitrary symbols
+- [x] Add request validation and list cap
+- [x] Add API tests
+- [x] Integrate frontend technical tab with new endpoint
 
 Definition of done:
 - Technical tab works for holdings/tracked/watchlist/all.
