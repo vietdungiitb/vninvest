@@ -64,7 +64,7 @@ export default function RiskModeSelector({ symbol, value = 'balanced', onChange,
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
         {t('riskMode.title', { defaultValue: 'Khẩu vị rủi ro' })}
       </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex flex-col gap-2">
         {MODES.map((mode) => {
           const isActive = value === mode.id;
           return (

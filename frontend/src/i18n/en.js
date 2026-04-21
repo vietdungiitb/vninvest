@@ -1341,6 +1341,7 @@ const en = {
     workspaceLink: 'Workspace',
     purgeAdvisory: 'Purge current',
     pageTitle: 'Whale Intelligence',
+    description: 'Automated tracking and analysis of large investor behavior in the market.',
     freePlan: 'FREE',
     planSuffix: 'PLAN',
     selectFallback: 'SELECT',

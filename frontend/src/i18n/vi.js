@@ -1344,6 +1344,7 @@ const vi = {
     workspaceLink: 'Không gian làm việc',
     purgeAdvisory: 'Xóa advisory hiện tại',
     pageTitle: 'Trí tuệ Cá mập',
+    description: 'Hệ thống tự động theo dõi và phân tích hành vi của các nhà đầu tư lớn trên thị trường.',
     freePlan: 'MIỄN PHÍ',
     planSuffix: 'GÓI',
     selectFallback: 'CHỌN MÃ',

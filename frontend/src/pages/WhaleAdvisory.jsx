@@ -75,7 +75,7 @@ export default function WhaleAdvisory() {
   const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
-    <div className="mx-auto max-w-[1800px] p-4 lg:p-8 space-y-6 min-h-screen bg-slate-950/20">
+    <div className="mx-auto max-w-[1800px] pt-24 pb-8 px-4 lg:px-8 space-y-6 min-h-screen bg-slate-950/20">
       <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
 
       {error ? (

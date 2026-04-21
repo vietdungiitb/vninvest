@@ -151,7 +151,7 @@ export default function WhaleAdvisoryCommandPanel({
                 </svg>
               </div>
               <p className="text-xs uppercase tracking-widest font-bold max-w-[200px]">
-                {t('whaleAdvisory.placeholders.selectSymbol')}
+                {t('whaleAdvisory.noSymbolsActive')}
               </p>
            </div>
         )}
