@@ -11,6 +11,7 @@ Muc tieu la: ro pham vi, ro trach nhiem, ro thu tu thuc hien, ro dieu kien dung/
 - Moi sua doi lon hoac tinh nang moi phai co 1 ke hoach trien khai duoc thong nhat truoc khi bat dau code.
 - Ke hoach phai duoc luu trong `docs/` va duoc tham chieu trong audit ledger.
 - Khong duoc merge khi thieu cac muc mandatory trong ke hoach.
+- Bat ky file `.md` nao trong `docs/` khi tao moi hoac thay doi noi dung deu phai kich hoat auto-audit va lap bao cao chi tiet, khong phu thuoc file do USER, AI, script hay git merge/pull tao ra.
 
 ## Khi nao bat buoc lap ke hoach
 
@@ -117,3 +118,4 @@ Chi duoc dong task khi tat ca dieu kien sau dat:
 
 - Khong bao gio tu y code ngay khi chua xay dung ke hoach chi tiet.
 - Neu co su co khan cap: duoc phep patch tam, nhung bat buoc bo sung ke hoach postmortem + hardening trong 24h.
+- Khong co ngoai le cho trigger auto-audit doi voi thay doi `.md` trong `docs/`; neu bi delay thi phai ghi ro ly do va tao follow-up bat buoc trong audit ledger.

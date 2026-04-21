@@ -4,6 +4,14 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21)
+- docs/AI_CODING_REGULATION.md (MODIFIED - them quy dinh bat buoc auto-audit khi file .md trong docs tao moi/bi thay doi, ap dung khong phu thuoc tac nhan)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - bo sung nguyen tac + no-exception clause cho trigger auto-audit docs markdown)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-20)
 - backend/portfolio/tasks_prefetch.py (AUDITED - scheduler counters va response fields verified)
 - backend/portfolio/tasks_realtime.py (AUDITED - intraday poll guards verified)

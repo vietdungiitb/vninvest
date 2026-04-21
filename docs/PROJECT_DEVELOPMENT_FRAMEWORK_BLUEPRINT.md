@@ -14,7 +14,7 @@ Hệ thống tuân thủ nghiêm ngặt quy trình "Plan-First, Code-Later".
 - **Quy tắc**: Mọi ý tưởng phải được lọc qua phễu "Value vs Effort" trước khi đưa vào Sprint Planning.
 
 ### Giai đoạn 2: Lập kế hoạch & Thiết kế (Planning & Architecture)
-- **Chính sách bắt buộc**: Tuân thủ `IMPLEMENTATION_PLANNING_POLICY.md`.
+- **Chính sách bắt buộc**: Tuân thủ `IMPLEMENTATION_PLANNING_POLICY.md`, `AI_CODING_REGULATION.md`.
 - **Nội dung Kế hoạch**:
     *   Mục tiêu nghiệp vụ (KPI đo lường được).
     *   Đánh giá hiện trạng (Current-state assessment).
@@ -66,6 +66,7 @@ Hệ thống tuân thủ nghiêm ngặt quy trình "Plan-First, Code-Later".
 | Lớp (Layer) | Công nghệ | Mục đích xử lý quy mô lớn |
 | :--- | :--- | :--- |
 | **Giao tiếp Realtime** | Daphne (ASGI) + WebSockets | Xử lý hàng nghìn kết nối đồng thời không chặn (Non-blocking). |
+| **Application Server** | Gunicorn + UvicornWorker | Quản lý đa tiến trình ASGI; mỗi worker có event loop riêng biệt, tự động respawn khi deadlock. |
 | **Xử lý Bất đồng bộ** | Celery + Redis | Đẩy tác vụ nặng xuống nền, giải phóng Web Worker ngay lập tức. |
 | **Trạng thái Dữ liệu** | Redis Streams | Phân phối dòng dữ liệu (Ticker/Signals) cực nhanh với độ trễ thấp. |
 | **Tính toán Hiệu năng** | Pandas (Vectorization) | Xử lý dữ liệu lịch sử lớn bằng tính toán mảng thay vì loop Python. |

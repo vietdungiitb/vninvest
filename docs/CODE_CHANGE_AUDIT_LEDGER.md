@@ -1,5 +1,21 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21a - Governance update: actor-agnostic docs markdown auto-audit trigger
+
+Muc tieu:
+- Chot quy dinh bat buoc: moi file `.md` trong `docs/` khi tao moi hoac thay doi deu phai auto-audit va lap bao cao chi tiet.
+- Lam ro trigger khong phu thuoc vao tac nhan thay doi (USER/AI/script/git operations).
+
+Danh sach tep cap nhat:
+- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory section for docs markdown auto-audit trigger, actor-agnostic scope, execution requirements)
+- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add mandatory principle and no-exception clause for docs markdown auto-audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Policy wording explicitly states trigger applies even when file is not created/edited by AI.
+- PASSED: Centralized audit file list updated in both audit ledger and progress dashboard.
+
 ## Entry 2026-04-20i - VNStock runtime hardening phase 2-5 completion
 
 Muc tieu:
