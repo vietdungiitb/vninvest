@@ -4,6 +4,43 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-21r)
+- backend/portfolio/serializers.py (MODIFIED - `WatchlistGroupSerializer` now returns nested `items` for watchlist symbol aggregation)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - add `prefetch_related('items')` for watchlist group list/detail)
+- frontend/src/utils/modernDashboardSymbolUniverse.js (NEW - normalize + merge + dedupe symbol universe for holdings/tracked/watchlist)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fetch watchlist groups and pass unified `symbolUniverse` to modular deck)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - implement scope/symbol toolbar and state-driven filtering)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - support external symbol options/selection from deck toolbar)
+- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for modern deck selectors)
+- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for modern deck selectors)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 1/2 completed items)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: diagnostics (`get_errors`) clean on all changed files.
+- PASSED: backend/frontend Docker images rebuilt successfully.
+- PASSED: backend/frontend containers restarted successfully and are up (`backend healthy`, `frontend started`).
+- NOTE: automated tests for universe utility are pending in next slice.
+
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21q)
+- docs/IMPLEMENTATION_PLAN_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - implementation plan cho symbol scope selector tại Modern Dashboard, gồm phase rollout, acceptance criteria và risk register)
+- docs/TECH_SPEC_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - technical spec cho unified symbol universe, selector state, tab semantics và bulk technical API)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - taskboard thực thi theo slice cho frontend/backend)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: planning pack đã chốt rõ user requirement thành mô hình `scope + symbol`.
+- PASSED: đã xác định tab `Kỹ thuật` cần backend bulk API và tab `Cá mập` phải giữ single-symbol mode.
+- PASSED: update này chỉ tạo tài liệu planning/audit, chưa thay đổi runtime behavior.
+
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-21p)
 - backend/portfolio/tasks_prefetch.py (MODIFIED - publish canonical `ticker:prefetch:meta` from `schedule_realtime_prefetch_shards` to keep AdminOps Prefetch Health synchronized with shard scheduler runtime)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21p)

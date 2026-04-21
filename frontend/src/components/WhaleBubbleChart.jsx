@@ -30,7 +30,7 @@ const COLORS = {
   internal: '#64748b',
 };
 
-export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotesBySymbol = {} }) {
+export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotesBySymbol = {}, symbolOptions = [] }) {
   const { t } = useI18n();
   const [timeframe, setTimeframe] = useState('session');
   const [showUnit, setShowUnit] = useState('vnd'); // 'vnd' or 'pct'
@@ -41,15 +41,22 @@ export default function WhaleBubbleChart({ selectedSymbol, holdings = [], quotes
 
   // Available symbols
   const availableSymbols = useMemo(() => {
-    const symbols = new Set(
-      holdings.map((h) => String(h?.symbol || '').trim().toUpperCase()).filter(Boolean)
-    );
+    const sourceSymbols = Array.isArray(symbolOptions) && symbolOptions.length > 0
+      ? symbolOptions
+      : holdings.map((h) => String(h?.symbol || '').trim().toUpperCase()).filter(Boolean);
+    const symbols = new Set(sourceSymbols);
     return Array.from(symbols).sort();
-  }, [holdings]);
+  }, [holdings, symbolOptions]);
+
+  useEffect(() => {
+    if (selectedSymbol && selectedSymbol !== symbol && availableSymbols.includes(selectedSymbol)) {
+      setSymbol(selectedSymbol);
+    }
+  }, [availableSymbols, selectedSymbol, symbol]);
 
   // Auto-select first symbol if not already selected
   useEffect(() => {
-    if (!symbol && availableSymbols.length > 0) {
+    if ((!symbol || !availableSymbols.includes(symbol)) && availableSymbols.length > 0) {
       setSymbol(availableSymbols[0]);
     }
   }, [availableSymbols, symbol]);

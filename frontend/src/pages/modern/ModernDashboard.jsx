@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest, getTrackedSymbols } from '../../api/client';
+import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest, getTrackedSymbols, getWatchlistGroups } from '../../api/client';
 import { useI18n } from '../../context/LangContext';
 import useRealtimeFeed from '../../hooks/useRealtimeFeed';
 import { buildLiveHoldingsOverlay } from '../../utils/dashboardRealtimeSelectors';
+import { buildModernDashboardSymbolUniverse } from '../../utils/modernDashboardSymbolUniverse';
 
 import SmartStatsHeader from '../../components/modern/SmartStatsHeader';
 import ModularPositionDeck from '../../components/modern/ModularPositionDeck';
@@ -24,6 +25,7 @@ export default function ModernDashboard() {
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
   const [trackedSymbols, setTrackedSymbols] = useState([]);
+  const [watchlistGroups, setWatchlistGroups] = useState([]);
   const [analytics, setAnalytics] = useState(null);
   const [technicals, setTechnicals] = useState(null);
   const [digest, setDigest] = useState(null);
@@ -33,17 +35,14 @@ export default function ModernDashboard() {
   const [audienceFilter, setAudienceFilter] = useState('all');
   const [unifiedPageSize, setUnifiedPageSize] = useState(5);
 
-  const holdingSymbols = useMemo(
-    () => holdings.map((h) => normalizeSymbol(h.symbol)).filter(Boolean),
-    [holdings],
+  const baseSymbolUniverse = useMemo(
+    () => buildModernDashboardSymbolUniverse({ holdings, trackedSymbols, watchlistGroups }),
+    [holdings, trackedSymbols, watchlistGroups],
   );
-  const trackedSymbolNames = useMemo(
-    () => trackedSymbols.map((t) => normalizeSymbol(t.symbol)).filter(Boolean),
-    [trackedSymbols],
-  );
+
   const monitoredSymbols = useMemo(
-    () => [...new Set([...holdingSymbols, ...trackedSymbolNames])],
-    [holdingSymbols, trackedSymbolNames],
+    () => baseSymbolUniverse.map((item) => item.symbol).filter(Boolean),
+    [baseSymbolUniverse],
   );
 
   const {
@@ -64,6 +63,21 @@ export default function ModernDashboard() {
   } = usePersistentAlertState();
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
+
+  const trackedSymbolNames = useMemo(
+    () => trackedSymbols.map((item) => normalizeSymbol(item.symbol)).filter(Boolean),
+    [trackedSymbols],
+  );
+
+  const symbolUniverse = useMemo(
+    () => buildModernDashboardSymbolUniverse({
+      holdings: liveHoldings,
+      trackedSymbols,
+      watchlistGroups,
+      quotesBySymbol,
+    }),
+    [liveHoldings, trackedSymbols, watchlistGroups, quotesBySymbol],
+  );
 
   const heatmapData = useMemo(() => {
     if (!monitoredSymbols.length) return [];
@@ -191,6 +205,7 @@ export default function ModernDashboard() {
         getPortfolioTechnicals(activePortfolioId),
         getPortfolioNewsDigest(),
         getTrackedSymbols(),
+        getWatchlistGroups(),
       ]);
 
       if (results[0].status === 'fulfilled') setSummary(results[0].value.data);
@@ -199,6 +214,7 @@ export default function ModernDashboard() {
       if (results[3].status === 'fulfilled') setTechnicals(results[3].value.data?.technicals || []);
       if (results[4].status === 'fulfilled') setDigest(results[4].value.data);
       if (results[5].status === 'fulfilled') setTrackedSymbols(results[5].value.data || []);
+      if (results[6].status === 'fulfilled') setWatchlistGroups(results[6].value.data || []);
     } catch (err) {
       console.error('ModernDashboard data fetch error:', err);
     } finally {
@@ -279,6 +295,7 @@ export default function ModernDashboard() {
             <div className="mt-4 min-h-[420px] min-w-0 overflow-hidden">
               <ModularPositionDeck
                 holdings={heatmapData.filter((h) => h.is_holding)}
+                symbolUniverse={symbolUniverse}
                 loading={loading}
                 quotesBySymbol={quotesBySymbol}
                 technicals={technicals}

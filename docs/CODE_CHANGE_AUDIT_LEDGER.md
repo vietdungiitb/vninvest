@@ -1,5 +1,51 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-21r - Implement Slice 1 (Universe aggregation) and Slice 2 (Toolbar UI)
+
+Mục tiêu:
+- Triển khai thực tế scope selector cho Modern Dashboard theo quyết định GO.
+- Mở rộng nguồn symbol từ `holdings-only` sang hợp nhất `holdings + tracked + watchlist`.
+- Thêm toolbar `phạm vi mã` + `mã` dùng chung cho các tab trong Modular Position Deck.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/serializers.py (MODIFIED - `WatchlistGroupSerializer` expose thêm `items` để frontend lấy được watchlist symbols)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - prefetch `items` cho list/detail watchlist groups)
+- frontend/src/utils/modernDashboardSymbolUniverse.js (NEW - utility chuẩn hóa/merge/dedupe symbol universe theo 3 nguồn)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fetch watchlist groups, build unified universe, truyền `symbolUniverse` xuống deck)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - thêm toolbar selector scope/symbol, áp filter state cho Overview/Technical/Whale)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - nhận `symbolOptions` + đồng bộ `selectedSymbol` từ toolbar cấp deck)
+- frontend/src/i18n/vi.js (MODIFIED - thêm key locale cho toolbar modern deck)
+- frontend/src/i18n/en.js (MODIFIED - thêm key locale cho toolbar modern deck)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - đánh dấu hoàn thành các mục Slice 1-2 đã triển khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean trên toàn bộ file frontend/backend vừa thay đổi.
+- PASSED: `docker compose -f docker-compose.dev.yml build backend` thành công.
+- PASSED: `docker compose -f docker-compose.dev.yml build frontend` thành công.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d backend frontend` và `ps` xác nhận backend healthy + frontend started.
+- NOTE: unit test cho utility normalize/dedupe chưa được thêm (để lại ở taskboard Slice 1).
+
+## Entry 2026-04-21q - Planning pack for Modern Dashboard symbol scope selector
+
+Mục tiêu:
+- Chốt diễn giải nghiệp vụ và hướng triển khai cho combobox chọn scope mã trên Modern Dashboard.
+- Định nghĩa rõ semantics cho 4 tab `Tổng quan`, `Kỹ thuật`, `Cá mập`, `AI Bot` khi mở rộng từ holdings sang tracked/watchlist/all.
+- Tạo bộ tài liệu pre-code để có thể review và phê duyệt trước khi vào giai đoạn implementation.
+
+Danh sách tệp cập nhật:
+- docs/IMPLEMENTATION_PLAN_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - implementation plan theo phase, scope, acceptance criteria và risk register)
+- docs/TECH_SPEC_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - technical contract cho symbol universe, tab semantics và API requirements)
+- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - execution taskboard theo slice, DoD, release gate)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: planning pack xác nhận rõ scope selector phải là 2 tầng (`scope` + `symbol`) thay vì một combobox mơ hồ.
+- PASSED: chỉ ra chính xác tab nào có thể giải bằng frontend, tab nào bắt buộc cần backend/API mới.
+- PASSED: không có thay đổi runtime/code path; đây là planning-only update để phục vụ review và phê duyệt trước khi code.
+
 ## Entry 2026-04-21p - Prefetch health metadata restored for shard scheduler
 
 Muc tieu:

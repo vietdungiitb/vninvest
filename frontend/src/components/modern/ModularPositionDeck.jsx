@@ -1,18 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import HoldingsTable from '../HoldingsTable';
 import OptimizationModal from './OptimizationModal';
 import WhaleBubbleChart from '../WhaleBubbleChart';
 import PaginationBar from '../shared/PaginationBar';
+import { filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
 
-export default function ModularPositionDeck({ holdings, loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
+export default function ModularPositionDeck({ holdings, symbolUniverse = [], loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('overview');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [symbolScope, setSymbolScope] = useState('holdings');
+  const [selectedSymbol, setSelectedSymbol] = useState('all');
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -64,25 +67,76 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
     { id: 'ai', label: 'AI Bot', icon: '🤖' },
   ];
 
-  // Filter alerts for symbols in current portfolio
-  const portfolioSymbols = new Set(
-    holdings.map((holding) => String(holding?.symbol || '').trim().toUpperCase()).filter(Boolean),
+  const scopeOptions = useMemo(() => {
+    const counts = {
+      holdings: symbolUniverse.filter((item) => item.in_holdings).length,
+      tracked: symbolUniverse.filter((item) => item.in_tracked).length,
+      watchlist: symbolUniverse.filter((item) => item.in_watchlist).length,
+      all: symbolUniverse.length,
+    };
+
+    return [
+      { value: 'holdings', label: t('modernDeck.scopeHoldings', { defaultValue: 'Đang nắm giữ' }), count: counts.holdings },
+      { value: 'tracked', label: t('modernDeck.scopeTracked', { defaultValue: 'Theo dõi riêng' }), count: counts.tracked },
+      { value: 'watchlist', label: t('modernDeck.scopeWatchlist', { defaultValue: 'Watchlist' }), count: counts.watchlist },
+      { value: 'all', label: t('modernDeck.scopeAll', { defaultValue: 'Tất cả' }), count: counts.all },
+    ];
+  }, [symbolUniverse, t]);
+
+  const scopedUniverse = useMemo(
+    () => filterUniverseByScope(symbolUniverse, symbolScope),
+    [symbolUniverse, symbolScope],
   );
+
+  const symbolOptions = useMemo(
+    () => scopedUniverse.map((item) => item.symbol).filter(Boolean),
+    [scopedUniverse],
+  );
+
+  useEffect(() => {
+    if (selectedSymbol !== 'all' && !symbolOptions.includes(selectedSymbol)) {
+      setSelectedSymbol('all');
+    }
+  }, [selectedSymbol, symbolOptions]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [symbolScope, selectedSymbol]);
+
+  const activeSymbolSet = useMemo(() => {
+    if (selectedSymbol !== 'all') {
+      return new Set([selectedSymbol]);
+    }
+    return new Set(symbolOptions);
+  }, [selectedSymbol, symbolOptions]);
+
+  // Filter alerts for symbols in current scope
+  const portfolioSymbols = activeSymbolSet;
   const filteredWhaleAlerts = (alerts || []).filter((alert) => {
     const symbol = String(alert?.symbol || '').trim().toUpperCase();
     return symbol && portfolioSymbols.has(symbol);
   });
 
+  const filteredHoldings = useMemo(
+    () => holdings.filter((holding) => activeSymbolSet.has(String(holding?.symbol || '').trim().toUpperCase())),
+    [holdings, activeSymbolSet],
+  );
+
+  const filteredTechnicals = useMemo(
+    () => (technicals || []).filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase())),
+    [technicals, activeSymbolSet],
+  );
+
   // Paginated slices
   const pagedHoldings = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return holdings.slice(start, start + pageSize);
-  }, [holdings, currentPage, pageSize]);
+    return filteredHoldings.slice(start, start + pageSize);
+  }, [filteredHoldings, currentPage, pageSize]);
 
   const pagedTechnicals = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
-    return (technicals || []).slice(start, start + pageSize);
-  }, [technicals, currentPage, pageSize]);
+    return filteredTechnicals.slice(start, start + pageSize);
+  }, [filteredTechnicals, currentPage, pageSize]);
 
   const pagedWhaleAlerts = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -109,18 +163,73 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 bg-slate-950/60 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            {t('modernDeck.scopeLabel', { defaultValue: 'Phạm vi mã' })}
+          </label>
+          <select
+            value={symbolScope}
+            onChange={(event) => setSymbolScope(event.target.value)}
+            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 focus:border-emerald-500 focus:outline-none"
+          >
+            {scopeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label} ({option.count})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            {t('modernDeck.symbolLabel', { defaultValue: 'Mã' })}
+          </label>
+          <select
+            value={selectedSymbol}
+            onChange={(event) => setSelectedSymbol(event.target.value)}
+            className="rounded-md border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-slate-200 focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="all">{t('modernDeck.symbolAll', { defaultValue: 'Tất cả mã' })}</option>
+            {symbolOptions.map((symbol) => (
+              <option key={symbol} value={symbol}>
+                {symbol}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="ml-auto rounded-full border border-slate-800 bg-slate-900/80 px-3 py-1 text-[11px] text-slate-400">
+          {t('modernDeck.scopeSummary', {
+            defaultValue: '{count} mã trong phạm vi hiện tại',
+            count: symbolOptions.length,
+          })}
+        </div>
+      </div>
+
       {/* Tab Content */}
       <div className="flex-1 overflow-hidden p-2">
         {activeTab === 'overview' && (
           <div className="h-full flex flex-col overflow-hidden">
+             {symbolScope !== 'holdings' && (
+               <div className="mb-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                 {t('modernDeck.overviewScopeHint', { defaultValue: 'Tab Tổng quan hiện đang hiển thị các vị thế holdings nằm trong phạm vi đã chọn. Các dòng monitor cho tracked/watchlist sẽ được bổ sung ở slice bảng hợp nhất tiếp theo.' })}
+               </div>
+             )}
              <div className="flex-1 overflow-y-auto panel-scrollbar">
-               {!loading && holdings.length === 0 ? (
+               {!loading && filteredHoldings.length === 0 ? (
                  <div className="flex h-full flex-col items-center justify-center gap-3 px-6 py-12 text-center text-slate-500">
                    <div className="text-4xl opacity-30">📭</div>
                    <div>
-                     <p className="text-base font-semibold text-slate-300">Chưa có vị thế nắm giữ</p>
+                     <p className="text-base font-semibold text-slate-300">
+                       {symbolScope === 'holdings'
+                         ? 'Chưa có vị thế nắm giữ'
+                         : t('modernDeck.noHoldingsInScope', { defaultValue: 'Phạm vi đã chọn chưa có vị thế holdings' })}
+                     </p>
                      <p className="mt-1 max-w-md text-sm text-slate-500">
-                       Watchlist vẫn hoạt động bình thường. Nếu muốn bật thêm thống kê vị thế, hãy thêm giao dịch tại trang Transactions.
+                       {symbolScope === 'holdings'
+                         ? 'Watchlist vẫn hoạt động bình thường. Nếu muốn bật thêm thống kê vị thế, hãy thêm giao dịch tại trang Transactions.'
+                         : t('modernDeck.scopeEmptyHelp', { defaultValue: 'Bạn vẫn có thể dùng selector để đổi phạm vi mã. Nếu muốn có dữ liệu vị thế thật ở tab này, hãy thêm giao dịch tại trang Transactions.' })}
                      </p>
                    </div>
                    <Link
@@ -134,9 +243,9 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                  <HoldingsTable holdings={pagedHoldings} loading={loading} />
                )}
              </div>
-             {!loading && holdings.length > 0 && (
+             {!loading && filteredHoldings.length > 0 && (
                <PaginationBar
-                 total={holdings.length}
+                 total={filteredHoldings.length}
                  page={currentPage}
                  size={pageSize}
                  onPageChange={setCurrentPage}
@@ -148,6 +257,11 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
 
         {activeTab === 'technical' && (
           <div className="h-full flex flex-col overflow-hidden">
+             {symbolScope !== 'holdings' && (
+               <div className="mb-2 rounded-lg border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
+                 {t('modernDeck.technicalScopeHint', { defaultValue: 'Tab Kỹ thuật hiện đang lọc trên dữ liệu kỹ thuật sẵn có. Technicals cho tracked/watchlist/all sẽ đầy đủ sau khi bulk API theo symbol universe được triển khai.' })}
+               </div>
+             )}
              <div className="flex-1 overflow-y-auto panel-scrollbar">
                <table className="w-full text-left border-collapse">
                  <thead>
@@ -175,15 +289,15 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
                        </td>
                      </tr>
                    ))}
-                   {(!technicals || technicals.length === 0) && !loading && (
+                   {filteredTechnicals.length === 0 && !loading && (
                      <tr><td colSpan="5" className="text-center py-4 text-slate-600 italic">Không có dữ liệu kỹ thuật.</td></tr>
                    )}
                  </tbody>
                </table>
              </div>
-             {!loading && technicals && technicals.length > 0 && (
+             {!loading && filteredTechnicals.length > 0 && (
                <PaginationBar
-                 total={technicals.length}
+                 total={filteredTechnicals.length}
                  page={currentPage}
                  size={pageSize}
                  onPageChange={setCurrentPage}
@@ -195,7 +309,12 @@ export default function ModularPositionDeck({ holdings, loading, quotesBySymbol,
 
         {activeTab === 'whale' && (
           <div className="h-full flex flex-col overflow-hidden">
-            <WhaleBubbleChart holdings={holdings} quotesBySymbol={quotesBySymbol} />
+            <WhaleBubbleChart
+              holdings={holdings}
+              quotesBySymbol={quotesBySymbol}
+              selectedSymbol={selectedSymbol !== 'all' ? selectedSymbol : undefined}
+              symbolOptions={symbolOptions}
+            />
           </div>
         )}
 

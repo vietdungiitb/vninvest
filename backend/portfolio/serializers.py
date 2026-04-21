@@ -503,10 +503,15 @@ class PriceAlertRuleSerializer(serializers.ModelSerializer):
         return value
 
 class WatchlistGroupSerializer(serializers.ModelSerializer):
+    items = serializers.SerializerMethodField()
+
     class Meta:
         model = WatchlistGroup
-        fields = ['id', 'name', 'description', 'created_at']
+        fields = ['id', 'name', 'description', 'created_at', 'items']
         read_only_fields = ['id', 'created_at']
+
+    def get_items(self, obj):
+        return WatchlistItemSerializer(obj.items.all(), many=True).data
 
 class WatchlistItemSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(source='group.name', read_only=True)

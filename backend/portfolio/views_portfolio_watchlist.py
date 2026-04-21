@@ -47,7 +47,7 @@ class WatchlistGroupListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return WatchlistGroup.objects.filter(user=self.request.user)
+        return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -58,7 +58,7 @@ class WatchlistGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return WatchlistGroup.objects.filter(user=self.request.user)
+        return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
 
 
 class WatchlistItemCreateView(generics.CreateAPIView):

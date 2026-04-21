@@ -10,6 +10,7 @@ Muc tieu la: ro pham vi, ro trach nhiem, ro thu tu thuc hien, ro dieu kien dung/
 - KHONG duoc code ngay khi chua co ke hoach chi tiet.
 - Moi sua doi lon hoac tinh nang moi phai co 1 ke hoach trien khai duoc thong nhat truoc khi bat dau code.
 - Ke hoach phai duoc luu trong `docs/` va duoc tham chieu trong audit ledger.
+- **Quy dinh Bo tai lieu Tam giac (Mandatory Triad):** Moi khi tao file Implementation Plan, bat buoc phai tao kem theo Tech Spec va Taskboard tuong ung de dam bao tinh nhat quan ve kien truc va thuc thi.
 - Khong duoc merge khi thieu cac muc mandatory trong ke hoach.
 - Bat ky file `.md` nao trong `docs/` khi tao moi hoac thay doi noi dung deu phai kich hoat auto-audit va lap bao cao chi tiet, khong phu thuoc file do USER, AI, script hay git merge/pull tao ra.
 - Moi feature lien quan du lieu thi truong/phan tich bat buoc map ve SSOT domains: `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`.
@@ -24,15 +25,19 @@ Ke hoach bat buoc neu roi vao it nhat mot dieu kien:
 - Co rui ro anh huong production, hieu nang, bao mat, hoac chi phi API ben thu 3.
 - Tinh nang moi co lien quan den admin workflow, automation, retry/fallback, quan sat he thong.
 
-## Ten file ke hoach
+## Ten file tai lieu (Naming Convention)
 
 Dat ten theo mau:
 
 - `docs/IMPLEMENTATION_PLAN_<SCOPE>_<YYYYMMDD>.md`
+- `docs/TECH_SPEC_<SCOPE>_<YYYYMMDD>.md`
+- `docs/TASKBOARD_<SCOPE>_<YYYYMMDD>.md`
 
 Vi du:
 
 - `docs/IMPLEMENTATION_PLAN_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
+- `docs/TECH_SPEC_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
+- `docs/TASKBOARD_VNSTOCK_OFFPEAK_PIPELINE_20260415.md`
 
 ## Mau ke hoach bat buoc (khong duoc bo muc)
 
