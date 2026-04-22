@@ -2,8 +2,6 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 # Hoặc trên Portainer: thêm cả 2 file hoặc dùng file này thay vì docker-compose.yml
 
-version: '3.8'
-
 services:
   mailpit:
     # Không expose ports trên production (chỉ dùng internal để fallback email)
@@ -12,28 +10,56 @@ services:
       - default
 
   backend:
+    build:
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
     env_file:
       - ./backend/.env.production
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
     networks:
       - default
 
   frontend:
+    build:
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
     env_file:
       - .env.production
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
     ports:
       - "${FRONTEND_PORT:-80}:80"
     networks:
       - default
 
   celery_worker:
+    build:
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
     env_file:
       - ./backend/.env.production
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
     networks:
       - default
 
   celery_beat:
+    build:
+      args:
+        APP_RELEASE: ${APP_RELEASE:-main-local}
     env_file:
       - ./backend/.env.production
+    environment:
+      APP_RELEASE: ${APP_RELEASE:-main-local}
+    labels:
+      com.vninvest.release: ${APP_RELEASE:-main-local}
     networks:
       - default
 

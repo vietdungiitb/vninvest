@@ -16,16 +16,19 @@ fi
 echo "[1/5] Pull latest code"
 git pull origin main
 
-echo "[2/5] Build containers"
-docker compose --env-file .env.production build
+APP_RELEASE="${APP_RELEASE:-$(git rev-parse --short HEAD)}"
+export APP_RELEASE
+
+echo "[2/5] Build containers for APP_RELEASE=${APP_RELEASE}"
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml build --pull backend celery_worker celery_beat frontend
 
 echo "[3/5] Start services"
-docker compose --env-file .env.production up -d
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate backend celery_worker celery_beat frontend
 
 echo "[4/5] Check service status"
-docker compose ps
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml ps
 
 echo "[5/5] Health check (container logs tail)"
-docker compose logs --tail=80 backend
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml logs --tail=80 backend
 
 echo "Done. App should be reachable at http://<server-ip>/ (or your domain)."
