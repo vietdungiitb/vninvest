@@ -33,6 +33,18 @@ const COLORS = {
   internal: '#64748b',
 };
 
+const SESSION_AXIS_MINUTES = {
+  min: -15,
+  max: 360,
+};
+
+function formatTradingClockLabel(offsetMinutes) {
+  const totalMinutes = (9 * 60) + Number(offsetMinutes || 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.abs(totalMinutes % 60);
+  return `${String(hours).padStart(2, '0')}h${String(minutes).padStart(2, '0')}`;
+}
+
 export default function WhaleBubbleChart({ 
   selectedSymbol, 
   holdings = [], 
@@ -230,11 +242,14 @@ export default function WhaleBubbleChart({
       },
       xAxis: {
         type: 'value',
-        name: t('whaleChart.timeFromSessionStart') || 'Phút kể từ 9:00',
+        name: t('whaleChart.timeFromSessionStart') || 'Thời gian giao dịch',
         nameLocation: 'middle',
         nameGap: 30,
+        min: SESSION_AXIS_MINUTES.min,
+        max: SESSION_AXIS_MINUTES.max,
+        interval: 45,
         axisLabel: {
-          formatter: (val) => formatTimeFromMinutes(val),
+          formatter: (val) => formatTradingClockLabel(val),
           fontSize: 10,
           color: '#cbd5e1',
         },

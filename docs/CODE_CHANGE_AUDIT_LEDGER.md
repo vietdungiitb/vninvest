@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bc - Lock Whale Bubble chart X-axis to trading session window 08h45-15h00
+
+Muc tieu:
+- Doi truc X tu dang phut tuong doi sang khung gio giao dich co dinh de nguoi dung doc chart theo thoi gian thi truong that.
+- Can doi bo cuc chart bang domain co dinh 08h45-15h00.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoa min/max truc X thanh 08h45-15h00, doi tick formatter sang nhan gio thuc `08h45`, `09h30`, ..., `15h00`, doi ten truc thanh `Thời gian giao dịch`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend container restarted.
+
 ## Entry 2026-04-22bb - Scale whale bubbles by order value with volume-intensity color and gentle hover
 
 Muc tieu:

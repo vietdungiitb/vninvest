@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bc)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoa truc X ve khung giao dich 08h45-15h00, hien thi tick theo gio thuc, can doi layout chart)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bb)
 - frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - scale bong linear theo gia tri lenh; them color intensity theo volume + hover color)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - apply per-point itemStyle/emphasis, hover nhe va focus vao bong dang tro)
