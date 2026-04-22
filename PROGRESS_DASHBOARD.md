@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bd)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - toi uu render ECharts: progressive rendering, lazy update, dirty rect, giam animation duration/update)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bc)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoa truc X ve khung giao dich 08h45-15h00, hien thi tick theo gio thuc, can doi layout chart)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bc)

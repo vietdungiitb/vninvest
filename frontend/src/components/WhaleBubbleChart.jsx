@@ -167,6 +167,10 @@ export default function WhaleBubbleChart({
         emphasis: { scale: true, focus: 'self' },
         tooltip: { show: true },
         type: 'scatter',
+        progressive: 500,
+        progressiveThreshold: 1000,
+        animationDuration: 120,
+        animationDurationUpdate: 80,
       },
       {
         name: t('whaleChart.sellFlow') || 'Bán chủ động',
@@ -193,6 +197,10 @@ export default function WhaleBubbleChart({
         emphasis: { scale: true, focus: 'self' },
         tooltip: { show: true },
         type: 'scatter',
+        progressive: 500,
+        progressiveThreshold: 1000,
+        animationDuration: 120,
+        animationDurationUpdate: 80,
       },
       {
         name: t('whaleChart.internal') || 'Giao dịch nội bộ',
@@ -219,6 +227,10 @@ export default function WhaleBubbleChart({
         emphasis: { scale: true, focus: 'self' },
         tooltip: { show: true },
         type: 'scatter',
+        progressive: 500,
+        progressiveThreshold: 1000,
+        animationDuration: 120,
+        animationDurationUpdate: 80,
       },
       {
         name: `Xu hướng dòng tiền (MA${windowSize})`,
@@ -327,7 +339,11 @@ export default function WhaleBubbleChart({
       },
       series,
       animation: true,
-      animationDuration: 500,
+      animationThreshold: 80,
+      animationDuration: 140,
+      animationDurationUpdate: 90,
+      animationEasing: 'linear',
+      animationEasingUpdate: 'linear',
       // Reference line at Y=0 (ref price)
       markArea: {
         silent: true,
@@ -474,7 +490,9 @@ export default function WhaleBubbleChart({
               <ReactECharts 
                 option={chartOption} 
                 style={{ width: '100%', height: '100%', minHeight: '450px' }} 
-                opts={{ renderer: 'canvas' }}
+                notMerge={true}
+                lazyUpdate={true}
+                opts={{ renderer: 'canvas', useDirtyRect: true }}
               />
             </div>
           </div>

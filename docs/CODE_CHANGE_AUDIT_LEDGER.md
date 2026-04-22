@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bd - Improve Whale Bubble chart render responsiveness
+
+Muc tieu:
+- Giam do tre cam nhan khi Whale Bubble chart hien thi va cap nhat.
+- Cat bot animation nang va bat che do render/update nhe hon cua ECharts.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - giam `animationDuration`, them `animationDurationUpdate`, `animationThreshold`, `progressive`, `progressiveThreshold`, bat `notMerge`, `lazyUpdate`, `useDirtyRect`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
 ## Entry 2026-04-22bc - Lock Whale Bubble chart X-axis to trading session window 08h45-15h00
 
 Muc tieu:
