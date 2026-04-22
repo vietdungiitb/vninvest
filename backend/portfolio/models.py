@@ -1809,6 +1809,7 @@ class OrderFlowSignal(models.Model):
     is_market_discovery = models.BooleanField(default=False, db_index=True, verbose_name='Phát hiện thị trường?')
     discovery_bucket  = models.CharField(max_length=30, blank=True, default='', verbose_name='Nhóm Discovery')
     whale_intensity   = models.FloatField(default=0.0, verbose_name='Cường độ cá mập (0-1)')
+    trade_date        = models.DateField(null=True, blank=True, db_index=True, verbose_name='Ngày giao dịch (cố định)')
     created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm ghi')
 
     class Meta:

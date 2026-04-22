@@ -129,6 +129,7 @@ def _build_reference_price_by_trade_date(symbol: str, trade_dates: list[date]) -
     # We fetch up to the last trade date to build the mapping
     data_map = MarketDataService.get_ohlcv_batch(
         [symbol], 
+        start_date=normalized_dates[0] - timedelta(days=30),
         end_date=normalized_dates[-1],
         fields=['date', 'close_price']
     )
@@ -353,13 +354,20 @@ def dark_money_history_api(request, symbol: str):
     dark_flow_series = []
     try:
         trunc_fn = TRUNC_FN_MAP.get(interval, TruncDate)
+        from django.db.models.functions import Coalesce, Cast
+        from django.db.models import DateField
         qs = (
             OrderFlowSignal.objects
             .filter(
                 symbol=normalized_symbol,
-                created_at__date__gte=cutoff_date,
             )
-            .annotate(bucket=trunc_fn('created_at'))
+            .annotate(
+                resolved_date=Coalesce('trade_date', Cast('created_at', DateField()))
+            )
+            .filter(
+                resolved_date__gte=cutoff_date,
+            )
+            .annotate(bucket=trunc_fn('resolved_date'))
             .values('bucket')
             .annotate(
                 avg_strength=Avg('strength'),

@@ -229,12 +229,28 @@ export default function AIAdvisoryPromptConfigDrawer({ isOpen, onClose, config, 
 
         {/* Footer */}
         <div className="sticky bottom-0 border-t border-slate-700 bg-slate-900 px-6 py-3 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 transition"
-          >
-            {t('stockDetail.close', { defaultValue: 'Close' })}
-          </button>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input 
+                type="checkbox" 
+                className="w-4 h-4 accent-emerald-500 rounded border-slate-700 bg-slate-800"
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    localStorage.setItem('ai_global_prompt_config', JSON.stringify(localConfig));
+                  }
+                }}
+              />
+              <span className="text-[11px] text-slate-400 group-hover:text-slate-200 transition-colors">
+                Áp dụng làm cấu hình mặc định toàn hệ thống (SSOT)
+              </span>
+            </label>
+            <button
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-800 transition"
+            >
+              {t('stockDetail.close', { defaultValue: 'Close' })}
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import useAIAdvisor from '../../hooks/useAIAdvisor';
 import { useI18n } from '../../context/LangContext';
 
@@ -7,7 +7,6 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'news'
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [lastRecCount, setLastRecCount] = useState(0);
-  const [showFullDigest, setShowFullDigest] = useState(false);
   
   const { recommendations } = useAIAdvisor({ holdings, watchlist, technicals, alerts });
 
@@ -17,7 +16,7 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
        playAlertTone();
     }
     setLastRecCount(recommendations.length);
-  }, [recommendations.length]);
+  }, [recommendations.length, lastRecCount]);
 
   const playAlertTone = () => {
     if (!criticalSoundEnabled) return;
@@ -26,7 +25,7 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
       const ctx = new window.AudioContext();
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
-      oscillator.type = 'sine'; // Softer than triangle
+      oscillator.type = 'sine'; 
       oscillator.frequency.setValueAtTime(660, ctx.currentTime);
       oscillator.connect(gain);
       gain.connect(ctx.destination);
@@ -39,14 +38,14 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
     } catch (err) { console.warn('Audio play failed', err); }
   };
 
-  const hasStrongAlert = recommendations.some(r => r.rsi > 70 || r.rsi < 35);
+  const hasStrongAlert = recommendations.some(r => r.rsi > 70 || r.rsi < 30);
 
   return (
     <div className={`relative flex flex-col rounded-2xl border transition-all duration-500 overflow-hidden ${
       hasStrongAlert ? 'border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.2)] animate-pulse-slow' : 'border-slate-800 bg-slate-900/50'
     } ${isCollapsed ? 'h-[60px]' : 'min-h-[420px]'}`}>
       
-      {/* Header with Tabs and Collapse Toggle */}
+      {/* Header with Tabs and Circular Toggle */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-slate-950/40">
         <div className="flex items-center gap-4">
           <button 
@@ -62,15 +61,19 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
             AI News
           </button>
         </div>
-        
+
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-300 transition-all"
+          className="group flex items-center justify-center w-8 h-8 rounded-full border border-slate-700 bg-slate-900/50 hover:bg-slate-800 hover:border-slate-500 transition-all duration-300"
           title={isCollapsed ? "Mở rộng" : "Thu gọn"}
         >
-          {isCollapsed ? 'Mở rộng' : 'Thu gọn'}
-          <svg className={`w-4 h-4 transform transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <svg 
+            className={`w-4 h-4 text-slate-400 group-hover:text-slate-200 transform transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`} 
+            fill="none" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
           </svg>
         </button>
       </div>
@@ -103,7 +106,7 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
                     </div>
                     <p className="mt-2 text-[11px] text-slate-400 leading-relaxed">{rec.reason}</p>
                     
-                    {/* Hover Tooltip (Simplified version for Panel) */}
+                    {/* Hover Tooltip */}
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity bg-slate-900/95 rounded-xl p-3 flex flex-col justify-center border border-emerald-500/30">
                        <p className="text-[10px] font-bold text-emerald-400 mb-1">CƠ SỞ THUẬT TOÁN:</p>
                        <p className="text-[10px] text-slate-300 leading-tight">{rec.algoLogic}</p>
@@ -123,60 +126,24 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {(!newsDigest || !newsDigest.has_digest) ? (
+            <div className="space-y-4">
+              {(!newsDigest || newsDigest.length === 0) ? (
                 <div className="py-12 text-center">
                   <span className="text-2xl mb-2 block">📰</span>
                   <p className="text-xs text-slate-500 italic">Chưa có bản tin AI mới nhất.</p>
-                  <p className="text-[10px] text-slate-600 mt-1">Bản tin được tạo tự động sau 16:05 các ngày trong tuần.</p>
                 </div>
               ) : (
-                <>
-                  {/* Header: ngày + fallback badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-sky-400 font-bold uppercase tracking-wider">Bản tin {newsDigest.date}</span>
-                    {newsDigest.is_latest_fallback && (
-                      <span className="text-[9px] text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded">Bản tin gần nhất</span>
-                    )}
-                  </div>
-
-                  {/* Tóm tắt ngắn */}
-                  <div className="border-l-2 border-sky-500/40 pl-3 py-1">
-                    <p className="text-[11px] text-slate-300 leading-relaxed">{newsDigest.digest_summary}</p>
-                  </div>
-
-                  {/* Danh sách symbol được phân tích */}
-                  {newsDigest.symbols?.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {newsDigest.symbols.map(sym => (
-                        <span key={sym} className="text-[9px] bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">{sym}</span>
-                      ))}
+                newsDigest.slice(0, 5).map((item, idx) => (
+                  <div key={idx} className="border-l-2 border-sky-500/30 pl-3 py-1">
+                    <p className="text-xs font-bold text-slate-200 hover:text-sky-400 cursor-pointer transition-colors line-clamp-2">
+                      {item.headline || item.title}
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[9px] text-slate-500">{formatDateTime(item.ts || item.created_at)}</span>
+                      {item.sentiment === 'positive' && <span className="text-[9px] text-emerald-400">Positive</span>}
                     </div>
-                  )}
-
-                  {/* Nội dung đầy đủ (toggle) */}
-                  {newsDigest.digest_full && (
-                    <div>
-                      <button
-                        onClick={() => setShowFullDigest(p => !p)}
-                        className="text-[9px] text-sky-500 hover:text-sky-300 transition-colors underline"
-                      >
-                        {showFullDigest ? 'Thu gọn' : 'Xem phân tích đầy đủ'}
-                      </button>
-                      {showFullDigest && (
-                        <p className="mt-2 text-[10px] text-slate-400 leading-relaxed whitespace-pre-line">{newsDigest.digest_full}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Footer: timestamp + AI model */}
-                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/50">
-                    <span className="text-[9px] text-slate-600">{formatDateTime(newsDigest.created_at)}</span>
-                    {newsDigest.ai_model && (
-                      <span className="text-[9px] text-slate-600 italic">{newsDigest.ai_model}</span>
-                    )}
                   </div>
-                </>
+                ))
               )}
             </div>
           )}

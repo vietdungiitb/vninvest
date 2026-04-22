@@ -3,6 +3,50 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bn)
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - normalize dedupe contract: v1 khop implementation hien tai, v2 de xuat mo rong voi `stream_id`)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (MODIFIED - them migration file vat ly `backend/portfolio/migrations/0052_orderflowsignal_trade_date.py` cho traceability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Dedupe contract trong spec da khop implementation helper backfill hien tai.
+- PASSED: Bao cao audit da co migration trace day du den file migration 0052.
+- PASSED: Pham vi cap nhat tai lieu-only, khong thay doi source runtime.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bm)
+- docs/recompute_dark_flow_spec_20260422.md (ADDED - spec chi tiet cho script backfill dark flow: CLI contract, workflow, duplicate guard rails, persist policy, logging, test plan)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - them link toi spec backfill chi tiet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spec moi da cover du workflow tu dry-run audit den persist co guard rails cho duplicate tick.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bl)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - them muc Danh sach dich vu nen, tach ro realtime services va luong backfill operational)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: plan hien xac dinh ro backfill khong nam trong scheduler realtime ma la luong operational rieng.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bk)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - viet lai thanh implementation plan coding-ready cho Whale Flow Analytics audit/fix, bo sung risk duplicate tick, fallback contract, backfill strategy, verification matrix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: plan moi da dong bo voi codebase hien tai, phan tach ro backend/frontend/data pipeline va acceptance criteria.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bj)
 - frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi ma co phieu trong tooltip thanh link bam duoc, dieu huong sang /stocks/:symbol)
 - frontend/src/i18n/vi.js (MODIFIED - them key i18n `heatmapTooltipOpenStockDetail`)

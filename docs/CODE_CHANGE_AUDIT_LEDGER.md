@@ -1,5 +1,46 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bn - Normalize audit docs for dedupe contract and migration traceability
+
+Muc tieu:
+- Dong bo lai contract dedupe trong spec voi implementation hien tai de tranh hieu sai khi van hanh backfill.
+- Bo sung trace migration file vat ly cho de doi chieu code-change toan ven trong cac cuoc audit.
+
+Danh sach tep cap nhat:
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - cap nhat muc khoa dedupe: v1 khop code hien tai, v2 la huong mo rong voi `stream_id`)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (MODIFIED - them tham chieu migration file `backend/portfolio/migrations/0052_orderflowsignal_trade_date.py` trong section schema va bang audit trail)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bn)
+
+Validation:
+- PASSED: Spec dedupe contract khop voi implementation trong `backend/portfolio/order_flow_history.py`.
+- PASSED: Bao cao audit co trace den migration file vat ly cua migration 0052.
+- PASSED: Scope thay doi tai lieu-only, khong tac dong runtime code.
+
+## Entry 2026-04-22bk - Whale Analytics Data Recovery, Backfill Pipeline & UI Hardening
+
+Muc tieu:
+- Khac phuc tinh trang bao cao Whale Buy/Sell bang 0 tren DXG du co lenh lon (nguyen nhan do trung lap du lieu crawler >99% va thieu backfill lich su).
+- Trien khai pipeline khoi phuc du lieu: Helper xu ly lich su co deduplication, CLI tool backfill operator-led.
+- Cung co ha tang: Them `trade_date` vao model `OrderFlowSignal`, sua loi API quan trong khi truy van du lieu lich su (mixed types, missing parameters).
+- Minh bach hoa du lieu: Them badge "Synthetic Data" tren frontend khi he thong phai dung du lieu gia lap do thieu tin hieu thuc te.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - them field `trade_date` vao OrderFlowSignal; migration 0052)
+- backend/portfolio/order_flow_history.py (NEW - service tinh toan tin hieu tu tick lich su co kien truc deduplication)
+- scratch/recompute_dark_flow.py (NEW - CLI tool cho phep admin backfill tin hieu theo symbol/ngay)
+- backend/portfolio/views_dark_money_history.py (MODIFIED - fix loi mixed types Date/DateTime, fix truyen thieu start_date cho MarketDataService)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - them flag isSynthetic va hien thi badge canh bao du lieu gia lap)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (NEW - bao cao audit tong the)
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - sync spec voi thuc te trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bk)
+
+Validation:
+- PASSED: Backfill thanh cong cho DXG ngay 2026-04-22, phat hien tin hieu Iceberg (Strength 100).
+- PASSED: API fix giup tra ve dung 1 series Dark Flow thuc te thay vi dummy data.
+- PASSED: Migration 0052 applied thanh cong tren backend.
+- PASSED: Script debug `debug_dark_money.py` xac nhan whale_signals count: 2 va dark_flow_series count: 1.
+
+
 ## Entry 2026-04-22bj - Add clickable stock symbol link in heatmap tooltip
 
 Muc tieu:
@@ -4157,6 +4198,79 @@ Ket qua verify:
 - `get_errors` cho `frontend/src/components/DarkMoneyMasterChart.jsx`: khong co loi.
 
 ---
+
+## Entry 2026-04-22bm - Add detailed spec for recompute dark flow backfill script
+
+Muc tieu:
+- Dinh nghia ro contract ky thuat cho `scratch/recompute_dark_flow.py` de doi backend co the code khong mo ho.
+
+Van de duoc sua:
+- Plan tong the da co nhac toi backfill, nhung chua co spec chi tiet ve CLI args, workflow, output schema, duplicate guard rails, idempotency, va persist policy.
+
+Danh sach tep da sua:
+- docs/recompute_dark_flow_spec_20260422.md
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Them tai lieu spec rieng cho script backfill dark flow.
+- Chot cac thanh phan:
+  - CLI contract
+  - workflow theo tung trade_date
+  - duplicate audit va guard rails
+  - helper API history-specific
+  - persist policy va idempotency
+  - logging/test plan
+- Lien ket spec moi tu plan tong the Whale Flow Analytics.
+
+Ket qua verify:
+- Doi backend da co tai lieu coding-ready cho script backfill ma khong can suy dien them tu plan tong quan.
+
+## Entry 2026-04-22bl - Clarify background services list and backfill path in Whale Flow Analytics plan
+
+Muc tieu:
+- Lam ro trong plan rang backfill co ton tai, nhung nam o luong operational rieng thay vi nam trong danh sach dich vu nen realtime.
+
+Van de duoc sua:
+- Ban plan truoc co muc backfill, nhung chua co muc rieng liet ke dich vu nen/realtime va backfill path, de gay nham la khong co backfill.
+
+Danh sach tep da sua:
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Them muc `Danh sach dich vu nen` vao plan.
+- Tach ro 3 nhom:
+  - realtime services hien huu
+  - luong backfill de xuat
+  - ket luan kien truc giua realtime va backfill
+
+Ket qua verify:
+- Plan hien co duong dan doc nhanh cho cau hoi "dich vu nen co backfill khong?" ma khong can suy dien tu cac muc khac.
+
+## Entry 2026-04-22bk - Rewrite implementation plan for Whale Flow Analytics audit and fix
+
+Muc tieu:
+- Chuyen plan hien tai tu scope Whale Bubble Chart sang scope Whale Flow Analytics audit/fix, phan anh dung hien trang backend/frontend va rui ro duplicate tick.
+
+Van de cua tai lieu cu:
+- Tai lieu dang mo ta API/UX cho Whale Bubble Chart, khong giai quyet van de Whale Buy/Sell tooltip va fallback Dark Flow Strength.
+- Ke hoach cu bo sot rui ro duplicate `IntradayTick`, chua rang buoc backend contract cho fallback mode, va de xuat backfill chua khop voi detector hien tai.
+
+Danh sach tep da sua:
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Viet lai thanh implementation plan coding-ready cho Whale Flow Analytics audit/fix.
+- Them scope backend/frontend/data pipeline, risk register, acceptance criteria, verification matrix, va file impact checklist.
+- Chot ro canh bao quan trong: fallback mode do `OrderFlowSignal` rong, duplicate tick co the lam phong dai whale value, va script backfill can ho tro date range thay vi chi goi task realtime.
+
+Ket qua verify:
+- Tai lieu da duoc chinh lai theo dung scope ky thuat, san sang de chia thanh work items truoc khi code.
 
 ## Entry 2026-04-16ac - JWT refresh single-flight to prevent concurrent rotation races
 

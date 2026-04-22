@@ -796,7 +796,8 @@ export default function DarkMoneyMasterChart({ symbol }) {
     const candlesByTime = {};
     normalizedCandles.forEach((c, idx) => { candlesByTime[c.time] = { ...c, idx }; });
     const whaleSignalsByTime = buildWhaleSignalSummaryByTime(data.whale_signals || [], normalizedCandles, interval);
-    const darkFlowSeries = data.dark_flow_series?.length
+    const isSynthetic = !data.dark_flow_series?.length;
+    const darkFlowSeries = !isSynthetic
       ? data.dark_flow_series
       : buildFallbackDarkFlowSeries(normalizedCandles);
     const priceByTime = Object.fromEntries(normalizedCandles.map((c) => [String(c.time), Number(c.close || 0)]));
@@ -1357,6 +1358,12 @@ export default function DarkMoneyMasterChart({ symbol }) {
               {prefetchState.error ? (
                 <span className="text-amber-300">{prefetchState.error}</span>
               ) : null}
+              {isSynthetic && (
+                <span className="flex items-center gap-1.5 rounded-full border border-amber-600/50 bg-amber-950/40 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                  Synthetic Data
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setShowWhaleSignals((prev) => !prev)}

@@ -69,10 +69,6 @@ export default function ModernSidebar({ portfolioId, alerts, breadth, analytics,
         <AllocationPieChart portfolioId={portfolioId} />
       </div>
 
-      {/* AI News Digest */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shrink-0">
-        <ModernPortfolioDigest digest={digest} loading={loading} />
-      </div>
 
       {/* Live Alerts Stream */}
       <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col min-h-[280px]">
