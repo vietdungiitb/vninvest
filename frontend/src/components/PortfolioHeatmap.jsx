@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
+import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 
 /**
@@ -170,6 +171,14 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     if (!Number.isFinite(numeric)) return '0.00%';
     return `${numeric > 0 ? '+' : ''}${numeric.toFixed(2)}%`;
   }, []);
+
+  const getVolatilityLevelLabel = useCallback((changePct) => {
+    const absChange = Math.abs(toNumber(changePct));
+    if (absChange >= 5) return t('dashboardRealtime.heatmapTooltipVolatilityVeryHigh', { defaultValue: 'Rất cao' });
+    if (absChange >= 3) return t('dashboardRealtime.heatmapTooltipVolatilityHigh', { defaultValue: 'Cao' });
+    if (absChange >= 1) return t('dashboardRealtime.heatmapTooltipVolatilityMedium', { defaultValue: 'Vừa' });
+    return t('dashboardRealtime.heatmapTooltipVolatilityLow', { defaultValue: 'Thấp' });
+  }, [t]);
 
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
@@ -813,7 +822,13 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
             <div className="flex items-start justify-between gap-3 border-b border-slate-700/70 px-3 py-2.5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-black tracking-[0.14em] text-slate-50">{selectedLeaf.symbol}</span>
+                  <Link
+                    to={`/stocks/${selectedLeaf.symbol}`}
+                    className="text-sm font-black tracking-[0.14em] text-slate-50 underline decoration-slate-500/60 underline-offset-2 transition-colors hover:text-cyan-300"
+                    title={t('dashboardRealtime.heatmapTooltipOpenStockDetail', { defaultValue: 'Mở trang chi tiết cổ phiếu' })}
+                  >
+                    {selectedLeaf.symbol}
+                  </Link>
                   <span className={`rounded-md px-2 py-0.5 text-[10px] font-black ${selectedLeaf.changePct > 0 ? 'bg-emerald-500/15 text-emerald-300' : selectedLeaf.changePct < 0 ? 'bg-rose-500/15 text-rose-300' : 'bg-slate-700/60 text-slate-300'}`}>
                     {formatPercent(selectedLeaf.changePct)}
                   </span>
@@ -859,11 +874,9 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
               </div>
               <div>
                 <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
-                  {sizeMetric === 'cap'
-                    ? t('dashboardRealtime.heatmapTooltipTileSizeByCap', { defaultValue: 'Kích thước ô (theo vốn hóa)' })
-                    : t('dashboardRealtime.heatmapTooltipTileSizeByValue', { defaultValue: 'Kích thước ô (theo giá trị)' })}
+                  {t('dashboardRealtime.heatmapTooltipVolatilityLevel', { defaultValue: 'Mức độ biến động' })}
                 </div>
-                <div className="mt-0.5 font-bold text-slate-100">{formatCompactNumber(selectedLeaf.sizeValue, 2)}</div>
+                <div className="mt-0.5 font-bold text-slate-100">{`${getVolatilityLevelLabel(selectedLeaf.changePct)} (${formatPercent(selectedLeaf.changePct)})`}</div>
               </div>
             </div>
 

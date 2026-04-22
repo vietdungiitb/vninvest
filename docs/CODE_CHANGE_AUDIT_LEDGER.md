@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bj - Add clickable stock symbol link in heatmap tooltip
+
+Muc tieu:
+- Cho phep nguoi dung bam truc tiep vao ma co phieu trong tooltip heatmap de mo trang chi tiet ma do.
+- Duy tri thong tin tooltip de doc va co them huong dieu huong nhanh sang Stock Detail.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - thay ticker text thanh Link dieu huong toi /stocks/:symbol)
+- frontend/src/i18n/vi.js (MODIFIED - them key `heatmapTooltipOpenStockDetail`)
+- frontend/src/i18n/en.js (MODIFIED - them key `heatmapTooltipOpenStockDetail`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va container frontend started.
+
 ## Entry 2026-04-22bi - Clarify duplicated market-cap labels in modern heatmap tooltip
 
 Muc tieu:
