@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bg - Stabilize Whale Bubble hover and tooltip state
+
+Muc tieu:
+- Khoi phuc hover effect va tooltip khi chart dang bi rerender tu parent updates.
+- Loai bo cau hinh update qua manh cua ECharts gay loi `getRawIndex` tren hover out/contextmenu.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo `notMerge`, `lazyUpdate`, `useDirtyRect` tren `ReactECharts` de chart khong thay option/data qua dot ngot khi hover)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
 ## Entry 2026-04-22bf - Remove zoom controls from Whale Bubble chart
 
 Muc tieu:

@@ -480,9 +480,7 @@ export default function WhaleBubbleChart({
               <ReactECharts 
                 option={chartOption} 
                 style={{ width: '100%', height: '100%', minHeight: '450px' }} 
-                notMerge={true}
-                lazyUpdate={true}
-                opts={{ renderer: 'canvas', useDirtyRect: true }}
+                opts={{ renderer: 'canvas' }}
               />
             </div>
           </div>

@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bg)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo update mode qua manh cua ReactECharts de giu hover/tooltip state on dinh, tranh loi `getRawIndex` khi mouseout/contextmenu)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bf)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - xoa toan bo data zoom, bo slider zoom duoi chart va inside zoom interaction o tab Ca map)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bf)
