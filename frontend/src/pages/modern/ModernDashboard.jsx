@@ -349,7 +349,7 @@ export default function ModernDashboard() {
               watchlist={trackedSymbols}
               technicals={technicals}
               alerts={alerts}
-              newsDigest={digest?.items || []}
+              newsDigest={digest}
               criticalSoundEnabled={criticalSoundEnabled}
             />
             <ModernSidebar
