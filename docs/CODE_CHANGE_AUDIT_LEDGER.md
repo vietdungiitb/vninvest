@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bh - Whale Bubble tooltip money format and Y-axis unit to billion VND
+
+Muc tieu:
+- Doi hien thi Gia tri trong tooltip sang don vi `trieu dong`/`ty dong` de de doc.
+- Canh bao va giam sai so Bien dong khi nguon `price` va `ref_price` lech don vi (VND vs nghin dong).
+- Doi truc Y mode Gia tri sang don vi `Ty dong` de thong nhat voi cach doc chart.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - them canh chuan hoa don vi gia/ref gia truoc khi tinh `yVnd`, `yPct`)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tooltip format Gia tri theo trieu/ty dong; them dong Gia tham chieu; truc Y mode value doi sang Ty dong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
 ## Entry 2026-04-22bg - Stabilize Whale Bubble hover and tooltip state
 
 Muc tieu:

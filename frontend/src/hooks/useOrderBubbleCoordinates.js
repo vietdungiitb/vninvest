@@ -30,6 +30,46 @@ function baseColorBySide(side) {
   return '#64748b';
 }
 
+function alignPriceUnits(price, referencePrice) {
+  const priceNum = Number(price);
+  const referenceNum = Number(referencePrice);
+
+  if (!Number.isFinite(priceNum) || !Number.isFinite(referenceNum) || priceNum <= 0 || referenceNum <= 0) {
+    return {
+      priceNum,
+      referencePriceNum: referenceNum,
+      unitAdjusted: false,
+    };
+  }
+
+  const larger = Math.max(priceNum, referenceNum);
+  const smaller = Math.min(priceNum, referenceNum);
+  const magnitudeGap = larger / Math.max(smaller, 1);
+
+  // Canonical mismatch guard: one source may be in VND while the other is in THOUSAND_VND.
+  if (magnitudeGap >= 100) {
+    if (priceNum > referenceNum) {
+      return {
+        priceNum,
+        referencePriceNum: referenceNum * 1000,
+        unitAdjusted: true,
+      };
+    }
+
+    return {
+      priceNum: priceNum * 1000,
+      referencePriceNum: referenceNum,
+      unitAdjusted: true,
+    };
+  }
+
+  return {
+    priceNum,
+    referencePriceNum: referenceNum,
+    unitAdjusted: false,
+  };
+}
+
 export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
   /**
    * Convert raw order data to bubble chart coordinates
@@ -68,8 +108,11 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
         const xMinutes = timeDiff / (1000 * 60);
         
         // Y-axis: price difference from reference
-        const priceNum = parseFloat(order.price);
-        const refPriceNum = hasReferencePrice ? parseFloat(refPrice) : null;
+        const rawPriceNum = parseFloat(order.price);
+        const rawRefPriceNum = hasReferencePrice ? parseFloat(refPrice) : null;
+        const { priceNum, referencePriceNum: refPriceNum, unitAdjusted } = hasReferencePrice
+          ? alignPriceUnits(rawPriceNum, rawRefPriceNum)
+          : { priceNum: rawPriceNum, referencePriceNum: null, unitAdjusted: false };
         const yVnd = hasReferencePrice ? (priceNum - refPriceNum) : 0;
         const yPct = hasReferencePrice && refPriceNum ? (((priceNum - refPriceNum) / refPriceNum) * 100) : 0;
         
@@ -96,6 +139,7 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
           price: priceNum,
           volume,
           matchedValue,
+          referencePrice: refPriceNum,
           timestamp: orderTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
           fullTimestamp: orderTime.toLocaleTimeString('vi-VN'),
           side: order.side,
@@ -105,6 +149,7 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
           volumeNorm,
           isLarge: matchedValue >= 1_000_000_000,
           isExtreme: order.is_extreme,
+          unitAdjusted,
         };
 
         // Categorize by side

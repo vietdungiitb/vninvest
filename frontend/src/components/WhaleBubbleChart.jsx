@@ -45,6 +45,36 @@ function formatTradingClockLabel(offsetMinutes) {
   return `${String(hours).padStart(2, '0')}h${String(minutes).padStart(2, '0')}`;
 }
 
+function formatTooltipMoney(value) {
+  const numericValue = Number(value || 0);
+  const absValue = Math.abs(numericValue);
+
+  if (absValue >= 1_000_000_000) {
+    return `${(numericValue / 1_000_000_000).toLocaleString('vi-VN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })} tỷ đồng`;
+  }
+
+  if (absValue >= 1_000_000) {
+    return `${(numericValue / 1_000_000).toLocaleString('vi-VN', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })} triệu đồng`;
+  }
+
+  return `${numericValue.toLocaleString('vi-VN')} đồng`;
+}
+
+function formatTooltipPriceDelta(value) {
+  const numericValue = Number(value || 0);
+  const sign = numericValue > 0 ? '+' : '';
+  return `${sign}${numericValue.toLocaleString('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  })} đ`;
+}
+
 export default function WhaleBubbleChart({ 
   selectedSymbol, 
   holdings = [], 
@@ -127,7 +157,7 @@ export default function WhaleBubbleChart({
     }
 
     const isValue = showUnit === 'value';
-    const yAxisLabel = isValue ? 'Giá trị khớp (VNĐ)' : 'Khối lượng (CP)';
+    const yAxisLabel = isValue ? 'Giá trị khớp (Tỷ đồng)' : 'Khối lượng (CP)';
     const yDataKey = isValue ? 'yValue' : 'volume';
 
     // Calculate Volume Moving Average (MA20)
@@ -268,7 +298,16 @@ export default function WhaleBubbleChart({
         nameLocation: 'middle',
         nameGap: 40,
         axisLabel: {
-          formatter: (val) => isValue ? formatVND(val) : (val / 1000).toFixed(0) + 'k',
+          formatter: (val) => {
+            if (!isValue) {
+              return (val / 1000).toFixed(0) + 'k';
+            }
+            const billionValue = Number(val || 0) / 1_000_000_000;
+            return `${billionValue.toLocaleString('vi-VN', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })} tỷ`;
+          },
           fontSize: 10,
           color: '#cbd5e1',
         },
@@ -307,12 +346,18 @@ export default function WhaleBubbleChart({
               </div>
               <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
                 <span style="color: #64748b;">Giá trị:</span>
-                <span style="color: #10b981; font-weight: bold;">${formatVND(meta.matchedValue)}đ</span>
+                <span style="color: #10b981; font-weight: bold;">${formatTooltipMoney(meta.matchedValue)}</span>
               </div>
               <div style="border-top: 1px dashed #334155; padding-top: 4px; display: flex; justify-content: space-between;">
                 <span style="color: #64748b;">Biến động:</span>
-                <span style="color: ${meta.y >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">${meta.y >= 0 ? '+' : ''}${meta.y.toLocaleString('vi-VN')} (${meta.yPct.toFixed(2)}%)</span>
+                <span style="color: ${meta.y >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">${formatTooltipPriceDelta(meta.y)} (${meta.yPct.toFixed(2)}%)</span>
               </div>
+              ${meta.referencePrice ? `
+                <div style="margin-top: 4px; display: flex; justify-content: space-between;">
+                  <span style="color: #64748b;">Giá tham chiếu:</span>
+                  <span style="color: #cbd5e1; font-weight: 600;">${meta.referencePrice.toLocaleString('vi-VN')} đ</span>
+                </div>
+              ` : ''}
               ${meta.isExtreme ? `
                 <div style="margin-top: 6px; padding: 4px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; font-size: 11px; font-weight: 900; text-align: center; border-radius: 4px; letter-spacing: 0.5px;">
                   🧨 LỆNH CỰC LỚN (EXTREME)

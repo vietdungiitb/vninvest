@@ -3,6 +3,18 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bh)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - them guard can chuan don vi gia/ref gia khi tinh Bien dong de tranh phan tram ao)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tooltip Gia tri hien thi theo trieu/ty dong; bo sung Gia tham chieu; truc Y mode Gia tri doi sang Ty dong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bg)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo update mode qua manh cua ReactECharts de giu hover/tooltip state on dinh, tranh loi `getRawIndex` khi mouseout/contextmenu)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bg)
