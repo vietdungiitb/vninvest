@@ -8,17 +8,13 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 Set-Location $repoRoot
 
-$baseCompose = 'docker-compose.yml'
 $devCompose = 'docker-compose.dev.yml'
 
-if (-not (Test-Path $baseCompose)) {
-    throw "Missing $baseCompose in repo root: $repoRoot"
-}
 if (-not (Test-Path $devCompose)) {
     throw "Missing $devCompose in repo root: $repoRoot"
 }
 
-$cmdArgs = @('-f', $baseCompose, '-f', $devCompose)
+$cmdArgs = @('-f', $devCompose)
 if ($ComposeArgs) {
     $cmdArgs += $ComposeArgs
 }

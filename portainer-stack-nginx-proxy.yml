@@ -16,6 +16,8 @@ services:
       retries: 5
     networks:
       - app_net
+    mem_limit: ${DB_MEM_LIMIT:-2g}
+    cpus: ${DB_CPUS:-1.5}
 
   redis:
     image: redis:7-alpine
@@ -31,6 +33,8 @@ services:
       retries: 5
     networks:
       - app_net
+    mem_limit: ${REDIS_MEM_LIMIT:-1g}
+    cpus: ${REDIS_CPUS:-1.0}
 
   backend:
     build:
@@ -42,18 +46,16 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
-      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT}
-      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE}
-      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE}
-      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS}
-      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS}
-      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
       USE_X_FORWARDED_HOST: "True"
       USE_X_FORWARDED_PORT: "True"
       SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
       SECURE_PROXY_SSL_HEADER_VALUE: https
-      DRF_REALTIME_TICKER_RATE: ${DRF_REALTIME_TICKER_RATE}
-      DRF_REALTIME_CHART_RATE: ${DRF_REALTIME_CHART_RATE}
       DB_ENGINE: postgres
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -88,10 +90,18 @@ services:
       redis:
         condition: service_healthy
     command: ["/bin/sh", "/app/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:8000/api/health/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
     expose:
       - "8000"
     networks:
       - app_net
+    mem_limit: ${BACKEND_MEM_LIMIT:-1500m}
+    cpus: ${BACKEND_CPUS:-1.5}
 
   celery_worker:
     build:
@@ -103,18 +113,16 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
-      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT}
-      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE}
-      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE}
-      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS}
-      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS}
-      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
       USE_X_FORWARDED_HOST: "True"
       USE_X_FORWARDED_PORT: "True"
       SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
       SECURE_PROXY_SSL_HEADER_VALUE: https
-      DRF_REALTIME_TICKER_RATE: ${DRF_REALTIME_TICKER_RATE}
-      DRF_REALTIME_CHART_RATE: ${DRF_REALTIME_CHART_RATE}
       DB_ENGINE: postgres
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -149,8 +157,16 @@ services:
       redis:
         condition: service_healthy
     command: ["celery", "-A", "config", "worker", "-l", "info"]
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config inspect ping -d celery@$$HOSTNAME | grep -q 'OK'"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 60s
     networks:
       - app_net
+    mem_limit: ${CELERY_WORKER_MEM_LIMIT:-2g}
+    cpus: ${CELERY_WORKER_CPUS:-2.0}
 
   celery_beat:
     build:
@@ -162,18 +178,16 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
       DJANGO_DEBUG: ${DJANGO_DEBUG}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
-      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT}
-      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE}
-      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE}
-      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS}
-      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS}
-      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-True}
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-True}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-True}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-31536000}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-True}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-False}
       USE_X_FORWARDED_HOST: "True"
       USE_X_FORWARDED_PORT: "True"
       SECURE_PROXY_SSL_HEADER_NAME: HTTP_X_FORWARDED_PROTO
       SECURE_PROXY_SSL_HEADER_VALUE: https
-      DRF_REALTIME_TICKER_RATE: ${DRF_REALTIME_TICKER_RATE}
-      DRF_REALTIME_CHART_RATE: ${DRF_REALTIME_CHART_RATE}
       DB_ENGINE: postgres
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -208,8 +222,16 @@ services:
       redis:
         condition: service_healthy
     command: ["celery", "-A", "config", "beat", "-l", "info"]
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import pathlib, sys; cmd = pathlib.Path('/proc/1/cmdline').read_text(); sys.exit(0 if 'celery' in cmd and 'beat' in cmd else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     networks:
       - app_net
+    mem_limit: ${CELERY_BEAT_MEM_LIMIT:-750m}
+    cpus: ${CELERY_BEAT_CPUS:-0.75}
 
   frontend:
     build:
@@ -232,6 +254,8 @@ services:
     networks:
       - app_net
       - proxy_net
+    mem_limit: ${FRONTEND_MEM_LIMIT:-750m}
+    cpus: ${FRONTEND_CPUS:-0.75}
 
 volumes:
   postgres_data:

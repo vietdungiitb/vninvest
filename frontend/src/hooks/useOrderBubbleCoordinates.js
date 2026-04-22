@@ -43,21 +43,24 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
         const yVnd = hasReferencePrice ? (priceNum - refPriceNum) : 0;
         const yPct = hasReferencePrice && refPriceNum ? (((priceNum - refPriceNum) / refPriceNum) * 100) : 0;
         
-        // Size: normalize matched_value using sqrt for visual scaling
-        const matchedValue = parseFloat(order.matched_value);
-        const size = Math.sqrt(matchedValue) / 1000;
+        // Size: normalize matched_value using adjusted sqrt for visual scaling
+        const matchedValue = parseFloat(order.matched_value || (parseFloat(order.price) * parseFloat(order.volume)) || 0);
+        const size = Math.max(6, Math.min(80, Math.sqrt(matchedValue) / 500)); 
         
         const bubble = {
           x: xMinutes,
           y: yVnd,
           yPct: yPct,
-          value: [xMinutes, yVnd, size],
+          yValue: matchedValue, // New Y-axis option: Trading Value
+          value: [xMinutes, yVnd, size], // Default coordinates (legacy price delta)
           price: priceNum,
           volume: parseInt(order.volume),
           matchedValue,
-          timestamp: orderTime.toLocaleTimeString('vi-VN'),
+          timestamp: orderTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+          fullTimestamp: orderTime.toLocaleTimeString('vi-VN'),
           side: order.side,
           isLarge: matchedValue >= 1_000_000_000,
+          isExtreme: order.is_extreme,
         };
 
         // Categorize by side

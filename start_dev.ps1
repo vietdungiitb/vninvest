@@ -34,7 +34,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ComposeFiles = @("-f", "docker-compose.yml", "-f", "docker-compose.dev.yml")
+$ComposeFiles = @("-f", "docker-compose.dev.yml")
 $ComposeEnvFile = "compose.dev.env"
 $ProjectName = "vninvest-dev"
 
@@ -200,7 +200,7 @@ for ($i = 1; $i -le $maxRetries; $i++) {
 if (-not $healthy) {
     Write-Host ""
     Write-Host "WARN: Backend chưa healthy sau 2 phút. Kiểm tra log:" -ForegroundColor Yellow
-    Write-Host "  docker compose -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs --tail=50 backend" -ForegroundColor Yellow
+    Write-Host "  docker compose -p vninvest-dev -f docker-compose.dev.yml logs --tail=50 backend" -ForegroundColor Yellow
     Write-Host "Vẫn tiếp tục các bước hậu khởi động (có thể backend đang chạy nhưng healthcheck chưa pass)..." -ForegroundColor Yellow
     Start-Sleep -Seconds 10
 }
@@ -292,14 +292,14 @@ Write-Host "============================================================" -Foreg
 Write-Host " Stack đã sẵn sàng!" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "  App        -> http://localhost:8080"
-Write-Host "  Admin      -> http://localhost:8080/admin   (admin / test@123456)"
+Write-Host "  App        -> http://localhost"
+Write-Host "  Admin      -> http://localhost/admin   (admin / test@123456)"
 Write-Host "  API        -> http://localhost:8000/api/"
 Write-Host "  Mailpit    -> http://localhost:8026"
 Write-Host ""
 Write-Host "Useful commands:"
-Write-Host "  Xem log backend:   docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f backend"
-Write-Host "  Xem log celery:    docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.yml -f docker-compose.dev.yml logs -f celery_worker"
+Write-Host "  Xem log backend:   docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml logs -f backend"
+Write-Host "  Xem log celery:    docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml logs -f celery_worker"
 Write-Host "  Dừng stack:        .\start_dev.ps1 -Down"
 Write-Host "  Smoke test API:    Invoke-RestMethod http://localhost:8000/api/health/"
 Write-Host ""
@@ -319,7 +319,7 @@ try {
 }
 
 try {
-    $frontendResp = Invoke-WebRequest -Uri "http://localhost:8080" -UseBasicParsing -TimeoutSec 15
+    $frontendResp = Invoke-WebRequest -Uri "http://localhost" -UseBasicParsing -TimeoutSec 15
     if ($frontendResp.StatusCode -ge 200 -and $frontendResp.StatusCode -lt 500) {
         $frontendOk = $true
     }

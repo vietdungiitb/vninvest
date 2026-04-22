@@ -1,5 +1,188 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22ax - Implement Whale Bubble Chart modernization and volume-centric visualization
+
+Muc tieu:
+- Thuc thi toan bo ke hoach nang cap tab Ca map (Whale Bubble Chart) theo huong tap trung vao khoi luong (volume-centric).
+- Cung co logic backend: fallback gia tham chieu 4 tang (TickerSessionClose -> DailyPrice D-1 -> DailyPrice D), phat hien lenh cuc lon (extreme orders) voi nguong thong nhat.
+- Nang cap frontend: truc Y volume, MA line, zoom, tooltip badges (fixed template literal interpolation), rollout gating (flag chan ca fetch va render), tang chieu cao chart len 10cm (450px), Việt hóa disabled state, dong nhat layout summary cards.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - implement 4-tier fallback, harmonize extreme threshold between bubbles and summary)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - support matched_value/volume Y-axis, isExtreme flag, adaptive scaling)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - transform to volume-centric chart, fix tooltip rendering logic, fix JSX structure, implement full rollout gating for fetch/summary, set min-height 450px, localize disabled state, fix summary card layout)
+- docs/IMPLEMENTATION_PLAN_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed fallback and height)
+- docs/TECH_SPEC_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed logic and gating)
+- docs/TASKBOARD_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - mark 14/14 tasks DONE)
+- docs/WALKTHROUGH_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - reflect corrected UI/UX)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ax)
+
+Validation:
+- PASSED: Tooltip badges hien thi dung nho template literal interpolation `${...}`.
+- PASSED: JSX structure sach se, summary layout dong nhat 4 cards (grid-cols-4).
+- PASSED: `extreme_threshold_value` trong summary khop 100% voi logic gan co `is_extreme`.
+- PASSED: Chieu cao chart dat ~11.5cm (450px) tren standard display.
+- PASSED: Rollout gating chan toan dien (khong fetch API va khong render summary khi flag=false).
+
+## Entry 2026-04-22aw - Refine Whale Bubble upgrade plan to implementation-ready spec
+
+Muc tieu:
+- Gop y va chot lai ke hoach nang cap tab Ca map theo huong coding-ready de doi code co the trien khai ngay.
+- Chuan hoa API contract, extreme-order logic, test matrix, rollout/rollback va DoD.
+
+Danh sach tep cap nhat:
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - rewrite thanh implementation-ready plan voi scope, API contract, fallback order, extreme-order definition, frontend tasks, test matrix, rollout, DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `docs/whale_bubble_chart_upgrade_plan.md`.
+- PASSED: Ke hoach moi bao phu cac hang muc user yeu cau: Y-axis theo gia tri, MA, zoom, tooltip, fallback ref price, ratio bar, CSV export.
+
+## Entry 2026-04-22av - Sync Portainer deploy document with hardened nginx-proxy stack
+
+Muc tieu:
+- Dong bo huong dan deploy Portainer (`nginx_proxy` mode) voi stack/env da harden de doi van hanh copy-paste dung ngay lan dau.
+- Loai bo khoang cach giua tai lieu va runtime config (security flags + resource guardrails).
+
+Danh sach tep cap nhat:
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - cap nhat block env 9.3 bo sung Django security vars + resource limits; them khuyen nghi production)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Noi dung env block trong `DEPLOY_DOCKER_EDUSUCCESS.md` da khop voi `portainer-nginx-proxy.env.example` cho nhom security vars va resource guardrails.
+- PASSED: `get_errors` clean tren cac file tai lieu duoc cap nhat.
+
+## Entry 2026-04-22au - Harden Portainer nginx-proxy production stack for runtime parity
+
+Muc tieu:
+- Chuan hoa `portainer-stack-nginx-proxy.yml` de giam drift voi `docker-compose.prod.yml` va tang do an toan khi chay production qua Portainer.
+- Loai bo rui ro bien bao mat bi rong, bo sung healthcheck va resource guardrail cho backend/celery/frontend.
+
+Danh sach tep cap nhat:
+- portainer-stack-nginx-proxy.yml (MODIFIED - them defaults secure cho Django security flags; bo DRF rate vars de dung app defaults; them healthcheck backend/celery worker/celery beat; them mem/cpu limits cho db/redis/backend/celery/frontend)
+- portainer-nginx-proxy.env.example (MODIFIED - bo sung security vars va nhom resource limit vars de copy vao Portainer environment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file portainer-nginx-proxy.env.example -f portainer-stack-nginx-proxy.yml config` => `config_ok`, khong con warning missing vars nhu truoc.
+- PASSED: `get_errors` clean tren `portainer-stack-nginx-proxy.yml` va `portainer-nginx-proxy.env.example`.
+
+## Entry 2026-04-22at - Switch dev frontend runtime from port 8080 to 80
+
+Muc tieu:
+- Dap ung yeu cau van hanh moi: frontend dev phai truy cap qua `http://localhost` (port 80), khong dung `8080`.
+- Dong bo startup/reset scripts va smoke checks de khong con drift runtime endpoint.
+
+Danh sach tep cap nhat:
+- compose.dev.env (MODIFIED - doi `FRONTEND_PORT` tu `8080` sang `80`)
+- backend/.env.dev (MODIFIED - dong bo CORS/CSRF origins sang `http://localhost:80` va `http://127.0.0.1:80`)
+- docker_external_reset_and_start.ps1 (MODIFIED - dong bo origins :80, URL output app va harden `compose down` de tranh false-fail stderr)
+- start_dev.ps1 (MODIFIED - doi App/Admin URL sang `http://localhost`; doi frontend smoke probe tu `http://localhost:8080` sang `http://localhost`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker_external_reset_and_start.ps1 -SkipBuild` run thanh cong, services dev stack started, frontend started.
+- PASSED: script output hien thi `App: http://localhost`.
+- PASSED: `Invoke-WebRequest http://localhost` => `status=200`.
+- PASSED: `docker-compose.dev.yml` frontend mapping su dung `${FRONTEND_PORT:-80}:80`, nhan gia tri `FRONTEND_PORT=80` tu `compose.dev.env`.
+
+## Entry 2026-04-22as - Fix DailyPrice ingest contract and restore dev reference-price snapshots
+
+Muc tieu:
+- Sua root cause khien pipeline ingest EOD fail toan bo tren dev DB.
+- Khoi phuc `TickerSessionClose` cho DGC/FPT de backend lay duoc gia tham chieu.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services.py (MODIFIED - bo `price_unit` khoi `DailyPrice.objects.update_or_create(...)` vi model `DailyPrice` khong co field nay)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat`.
+- PASSED: manual ingest inside `vninvest-dev-backend` cho `DGC`, `FPT` => `errors: 0`, `DailyPrice` rows duoc tao/cap nhat.
+- PASSED: manual `_upsert_session_close_snapshot(...)` tao `TickerSessionClose` cho `DGC` va `FPT`.
+- PASSED: `_get_reference_price('DGC', today)` => `53.30`; `_get_reference_price('FPT', today)` => `75.10`.
+- PASSED: `http://localhost:8000/api/health/` => `200`.
+
+## Entry 2026-04-22ar - Harden dev reset/start script for empty-stack and external-volume bootstrap
+
+Muc tieu:
+- Sua helper reset/start dev stack de khong fail khi chua co compose project dang chay.
+- Tu dong tao external volumes ma `docker-compose.dev.yml` yeu cau truoc khi `up`.
+
+Danh sach tep cap nhat:
+- docker_external_reset_and_start.ps1 (MODIFIED - quiet/tolerant `compose down`; auto-create `vninvest-dev_postgres_data` va `vninvest-dev_redis_data`; auto bootstrap session close sau khi backend healthy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `.\docker_external_reset_and_start.ps1 -SkipBuild` chay xong tren workspace hien tai.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` => dev services len day du, trong do `backend` healthy.
+- PASSED: dev ports bind dung (`8000`, `5432`, `6379`, `80`).
+- PASSED: step `[7/7] Bootstrap session close snapshots...` hoan tat; `TickerSessionClose` co du lieu cho `DGC`/`FPT` va `_get_reference_price` tra gia hop le.
+
+## Entry 2026-04-22aq - Remove prod compose interpolation warning and finalize compose hygiene
+
+Muc tieu:
+- Loai bo warning env interpolation `d_6e` khi parse prod compose.
+- Don dep canh bao PowerShell trong helper reset/start de bo van hanh sach hon.
+
+Danh sach tep cap nhat:
+- .env.production (MODIFIED - escape ky tu `$` trong `DJANGO_SECRET_KEY` de Compose khong noi suy sai)
+- backend/.env.production (MODIFIED - dong bo `DJANGO_SECRET_KEY` da escape ky tu `$`)
+- docker_external_reset_and_start.ps1 (MODIFIED - doi ten helper sang approved verb `Update-ListWithOrigin`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.prod.yml config` khong con warning `d_6e`.
+- PASSED: `get_errors` clean tren `docker_external_reset_and_start.ps1` sau khi doi ten helper function.
+
+## Entry 2026-04-22ap - Remove default compose file to prevent stack confusion
+
+Muc tieu:
+- Loai bo nham lan giua stack mac dinh va stack dev/prod khi van hanh Docker.
+- Chuan hoa toan bo script van hanh de chi dung explicit `docker-compose.dev.yml` hoac `docker-compose.prod.yml`.
+
+Danh sach tep cap nhat:
+- docker-compose.yml (DELETED - xoa file compose mac dinh theo yeu cau, chi giu dev/prod compose files)
+- start_dev.ps1 (MODIFIED - bo tham chieu `docker-compose.yml`, dung duy nhat `-f docker-compose.dev.yml`)
+- docker_external_reset_and_start.ps1 (MODIFIED - stop/start dev stack bang `docker-compose.dev.yml`; stop prod stack bang `docker-compose.prod.yml`)
+- scripts/ops/dev_compose.ps1 (MODIFIED - wrapper dev compose chi dung `docker-compose.dev.yml`)
+- deploy_prod.sh (MODIFIED - build/up/ps/logs explicit `-f docker-compose.prod.yml`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml config`.
+- PASSED: `docker compose -f docker-compose.prod.yml config`.
+- PASSED: script references cleaned for `start_dev.ps1`, `docker_external_reset_and_start.ps1`, `scripts/ops/dev_compose.ps1`, `deploy_prod.sh` (khong con phu thuoc `docker-compose.yml`).
+- NOTE: Warning env interpolation `d_6e` da duoc xu ly o entry 2026-04-22aq.
+
+## Entry 2026-04-22ao - Increase whale bubble chart Y-axis visual height in embedded layout
+
+Muc tieu:
+- Khac phuc hien trang chart bubble bi det theo chieu doc khi render o layout embed, khien truc Y qua thap so voi ky vong hien thi.
+- Dam bao vung chart co chieu cao toi thieu xap xi 5cm de doc du lieu truc Y ro rang.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them min-height cho chart container + canvas; an summary cards khi embed de uu tien khong gian truc Y)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Tang khong gian chart: chart wrapper `min-h-[200px]` va `ReactECharts` co `minHeight: '200px'`.
+2. Trong che do embed (`isEmbedded=true`), tat summary cards de toan bo khong gian duoi controls danh cho chart.
+3. Rebuild frontend container de ap dung thay doi runtime ngay.
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` => frontend rebuilt + started.
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+
 ## Entry 2026-04-22an - Fix missing reference price fallback for whale bubble chart
 
 Muc tieu:

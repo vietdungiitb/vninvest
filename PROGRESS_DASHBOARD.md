@@ -3,6 +3,141 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22ax)
+- backend/portfolio/views_whale_orders.py (MODIFIED - implement 4-tier fallback, harmonize extreme threshold between bubbles and summary)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - support matched_value/volume Y-axis, isExtreme flag, adaptive scaling)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - transform to volume-centric chart, fix tooltip rendering logic, implement full rollout gating for fetch/summary, set min-height 450px, localize disabled state, fix summary card layout)
+- docs/IMPLEMENTATION_PLAN_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed fallback and height)
+- docs/TECH_SPEC_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed logic and gating)
+- docs/TASKBOARD_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - mark 14/14 tasks DONE)
+- docs/WALKTHROUGH_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - reflect corrected UI/UX)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Tooltip badges hien thi dung nho template literal interpolation `${...}`.
+- PASSED: JSX structure sach se, summary layout dong nhat 4 cards (grid-cols-4).
+- PASSED: `extreme_threshold_value` trong summary khop 100% voi logic gan co `is_extreme`.
+- PASSED: Chieu cao chart dat ~11.5cm (450px) tren standard display.
+- PASSED: Rollout gating chan toan dien (khong fetch API va khong render summary khi flag=false).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aw)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - chot lai implementation-ready plan cho nang cap tab Ca map)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren plan file sau cap nhat.
+- PASSED: Plan da include API contract, fallback strategy, extreme-order rule, test matrix, rollout/rollback va DoD.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22av)
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - dong bo block env Portainer mode voi stack da harden: security vars + resource guardrails)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: env block section 9.3 da khop nhom bien voi `portainer-nginx-proxy.env.example`.
+- PASSED: `get_errors` clean tren cac file tai lieu cap nhat.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22au)
+- portainer-stack-nginx-proxy.yml (MODIFIED - them defaults secure cho Django security flags; bo DRF rate vars; them healthcheck backend/celery; them mem/cpu limits cho db/redis/backend/celery/frontend)
+- portainer-nginx-proxy.env.example (MODIFIED - bo sung nhom bien security + resource limits cho Portainer env)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file portainer-nginx-proxy.env.example -f portainer-stack-nginx-proxy.yml config` => `config_ok`.
+- PASSED: `get_errors` clean tren 2 file Portainer vua cap nhat.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22at)
+- compose.dev.env (MODIFIED - doi `FRONTEND_PORT=80`)
+- backend/.env.dev (MODIFIED - dong bo CORS/CSRF origins cho localhost port 80)
+- docker_external_reset_and_start.ps1 (MODIFIED - ensure origins :80, output App URL localhost, harden compose down against stderr false-fail)
+- start_dev.ps1 (MODIFIED - App/Admin URL va frontend smoke check chuyen sang `http://localhost`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker_external_reset_and_start.ps1 -SkipBuild` run thanh cong, frontend started.
+- PASSED: runtime output `App: http://localhost`.
+- PASSED: `Invoke-WebRequest http://localhost` => `status=200`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22as)
+- backend/portfolio/services.py (MODIFIED - bo field `price_unit` khong ton tai khoi `DailyPrice.update_or_create`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat`.
+- PASSED: manual ingest DGC/FPT trong `vninvest-dev-backend` => `DailyPrice` va `TickerSessionClose` duoc tao/cap nhat thanh cong.
+- PASSED: `_get_reference_price('DGC', today)` => `53.30`; `_get_reference_price('FPT', today)` => `75.10`.
+- PASSED: `http://localhost:8000/api/health/` => `200`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ar)
+- docker_external_reset_and_start.ps1 (MODIFIED - quiet/tolerant `compose down`; auto-create external volumes; auto bootstrap session close)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `.\docker_external_reset_and_start.ps1 -SkipBuild` chay xong va dua `vninvest-dev` stack len day du.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` => `backend` healthy, `db`/`redis` healthy.
+- PASSED: step `[7/7] Bootstrap session close snapshots...` hoan tat; `DGC/FPT` co `TickerSessionClose` va lookup gia tham chieu tra gia hop le.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aq)
+- .env.production (MODIFIED - escape ky tu `$` trong `DJANGO_SECRET_KEY` de prod compose khong noi suy sai)
+- backend/.env.production (MODIFIED - dong bo `DJANGO_SECRET_KEY` da escape ky tu `$`)
+- docker_external_reset_and_start.ps1 (MODIFIED - doi ten helper sang approved verb `Update-ListWithOrigin`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.prod.yml config` khong con warning `d_6e`.
+- PASSED: `get_errors` clean tren `docker_external_reset_and_start.ps1`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ap)
+- docker-compose.yml (DELETED - bo file compose mac dinh de tranh nham stack)
+- start_dev.ps1 (MODIFIED - chi dung `docker-compose.dev.yml`)
+- docker_external_reset_and_start.ps1 (MODIFIED - split ro stack dev/prod khong con phu thuoc compose mac dinh)
+- scripts/ops/dev_compose.ps1 (MODIFIED - wrapper dev compose chi dung 1 file dev)
+- deploy_prod.sh (MODIFIED - dung explicit `-f docker-compose.prod.yml` cho build/up/ps/logs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml config`.
+- PASSED: `docker compose -f docker-compose.prod.yml config`.
+- PASSED: operational scripts da bo phu thuoc `docker-compose.yml`.
+- NOTE: warning env interpolation da duoc xu ly o audit 2026-04-22aq.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ao)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tang chieu cao vung chart truc Y voi min-height; an summary cards khi embed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` => frontend rebuilt + started.
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22an)
 - backend/portfolio/views_whale_orders.py (MODIFIED - fix lookup gia tham chieu fallback den phien gan nhat <= trade_date)
 - backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them regression tests cho lookup fallback)

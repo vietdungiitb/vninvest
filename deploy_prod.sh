@@ -17,15 +17,15 @@ echo "[1/5] Pull latest code"
 git pull origin main
 
 echo "[2/5] Build containers"
-docker compose --env-file .env.production build
+docker compose --env-file .env.production -f docker-compose.prod.yml build
 
 echo "[3/5] Start services"
-docker compose --env-file .env.production up -d
+docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 echo "[4/5] Check service status"
-docker compose ps
+docker compose -f docker-compose.prod.yml ps
 
 echo "[5/5] Health check (container logs tail)"
-docker compose logs --tail=80 backend
+docker compose -f docker-compose.prod.yml logs --tail=80 backend
 
 echo "Done. App should be reachable at http://<server-ip>/ (or your domain)."
