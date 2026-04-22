@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bb - Scale whale bubbles by order value with volume-intensity color and gentle hover
+
+Muc tieu:
+- Ve bong whale co kich thuoc khac nhau ngay tu dau theo gia tri lenh (linear theo matched value).
+- Lam mau bong dam dan theo khoi luong giao dich de phan biet nhanh muc do dong tien.
+- Hover chi nhan nhe (sang hon + phat sang nhe + scale vua phai), khong phong to qua muc, va tro ve binh thuong khi roi chuot.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - doi cong thuc symbol size sang linear 1B->10px voi clamp; them mau theo volumeNorm, hoverColor, strokeColor)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - ap itemStyle/emphasis theo tung bong, hover focus self + shadow nhe, giu tooltip/series behavior on dinh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend container da restart.
+
 ## Entry 2026-04-22ba - Fix whale auto-generation AttributeError (TrackedSymbol instance vs str)
 
 Muc tieu:

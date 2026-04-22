@@ -3,6 +3,18 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bb)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - scale bong linear theo gia tri lenh; them color intensity theo volume + hover color)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - apply per-point itemStyle/emphasis, hover nhe va focus vao bong dang tro)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22ba)
 - backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - doi `ts.symbol` thanh `ts` trong `_resolve_advisory_threshold_vnd`, fix AttributeError whale auto-gen)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ba)
