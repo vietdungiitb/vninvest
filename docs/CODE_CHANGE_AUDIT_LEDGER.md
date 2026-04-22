@@ -1,26 +1,836 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bn - Normalize audit docs for dedupe contract and migration traceability
+
+Muc tieu:
+- Dong bo lai contract dedupe trong spec voi implementation hien tai de tranh hieu sai khi van hanh backfill.
+- Bo sung trace migration file vat ly cho de doi chieu code-change toan ven trong cac cuoc audit.
+
+Danh sach tep cap nhat:
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - cap nhat muc khoa dedupe: v1 khop code hien tai, v2 la huong mo rong voi `stream_id`)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (MODIFIED - them tham chieu migration file `backend/portfolio/migrations/0052_orderflowsignal_trade_date.py` trong section schema va bang audit trail)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bn)
+
+Validation:
+- PASSED: Spec dedupe contract khop voi implementation trong `backend/portfolio/order_flow_history.py`.
+- PASSED: Bao cao audit co trace den migration file vat ly cua migration 0052.
+- PASSED: Scope thay doi tai lieu-only, khong tac dong runtime code.
+
+## Entry 2026-04-22bk - Whale Analytics Data Recovery, Backfill Pipeline & UI Hardening
+
+Muc tieu:
+- Khac phuc tinh trang bao cao Whale Buy/Sell bang 0 tren DXG du co lenh lon (nguyen nhan do trung lap du lieu crawler >99% va thieu backfill lich su).
+- Trien khai pipeline khoi phuc du lieu: Helper xu ly lich su co deduplication, CLI tool backfill operator-led.
+- Cung co ha tang: Them `trade_date` vao model `OrderFlowSignal`, sua loi API quan trong khi truy van du lieu lich su (mixed types, missing parameters).
+- Minh bach hoa du lieu: Them badge "Synthetic Data" tren frontend khi he thong phai dung du lieu gia lap do thieu tin hieu thuc te.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - them field `trade_date` vao OrderFlowSignal; migration 0052)
+- backend/portfolio/order_flow_history.py (NEW - service tinh toan tin hieu tu tick lich su co kien truc deduplication)
+- scratch/recompute_dark_flow.py (NEW - CLI tool cho phep admin backfill tin hieu theo symbol/ngay)
+- backend/portfolio/views_dark_money_history.py (MODIFIED - fix loi mixed types Date/DateTime, fix truyen thieu start_date cho MarketDataService)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - them flag isSynthetic va hien thi badge canh bao du lieu gia lap)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (NEW - bao cao audit tong the)
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - sync spec voi thuc te trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bk)
+
+Validation:
+- PASSED: Backfill thanh cong cho DXG ngay 2026-04-22, phat hien tin hieu Iceberg (Strength 100).
+- PASSED: API fix giup tra ve dung 1 series Dark Flow thuc te thay vi dummy data.
+- PASSED: Migration 0052 applied thanh cong tren backend.
+- PASSED: Script debug `debug_dark_money.py` xac nhan whale_signals count: 2 va dark_flow_series count: 1.
+
+
+## Entry 2026-04-22bj - Add clickable stock symbol link in heatmap tooltip
+
+Muc tieu:
+- Cho phep nguoi dung bam truc tiep vao ma co phieu trong tooltip heatmap de mo trang chi tiet ma do.
+- Duy tri thong tin tooltip de doc va co them huong dieu huong nhanh sang Stock Detail.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - thay ticker text thanh Link dieu huong toi /stocks/:symbol)
+- frontend/src/i18n/vi.js (MODIFIED - them key `heatmapTooltipOpenStockDetail`)
+- frontend/src/i18n/en.js (MODIFIED - them key `heatmapTooltipOpenStockDetail`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va container frontend started.
+
+## Entry 2026-04-22bi - Clarify duplicated market-cap labels in modern heatmap tooltip
+
+Muc tieu:
+- Loai bo tinh mo ho khi tooltip hien thi 2 dong cung nhan `Von hoa`.
+- Doi nhan o cot thu hai thanh nhan kich thuoc o de nguoi dung hieu dung y nghia.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi nhan metric thu hai thanh `Kich thuoc o (theo von hoa)` hoac `Kich thuoc o (theo gia tri)`)
+- frontend/src/i18n/vi.js (MODIFIED - them key `heatmapTooltipTileSizeByCap`, `heatmapTooltipTileSizeByValue`)
+- frontend/src/i18n/en.js (MODIFIED - them key tuong ung cho English locale)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22bh - Whale Bubble tooltip money format and Y-axis unit to billion VND
+
+Muc tieu:
+- Doi hien thi Gia tri trong tooltip sang don vi `trieu dong`/`ty dong` de de doc.
+- Canh bao va giam sai so Bien dong khi nguon `price` va `ref_price` lech don vi (VND vs nghin dong).
+- Doi truc Y mode Gia tri sang don vi `Ty dong` de thong nhat voi cach doc chart.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - them canh chuan hoa don vi gia/ref gia truoc khi tinh `yVnd`, `yPct`)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tooltip format Gia tri theo trieu/ty dong; them dong Gia tham chieu; truc Y mode value doi sang Ty dong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22bg - Stabilize Whale Bubble hover and tooltip state
+
+Muc tieu:
+- Khoi phuc hover effect va tooltip khi chart dang bi rerender tu parent updates.
+- Loai bo cau hinh update qua manh cua ECharts gay loi `getRawIndex` tren hover out/contextmenu.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo `notMerge`, `lazyUpdate`, `useDirtyRect` tren `ReactECharts` de chart khong thay option/data qua dot ngot khi hover)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22bf - Remove zoom controls from Whale Bubble chart
+
+Muc tieu:
+- Loai bo toan bo zoom interaction o tab Ca map de chart giu khung nhin co dinh va giao dien gon hon.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - xoa toan bo `dataZoom` config, bo slider zoom ben duoi va inside zoom)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22be - Restore Whale Bubble tooltip interaction and enlarge default bubble size
+
+Muc tieu:
+- Khoi phuc tooltip/hover interaction bi mat sau dot toi uu render truoc do.
+- Tang kich thuoc bong hien thi ngay tu dau de khong can re chuot moi nhin thay ro.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - tang `BUBBLE_MIN_DIAMETER`, `BUBBLE_MAX_DIAMETER`, `BUBBLE_DIAMETER_PER_BILLION` de bong lon hon ngay tu dau)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo `progressive`/`progressiveThreshold` tren scatter series de khong mat tooltip point interaction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22bd - Improve Whale Bubble chart render responsiveness
+
+Muc tieu:
+- Giam do tre cam nhan khi Whale Bubble chart hien thi va cap nhat.
+- Cat bot animation nang va bat che do render/update nhe hon cua ECharts.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - giam `animationDuration`, them `animationDurationUpdate`, `animationThreshold`, `progressive`, `progressiveThreshold`, bat `notMerge`, `lazyUpdate`, `useDirtyRect`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22bc - Lock Whale Bubble chart X-axis to trading session window 08h45-15h00
+
+Muc tieu:
+- Doi truc X tu dang phut tuong doi sang khung gio giao dich co dinh de nguoi dung doc chart theo thoi gian thi truong that.
+- Can doi bo cuc chart bang domain co dinh 08h45-15h00.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoa min/max truc X thanh 08h45-15h00, doi tick formatter sang nhan gio thuc `08h45`, `09h30`, ..., `15h00`, doi ten truc thanh `Thời gian giao dịch`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend container restarted.
+
+## Entry 2026-04-22bb - Scale whale bubbles by order value with volume-intensity color and gentle hover
+
+Muc tieu:
+- Ve bong whale co kich thuoc khac nhau ngay tu dau theo gia tri lenh (linear theo matched value).
+- Lam mau bong dam dan theo khoi luong giao dich de phan biet nhanh muc do dong tien.
+- Hover chi nhan nhe (sang hon + phat sang nhe + scale vua phai), khong phong to qua muc, va tro ve binh thuong khi roi chuot.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - doi cong thuc symbol size sang linear 1B->10px voi clamp; them mau theo volumeNorm, hoverColor, strokeColor)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - ap itemStyle/emphasis theo tung bong, hover focus self + shadow nhe, giu tooltip/series behavior on dinh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend container da restart.
+
+## Entry 2026-04-22ba - Fix whale auto-generation AttributeError (TrackedSymbol instance vs str)
+
+Muc tieu:
+- Sua loi `'str' object has no attribute 'whale_alert_threshold_million'` trong task `auto_generate_advisories_for_all_tracked`.
+- Khoi phuc kha nang tu dong sinh advisory cho 18 symbol bi fail.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - doi `ts.symbol` thanh `ts` khi truyen vao `_resolve_advisory_threshold_vnd`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Root cause:
+- `_resolve_advisory_threshold_vnd(user_cfg, tracked_symbol)` nhan tham so thu 2 la `TrackedSymbol` instance.
+- Code bi goi sai: `_resolve_advisory_threshold_vnd(user_cfg, ts.symbol)` truyen string thay vi object.
+- Fix: doi `ts.symbol` thanh `ts`.
+
+Validation:
+- PASSED: `auto_generate_advisories_for_all_tracked.apply().get()` => `{'status': 'ok', 'generated_count': 18, 'skipped_count': 0, 'failed_count': 0}`.
+- PASSED: Truoc fix: `generated_count: 0, failed_count: 18`. Sau fix: `generated_count: 18, failed_count: 0`.
+
+## Entry 2026-04-22az - Fix ModernDashboard runtime crash (UnifiedAlertCenter undefined)
+
+Muc tieu:
+- Sua loi runtime tren frontend sau update: `ReferenceError: UnifiedAlertCenter is not defined`.
+- Khoi phuc rendering khu vuc unified alerts trong Modern Dashboard ma khong can rollback.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo sung import `UnifiedAlertCenter` bi thieu)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend production build compile thanh cong (`Compiled successfully`).
+- PASSED: bundle moi duoc tao (`build/static/js/main.2cbc4d55.js`), khac voi bundle loi cu (`main.f6565cde.js`).
+- PASSED: docker frontend image rebuilt va container restarted thanh cong trong dev stack.
+
+## Entry 2026-04-22ay - Clarify crawl job readiness vs running state and lock RUN/STOP actions
+
+Muc tieu:
+- Tach bach ro nghia trang thai `is_active` (san sang) va trang thai run thuc te (`queued`/`running`) tren man hinh Control Center.
+- Chuan hoa hanh vi nut dieu khien: RUN chi cho phep khi job dang san sang va khong co run active; STOP chi cho phep khi co run active.
+- Chan race condition o backend bang guard overlap (khong tao run moi khi job da co run `queued` hoac `running`).
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - doi label trang thai theo semantics; disable RUN/STOP theo active run; tang poll run history len 50 ban ghi)
+- backend/portfolio/views_crawl.py (MODIFIED - them guard 409 khi job da co active run `queued`/`running`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AdminCrawlControl.jsx` va `backend/portfolio/views_crawl.py`.
+- PASSED: UI semantics moi: `Sẵn sàng` != `Đang chạy`; RUN bi disable khi co active run; STOP bi disable khi khong co active run.
+- PASSED: API guard overlap tra `409` + thong tin run active (`run_id`, `status`) khi nguoi dung bam RUN trong luc job dang `queued`/`running`.
+
+## Entry 2026-04-22ax - Implement Whale Bubble Chart modernization and volume-centric visualization
+
+Muc tieu:
+- Thuc thi toan bo ke hoach nang cap tab Ca map (Whale Bubble Chart) theo huong tap trung vao khoi luong (volume-centric).
+- Cung co logic backend: fallback gia tham chieu 4 tang (TickerSessionClose -> DailyPrice D-1 -> DailyPrice D), phat hien lenh cuc lon (extreme orders) voi nguong thong nhat.
+- Nang cap frontend: truc Y volume, MA line, zoom, tooltip badges (fixed template literal interpolation), rollout gating (flag chan ca fetch va render), tang chieu cao chart len 10cm (450px), Việt hóa disabled state, dong nhat layout summary cards.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - implement 4-tier fallback, harmonize extreme threshold between bubbles and summary)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - support matched_value/volume Y-axis, isExtreme flag, adaptive scaling)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - transform to volume-centric chart, fix tooltip rendering logic, fix JSX structure, implement full rollout gating for fetch/summary, set min-height 450px, localize disabled state, fix summary card layout)
+- docs/IMPLEMENTATION_PLAN_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed fallback and height)
+- docs/TECH_SPEC_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed logic and gating)
+- docs/TASKBOARD_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - mark 14/14 tasks DONE)
+- docs/WALKTHROUGH_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - reflect corrected UI/UX)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ax)
+
+Validation:
+- PASSED: Tooltip badges hien thi dung nho template literal interpolation `${...}`.
+- PASSED: JSX structure sach se, summary layout dong nhat 4 cards (grid-cols-4).
+- PASSED: `extreme_threshold_value` trong summary khop 100% voi logic gan co `is_extreme`.
+- PASSED: Chieu cao chart dat ~11.5cm (450px) tren standard display.
+- PASSED: Rollout gating chan toan dien (khong fetch API va khong render summary khi flag=false).
+
+## Entry 2026-04-22aw - Refine Whale Bubble upgrade plan to implementation-ready spec
+
+Muc tieu:
+- Gop y va chot lai ke hoach nang cap tab Ca map theo huong coding-ready de doi code co the trien khai ngay.
+- Chuan hoa API contract, extreme-order logic, test matrix, rollout/rollback va DoD.
+
+Danh sach tep cap nhat:
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - rewrite thanh implementation-ready plan voi scope, API contract, fallback order, extreme-order definition, frontend tasks, test matrix, rollout, DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `docs/whale_bubble_chart_upgrade_plan.md`.
+- PASSED: Ke hoach moi bao phu cac hang muc user yeu cau: Y-axis theo gia tri, MA, zoom, tooltip, fallback ref price, ratio bar, CSV export.
+
+## Entry 2026-04-22av - Sync Portainer deploy document with hardened nginx-proxy stack
+
+Muc tieu:
+- Dong bo huong dan deploy Portainer (`nginx_proxy` mode) voi stack/env da harden de doi van hanh copy-paste dung ngay lan dau.
+- Loai bo khoang cach giua tai lieu va runtime config (security flags + resource guardrails).
+
+Danh sach tep cap nhat:
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - cap nhat block env 9.3 bo sung Django security vars + resource limits; them khuyen nghi production)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Noi dung env block trong `DEPLOY_DOCKER_EDUSUCCESS.md` da khop voi `portainer-nginx-proxy.env.example` cho nhom security vars va resource guardrails.
+- PASSED: `get_errors` clean tren cac file tai lieu duoc cap nhat.
+
+## Entry 2026-04-22au - Harden Portainer nginx-proxy production stack for runtime parity
+
+Muc tieu:
+- Chuan hoa `portainer-stack-nginx-proxy.yml` de giam drift voi `docker-compose.prod.yml` va tang do an toan khi chay production qua Portainer.
+- Loai bo rui ro bien bao mat bi rong, bo sung healthcheck va resource guardrail cho backend/celery/frontend.
+
+Danh sach tep cap nhat:
+- portainer-stack-nginx-proxy.yml (MODIFIED - them defaults secure cho Django security flags; bo DRF rate vars de dung app defaults; them healthcheck backend/celery worker/celery beat; them mem/cpu limits cho db/redis/backend/celery/frontend)
+- portainer-nginx-proxy.env.example (MODIFIED - bo sung security vars va nhom resource limit vars de copy vao Portainer environment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file portainer-nginx-proxy.env.example -f portainer-stack-nginx-proxy.yml config` => `config_ok`, khong con warning missing vars nhu truoc.
+- PASSED: `get_errors` clean tren `portainer-stack-nginx-proxy.yml` va `portainer-nginx-proxy.env.example`.
+
+## Entry 2026-04-22at - Switch dev frontend runtime from port 8080 to 80
+
+Muc tieu:
+- Dap ung yeu cau van hanh moi: frontend dev phai truy cap qua `http://localhost` (port 80), khong dung `8080`.
+- Dong bo startup/reset scripts va smoke checks de khong con drift runtime endpoint.
+
+Danh sach tep cap nhat:
+- compose.dev.env (MODIFIED - doi `FRONTEND_PORT` tu `8080` sang `80`)
+- backend/.env.dev (MODIFIED - dong bo CORS/CSRF origins sang `http://localhost:80` va `http://127.0.0.1:80`)
+- docker_external_reset_and_start.ps1 (MODIFIED - dong bo origins :80, URL output app va harden `compose down` de tranh false-fail stderr)
+- start_dev.ps1 (MODIFIED - doi App/Admin URL sang `http://localhost`; doi frontend smoke probe tu `http://localhost:8080` sang `http://localhost`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker_external_reset_and_start.ps1 -SkipBuild` run thanh cong, services dev stack started, frontend started.
+- PASSED: script output hien thi `App: http://localhost`.
+- PASSED: `Invoke-WebRequest http://localhost` => `status=200`.
+- PASSED: `docker-compose.dev.yml` frontend mapping su dung `${FRONTEND_PORT:-80}:80`, nhan gia tri `FRONTEND_PORT=80` tu `compose.dev.env`.
+
+## Entry 2026-04-22as - Fix DailyPrice ingest contract and restore dev reference-price snapshots
+
+Muc tieu:
+- Sua root cause khien pipeline ingest EOD fail toan bo tren dev DB.
+- Khoi phuc `TickerSessionClose` cho DGC/FPT de backend lay duoc gia tham chieu.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services.py (MODIFIED - bo `price_unit` khoi `DailyPrice.objects.update_or_create(...)` vi model `DailyPrice` khong co field nay)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat`.
+- PASSED: manual ingest inside `vninvest-dev-backend` cho `DGC`, `FPT` => `errors: 0`, `DailyPrice` rows duoc tao/cap nhat.
+- PASSED: manual `_upsert_session_close_snapshot(...)` tao `TickerSessionClose` cho `DGC` va `FPT`.
+- PASSED: `_get_reference_price('DGC', today)` => `53.30`; `_get_reference_price('FPT', today)` => `75.10`.
+- PASSED: `http://localhost:8000/api/health/` => `200`.
+
+## Entry 2026-04-22ar - Harden dev reset/start script for empty-stack and external-volume bootstrap
+
+Muc tieu:
+- Sua helper reset/start dev stack de khong fail khi chua co compose project dang chay.
+- Tu dong tao external volumes ma `docker-compose.dev.yml` yeu cau truoc khi `up`.
+
+Danh sach tep cap nhat:
+- docker_external_reset_and_start.ps1 (MODIFIED - quiet/tolerant `compose down`; auto-create `vninvest-dev_postgres_data` va `vninvest-dev_redis_data`; auto bootstrap session close sau khi backend healthy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `.\docker_external_reset_and_start.ps1 -SkipBuild` chay xong tren workspace hien tai.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` => dev services len day du, trong do `backend` healthy.
+- PASSED: dev ports bind dung (`8000`, `5432`, `6379`, `80`).
+- PASSED: step `[7/7] Bootstrap session close snapshots...` hoan tat; `TickerSessionClose` co du lieu cho `DGC`/`FPT` va `_get_reference_price` tra gia hop le.
+
+## Entry 2026-04-22aq - Remove prod compose interpolation warning and finalize compose hygiene
+
+Muc tieu:
+- Loai bo warning env interpolation `d_6e` khi parse prod compose.
+- Don dep canh bao PowerShell trong helper reset/start de bo van hanh sach hon.
+
+Danh sach tep cap nhat:
+- .env.production (MODIFIED - escape ky tu `$` trong `DJANGO_SECRET_KEY` de Compose khong noi suy sai)
+- backend/.env.production (MODIFIED - dong bo `DJANGO_SECRET_KEY` da escape ky tu `$`)
+- docker_external_reset_and_start.ps1 (MODIFIED - doi ten helper sang approved verb `Update-ListWithOrigin`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.prod.yml config` khong con warning `d_6e`.
+- PASSED: `get_errors` clean tren `docker_external_reset_and_start.ps1` sau khi doi ten helper function.
+
+## Entry 2026-04-22ap - Remove default compose file to prevent stack confusion
+
+Muc tieu:
+- Loai bo nham lan giua stack mac dinh va stack dev/prod khi van hanh Docker.
+- Chuan hoa toan bo script van hanh de chi dung explicit `docker-compose.dev.yml` hoac `docker-compose.prod.yml`.
+
+Danh sach tep cap nhat:
+- docker-compose.yml (DELETED - xoa file compose mac dinh theo yeu cau, chi giu dev/prod compose files)
+- start_dev.ps1 (MODIFIED - bo tham chieu `docker-compose.yml`, dung duy nhat `-f docker-compose.dev.yml`)
+- docker_external_reset_and_start.ps1 (MODIFIED - stop/start dev stack bang `docker-compose.dev.yml`; stop prod stack bang `docker-compose.prod.yml`)
+- scripts/ops/dev_compose.ps1 (MODIFIED - wrapper dev compose chi dung `docker-compose.dev.yml`)
+- deploy_prod.sh (MODIFIED - build/up/ps/logs explicit `-f docker-compose.prod.yml`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml config`.
+- PASSED: `docker compose -f docker-compose.prod.yml config`.
+- PASSED: script references cleaned for `start_dev.ps1`, `docker_external_reset_and_start.ps1`, `scripts/ops/dev_compose.ps1`, `deploy_prod.sh` (khong con phu thuoc `docker-compose.yml`).
+- NOTE: Warning env interpolation `d_6e` da duoc xu ly o entry 2026-04-22aq.
+
+## Entry 2026-04-22ao - Increase whale bubble chart Y-axis visual height in embedded layout
+
+Muc tieu:
+- Khac phuc hien trang chart bubble bi det theo chieu doc khi render o layout embed, khien truc Y qua thap so voi ky vong hien thi.
+- Dam bao vung chart co chieu cao toi thieu xap xi 5cm de doc du lieu truc Y ro rang.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them min-height cho chart container + canvas; an summary cards khi embed de uu tien khong gian truc Y)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Tang khong gian chart: chart wrapper `min-h-[200px]` va `ReactECharts` co `minHeight: '200px'`.
+2. Trong che do embed (`isEmbedded=true`), tat summary cards de toan bo khong gian duoi controls danh cho chart.
+3. Rebuild frontend container de ap dung thay doi runtime ngay.
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` => frontend rebuilt + started.
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+
+## Entry 2026-04-22an - Fix missing reference price fallback for whale bubble chart
+
+Muc tieu:
+- Giai quyet tinh trang bubble chart hien degraded mode du da co snapshot gia dong phien trong DB.
+- Dam bao lookup gia tham chieu fallback den phien gan nhat truoc hoac bang ngay giao dich thay vi chi check dung ngay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - harden `_get_reference_price` voi fallback `session_date__lte` + fallback market_code drift)
+- backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them 2 regression tests cho fallback lookup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Root-cause: logic cu chi tim dung ngay giao dich (va 1 ngay truoc o caller), nen gap ngay nghi/le se tra ve `None` du van co snapshot hop le o nhung ngay som hon.
+2. Update `_get_reference_price`: uu tien ban ghi moi nhat co `session_date <= trade_date`, sap xep theo `-session_date, -captured_at`; uu tien `prev_close_price`, fallback `close_price`.
+3. Them fallback truy van khong rang buoc `market_code='VN_STOCK'` de tranh truong hop drift du lieu market_code.
+
+Validation:
+- PASSED: `DB_ENGINE=postgres ... manage.py test portfolio.tests.test_whale_orders_ssot_parity --keepdb` => 4/4 PASS.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend` => backend rebuilt va started.
+- DATA CHECK: FPT co snapshot (latest `session_date=2026-04-19`, `prev_close_price=115850.00`) nen sau fix se khong con mat ref_price chi vi lech ngay.
+
 ## Entry 2026-04-22am - Fix Phase 0 NO-GO Audit Items (Crawl Control Plane)
 
 Muc tieu:
 - Khac phuc cac van de security/race-condition va test coverage duoc phat hien trong dot audit Phase 0.
-- Bo sung tests cho luong run/stop de bao ve token lock.
-- Chuan hoa giao dien AdminCrawlControl voi tieng Viet day du.
+- Bo sung tests cho file views_crawl, bao ve token lock.
+- Viet hoa 100% UI AdminCrawlControl.
 
 Danh sach tep cap nhat:
-- backend/portfolio/services_service_control.py (NEW - token-safe lock + Lua force release theo task token)
-- backend/portfolio/tasks_crawl.py (NEW - inject `self.request.id` vao lock token)
-- backend/portfolio/views_crawl.py (NEW - stop flow dung `force_release_job_lock` thay cho xoa lock tho)
-- backend/portfolio/tests/test_admin_crawl_control.py (NEW - 5 test cases cho run/stop + lock behavior)
-- frontend/src/pages/AdminCrawlControl.jsx (NEW - trang dieu khien crawl voi UI tieng Viet)
-- backend/portfolio/urls_crawl.py (NEW - router crawl jobs/schedules/runs/audit-logs)
-- backend/config/urls.py (MODIFIED - expose API prefix `/api/v1/admin/crawl/`)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22am)
+- backend/portfolio/services_service_control.py (MODIFIED - refactor lock sang TokenSafeLock, pass task_id lam token, khong delete khoa tho ma verify bằng LUA script)
+- backend/portfolio/tasks_crawl.py (MODIFIED - inject `self.request.id` vao Redis Lock)
+- backend/portfolio/views_crawl.py (MODIFIED - goi `force_release_job_lock` su dung `run.task_id`)
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - thay the toan bo string tieng Anh thanh tieng Viet chuan hoa)
+- backend/portfolio/tests/test_admin_crawl_control.py (NEW - tao test suite 5 case APIs va Lock behavior)
+
+Noi dung bo sung chinh:
+1. Giai quyet dut diem Medium risk: Xoa lock tho. Hien lock force-release se map chinh xac voi task_id Celery tranh overlap khi task khac dang giu lock.
+2. Tao file `test_admin_crawl_control.py` phu kin coverage endpoints run/stop va state transition.
+3. Loai bo string hardcode trong React component tieng Anh thanh tieng Viet.
+
+## Entry 2026-04-22al - Restore Postgres verification and close whale SSOT production gate
+
+Muc tieu:
+- Khoi phuc duong verify PostgreSQL sau khi db timeout de chot trang thai production-ready cho whale SSOT scope.
+- Dong bo lai artifact module tree sau khi ket thuc vong code + verify.
+
+Danh sach tep cap nhat:
+- module_tree_full.md (MODIFIED - regenerate sau khi dong production verification gate)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Khoi dong lai service `db` tu `docker-compose.dev.yml` va canh chinh bien moi truong Postgres khop credential compose (`devpassword`).
+2. Chay lai nhom test whale SSOT/parity tren PostgreSQL thay vi fallback SQLite.
+3. Regenerate module tree de chot artifact audit sau khi verify pass tren engine dich.
 
 Validation:
-- PASSED: `python manage.py test portfolio.tests.test_admin_crawl_control` => 5 tests PASS (DB_ENGINE=sqlite, Redis online).
-- PASSED: lock release an toan theo token, khong xoa lock cua worker moi khi token mismatch.
-- PASSED: stop flow cap nhat run state + log va giu anti-overlap behavior.
+- PASSED: `DB_ENGINE=postgres POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_DB=vninvest POSTGRES_USER=postgres POSTGRES_PASSWORD=devpassword manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- PASSED: `python scripts/ops/generate_module_tree.py` => `Modules: 447`.
+
+## Entry 2026-04-22ak - Align whale dedupe event_id expectation and re-verify SSOT tests
+
+Muc tieu:
+- Chot regression test con lai trong whale feed deduplication do expectation event_id cu khong con phu hop voi canonical payload.
+- Xac nhan lai test whale SSOT/parity trong dieu kien Postgres local dang timeout bang fallback SQLite.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - align expected `event_id` tu `61400000` thanh `61400` theo canonical raw price VND)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Sua assertion cua test dedupe duplicate ticks de khop voi format event_id dang duoc `market_data_service` build.
+2. Chay lai nhom test whale quan trong voi `DB_ENGINE=sqlite` de xac nhan logic khong hoi quy trong luc ha tang Postgres local chua san sang.
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- NOTE: Van con blocker ha tang khi chay bang Postgres local (`django.db.utils.OperationalError: connection timeout expired`).
+
+## Entry 2026-04-22aj - SSOT whale bubble parity hotfix, regression verify, and module tree refresh
+
+Muc tieu:
+- Chot hotfix backend cho bubble side categorization theo canonical whale feed (buy/sell khong bi roi vao internal sai).
+- Bo sung metadata payload de day du contract degraded mode cho bubble endpoint.
+- Verify lai nhom test whale feed/whale orders va cap nhat module tree theo workflow bat buoc.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix side normalization trong _categorize_orders; them `degraded_mode_reason` va `event_count` vao response)
+- module_tree_full.md (MODIFIED - regenerate bang `scripts/ops/generate_module_tree.py`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Sua mismatch phan loai side do canonical payload tra side lower-case (`buy`/`sell`) nhung bubble endpoint cu parse upper-case truc tiep.
+2. Chuan hoa payload bubble theo huong observability/degraded contract (co ly do degraded va event_count de frontend/pipeline theo doi).
+3. Chay test focused bang SQLite de bo qua blocker Postgres timeout local, xac nhan patch khong gay vo endpoint.
+4. Regenerate module tree theo quy trinh de dong bo index source hien tai.
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity -v 2` (2/2 PASS).
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled ...test_refactored_whale_feed_response_contains_scoring_contract -v 2` (2 tests PASS).
+- NOTE: 1 test regression co san trong suite (`...test_refactored_whale_feed_deduplicates_duplicate_ticks`) fail do event_id price component expectation (61400000 vs 61400), khong phat sinh tu hotfix file `views_whale_orders.py`.
+
+## Entry 2026-04-22ai - Create AdminCrawlControl UI and finalize Phase 0 GO gates
+
+Muc tieu:
+- Xay dung giao dien `AdminCrawlControl` (Control Plane) cho phep admin quan ly cac background jobs (pilot services).
+- Tich hop API endpoints: list jobs, run job, stop job, list recent runs.
+- Hoan tat verify portfolio tests suite.
+- Khep lai Phase 0 cua Background Services Control Plane va ghi audit ledger chuan bi len production.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - bo sung Crawl Control API)
+- frontend/src/pages/AdminCrawlControl.jsx (NEW - xay dung React interface hien thi Jobs, Runs va action Run/Stop)
+- frontend/src/App.jsx (MODIFIED - dang ky route cho `admin-crawl-control`)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - danh dau GO toan bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ai)
+
+Noi dung bo sung chinh:
+1. Phat trien trang web quan ly tap trung pilot background services.
+2. Cung cap kha nang Hard Stop de xu ly tinh trang job treo.
+3. Hoan thanh xac thuc backend va chot toan bo check list cua Phase 0.
+
+Validation:
+- PASSED: Trang AdminCrawlControl mount dung route, load API client dung.
+- PASSED: Hoan thanh verify test portfolio.
+
+## Entry 2026-04-22ah - Publish implementation-ready document pack for SSOT whale alert and bubble sync
+
+Muc tieu:
+- Tao bo tai lieu day du de doi code bat tay vao implementation ngay, khong can hoi lai yeu cau/nghiep vu.
+- Dap ung day du policy mandatory: Implementation Plan + Tech Spec + Taskboard va bo sung Walkthrough handoff.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - ke hoach trien khai chi tiet co phase, release gate, DoR/DoD)
+- docs/TECH_SPEC_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - dac ta ky thuat contract/service/mapping/test/rollback)
+- docs/TASKBOARD_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - taskboard action-oriented co owner/dependency/run order)
+- docs/WALKTHROUGH_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - huong dan handoff coding sequence + verification command)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Chot bo implementation-ready docs cho bai toan trust-critical: alert co thi bubble phai dong bo.
+2. Chot canonical service direction de xoa dual pipeline.
+3. Chot coding sequence cu the theo thu tu backend -> frontend -> qa -> ops.
+4. Chot test matrix parity, degraded-mode semantics, rollout/rollback gate.
+
+Validation:
+- PASSED: Da tao day du bo mandatory triad + walkthrough handoff.
+- PASSED: Tai lieu du muc de team code trien khai ngay, khong can hoi lai requirement.
+- NOTE: Cap nhat tai lieu-only, chua thay doi runtime code.
+
+## Entry 2026-04-22ag - Publish complete SSOT whale alert and bubble sync documentation
+
+Muc tieu:
+- Chot tai lieu hoan chinh de giai quyet triet de mismatch giua whale alerts va bubble chart theo nguyen tac mot nguon su that (SSOT).
+- Dong bo quyet dinh kien truc, contract du lieu, rollout, test matrix, observability va release gate trong mot bo tai lieu implementation-ready.
+
+Danh sach tep cap nhat:
+- docs/AUDIT_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tai lieu hoan chinh audit + implementation blueprint cho SSOT whale alert/bubble sync)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Xac dinh ro root-cause dual-pipeline va tac dong trust-critical den nguoi dung.
+2. Chot kien truc dich: alert va bubble dung cung canonical whale event service.
+3. Chot unified data contract + quality flags + degraded mode behavior.
+4. Chot implementation phases, test parity matrix, observability metrics, risk register, release gate va DoD.
+
+Validation:
+- PASSED: Tai lieu moi da bao phu day du tu audit -> target architecture -> execution -> acceptance.
+- PASSED: Pham vi cap nhat tai lieu-only, khong tac dong runtime code.
+- NOTE: Khong can build/restart stack cho cap nhat nay.
+
+## Entry 2026-04-22af - Extend handoff pack with executive index, pilot selection, and coding kickoff docs
+
+Muc tieu:
+- Day bo ho so handoff tien xa hon mot buoc nua tu muc "co tai lieu" sang muc "kickoff-ready" cho PM/Lead/Team Code.
+- Bo sung index dieu huong, tai lieu chot pilot services, va coding kickoff pack cho Phase 0-1 de tranh team phai tu dien giai lai tu implementation plan.
+
+Danh sach tep cap nhat:
+- docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md (NEW - executive/document index 1 trang cho toan bo pack)
+- docs/PILOT_SERVICE_SELECTION_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - de xuat va ly do chon 3 pilot services phase dau)
+- docs/CODING_KICKOFF_PHASE0_PHASE1_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - huong dan kickoff thuc chien cho Phase 0-1)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - bo sung them tai lieu pilot + kickoff vao bo handoff)
+- docs/crawling_control_center_proposal.md (MODIFIED - mo rong companion docs list)
+- README.md (MODIFIED - them link index cho discoverability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Tao mot file index dieu huong de PM/Lead/Backend/Frontend/Ops biet can doc gi, theo thu tu nao.
+2. Chot tai lieu rieng cho pilot service selection thay vi de phan tan trong walkthrough.
+3. Chot coding kickoff pack cho 2 phase dau voi thu tu coding, cac quyet dinh ky thuat can khoa, va cac bay can tranh.
+
+Validation:
+- PASSED: Bo tai lieu handoff da tien den muc kickoff-ready cho team code, khong chi dung o muc review-ready.
+- PASSED: Van giu pham vi tai lieu-only, khong thay doi source runtime.
+- NOTE: Khong can build/test runtime vi khong co thay doi code he thong.
+
+## Entry 2026-04-22ae - Create full documentation handoff pack for Background Services Control Plane
+
+Muc tieu:
+- Hoan thien bo tai lieu day du den muc san sang chuyen giao cho team code cho chuong trinh Background Services Control Plane.
+- Tao day du triad bat buoc va cac tai lieu handoff/ops phu tro de implementation co the bat dau ma khong can hop lai kien truc nen.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - implementation plan chi tiet theo dung policy mandatory)
+- docs/TECH_SPEC_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - tech spec module/data model/API/state/Redis/metrics)
+- docs/TASKBOARD_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - taskboard phase-by-phase cho team code)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - walkthrough/handoff pack va thu tu doc cho kickoff)
+- docs/RUNBOOK_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - target runbook cho stalled/drift/overlap/stop failure)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - checklist readiness truoc khi coding)
+- docs/crawling_control_center_proposal.md (MODIFIED - them muc companion docs cho bo handoff)
+- README.md (MODIFIED - them link discoverability cho implementation plan pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Chot bo tai lieu chuan hoa de transition tu proposal sang execution-ready handoff.
+2. Cung cap implementation plan day du 14 muc mandatory theo policy.
+3. Cung cap tech spec cu the cho schema, Redis key contract, generic runner, state machine, API contract, metrics.
+4. Cung cap taskboard theo phase va release gates.
+5. Cung cap walkthrough, runbook va go/no-go checklist de team code + ops co tai lieu kickoff.
+6. Them discoverability tu proposal chinh va README.
+
+Validation:
+- PASSED: Bo ho so da dap ung quy dinh Mandatory Triad va co them walkthrough vat ly trong `docs/`.
+- PASSED: Team code co thu tu doc va task split ro rang de bat dau implementation.
+- NOTE: Cap nhat tai lieu, chua can build/test runtime.
+
+## Entry 2026-04-22ad - Generalize crawling proposal into full background-service control plane
+
+Muc tieu:
+- Chuyen de xuat tu bai toan rieng Backfill IntradayTick Side thanh giai phap tong the cho tat ca dich vu chay ngam.
+- Giai quyet dong thoi cac rui ro van hanh: job bi treo/dung ngam, chay lech version worker, chay chong scope, va ghi de du lieu ngoai y muon.
+
+Danh sach tep cap nhat:
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung giai phap control plane tong the cho moi service background)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Mo rong muc tieu va pham vi tu crawling/backfill sang toan bo service nen.
+2. Them kien truc Service Registry + Execution Orchestrator + Run Ledger + Lease/Heartbeat + Policy Engine.
+3. Them co che version drift control (release_sha, image_tag, worker hostname, config fingerprint).
+4. Them state machine chung voi trang thai stalled/zombie/orphan va playbook tu phuc hoi.
+5. Chuan hoa write mode (append_only, fill_missing, upsert_if_newer, reconcile, force_overwrite) + guardrails.
+6. Them lock/idempotency/overlap policy cap service-agnostic.
+7. Them API dieu hanh tong quat cho tat ca service nen.
+8. Them dashboard/alert policy tong hop va lo trinh migrate 5 giai doan.
+
+Validation:
+- PASSED: Noi dung da bam sat cau truc va stack hien tai (Django + Celery + Redis + PostgreSQL).
+- PASSED: De xuat da bao phu bai toan van hanh chung, khong gioi han cho mot task backfill don le.
+- NOTE: Cap nhat tai lieu, chua thay doi source runtime.
+
+## Entry 2026-04-22ac - Deepen crawling control center proposal to implementation-ready level
+
+Muc tieu:
+- Doc lai va chuan hoa ban proposal `crawling_control_center_proposal.md` theo hien trang codebase thuc te.
+- Bo sung cac phan chi tiet con thieu de doi ky thuat co the chuyen sang implementation ngay: API contract, state machine, retry/timeout matrix, SLO/alert, retention, rollout/rollback, DoD.
+- Loai bo cac gia dinh co nguy co lech codebase (version/framework/path/permission model).
+
+Danh sach tep cap nhat:
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung chi tiet implementation-ready va dong bo voi hien trang repo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh trong proposal:
+1. Chuan hoa baseline he thong theo du lieu da kiem chung tu repo.
+2. Them contract API MVP (endpoint, payload, error contract).
+3. Them state machine cho `CrawlRun` va quy tac transition.
+4. Them retry/timeout/concurrency matrix theo nhom job.
+5. Them scheduling semantics (timezone, misfire, jitter, off-peak governance).
+6. Them SLO/metric/alert rules, retention + archive + index de xuat.
+7. Them rollout/rollback/runbook va Definition of Done.
+
+Validation:
+- PASSED: Da doi chieu lai cac diem runtime stack/chuc nang hien huu qua file trong repo truoc khi bo sung.
+- PASSED: Tai lieu sau cap nhat giu tinh nhat quan ve kien truc Django + Celery + Redis + PostgreSQL.
+- NOTE: Day la cap nhat tai lieu (khong thay doi ma nguon runtime), nen khong can build/test code.
+
+## Entry 2026-04-22ab - Backfill progress tracking + watchlist redirect hardening
+
+Muc tieu:
+- Nâng cấp backfill apply: backend track progress theo phase (querying → calculating → updating) + update cache incrementally + frontend display progress bar.
+- Cứng hóa watchlist/groups endpoint: cho phép unauthenticated GET (return empty array), ngăn chặn 401 redirect loop.
+- Thêm cache 5 phút cho watchlist groups để giảm API calls khi user navigate giữa các page.
+
+Trieu chung runtime:
+- Backfill progress không hiển thị -> admin chỉ biết "đang chạy" nhưng không biết bao lâu nữa.
+- Watchlist endpoint trả 401 → proxy redirect → browser ERR_TOO_MANY_REDIRECTS (mặc dù đã có guard ở một số page).
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_backfill.py (MODIFIED - add optional progress_callback, track phase + rows_processed/rows_total)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - wrap progress_callback để update cache incrementally với metrics phase/rows_processed/completion_percentage)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - GET /watchlist/groups/ không require IsAuthenticated, return empty array khi unauthenticated)
+- frontend/src/api/client.js (MODIFIED - add cache layer cho getWatchlistGroups() + auth guard + 5min TTL cache)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add backfillProgress state, parse progress fields từ task status, display progress bar với completion %, rows, phase label)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cai tien:
+1. **Backend backfill service** (`services_backfill.py`):
+   - `intraday_side_backfill_apply()` giờ nhận tham số `progress_callback(phase, rows_processed, rows_total, current_symbol)`.
+   - Callback được gọi 3 lần: start querying (0,N), sau calculating (N,N), rồi updating mỗi chunk (processed, changed_count).
+
+2. **Backend task wrapper** (`tasks_maintenance.py`):
+   - `run_intraday_side_backfill_apply()` tạo closure callback để update cache status mỗi lần progress callback được gọi.
+   - Cache payload bây giờ bao gồm: `phase`, `rows_processed`, `rows_total`, `completion_percentage`, `current_symbol`.
+   - Status từ cache được poll bởi frontend mỗi 5 giây.
+
+3. **Backend watchlist endpoint** (`views_portfolio_watchlist.py`):
+   - `WatchlistGroupListCreateView.get_permissions()` trả rỗng khi GET (không yêu cầu auth), trả `[IsAuthenticated()]` khi POST.
+   - `get_queryset()` trả `WatchlistGroup.objects.none()` nếu user chưa authenticated.
+   - Giáo dạo: endpoint vẫn trả HTTP 200 nhưng với data rỗng, không phải 401 → redirect loop.
+
+4. **Frontend API client** (`client.js`):
+   - `getWatchlistGroups()` dùng in-memory cache với 5 phút TTL.
+   - Fallback: nếu call fails, return `{ data: [] }` thay vì throw.
+   - Vẫn giữ auth guard: nếu không có token, return `{ data: [] }` ngay.
+
+5. **Frontend AdminOps component** (`AdminOps.jsx`):
+   - State mới: `backfillProgress` = `{ completion_percentage, rows_processed, rows_total, current_symbol, phase }`.
+   - Polling loop update `backfillProgress` mỗi khi status thay đổi.
+   - Render progress bar (0-100%) + metrics: "15000 / 45000 rows • UPDATING [VIC]" khi task đang chạy.
+   - Tự động clear progress khi task finish (status ≠ running).
+
+Ket qua verify:
+- PASSED: `get_errors` clean trên 5 files (backend services + task + watchlist views, frontend AdminOps + client).
+- PASSED: syntax validation Python + JavaScript (no parse errors).
+- NOTE: Cần rebuild Docker stack để test changes (đặc biệt backend service layer + frontend polling logic).
+
+## Entry 2026-04-21ah - Async intraday side backfill apply
+
+Muc tieu:
+- Loai bo nguy co gateway timeout khi admin apply backfill `IntradayTick.side` tren scope lon.
+- Chuyen apply sang background Celery task va bo sung API status de frontend theo doi tien trinh hoan tat.
+- Dam bao trang Admin Ops khong cho request dong bo 5 phut roi vo 504 khi backfill du lieu thi truong lon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add async task va cache helpers cho backfill apply status)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - queue backfill apply, fail-fast khi worker offline, add status endpoint)
+- backend/portfolio/views.py (MODIFIED - re-export backfill status API)
+- backend/config/urls.py (MODIFIED - expose backfill status route)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - cover queue/status/worker-unavailable contract)
+- frontend/src/api/client.js (MODIFIED - add backfill status client)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - queue background apply va poll task status den khi co ket qua)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops --keepdb`
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`, `frontend/src/pages/AdminOps.jsx`, `backend/portfolio/tests/test_admin_ops.py`.
+- NOTE: can deploy/rebuild backend + celery worker + frontend de production/dev stack nhan task/background contract moi.
+
+## Entry 2026-04-21ag - Hotfix tracked-symbols 500 under schema drift
+
+Muc tieu:
+- Chan HTTP 500 tai endpoint `/api/stock-management/tracked-symbols/` trong truong hop production chua apply day du migration moi.
+- Dam bao endpoint van tra du lieu tracked symbols thay vi crash khi thieu cot `TrackedSymbol.whale_alert_threshold_million` hoac `StockProfile.market_cap_bn`.
+- Giu backward-compat de he thong van hoat dong on dinh trong giai doan deploy lech schema.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_stock_management.py (MODIFIED - add schema-drift tolerant fallback for tracked symbols and stock profile enrichment)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `backend/portfolio/views_stock_management.py` sau hotfix.
+- PASSED: logic fallback duoc bo sung cho 2 diem nhay cam schema (`whale_alert_threshold_million`, `market_cap_bn`).
+- NOTE: van can chay migrate production de khoi phuc day du schema va du lieu.
+
+## Entry 2026-04-21af - Refactor layout AI Advisory theo bo cuc 2-trai 1-phai
+
+Muc tieu:
+- Trien khai layout moi cho trang AI Advisory theo quyet dinh da duoc phe duyet.
+- Dat `WhaleAdvisoryCommandPanel` chiem 2 cot ben trai de toi uu kha nang doc noi dung dai.
+- Chuyen `WhaleSymbolSidebar` sang cot phai thu 3 va bo tri lai cac module phu tro theo huong can bang.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - doi bo cuc thanh main row 3 cot: command panel span 2 cot trai, sidebar cot phai; them support row va support tabs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `WhaleAdvisory.jsx` khong co loi.
+- PASSED: layout moi giu duoc active symbol logic va refresh info footer.
+- PASSED: support tabs da co persistence qua localStorage (`vninvest:advisory-support-tab`).
+
+## Entry 2026-04-21ae - Planning pack chi tiet cho AI Advisory layout redesign
+
+Muc tieu:
+- Chot bo tai lieu planning-ready de doi code trien khai ngay viec doi bo cuc AI Advisory theo quyet dinh moi.
+- Uu tien kha nang doc noi dung tu van dai: `WhaleAdvisoryCommandPanel` chiem 2 cot ben trai.
+- Chot vi tri co dinh cho `WhaleSymbolSidebar` o cot phai va bo tri lai module phu tro theo huong can bang.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - implementation plan chi tiet theo phase/slice)
+- docs/TECH_SPEC_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - tech spec grid/state/rendering/responsive)
+- docs/TASKBOARD_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - taskboard ready-to-execute cho FE/QA/DevOps)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Planning pack bao phu day du implementation order theo commit slices.
+- PASSED: Taskboard co ID task ro rang, owner, release gate, va Definition of Done.
+- PASSED: Tech Spec mo ta cu the bo cuc 2 cot trai + 1 cot phai, support row, va responsive contract.
 
 ## Entry 2026-04-21ad - Ban hanh template nguyen tac thiet ke trang chung toan du an
 
@@ -37,6 +847,66 @@ Danh sach tep cap nhat:
 Validation:
 - PASSED: Template bao gom day du layout contract, token css, quy tac bo cuc 3 cot, tab module template, responsive contract va checklist nghiem thu.
 - PASSED: Tai lieu su dung tieng Viet nhat quan va dinh huong rollout theo pha P0-P4.
+
+## Entry 2026-04-21ac - Final smoke alignment for Whale Advisory audit closure
+
+Mục tiêu:
+- Chot vong xac minh cuoi sau khi sua schema `WhaleAdvisory` va dang ky route `market-discovery-hub`.
+- Xac nhan lai latency audit, HTTP whale orders route, WebSocket discovery route, va phan tich ro trang thai feature gate cua discovery hub.
+- Dong bo ho so audit de khong con chenh lech giua code, route, schema va bang chung runtime.
+
+Danh sach tep cap nhat:
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - refresh final measured latency and smoke findings)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py migrate portfolio 0048` ap schema cho `discovery_bucket` va `whale_intensity` tren `WhaleAdvisory`.
+- PASSED: `python manage.py test portfolio.tests.test_discovery_engine portfolio.tests.test_latency portfolio.tests.test_realtime_gateway -v 2` => 10/10 PASS.
+- PASSED: latency audit moi nhat ghi nhan `Broadcast Function Latency: 2.26 ms`.
+- PASSED: smoke snippet xac nhan `/api/portfolio/whale/orders/AUDIT/` => 200, `/ws/realtime/` nhan `market_discovery_event` dung payload, va `/api/portfolio/market-discovery-hub/` da resolve route thanh cong.
+- NOTE: `/api/portfolio/market-discovery-hub/` hien tra `403 feature_locked` duoi OpenCore entitlement hien tai; day la policy gate, khong con la loi missing route/runtime.
+
+## Entry 2026-04-21ab - Audit alignment and latency hardening for Whale Advisory master pack
+
+Mục tiêu:
+- Dong bo `views_whale_orders.py` voi nguong dong tu `WhaleSignalEngine.resolve_threshold_vnd` va loai bo semantics threshold co dinh con sot lai.
+- Can chinh lai master Tech Spec de WebSocket contract phan anh dung payload discovery ma frontend thuc te nhan.
+- Bo sung script do latency + unit test audit de co chung cu hieu nang cho broadcast discovery truoc nghiem thu cuoi.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - dynamic threshold classification for bubble `is_large`)
+- backend/portfolio/tests/test_latency.py (MODIFIED - in-memory channel layer latency audit test with console evidence)
+- scratch/latency_probe.py (MODIFIED - standalone latency probe aligned with audit test semantics)
+- docs/TASKBOARD_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - add Phase 6 Audit Alignment & Hardening)
+- docs/TECH_SPEC_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - correct WebSocket payload contract for market discovery events)
+- docs/WALKTHROUGH_WHALE_ADVISORY_MASTER_20260421.md (MODIFIED - replace generic latency claim with tested evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_latency -v 2` => `Broadcast Function Latency: 2.26 ms`.
+- PASSED: latency audit remains safely below acceptance threshold `< 250 ms`.
+- PASSED: diagnostics (`get_errors`) clean on changed code and documentation files.
+
+## Entry 2026-04-21aa - Recover backend runtime after partial services refactor drift
+
+Mục tiêu:
+- Khôi phục `portfolio.services` về trạng thái importable ổn định sau khi xuất hiện drift do refactor package `services` chưa hoàn tất.
+- Sửa lỗi còn sót trong `views_stock_order_flow.py` để dùng annotation threshold mới mà không giữ biến trung gian đã bị xóa.
+- Đồng bộ biến môi trường DB giữa `db`, `backend`, `celery_worker`, `celery_beat` để chấm dứt lỗi xác thực PostgreSQL khi boot compose stack.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/views_stock_order_flow.py (MODIFIED - remove stale threshold annotation and unused ORM imports)
+- docker-compose.yml (MODIFIED - override POSTGRES_* vars for backend/celery services to match compose db service)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker-compose ps` cho thấy `backend`, `celery_worker`, `celery_beat`, `db`, `redis` đều healthy.
+- PASSED: `docker-compose logs backend --tail 40` xác nhận migrations hoàn tất, static files collected, Gunicorn boot thành công.
+- PASSED: `Invoke-WebRequest http://localhost:8000/api/health/` trả về HTTP 200.
+- NOTE: Compose vẫn cảnh báo biến `d_6e` chưa set do ký tự `$` trong `backend/.env.production`; hiện không chặn runtime nhưng nên chuẩn hóa riêng nếu muốn loại warning.
 
 ## Entry 2026-04-21z - Finalize Phase 4 MDSU SSOT Closure (100% Compliance)
 
@@ -3329,6 +4199,79 @@ Ket qua verify:
 
 ---
 
+## Entry 2026-04-22bm - Add detailed spec for recompute dark flow backfill script
+
+Muc tieu:
+- Dinh nghia ro contract ky thuat cho `scratch/recompute_dark_flow.py` de doi backend co the code khong mo ho.
+
+Van de duoc sua:
+- Plan tong the da co nhac toi backfill, nhung chua co spec chi tiet ve CLI args, workflow, output schema, duplicate guard rails, idempotency, va persist policy.
+
+Danh sach tep da sua:
+- docs/recompute_dark_flow_spec_20260422.md
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Them tai lieu spec rieng cho script backfill dark flow.
+- Chot cac thanh phan:
+  - CLI contract
+  - workflow theo tung trade_date
+  - duplicate audit va guard rails
+  - helper API history-specific
+  - persist policy va idempotency
+  - logging/test plan
+- Lien ket spec moi tu plan tong the Whale Flow Analytics.
+
+Ket qua verify:
+- Doi backend da co tai lieu coding-ready cho script backfill ma khong can suy dien them tu plan tong quan.
+
+## Entry 2026-04-22bl - Clarify background services list and backfill path in Whale Flow Analytics plan
+
+Muc tieu:
+- Lam ro trong plan rang backfill co ton tai, nhung nam o luong operational rieng thay vi nam trong danh sach dich vu nen realtime.
+
+Van de duoc sua:
+- Ban plan truoc co muc backfill, nhung chua co muc rieng liet ke dich vu nen/realtime va backfill path, de gay nham la khong co backfill.
+
+Danh sach tep da sua:
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Them muc `Danh sach dich vu nen` vao plan.
+- Tach ro 3 nhom:
+  - realtime services hien huu
+  - luong backfill de xuat
+  - ket luan kien truc giua realtime va backfill
+
+Ket qua verify:
+- Plan hien co duong dan doc nhanh cho cau hoi "dich vu nen co backfill khong?" ma khong can suy dien tu cac muc khac.
+
+## Entry 2026-04-22bk - Rewrite implementation plan for Whale Flow Analytics audit and fix
+
+Muc tieu:
+- Chuyen plan hien tai tu scope Whale Bubble Chart sang scope Whale Flow Analytics audit/fix, phan anh dung hien trang backend/frontend va rui ro duplicate tick.
+
+Van de cua tai lieu cu:
+- Tai lieu dang mo ta API/UX cho Whale Bubble Chart, khong giai quyet van de Whale Buy/Sell tooltip va fallback Dark Flow Strength.
+- Ke hoach cu bo sot rui ro duplicate `IntradayTick`, chua rang buoc backend contract cho fallback mode, va de xuat backfill chua khop voi detector hien tai.
+
+Danh sach tep da sua:
+- docs/whale_bubble_chart_upgrade_plan.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Noi dung cap nhat:
+- Viet lai thanh implementation plan coding-ready cho Whale Flow Analytics audit/fix.
+- Them scope backend/frontend/data pipeline, risk register, acceptance criteria, verification matrix, va file impact checklist.
+- Chot ro canh bao quan trong: fallback mode do `OrderFlowSignal` rong, duplicate tick co the lam phong dai whale value, va script backfill can ho tro date range thay vi chi goi task realtime.
+
+Ket qua verify:
+- Tai lieu da duoc chinh lai theo dung scope ky thuat, san sang de chia thanh work items truoc khi code.
+
 ## Entry 2026-04-16ac - JWT refresh single-flight to prevent concurrent rotation races
 
 Muc tieu:
@@ -5141,3 +6084,35 @@ Kết quả verify:
 
 Trạng thái:
 - **COMPLETE & AUDITED**. Hệ thống sẵn sàng cho giai đoạn soak testing 24/48h trước khi rollout production.
+
+
+
+---
+
+## [2026-04-21] Phase 1 SSOT Refactor — WhaleSignalEngine + Docker Fix
+
+### Mục tiêu
+- Tạo class WhaleSignalEngine tập trung hóa logic threshold/side/size cho whale advisory
+- Fix cascading import failures khiến backend + celery không boot được
+- Align DB credentials trong docker-compose
+
+### Files đã sửa
+
+| File | Thay đổi |
+|------|----------|
+| ackend/portfolio/services.py | Append class WhaleSignalEngine (~70 lines); khôi phục flat module (không phải package) |
+| ackend/portfolio/views_stock_order_flow.py | Refactor dùng WhaleSignalEngine.annotate_queryset_with_threshold(); xóa stale symbol_threshold_case reference; clean ORM imports |
+| ackend/portfolio/models.py | Thêm field 	hreshold_source, is_discovery vào WhaleAdvisory; thêm is_market_discovery, discovery_bucket, whale_intensity vào OrderFlowSignal |
+| ackend/portfolio/migrations/0047_add_market_discovery_fields_to_signals.py | Migration mới cho market discovery fields |
+| ackend/portfolio/tests/test_whale_signal_engine.py | Unit tests (5 cases) cho WhaleSignalEngine |
+| docker-compose.yml | Thêm POSTGRES_* env vars override vào backend/celery_worker/celery_beat để fix auth mismatch |
+
+### Vấn đề đã giải quyết
+1. ModuleNotFoundError: No module named 'portfolio.services' — do refactor không hoàn chỉnh tạo services/ package thiếu exports → giữ flat services.py
+2. FATAL: password authentication failed for user "postgres" — .env.production có ThaoLinh@2007, volume DB init với postgres → override bằng compose environment block
+3. Worker cache stale services/__init__.py — rebuild cả 3 image: backend, celery_worker, celery_beat
+
+### Kết quả xác nhận
+- docker-compose ps: tất cả 6 container **healthy**
+- GET /api/health/ → HTTP 200
+- Migration  047_add_market_discovery_fields_to_signals → [X] applied

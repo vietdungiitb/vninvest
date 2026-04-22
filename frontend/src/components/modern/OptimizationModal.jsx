@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import useAIAdvisor from '../../hooks/useAIAdvisor';
 
 export default function OptimizationModal({ onClose, holdings, technicals, analytics, currentScore, alerts }) {
   const [strategy, setStrategy] = useState('conservative'); // 'conservative' | 'aggressive'
@@ -7,47 +8,7 @@ export default function OptimizationModal({ onClose, holdings, technicals, analy
   const [confirmCount, setConfirmCount] = useState(null); // null | number — toast state
 
   // Configuration based on strategy
-  const config = useMemo(() => {
-    return strategy === 'conservative' 
-      ? { rsiTrim: 70, rsiBuild: 35, weightMax: 20 }
-      : { rsiTrim: 65, rsiBuild: 45, weightMax: 15 };
-  }, [strategy]);
-
-  // Recommendation Engine
-  const recommendations = useMemo(() => {
-    if (!holdings || !technicals) return [];
-
-    const techs = (technicals || []).reduce((acc, t) => ({ ...acc, [t.symbol]: t }), {});
-    const totalValue = holdings.reduce((sum, item) => sum + (item.market_value || 0), 0);
-
-    return holdings.map(h => {
-      const symbol = h.symbol.trim().toUpperCase();
-      const tech = techs[symbol];
-      const rsi = tech?.rsi_14;
-      const weight = (h.market_value > 0 && totalValue > 0) ? (h.market_value / totalValue * 100) : 0;
-      
-      let action = 'HOLD';
-      let reason = '';
-
-      if (rsi > config.rsiTrim || weight > config.weightMax) {
-        action = 'TRIM';
-        reason = rsi > config.rsiTrim ? `RSI quá nóng (${rsi.toFixed(0)})` : `Tỷ trọng quá cao (${weight.toFixed(1)}%)`;
-      } else if (rsi < config.rsiBuild && weight < (config.weightMax / 2)) {
-        action = 'BUILD';
-        reason = `Vùng giá hấp dẫn (RSI ${rsi?.toFixed(0)}) & Tỷ trọng thấp`;
-      }
-
-      return {
-        symbol,
-        action,
-        reason,
-        weight,
-        rsi,
-        tech,
-        whaleCount: (alerts || []).filter(a => a.symbol === symbol).length
-      };
-    }).filter(r => r.action !== 'HOLD');
-  }, [holdings, technicals, config, alerts]);
+  const { recommendations, config } = useAIAdvisor({ holdings, technicals, alerts, strategy });
 
   // Score Projection (Option A)
   const projectedScore = useMemo(() => {

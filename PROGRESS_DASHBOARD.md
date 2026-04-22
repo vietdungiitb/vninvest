@@ -3,6 +3,327 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bn)
+- docs/recompute_dark_flow_spec_20260422.md (MODIFIED - normalize dedupe contract: v1 khop implementation hien tai, v2 de xuat mo rong voi `stream_id`)
+- docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (MODIFIED - them migration file vat ly `backend/portfolio/migrations/0052_orderflowsignal_trade_date.py` cho traceability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Dedupe contract trong spec da khop implementation helper backfill hien tai.
+- PASSED: Bao cao audit da co migration trace day du den file migration 0052.
+- PASSED: Pham vi cap nhat tai lieu-only, khong thay doi source runtime.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bm)
+- docs/recompute_dark_flow_spec_20260422.md (ADDED - spec chi tiet cho script backfill dark flow: CLI contract, workflow, duplicate guard rails, persist policy, logging, test plan)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - them link toi spec backfill chi tiet)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: spec moi da cover du workflow tu dry-run audit den persist co guard rails cho duplicate tick.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bl)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - them muc Danh sach dich vu nen, tach ro realtime services va luong backfill operational)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: plan hien xac dinh ro backfill khong nam trong scheduler realtime ma la luong operational rieng.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bk)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - viet lai thanh implementation plan coding-ready cho Whale Flow Analytics audit/fix, bo sung risk duplicate tick, fallback contract, backfill strategy, verification matrix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: plan moi da dong bo voi codebase hien tai, phan tach ro backend/frontend/data pipeline va acceptance criteria.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bj)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi ma co phieu trong tooltip thanh link bam duoc, dieu huong sang /stocks/:symbol)
+- frontend/src/i18n/vi.js (MODIFIED - them key i18n `heatmapTooltipOpenStockDetail`)
+- frontend/src/i18n/en.js (MODIFIED - them key i18n `heatmapTooltipOpenStockDetail`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 3 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bi)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi nhan metric thu hai trong tooltip de khong trung `Von hoa`, hien thi thanh `Kich thuoc o (...)`)
+- frontend/src/i18n/vi.js (MODIFIED - them key i18n cho nhan tooltip moi)
+- frontend/src/i18n/en.js (MODIFIED - them key i18n cho locale English)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 3 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bh)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - them guard can chuan don vi gia/ref gia khi tinh Bien dong de tranh phan tram ao)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tooltip Gia tri hien thi theo trieu/ty dong; bo sung Gia tham chieu; truc Y mode Gia tri doi sang Ty dong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bg)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo update mode qua manh cua ReactECharts de giu hover/tooltip state on dinh, tranh loi `getRawIndex` khi mouseout/contextmenu)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bf)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - xoa toan bo data zoom, bo slider zoom duoi chart va inside zoom interaction o tab Ca map)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22be)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - tang size base bong whale de hien thi lon hon ngay tu dau)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo progressive rendering tren scatter de khoi phuc tooltip/hover interaction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bd)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - toi uu render ECharts: progressive rendering, lazy update, dirty rect, giam animation duration/update)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bc)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoa truc X ve khung giao dich 08h45-15h00, hien thi tick theo gio thuc, can doi layout chart)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22bb)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - scale bong linear theo gia tri lenh; them color intensity theo volume + hover color)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - apply per-point itemStyle/emphasis, hover nhe va focus vao bong dang tro)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ba)
+- backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - doi `ts.symbol` thanh `ts` trong `_resolve_advisory_threshold_vnd`, fix AttributeError whale auto-gen)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: task chay: `generated_count: 18, failed_count: 0` (truoc: `generated_count: 0, failed_count: 18`).
+- PASSED: `docker compose up -d --build backend celery_worker celery_beat` => all 9/9 containers healthy.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22az)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - them import `UnifiedAlertCenter` bi thieu, fix runtime ReferenceError)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build production thanh cong (`Compiled successfully`).
+- PASSED: bundle moi tao ra `main.2cbc4d55.js`, khong con chay bundle loi cu `main.f6565cde.js`.
+- PASSED: `docker compose ... up -d --build frontend` restart container thanh cong.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ay)
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - tach bach semantics trang thai: `Sẵn sàng` vs `Đang chạy/Đang chờ chạy`; disable RUN khi co run active; disable STOP khi khong co run active; tang polling run history len 50)
+- backend/portfolio/views_crawl.py (MODIFIED - them guard overlap, tra `409` neu job da co run `queued`/`running`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AdminCrawlControl.jsx` va `backend/portfolio/views_crawl.py`.
+- PASSED: `docker compose ... up -d --build backend frontend` build thanh cong, backend healthy, frontend started.
+- PASSED: RUN/STOP logic duoc chuan hoa theo active run thay vi `is_active` don thuan.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ax)
+- backend/portfolio/views_whale_orders.py (MODIFIED - implement 4-tier fallback, harmonize extreme threshold between bubbles and summary)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - support matched_value/volume Y-axis, isExtreme flag, adaptive scaling)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - transform to volume-centric chart, fix tooltip rendering logic, implement full rollout gating for fetch/summary, set min-height 450px, localize disabled state, fix summary card layout)
+- docs/IMPLEMENTATION_PLAN_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed fallback and height)
+- docs/TECH_SPEC_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - align with fixed logic and gating)
+- docs/TASKBOARD_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - mark 14/14 tasks DONE)
+- docs/WALKTHROUGH_WHALE_BUBBLE_UPGRADE_20260422.md (MODIFIED - reflect corrected UI/UX)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Tooltip badges hien thi dung nho template literal interpolation `${...}`.
+- PASSED: JSX structure sach se, summary layout dong nhat 4 cards (grid-cols-4).
+- PASSED: `extreme_threshold_value` trong summary khop 100% voi logic gan co `is_extreme`.
+- PASSED: Chieu cao chart dat ~11.5cm (450px) tren standard display.
+- PASSED: Rollout gating chan toan dien (khong fetch API va khong render summary khi flag=false).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aw)
+- docs/whale_bubble_chart_upgrade_plan.md (MODIFIED - chot lai implementation-ready plan cho nang cap tab Ca map)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren plan file sau cap nhat.
+- PASSED: Plan da include API contract, fallback strategy, extreme-order rule, test matrix, rollout/rollback va DoD.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22av)
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - dong bo block env Portainer mode voi stack da harden: security vars + resource guardrails)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: env block section 9.3 da khop nhom bien voi `portainer-nginx-proxy.env.example`.
+- PASSED: `get_errors` clean tren cac file tai lieu cap nhat.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22au)
+- portainer-stack-nginx-proxy.yml (MODIFIED - them defaults secure cho Django security flags; bo DRF rate vars; them healthcheck backend/celery; them mem/cpu limits cho db/redis/backend/celery/frontend)
+- portainer-nginx-proxy.env.example (MODIFIED - bo sung nhom bien security + resource limits cho Portainer env)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file portainer-nginx-proxy.env.example -f portainer-stack-nginx-proxy.yml config` => `config_ok`.
+- PASSED: `get_errors` clean tren 2 file Portainer vua cap nhat.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22at)
+- compose.dev.env (MODIFIED - doi `FRONTEND_PORT=80`)
+- backend/.env.dev (MODIFIED - dong bo CORS/CSRF origins cho localhost port 80)
+- docker_external_reset_and_start.ps1 (MODIFIED - ensure origins :80, output App URL localhost, harden compose down against stderr false-fail)
+- start_dev.ps1 (MODIFIED - App/Admin URL va frontend smoke check chuyen sang `http://localhost`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker_external_reset_and_start.ps1 -SkipBuild` run thanh cong, frontend started.
+- PASSED: runtime output `App: http://localhost`.
+- PASSED: `Invoke-WebRequest http://localhost` => `status=200`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22as)
+- backend/portfolio/services.py (MODIFIED - bo field `price_unit` khong ton tai khoi `DailyPrice.update_or_create`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat`.
+- PASSED: manual ingest DGC/FPT trong `vninvest-dev-backend` => `DailyPrice` va `TickerSessionClose` duoc tao/cap nhat thanh cong.
+- PASSED: `_get_reference_price('DGC', today)` => `53.30`; `_get_reference_price('FPT', today)` => `75.10`.
+- PASSED: `http://localhost:8000/api/health/` => `200`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ar)
+- docker_external_reset_and_start.ps1 (MODIFIED - quiet/tolerant `compose down`; auto-create external volumes; auto bootstrap session close)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `.\docker_external_reset_and_start.ps1 -SkipBuild` chay xong va dua `vninvest-dev` stack len day du.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` => `backend` healthy, `db`/`redis` healthy.
+- PASSED: step `[7/7] Bootstrap session close snapshots...` hoan tat; `DGC/FPT` co `TickerSessionClose` va lookup gia tham chieu tra gia hop le.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aq)
+- .env.production (MODIFIED - escape ky tu `$` trong `DJANGO_SECRET_KEY` de prod compose khong noi suy sai)
+- backend/.env.production (MODIFIED - dong bo `DJANGO_SECRET_KEY` da escape ky tu `$`)
+- docker_external_reset_and_start.ps1 (MODIFIED - doi ten helper sang approved verb `Update-ListWithOrigin`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.prod.yml config` khong con warning `d_6e`.
+- PASSED: `get_errors` clean tren `docker_external_reset_and_start.ps1`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ap)
+- docker-compose.yml (DELETED - bo file compose mac dinh de tranh nham stack)
+- start_dev.ps1 (MODIFIED - chi dung `docker-compose.dev.yml`)
+- docker_external_reset_and_start.ps1 (MODIFIED - split ro stack dev/prod khong con phu thuoc compose mac dinh)
+- scripts/ops/dev_compose.ps1 (MODIFIED - wrapper dev compose chi dung 1 file dev)
+- deploy_prod.sh (MODIFIED - dung explicit `-f docker-compose.prod.yml` cho build/up/ps/logs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml config`.
+- PASSED: `docker compose -f docker-compose.prod.yml config`.
+- PASSED: operational scripts da bo phu thuoc `docker-compose.yml`.
+- NOTE: warning env interpolation da duoc xu ly o audit 2026-04-22aq.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ao)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tang chieu cao vung chart truc Y voi min-height; an summary cards khi embed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` => frontend rebuilt + started.
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22an)
 - backend/portfolio/views_whale_orders.py (MODIFIED - fix lookup gia tham chieu fallback den phien gan nhat <= trade_date)
 - backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them regression tests cho lookup fallback)
@@ -225,18 +546,6 @@ Validation:
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-21o)
-- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (NEW - template nguyen tac thiet ke trang chung toan du an: css token, le/margin, bo cuc, responsive, tab/panel contract)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ad)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: Da ban hanh bo template chung de doi code su dung lam chuan khi hieu chinh tat ca trang.
-- PASSED: Template day du phan layout contract + css utility mau + checklist nghiem thu.
-
-
----
-
 ## ✅ AUDIT FILE LIST (2026-04-21n)
 - start_dev.ps1 (MODIFIED - bo auto `seed_demo_data` khi khoi dong Docker; them co `-SeedDemo` de chi seed demo khi opt-in; tach sync `seed_securities_groups` thanh buoc rieng uu tien du lieu thi truong)
 - docs/SAFE_DEFAULT_SETUP_GUIDE_20260412.md (MODIFIED - cap nhat huong dan Docker dev: mac dinh khong seed demo, chi seed khi dung `-SeedDemo`)
@@ -267,77 +576,6 @@ Validation:
 - PASSED: `python backend/manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_unified_alerts_endpoint_returns_combined_whale_and_dark_flow`.
 - PASSED: `get_errors` clean on all modified backend/frontend files.
 - WARNING: `docker compose -f docker-compose.dev.yml up -d --build frontend` timed out in terminal session; command does not produce completion output in current environment and needs manual verification of Docker daemon responsiveness.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21l)
-- backend/portfolio/tasks_prefetch.py (MODIFIED - remove legacy task `prefetch_ticker_price_board`)
-- backend/portfolio/views_admin_runtime.py (MODIFIED - remove legacy bridge `_legacy_views_module`, switch to direct runtime policy helper imports)
-- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - remove obsolete legacy-task tests)
-- backend/portfolio/tests/test_legacy_purge_gate.py (NEW - gate test for forbidden legacy prefetch tokens in runtime files)
-- docs/PHASE2_PREFETCH_HARDENING_PLAN.md (MODIFIED - fix path refs, expand purge-gate scope, update verification list)
-- docs/PHASE2_PREFETCH_TASK_LIST.md (MODIFIED - mark all phase-2 execution tasks completed)
-- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - add P1 execution status)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21l)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task portfolio.tests.test_admin_ops portfolio.tests.test_legacy_purge_gate portfolio.tests.test_celery_task_names -v 2` => 45 PASS.
-- PASSED: no legacy bridge usage remains in `views_admin_runtime.py`.
-- PASSED: no runtime reference remains to `prefetch_ticker_price_board` outside gate-test forbidden-token assertions.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21k)
-- docs/AI_CODING_REGULATION.md (MODIFIED - add mandatory SSOT regulation for `vnstock adapter`, `whale alert`, `darkmoney flow`, `ai advisory`)
-- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add SSOT integration map requirement in planning template + DoR/DoD SSOT checks)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21k)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: Governance docs now enforce one-source-of-truth principle for 4 core intelligence domains.
-- PASSED: Planning workflow now blocks implementation plans that do not map to SSOT or that keep parallel non-SSOT flows.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21j)
-- backend/config/settings.py (MODIFIED - remove legacy beat scheduler branch, force canonical shard scheduler)
-- backend/portfolio/views_admin_runtime.py (MODIFIED - warm prefetch API switched to canonical flow)
-- backend/portfolio/tests/test_admin_ops.py (MODIFIED - tests updated to patch canonical tasks)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21j)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `python manage.py test portfolio.tests.test_admin_ops portfolio.tests.test_celery_task_names -v 2` => 31 PASS.
-- PASSED: `get_errors` clean on modified backend files.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21i)
-- docs/PREFETCH_INCIDENT_REPORT_20260421.md (MODIFIED - rewrite RCA theo chuan SSOT, bo sung corrective actions P0/P1/P2, workstreams, DoD va release gate xoa legacy)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21i)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: RCA chot nguyen tac mot chuan su that, khong duy tri dual-path legacy.
-- PASSED: Co task board de doi code thuc thi migration va xoa code cu ngay.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21h)
-- frontend/src/context/PortfolioContext.jsx (MODIFIED - them `authStateReady` de cho bootstrap auth hoan tat truoc khi danh gia entitlement)
-- frontend/src/components/ProtectedRoute.jsx (MODIFIED - cho readiness truoc khi check `ability.can(...)`, tranh redirect sai sang `/upgrade` khi refresh)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21h)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
-- PASSED: fix huong den dung root-cause redirect race condition.
 
 
 ---

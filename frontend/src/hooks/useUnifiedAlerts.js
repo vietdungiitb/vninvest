@@ -25,6 +25,32 @@ function fmtBil(value, formatNumberFn) {
   return formatNumberSafe(v, formatNumberFn);
 }
 
+function localizeUnifiedDetail(detail, t, formatNumberFn) {
+  if (!detail) return detail;
+
+  // Regex to detect "Matched value: 1234567.8" or "matched value: 1234567.8"
+  const whaleValueMatch = detail.match(/(matched value|giá trị khớp|gia tri khop):\s*([\d.]+)/i);
+  if (whaleValueMatch) {
+    const rawValue = whaleValueMatch[2];
+    const formattedValue = fmtBil(rawValue, formatNumberFn);
+    return t('dashboardRealtime.unifiedDetailWhaleValue', { value: formattedValue });
+  }
+
+  // Handle Price Shock detail: "Price changed 5.20% in short window"
+  const priceShockMatch = detail.match(/price changed ([\d.]+)%/i);
+  if (priceShockMatch) {
+    return t('dashboardRealtime.unifiedDetailPriceShock', { pct: priceShockMatch[1] });
+  }
+
+  // Handle Stale Quote: "Quote is stale 30s"
+  const staleMatch = detail.match(/quote is stale ([\d.]+)s/i);
+  if (staleMatch) {
+    return t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: staleMatch[1] });
+  }
+
+  return detail;
+}
+
 function localizeUnifiedHeadline(headline, t) {
   const normalized = String(headline || '').trim().toLowerCase();
   if (!normalized) return headline;
@@ -381,7 +407,7 @@ export default function useUnifiedAlerts({
         }),
       ),
       headline: localizeUnifiedHeadline(item.headline, t),
-      detail: item.detail,
+      detail: localizeUnifiedDetail(item.detail, t, formatNumber),
       confidence: item.confidence ?? null,
       to: item.to || (item.source === 'whale' ? `/whale-alerts/${item.symbol}` : `/stocks/${item.symbol}`),
     }));

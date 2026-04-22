@@ -1504,8 +1504,12 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 function _loadAdvisoryPromptConfigFromStorage(symbol) {
   try {
     const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
-    if (!stored) return null;
-    return JSON.parse(stored);
+    if (stored) return JSON.parse(stored);
+    
+    const globalStored = localStorage.getItem('ai_global_prompt_config');
+    if (globalStored) return JSON.parse(globalStored);
+    
+    return null;
   } catch (err) {
     console.warn('Failed to load prompt_config from localStorage:', err);
     return null;
