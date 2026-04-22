@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23aa - Harden Portainer production redeploy against stale image reuse
+
+Muc tieu:
+- Loai bo tinh trang Portainer redeploy stack nhung van giu lai image/container cu do config khong thay doi ro rang giua cac lan deploy.
+- Dua `APP_RELEASE` vao build arg, image metadata va container labels de moi lan bump release hoac deploy theo commit SHA deu tao dau vet release ro rang va buoc recreate dung ban moi.
+
+Danh sach tep cap nhat:
+- backend/Dockerfile (MODIFIED - nhan `APP_RELEASE`, gan vao image label va environment runtime)
+- frontend/Dockerfile (MODIFIED - nhan `APP_RELEASE` cho build/final image, gan vao label va environment runtime)
+- docker-compose.prod.yml (MODIFIED - override production them build arg, env va label `com.vninvest.release` cho app services)
+- portainer-stack-nginx-proxy.yml (MODIFIED - them `APP_RELEASE` vao build args, environment va labels de Portainer thay doi service config theo release)
+- backend/.env.production (MODIFIED - escape ky tu `$` trong `DJANGO_SECRET_KEY` de compose khong con noi suy sai bien `d_6e`)
+- .env.production.example (MODIFIED - them bien `APP_RELEASE`)
+- deploy_prod.sh (MODIFIED - tu dong gan `APP_RELEASE` theo commit SHA va dung dung cap file compose base+override)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aa)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml config` hop le sau khi them build args/env/labels.
+- PASSED: `docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml config` hop le.
+- PASSED: Khong con warning `version` obsolete trong production override va khong con warning env interpolation `d_6e` sau khi escape secret key.
+- PENDING: Can bump `APP_RELEASE` trong Portainer va redeploy stack de xac nhan service labels/container duoc recreate dung release moi.
+
 ## Entry 2026-04-22bn - Normalize audit docs for dedupe contract and migration traceability
 
 Muc tieu:

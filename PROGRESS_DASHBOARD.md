@@ -3,6 +3,25 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23aa)
+- backend/Dockerfile (MODIFIED - them `APP_RELEASE` vao image label va environment runtime)
+- frontend/Dockerfile (MODIFIED - them `APP_RELEASE` vao build/final image metadata)
+- docker-compose.prod.yml (MODIFIED - them build arg, env va label release cho production compose override)
+- portainer-stack-nginx-proxy.yml (MODIFIED - them `APP_RELEASE` vao Portainer stack de buoc rebuild/recreate theo release)
+- backend/.env.production (MODIFIED - escape `$` trong `DJANGO_SECRET_KEY` de compose khong con warning `d_6e`)
+- .env.production.example (MODIFIED - them bien `APP_RELEASE`)
+- deploy_prod.sh (MODIFIED - tu dong gan `APP_RELEASE` theo commit SHA va deploy bang dung base+override compose)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml config`.
+- PASSED: `docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml config`.
+- PASSED: Khong con warning `version` obsolete va warning interpolation `d_6e` khi render compose.
+- PENDING: Portainer redeploy voi `APP_RELEASE` moi de xac nhan service duoc recreate bang release moi.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bn)
 - docs/recompute_dark_flow_spec_20260422.md (MODIFIED - normalize dedupe contract: v1 khop implementation hien tai, v2 de xuat mo rong voi `stream_id`)
 - docs/WHALE_DATA_RECOVERY_REPORT_20260422.md (MODIFIED - them migration file vat ly `backend/portfolio/migrations/0052_orderflowsignal_trade_date.py` cho traceability)
