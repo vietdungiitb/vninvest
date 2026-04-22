@@ -2,19 +2,19 @@ from datetime import datetime, timedelta
 import base64
 import logging
 
-from django.db.models import Case, Count, ExpressionWrapper, F, FloatField, Q, Sum, Value, When
+from django.db.models import Count, ExpressionWrapper, F, FloatField, Q, Sum
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import IntradayTick, OrderFlowSignal, TrackedSymbol
+from .models import IntradayTick, OrderFlowSignal, TrackedSymbol, WhaleAdvisory
 from .opencore_analytics import track_api_call
 from .opencore_dpi import check_feature_access
 from .permissions import IsProPlan, resolve_user_entitlements
 from .quota_service import build_quota_exceeded_payload, consume_quota
-from .whale_feed_helpers import _get_user_symbol_threshold_overrides_vnd, _resolve_user_whale_threshold_vnd
+from .services import WhaleSignalEngine
 from portfolio.order_flow import compute_cvd_series, detect_dark_flow
 
 logger = logging.getLogger(__name__)
@@ -60,20 +60,10 @@ def whale_advisory_symbol_stats_api(request):
     else:
         queryset = queryset.filter(trade_date=today_local)
 
-    base_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, symbol=None)
-    symbol_threshold_overrides = _get_user_symbol_threshold_overrides_vnd(request.user, symbols)
-    symbol_threshold_case = Case(
-        *[
-            When(symbol=symbol, then=Value(float(symbol_threshold_overrides.get(symbol, base_threshold_vnd))))
-            for symbol in symbols
-        ],
-        default=Value(float(base_threshold_vnd)),
-        output_field=FloatField(),
-    )
+    queryset = WhaleSignalEngine.annotate_queryset_with_threshold(queryset, request.user, symbols)
 
     aggregated_rows = (
         queryset
-        .annotate(threshold_vnd=symbol_threshold_case)
         .filter(matched_value__gte=F('threshold_vnd'))
         .values('symbol')
         .annotate(
@@ -85,7 +75,13 @@ def whale_advisory_symbol_stats_api(request):
     )
 
     stats_list = []
+    # Get latest advisory for these symbols to enrich with discovery info
+    advisories = {
+        adv.symbol: adv for adv in WhaleAdvisory.objects.filter(symbol__in=symbols).order_by('symbol', '-created_at').distinct('symbol')
+    }
+
     for row in aggregated_rows:
+        symbol = row.get('symbol')
         buy_count = int(row.get('buy_count') or 0)
         sell_count = int(row.get('sell_count') or 0)
         total_count = buy_count + sell_count
@@ -96,15 +92,20 @@ def whale_advisory_symbol_stats_api(request):
         total_volume = int(row.get('total_volume') or 0)
         avg_order_value = total_value / total_count
 
+        adv = advisories.get(symbol)
+
         stats_list.append(
             {
-                'symbol': row.get('symbol'),
+                'symbol': symbol,
                 'buyCount': buy_count,
                 'sellCount': sell_count,
                 'totalValue': total_value,
                 'totalVolume': total_volume,
                 'count': total_count,
                 'avgOrderValue': avg_order_value,
+                'isDiscovery': adv.is_discovery if adv else False,
+                'whaleIntensity': adv.whale_intensity if adv else 0,
+                'discoveryBucket': adv.discovery_bucket if adv else 'standard',
             }
         )
 
@@ -124,6 +125,8 @@ def whale_advisory_symbol_stats_api(request):
 
 _OPENCORE_STOCK_FEATURE_KEYS = {
     'stock_order_flow_api': 'dark_pool_flow',
+    'whale_advisory_symbol_stats_api': 'dark_pool_flow',
+    'market_discovery_hub_api': 'dark_pool_flow',
     'stock_ai_advisory_session_api': 'whale_momentum',
     'stock_ai_advisory_components_generate_api': 'sentiment_score',
     'stock_ai_advisory_component_refresh_api': 'sentiment_score',
@@ -136,6 +139,12 @@ _OPENCORE_STOCK_FEATURE_KEYS = {
 }
 
 _OPENCORE_STOCK_ENDPOINT_QUOTA_KEYS = {
+    'whale_advisory_symbol_stats_api': {
+        'GET': 'api_calls_per_day',
+    },
+    'market_discovery_hub_api': {
+        'GET': 'api_calls_per_day',
+    },
     'stock_order_flow_api': {
         'GET': 'api_calls_per_day',
         'POST': 'api_calls_per_day',
@@ -289,25 +298,6 @@ def _timeframe_to_minutes(timeframe: str) -> int:
     return 30
 
 
-def _resolve_first_create_threshold_vnd(user, symbol: str, user_default_threshold_vnd: float) -> tuple[float, str]:
-    """
-    F3 Helper: Resolve threshold for first advisory creation.
-    Returns (threshold_vnd, threshold_source) tuple.
-
-    Order of precedence:
-    1. Symbol-specific override (TrackedSymbol.whale_alert_threshold_million)
-    2. User default threshold (UserConfig.whale_alert_threshold)
-    """
-    try:
-        tracked_symbol = TrackedSymbol.objects.get(user=user, symbol=symbol.upper())
-        if tracked_symbol.whale_alert_threshold_million:
-            resolved_threshold = float(tracked_symbol.whale_alert_threshold_million) * 1_000_000
-            return (resolved_threshold, 'symbol_override')
-    except TrackedSymbol.DoesNotExist:
-        pass
-
-    return (user_default_threshold_vnd, 'user_default')
-
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
@@ -413,3 +403,57 @@ def stock_order_flow_api(request, symbol: str):
         },
         status=status.HTTP_200_OK,
     )
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def market_discovery_hub_api(request):
+    """
+    GET /api/portfolio/market-discovery-hub/
+    Tra ve danh sach cac ma co tin hieu Whale Discovery, duoc phan loai vao 
+    cac bucket: 'anomaly', 'potential', 'standard'.
+    """
+    denied_response = _enforce_opencore_feature_for_stock_endpoint(request, 'market_discovery_hub_api')
+    if denied_response is not None:
+        return denied_response
+
+    quota_response = _enforce_opencore_quota_for_stock_endpoint(request, 'market_discovery_hub_api')
+    if quota_response is not None:
+        return quota_response
+
+    # Lay top 30 signals discovery moi nhat trong 24h qua
+    one_day_ago = timezone.now() - timedelta(days=1)
+    queryset = WhaleAdvisory.objects.filter(
+        is_discovery=True,
+        created_at__gte=one_day_ago
+    ).select_related('user').order_by('-whale_intensity', '-created_at')[:30]
+
+    discovery_list = []
+    for adv in queryset:
+        discovery_list.append({
+            'id': adv.id,
+            'symbol': adv.symbol,
+            'side': adv.side,
+            'intensity': adv.whale_intensity,
+            'bucket': adv.discovery_bucket,
+            'matched_value': adv.matched_value,
+            'severity': adv.severity,
+            'summary': adv.ai_summary,
+            'created_at': adv.created_at,
+            'is_new_to_market': adv.discovery_bucket != 'standard',
+        })
+
+    # Group by bucket for Bento Grid rendering
+    buckets = {
+        'anomaly': [d for d in discovery_list if d['bucket'] == 'anomaly'],
+        'potential': [d for d in discovery_list if d['bucket'] == 'potential'],
+        'standard': [d for d in discovery_list if d['bucket'] == 'standard'],
+    }
+
+    _track_opencore_stock_endpoint_usage(request, 'market_discovery_hub_api', status.HTTP_200_OK)
+    return Response({
+        'ok': True,
+        'discovery_signals': discovery_list,
+        'buckets': buckets,
+        'timestamp': timezone.now(),
+    }, status=status.HTTP_200_OK)

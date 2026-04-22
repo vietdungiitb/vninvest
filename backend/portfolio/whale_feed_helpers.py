@@ -90,24 +90,8 @@ def _allow_vnstock_aggregate_fallback(symbols: list[str]) -> bool:
 
 
 def _resolve_user_whale_threshold_vnd(user, symbol: str | None = None) -> tuple[float, str]:
-    config = UserConfig.objects.filter(user=user).values('whale_alert_threshold').first()
-    base_threshold_vnd = resolve_user_whale_threshold_vnd((config or {}).get('whale_alert_threshold'))
-    if not symbol:
-        return base_threshold_vnd, 'user_default'
-
-    normalized_symbol = str(symbol or '').strip().upper()
-    if not normalized_symbol:
-        return base_threshold_vnd, 'user_default'
-
-    override = (
-        TrackedSymbol.objects
-        .filter(user=user, symbol=normalized_symbol)
-        .values('whale_alert_threshold_million')
-        .first()
-    )
-    if override and override.get('whale_alert_threshold_million') is not None:
-        return resolve_user_whale_threshold_vnd(override.get('whale_alert_threshold_million')), 'symbol_override'
-    return base_threshold_vnd, 'user_default'
+    from .services import WhaleSignalEngine
+    return WhaleSignalEngine.resolve_threshold_vnd(user, symbol)
 
 
 def _get_user_whale_threshold_vnd(user, symbol: str | None = None) -> float:

@@ -44,9 +44,15 @@ from .serializers import (
 
 class WatchlistGroupListCreateView(generics.ListCreateAPIView):
     serializer_class = WatchlistGroupSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'POST':
+            return [IsAuthenticated()]
+        return []
 
     def get_queryset(self):
+        if not self.request.user or not self.request.user.is_authenticated:
+            return WatchlistGroup.objects.none()
         return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
 
     def perform_create(self, serializer):
@@ -55,9 +61,15 @@ class WatchlistGroupListCreateView(generics.ListCreateAPIView):
 
 class WatchlistGroupDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = WatchlistGroupSerializer
-    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
+            return [IsAuthenticated()]
+        return []
 
     def get_queryset(self):
+        if not self.request.user or not self.request.user.is_authenticated:
+            return WatchlistGroup.objects.none()
         return WatchlistGroup.objects.filter(user=self.request.user).prefetch_related('items')
 
 

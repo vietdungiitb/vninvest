@@ -1,5 +1,27 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22am - Fix Phase 0 NO-GO Audit Items (Crawl Control Plane)
+
+Muc tieu:
+- Khac phuc cac van de security/race-condition va test coverage duoc phat hien trong dot audit Phase 0.
+- Bo sung tests cho luong run/stop de bao ve token lock.
+- Chuan hoa giao dien AdminCrawlControl voi tieng Viet day du.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_service_control.py (NEW - token-safe lock + Lua force release theo task token)
+- backend/portfolio/tasks_crawl.py (NEW - inject `self.request.id` vao lock token)
+- backend/portfolio/views_crawl.py (NEW - stop flow dung `force_release_job_lock` thay cho xoa lock tho)
+- backend/portfolio/tests/test_admin_crawl_control.py (NEW - 5 test cases cho run/stop + lock behavior)
+- frontend/src/pages/AdminCrawlControl.jsx (NEW - trang dieu khien crawl voi UI tieng Viet)
+- backend/portfolio/urls_crawl.py (NEW - router crawl jobs/schedules/runs/audit-logs)
+- backend/config/urls.py (MODIFIED - expose API prefix `/api/v1/admin/crawl/`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22am)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_crawl_control` => 5 tests PASS (DB_ENGINE=sqlite, Redis online).
+- PASSED: lock release an toan theo token, khong xoa lock cua worker moi khi token mismatch.
+- PASSED: stop flow cap nhat run state + log va giu anti-overlap behavior.
+
 ## Entry 2026-04-21ad - Ban hanh template nguyen tac thiet ke trang chung toan du an
 
 Muc tieu:

@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.routers import DefaultRouter
 from . import trading_views, views
 from .views_whale_orders import whale_orders_by_symbol_api
+from .views_stock_order_flow import market_discovery_hub_api
 from .opencore_api import (
     DPILicenseViewSet, DPIUsageViewSet, DPIPremiumIndicatorsViewSet,
     DPIBillingViewSet
@@ -107,5 +108,6 @@ urlpatterns += [
     path('whale/backtest-stats/', views.backtest_stats_api, name='whale-backtest-stats'),
 
     # ── Whale Bubble Chart Orders API (Pro+) ─────────────────────────────────
+    path('market-discovery-hub/', market_discovery_hub_api, name='market-discovery-hub'),
     path('whale/orders/<str:symbol>/', whale_orders_by_symbol_api, name='whale-orders-by-symbol'),
 ]

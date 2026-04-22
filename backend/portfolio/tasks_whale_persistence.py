@@ -22,6 +22,11 @@ def _create_whale_advisory_record(
     normalized_primary_source: str,
     advisory_type_key: str,
     resolved_severity: str,
+    # Phase 2 Discovery Fields
+    is_discovery: bool = False,
+    discovery_bucket: str = 'standard',
+    whale_intensity: int = 0,
+    threshold_source: str = 'user_default',
 ):
     return WhaleAdvisory.objects.create(
         user=target_user,
@@ -44,6 +49,11 @@ def _create_whale_advisory_record(
         primary_source=normalized_primary_source,
         advisory_type=advisory_type_key,
         severity=resolved_severity,
+        # Phase 2 Fields
+        is_discovery=is_discovery,
+        discovery_bucket=discovery_bucket,
+        whale_intensity=whale_intensity,
+        threshold_source=threshold_source,
     )
 
 

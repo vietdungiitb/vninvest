@@ -471,7 +471,8 @@ def dark_money_history_api(request, symbol: str):
     # ─── 3. Whale Buy/Sell Signals (from IntradayTick) ────────────────────
     whale_signals = []
     try:
-        whale_threshold_vnd, _ = _resolve_user_whale_threshold_vnd(request.user, normalized_symbol)
+        from .services import WhaleSignalEngine
+        whale_threshold_vnd, _ = WhaleSignalEngine.resolve_threshold_vnd(request.user, normalized_symbol)
 
         whale_ticks_qs = list(
             IntradayTick.objects

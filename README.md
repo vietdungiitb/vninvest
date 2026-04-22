@@ -231,6 +231,8 @@ Ghi chu:
 | [docs/WEBSOCKET_EVENT_CONTRACT.md](docs/WEBSOCKET_EVENT_CONTRACT.md) | WS message envelope + event types |
 | [docs/VNSTOCK_THROUGHPUT_RUNTIME_GUIDE.md](docs/VNSTOCK_THROUGHPUT_RUNTIME_GUIDE.md) | Hướng dẫn kỹ thuật cho runtime throughput mới của vnstock, Celery prefetch, Redis cache và benchmark |
 | [docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md](docs/WHALE_ALERTS_DASHBOARD_ROADMAP.md) | Tài liệu tổng hợp duy nhất cho hiện trạng, hardening, roadmap và admin của Whale Alerts |
+| [docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md](docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md) | Gói triển khai cho control plane điều hành toàn bộ dịch vụ nền (run ledger, heartbeat, drift, overlap, write-mode governance) |
+| [docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md](docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md) | Index 1 trang điều hướng toàn bộ documentation pack cho PM/Lead/Team Code |
 | [docs/SPRINT13_DETAILED_PLAN.md](docs/SPRINT13_DETAILED_PLAN.md) | Kế hoạch Sprint 13 (analytics + admin ops) |
 | [docs/FEATURE_EXPANSION_BACKLOG.md](docs/FEATURE_EXPANSION_BACKLOG.md) | Backlog tính năng P1/P2/P3 |
 

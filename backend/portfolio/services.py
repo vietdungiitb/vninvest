@@ -1698,11 +1698,15 @@ def get_price_changes(symbols: list) -> dict:
     } for sym in upper_symbols}
 
     # Fetch last 30 days of prices for all symbols in a single query
+    from datetime import date, timedelta
+    today = date.today()
+    cutoff_date = today - timedelta(days=30)
     from .market_data_service import MarketDataService
     data_map = MarketDataService.get_ohlcv_batch(
         upper_symbols,
         start_date=cutoff_date,
-        fields=['symbol', 'close_price', 'date']
+        end_date=today,
+        fields=['close_price', 'date']
     )
     
     from collections import defaultdict
@@ -2267,3 +2271,103 @@ def sync_stock_profiles(requested_by: User | None = None, mode: str = 'all') -> 
             'error': str(exc),
             'log': log,
         }
+
+class WhaleSignalEngine:
+    @staticmethod
+    def resolve_threshold_vnd(user, symbol):
+        from .models import TrackedSymbol, UserConfig
+        override = TrackedSymbol.objects.filter(user=user, symbol=symbol).first()
+        if override and override.whale_alert_threshold_million:
+            return float(override.whale_alert_threshold_million) * 1_000_000, "symbol_override"
+        cfg = UserConfig.objects.filter(user=user).first()
+        threshold_mil = cfg.whale_alert_threshold if cfg else 500
+        return float(threshold_mil) * 1_000_000, "user_default"
+
+    @staticmethod
+    def get_user_threshold_map(user, symbols):
+        from .models import TrackedSymbol, UserConfig
+        cfg = UserConfig.objects.filter(user=user).first()
+        default_threshold = float(cfg.whale_alert_threshold if cfg else 500) * 1_000_000
+        overrides = {
+            row["symbol"]: float(row["whale_alert_threshold_million"]) * 1_000_000
+            for row in TrackedSymbol.objects.filter(
+                user=user, symbol__in=symbols, whale_alert_threshold_million__isnull=False
+            ).values("symbol", "whale_alert_threshold_million")
+        }
+        return {s: overrides.get(s, default_threshold) for s in symbols}
+
+    @staticmethod
+    def classify_side(side_str):
+        s = str(side_str or "").upper()
+        if "BUY" in s or "BS" in s or "B" == s:
+            return "buy"
+        if "SELL" in s or "SD" in s or "S" == s:
+            return "sell"
+        return "neutral"
+
+    @staticmethod
+    def classify_size(value_vnd):
+        from .domain_constants import SHARK_THRESHOLD_VND, WHALE_THRESHOLD_VND
+        if value_vnd >= SHARK_THRESHOLD_VND:
+            return "shark"
+        if value_vnd >= WHALE_THRESHOLD_VND:
+            return "whale"
+        return "small"
+
+    @staticmethod
+    def annotate_queryset_with_threshold(queryset, user, symbols):
+        from django.db.models import Case, When, Value, FloatField
+        from .models import TrackedSymbol, UserConfig
+        cfg = UserConfig.objects.filter(user=user).first()
+        default_threshold = float(cfg.whale_alert_threshold if cfg else 500) * 1_000_000
+        overrides = TrackedSymbol.objects.filter(
+            user=user, symbol__in=symbols, whale_alert_threshold_million__isnull=False
+        ).values("symbol", "whale_alert_threshold_million")
+        whens = [
+            When(symbol=row["symbol"], then=Value(float(row["whale_alert_threshold_million"]) * 1_000_000))
+            for row in overrides
+        ]
+        return queryset.annotate(
+            threshold_vnd=Case(*whens, default=Value(default_threshold), output_field=FloatField())
+        )
+
+    @staticmethod
+    def calculate_whale_intensity(value_vnd, threshold_vnd, dark_flow_strength=None):
+        """
+        Calculate a 0-100 intensity score.
+        50% weighting on Value/Threshold ratio.
+        50% weighting on Dark Flow Strength.
+        """
+        if not threshold_vnd or threshold_vnd <= 0:
+            threshold_vnd = 500_000_000
+
+        # 1. Value/Threshold Ratio (Cap at 2.0x for max score of 50 in this component)
+        ratio = value_vnd / threshold_vnd
+        ratio_score = min(ratio * 25, 50.0)
+
+        # 2. Dark Flow Strength (Direct 0-100 map to 0-50 component)
+        strength_score = (float(dark_flow_strength or 0) / 100.0) * 50.0
+
+        return int(min(ratio_score + strength_score, 100))
+
+    @staticmethod
+    def is_symbol_discovery_candidate(user, symbol):
+        """
+        Discoverable if symbol is NOT in the user's active tracked symbols.
+        """
+        if not user or not user.is_authenticated:
+            return True
+        from .models import TrackedSymbol
+        exists = TrackedSymbol.objects.filter(user=user, symbol=symbol.upper()).exists()
+        return not exists
+
+    @staticmethod
+    def resolve_discovery_bucket(intensity, is_new=True):
+        """
+        Resolve bucket based on intensity and whether the symbol is new to the user.
+        """
+        if intensity >= 85:
+            return 'anomaly'
+        if is_new and intensity >= 60:
+            return 'potential'
+        return 'standard'

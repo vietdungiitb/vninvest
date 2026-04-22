@@ -1437,6 +1437,9 @@ const vi = {
     noOrdersInTimeframe: 'Không có lệnh lớn trong khoảng thời gian này',
     tryDifferentTimeframe: 'Hãy thử khoảng thời gian khác',
     errorLoadingData: 'Không thể tải dữ liệu',
+    degradedModeTitle: 'Dữ liệu đang ở chế độ suy giảm',
+    degradedModeDescription: 'Thiếu giá tham chiếu; biểu đồ vẫn hiển thị lệnh lớn từ nguồn đồng bộ cảnh báo.',
+    missingRefPrice: 'Không có',
   },
   whaleHub: {
     loadFailed: 'Không tải được Whale Alerts hub.',

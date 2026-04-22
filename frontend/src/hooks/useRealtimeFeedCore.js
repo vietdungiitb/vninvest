@@ -257,10 +257,12 @@ export default function useRealtimeFeedCore({
   const [lastEventAt, setLastEventAt] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [darkFlowAlerts, setDarkFlowAlerts] = useState([]);
+  const [marketDiscoveryEvents, setMarketDiscoveryEvents] = useState([]);
   const [eventCounts, setEventCounts] = useState({
     ticker_update: 0,
     whale_alert: 0,
     dark_flow_alert: 0,
+    market_discovery_event: 0,
     heartbeat: 0,
     reconnect_attempts: 0,
     subscribed: 0,
@@ -509,6 +511,19 @@ export default function useRealtimeFeedCore({
       );
       return [nextAlert, ...filtered].slice(0, maxAlerts);
     });
+  }, [maxAlerts]);
+
+  const applyMarketDiscoveryEvent = useCallback((payload) => {
+    const nextEvent = {
+      ...payload,
+      ts: normalizeEventTimestamp(payload.ts || payload.created_at)
+    };
+    setMarketDiscoveryEvents((prev) => {
+      const filtered = prev.filter(item => item.id !== nextEvent.id);
+      return [nextEvent, ...filtered].slice(0, maxAlerts);
+    });
+    // Global notification for page level listeners
+    window.dispatchEvent(new CustomEvent('market_discovery_update', { detail: nextEvent }));
   }, [maxAlerts]);
 
   const shouldSkipDuplicateEvent = useCallback((payload, eventType) => {
@@ -776,7 +791,8 @@ export default function useRealtimeFeedCore({
           circuitOpenUntil: null,
         }));
         const symbolsForWs = symbolsRef.current.slice(0, MAX_WS_SUB_SYMBOLS);
-        sendAction(nextWs, 'subscribe', symbolsForWs);
+        // Phase 4: Always subscribe to market_discovery in this feed
+        sendAction(nextWs, 'subscribe', [...symbolsForWs, 'market_discovery']);
       };
 
       nextWs.onmessage = (event) => {
@@ -866,6 +882,11 @@ export default function useRealtimeFeedCore({
             setLastEventAt(normalizedPayload.ts);
             setRealtimeStatus('live');
             setEventCounts((prev) => ({ ...prev, dark_flow_alert: prev.dark_flow_alert + 1 }));
+          } else if (payload.event_type === 'market_discovery_event') {
+            applyMarketDiscoveryEvent(payload);
+            setLastEventAt(payload.ts || payload.created_at || new Date().toISOString());
+            setRealtimeStatus('live');
+            setEventCounts((prev) => ({ ...prev, market_discovery_event: prev.market_discovery_event + 1 }));
           } else if (payload.event_type === 'whale_advisory') {
             setLastEventAt(payload.ts || payload.created_at || new Date().toISOString());
             setRealtimeStatus('live');
@@ -961,7 +982,7 @@ export default function useRealtimeFeedCore({
       window.clearTimeout(initTimer);
       cleanup();
     };
-  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyTickerUpdateThrottled, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
+  }, [normalizedSymbols.join(','), applyAlert, applyDarkFlowAlert, applyMarketDiscoveryEvent, applyTickerUpdateThrottled, enabled, shouldSkipDuplicateEvent]); // eslint-disable-line
 
   useEffect(() => () => {
     if (tickerRafIdRef.current !== null) {
@@ -976,8 +997,10 @@ export default function useRealtimeFeedCore({
     lastEventAt,
     alerts,
     darkFlowAlerts,
+    marketDiscoveryEvents,
     latestWhaleAlert: alerts[0] || null,
     latestDarkFlowAlert: darkFlowAlerts[0] || null,
+    latestMarketDiscoveryEvent: marketDiscoveryEvents[0] || null,
     metrics: {
       eventCounts,
       lastLatencyMs,

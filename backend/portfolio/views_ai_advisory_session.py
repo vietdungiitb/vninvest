@@ -469,11 +469,8 @@ def stock_ai_advisory_session_api(request, symbol: str):
                 status.HTTP_202_ACCEPTED,
             )
 
-        resolved_threshold_vnd, threshold_source = legacy_views._resolve_first_create_threshold_vnd(
-            request.user,
-            normalized_symbol,
-            threshold_vnd,
-        )
+        from .services import WhaleSignalEngine
+        resolved_threshold_vnd, threshold_source = WhaleSignalEngine.resolve_threshold_vnd(request.user, normalized_symbol)
 
         payload_kwargs = {
             'symbol': normalized_symbol,

@@ -1,173 +1,226 @@
-**Date**: 2026-04-21  
-**Status**: MDSU Phase 4 SSOT Migration 100% COMPLETE ✅ — Platform-wide Market Data SSOT Achieved
+**Date**: 2026-04-22  
+**Status**: Background Services Control Plane Kickoff Pack ✅
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22an)
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix lookup gia tham chieu fallback den phien gan nhat <= trade_date)
+- backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them regression tests cho lookup fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=postgres ... manage.py test portfolio.tests.test_whale_orders_ssot_parity --keepdb` => 4/4 PASS.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend` => backend rebuilt + started.
+- DATA CHECK: Snapshot FPT ton tai (`session_date=2026-04-19`, `prev_close_price=115850.00`) va duoc fallback dung sau fix.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22al)
+- module_tree_full.md (MODIFIED - regenerate sau khi chot verify PostgreSQL cho whale SSOT)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=postgres POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_DB=vninvest POSTGRES_USER=postgres POSTGRES_PASSWORD=devpassword manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- PASSED: `python scripts/ops/generate_module_tree.py` => Modules: 447.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ak)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - align expected whale dedupe `event_id` tu `61400000` thanh `61400` theo canonical payload)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- NOTE: Chay voi Postgres local van bi timeout ket noi (`django.db.utils.OperationalError: connection timeout expired`).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aj)
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix canonical side mapping buy/sell trong bubble categorization; bo sung `degraded_mode_reason` + `event_count`)
+- module_tree_full.md (MODIFIED - regenerate bang script module-tree workflow)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity -v 2` => 2/2 PASS.
+- PASSED: `DB_ENGINE=sqlite manage.py test ...test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled ...test_refactored_whale_feed_response_contains_scoring_contract -v 2` => PASS.
+- NOTE: Con 1 regression co san o test `...test_refactored_whale_feed_deduplicates_duplicate_ticks` fail expectation `event_id` (61400000 vs 61400), can tach ticket fix rieng pham vi market_data_service.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ah)
+- docs/IMPLEMENTATION_PLAN_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - implementation plan chi tiet cho dong bo SSOT whale alert va bubble)
+- docs/TECH_SPEC_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tech spec contract/service/mapping/test cho doi code implement ngay)
+- docs/TASKBOARD_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - taskboard theo slices, owner, dependency va run order)
+- docs/WALKTHROUGH_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - walkthrough handoff coding sequence + verification command)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da tao day du bo tai lieu implementation-ready cho doi code khong can hoi lai.
+- PASSED: Dap ung mandatory triad theo policy va bo sung walkthrough de handoff truc tiep.
+- NOTE: Day la cap nhat tai lieu-only, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ag)
+- docs/AUDIT_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tai lieu hoan chinh audit + implementation blueprint cho SSOT whale alert va bubble chart sync)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da xuat ban tai lieu hoan chinh theo huong SSOT, gom root-cause, target architecture, data contract, test matrix, release gate.
+- PASSED: Dap ung yeu cau tao tai lieu va bao cao tong hop de kickoff implementation.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22af)
+- docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md (NEW - executive/document index 1 trang cho toan bo pack)
+- docs/PILOT_SERVICE_SELECTION_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - de xuat pilot services phase dau)
+- docs/CODING_KICKOFF_PHASE0_PHASE1_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - coding kickoff pack cho Phase 0-1)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - bo sung tai lieu pilot + kickoff vao bo handoff)
+- docs/crawling_control_center_proposal.md (MODIFIED - cap nhat danh sach companion docs)
+- README.md (MODIFIED - them link index cho discoverability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da bo sung tai lieu index + pilot selection + coding kickoff de chuyen pack sang muc kickoff-ready.
+- PASSED: Van giu pham vi tai lieu-only, khong thay doi code runtime.
+- NOTE: Khong can rebuild hoac retest dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ae)
+- docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - implementation plan chi tiet theo policy mandatory)
+- docs/TECH_SPEC_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - tech spec cho schema/API/state/Redis/metrics)
+- docs/TASKBOARD_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - taskboard phase-by-phase cho team code)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - walkthrough/handoff pack va thu tu doc)
+- docs/RUNBOOK_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - target runbook van hanh cho control plane)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - checklist readiness truoc coding)
+- docs/crawling_control_center_proposal.md (MODIFIED - them companion docs section)
+- README.md (MODIFIED - them link discoverability cho implementation plan pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da tao day du triad bat buoc + walkthrough/handoff + runbook + go/no-go checklist.
+- PASSED: Da them discoverability tu proposal chinh va README de team code tim dung bo tai lieu ngay khi kickoff.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ad)
+- docs/crawling_control_center_proposal.md (MODIFIED - mo rong thanh giai phap tong the cho tat ca dich vu nen: registry, orchestration, run ledger, heartbeat, version drift control, write-mode governance)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: De xuat da bao phu bai toan van hanh chung cho tat ca service chay ngam, khong chi backfill.
+- PASSED: Co lo trinh migrate theo giai doan va bo tieu chi thanh cong toan cuc.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ac)
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung chi tiet implementation-ready: API contract, state machine, retry/timeout matrix, SLO/alert, rollout/rollback, DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da kiem tra va chuan hoa cac gia dinh kien truc theo hien trang repo.
+- PASSED: Proposal sau cap nhat du chi tiet de chuyen thanh implementation plan theo sprint.
+- NOTE: Khong thay doi source runtime, khong can rebuild Docker stack cho buoc nay.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ab)
+- backend/portfolio/services_backfill.py (MODIFIED - add optional progress_callback to track phase + rows_processed/rows_total)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - wrap progress_callback to update cache status incrementally with completion_percentage)
+- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - GET /watchlist/groups/ returns empty array for unauthenticated users instead of 401)
+- frontend/src/api/client.js (MODIFIED - add 5-min cache + auth guard + fallback for getWatchlistGroups())
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add backfillProgress state, display progress bar with percentage + metrics during backfill run)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean on all 5 modified files.
+- PASSED: Python syntax valid (services + tasks layers).
+- PASSED: JavaScript syntax valid (API client + AdminOps component).
+- NOTE: rebuild dev stack to test: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat frontend`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-21ah)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add async task + cache status helpers for intraday side backfill apply)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - queue backfill apply in background and add status endpoint)
+- backend/portfolio/views.py (MODIFIED - export backfill status API)
+- backend/config/urls.py (MODIFIED - register `/api/admin-ops/intraday-side-backfill/status/<task_id>/`)
+- backend/portfolio/tests/test_admin_ops.py (MODIFIED - add async backfill queue/status coverage)
+- frontend/src/api/client.js (MODIFIED - add backfill status API client)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - poll queued backfill task until final result)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_admin_ops --keepdb`.
+- PASSED: `get_errors` clean tren `frontend/src/api/client.js`, `frontend/src/pages/AdminOps.jsx`, `backend/portfolio/tests/test_admin_ops.py`.
+- NOTE: can rebuild/restart `backend`, `celery_worker`, `celery_beat`, `frontend` trong compose dev de ap dung thay doi runtime.
 
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-21y)
-- docs/CHECKLIST_PHASE4_MDSU_SSOT_CLOSURE_20260421.md (NEW - actionable checklist to close remaining business read-path direct DailyPrice queries)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21y)
+## ✅ AUDIT FILE LIST (2026-04-21ag)
+- backend/portfolio/views_stock_management.py (MODIFIED - schema-drift tolerant fallback for tracked-symbols API when production misses newest columns)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ag)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: checklist doc created with task groups for migration, gate hardening, verification, and DoD.
-- PASSED: checklist scope aligns with latest audit findings of remaining business call-sites.
-- NOTE: No runtime code changed in this task.
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21x)
-- docs/IMPLEMENTATION_PLAN_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - plan 4 phase, KPI table, migration scope, rollback strategy)
-- docs/TECH_SPEC_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - class design, canonical rules, migration mapping, contract test spec, gate test spec, Redis key convention)
-- docs/TASKBOARD_MARKET_DATA_SERVICE_UNIFICATION_20260421.md (NEW - 30 tasks across 4 phases, DoD per phase, release gate checklist G1-G7)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21x)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: audit scan xác nhận 13 call-site nghiệp vụ DailyPrice trong 7 module.
-- PASSED: Mandatory Triad (Plan + Tech Spec + Taskboard) hoàn chỉnh đủ để coder bắt tay Phase 0.
-- NOTE: Không có code thay đổi — chờ confirm để tiến hành Phase 0.
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21w)
-- docs/VNINVEST_PROJECT_DELIVERY_PLAYBOOK_20260418.md (MODIFIED - add mandatory MDSU governance: MarketDataService canonical gateway, anti-fragmentation rules, checklist gates, and official technology naming)
-- docs/IMPLEMENTATION_PLANNING_POLICY.md (MODIFIED - add mandatory MDSU compliance map for planning, DoR/DoD market-data gates, and MDSU governance appendix)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21w)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: project process docs now explicitly define this architecture program as `MDSU - Market Data Service Unification`.
-- PASSED: governance blocks direct `DailyPrice` access outside canonical `MarketDataService` path for migrated scopes.
-- PASSED: pre-code/pre-merge checklist now includes mandatory MDSU compliance evidence.
+- PASSED: `get_errors` clean tren `views_stock_management.py`.
+- PASSED: API layer co fallback cho drift schema (`TrackedSymbol.whale_alert_threshold_million`, `StockProfile.market_cap_bn`) de tranh HTTP 500.
+- NOTE: can chay migrate production de dong bo schema day du va bo fallback can thiet.
 
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-21v)
-- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - split AI tab into holdings mode and non-holdings monitor mode with explicit fallback semantics)
-- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese copy for AI monitor labels/fallback lines)
-- frontend/src/i18n/en.js (MODIFIED - add English copy for AI monitor labels/fallback lines)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 6 tasks completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21v)
+## ✅ AUDIT FILE LIST (2026-04-21af)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - refactor layout 2 cot trai + 1 cot phai, WhaleSymbolSidebar sang cot phai, support row va support tabs)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21af)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: diagnostics (`get_errors`) clean on all changed files.
-- PASSED: AI tab no longer shows portfolio-only metrics in non-holdings scopes.
-- PASSED: non-holdings scopes now use monitor-mode summary and documented fallback behavior.
+- PASSED: `get_errors` clean tren file `WhaleAdvisory.jsx` sau refactor.
+- PASSED: bo cuc da dat dung muc tieu command panel span 2 cot trai, sidebar o cot phai.
 
 
 ---
 
-## ✅ AUDIT FILE LIST (2026-04-21u)
-- backend/portfolio/views_analytics_extended.py (MODIFIED - add bulk technicals symbol-list endpoint and shared helper pipeline using `_screener_build_technical`)
-- backend/portfolio/views.py (MODIFIED - expose `BulkTechnicalBySymbolsView` for stock-management routing)
-- backend/portfolio/urls_stock.py (MODIFIED - register `POST /api/stock-management/technicals/bulk/`)
-- backend/portfolio/tests/test_api_routes_stock_technicals_bulk.py (NEW - contract tests for empty/over-limit/success normalize-dedupe cases)
-- frontend/src/api/client.js (MODIFIED - add `getBulkTechnicalsBySymbols` API helper)
-- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - switch technical data fetch to bulk symbol universe with fallback to holdings technical endpoint)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 5 tasks completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21u)
+## ✅ AUDIT FILE LIST (2026-04-21ae)
+- docs/IMPLEMENTATION_PLAN_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - implementation plan chi tiet cho layout AI Advisory 2 cot trai + 1 cot phai)
+- docs/TECH_SPEC_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - tech spec rendering/state/responsive contract)
+- docs/TASKBOARD_AI_ADVISORY_LAYOUT_REDESIGN_20260421.md (NEW - taskboard ready-to-execute cho doi code)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ae)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `python manage.py test portfolio.tests.test_api_routes_stock_technicals_bulk -v 2` => 3/3 PASS.
-- PASSED: diagnostics (`get_errors`) clean on all changed files.
-- PASSED: Technical tab backend path now supports non-holding scopes through symbol-universe bulk query.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21t)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 4 Whale selector tasks completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21t)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: Whale tab consumes scope-driven symbol options from unified toolbar flow.
-- PASSED: `selectedSymbol=all` fallback policy remains single-symbol and deterministic.
-- PASSED: no additional runtime code changed in this entry (documentation/audit synchronization only).
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21s)
-- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - replace holdings-only Overview with unified mixed-source table, add source badges, and enforce holdings-only position metrics)
-- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for unified overview table headers and badges)
-- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for unified overview table headers and badges)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark all Slice 3 checklist items completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21s)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: diagnostics (`get_errors`) clean on all changed frontend/i18n files.
-- PASSED: Overview now renders unified symbol rows across holdings/tracked/watchlist/all scopes.
-- PASSED: position-specific columns are only shown for holdings rows; non-holding rows use `--`.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21r)
-- backend/portfolio/serializers.py (MODIFIED - `WatchlistGroupSerializer` now returns nested `items` for watchlist symbol aggregation)
-- backend/portfolio/views_portfolio_watchlist.py (MODIFIED - add `prefetch_related('items')` for watchlist group list/detail)
-- frontend/src/utils/modernDashboardSymbolUniverse.js (NEW - normalize + merge + dedupe symbol universe for holdings/tracked/watchlist)
-- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - fetch watchlist groups and pass unified `symbolUniverse` to modular deck)
-- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - implement scope/symbol toolbar and state-driven filtering)
-- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - support external symbol options/selection from deck toolbar)
-- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese labels/messages for modern deck selectors)
-- frontend/src/i18n/en.js (MODIFIED - add English labels/messages for modern deck selectors)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (MODIFIED - mark Slice 1/2 completed items)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21r)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: diagnostics (`get_errors`) clean on all changed files.
-- PASSED: backend/frontend Docker images rebuilt successfully.
-- PASSED: backend/frontend containers restarted successfully and are up (`backend healthy`, `frontend started`).
-- NOTE: automated tests for universe utility are pending in next slice.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21q)
-- docs/IMPLEMENTATION_PLAN_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - implementation plan cho symbol scope selector tại Modern Dashboard, gồm phase rollout, acceptance criteria và risk register)
-- docs/TECH_SPEC_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - technical spec cho unified symbol universe, selector state, tab semantics và bulk technical API)
-- docs/TASKBOARD_MODERN_DASHBOARD_SYMBOL_SCOPE_20260421.md (NEW - taskboard thực thi theo slice cho frontend/backend)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21q)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: planning pack đã chốt rõ user requirement thành mô hình `scope + symbol`.
-- PASSED: đã xác định tab `Kỹ thuật` cần backend bulk API và tab `Cá mập` phải giữ single-symbol mode.
-- PASSED: update này chỉ tạo tài liệu planning/audit, chưa thay đổi runtime behavior.
-
-
----
-
-## ✅ AUDIT FILE LIST (2026-04-21p)
-- backend/portfolio/tasks_prefetch.py (MODIFIED - publish canonical `ticker:prefetch:meta` from `schedule_realtime_prefetch_shards` to keep AdminOps Prefetch Health synchronized with shard scheduler runtime)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21p)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: manual scheduler run returns `status=ok` with shard enqueue summary.
-- PASSED: `GET /api/health/prefetch/` now reports `meta_present=true`, `status=ok`, `freshness_seconds=0`, `sample_cache_hits=12/12`.
-- PASSED: prefetch payload now carries `generated_at`, `symbols`, `cached`, `sample_symbols`, `scheduler`, and `budget` fields for Admin Ops KPI cards.
+- PASSED: Bo planning pack day du cho doi code trien khai ngay.
+- PASSED: Slice order, owner mapping, release gate va DoD duoc mo ta ro rang.
 
 
 ---
 
 ## ✅ AUDIT FILE LIST (2026-04-21o)
-- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - fix import path to `../context/LangContext` and `../hooks/useOrderBubbleCoordinates` for Docker production build compatibility)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21o)
+- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (NEW - template nguyen tac thiet ke trang chung toan du an: css token, le/margin, bo cuc, responsive, tab/panel contract)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-21ad)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `docker compose -f docker-compose.dev.yml build frontend --no-cache` compiled successfully.
-- PASSED: `docker compose -f docker-compose.dev.yml up -d frontend` recreated and started frontend container.
-- PASSED: `docker compose -f docker-compose.dev.yml ps` reports backend/frontend/db/redis/celery healthy.
-- PASSED: unauthenticated smoke call to whale endpoint returns `401` as expected (`auth + IsProPlan` guard active).
+- PASSED: Da ban hanh bo template chung de doi code su dung lam chuan khi hieu chinh tat ca trang.
+- PASSED: Template day du phan layout contract + css utility mau + checklist nghiem thu.
 
 
 ---

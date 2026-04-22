@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   getTrackedSymbols,
   getWhaleAdvisories,
+  getMarketDiscoveryHub, // Need to add this to api/client
   getWhaleAdvisorySymbolStats,
   getAdvisoryAutoRefreshInfo,
   refreshWhaleAdvisory,
@@ -11,7 +12,7 @@ import { useI18n } from '../context/LangContext';
 
 export const ADVISORY_INVALIDATION_EVENT = 'whale_advisory_invalidated';
 
-export function useWhaleAdvisoryData(watchlistOnly) {
+export function useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode = false) {
   const { t } = useI18n();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -37,23 +38,36 @@ export function useWhaleAdvisoryData(watchlistOnly) {
   
   const fetchDataSnapshot = useCallback(async () => {
     try {
-      const advisoryResp = await getWhaleAdvisories(
-        watchlistOnly ? { watchlist_only: 'true', contract: 'canonical' } : { contract: 'canonical' }
-      );
-      const dataItems = Array.isArray(advisoryResp?.data?.items) ? advisoryResp.data.items : [];
+      let advisoryResp;
+      if (isDiscoveryMode) {
+        advisoryResp = await getMarketDiscoveryHub();
+      } else {
+        advisoryResp = await getWhaleAdvisories(
+          watchlistOnly ? { watchlist_only: 'true', contract: 'canonical' } : { contract: 'canonical' }
+        );
+      }
+
+      const dataItems = isDiscoveryMode 
+        ? (advisoryResp?.data?.discovery_signals || []) 
+        : (advisoryResp?.data?.items || []);
       
       const advisories = dataItems.map((item) => ({
-        id: item?.advisory_id,
+        id: item?.advisory_id || item?.id,
         symbol: item?.symbol,
-        side: item?.recommendation || 'UNKNOWN',
-        ai_summary: item?.summary_text || '',
+        side: item?.recommendation || item?.side || 'UNKNOWN',
+        ai_summary: item?.summary_text || item?.summary || '',
         ai_detail: item?.detail_text || '',
         ai_provider: item?.ai_provider || 'openclaw',
         ai_model: item?.ai_model || 'default',
         created_at: item?.created_at,
-        severity: item?.risk_level || null,
+        severity: item?.risk_level || item?.severity || null,
         confidence: item?.confidence,
         matched_value: item?.matched_value || 0,
+        // Phase 3 Discovery Fields
+        is_discovery: item?.is_discovery || false,
+        discovery_bucket: item?.discovery_bucket || 'standard',
+        whale_intensity: item?.whale_intensity || item?.intensity || 0,
+        threshold_source: item?.threshold_source || 'user_default',
       }));
       setItems(advisories);
       return advisories;
@@ -61,7 +75,7 @@ export function useWhaleAdvisoryData(watchlistOnly) {
       console.error('Fetch snap failed:', err);
       throw err;
     }
-  }, [watchlistOnly]);
+  }, [watchlistOnly, isDiscoveryMode]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -86,8 +100,19 @@ export function useWhaleAdvisoryData(watchlistOnly) {
 
   useEffect(() => {
     const onInvalidated = () => fetchDataSnapshot();
+    const onDiscoveryUpdate = (e) => {
+      // Phase 4: Atomic refresh on discovery update to keep UI live
+      console.log('Realtime Discovery Update received:', e.detail);
+      fetchDataSnapshot();
+    };
+    
     window.addEventListener(ADVISORY_INVALIDATION_EVENT, onInvalidated);
-    return () => window.removeEventListener(ADVISORY_INVALIDATION_EVENT, onInvalidated);
+    window.addEventListener('market_discovery_update', onDiscoveryUpdate);
+    
+    return () => {
+      window.removeEventListener(ADVISORY_INVALIDATION_EVENT, onInvalidated);
+      window.removeEventListener('market_discovery_update', onDiscoveryUpdate);
+    };
   }, [fetchDataSnapshot]);
 
   const loadRefreshInfo = useCallback(async (symbol) => {

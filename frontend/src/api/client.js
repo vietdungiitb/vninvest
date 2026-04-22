@@ -189,12 +189,31 @@ export const syncPrices = (portfolioId, days = 30) =>
 // --- Sync StockProfile (trigger backend sync) ---
 export const syncStockProfile = () => apiClient.post('/admin-sync/stockprofile/');
 
-// --- Watchlist ---
+// --- Watchlist Cache & Auth Guard ---
+let watchlistGroupsCache = null;
+let watchlistGroupsCacheTimestamp = 0;
+const WATCHLIST_GROUPS_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export const getWatchlistGroups = () => {
   if (!hasAuthTokens()) {
     return Promise.resolve({ data: [] });
   }
-  return apiClient.get('/portfolio/watchlist/groups/');
+
+  const now = Date.now();
+  if (watchlistGroupsCache && now - watchlistGroupsCacheTimestamp < WATCHLIST_GROUPS_CACHE_TTL) {
+    return Promise.resolve({ data: watchlistGroupsCache });
+  }
+
+  return apiClient.get('/portfolio/watchlist/groups/')
+    .then((response) => {
+      watchlistGroupsCache = response.data || [];
+      watchlistGroupsCacheTimestamp = now;
+      return response;
+    })
+    .catch((err) => {
+      console.error('getWatchlistGroups failed:', err);
+      return { data: [] };
+    });
 };
 export const createWatchlistGroup = (data) => apiClient.post('/portfolio/watchlist/groups/', data);
 export const updateWatchlistGroup = (id, data) => apiClient.patch(`/portfolio/watchlist/groups/${id}/`, data);
@@ -386,6 +405,7 @@ export const getWhaleAdvisories = (params = {}) => {
   const suffix = query.toString() ? `?${query.toString()}` : '';
   return apiClient.get(`/portfolio/ai-advisory/${suffix}`);
 };
+export const getMarketDiscoveryHub = () => apiClient.get('/portfolio/market-discovery-hub/');
 export const getCanonicalAIAdvisory = (symbol) =>
   apiClient.get(`/portfolio/ai-advisory/${encodeURIComponent(symbol)}/canonical/`);
 export const refreshWhaleAdvisory = (symbol) =>
@@ -526,6 +546,8 @@ export const adminIntradaySideBackfillPreview = (payload) =>
   apiClient.post('/admin-ops/intraday-side-backfill/preview/', payload);
 export const adminIntradaySideBackfillApply = (payload) =>
   apiClient.post('/admin-ops/intraday-side-backfill/apply/', payload);
+export const adminIntradaySideBackfillStatus = (taskId) =>
+  apiClient.get(`/admin-ops/intraday-side-backfill/status/${encodeURIComponent(taskId)}/`);
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');
@@ -533,6 +555,19 @@ export const createScreenerRule = (data) => apiClient.post('/portfolio/screener/
 export const updateScreenerRule = (id, data) => apiClient.put(`/portfolio/screener/rules/${id}/`, data);
 export const deleteScreenerRule = (id) => apiClient.delete(`/portfolio/screener/rules/${id}/`);
 export const runScreenerRule = (id) => apiClient.post(`/portfolio/screener/rules/${id}/run/`);
+
+// --- Crawling Control API ---
+export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');
+export const runAdminCrawlJob = (id) => apiClient.post(`/v1/admin/crawl/jobs/${id}/run/`);
+export const stopAdminCrawlJob = (id) => apiClient.post(`/v1/admin/crawl/jobs/${id}/stop/`);
+export const getAdminCrawlRuns = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return apiClient.get(`/v1/admin/crawl/runs/${query ? `?${query}` : ''}`);
+};
+export const getAdminCrawlAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return apiClient.get(`/v1/admin/crawl/audit-logs/${query ? `?${query}` : ''}`);
+};
 
 export default apiClient;
 

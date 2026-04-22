@@ -37,6 +37,7 @@ from portfolio.models import (
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
 )
+from portfolio.tasks_maintenance import set_intraday_side_backfill_task_status
 
 URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
@@ -48,6 +49,8 @@ VNSTOCK_RESET_URL = '/api/admin-ops/vnstock-config/reset-to-defaults/'
 VNSTOCK_CHANGELOG_URL = '/api/admin-ops/vnstock-config/changelog/'
 VNSTOCK_BENCHMARK_LATEST_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/latest/'
 VNSTOCK_BENCHMARK_RUN_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/run/'
+INTRADAY_BACKFILL_APPLY_URL = '/api/admin-ops/intraday-side-backfill/apply/'
+INTRADAY_BACKFILL_STATUS_URL = '/api/admin-ops/intraday-side-backfill/status/{task_id}/'
 
 
 class AdminOpsStatsPermissionTests(APITestCase):
@@ -601,3 +604,79 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
         self.assertFalse(resp.data['ok'])
         self.assertFalse(resp.data['has_report'])
         self.assertEqual(resp.data['status'], 'temporarily_unavailable')
+
+
+class AdminIntradaySideBackfillAsyncTests(APITestCase):
+    def setUp(self):
+        self.staff = User.objects.create_user(
+            username='backfill_staff', password='Test@123456', is_staff=True
+        )
+        cfg, _ = UserConfig.objects.get_or_create(user=self.staff)
+        if not cfg.email_verified:
+            cfg.email_verified = True
+            cfg.save(update_fields=['email_verified', 'updated_at'])
+
+        resp = self.client.post('/api/auth/token/', {'username': 'backfill_staff', 'password': 'Test@123456'}, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+
+    @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=True)
+    @patch('portfolio.tasks_maintenance.run_intraday_side_backfill_apply.apply_async')
+    def test_staff_can_queue_intraday_side_backfill_apply(self, mock_apply_async, _mock_worker_available):
+        class _Task:
+            id = 'backfill-task-123'
+
+        mock_apply_async.return_value = _Task()
+
+        resp = self.client.post(
+            INTRADAY_BACKFILL_APPLY_URL,
+            {
+                'confirm': True,
+                'symbols': ['VNM'],
+                'start_date': '2026-04-01',
+                'end_date': '2026-04-21',
+                'threshold': 0,
+                'batch_size': 2000,
+            },
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(resp.data['ok'])
+        self.assertEqual(resp.data['status'], 'queued')
+        self.assertEqual(resp.data['task_id'], 'backfill-task-123')
+
+    @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=False)
+    def test_backfill_apply_returns_503_when_worker_unavailable(self, _mock_worker_available):
+        resp = self.client.post(
+            INTRADAY_BACKFILL_APPLY_URL,
+            {'confirm': True},
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        self.assertFalse(resp.data['ok'])
+        self.assertEqual(resp.data['status'], 'worker_unavailable')
+
+    def test_staff_can_get_intraday_side_backfill_status(self):
+        set_intraday_side_backfill_task_status(
+            'backfill-task-status-1',
+            {
+                'id': 'backfill-task-status-1',
+                'status': 'succeeded',
+                'queued_at': '2026-04-21T16:00:00+00:00',
+                'started_at': '2026-04-21T16:00:05+00:00',
+                'finished_at': '2026-04-21T16:03:00+00:00',
+                'message': 'Backfill intraday side đã hoàn tất.',
+                'result': {'scope_rows': 123, 'updated': 45, 'duration_seconds': 12.5},
+                'error': None,
+                'params': {'symbols': ['VNM']},
+            },
+        )
+
+        resp = self.client.get(INTRADAY_BACKFILL_STATUS_URL.format(task_id='backfill-task-status-1'))
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(resp.data['ok'])
+        self.assertEqual(resp.data['task']['status'], 'succeeded')
+        self.assertEqual(resp.data['task']['result']['updated'], 45)

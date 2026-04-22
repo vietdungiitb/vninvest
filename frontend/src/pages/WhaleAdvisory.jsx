@@ -3,6 +3,7 @@ import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 import RiskModeSelector from '../components/advisory/RiskModeSelector';
 import RecommendationHistoryMini from '../components/advisory/RecommendationHistoryMini';
+import WhaleBubbleChart from '../components/WhaleBubbleChart';
 import TrustTelemetryPanel from '../components/advisory/TrustTelemetryPanel';
 
 // Modular Components
@@ -30,15 +31,21 @@ export default function WhaleAdvisory() {
   const [pageSize, setPageSize] = useState(20);
   const [page, setPage] = useState(1);
   const [watchlistOnly, setWatchlistOnly] = useState(false);
+  const [isDiscoveryMode, setIsDiscoveryMode] = useState(false);
+  const [supportTab, setSupportTab] = useState(() => localStorage.getItem('vninvest:advisory-support-tab') || 'telemetry');
 
   const {
     items, error, symbolStats, statsLoading, refreshInfoMap, pendingRefreshSymbols,
     pendingDeleteSymbols, rowMessages, fetchData, loadRefreshInfo,
     handleRefreshAdvisory, handleDeleteAdvisory
-  } = useWhaleAdvisoryData(watchlistOnly);
+  } = useWhaleAdvisoryData(watchlistOnly, isDiscoveryMode);
 
   // Sync risk mode
   useEffect(() => localStorage.setItem('vninvest:risk-mode', riskMode), [riskMode]);
+
+  useEffect(() => {
+    localStorage.setItem('vninvest:advisory-support-tab', supportTab);
+  }, [supportTab]);
 
   // Load refresh info dynamically
   useEffect(() => {
@@ -75,7 +82,7 @@ export default function WhaleAdvisory() {
   const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
-    <div className="mx-auto max-w-[1800px] pt-24 pb-8 px-4 lg:px-8 space-y-6 min-h-screen bg-slate-950/20">
+    <div className="mx-auto max-w-[1800px] pt-6 pb-8 px-4 lg:px-8 space-y-4 min-h-screen bg-slate-950/20">
       <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
 
       {error ? (
@@ -85,53 +92,101 @@ export default function WhaleAdvisory() {
           <button onClick={fetchData} className="mt-6 px-6 py-2 bg-slate-800 rounded-xl text-cyan-400 hover:bg-slate-700 transition-all">{t('common.retry')}</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-auto lg:h-[82vh]">
-          <div className="lg:row-span-2 overflow-hidden flex flex-col">
-            <WhaleSymbolSidebar 
-              symbolStats={symbolStats} symbolSearch={symbolSearch} setSymbolSearch={setSymbolSearch}
-              activeSymbol={activeSymbol} setActiveSymbol={setActiveSymbol}
-              page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
-            />
-          </div>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+              {/* Left 2 columns: advisory command panel for long reading */}
+              <div className="xl:col-span-2 flex flex-col min-h-[560px]" key={`main-${activeSymbol}`}>
+                <WhaleAdvisoryCommandPanel
+                  item={activeItem}
+                  activeSymbol={activeSymbol}
+                  onRefresh={handleRefreshAdvisory}
+                  onDeleteCurrent={handleDeleteAdvisory}
+                  refreshing={!!pendingRefreshSymbols[activeSymbol]}
+                  deleting={!!pendingDeleteSymbols[activeSymbol]}
+                  rowMessage={rowMessages[activeSymbol]}
+                />
+              </div>
 
-          <div className="lg:col-span-2 overflow-hidden flex flex-col h-full transition-all duration-500 animate-in fade-in" key={`panel-${activeSymbol}`}>
-            <WhaleAdvisoryCommandPanel 
-              item={activeItem} activeSymbol={activeSymbol}
-              onRefresh={handleRefreshAdvisory} onDeleteCurrent={handleDeleteAdvisory}
-              refreshing={!!pendingRefreshSymbols[activeSymbol]} deleting={!!pendingDeleteSymbols[activeSymbol]}
-              rowMessage={rowMessages[activeSymbol]}
-            />
-          </div>
+              {/* Right column: symbol sidebar */}
+              <div className="xl:col-span-1 flex flex-col min-h-[560px]">
+                <WhaleSymbolSidebar
+                  symbolStats={symbolStats}
+                  symbolSearch={symbolSearch}
+                  setSymbolSearch={setSymbolSearch}
+                  activeSymbol={activeSymbol}
+                  setActiveSymbol={setActiveSymbol}
+                  page={page}
+                  setPage={setPage}
+                  pageSize={pageSize}
+                  setPageSize={setPageSize}
+                />
+              </div>
+            </div>
 
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden transition-all duration-500 animate-in fade-in fill-mode-backwards" key={`details-${activeSymbol}`} style={{ animationDelay: '100ms' }}>
-             <div className={`neon-glass-panel p-6 flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">{t('whaleAdvisory.riskCalibration')}</h3>
-                <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
-             </div>
-             <div className={`neon-glass-panel p-6 overflow-hidden flex flex-col transition-all duration-500 ${pendingRefreshSymbols[activeSymbol] ? 'shadow-[0_0_25px_rgba(6,182,212,0.4)] border-cyan-500/50 scale-[1.02]' : ''}`}>
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 flex justify-between">
-                   <span>{t('whaleAdvisory.temporalHistory')}</span>
-                   <span className="text-cyan-500/50">{t('whaleAdvisory.lastCycles', {count: 5})}</span>
-                </h3>
-                <div className="flex-1 overflow-y-auto panel-scrollbar">
-                  <RecommendationHistoryMini symbol={activeSymbol} limit={5} />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+              {/* Bubble chart as primary supporting module */}
+              <div className="xl:col-span-2 min-h-[360px]">
+                <div className="h-full neon-glass-panel p-3">
+                  {activeSymbol ? (
+                    <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
+                  ) : (
+                    <div className="flex h-full flex-col items-center justify-center text-slate-600 gap-3 border border-dashed border-slate-800 rounded-3xl">
+                      <div className="text-3xl opacity-20">🐋</div>
+                      <p className="text-[9px] font-black uppercase tracking-widest">{t('whaleChart.selectSymbolToStart')}</p>
+                    </div>
+                  )}
                 </div>
-             </div>
-             
-             <div className="md:col-span-2 neon-glass-panel p-6 overflow-hidden flex flex-col">
-                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-800 pb-4">
-                  {t('whaleAdvisory.operationalTelemetry')}
-                </h3>
-                <div className="flex-1 overflow-y-auto panel-scrollbar">
-                  <TrustTelemetryPanel />
+              </div>
+
+              {/* Harmonized support modules */}
+              <div className="xl:col-span-1 min-h-[360px] neon-glass-panel overflow-hidden flex flex-col">
+                <div className="p-2 border-b border-slate-800/60 bg-slate-900/50 grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('telemetry')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'telemetry' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.infoPanel')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('risk')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'risk' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.riskCalibration')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSupportTab('history')}
+                    className={`px-2 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition ${supportTab === 'history' ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40' : 'bg-slate-900/40 text-slate-400 border border-slate-800/60 hover:text-slate-200'}`}
+                  >
+                    {t('whaleAdvisory.temporalHistory')}
+                  </button>
                 </div>
-             </div>
+                <div className="flex-1 p-3 overflow-y-auto panel-scrollbar">
+                  {supportTab === 'telemetry' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <TrustTelemetryPanel />
+                    </div>
+                  )}
+                  {supportTab === 'risk' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <RiskModeSelector symbol={activeSymbol} value={riskMode} onChange={setRiskMode} />
+                    </div>
+                  )}
+                  {supportTab === 'history' && (
+                    <div className="rounded-2xl border border-slate-800/60 bg-slate-900/30 p-3">
+                      <RecommendationHistoryMini symbol={activeSymbol} limit={6} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
       )}
 
-      {activeSymbol && refreshInfo && (
-        <footer className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4 px-8 py-5 text-[10px] uppercase font-black tracking-widest text-slate-500 bg-slate-900/60 rounded-[2.5rem] border border-slate-800/40 backdrop-blur-xl shadow-2xl">
+      {refreshInfo && (
+        <footer className="flex items-center gap-3 text-slate-500 text-xs mt-4">
            <div className="flex items-center gap-3">
               <span className="text-slate-600">{t('whaleAdvisory.tokensRemaining')}</span>
               <span className="text-cyan-400 font-mono text-xs scale-110">{(refreshInfo.tokens_remaining_today || 0).toLocaleString()}</span>

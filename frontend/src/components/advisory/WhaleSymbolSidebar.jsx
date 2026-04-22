@@ -76,22 +76,30 @@ export default function WhaleSymbolSidebar({
                   <div className="flex flex-col">
                     <span className={`text-sm font-bold tracking-tight ${isActive ? 'text-cyan-400' : 'text-slate-200'}`}>
                       {item.symbol}
+                      {item.isDiscovery && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-tighter border border-amber-500/30">
+                          Disc
+                        </span>
+                      )}
                     </span>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[9px] font-mono text-slate-500 flex items-center gap-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                        </svg>
-                        {item.trade_count}
+                      <div className="flex items-center gap-0.5 h-1 w-12 bg-slate-800 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-700 ${item.whaleIntensity > 80 ? 'bg-rose-500 shadow-[0_0_5px_rgba(244,63,94,0.8)]' : 'bg-cyan-500'}`}
+                          style={{ width: `${item.whaleIntensity || 0}%` }}
+                        />
+                      </div>
+                      <span className="text-[8px] font-mono font-bold text-slate-600">
+                        {item.whaleIntensity || 0}%
                       </span>
                     </div>
                   </div>
                   
                   <div className="text-right flex flex-col">
-                    <div className={`text-xs font-mono font-bold ${item.net_buy_shares >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {item.net_buy_shares >= 0 ? '▲' : '▼'} {Math.abs(item.net_buy_shares).toLocaleString()}
+                    <div className={`text-xs font-mono font-bold ${item.buyCount >= item.sellCount ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {item.buyCount >= item.sellCount ? '▲' : '▼'} {item.count || 0}
                     </div>
-                    <div className="text-[9px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">{t('whaleAdvisory.netShares')}</div>
+                    <div className="text-[9px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">{t('whaleAdvisory.trades')}</div>
                   </div>
                 </div>
 

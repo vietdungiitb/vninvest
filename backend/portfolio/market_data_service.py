@@ -61,7 +61,7 @@ from .observability import (
 )
 from .permissions import resolve_user_entitlements
 from .price_units import PriceSource, normalize_quote_price_to_canonical
-from .services import get_price_changes
+# from .services import get_price_changes (Moved to late binding to avoid circular import)
 from .runtime_policy_helpers import _get_runtime_prefetch_time_policy
 from .whale_scoring import calculate_display_score, calculate_event_score, resolve_whale_score_config
 
@@ -563,6 +563,7 @@ class MarketDataService:
                     session_close_payload['data_semantic'] = 'last_session_close'
                     return session_close_payload
 
+            from .services import get_price_changes
             price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
             last_date = price_info.get('last_date')
             freshness_seconds = None
@@ -3911,6 +3912,7 @@ class MarketDataService:
             .values('open_price', 'high_price', 'low_price', 'close_price', 'volume')
             .first()
         )
+        from .services import get_price_changes
         price_info = get_price_changes([normalized_symbol]).get(normalized_symbol, {})
         year_stats = (
             DailyPrice.objects
