@@ -26,9 +26,9 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
 
     start_time = timezone.now()
     tracked_symbols = TrackedSymbol.objects.filter(
-        user__userconfig__advisory_auto_generation_enabled=True,
+        user__user_config__advisory_auto_generation_enabled=True,
         is_active=True,
-    ).select_related('user', 'user__userconfig').distinct()[:batch_size]
+    ).select_related('user', 'user__user_config').distinct()[:batch_size]
 
     generated_count = 0
     skipped_count = 0

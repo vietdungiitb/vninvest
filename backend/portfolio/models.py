@@ -450,6 +450,11 @@ class TrackedSymbol(models.Model):
         validators=[MinValueValidator(Decimal('1'))],
         verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
     )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Bật theo dõi',
+        db_index=True,
+    )
     added_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
