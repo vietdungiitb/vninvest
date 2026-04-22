@@ -1,5 +1,35 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bf - Remove zoom controls from Whale Bubble chart
+
+Muc tieu:
+- Loai bo toan bo zoom interaction o tab Ca map de chart giu khung nhin co dinh va giao dien gon hon.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - xoa toan bo `dataZoom` config, bo slider zoom ben duoi va inside zoom)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
+## Entry 2026-04-22be - Restore Whale Bubble tooltip interaction and enlarge default bubble size
+
+Muc tieu:
+- Khoi phuc tooltip/hover interaction bi mat sau dot toi uu render truoc do.
+- Tang kich thuoc bong hien thi ngay tu dau de khong can re chuot moi nhin thay ro.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - tang `BUBBLE_MIN_DIAMETER`, `BUBBLE_MAX_DIAMETER`, `BUBBLE_DIAMETER_PER_BILLION` de bong lon hon ngay tu dau)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo `progressive`/`progressiveThreshold` tren scatter series de khong mat tooltip point interaction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx` va `useOrderBubbleCoordinates.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
 ## Entry 2026-04-22bd - Improve Whale Bubble chart render responsiveness
 
 Muc tieu:

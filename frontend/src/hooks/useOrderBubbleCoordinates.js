@@ -6,9 +6,9 @@ import { useMemo } from 'react';
 
 const MARKET_OPEN_HOUR = 9;
 const ONE_BILLION_VND = 1_000_000_000;
-const BUBBLE_MIN_DIAMETER = 6;
-const BUBBLE_MAX_DIAMETER = 64;
-const BUBBLE_DIAMETER_PER_BILLION = 10;
+const BUBBLE_MIN_DIAMETER = 12;
+const BUBBLE_MAX_DIAMETER = 88;
+const BUBBLE_DIAMETER_PER_BILLION = 16;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));

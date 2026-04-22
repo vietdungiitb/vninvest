@@ -3,6 +3,29 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bf)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - xoa toan bo data zoom, bo slider zoom duoi chart va inside zoom interaction o tab Ca map)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22be)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - tang size base bong whale de hien thi lon hon ngay tu dau)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo progressive rendering tren scatter de khoi phuc tooltip/hover interaction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 2 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bd)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - toi uu render ECharts: progressive rendering, lazy update, dirty rect, giam animation duration/update)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bd)
