@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22ay - Clarify crawl job readiness vs running state and lock RUN/STOP actions
+
+Muc tieu:
+- Tach bach ro nghia trang thai `is_active` (san sang) va trang thai run thuc te (`queued`/`running`) tren man hinh Control Center.
+- Chuan hoa hanh vi nut dieu khien: RUN chi cho phep khi job dang san sang va khong co run active; STOP chi cho phep khi co run active.
+- Chan race condition o backend bang guard overlap (khong tao run moi khi job da co run `queued` hoac `running`).
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - doi label trang thai theo semantics; disable RUN/STOP theo active run; tang poll run history len 50 ban ghi)
+- backend/portfolio/views_crawl.py (MODIFIED - them guard 409 khi job da co active run `queued`/`running`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AdminCrawlControl.jsx` va `backend/portfolio/views_crawl.py`.
+- PASSED: UI semantics moi: `Sẵn sàng` != `Đang chạy`; RUN bi disable khi co active run; STOP bi disable khi khong co active run.
+- PASSED: API guard overlap tra `409` + thong tin run active (`run_id`, `status`) khi nguoi dung bam RUN trong luc job dang `queued`/`running`.
+
 ## Entry 2026-04-22ax - Implement Whale Bubble Chart modernization and volume-centric visualization
 
 Muc tieu:

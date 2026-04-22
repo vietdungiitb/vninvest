@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   getAdminCrawlJobs,
   runAdminCrawlJob,
@@ -29,11 +29,26 @@ export default function AdminCrawlControl() {
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const activeRunByJobId = useMemo(() => {
+    const activeStatuses = new Set(['queued', 'running']);
+    return runs.reduce((acc, run) => {
+      const normalizedStatus = String(run?.status || '').toLowerCase();
+      if (!activeStatuses.has(normalizedStatus)) {
+        return acc;
+      }
+      const existing = acc[run.job];
+      if (!existing || new Date(run.created_at) > new Date(existing.created_at)) {
+        acc[run.job] = run;
+      }
+      return acc;
+    }, {});
+  }, [runs]);
+
   const fetchAll = useCallback(async () => {
     try {
       const [jobsRes, runsRes] = await Promise.all([
         getAdminCrawlJobs(),
-        getAdminCrawlRuns({ limit: 15, ordering: '-created_at' }),
+        getAdminCrawlRuns({ limit: 50, ordering: '-created_at' }),
       ]);
       setJobs(jobsRes.data?.results || jobsRes.data || []);
       setRuns(runsRes.data?.results || runsRes.data || []);
@@ -100,42 +115,56 @@ export default function AdminCrawlControl() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-gray-900 dark:text-white font-mono text-xs">{job.service_code}</div>
-                      <div className="text-xs text-gray-400 mt-1 line-clamp-1">{job.description}</div>
-                    </td>
-                    <td className="px-4 py-4">
-                      {job.is_active ? (
-                        <span className="text-green-600 dark:text-green-400 font-semibold text-xs flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                          Đang hoạt động
-                        </span>
-                      ) : (
-                        <span className="text-gray-400 font-semibold text-xs flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
-                          Vô hiệu hóa
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => handleRun(job.id)}
-                        disabled={!job.is_active}
-                        className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 dark:hover:bg-blue-400 mr-2 disabled:opacity-50 transition-colors"
-                      >
-                        RUN
-                      </button>
-                      <button
-                        onClick={() => handleStop(job.id)}
-                        className="rounded-md bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors"
-                      >
-                        STOP
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {jobs.map((job) => {
+                  const activeRun = activeRunByJobId[job.id];
+                  const activeRunStatus = String(activeRun?.status || '').toLowerCase();
+                  const hasActiveRun = Boolean(activeRun);
+                  const canRun = job.is_active && !hasActiveRun;
+                  const canStop = hasActiveRun;
+
+                  return (
+                    <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-4">
+                        <div className="font-semibold text-gray-900 dark:text-white font-mono text-xs">{job.service_code}</div>
+                        <div className="text-xs text-gray-400 mt-1 line-clamp-1">{job.description}</div>
+                      </td>
+                      <td className="px-4 py-4">
+                        {hasActiveRun ? (
+                          <span className={`font-semibold text-xs flex items-center gap-1.5 ${activeRunStatus === 'running' ? 'text-blue-600 dark:text-blue-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${activeRunStatus === 'running' ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
+                            {activeRunStatus === 'running' ? 'Đang chạy' : 'Đang chờ chạy'}
+                          </span>
+                        ) : job.is_active ? (
+                          <span className="text-green-600 dark:text-green-400 font-semibold text-xs flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Sẵn sàng
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 font-semibold text-xs flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                            Vô hiệu hóa
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 text-right whitespace-nowrap">
+                        <button
+                          onClick={() => handleRun(job.id)}
+                          disabled={!canRun}
+                          className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-500 dark:hover:bg-blue-400 mr-2 disabled:opacity-50 transition-colors"
+                        >
+                          RUN
+                        </button>
+                        <button
+                          onClick={() => handleStop(job.id)}
+                          disabled={!canStop}
+                          className="rounded-md bg-red-50 dark:bg-red-900/30 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50 transition-colors"
+                        >
+                          STOP
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
                 {jobs.length === 0 && (
                   <tr>
                     <td colSpan={3} className="px-4 py-8 text-center text-gray-500">

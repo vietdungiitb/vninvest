@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22ay)
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - tach bach semantics trang thai: `Sẵn sàng` vs `Đang chạy/Đang chờ chạy`; disable RUN khi co run active; disable STOP khi khong co run active; tang polling run history len 50)
+- backend/portfolio/views_crawl.py (MODIFIED - them guard overlap, tra `409` neu job da co run `queued`/`running`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/AdminCrawlControl.jsx` va `backend/portfolio/views_crawl.py`.
+- PASSED: `docker compose ... up -d --build backend frontend` build thanh cong, backend healthy, frontend started.
+- PASSED: RUN/STOP logic duoc chuan hoa theo active run thay vi `is_active` don thuan.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22ax)
 - backend/portfolio/views_whale_orders.py (MODIFIED - implement 4-tier fallback, harmonize extreme threshold between bubbles and summary)
 - frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - support matched_value/volume Y-axis, isExtreme flag, adaptive scaling)
