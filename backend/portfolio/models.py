@@ -2410,3 +2410,85 @@ class NewsSourceWeight(models.Model):
     def __str__(self):
         status = '✓' if self.is_active else '✗'
         return f'{status} {self.source_name} weight={self.weight}'
+
+
+# ---------------------------------------------------------------------------
+# Crawling Control Plane Models
+# ---------------------------------------------------------------------------
+
+class CrawlJob(models.Model):
+    service_code = models.CharField(max_length=64, unique=True, verbose_name='Service Code')
+    description = models.TextField(blank=True, verbose_name='Job Description')
+    is_active = models.BooleanField(default=True, verbose_name='Active')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Created')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Updated')
+
+    class Meta:
+        verbose_name = 'Crawl Job'
+        verbose_name_plural = 'Crawl Jobs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.service_code
+
+class CrawlSchedule(models.Model):
+    job = models.ForeignKey(CrawlJob, on_delete=models.CASCADE, related_name='schedules')
+    cron_expression = models.CharField(max_length=100, verbose_name='Cron Expression')
+    next_run_at = models.DateTimeField(null=True, blank=True, verbose_name='Next Run')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Created')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Updated')
+
+    class Meta:
+        verbose_name = 'Crawl Schedule'
+        verbose_name_plural = 'Crawl Schedules'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.job.service_code} at {self.cron_expression}"
+
+class CrawlRun(models.Model):
+    STATUS_CHOICES = (
+        ('queued', 'Queued'),
+        ('running', 'Running'),
+        ('success', 'Success'),
+        ('failed', 'Failed'),
+    )
+    TRIGGER_CHOICES = (
+        ('manual', 'Manual'),
+        ('schedule', 'Schedule'),
+    )
+    job = models.ForeignKey(CrawlJob, on_delete=models.CASCADE, related_name='runs')
+    trigger_type = models.CharField(max_length=20, choices=TRIGGER_CHOICES, default='manual', verbose_name='Trigger Type')
+    task_id = models.CharField(max_length=255, null=True, blank=True, verbose_name='Celery Task ID')
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name='Started')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Finished')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='queued', verbose_name='Status')
+    log = models.TextField(blank=True, verbose_name='Run Log')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Created')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Updated')
+
+    class Meta:
+        verbose_name = 'Crawl Run'
+        verbose_name_plural = 'Crawl Runs'
+        ordering = ['-started_at']
+
+    def __str__(self):
+        try:
+            return f"Run for {self.job.service_code} - {self.status}"
+        except Exception:
+            return f"Run for {self.id} - {self.status}"
+
+
+class CrawlAuditLog(models.Model):
+    run = models.ForeignKey(CrawlRun, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    event = models.CharField(max_length=64, verbose_name='Event')
+    payload = models.JSONField(default=dict, verbose_name='Payload')
+    timestamp = models.DateTimeField(default=timezone.now, verbose_name='Timestamp')
+
+    class Meta:
+        verbose_name = 'Crawl Audit Log'
+        verbose_name_plural = 'Crawl Audit Logs'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.event} at {self.timestamp}"

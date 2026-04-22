@@ -3032,7 +3032,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data['whale_orders']), 1)
-        self.assertEqual(response.data['whale_orders'][0]['event_id'], 'whale:buy:20260403T140146:61400000:19000')
+        self.assertEqual(response.data['whale_orders'][0]['event_id'], 'whale:buy:20260403T140146:61400:19000')
 
     @patch('portfolio.market_data_service.get_cache', return_value=None)
     @patch('portfolio.market_data_service.read_stream_intraday_ticks', return_value=[])

@@ -12,6 +12,7 @@ import Transactions from './pages/Transactions';
 import Support from './pages/Support';
 import Watchlist from './pages/Watchlist';
 import AdminOps from './pages/AdminOps';
+import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import VerifyEmail from './pages/VerifyEmail';
 import ResetPassword from './pages/ResetPassword';
@@ -82,6 +83,7 @@ export default function App() {
                   <Route path="support" element={<Support />} />
                   <Route path="watchlist" element={<Watchlist />} />
                   <Route path="admin-ops" element={<AdminOps />} />
+                  <Route path="admin-crawl-control" element={<AdminCrawlControl />} />
                   <Route path="screener" element={<Screener />} />
                   <Route path="portfolios" element={<PortfolioManagement />} />
                   <Route path="settings" element={<UserConfig />} />

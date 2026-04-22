@@ -102,6 +102,9 @@ export default function WhaleBubbleChart({
     orderData?.session_start
   );
 
+  const totalOrders = orderData?.summary?.total_orders || 0;
+  const isDegradedMode = Boolean(orderData?.degraded_mode || orderData?.quality_flags?.missing_reference_price);
+
   // Build ECharts option
   const chartOption = useMemo(() => {
     if (!orderData || !bubbles) {
@@ -300,7 +303,7 @@ export default function WhaleBubbleChart({
       </div>
 
       {/* Chart or Empty State */}
-      <div className="flex-1 bg-slate-900/40 border border-slate-800 rounded-lg overflow-hidden">
+      <div className="flex-1 min-h-[200px] bg-slate-900/40 border border-slate-800 rounded-lg overflow-hidden">
         {loading ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-emerald-500" />
@@ -317,19 +320,27 @@ export default function WhaleBubbleChart({
             <div className="text-4xl opacity-30">🐋</div>
             <p className="text-sm italic">{t('whaleChart.selectSymbolToStart') || 'Chọn mã để bắt đầu'}</p>
           </div>
-        ) : orderData?.summary?.total_orders === 0 ? (
+        ) : totalOrders === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
             <div className="text-4xl opacity-30">📭</div>
             <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe') || 'Không có lệnh trong khoảng thời gian này'}</p>
             <p className="text-xs">{t('whaleChart.tryDifferentTimeframe') || 'Thử khoảng thời gian khác'}</p>
           </div>
         ) : (
-          <ReactECharts option={chartOption} style={{ width: '100%', height: '100%' }} />
+          <div className="h-full w-full min-h-[200px]">
+            {isDegradedMode && (
+              <div className="mx-3 mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                <div className="font-semibold">{t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded'}</div>
+                <div className="mt-0.5 text-amber-100/80">{t('whaleChart.degradedModeDescription') || 'Thiếu giá tham chiếu, biểu đồ vẫn hiển thị lệnh lớn từ nguồn SSOT.'}</div>
+              </div>
+            )}
+            <ReactECharts option={chartOption} style={{ width: '100%', height: '100%', minHeight: '200px' }} />
+          </div>
         )}
       </div>
 
       {/* Summary Stats */}
-      {orderData && !error && (
+      {orderData && !error && !isEmbedded && (
         <div className="grid grid-cols-4 gap-2 text-xs">
           <div className="bg-slate-900/60 border border-slate-800 rounded p-2">
             <div className="text-slate-400 mb-1">{t('whaleChart.totalOrders') || 'Tổng lệnh'}</div>
@@ -345,7 +356,9 @@ export default function WhaleBubbleChart({
           </div>
           <div className="bg-slate-900/60 border border-slate-800 rounded p-2">
             <div className="text-slate-400 mb-1">{t('whaleChart.refPrice') || 'Giá tham chiếu'}</div>
-            <div className="text-lg font-bold text-slate-200">{orderData.ref_price?.toLocaleString('vi-VN')} đ</div>
+            <div className="text-lg font-bold text-slate-200">
+              {orderData.ref_price != null ? `${orderData.ref_price?.toLocaleString('vi-VN')} đ` : (t('whaleChart.missingRefPrice') || 'Không có')}
+            </div>
           </div>
         </div>
       )}

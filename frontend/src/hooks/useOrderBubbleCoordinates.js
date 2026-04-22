@@ -17,17 +17,21 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
    */
 
   const bubbles = useMemo(() => {
-    if (!orders || !refPrice || !sessionStart) {
+    if (!orders || !sessionStart) {
       return { buy: [], sell: [], internal: [] };
     }
 
     const sessionStartDate = new Date(sessionStart);
+    const hasReferencePrice = refPrice !== null && refPrice !== undefined && Number.isFinite(Number(refPrice));
     const categorized = { buy: [], sell: [], internal: [] };
 
     orders.forEach((order) => {
       try {
         // Parse timestamp
         const orderTime = new Date(order.ts);
+        if (Number.isNaN(orderTime.getTime())) {
+          return;
+        }
         
         // X-axis: minutes since session start
         const timeDiff = orderTime - sessionStartDate;
@@ -35,9 +39,9 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
         
         // Y-axis: price difference from reference
         const priceNum = parseFloat(order.price);
-        const refPriceNum = parseFloat(refPrice);
-        const yVnd = priceNum - refPriceNum;
-        const yPct = ((priceNum - refPriceNum) / refPriceNum) * 100;
+        const refPriceNum = hasReferencePrice ? parseFloat(refPrice) : null;
+        const yVnd = hasReferencePrice ? (priceNum - refPriceNum) : 0;
+        const yPct = hasReferencePrice && refPriceNum ? (((priceNum - refPriceNum) / refPriceNum) * 100) : 0;
         
         // Size: normalize matched_value using sqrt for visual scaling
         const matchedValue = parseFloat(order.matched_value);
@@ -57,9 +61,10 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
         };
 
         // Categorize by side
-        if (order.side === 'BUY') {
+        const normalizedSide = String(order.side || '').trim().toLowerCase();
+        if (normalizedSide === 'buy' || normalizedSide === 'bu' || normalizedSide === 'b') {
           categorized.buy.push(bubble);
-        } else if (order.side === 'SELL') {
+        } else if (normalizedSide === 'sell' || normalizedSide === 'sd' || normalizedSide === 's') {
           categorized.sell.push(bubble);
         } else {
           categorized.internal.push(bubble);

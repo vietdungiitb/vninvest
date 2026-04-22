@@ -1,5 +1,140 @@
 **Date**: 2026-04-22  
-**Status**: Backfill Progress Tracking + Watchlist Auth Hardening ✅
+**Status**: Background Services Control Plane Kickoff Pack ✅
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22an)
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix lookup gia tham chieu fallback den phien gan nhat <= trade_date)
+- backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them regression tests cho lookup fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=postgres ... manage.py test portfolio.tests.test_whale_orders_ssot_parity --keepdb` => 4/4 PASS.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend` => backend rebuilt + started.
+- DATA CHECK: Snapshot FPT ton tai (`session_date=2026-04-19`, `prev_close_price=115850.00`) va duoc fallback dung sau fix.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22al)
+- module_tree_full.md (MODIFIED - regenerate sau khi chot verify PostgreSQL cho whale SSOT)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=postgres POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_DB=vninvest POSTGRES_USER=postgres POSTGRES_PASSWORD=devpassword manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- PASSED: `python scripts/ops/generate_module_tree.py` => Modules: 447.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ak)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - align expected whale dedupe `event_id` tu `61400000` thanh `61400` theo canonical payload)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- NOTE: Chay voi Postgres local van bi timeout ket noi (`django.db.utils.OperationalError: connection timeout expired`).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22aj)
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix canonical side mapping buy/sell trong bubble categorization; bo sung `degraded_mode_reason` + `event_count`)
+- module_tree_full.md (MODIFIED - regenerate bang script module-tree workflow)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity -v 2` => 2/2 PASS.
+- PASSED: `DB_ENGINE=sqlite manage.py test ...test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled ...test_refactored_whale_feed_response_contains_scoring_contract -v 2` => PASS.
+- NOTE: Con 1 regression co san o test `...test_refactored_whale_feed_deduplicates_duplicate_ticks` fail expectation `event_id` (61400000 vs 61400), can tach ticket fix rieng pham vi market_data_service.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ah)
+- docs/IMPLEMENTATION_PLAN_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - implementation plan chi tiet cho dong bo SSOT whale alert va bubble)
+- docs/TECH_SPEC_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tech spec contract/service/mapping/test cho doi code implement ngay)
+- docs/TASKBOARD_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - taskboard theo slices, owner, dependency va run order)
+- docs/WALKTHROUGH_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - walkthrough handoff coding sequence + verification command)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da tao day du bo tai lieu implementation-ready cho doi code khong can hoi lai.
+- PASSED: Dap ung mandatory triad theo policy va bo sung walkthrough de handoff truc tiep.
+- NOTE: Day la cap nhat tai lieu-only, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ag)
+- docs/AUDIT_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tai lieu hoan chinh audit + implementation blueprint cho SSOT whale alert va bubble chart sync)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da xuat ban tai lieu hoan chinh theo huong SSOT, gom root-cause, target architecture, data contract, test matrix, release gate.
+- PASSED: Dap ung yeu cau tao tai lieu va bao cao tong hop de kickoff implementation.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22af)
+- docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md (NEW - executive/document index 1 trang cho toan bo pack)
+- docs/PILOT_SERVICE_SELECTION_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - de xuat pilot services phase dau)
+- docs/CODING_KICKOFF_PHASE0_PHASE1_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - coding kickoff pack cho Phase 0-1)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - bo sung tai lieu pilot + kickoff vao bo handoff)
+- docs/crawling_control_center_proposal.md (MODIFIED - cap nhat danh sach companion docs)
+- README.md (MODIFIED - them link index cho discoverability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da bo sung tai lieu index + pilot selection + coding kickoff de chuyen pack sang muc kickoff-ready.
+- PASSED: Van giu pham vi tai lieu-only, khong thay doi code runtime.
+- NOTE: Khong can rebuild hoac retest dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ae)
+- docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - implementation plan chi tiet theo policy mandatory)
+- docs/TECH_SPEC_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - tech spec cho schema/API/state/Redis/metrics)
+- docs/TASKBOARD_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - taskboard phase-by-phase cho team code)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - walkthrough/handoff pack va thu tu doc)
+- docs/RUNBOOK_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - target runbook van hanh cho control plane)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - checklist readiness truoc coding)
+- docs/crawling_control_center_proposal.md (MODIFIED - them companion docs section)
+- README.md (MODIFIED - them link discoverability cho implementation plan pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da tao day du triad bat buoc + walkthrough/handoff + runbook + go/no-go checklist.
+- PASSED: Da them discoverability tu proposal chinh va README de team code tim dung bo tai lieu ngay khi kickoff.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ad)
+- docs/crawling_control_center_proposal.md (MODIFIED - mo rong thanh giai phap tong the cho tat ca dich vu nen: registry, orchestration, run ledger, heartbeat, version drift control, write-mode governance)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: De xuat da bao phu bai toan van hanh chung cho tat ca service chay ngam, khong chi backfill.
+- PASSED: Co lo trinh migrate theo giai doan va bo tieu chi thanh cong toan cuc.
+- NOTE: Day la cap nhat tai lieu, khong can rebuild dich vu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-22ac)
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung chi tiet implementation-ready: API contract, state machine, retry/timeout matrix, SLO/alert, rollout/rollback, DoD)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da kiem tra va chuan hoa cac gia dinh kien truc theo hien trang repo.
+- PASSED: Proposal sau cap nhat du chi tiet de chuyen thanh implementation plan theo sprint.
+- NOTE: Khong thay doi source runtime, khong can rebuild Docker stack cho buoc nay.
 
 ---
 

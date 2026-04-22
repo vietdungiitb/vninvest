@@ -668,3 +668,35 @@ class LegalPageSerializer(serializers.ModelSerializer):
             'version', 'published_at', 'updated_at',
         ]
 
+
+# ---------------------------------------------------------------------------
+# Crawling Control Plane serializers
+# ---------------------------------------------------------------------------
+from .models import CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog
+
+class CrawlJobSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CrawlJob
+        fields = ['id', 'service_code', 'description', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+class CrawlScheduleSerializer(serializers.ModelSerializer):
+    job = serializers.PrimaryKeyRelatedField(queryset=CrawlJob.objects.all())
+    class Meta:
+        model = CrawlSchedule
+        fields = ['id', 'job', 'cron_expression', 'next_run_at', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+class CrawlRunSerializer(serializers.ModelSerializer):
+    job = serializers.PrimaryKeyRelatedField(queryset=CrawlJob.objects.all())
+    class Meta:
+        model = CrawlRun
+        fields = ['id', 'job', 'trigger_type', 'started_at', 'finished_at', 'status', 'log', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'started_at', 'finished_at', 'created_at', 'updated_at']
+
+class CrawlAuditLogSerializer(serializers.ModelSerializer):
+    run = serializers.PrimaryKeyRelatedField(queryset=CrawlRun.objects.all(), allow_null=True, required=False)
+    class Meta:
+        model = CrawlAuditLog
+        fields = ['id', 'event', 'payload', 'timestamp', 'run']
+        read_only_fields = ['id', 'timestamp']

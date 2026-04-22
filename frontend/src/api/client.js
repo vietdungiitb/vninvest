@@ -556,5 +556,18 @@ export const updateScreenerRule = (id, data) => apiClient.put(`/portfolio/screen
 export const deleteScreenerRule = (id) => apiClient.delete(`/portfolio/screener/rules/${id}/`);
 export const runScreenerRule = (id) => apiClient.post(`/portfolio/screener/rules/${id}/run/`);
 
+// --- Crawling Control API ---
+export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');
+export const runAdminCrawlJob = (id) => apiClient.post(`/v1/admin/crawl/jobs/${id}/run/`);
+export const stopAdminCrawlJob = (id) => apiClient.post(`/v1/admin/crawl/jobs/${id}/stop/`);
+export const getAdminCrawlRuns = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return apiClient.get(`/v1/admin/crawl/runs/${query ? `?${query}` : ''}`);
+};
+export const getAdminCrawlAuditLogs = (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  return apiClient.get(`/v1/admin/crawl/audit-logs/${query ? `?${query}` : ''}`);
+};
+
 export default apiClient;
 

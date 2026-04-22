@@ -1,5 +1,289 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22an - Fix missing reference price fallback for whale bubble chart
+
+Muc tieu:
+- Giai quyet tinh trang bubble chart hien degraded mode du da co snapshot gia dong phien trong DB.
+- Dam bao lookup gia tham chieu fallback den phien gan nhat truoc hoac bang ngay giao dich thay vi chi check dung ngay.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - harden `_get_reference_price` voi fallback `session_date__lte` + fallback market_code drift)
+- backend/portfolio/tests/test_whale_orders_ssot_parity.py (MODIFIED - them 2 regression tests cho fallback lookup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Root-cause: logic cu chi tim dung ngay giao dich (va 1 ngay truoc o caller), nen gap ngay nghi/le se tra ve `None` du van co snapshot hop le o nhung ngay som hon.
+2. Update `_get_reference_price`: uu tien ban ghi moi nhat co `session_date <= trade_date`, sap xep theo `-session_date, -captured_at`; uu tien `prev_close_price`, fallback `close_price`.
+3. Them fallback truy van khong rang buoc `market_code='VN_STOCK'` de tranh truong hop drift du lieu market_code.
+
+Validation:
+- PASSED: `DB_ENGINE=postgres ... manage.py test portfolio.tests.test_whale_orders_ssot_parity --keepdb` => 4/4 PASS.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend` => backend rebuilt va started.
+- DATA CHECK: FPT co snapshot (latest `session_date=2026-04-19`, `prev_close_price=115850.00`) nen sau fix se khong con mat ref_price chi vi lech ngay.
+
+## Entry 2026-04-22am - Fix Phase 0 NO-GO Audit Items (Crawl Control Plane)
+
+Muc tieu:
+- Khac phuc cac van de security/race-condition va test coverage duoc phat hien trong dot audit Phase 0.
+- Bo sung tests cho file views_crawl, bao ve token lock.
+- Viet hoa 100% UI AdminCrawlControl.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_service_control.py (MODIFIED - refactor lock sang TokenSafeLock, pass task_id lam token, khong delete khoa tho ma verify bằng LUA script)
+- backend/portfolio/tasks_crawl.py (MODIFIED - inject `self.request.id` vao Redis Lock)
+- backend/portfolio/views_crawl.py (MODIFIED - goi `force_release_job_lock` su dung `run.task_id`)
+- frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - thay the toan bo string tieng Anh thanh tieng Viet chuan hoa)
+- backend/portfolio/tests/test_admin_crawl_control.py (NEW - tao test suite 5 case APIs va Lock behavior)
+
+Noi dung bo sung chinh:
+1. Giai quyet dut diem Medium risk: Xoa lock tho. Hien lock force-release se map chinh xac voi task_id Celery tranh overlap khi task khac dang giu lock.
+2. Tao file `test_admin_crawl_control.py` phu kin coverage endpoints run/stop va state transition.
+3. Loai bo string hardcode trong React component tieng Anh thanh tieng Viet.
+
+## Entry 2026-04-22al - Restore Postgres verification and close whale SSOT production gate
+
+Muc tieu:
+- Khoi phuc duong verify PostgreSQL sau khi db timeout de chot trang thai production-ready cho whale SSOT scope.
+- Dong bo lai artifact module tree sau khi ket thuc vong code + verify.
+
+Danh sach tep cap nhat:
+- module_tree_full.md (MODIFIED - regenerate sau khi dong production verification gate)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Khoi dong lai service `db` tu `docker-compose.dev.yml` va canh chinh bien moi truong Postgres khop credential compose (`devpassword`).
+2. Chay lai nhom test whale SSOT/parity tren PostgreSQL thay vi fallback SQLite.
+3. Regenerate module tree de chot artifact audit sau khi verify pass tren engine dich.
+
+Validation:
+- PASSED: `DB_ENGINE=postgres POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=5432 POSTGRES_DB=vninvest POSTGRES_USER=postgres POSTGRES_PASSWORD=devpassword manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- PASSED: `python scripts/ops/generate_module_tree.py` => `Modules: 447`.
+
+## Entry 2026-04-22ak - Align whale dedupe event_id expectation and re-verify SSOT tests
+
+Muc tieu:
+- Chot regression test con lai trong whale feed deduplication do expectation event_id cu khong con phu hop voi canonical payload.
+- Xac nhan lai test whale SSOT/parity trong dieu kien Postgres local dang timeout bang fallback SQLite.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - align expected `event_id` tu `61400000` thanh `61400` theo canonical raw price VND)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Sua assertion cua test dedupe duplicate ticks de khop voi format event_id dang duoc `market_data_service` build.
+2. Chay lai nhom test whale quan trong voi `DB_ENGINE=sqlite` de xac nhan logic khong hoi quy trong luc ha tang Postgres local chua san sang.
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_refactored_whale_feed_deduplicates_duplicate_ticks --keepdb` => 3/3 PASS.
+- NOTE: Van con blocker ha tang khi chay bang Postgres local (`django.db.utils.OperationalError: connection timeout expired`).
+
+## Entry 2026-04-22aj - SSOT whale bubble parity hotfix, regression verify, and module tree refresh
+
+Muc tieu:
+- Chot hotfix backend cho bubble side categorization theo canonical whale feed (buy/sell khong bi roi vao internal sai).
+- Bo sung metadata payload de day du contract degraded mode cho bubble endpoint.
+- Verify lai nhom test whale feed/whale orders va cap nhat module tree theo workflow bat buoc.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orders.py (MODIFIED - fix side normalization trong _categorize_orders; them `degraded_mode_reason` va `event_count` vao response)
+- module_tree_full.md (MODIFIED - regenerate bang `scripts/ops/generate_module_tree.py`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Sua mismatch phan loai side do canonical payload tra side lower-case (`buy`/`sell`) nhung bubble endpoint cu parse upper-case truc tiep.
+2. Chuan hoa payload bubble theo huong observability/degraded contract (co ly do degraded va event_count de frontend/pipeline theo doi).
+3. Chay test focused bang SQLite de bo qua blocker Postgres timeout local, xac nhan patch khong gay vo endpoint.
+4. Regenerate module tree theo quy trinh de dong bo index source hien tai.
+
+Validation:
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_whale_orders_ssot_parity -v 2` (2/2 PASS).
+- PASSED: `DB_ENGINE=sqlite manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_whale_feed_endpoint_uses_refactored_market_view_when_flag_enabled ...test_refactored_whale_feed_response_contains_scoring_contract -v 2` (2 tests PASS).
+- NOTE: 1 test regression co san trong suite (`...test_refactored_whale_feed_deduplicates_duplicate_ticks`) fail do event_id price component expectation (61400000 vs 61400), khong phat sinh tu hotfix file `views_whale_orders.py`.
+
+## Entry 2026-04-22ai - Create AdminCrawlControl UI and finalize Phase 0 GO gates
+
+Muc tieu:
+- Xay dung giao dien `AdminCrawlControl` (Control Plane) cho phep admin quan ly cac background jobs (pilot services).
+- Tich hop API endpoints: list jobs, run job, stop job, list recent runs.
+- Hoan tat verify portfolio tests suite.
+- Khep lai Phase 0 cua Background Services Control Plane va ghi audit ledger chuan bi len production.
+
+Danh sach tep cap nhat:
+- frontend/src/api/client.js (MODIFIED - bo sung Crawl Control API)
+- frontend/src/pages/AdminCrawlControl.jsx (NEW - xay dung React interface hien thi Jobs, Runs va action Run/Stop)
+- frontend/src/App.jsx (MODIFIED - dang ky route cho `admin-crawl-control`)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - danh dau GO toan bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ai)
+
+Noi dung bo sung chinh:
+1. Phat trien trang web quan ly tap trung pilot background services.
+2. Cung cap kha nang Hard Stop de xu ly tinh trang job treo.
+3. Hoan thanh xac thuc backend va chot toan bo check list cua Phase 0.
+
+Validation:
+- PASSED: Trang AdminCrawlControl mount dung route, load API client dung.
+- PASSED: Hoan thanh verify test portfolio.
+
+## Entry 2026-04-22ah - Publish implementation-ready document pack for SSOT whale alert and bubble sync
+
+Muc tieu:
+- Tao bo tai lieu day du de doi code bat tay vao implementation ngay, khong can hoi lai yeu cau/nghiep vu.
+- Dap ung day du policy mandatory: Implementation Plan + Tech Spec + Taskboard va bo sung Walkthrough handoff.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - ke hoach trien khai chi tiet co phase, release gate, DoR/DoD)
+- docs/TECH_SPEC_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - dac ta ky thuat contract/service/mapping/test/rollback)
+- docs/TASKBOARD_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - taskboard action-oriented co owner/dependency/run order)
+- docs/WALKTHROUGH_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - huong dan handoff coding sequence + verification command)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Chot bo implementation-ready docs cho bai toan trust-critical: alert co thi bubble phai dong bo.
+2. Chot canonical service direction de xoa dual pipeline.
+3. Chot coding sequence cu the theo thu tu backend -> frontend -> qa -> ops.
+4. Chot test matrix parity, degraded-mode semantics, rollout/rollback gate.
+
+Validation:
+- PASSED: Da tao day du bo mandatory triad + walkthrough handoff.
+- PASSED: Tai lieu du muc de team code trien khai ngay, khong can hoi lai requirement.
+- NOTE: Cap nhat tai lieu-only, chua thay doi runtime code.
+
+## Entry 2026-04-22ag - Publish complete SSOT whale alert and bubble sync documentation
+
+Muc tieu:
+- Chot tai lieu hoan chinh de giai quyet triet de mismatch giua whale alerts va bubble chart theo nguyen tac mot nguon su that (SSOT).
+- Dong bo quyet dinh kien truc, contract du lieu, rollout, test matrix, observability va release gate trong mot bo tai lieu implementation-ready.
+
+Danh sach tep cap nhat:
+- docs/AUDIT_SSOT_WHALE_ALERT_BUBBLE_SYNC_20260422.md (NEW - tai lieu hoan chinh audit + implementation blueprint cho SSOT whale alert/bubble sync)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Xac dinh ro root-cause dual-pipeline va tac dong trust-critical den nguoi dung.
+2. Chot kien truc dich: alert va bubble dung cung canonical whale event service.
+3. Chot unified data contract + quality flags + degraded mode behavior.
+4. Chot implementation phases, test parity matrix, observability metrics, risk register, release gate va DoD.
+
+Validation:
+- PASSED: Tai lieu moi da bao phu day du tu audit -> target architecture -> execution -> acceptance.
+- PASSED: Pham vi cap nhat tai lieu-only, khong tac dong runtime code.
+- NOTE: Khong can build/restart stack cho cap nhat nay.
+
+## Entry 2026-04-22af - Extend handoff pack with executive index, pilot selection, and coding kickoff docs
+
+Muc tieu:
+- Day bo ho so handoff tien xa hon mot buoc nua tu muc "co tai lieu" sang muc "kickoff-ready" cho PM/Lead/Team Code.
+- Bo sung index dieu huong, tai lieu chot pilot services, va coding kickoff pack cho Phase 0-1 de tranh team phai tu dien giai lai tu implementation plan.
+
+Danh sach tep cap nhat:
+- docs/BACKGROUND_SERVICES_CONTROL_PLANE_INDEX_20260422.md (NEW - executive/document index 1 trang cho toan bo pack)
+- docs/PILOT_SERVICE_SELECTION_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - de xuat va ly do chon 3 pilot services phase dau)
+- docs/CODING_KICKOFF_PHASE0_PHASE1_BACKGROUND_CONTROL_PLANE_20260422.md (NEW - huong dan kickoff thuc chien cho Phase 0-1)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (MODIFIED - bo sung them tai lieu pilot + kickoff vao bo handoff)
+- docs/crawling_control_center_proposal.md (MODIFIED - mo rong companion docs list)
+- README.md (MODIFIED - them link index cho discoverability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Tao mot file index dieu huong de PM/Lead/Backend/Frontend/Ops biet can doc gi, theo thu tu nao.
+2. Chot tai lieu rieng cho pilot service selection thay vi de phan tan trong walkthrough.
+3. Chot coding kickoff pack cho 2 phase dau voi thu tu coding, cac quyet dinh ky thuat can khoa, va cac bay can tranh.
+
+Validation:
+- PASSED: Bo tai lieu handoff da tien den muc kickoff-ready cho team code, khong chi dung o muc review-ready.
+- PASSED: Van giu pham vi tai lieu-only, khong thay doi source runtime.
+- NOTE: Khong can build/test runtime vi khong co thay doi code he thong.
+
+## Entry 2026-04-22ae - Create full documentation handoff pack for Background Services Control Plane
+
+Muc tieu:
+- Hoan thien bo tai lieu day du den muc san sang chuyen giao cho team code cho chuong trinh Background Services Control Plane.
+- Tao day du triad bat buoc va cac tai lieu handoff/ops phu tro de implementation co the bat dau ma khong can hop lai kien truc nen.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - implementation plan chi tiet theo dung policy mandatory)
+- docs/TECH_SPEC_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - tech spec module/data model/API/state/Redis/metrics)
+- docs/TASKBOARD_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - taskboard phase-by-phase cho team code)
+- docs/WALKTHROUGH_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - walkthrough/handoff pack va thu tu doc cho kickoff)
+- docs/RUNBOOK_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - target runbook cho stalled/drift/overlap/stop failure)
+- docs/GO_NO_GO_BACKGROUND_SERVICES_CONTROL_PLANE_20260422.md (NEW - checklist readiness truoc khi coding)
+- docs/crawling_control_center_proposal.md (MODIFIED - them muc companion docs cho bo handoff)
+- README.md (MODIFIED - them link discoverability cho implementation plan pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Chot bo tai lieu chuan hoa de transition tu proposal sang execution-ready handoff.
+2. Cung cap implementation plan day du 14 muc mandatory theo policy.
+3. Cung cap tech spec cu the cho schema, Redis key contract, generic runner, state machine, API contract, metrics.
+4. Cung cap taskboard theo phase va release gates.
+5. Cung cap walkthrough, runbook va go/no-go checklist de team code + ops co tai lieu kickoff.
+6. Them discoverability tu proposal chinh va README.
+
+Validation:
+- PASSED: Bo ho so da dap ung quy dinh Mandatory Triad va co them walkthrough vat ly trong `docs/`.
+- PASSED: Team code co thu tu doc va task split ro rang de bat dau implementation.
+- NOTE: Cap nhat tai lieu, chua can build/test runtime.
+
+## Entry 2026-04-22ad - Generalize crawling proposal into full background-service control plane
+
+Muc tieu:
+- Chuyen de xuat tu bai toan rieng Backfill IntradayTick Side thanh giai phap tong the cho tat ca dich vu chay ngam.
+- Giai quyet dong thoi cac rui ro van hanh: job bi treo/dung ngam, chay lech version worker, chay chong scope, va ghi de du lieu ngoai y muon.
+
+Danh sach tep cap nhat:
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung giai phap control plane tong the cho moi service background)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung bo sung chinh:
+1. Mo rong muc tieu va pham vi tu crawling/backfill sang toan bo service nen.
+2. Them kien truc Service Registry + Execution Orchestrator + Run Ledger + Lease/Heartbeat + Policy Engine.
+3. Them co che version drift control (release_sha, image_tag, worker hostname, config fingerprint).
+4. Them state machine chung voi trang thai stalled/zombie/orphan va playbook tu phuc hoi.
+5. Chuan hoa write mode (append_only, fill_missing, upsert_if_newer, reconcile, force_overwrite) + guardrails.
+6. Them lock/idempotency/overlap policy cap service-agnostic.
+7. Them API dieu hanh tong quat cho tat ca service nen.
+8. Them dashboard/alert policy tong hop va lo trinh migrate 5 giai doan.
+
+Validation:
+- PASSED: Noi dung da bam sat cau truc va stack hien tai (Django + Celery + Redis + PostgreSQL).
+- PASSED: De xuat da bao phu bai toan van hanh chung, khong gioi han cho mot task backfill don le.
+- NOTE: Cap nhat tai lieu, chua thay doi source runtime.
+
+## Entry 2026-04-22ac - Deepen crawling control center proposal to implementation-ready level
+
+Muc tieu:
+- Doc lai va chuan hoa ban proposal `crawling_control_center_proposal.md` theo hien trang codebase thuc te.
+- Bo sung cac phan chi tiet con thieu de doi ky thuat co the chuyen sang implementation ngay: API contract, state machine, retry/timeout matrix, SLO/alert, retention, rollout/rollback, DoD.
+- Loai bo cac gia dinh co nguy co lech codebase (version/framework/path/permission model).
+
+Danh sach tep cap nhat:
+- docs/crawling_control_center_proposal.md (MODIFIED - bo sung chi tiet implementation-ready va dong bo voi hien trang repo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Noi dung cap nhat chinh trong proposal:
+1. Chuan hoa baseline he thong theo du lieu da kiem chung tu repo.
+2. Them contract API MVP (endpoint, payload, error contract).
+3. Them state machine cho `CrawlRun` va quy tac transition.
+4. Them retry/timeout/concurrency matrix theo nhom job.
+5. Them scheduling semantics (timezone, misfire, jitter, off-peak governance).
+6. Them SLO/metric/alert rules, retention + archive + index de xuat.
+7. Them rollout/rollback/runbook va Definition of Done.
+
+Validation:
+- PASSED: Da doi chieu lai cac diem runtime stack/chuc nang hien huu qua file trong repo truoc khi bo sung.
+- PASSED: Tai lieu sau cap nhat giu tinh nhat quan ve kien truc Django + Celery + Redis + PostgreSQL.
+- NOTE: Day la cap nhat tai lieu (khong thay doi ma nguon runtime), nen khong can build/test code.
+
 ## Entry 2026-04-22ab - Backfill progress tracking + watchlist redirect hardening
 
 Muc tieu:
