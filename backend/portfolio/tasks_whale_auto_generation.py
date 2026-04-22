@@ -46,7 +46,7 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
                 skipped_count += 1
                 continue
 
-            threshold = _resolve_advisory_threshold_vnd(user_cfg, ts.symbol)
+            threshold = _resolve_advisory_threshold_vnd(user_cfg, ts)
 
             tasks_facade.generate_whale_advisory_task.apply_async(
                 kwargs={
