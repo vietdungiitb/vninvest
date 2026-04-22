@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22ba)
+- backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - doi `ts.symbol` thanh `ts` trong `_resolve_advisory_threshold_vnd`, fix AttributeError whale auto-gen)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: task chay: `generated_count: 18, failed_count: 0` (truoc: `generated_count: 0, failed_count: 18`).
+- PASSED: `docker compose up -d --build backend celery_worker celery_beat` => all 9/9 containers healthy.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22az)
 - frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - them import `UnifiedAlertCenter` bi thieu, fix runtime ReferenceError)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22az)

@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22ba - Fix whale auto-generation AttributeError (TrackedSymbol instance vs str)
+
+Muc tieu:
+- Sua loi `'str' object has no attribute 'whale_alert_threshold_million'` trong task `auto_generate_advisories_for_all_tracked`.
+- Khoi phuc kha nang tu dong sinh advisory cho 18 symbol bi fail.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - doi `ts.symbol` thanh `ts` khi truyen vao `_resolve_advisory_threshold_vnd`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Root cause:
+- `_resolve_advisory_threshold_vnd(user_cfg, tracked_symbol)` nhan tham so thu 2 la `TrackedSymbol` instance.
+- Code bi goi sai: `_resolve_advisory_threshold_vnd(user_cfg, ts.symbol)` truyen string thay vi object.
+- Fix: doi `ts.symbol` thanh `ts`.
+
+Validation:
+- PASSED: `auto_generate_advisories_for_all_tracked.apply().get()` => `{'status': 'ok', 'generated_count': 18, 'skipped_count': 0, 'failed_count': 0}`.
+- PASSED: Truoc fix: `generated_count: 0, failed_count: 18`. Sau fix: `generated_count: 18, failed_count: 0`.
+
 ## Entry 2026-04-22az - Fix ModernDashboard runtime crash (UnifiedAlertCenter undefined)
 
 Muc tieu:
