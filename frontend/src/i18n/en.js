@@ -296,6 +296,8 @@ const en = {
     heatmapTooltipAverageChange: 'Avg change',
     heatmapTooltipCurrentPrice: 'Current price',
     heatmapTooltipMarketCap: 'Market cap',
+    heatmapTooltipTileSizeByCap: 'Tile size (by market cap)',
+    heatmapTooltipTileSizeByValue: 'Tile size (by value)',
     heatmapTooltipVolume: 'Volume',
     portfolioStatusTitle: 'Portfolio Status',
   },

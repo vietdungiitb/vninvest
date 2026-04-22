@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22bi)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi nhan metric thu hai trong tooltip de khong trung `Von hoa`, hien thi thanh `Kich thuoc o (...)`)
+- frontend/src/i18n/vi.js (MODIFIED - them key i18n cho nhan tooltip moi)
+- frontend/src/i18n/en.js (MODIFIED - them key i18n cho locale English)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren 3 file frontend vua cap nhat.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` => `Compiled successfully`, frontend started.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22bh)
 - frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - them guard can chuan don vi gia/ref gia khi tinh Bien dong de tranh phan tram ao)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tooltip Gia tri hien thi theo trieu/ty dong; bo sung Gia tham chieu; truc Y mode Gia tri doi sang Ty dong)

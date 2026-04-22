@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22bi - Clarify duplicated market-cap labels in modern heatmap tooltip
+
+Muc tieu:
+- Loai bo tinh mo ho khi tooltip hien thi 2 dong cung nhan `Von hoa`.
+- Doi nhan o cot thu hai thanh nhan kich thuoc o de nguoi dung hieu dung y nghia.
+
+Danh sach tep cap nhat:
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi nhan metric thu hai thanh `Kich thuoc o (theo von hoa)` hoac `Kich thuoc o (theo gia tri)`)
+- frontend/src/i18n/vi.js (MODIFIED - them key `heatmapTooltipTileSizeByCap`, `heatmapTooltipTileSizeByValue`)
+- frontend/src/i18n/en.js (MODIFIED - them key tuong ung cho English locale)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `PortfolioHeatmap.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose --env-file compose.dev.env -p vninvest-dev -f docker-compose.dev.yml up -d --build frontend` build thanh cong (`Compiled successfully`) va frontend restarted.
+
 ## Entry 2026-04-22bh - Whale Bubble tooltip money format and Y-axis unit to billion VND
 
 Muc tieu:

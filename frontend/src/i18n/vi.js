@@ -296,6 +296,8 @@ const vi = {
     heatmapTooltipAverageChange: 'Biến động b.quân',
     heatmapTooltipCurrentPrice: 'Giá hiện tại',
     heatmapTooltipMarketCap: 'Vốn hóa',
+    heatmapTooltipTileSizeByCap: 'Kích thước ô (theo vốn hóa)',
+    heatmapTooltipTileSizeByValue: 'Kích thước ô (theo giá trị)',
     heatmapTooltipVolume: 'Khối lượng',
     portfolioStatusTitle: 'Trạng thái danh mục',
   },

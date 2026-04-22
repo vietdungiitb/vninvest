@@ -858,7 +858,11 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
                 <div className="mt-0.5 font-bold text-slate-100">{formatCompactNumber(selectedLeaf.marketCap || selectedLeaf.sortMarketCap)}</div>
               </div>
               <div>
-                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{sizeMetric === 'cap' ? t('dashboardRealtime.heatmapSizeCap', { defaultValue: 'Cap' }) : t('dashboardRealtime.heatmapSizeWeight', { defaultValue: 'Giá trị' })}</div>
+                <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">
+                  {sizeMetric === 'cap'
+                    ? t('dashboardRealtime.heatmapTooltipTileSizeByCap', { defaultValue: 'Kích thước ô (theo vốn hóa)' })
+                    : t('dashboardRealtime.heatmapTooltipTileSizeByValue', { defaultValue: 'Kích thước ô (theo giá trị)' })}
+                </div>
                 <div className="mt-0.5 font-bold text-slate-100">{formatCompactNumber(selectedLeaf.sizeValue, 2)}</div>
               </div>
             </div>
