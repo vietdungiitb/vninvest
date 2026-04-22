@@ -1,5 +1,21 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-22az - Fix ModernDashboard runtime crash (UnifiedAlertCenter undefined)
+
+Muc tieu:
+- Sua loi runtime tren frontend sau update: `ReferenceError: UnifiedAlertCenter is not defined`.
+- Khoi phuc rendering khu vuc unified alerts trong Modern Dashboard ma khong can rollback.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo sung import `UnifiedAlertCenter` bi thieu)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend production build compile thanh cong (`Compiled successfully`).
+- PASSED: bundle moi duoc tao (`build/static/js/main.2cbc4d55.js`), khac voi bundle loi cu (`main.f6565cde.js`).
+- PASSED: docker frontend image rebuilt va container restarted thanh cong trong dev stack.
+
 ## Entry 2026-04-22ay - Clarify crawl job readiness vs running state and lock RUN/STOP actions
 
 Muc tieu:

@@ -13,6 +13,7 @@ import PortfolioHeatmap from '../../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
 import useUnifiedAlerts from '../../hooks/useUnifiedAlerts';
 import usePersistentAlertState from '../../hooks/usePersistentAlertState';
+import AIAdvisorAlertPanel from '../../components/modern/AIAdvisorAlertPanel';
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
@@ -342,7 +343,15 @@ export default function ModernDashboard() {
             </div>
           </div>
 
-          <div className="h-full min-h-[460px] min-w-0 self-start xl:col-span-1">
+          <div className="h-full min-h-[460px] min-w-0 self-start xl:col-span-1 space-y-4">
+            <AIAdvisorAlertPanel 
+              holdings={holdings}
+              watchlist={trackedSymbols}
+              technicals={technicals}
+              alerts={alerts}
+              newsDigest={digest?.items || []}
+              criticalSoundEnabled={criticalSoundEnabled}
+            />
             <ModernSidebar
               portfolioId={activePortfolioId}
               alerts={alerts}

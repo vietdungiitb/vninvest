@@ -3,6 +3,18 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-22az)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - them import `UnifiedAlertCenter` bi thieu, fix runtime ReferenceError)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-22az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build production thanh cong (`Compiled successfully`).
+- PASSED: bundle moi tao ra `main.2cbc4d55.js`, khong con chay bundle loi cu `main.f6565cde.js`.
+- PASSED: `docker compose ... up -d --build frontend` restart container thanh cong.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-22ay)
 - frontend/src/pages/AdminCrawlControl.jsx (MODIFIED - tach bach semantics trang thai: `Sẵn sàng` vs `Đang chạy/Đang chờ chạy`; disable RUN khi co run active; disable STOP khi khong co run active; tang polling run history len 50)
 - backend/portfolio/views_crawl.py (MODIFIED - them guard overlap, tra `409` neu job da co run `queued`/`running`)
