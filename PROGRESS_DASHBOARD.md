@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23bi)
+- compose.local-build.override.yml (NEW - override `pull_policy: never` cho flow build image local tren server)
+- scripts/ops/deploy_build_on_server.sh (MODIFIED - su dung override file co san thay vi tao file tam)
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - bo sung lenh deploy local-build dung stack nginx-proxy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Manual server build flow da co file override de tranh `pull access denied`.
+- PASSED: Script deploy build-on-server va huong dan van hanh da dong bo cung mot co che override.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23bh)
 - portainer-stack-nginx-proxy.yml (MODIFIED - them required `DJANGO_SECRET_KEY`; them default cho `DJANGO_DEBUG`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_BASE_URL`, `OPEN_CORE_*` de tranh inject chuoi rong)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bh)

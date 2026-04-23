@@ -1,0 +1,9 @@
+services:
+  backend:
+    pull_policy: never
+  celery_worker:
+    pull_policy: never
+  celery_beat:
+    pull_policy: never
+  frontend:
+    pull_policy: never

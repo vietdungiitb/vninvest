@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bi - Manual server build deploy override for pull_policy always stack
+
+Muc tieu:
+- Khac phuc loi `pull access denied for vninvest-backend` khi build image local ngay tren server nhung stack production van de `pull_policy: always`.
+- Chuan hoa ro hai flow deploy: pull-tu-registry va build-local-tren-server.
+
+Danh sach tep cap nhat:
+- compose.local-build.override.yml (NEW - override `pull_policy: never` cho backend/celery_worker/celery_beat/frontend trong flow local build)
+- scripts/ops/deploy_build_on_server.sh (MODIFIED - dung override file co san thay vi sinh file tam)
+- DEPLOY_DOCKER_EDUSUCCESS.md (MODIFIED - them huong dan local-build deploy dung override/script)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Flow local build co override file co dinh de compose khong con co gang pull image private/local.
+- PASSED: Script deploy va tai lieu huong dan da canh bao ro su khac nhau giua pull-based va local-build deployment.
+
 ## Entry 2026-04-23bh - Compose env hardening for production startup reliability
 
 Muc tieu:

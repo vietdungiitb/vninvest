@@ -159,6 +159,26 @@ docker compose --env-file .env.production build
 docker compose --env-file .env.production up -d
 ```
 
+Neu server build image local cho stack `portainer-stack-nginx-proxy.yml`, KHONG duoc chay `up -d` voi stack file goc mot minh, vi stack nay co `pull_policy: always` cho flow pull image tu registry.
+
+Dung local-build override nhu sau:
+
+```bash
+cd /opt/vninvest
+git pull origin main
+docker build -t vninvest-backend:prod ./backend
+docker build -t vninvest-frontend:prod ./frontend
+docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml up -d --remove-orphans
+docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml exec -T backend python manage.py migrate --noinput
+```
+
+Hoac dung script co san:
+
+```bash
+cd /opt/vninvest
+APP_RELEASE=prod ./scripts/ops/deploy_build_on_server.sh
+```
+
 ## 8) Portainer + HTTPS (Recommended)
 
 Use stack file: `portainer-stack-https.yml`
@@ -188,6 +208,10 @@ For Portainer, use the one-time copy block at section `9.3` below.
 If your server already runs `nginx_proxy` and `nginx-proxy-acme`, use this stack instead of Caddy.
 
 Use stack file: `portainer-stack-nginx-proxy.yml`
+
+Luu y:
+- `portainer-stack-nginx-proxy.yml` mac dinh la flow pull image va se co `pull_policy: always`.
+- Neu ban build image ngay tren server, phai them `compose.local-build.override.yml` hoac dung `scripts/ops/deploy_build_on_server.sh`.
 
 ### 9.1 Prepare shared Docker network
 
@@ -383,3 +407,23 @@ token test: [REDACTED - rotate immediately]
 
 - Trang thai hien tai: local stack da truy cap duoc admin login.
 - Session tam dung tai day de tiep tuc test chuc nang theo UI.
+
+### 10.7 Deploy bằng script 
+cd /opt/vninvest
+git pull origin main
+chmod +x scripts/ops/deploy_build_on_server.sh
+APP_RELEASE=2026.04.23-local1 ./scripts/ops/deploy_build_on_server.sh
+# cách 2
+cd /opt/vninvest
+git fetch origin
+git checkout dev
+git pull origin dev
+
+# kiểm tra biến bắt buộc (đặc biệt DJANGO_SECRET_KEY)
+grep -E "^(DJANGO_SECRET_KEY|DOMAIN|POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=" .env
+
+# redeploy
+docker compose --env-file .env -f portainer-stack-nginx-proxy.yml up -d --remove-orphans
+
+# xem log backend nếu cần
+docker logs --tail 120 vninvest-backend

@@ -302,11 +302,6 @@ class TrackedSymbolListCreateView(APIView):
         except ValueError as exc:
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Enforce non-null threshold for create path.
-        # If client omits the field, fallback to model default to avoid DB integrity errors.
-        if threshold_million is None:
-            threshold_million = TrackedSymbol._meta.get_field('whale_alert_threshold_million').get_default()
-
         source_group_id = request.data.get('source_group_id')
         source_group = None
         if source_group_id:
@@ -352,19 +347,6 @@ class TrackedSymbolListCreateView(APIView):
             'added_at': ts.added_at,
             'updated_at': ts.updated_at,
         }
-        from .services_symbol_engagement import activate_symbol_engagement
-        from django.db import transaction as db_transaction
-        
-        def _trigger_engagement():
-            try:
-                activate_symbol_engagement(user_id=request.user.id, symbol=symbol, source='tracked_add')
-            except Exception as e:
-                # Fail-soft: engagement failure should not break the main response
-                import logging
-                logging.getLogger(__name__).warning(f"Failed to trigger engagement warm-up for {symbol}: {e}")
-
-        db_transaction.on_commit(_trigger_engagement)
-
         return Response(TrackedSymbolSerializer(row).data, status=status.HTTP_201_CREATED)
 
 
