@@ -206,6 +206,9 @@ export default function AdminOps() {
     intraday_universe_group_ids: [],
     intraday_universe_force_warm_tier: true,
     session_close_capture_enabled: true,
+    realtime_stream_enabled: false,
+    intraday_tick_auto_cleanup_enabled: true,
+    intraday_tick_keep_days: '7',
   });
   const [prefetchSettingsState, setPrefetchSettingsState] = useState('idle');
   const [prefetchSettingsMessage, setPrefetchSettingsMessage] = useState('');
@@ -478,6 +481,9 @@ export default function AdminOps() {
             : [],
           intraday_universe_force_warm_tier: Boolean(runtime.intraday_universe_force_warm_tier ?? true),
           session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
+          realtime_stream_enabled: Boolean(runtime.realtime_stream_enabled ?? false),
+          intraday_tick_auto_cleanup_enabled: Boolean(runtime.intraday_tick_auto_cleanup_enabled ?? true),
+          intraday_tick_keep_days: String(runtime.intraday_tick_keep_days ?? '7'),
         });
       }
       if (payload?.prefetch_time_policy) {
@@ -693,6 +699,9 @@ export default function AdminOps() {
         .filter((id) => Number.isInteger(id) && id > 0),
       intraday_universe_force_warm_tier: Boolean(prefetchSettingsForm.intraday_universe_force_warm_tier),
       session_close_capture_enabled: Boolean(prefetchSettingsForm.session_close_capture_enabled),
+      realtime_stream_enabled: Boolean(prefetchSettingsForm.realtime_stream_enabled),
+      intraday_tick_auto_cleanup_enabled: Boolean(prefetchSettingsForm.intraday_tick_auto_cleanup_enabled),
+      intraday_tick_keep_days: Number(prefetchSettingsForm.intraday_tick_keep_days),
     };
 
     if (Object.values(payload).some((value) => typeof value === 'number' && Number.isNaN(value))) {
@@ -724,6 +733,9 @@ export default function AdminOps() {
           : [],
         intraday_universe_force_warm_tier: Boolean(runtime.intraday_universe_force_warm_tier ?? true),
         session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
+        realtime_stream_enabled: Boolean(runtime.realtime_stream_enabled ?? false),
+        intraday_tick_auto_cleanup_enabled: Boolean(runtime.intraday_tick_auto_cleanup_enabled ?? true),
+        intraday_tick_keep_days: String(runtime.intraday_tick_keep_days ?? '7'),
       });
       setPrefetchSettingsState('success');
       setPrefetchSettingsMessage(t('adminOps.prefetchSettingsSaveSuccess'));
@@ -1598,6 +1610,36 @@ export default function AdminOps() {
               />
               <span>{t('adminOps.prefetchSessionCloseCaptureEnabled')}</span>
             </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.realtime_stream_enabled}
+                onChange={(event) => handlePrefetchSettingsInput('realtime_stream_enabled', event.target.checked)}
+              />
+              <span>{t('adminOps.realtimeStreamEnabled')}</span>
+              <span className="text-xs text-gray-400">{t('adminOps.realtimeStreamEnabledHint')}</span>
+            </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.intraday_tick_auto_cleanup_enabled}
+                onChange={(event) => handlePrefetchSettingsInput('intraday_tick_auto_cleanup_enabled', event.target.checked)}
+              />
+              <span>{t('adminOps.intradayAutoCleanup')}</span>
+            </label>
+            {prefetchSettingsForm.intraday_tick_auto_cleanup_enabled && (
+              <div className="md:col-span-3 space-y-1">
+                <label className="block text-sm text-gray-600 dark:text-gray-300">{t('adminOps.intradayKeepDays')}</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={prefetchSettingsForm.intraday_tick_keep_days}
+                  onChange={(e) => handlePrefetchSettingsInput('intraday_tick_keep_days', e.target.value)}
+                  className="w-32 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-white"
+                />
+              </div>
+            )}
             <div className="md:col-span-3 flex flex-wrap items-center gap-3">
               <button
                 type="submit"

@@ -3,6 +3,28 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23bf)
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys cho stream toggle + intraday cleanup retention)
+- backend/config/settings.py (MODIFIED - stream consumer va cleanup schedule dang ky unconditionally)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - runtime gates + chunked delete cho IntradayTick cleanup)
+- backend/portfolio/models.py (MODIFIED - them index `idx_intraday_trade_date`)
+- backend/portfolio/migrations/0058_add_intraday_tick_trade_date_index.py (NEW - migration add index trade_date)
+- backend/portfolio/admin.py (MODIFIED - bo sung controls runtime cho stream/cleanup trong Django Admin)
+- compose.dev.env (MODIFIED - them `INTRADAY_TICK_KEEP_DAYS=3`)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - them 2 toggles + 1 input giu ngay IntradayTick)
+- frontend/src/i18n/vi.js (MODIFIED - i18n tieng Viet cho controls moi)
+- frontend/src/i18n/en.js (MODIFIED - i18n tieng Anh cho controls moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py makemigrations portfolio --name=add_intraday_tick_trade_date_index` tao migration 0058 thanh cong.
+- PASSED: `get_errors` clean tren cac file vua thay doi.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` build/restart thanh cong; bundle moi `main.ba254f0f.js`.
+- NOTE: `python manage.py test portfolio.tests -v 2` timeout va co FAIL ton tai ngoai pham vi fix hien tai.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23be)
 - backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys cho nhom intraday universe do admin cau hinh)
 - backend/portfolio/tasks_prefetch.py (MODIFIED - merge symbols tu nhom admin chon vao realtime universe/prefetch)

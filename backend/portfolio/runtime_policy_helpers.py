@@ -93,6 +93,9 @@ def _default_prefetch_runtime_settings():
         'intraday_universe_group_ids': [],
         'intraday_universe_force_warm_tier': True,
         'session_close_capture_enabled': os.getenv('TICKER_SESSION_CLOSE_CAPTURE_ENABLED', 'True').lower() == 'true',
+        'realtime_stream_enabled': os.getenv('REALTIME_ENABLED', 'False').lower() == 'true',
+        'intraday_tick_auto_cleanup_enabled': os.getenv('INTRADAY_TICK_AUTO_CLEANUP_ENABLED', 'True').lower() == 'true',
+        'intraday_tick_keep_days': _int_env('INTRADAY_TICK_KEEP_DAYS', 7, 1),
     }
 
 
@@ -149,6 +152,17 @@ def _coerce_prefetch_runtime_settings(raw_payload, fallback=None):
     normalized['session_close_capture_enabled'] = bool(
         payload.get('session_close_capture_enabled', base.get('session_close_capture_enabled', True))
     )
+    normalized['realtime_stream_enabled'] = bool(
+        payload.get('realtime_stream_enabled', base.get('realtime_stream_enabled', False))
+    )
+    normalized['intraday_tick_auto_cleanup_enabled'] = bool(
+        payload.get('intraday_tick_auto_cleanup_enabled', base.get('intraday_tick_auto_cleanup_enabled', True))
+    )
+    try:
+        keep_days = int(payload.get('intraday_tick_keep_days', base.get('intraday_tick_keep_days', 7)))
+    except (TypeError, ValueError):
+        raise ValueError('intraday_tick_keep_days phải là số nguyên hợp lệ.')
+    normalized['intraday_tick_keep_days'] = max(keep_days, 1)
     return normalized
 
 

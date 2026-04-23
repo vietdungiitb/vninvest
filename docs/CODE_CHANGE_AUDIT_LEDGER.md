@@ -1,5 +1,32 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bf - IntradayTick retention/runtime toggles + cleanup safety hardening
+
+Muc tieu:
+- Sua blocker cleanup: task `cleanup_old_intraday_ticks` phai duoc scheduler dang ky ca khi `REALTIME_ENABLED=False`.
+- Bo sung runtime toggles cho Path 2 stream writer va auto-cleanup IntradayTick qua Django Admin + Admin Ops (khong can restart).
+- Giam rui ro lock database khi cleanup bang chunked delete va bo sung index `trade_date` de query xoa cu nhanh hon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys `realtime_stream_enabled`, `intraday_tick_auto_cleanup_enabled`, `intraday_tick_keep_days` + coerce)
+- backend/config/settings.py (MODIFIED - stream consumer schedules + eod cleanup dang ky unconditionally; them `INTRADAY_TICK_KEEP_DAYS` env)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - runtime gate cho stream consumer batch; cleanup doc runtime settings va chunked delete 5000 rows/batch)
+- backend/portfolio/models.py (MODIFIED - them index `idx_intraday_trade_date`)
+- backend/portfolio/migrations/0058_add_intraday_tick_trade_date_index.py (NEW - migration add index `trade_date`)
+- backend/portfolio/admin.py (MODIFIED - them 3 controls runtime trong `SystemAISettingsAdminForm` + fieldset admin)
+- compose.dev.env (MODIFIED - them `INTRADAY_TICK_KEEP_DAYS=3` cho dev)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - them 2 toggles + 1 input retention days trong Prefetch Runtime panel)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan i18n cho 3 controls moi)
+- frontend/src/i18n/en.js (MODIFIED - them nhan i18n tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py makemigrations portfolio --name=add_intraday_tick_trade_date_index` tao migration `0058_add_intraday_tick_trade_date_index.py`.
+- PASSED: `get_errors` clean tren toan bo files vua chinh sua (backend + frontend + migration + env).
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` rebuild/restart thanh cong; frontend bundle moi `main.ba254f0f.js`.
+- NOTE: `python manage.py test portfolio.tests -v 2` chay timeout va co mot so FAIL khong thuoc pham vi thay doi nay (co san trong suite lon).
+
 ## Entry 2026-04-23be - Admin-managed IntradayTick universe groups (Django Admin + Admin Ops)
 
 Muc tieu:

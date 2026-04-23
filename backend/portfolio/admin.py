@@ -1182,6 +1182,23 @@ class SystemAISettingsAdminForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'rows': 18}),
         help_text='Quản lý policy prefetch theo khung giờ thị trường. Runtime áp dụng ngay, không cần restart.',
     )
+    realtime_stream_enabled = forms.BooleanField(
+        label='Bật Realtime Stream (Đường 2)',
+        required=False,
+        help_text='Kích hoạt DbWriterConsumer ghi tick từ Redis Stream vào DB mỗi 5s.',
+    )
+    intraday_tick_auto_cleanup_enabled = forms.BooleanField(
+        label='Tự động xóa IntradayTick cũ',
+        required=False,
+        help_text='Bật task cleanup chạy lúc 18:30 hàng ngày.',
+    )
+    intraday_tick_keep_days = forms.IntegerField(
+        label='Giữ lại IntradayTick (ngày)',
+        min_value=1,
+        required=False,
+        initial=7,
+        help_text='Số ngày tối thiểu giữ lại data. Dev: 3, Prod: 7-14.',
+    )
 
     class Meta:
         model = SystemAISettings
@@ -1200,6 +1217,10 @@ class SystemAISettingsAdminForm(forms.ModelForm):
             else:
                 self.fields['intraday_universe_groups'].initial = SecuritiesGroup.objects.none()
             self.fields['prefetch_time_policy_json'].initial = _get_runtime_prefetch_time_policy()
+            if isinstance(runtime_settings, dict):
+                self.fields['realtime_stream_enabled'].initial = bool(runtime_settings.get('realtime_stream_enabled', False))
+                self.fields['intraday_tick_auto_cleanup_enabled'].initial = bool(runtime_settings.get('intraday_tick_auto_cleanup_enabled', True))
+                self.fields['intraday_tick_keep_days'].initial = int(runtime_settings.get('intraday_tick_keep_days', 7))
         except Exception:
             # Fail-soft: vẫn cho phép mở form kể cả khi runtime policy backend đang lỗi tạm thời.
             self.fields['prefetch_runtime_settings_json'].initial = {}
@@ -1219,6 +1240,11 @@ class SystemAISettingsAdminForm(forms.ModelForm):
 
             merged = dict(payload if isinstance(payload, dict) else {})
             merged['intraday_universe_group_ids'] = selected_group_ids
+            merged['realtime_stream_enabled'] = bool(self.cleaned_data.get('realtime_stream_enabled', False))
+            merged['intraday_tick_auto_cleanup_enabled'] = bool(self.cleaned_data.get('intraday_tick_auto_cleanup_enabled', True))
+            keep_days = self.cleaned_data.get('intraday_tick_keep_days')
+            if keep_days is not None:
+                merged['intraday_tick_keep_days'] = max(int(keep_days), 1)
             return _coerce_prefetch_runtime_settings(merged, fallback=_default_prefetch_runtime_settings())
         except ValueError as exc:
             raise forms.ValidationError(str(exc)) from exc
@@ -1265,6 +1291,7 @@ class SystemAISettingsAdmin(admin.ModelAdmin):
         ('Nhận diện', {'fields': ('name', 'is_active', 'notes')}),
         ('AI runtime', {'fields': ('ai_provider', 'ai_model', 'allow_env_fallback', 'ai_api_key_raw', 'api_key_status')}),
         ('Prefetch runtime', {'fields': ('prefetch_runtime_settings_json', 'intraday_universe_groups', 'prefetch_time_policy_json')}),
+        ('Realtime Stream & Retention', {'fields': ('realtime_stream_enabled', 'intraday_tick_auto_cleanup_enabled', 'intraday_tick_keep_days')}),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )
 
