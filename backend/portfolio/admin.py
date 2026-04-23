@@ -6,6 +6,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import admin
 from django.contrib import messages
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth.models import User
 from django import forms
 from django.core import signing
@@ -1162,6 +1163,19 @@ class SystemAISettingsAdminForm(forms.ModelForm):
         widget=forms.PasswordInput(render_value=False),
         help_text='Để trống nếu không thay đổi key đã lưu.',
     )
+    prefetch_runtime_settings_json = forms.JSONField(
+        label='Prefetch Runtime Settings (JSON)',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 10}),
+        help_text='Cấu hình runtime prefetch ticker. Áp dụng ngay sau khi lưu.',
+    )
+    intraday_universe_groups = forms.ModelMultipleChoiceField(
+        label='Nhóm trong IntradayTick Universe',
+        queryset=SecuritiesGroup.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple('Nhóm thị trường', is_stacked=False),
+        help_text='Chọn nhóm được cưỡng bức đưa vào IntradayTick universe dù không có user theo dõi.',
+    )
     prefetch_time_policy_json = forms.JSONField(
         label='Prefetch Time Policy (JSON)',
         required=False,
@@ -1176,12 +1190,38 @@ class SystemAISettingsAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         try:
-            from .views import _get_runtime_prefetch_time_policy
+            from .views import _get_runtime_prefetch_settings, _get_runtime_prefetch_time_policy
 
+            runtime_settings = _get_runtime_prefetch_settings()
+            self.fields['prefetch_runtime_settings_json'].initial = runtime_settings
+            selected_group_ids = runtime_settings.get('intraday_universe_group_ids', []) if isinstance(runtime_settings, dict) else []
+            if isinstance(selected_group_ids, (list, tuple)):
+                self.fields['intraday_universe_groups'].initial = SecuritiesGroup.objects.filter(id__in=selected_group_ids)
+            else:
+                self.fields['intraday_universe_groups'].initial = SecuritiesGroup.objects.none()
             self.fields['prefetch_time_policy_json'].initial = _get_runtime_prefetch_time_policy()
         except Exception:
             # Fail-soft: vẫn cho phép mở form kể cả khi runtime policy backend đang lỗi tạm thời.
+            self.fields['prefetch_runtime_settings_json'].initial = {}
+            self.fields['intraday_universe_groups'].initial = SecuritiesGroup.objects.none()
             self.fields['prefetch_time_policy_json'].initial = {}
+
+    def clean_prefetch_runtime_settings_json(self):
+        payload = self.cleaned_data.get('prefetch_runtime_settings_json')
+        if payload in (None, ''):
+            payload = {}
+
+        selected_groups = self.cleaned_data.get('intraday_universe_groups')
+        selected_group_ids = [int(group.id) for group in (selected_groups or [])]
+
+        try:
+            from .views import _coerce_prefetch_runtime_settings, _default_prefetch_runtime_settings
+
+            merged = dict(payload if isinstance(payload, dict) else {})
+            merged['intraday_universe_group_ids'] = selected_group_ids
+            return _coerce_prefetch_runtime_settings(merged, fallback=_default_prefetch_runtime_settings())
+        except ValueError as exc:
+            raise forms.ValidationError(str(exc)) from exc
 
     def clean_prefetch_time_policy_json(self):
         payload = self.cleaned_data.get('prefetch_time_policy_json')
@@ -1224,7 +1264,7 @@ class SystemAISettingsAdmin(admin.ModelAdmin):
     fieldsets = (
         ('Nhận diện', {'fields': ('name', 'is_active', 'notes')}),
         ('AI runtime', {'fields': ('ai_provider', 'ai_model', 'allow_env_fallback', 'ai_api_key_raw', 'api_key_status')}),
-        ('Prefetch runtime', {'fields': ('prefetch_time_policy_json',)}),
+        ('Prefetch runtime', {'fields': ('prefetch_runtime_settings_json', 'intraday_universe_groups', 'prefetch_time_policy_json')}),
         ('Hệ thống', {'fields': ('created_at', 'updated_at')}),
     )
 
@@ -1274,6 +1314,12 @@ class SystemAISettingsAdmin(admin.ModelAdmin):
         before_snapshot = self._build_admin_snapshot(before_obj)
 
         super().save_model(request, obj, form, change)
+
+        runtime_payload = form.cleaned_data.get('prefetch_runtime_settings_json')
+        if runtime_payload is not None:
+            from .views import _set_runtime_prefetch_settings
+
+            _set_runtime_prefetch_settings(runtime_payload)
 
         policy_payload = form.cleaned_data.get('prefetch_time_policy_json')
         if policy_payload is not None:

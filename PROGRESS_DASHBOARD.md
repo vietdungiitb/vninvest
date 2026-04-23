@@ -3,6 +3,25 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23be)
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys cho nhom intraday universe do admin cau hinh)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - merge symbols tu nhom admin chon vao realtime universe/prefetch)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - bo sung runtime rulebook cho fields moi)
+- backend/portfolio/admin.py (MODIFIED - Django Admin selector add/remove nhom intraday universe)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - test selected groups always included + warm tier)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - UI Admin Ops cho multi-select nhom intraday universe)
+- frontend/src/i18n/vi.js (MODIFIED - nhan i18n tieng Viet cho controls moi)
+- frontend/src/i18n/en.js (MODIFIED - nhan i18n tieng Anh cho controls moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task -v 2` passed 14/14.
+- PASSED: `python manage.py test portfolio.tests.test_system_ai_admin_api -v 2` passed 18/18.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong, bundle moi `main.a0ab5ed1.js`.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23bd)
 - backend/portfolio/views_stock_management.py (MODIFIED - add default threshold fallback to prevent NULL write on tracked-symbol create)
 - backend/portfolio/tests/test_symbol_engagement_e2e.py (NEW - E2E smoke tests for tracked/watchlist/holding warm-up entry points)

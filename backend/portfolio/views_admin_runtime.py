@@ -499,6 +499,7 @@ def admin_system_ai_settings_api(request):
                 'circuit_breaker_cooldown_seconds_min': 60,
                 'offhours_cache_ttl_seconds_min': 60,
                 'session_close_retention_days_min': 1,
+                'intraday_universe_group_ids_type': 'array<int>',
                 'recommended': {
                     'batch_size': 20,
                     'symbol_limit': 40,
@@ -512,6 +513,8 @@ def admin_system_ai_settings_api(request):
                     'offhours_cache_ttl_seconds': 3600,
                     'session_close_retention_days': 7,
                     'include_group_symbols': False,
+                    'intraday_universe_group_ids': [],
+                    'intraday_universe_force_warm_tier': True,
                     'session_close_capture_enabled': True,
                 },
             },
@@ -1194,3 +1197,69 @@ def admin_intraday_side_backfill_status_api(request, task_id: str):
         )
 
     return Response({'ok': True, 'task': payload}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def admin_intraday_universe_warm_now_api(request):
+    """
+    POST /api/admin-ops/intraday-universe/warm-now/
+    Admin-only: trigger warmup ngay lập tức cho tất cả symbol thuộc
+    các group được chọn trong intraday_universe_group_ids (runtime settings).
+    """
+    from django.utils import timezone
+    from portfolio.runtime_policy_helpers import _get_prefetch_runtime_settings
+    from portfolio.models import SecuritiesItem
+    from portfolio.tasks_symbol_engagement import warmup_symbol_intraday
+
+    runtime = _get_prefetch_runtime_settings()
+    raw_group_ids = runtime.get('intraday_universe_group_ids', [])
+    group_ids = []
+    for raw in raw_group_ids:
+        try:
+            gid = int(raw)
+            if gid >= 1 and gid not in group_ids:
+                group_ids.append(gid)
+        except (TypeError, ValueError):
+            continue
+
+    if not group_ids:
+        return Response(
+            {
+                'ok': False,
+                'detail': 'Chưa cấu hình intraday_universe_group_ids. '
+                          'Vui lòng chọn ít nhất 1 nhóm trong Admin Ops → Prefetch Settings.',
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    symbols = list(
+        SecuritiesItem.objects.filter(group_id__in=group_ids)
+        .values_list('symbol', flat=True)
+        .distinct()
+        .order_by('symbol')
+    )
+
+    if not symbols:
+        return Response(
+            {'ok': False, 'detail': 'Không tìm thấy mã nào trong các nhóm đã chọn.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    dispatched = []
+    for symbol in symbols:
+        warmup_symbol_intraday.apply_async(
+            args=[symbol.upper()],
+            kwargs={'reason': 'admin_warm_now'},
+        )
+        dispatched.append(symbol.upper())
+
+    return Response(
+        {
+            'ok': True,
+            'dispatched_count': len(dispatched),
+            'symbols': dispatched,
+            'triggered_at': timezone.now().isoformat(),
+        },
+        status=status.HTTP_200_OK,
+    )

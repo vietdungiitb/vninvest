@@ -90,6 +90,8 @@ def _default_prefetch_runtime_settings():
         'offhours_cache_ttl_seconds': _int_env('TICKER_OFFHOURS_CACHE_TTL_SECONDS', 3600, 60),
         'session_close_retention_days': _int_env('TICKER_SESSION_CLOSE_RETENTION_DAYS', 7, 1),
         'include_group_symbols': os.getenv('TICKER_PREFETCH_INCLUDE_GROUP_SYMBOLS', 'False').lower() == 'true',
+        'intraday_universe_group_ids': [],
+        'intraday_universe_force_warm_tier': True,
         'session_close_capture_enabled': os.getenv('TICKER_SESSION_CLOSE_CAPTURE_ENABLED', 'True').lower() == 'true',
     }
 
@@ -122,6 +124,28 @@ def _coerce_prefetch_runtime_settings(raw_payload, fallback=None):
 
     normalized['retry_max_seconds'] = max(normalized['retry_max_seconds'], normalized['retry_base_seconds'])
     normalized['include_group_symbols'] = bool(payload.get('include_group_symbols', base['include_group_symbols']))
+
+    raw_group_ids = payload.get('intraday_universe_group_ids', base.get('intraday_universe_group_ids', []))
+    if raw_group_ids in (None, ''):
+        raw_group_ids = []
+    if not isinstance(raw_group_ids, (list, tuple)):
+        raise ValueError('intraday_universe_group_ids phải là danh sách số nguyên hợp lệ.')
+
+    normalized_group_ids = []
+    for raw_id in raw_group_ids:
+        try:
+            parsed_id = int(raw_id)
+        except (TypeError, ValueError):
+            raise ValueError('intraday_universe_group_ids phải là danh sách số nguyên hợp lệ.')
+        if parsed_id < 1:
+            raise ValueError('intraday_universe_group_ids phải chứa id >= 1.')
+        if parsed_id not in normalized_group_ids:
+            normalized_group_ids.append(parsed_id)
+    normalized['intraday_universe_group_ids'] = normalized_group_ids
+
+    normalized['intraday_universe_force_warm_tier'] = bool(
+        payload.get('intraday_universe_force_warm_tier', base.get('intraday_universe_force_warm_tier', True))
+    )
     normalized['session_close_capture_enabled'] = bool(
         payload.get('session_close_capture_enabled', base.get('session_close_capture_enabled', True))
     )

@@ -1,5 +1,29 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23be - Admin-managed IntradayTick universe groups (Django Admin + Admin Ops)
+
+Muc tieu:
+- Chuyen tu co che hardcode theo nhom co dinh sang co che quan tri dong: admin co the add/remove nhom co phieu vao IntradayTick universe.
+- Dam bao ma trong nhom duoc chon van duoc crawl intraday du khong co user theo doi.
+- Ho tro thao tac tren ca Django Admin va frontend Admin Ops, giu dong bo runtime qua `prefetch_runtime_settings`.
+
+Danh sach tep cap nhat:
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them `intraday_universe_group_ids` va `intraday_universe_force_warm_tier` vao default/coerce runtime settings)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - inject symbols tu nhom admin chon vao realtime universe va prefetch symbol collector)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - mo rong runtime rulebook cho prefetch settings moi)
+- backend/portfolio/admin.py (MODIFIED - Django Admin form them JSON runtime settings + multi-select nhom intraday universe)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - them regression test cho selected groups always-in-universe + warm tier enforcement)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - panel Prefetch Runtime bo sung multi-select nhom va toggle warm-tier policy)
+- frontend/src/i18n/vi.js (MODIFIED - i18n key cho controls nhom intraday universe)
+- frontend/src/i18n/en.js (MODIFIED - i18n key tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task -v 2` -> 14/14 tests passed.
+- PASSED: `python manage.py test portfolio.tests.test_system_ai_admin_api -v 2` -> 18/18 tests passed.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong, bundle moi `main.a0ab5ed1.js`.
+
 ## Entry 2026-04-23bd - E2E smoke closeout for symbol engagement (tracked/watchlist/holding)
 
 Muc tieu:
