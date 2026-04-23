@@ -68,10 +68,10 @@ Ghi chu pham vi:
 
 ## G. Admin UI
 
-- [ ] Form trigger GLOBAL_RECOMPUTE.
-- [ ] Form trigger BACKFILL voi default 3 thang.
-- [ ] Job registry list/filter theo status/service_type/date.
-- [ ] Co thao tac retry an toan cho FAILED/PARTIAL jobs.
+- [x] Form trigger GLOBAL_RECOMPUTE.
+- [x] Form trigger BACKFILL voi default 3 thang.
+- [x] Job registry list/filter theo status/service_type/date.
+- [x] Co thao tac retry an toan cho FAILED/PARTIAL jobs.
 
 ## H. Testing
 
@@ -113,3 +113,11 @@ Ghi chu pham vi:
 - [x] Test suite `test_whale_service_orchestration` pass 6/6.
 - [x] Django check pass.
 - [x] Compose production config render thanh cong.
+
+## L. Runtime incident fix 2026-04-23as (pending jobs stuck)
+
+- [x] Xac dinh duoc root cause worker task registry drift (`portfolio.compute_watchlist_indicators` unregistered).
+- [x] Bo sung task import vao `portfolio/tasks.py` de worker autodiscover dang ky day du watchlist + whale service task.
+- [x] Bo sung stale active job recovery trong `WhaleJobManager.get_or_create_job` de tranh duplicate gia do PENDING qua han.
+- [x] Restart backend/celery_worker/celery_beat va xac nhan celery inspect registered da co task whale service.
+- [x] Kiem chung E2E USER_REFRESH scope ACB: job cu stale bi auto-close, job moi chuyen COMPLETED.

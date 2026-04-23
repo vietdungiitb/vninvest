@@ -393,6 +393,13 @@ _INTRADAY_FRESHNESS_STATS: dict[str, object] = {
     'realtime_refresh_trigger_total': 0,
     'source_counts': defaultdict(int),
 }
+_SYMBOL_ENGAGEMENT_STATS: dict[str, int] = {
+    'activation_total': 0,
+    'warmup_skipped_fresh_total': 0,
+    'warmup_skipped_lock_total': 0,
+    'warmup_success_total': 0,
+    'warmup_error_total': 0,
+}
 _STARTED_AT_EPOCH = time()
 
 
@@ -466,6 +473,13 @@ def reset_market_observability() -> None:
         _INTRADAY_FRESHNESS_STATS['stale_over_threshold_total'] = 0
         _INTRADAY_FRESHNESS_STATS['realtime_refresh_trigger_total'] = 0
         _INTRADAY_FRESHNESS_STATS['source_counts'] = defaultdict(int)
+        _SYMBOL_ENGAGEMENT_STATS.update({
+            'activation_total': 0,
+            'warmup_skipped_fresh_total': 0,
+            'warmup_skipped_lock_total': 0,
+            'warmup_success_total': 0,
+            'warmup_error_total': 0,
+        })
         _STARTED_AT_EPOCH = time()
 
 
@@ -630,6 +644,18 @@ def record_intraday_freshness_observation(
             age_window = _INTRADAY_FRESHNESS_STATS.get('age_seconds')
             if isinstance(age_window, deque):
                 age_window.append(coerced_age)
+
+
+def record_symbol_engagement_event(event_type: str) -> None:
+    if not _metrics_enabled():
+        return
+
+    key = str(event_type or '').strip().lower()
+    if key not in _SYMBOL_ENGAGEMENT_STATS:
+        return
+
+    with _LOCK:
+        _SYMBOL_ENGAGEMENT_STATS[key] += 1
 
 
 def _build_intraday_freshness_summary_from_counters(
@@ -822,6 +848,7 @@ def get_market_observability_snapshot() -> dict:
         intraday_stale_over_threshold_total = int(_INTRADAY_FRESHNESS_STATS.get('stale_over_threshold_total', 0))
         intraday_refresh_trigger_total = int(_INTRADAY_FRESHNESS_STATS.get('realtime_refresh_trigger_total', 0))
         intraday_source_counts = dict(_INTRADAY_FRESHNESS_STATS.get('source_counts') or {})
+        engagement_stats = dict(_SYMBOL_ENGAGEMENT_STATS)
 
         whale_pipeline_summary = _build_whale_pipeline_health_summary_from_counters(
             freshness_samples=whale_freshness_samples,
@@ -870,6 +897,7 @@ def get_market_observability_snapshot() -> dict:
             },
             'intraday_freshness': intraday_freshness_summary,
             'whale_pipeline': whale_pipeline_summary,
+            'symbol_engagement': engagement_stats,
             'endpoints': endpoints,
             'fallback_breakdown': fallback_breakdown,
             'external_timeout_breakdown': timeout_breakdown,

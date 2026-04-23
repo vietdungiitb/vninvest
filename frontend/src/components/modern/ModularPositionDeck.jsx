@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import OptimizationModal from './OptimizationModal';
 import WhaleBubbleChart from '../WhaleBubbleChart';
+import WhaleAnalyticsTab from '../WhaleAnalyticsTab';
 import PaginationBar from '../shared/PaginationBar';
 import { filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse';
 
@@ -410,7 +411,7 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
 
         {activeTab === 'whale' && (
           <div className="h-full flex flex-col overflow-hidden">
-            <WhaleBubbleChart
+            <WhaleAnalyticsTab
               holdings={holdings}
               quotesBySymbol={quotesBySymbol}
               selectedSymbol={selectedSymbol !== 'all' ? selectedSymbol : undefined}

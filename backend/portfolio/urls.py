@@ -12,7 +12,8 @@ from .opencore_api import (
 from .views_whale_orchestration import (
     whale_service_trigger_api,
     whale_service_jobs_list_api,
-    whale_service_job_status_api
+    whale_service_job_status_api,
+    whale_service_job_retry_api,
 )
 
 
@@ -120,4 +121,5 @@ urlpatterns += [
     path('whale-service/trigger/', whale_service_trigger_api, name='whale-service-trigger'),
     path('whale-service/jobs/', whale_service_jobs_list_api, name='whale-service-jobs-list'),
     path('whale-service/jobs/<int:job_id>/', whale_service_job_status_api, name='whale-service-job-status'),
+    path('whale-service/jobs/<int:job_id>/retry/', whale_service_job_retry_api, name='whale-service-job-retry'),
 ]
