@@ -23,7 +23,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import DailyPrice, IntradayTick, OrderFlowSignal, TrackedSymbol
+from .models import DailyPrice, IntradayTick, OrderFlowSignal, TrackedSymbol, WhaleAdvisory
 from .price_units import PriceSource, QUOTE_UNIT_CANONICAL, normalize_quote_price_to_canonical
 from .whale_feed_helpers import _resolve_user_whale_threshold_vnd
 
@@ -580,127 +580,76 @@ def dark_money_history_api(request, symbol: str):
         except Exception as exc_fb:
             logger.warning('IntradayTick CVD fallback failed for %s: %s', normalized_symbol, exc_fb)
 
-    # ─── 3. Whale Buy/Sell Signals (from IntradayTick) ────────────────────
+    # ─── 3. Whale Buy/Sell Signals (SSOT: WhaleAdvisory) ───────────────────
+    # WhaleAdvisory lưu lịch sử vĩnh viễn mỗi sự kiện whale → là nguồn sự thật
+    # duy nhất cho cả feed panel lẫn chart overlay (SSOT).
+    # IntradayTick chỉ có dữ liệu real-time phiên hôm nay → không dùng cho lịch sử.
     whale_signals = []
     try:
         from .services import WhaleSignalEngine
         whale_threshold_vnd, _ = WhaleSignalEngine.resolve_threshold_vnd(request.user, normalized_symbol)
 
-        whale_ticks_qs = list(
-            IntradayTick.objects
+        advisory_qs = list(
+            WhaleAdvisory.objects
             .filter(
                 symbol=normalized_symbol,
-                trade_date__gte=cutoff_date,
+                created_at__date__gte=cutoff_date,
+                matched_value__gte=whale_threshold_vnd,
             )
-            .annotate(
-                # Canonical valuation: legacy rows may store VND, migrated rows store THOUSAND_VND.
-                matched_value=ExpressionWrapper(
-                    Case(
-                        When(price__gte=1000, then=F('price') * F('volume')),
-                        default=F('price') * 1000 * F('volume'),
-                        output_field=FloatField(),
-                    ),
-                    output_field=FloatField(),
-                ),
-            )
-            .filter(matched_value__gte=whale_threshold_vnd)
-            .values('trade_date', 'trade_time', 'side', 'price', 'volume', 'matched_value')
-            .order_by('trade_date', 'trade_time', 'matched_value')
+            .filter(Q(user=request.user) | Q(is_discovery=True) | Q(user__isnull=True))
+            .values('created_at', 'side', 'matched_value')
+            .order_by('created_at')
         )
 
-        # Vectorized side inference + aggregation (SQL to Pandas)
-        if whale_ticks_qs:
-            frame = pd.DataFrame.from_records(whale_ticks_qs)
-            frame = _deduplicate_intraday_tick_frame(frame)
-            frame['price'] = pd.to_numeric(frame.get('price'), errors='coerce').fillna(0.0).astype(float)
-            frame['volume'] = pd.to_numeric(frame.get('volume'), errors='coerce').fillna(0.0).astype(float).clip(lower=0.0)
-            frame['matched_value'] = pd.to_numeric(frame.get('matched_value'), errors='coerce').fillna(0.0).astype(float)
-            frame = frame[frame['trade_date'].notna()]
+        if advisory_qs:
+            frame = pd.DataFrame.from_records(advisory_qs)
+            frame['trade_date'] = pd.to_datetime(frame['created_at']).dt.date
+            frame['matched_value'] = pd.to_numeric(frame['matched_value'], errors='coerce').fillna(0.0)
+            _side_map = {'BUY': 'buy', 'SELL': 'sell', 'MUA': 'buy', 'BAN': 'sell'}
+            frame['normalized_side'] = frame['side'].str.upper().map(_side_map)
+            frame = frame[frame['normalized_side'].notna() & (frame['matched_value'] > 0)]
 
             if not frame.empty:
-                reference_price_by_date = _build_reference_price_by_trade_date(
-                    normalized_symbol,
-                    frame['trade_date'].dropna().tolist(),
+                grouped = (
+                    frame.groupby(['trade_date', 'normalized_side'], as_index=False)
+                    .agg(
+                        total_value=('matched_value', 'sum'),
+                        count=('matched_value', 'size'),
+                    )
+                    .sort_values(['trade_date', 'normalized_side'])
                 )
 
-                frame['stored_side'] = frame['side'].map(_normalize_tick_side)
-                frame['prev_price'] = frame.groupby('trade_date')['price'].shift(1)
-                frame['ref_price'] = frame['trade_date'].map(reference_price_by_date)
-                frame['prev_price'] = frame['prev_price'].fillna(frame['ref_price'])
+                for agg in grouped.to_dict('records'):
+                    trade_date = agg.get('trade_date')
+                    side = agg.get('normalized_side')
+                    total_value = float(agg.get('total_value') or 0)
+                    count = int(agg.get('count') or 0)
+                    if total_value < whale_threshold_vnd or count <= 0 or trade_date is None:
+                        continue
 
-                frame['inferred_side'] = frame['stored_side']
-                frame.loc[frame['price'] > frame['prev_price'], 'inferred_side'] = 'buy'
-                frame.loc[frame['price'] < frame['prev_price'], 'inferred_side'] = 'sell'
+                    severity = 'low'
+                    if total_value >= whale_threshold_vnd * 5:
+                        severity = 'extreme'
+                    elif total_value >= whale_threshold_vnd * 3:
+                        severity = 'high'
+                    elif total_value >= whale_threshold_vnd * 1.5:
+                        severity = 'medium'
 
-                # Preserve prior inferred side on unchanged price before falling back to stored side.
-                unchanged_mask = frame['price'] == frame['prev_price']
-                if unchanged_mask.any():
-                    forward_side = frame.groupby('trade_date')['inferred_side'].ffill()
-                    frame.loc[unchanged_mask, 'inferred_side'] = forward_side.loc[unchanged_mask].fillna(
-                        frame.loc[unchanged_mask, 'stored_side']
-                    )
+                    if side == 'buy':
+                        label = f'Mua lớn cá mập: {total_value / 1_000_000_000:.1f}T'
+                    else:
+                        label = f'Bán lớn cá mập: {total_value / 1_000_000_000:.1f}T'
 
-                frame = frame[frame['inferred_side'].isin(['buy', 'sell'])]
-
-                if not frame.empty:
-                    grouped = (
-                        frame.assign(price_volume_sum=frame['price'] * frame['volume'])
-                        .groupby(['trade_date', 'inferred_side'], as_index=False)
-                        .agg(
-                            total_value=('matched_value', 'sum'),
-                            total_volume=('volume', 'sum'),
-                            count=('matched_value', 'size'),
-                            price_volume_sum=('price_volume_sum', 'sum'),
-                        )
-                        .sort_values(['trade_date', 'inferred_side'])
-                    )
-                else:
-                    grouped = pd.DataFrame()
-            else:
-                grouped = pd.DataFrame()
-        else:
-            grouped = pd.DataFrame()
-
-        for agg in grouped.to_dict('records') if not grouped.empty else []:
-            trade_date = agg.get('trade_date')
-            side = agg.get('inferred_side')
-            total_value = float(agg.get('total_value') or 0)
-            total_volume = float(agg.get('total_volume') or 0)
-            count = int(agg.get('count') or 0)
-            if total_value < whale_threshold_vnd or count <= 0 or trade_date is None:
-                continue
-
-            avg_price_raw = (float(agg.get('price_volume_sum') or 0.0) / total_volume) if total_volume > 0 else 0.0
-            avg_price = _normalize_chart_quote_price(
-                avg_price_raw,
-                source=PriceSource.INTRADAY_TICK,
-                symbol=normalized_symbol,
-            )
-
-            severity = 'low'
-            if total_value >= whale_threshold_vnd * 5:
-                severity = 'extreme'
-            elif total_value >= whale_threshold_vnd * 3:
-                severity = 'high'
-            elif total_value >= whale_threshold_vnd * 1.5:
-                severity = 'medium'
-
-            price_display = f'{avg_price:,.2f}'
-            if side == 'buy':
-                label = f'Mua lớn: vùng {price_display}'
-            else:
-                label = f'Bán lớn: vùng {price_display}'
-
-            whale_signals.append({
-                'time': trade_date.strftime('%Y-%m-%d'),
-                'type': side,
-                'price': round(avg_price, 2),
-                'matched_value': round(total_value, 0),
-                'volume': int(total_volume),
-                'count': count,
-                'severity': severity,
-                'label': label,
-            })
+                    whale_signals.append({
+                        'time': trade_date.strftime('%Y-%m-%d'),
+                        'type': side,
+                        'price': 0,
+                        'matched_value': round(total_value, 0),
+                        'volume': 0,
+                        'count': count,
+                        'severity': severity,
+                        'label': label,
+                    })
 
     except Exception as exc:
         logger.warning('Failed to fetch whale signals for %s: %s', normalized_symbol, exc)
@@ -724,7 +673,8 @@ def dark_money_history_api(request, symbol: str):
             )
             .values('trade_date')
             .annotate(
-                daily_vol=Sum(F('price') * F('volume'), output_field=FloatField()),
+                # price là THOUSAND_VND canonical → nhân 1000 để ra VND
+                daily_vol=Sum(F('price') * 1000 * F('volume'), output_field=FloatField()),
             )
             .order_by('-trade_date')[:SMFI_LOOKBACK_SESSIONS]
         )
