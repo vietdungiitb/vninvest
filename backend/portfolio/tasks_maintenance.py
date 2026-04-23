@@ -162,6 +162,11 @@ def run_intraday_side_backfill_apply(
 @shared_task(bind=True, name='portfolio.tasks.run_stream_consumer_batch', autoretry_for=(Exception,), retry_backoff=False, retry_kwargs={"max_retries": 0})
 def run_stream_consumer_batch(self, group: str = "all") -> dict:
     """Run one batch of realtime stream consumers for active symbols."""
+    from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
+    runtime = _get_runtime_prefetch_settings()
+    if not runtime.get('realtime_stream_enabled', False):
+        return {"status": "disabled", "group": group}
+
     from portfolio import tasks as tasks_facade
     from portfolio.realtime.stream_consumers import (
         AlertEngineConsumer,
@@ -194,16 +199,36 @@ def run_stream_consumer_batch(self, group: str = "all") -> dict:
 
 
 @shared_task(bind=True, name='portfolio.tasks.cleanup_old_intraday_ticks', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
-def cleanup_old_intraday_ticks(self, keep_days: int = 7) -> dict:
-    """Delete old IntradayTick rows to keep database size stable."""
+def cleanup_old_intraday_ticks(self) -> dict:
+    """Delete old IntradayTick rows to keep database size stable.
+
+    Đọc keep_days và enabled flag từ runtime settings (có thể bật/tắt qua Admin UI).
+    Sử dụng chunked delete (5000 rows/batch) để tránh lock table.
+    """
     from datetime import date, timedelta
-
     from portfolio.models import IntradayTick
+    from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
 
+    runtime = _get_runtime_prefetch_settings()
+    if not runtime.get('intraday_tick_auto_cleanup_enabled', True):
+        logger.info("EOD cleanup: disabled via runtime settings, skipping.")
+        return {"status": "disabled"}
+
+    keep_days = max(int(runtime.get('intraday_tick_keep_days', 7)), 1)
     cutoff = date.today() - timedelta(days=keep_days)
-    deleted, _ = IntradayTick.objects.filter(trade_date__lt=cutoff).delete()
-    logger.info("EOD cleanup: deleted %d IntradayTick records older than %s", deleted, cutoff)
-    return {"status": "ok", "deleted": deleted, "cutoff": str(cutoff)}
+    total_deleted = 0
+    chunk_size = 5000
+    while True:
+        ids = list(
+            IntradayTick.objects.filter(trade_date__lt=cutoff)
+            .values_list('id', flat=True)[:chunk_size]
+        )
+        if not ids:
+            break
+        deleted, _ = IntradayTick.objects.filter(id__in=ids).delete()
+        total_deleted += deleted
+    logger.info("EOD cleanup: deleted %d IntradayTick records older than %s", total_deleted, cutoff)
+    return {"status": "ok", "deleted": total_deleted, "cutoff": str(cutoff), "keep_days": keep_days}
 
 
 @shared_task(bind=True, name='portfolio.tasks.run_vnstock_price_board_benchmark', autoretry_for=(), retry_kwargs={"max_retries": 0})

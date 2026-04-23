@@ -17,6 +17,7 @@ import {
   getAdminSystemAiSettings,
   getAdminVnstockConfigChangelog,
   getAdminVnstockConfigCurrent,
+  getSecuritiesGroups,
   syncMarketGroups,
   resetAdminVnstockConfig,
   syncStockProfile,
@@ -29,6 +30,7 @@ import {
   adminIntradaySideBackfillPreview,
   adminIntradaySideBackfillApply,
   adminIntradaySideBackfillStatus,
+  adminIntradayUniverseWarmNow,
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
@@ -201,10 +203,17 @@ export default function AdminOps() {
     offhours_cache_ttl_seconds: '',
     session_close_retention_days: '7',
     include_group_symbols: false,
+    intraday_universe_group_ids: [],
+    intraday_universe_force_warm_tier: true,
     session_close_capture_enabled: true,
+    realtime_stream_enabled: false,
+    intraday_tick_auto_cleanup_enabled: true,
+    intraday_tick_keep_days: '7',
   });
   const [prefetchSettingsState, setPrefetchSettingsState] = useState('idle');
   const [prefetchSettingsMessage, setPrefetchSettingsMessage] = useState('');
+  const [warmNowState, setWarmNowState] = useState('idle'); // idle | loading | ok | error
+  const [warmNowMessage, setWarmNowMessage] = useState('');
   const [prefetchTimePolicyForm, setPrefetchTimePolicyForm] = useState({
     timezone: 'Asia/Ho_Chi_Minh',
     market_code: 'VN_STOCK',
@@ -242,6 +251,7 @@ export default function AdminOps() {
   const [error, setError] = useState(null);
   const [syncStates, setSyncStates] = useState({});
   const [syncCooldowns, setSyncCooldowns] = useState({});
+  const [marketGroups, setMarketGroups] = useState([]);
   const [vnstockConfigForm, setVnstockConfigForm] = useState({
     max_concurrency: '12',
     retry_attempts: '1',
@@ -408,10 +418,11 @@ export default function AdminOps() {
     try {
       // stats la du lieu bat buoc cho trang; cac panel con lai fail-soft de tranh treo spinner.
       const statsRes = await withTimeout(getAdminOpsStats(), 15000, 'admin-ops-stats');
-      const [settingsRes, vnstockRes, vnstockChangelogRes] = await Promise.allSettled([
+      const [settingsRes, vnstockRes, vnstockChangelogRes, securitiesGroupsRes] = await Promise.allSettled([
         withTimeout(getAdminPrefetchTimePolicy(), 12000, 'admin-ops-settings'),
         withTimeout(getAdminVnstockConfigCurrent(), 12000, 'admin-ops-vnstock-current'),
         withTimeout(getAdminVnstockConfigChangelog(20, 0), 12000, 'admin-ops-vnstock-changelog'),
+        withTimeout(getSecuritiesGroups(), 12000, 'admin-ops-securities-groups'),
       ]);
       setStats(statsRes.data);
       const payload = settingsRes.status === 'fulfilled' ? (settingsRes.value.data?.settings || null) : null;
@@ -419,6 +430,8 @@ export default function AdminOps() {
         setSystemAiSettings(payload);
       }
       const vnstockSettings = vnstockRes.status === 'fulfilled' ? (vnstockRes.value.data?.settings || null) : null;
+      const groupsPayload = securitiesGroupsRes.status === 'fulfilled' ? (securitiesGroupsRes.value.data || []) : [];
+      setMarketGroups(Array.isArray(groupsPayload) ? groupsPayload : []);
       if (vnstockSettings) {
         setVnstockConfigForm({
           max_concurrency: String(vnstockSettings.max_concurrency ?? ''),
@@ -463,7 +476,14 @@ export default function AdminOps() {
           offhours_cache_ttl_seconds: String(runtime.offhours_cache_ttl_seconds ?? ''),
           session_close_retention_days: String(runtime.session_close_retention_days ?? '7'),
           include_group_symbols: Boolean(runtime.include_group_symbols),
+          intraday_universe_group_ids: Array.isArray(runtime.intraday_universe_group_ids)
+            ? runtime.intraday_universe_group_ids.map((id) => String(id))
+            : [],
+          intraday_universe_force_warm_tier: Boolean(runtime.intraday_universe_force_warm_tier ?? true),
           session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
+          realtime_stream_enabled: Boolean(runtime.realtime_stream_enabled ?? false),
+          intraday_tick_auto_cleanup_enabled: Boolean(runtime.intraday_tick_auto_cleanup_enabled ?? true),
+          intraday_tick_keep_days: String(runtime.intraday_tick_keep_days ?? '7'),
         });
       }
       if (payload?.prefetch_time_policy) {
@@ -674,7 +694,14 @@ export default function AdminOps() {
       offhours_cache_ttl_seconds: Number(prefetchSettingsForm.offhours_cache_ttl_seconds),
       session_close_retention_days: Number(prefetchSettingsForm.session_close_retention_days),
       include_group_symbols: Boolean(prefetchSettingsForm.include_group_symbols),
+      intraday_universe_group_ids: (prefetchSettingsForm.intraday_universe_group_ids || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isInteger(id) && id > 0),
+      intraday_universe_force_warm_tier: Boolean(prefetchSettingsForm.intraday_universe_force_warm_tier),
       session_close_capture_enabled: Boolean(prefetchSettingsForm.session_close_capture_enabled),
+      realtime_stream_enabled: Boolean(prefetchSettingsForm.realtime_stream_enabled),
+      intraday_tick_auto_cleanup_enabled: Boolean(prefetchSettingsForm.intraday_tick_auto_cleanup_enabled),
+      intraday_tick_keep_days: Number(prefetchSettingsForm.intraday_tick_keep_days),
     };
 
     if (Object.values(payload).some((value) => typeof value === 'number' && Number.isNaN(value))) {
@@ -701,7 +728,14 @@ export default function AdminOps() {
         offhours_cache_ttl_seconds: String(runtime.offhours_cache_ttl_seconds ?? ''),
         session_close_retention_days: String(runtime.session_close_retention_days ?? '7'),
         include_group_symbols: Boolean(runtime.include_group_symbols),
+        intraday_universe_group_ids: Array.isArray(runtime.intraday_universe_group_ids)
+          ? runtime.intraday_universe_group_ids.map((id) => String(id))
+          : [],
+        intraday_universe_force_warm_tier: Boolean(runtime.intraday_universe_force_warm_tier ?? true),
         session_close_capture_enabled: Boolean(runtime.session_close_capture_enabled ?? true),
+        realtime_stream_enabled: Boolean(runtime.realtime_stream_enabled ?? false),
+        intraday_tick_auto_cleanup_enabled: Boolean(runtime.intraday_tick_auto_cleanup_enabled ?? true),
+        intraday_tick_keep_days: String(runtime.intraday_tick_keep_days ?? '7'),
       });
       setPrefetchSettingsState('success');
       setPrefetchSettingsMessage(t('adminOps.prefetchSettingsSaveSuccess'));
@@ -711,6 +745,20 @@ export default function AdminOps() {
       setPrefetchSettingsMessage(err.response?.data?.message || t('adminOps.prefetchSettingsSaveFailed'));
     }
   }, [load, prefetchSettingsForm, t]);
+
+  const handleWarmNow = useCallback(async () => {
+    setWarmNowState('loading');
+    setWarmNowMessage('');
+    try {
+      const res = await adminIntradayUniverseWarmNow();
+      const count = res.data?.dispatched_count ?? 0;
+      setWarmNowState('ok');
+      setWarmNowMessage(t('adminOps.warmNowSuccess', { count }));
+    } catch (err) {
+      setWarmNowState('error');
+      setWarmNowMessage(err.response?.data?.detail || t('adminOps.warmNowFailed'));
+    }
+  }, [t]);
 
   const handlePrefetchTimePolicyInput = useCallback((field, value) => {
     setPrefetchTimePolicyForm((prev) => ({ ...prev, [field]: value }));
@@ -1527,6 +1575,33 @@ export default function AdminOps() {
               />
               <span>{t('adminOps.prefetchIncludeGroupSymbols')}</span>
             </label>
+            <label className="md:col-span-3 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              <span>{t('adminOps.prefetchIntradayUniverseGroups')}</span>
+              <select
+                multiple
+                value={prefetchSettingsForm.intraday_universe_group_ids}
+                onChange={(event) => {
+                  const selected = Array.from(event.target.selectedOptions || []).map((option) => option.value);
+                  handlePrefetchSettingsInput('intraday_universe_group_ids', selected);
+                }}
+                className="w-full min-h-[140px] rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              >
+                {marketGroups.map((group) => (
+                  <option key={group.id} value={String(group.id)}>
+                    {`${group.name} (${group.group_type || 'CUSTOM'})`}
+                  </option>
+                ))}
+              </select>
+              <span className="text-xs text-gray-500 dark:text-gray-400">{t('adminOps.prefetchIntradayUniverseGroupsHint')}</span>
+            </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.intraday_universe_force_warm_tier}
+                onChange={(event) => handlePrefetchSettingsInput('intraday_universe_force_warm_tier', event.target.checked)}
+              />
+              <span>{t('adminOps.prefetchIntradayUniverseForceWarm')}</span>
+            </label>
             <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
               <input
                 type="checkbox"
@@ -1535,6 +1610,36 @@ export default function AdminOps() {
               />
               <span>{t('adminOps.prefetchSessionCloseCaptureEnabled')}</span>
             </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.realtime_stream_enabled}
+                onChange={(event) => handlePrefetchSettingsInput('realtime_stream_enabled', event.target.checked)}
+              />
+              <span>{t('adminOps.realtimeStreamEnabled')}</span>
+              <span className="text-xs text-gray-400">{t('adminOps.realtimeStreamEnabledHint')}</span>
+            </label>
+            <label className="md:col-span-3 inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={prefetchSettingsForm.intraday_tick_auto_cleanup_enabled}
+                onChange={(event) => handlePrefetchSettingsInput('intraday_tick_auto_cleanup_enabled', event.target.checked)}
+              />
+              <span>{t('adminOps.intradayAutoCleanup')}</span>
+            </label>
+            {prefetchSettingsForm.intraday_tick_auto_cleanup_enabled && (
+              <div className="md:col-span-3 space-y-1">
+                <label className="block text-sm text-gray-600 dark:text-gray-300">{t('adminOps.intradayKeepDays')}</label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={prefetchSettingsForm.intraday_tick_keep_days}
+                  onChange={(e) => handlePrefetchSettingsInput('intraday_tick_keep_days', e.target.value)}
+                  className="w-32 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-900 dark:text-white"
+                />
+              </div>
+            )}
             <div className="md:col-span-3 flex flex-wrap items-center gap-3">
               <button
                 type="submit"
@@ -1543,9 +1648,22 @@ export default function AdminOps() {
               >
                 {prefetchSettingsState === 'saving' ? t('adminOps.prefetchSettingsSaving') : t('adminOps.prefetchSettingsSave')}
               </button>
+              <button
+                type="button"
+                onClick={handleWarmNow}
+                disabled={warmNowState === 'loading'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${warmNowState === 'loading' ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'}`}
+              >
+                {warmNowState === 'loading' ? t('adminOps.warmNowLoading') : t('adminOps.warmNow')}
+              </button>
               {prefetchSettingsMessage ? (
                 <span className={`text-sm ${prefetchSettingsState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
                   {prefetchSettingsMessage}
+                </span>
+              ) : null}
+              {warmNowMessage ? (
+                <span className={`text-sm ${warmNowState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {warmNowMessage}
                 </span>
               ) : null}
             </div>

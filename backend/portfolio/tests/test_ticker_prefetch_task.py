@@ -5,7 +5,7 @@ from django.test import TestCase, SimpleTestCase
 from django.utils import timezone
 from unittest.mock import patch
 
-from portfolio.models import TrackedSymbol, WatchlistGroup, WatchlistItem, PriceAlertRule
+from portfolio.models import TrackedSymbol, WatchlistGroup, WatchlistItem, PriceAlertRule, SecuritiesGroup, SecuritiesItem
 from portfolio.tasks import (
     _resolve_prefetch_time_profile,
     _resolve_effective_prefetch_settings,
@@ -223,6 +223,38 @@ class RealtimeUniverseAndShardSchedulerTests(TestCase):
         self.assertEqual(rows[1]['tier'], 'warm')
         self.assertEqual(rows[2]['tier'], 'cold')
         self.assertIn(rows[0]['shard_id'], {0, 1})
+
+    def test_collect_realtime_symbol_universe_includes_admin_selected_groups(self):
+        selected_group = SecuritiesGroup.objects.create(
+            name='VN100 Universe',
+            group_type=SecuritiesGroup.GroupType.MARKET_CAP,
+        )
+        SecuritiesItem.objects.create(group=selected_group, symbol='FPT')
+        SecuritiesItem.objects.create(group=selected_group, symbol='VCB')
+
+        topology = {
+            'universe_symbol_limit': 10,
+            'hot_limit': 0,
+            'warm_limit': 0,
+            'hot_shards': 2,
+            'warm_shards': 2,
+            'cold_shards': 2,
+        }
+        runtime_settings = {
+            'include_group_symbols': False,
+            'intraday_universe_group_ids': [selected_group.id],
+            'intraday_universe_force_warm_tier': True,
+        }
+
+        rows, source_counts = _collect_realtime_symbol_universe(topology=topology, runtime_settings=runtime_settings)
+
+        symbols = {row['symbol']: row for row in rows}
+        self.assertIn('FPT', symbols)
+        self.assertIn('VCB', symbols)
+        self.assertTrue(symbols['FPT']['is_intraday_universe_symbol'])
+        self.assertEqual(symbols['FPT']['tier'], 'warm')
+        self.assertEqual(source_counts['intraday_universe_group_ids'], 1)
+        self.assertEqual(source_counts['intraday_universe_group_items'], 2)
 
     def test_resolve_scheduler_plan_degrades_cold_before_warm(self):
         snapshot = {

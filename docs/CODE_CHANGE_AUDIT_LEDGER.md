@@ -1,5 +1,56 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bf - IntradayTick retention/runtime toggles + cleanup safety hardening
+
+Muc tieu:
+- Sua blocker cleanup: task `cleanup_old_intraday_ticks` phai duoc scheduler dang ky ca khi `REALTIME_ENABLED=False`.
+- Bo sung runtime toggles cho Path 2 stream writer va auto-cleanup IntradayTick qua Django Admin + Admin Ops (khong can restart).
+- Giam rui ro lock database khi cleanup bang chunked delete va bo sung index `trade_date` de query xoa cu nhanh hon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys `realtime_stream_enabled`, `intraday_tick_auto_cleanup_enabled`, `intraday_tick_keep_days` + coerce)
+- backend/config/settings.py (MODIFIED - stream consumer schedules + eod cleanup dang ky unconditionally; them `INTRADAY_TICK_KEEP_DAYS` env)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - runtime gate cho stream consumer batch; cleanup doc runtime settings va chunked delete 5000 rows/batch)
+- backend/portfolio/models.py (MODIFIED - them index `idx_intraday_trade_date`)
+- backend/portfolio/migrations/0058_add_intraday_tick_trade_date_index.py (NEW - migration add index `trade_date`)
+- backend/portfolio/admin.py (MODIFIED - them 3 controls runtime trong `SystemAISettingsAdminForm` + fieldset admin)
+- compose.dev.env (MODIFIED - them `INTRADAY_TICK_KEEP_DAYS=3` cho dev)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - them 2 toggles + 1 input retention days trong Prefetch Runtime panel)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan i18n cho 3 controls moi)
+- frontend/src/i18n/en.js (MODIFIED - them nhan i18n tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py makemigrations portfolio --name=add_intraday_tick_trade_date_index` tao migration `0058_add_intraday_tick_trade_date_index.py`.
+- PASSED: `get_errors` clean tren toan bo files vua chinh sua (backend + frontend + migration + env).
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` rebuild/restart thanh cong; frontend bundle moi `main.ba254f0f.js`.
+- NOTE: `python manage.py test portfolio.tests -v 2` chay timeout va co mot so FAIL khong thuoc pham vi thay doi nay (co san trong suite lon).
+
+## Entry 2026-04-23be - Admin-managed IntradayTick universe groups (Django Admin + Admin Ops)
+
+Muc tieu:
+- Chuyen tu co che hardcode theo nhom co dinh sang co che quan tri dong: admin co the add/remove nhom co phieu vao IntradayTick universe.
+- Dam bao ma trong nhom duoc chon van duoc crawl intraday du khong co user theo doi.
+- Ho tro thao tac tren ca Django Admin va frontend Admin Ops, giu dong bo runtime qua `prefetch_runtime_settings`.
+
+Danh sach tep cap nhat:
+- backend/portfolio/runtime_policy_helpers.py (MODIFIED - them `intraday_universe_group_ids` va `intraday_universe_force_warm_tier` vao default/coerce runtime settings)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - inject symbols tu nhom admin chon vao realtime universe va prefetch symbol collector)
+- backend/portfolio/views_admin_runtime.py (MODIFIED - mo rong runtime rulebook cho prefetch settings moi)
+- backend/portfolio/admin.py (MODIFIED - Django Admin form them JSON runtime settings + multi-select nhom intraday universe)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - them regression test cho selected groups always-in-universe + warm tier enforcement)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - panel Prefetch Runtime bo sung multi-select nhom va toggle warm-tier policy)
+- frontend/src/i18n/vi.js (MODIFIED - i18n key cho controls nhom intraday universe)
+- frontend/src/i18n/en.js (MODIFIED - i18n key tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_ticker_prefetch_task -v 2` -> 14/14 tests passed.
+- PASSED: `python manage.py test portfolio.tests.test_system_ai_admin_api -v 2` -> 18/18 tests passed.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong, bundle moi `main.a0ab5ed1.js`.
+
 ## Entry 2026-04-23bd - E2E smoke closeout for symbol engagement (tracked/watchlist/holding)
 
 Muc tieu:

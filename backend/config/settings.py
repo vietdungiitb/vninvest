@@ -490,31 +490,38 @@ REALTIME_INTRADAY_POLL_ENABLED = os.getenv("REALTIME_INTRADAY_POLL_ENABLED", "Tr
 REALTIME_INTRADAY_POLL_SYMBOL_LIMIT = _env_int("REALTIME_INTRADAY_POLL_SYMBOL_LIMIT", 1200)
 REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED = os.getenv("REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_ENABLED", "True").lower() == "true"
 REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS = _env_int("REALTIME_INTRADAY_SKIP_IF_PREFETCH_FRESH_SECONDS", 8)
+INTRADAY_TICK_KEEP_DAYS = _env_int("INTRADAY_TICK_KEEP_DAYS", 7)
+
+# Stream consumer schedules — luôn đăng ký, runtime gate trong task quyết định chạy/bỏ qua.
+CELERY_BEAT_SCHEDULE["stream-consumer-db-writer"] = {
+    "task": "portfolio.tasks.run_stream_consumer_batch",
+    "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+    "args": ("db-writer",),
+}
+CELERY_BEAT_SCHEDULE["stream-consumer-ws-broadcaster"] = {
+    "task": "portfolio.tasks.run_stream_consumer_batch",
+    "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+    "args": ("ws-broadcaster",),
+}
+CELERY_BEAT_SCHEDULE["stream-consumer-alert-engine"] = {
+    "task": "portfolio.tasks.run_stream_consumer_batch",
+    "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
+    "args": ("alert-engine",),
+}
+CELERY_BEAT_SCHEDULE["stream-trim"] = {
+    "task": "portfolio.tasks.trim_streams",
+    "schedule": timedelta(minutes=5),
+}
+
+# Cleanup IntradayTick lúc 18:30 hàng ngày (sau giờ đóng cửa thị trường) — luôn chạy,
+# runtime gate intraday_tick_auto_cleanup_enabled trong task quyết định.
+from celery.schedules import crontab as _crontab_intraday_cleanup
+CELERY_BEAT_SCHEDULE["eod-cleanup-ticks"] = {
+    "task": "portfolio.tasks.cleanup_old_intraday_ticks",
+    "schedule": _crontab_intraday_cleanup(hour=18, minute=30),
+}
+
 if _REALTIME_ENABLED_FLAG:
-    CELERY_BEAT_SCHEDULE["stream-consumer-db-writer"] = {
-        "task": "portfolio.tasks.run_stream_consumer_batch",
-        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
-        "args": ("db-writer",),
-    }
-    CELERY_BEAT_SCHEDULE["stream-consumer-ws-broadcaster"] = {
-        "task": "portfolio.tasks.run_stream_consumer_batch",
-        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
-        "args": ("ws-broadcaster",),
-    }
-    CELERY_BEAT_SCHEDULE["stream-consumer-alert-engine"] = {
-        "task": "portfolio.tasks.run_stream_consumer_batch",
-        "schedule": timedelta(seconds=STREAM_CONSUMER_INTERVAL),
-        "args": ("alert-engine",),
-    }
-    CELERY_BEAT_SCHEDULE["stream-trim"] = {
-        "task": "portfolio.tasks.trim_streams",
-        "schedule": timedelta(minutes=5),
-    }
-    CELERY_BEAT_SCHEDULE["eod-cleanup-ticks"] = {
-        "task": "portfolio.tasks.cleanup_old_intraday_ticks",
-        "schedule": timedelta(hours=24),
-        "kwargs": {"keep_days": 7},
-    }
     # Thu thập + publish realtime mỗi 10 giây (giảm áp lực upstream và ws fanout)
     _REALTIME_POLL_INTERVAL = _env_int("REALTIME_POLL_INTERVAL", 10)
     CELERY_BEAT_SCHEDULE["collect-and-publish-realtime"] = {

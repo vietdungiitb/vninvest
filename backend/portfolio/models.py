@@ -1519,6 +1519,7 @@ class IntradayTick(models.Model):
         indexes = [
             models.Index(fields=['symbol', 'trade_date', 'trade_time']),
             models.Index(fields=['symbol', 'trade_date', 'side'], name='idx_intraday_sym_date_side'),
+            models.Index(fields=['trade_date'], name='idx_intraday_trade_date'),
         ]
         ordering = ['-trade_date', '-trade_time']
 

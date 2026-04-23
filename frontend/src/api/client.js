@@ -548,6 +548,8 @@ export const adminIntradaySideBackfillApply = (payload) =>
   apiClient.post('/admin-ops/intraday-side-backfill/apply/', payload);
 export const adminIntradaySideBackfillStatus = (taskId) =>
   apiClient.get(`/admin-ops/intraday-side-backfill/status/${encodeURIComponent(taskId)}/`);
+export const adminIntradayUniverseWarmNow = () =>
+  apiClient.post('/admin-ops/intraday-universe/warm-now/');
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');

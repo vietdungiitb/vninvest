@@ -82,6 +82,7 @@ urlpatterns = [
     path('api/admin-ops/intraday-side-backfill/preview/', portfolio_views.admin_intraday_side_backfill_preview_api, name='admin-ops-intraday-side-backfill-preview'),
     path('api/admin-ops/intraday-side-backfill/apply/', portfolio_views.admin_intraday_side_backfill_apply_api, name='admin-ops-intraday-side-backfill-apply'),
     path('api/admin-ops/intraday-side-backfill/status/<str:task_id>/', portfolio_views.admin_intraday_side_backfill_status_api, name='admin-ops-intraday-side-backfill-status'),
+    path('api/admin-ops/intraday-universe/warm-now/', portfolio_views.admin_intraday_universe_warm_now_api, name='admin-ops-intraday-universe-warm-now'),
     path('api/v1/admin/crawl/', include('portfolio.urls_crawl')),
     path('api/ai-options/', portfolio_views.ai_options_api, name='ai-options'),
     path('api/ai-config/', portfolio_views.ai_config_api, name='ai-config'),
