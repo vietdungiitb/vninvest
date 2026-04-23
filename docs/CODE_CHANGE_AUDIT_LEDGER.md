@@ -1,5 +1,339 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bd - E2E smoke closeout for symbol engagement (tracked/watchlist/holding)
+
+Muc tieu:
+- Chay them 1 vong smoke test E2E cho 3 entry point tracked, watchlist, holding de dong bien ban go-live theo checklist van hanh.
+- Khac phuc blocker runtime moi phat hien: tracked-symbol create co the ghi `whale_alert_threshold_million=NULL` gay `IntegrityError`.
+- On dinh bo test smoke de phan anh dung hanh vi dispatch warm-up trong moi truong test.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_stock_management.py (MODIFIED - fallback nguong whale mac dinh khi request khong truyen `whale_alert_threshold_million`)
+- backend/portfolio/tests/test_symbol_engagement_e2e.py (NEW - smoke test E2E cho 3 entry point, bo sung auth APIClient, cache clear, on_commit/freshness test controls)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_symbol_engagement_e2e -v 2` -> 6/6 tests passed.
+- PASSED: TrackedSymbol create khong con loi `null value in column whale_alert_threshold_million` khi khong gui threshold.
+- PASSED: Ca 3 luong tracked/watchlist/holding deu trigger warm-up path theo ky vong trong smoke suite.
+
+## Entry 2026-04-23bc - Symbol engagement warm-up production readiness hardening
+
+Muc tieu:
+- Khac phuc toan bo blocker con lai de dong gate production readiness cho Symbol Engagement Warm-up.
+- Sua loi runtime import TickProducer trong warm-up task.
+- Chuan hoa freshness check theo local timezone va lam sach bo test de chay duoc bang Django test runner.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks_symbol_engagement.py (MODIFIED - sua import TickProducer sang module tick_producer dung)
+- backend/portfolio/services_symbol_engagement.py (MODIFIED - freshness check dung localtime/local date, sua tick_count filter)
+- backend/portfolio/tests/test_symbol_engagement.py (MODIFIED - bo pytest dependency, sua patch targets, chuan hoa test setup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_symbol_engagement -v 2` -> 6/6 tests passed.
+- PASSED: Khong con loi runtime `cannot import name TickProducer` trong warm-up task path.
+- PASSED: Freshness logic hoat dong on dinh voi market_open va recent tick dataset.
+
+## Entry 2026-04-23ba - Symbol engagement warm-up plan delta hardening
+
+Muc tieu:
+- Chot bo dieu kien trien khai chi tiet truoc khi coding de tranh drift voi runtime hien tai.
+- Bo sung rang buoc hook cho ca legacy/refactored transaction path duoi runtime toggle.
+- Chuan hoa lock/freshness/observability contract theo pattern dang dung trong codebase.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - them market-phase freshness, lock policy, transaction toggle requirement, consumer visibility acceptance)
+- docs/TECH_SPEC_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - cap nhat contract chi tiet cho freshness, lock source, observability integration, dual transaction coverage)
+- docs/TASKBOARD_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - bo sung work items bat buoc cho 2 transaction paths, observability-first metrics, consumer visibility test)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Plan/Spec/Taskboard da khop voi runtime toggle architecture va lock strategy hien huu.
+- PASSED: Freshness contract da rang buoc theo market phase thay vi parser custom.
+- PASSED: Audit governance da duoc cap nhat day du vao ledger va dashboard.
+
+## Entry 2026-04-23az - Expanded audit work package for symbol engagement warm-up
+
+Muc tieu:
+- Chuan bi bo tai lieu audit day du de giao cho doi code va doi QA/DevOps thuc thi nhat quan.
+- Bo sung tai lieu test matrix, runbook van hanh, traceability matrix, va audit package tong hop.
+- Dam bao cong tac review, sign-off, va truy vet duoc thuc hien theo checklist ro rang.
+
+Danh sach tep cap nhat:
+- docs/AUDIT_PACKAGE_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - goi audit tong hop va gate dong audit)
+- docs/QA_TEST_MATRIX_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - test matrix chi tiet)
+- docs/RUNBOOK_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - runbook van hanh va su co)
+- docs/TRACEABILITY_MATRIX_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - mapping requirement -> implementation -> test -> evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Bo tai lieu audit da day du cho handoff implementation + QA + operations.
+- PASSED: Co traceability matrix de audit theo chuan requirement-to-evidence.
+- PASSED: Da dong bo vao PROGRESS_DASHBOARD.md theo quy dinh mandatory audit file list.
+
+## Entry 2026-04-23ay - Symbol engagement warm-up audit documentation bundle
+
+Muc tieu:
+- Chot phuong an ky thuat chung de dam bao hanh vi them symbol dong nhat giua tracked symbols, watchlist, va holdings.
+- Dinh nghia warm-up la lop dem den khi scheduler lap lai, tranh duplicate va tranh qua tai.
+- Luu bo tai lieu audit day du (Implementation Plan + Tech Spec + Taskboard) de truy vet va review sau nay.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - implementation plan chi tiet)
+- docs/TECH_SPEC_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - technical specification)
+- docs/TASKBOARD_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - execution taskboard)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Tai lieu da duoc tao day du theo bundle bat buoc (Plan + Spec + Taskboard).
+- PASSED: Noi dung giu dung nguyen tac warm-up den scheduler cycle tiep theo, co lock/idempotency va freshness check.
+- PASSED: Danh sach file audit da duoc dong bo vao PROGRESS_DASHBOARD.md.
+
+## Entry 2026-04-23ax - Whale Analytics main panel height compaction
+
+Muc tieu:
+- Thu hep khoang trong lon ben duoi chart trong panel chinh Whale Analytics.
+- Tang nhe chieu cao pane CVD nhung giam tong chieu cao card de khong bi gian trai.
+- Loai bo cac rang buoc layout gay stretch khong can thiet khi chart duoc nhung (embedded).
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - bo `min-h-[720px]`, giam `gap` noi dung va `py` footer de panel gon hon)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - embedded mode dung `h-auto` thay vi `h-full`; chart viewport co dinh `400px`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleAnalyticsTab.jsx` va `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong.
+- PASSED: Frontend container da restart thanh cong, bundle moi quan sat duoc trong logs: `main.d86ee3f7.js`.
+
+## Entry 2026-04-23aw - Whale Analytics unified ECharts session-window refactor
+
+Muc tieu:
+- Hoi nhat Whale Bubble va Smart Money Flow ve cung mot thu vien chart de giao dien dong nhat va khong lech truc.
+- Dam bao hai pane su dung chung he truc X, plotting width trung nhau, cac truc Y duoc giong thang hang trong cung layout.
+- Chuan hoa timeframe theo gio giao dich that: 08:45-11:30, 13:00-15:00, ho tro `15m`, `30m`, `1h`, `morning`, `afternoon`, `session` va polling realtime khi thi truong dang mo.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/whaleTimeAdapter.js (MODIFIED - them market session segments, rolling trading-minute subtraction, timeframe window resolver cho `15m/30m/1h/morning/afternoon/session`)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - fetch session data 1 lan, filter lai theo market window dong, them polling 30s trong gio giao dich)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - bo chart card tach rieng, chi render mot dual-pane ECharts wrapper cho Whale Analytics)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - nang cap thanh ECharts dual-pane: bubble pane + flow pane cung xAxis/grid, width/truc canh thang hang)
+- frontend/src/i18n/vi.js (MODIFIED - bo sung label cho combined realtime panes)
+- frontend/src/i18n/en.js (MODIFIED - bo sung label cho combined realtime panes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `whaleTimeAdapter.js`, `useWhaleAnalyticsData.js`, `WhaleAnalyticsTab.jsx`, `WhaleBubbleChart.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong voi bundle moi `main.3ad95139.js`.
+- PASSED: Container `vninvest-dev-frontend` da start lai thanh cong sau refactor chart hop nhat.
+
+## Entry 2026-04-23av - Compact dark flow lightweight-charts v5 runtime crash fix
+
+Muc tieu:
+- Xu ly triet de loi runtime `addAreaSeries is not a function` tren Whale Analytics compact flow pane.
+- Dong bo `CompactDarkMoneyFlow` voi compatibility pattern da dung trong `DarkMoneyMasterChart` de tuong thich ca lightweight-charts v4/v5.
+- Bo sung fail-safe UI de chart loi khong lam sap toan bo tab "Ca map".
+
+Danh sach tep cap nhat:
+- frontend/src/components/CompactDarkMoneyFlow.jsx (MODIFIED - them `addSeriesCompat`, migrate `AreaSeries`/`LineSeries` sang compat API, bo sung fallback UI khi init chart that bai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/CompactDarkMoneyFlow.jsx`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` compile thanh cong voi bundle moi `main.fcccc751.js`.
+- PASSED: Container `vninvest-dev-frontend` da start lai thanh cong sau runtime fix.
+
+## Entry 2026-04-23au - Whale Analytics production-ready runtime remediation
+
+Muc tieu:
+- Khac phuc cac runtime blocker con sot trong Whale Analytics tab sau dot audit implementation.
+- Chuan hoa contract du lieu flow ve mot shape SSOT duy nhat de Bubble chart va Compact flow chart khong doan sai payload backend.
+- Hoan tat i18n namespace con thieu va xac nhan lai duong build/restart frontend bang Docker dev.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - import dung `getDarkMoneyHistory`, normalize `dark_flow_series` thanh `cvd_series`/`strength_series`, cat window theo timeframe)
+- frontend/src/components/CompactDarkMoneyFlow.jsx (MODIFIED - bo sung `useI18n`, doc normalized flow shape, sua crosshair sync sang canonical minute)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - sua controlled props/ref sync, loai undefined ref, fix JSX controls block de production build pass)
+- frontend/src/i18n/vi.js (MODIFIED - them namespace `whaleAnalytics` cho Shark tab)
+- frontend/src/i18n/en.js (MODIFIED - them namespace `whaleAnalytics` cho Shark tab)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `useWhaleAnalyticsData.js`, `CompactDarkMoneyFlow.jsx`, `WhaleBubbleChart.jsx`, `vi.js`, `en.js`, `WhaleAnalyticsTab.jsx`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build frontend thanh cong sau khi sua loi JSX o `WhaleBubbleChart.jsx`.
+- PASSED: Container `vninvest-dev-frontend` da start lai thanh cong tren Docker dev stack.
+
+## Entry 2026-04-23at - Whale Analytics Dual-Pane Integration (Shark Tab)
+
+Muc tieu:
+- Tich hop Dark Money Flow (CVD & Strength) vao Whale Bubble Chart tai tab "Ca map".
+- Dong bo thoi gian thuc (Real-time Dual-Pane) giua hai bieu do dung canonical time adapter.
+- Enforce SSOT (Single Source of Truth) cho symbol va timeframe de loai bo drift du lieu.
+- Chuan hoa i18n tieng Viet cho toan bo giao dien analytics moi.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/whaleTimeAdapter.js (NEW - Canonical minute bucket adapter)
+- frontend/src/hooks/useWhaleAnalyticsData.js (NEW - SSOT hook cho parallel fetching)
+- frontend/src/hooks/useOrderBubbleCoordinates.js (MODIFIED - update X-axis sang canonical epoch seconds)
+- frontend/src/components/CompactDarkMoneyFlow.jsx (NEW - Lightweight Chart cho flow, ho tro sync crosshair)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - Controlled component, update time-axis, ho tro sync hover)
+- frontend/src/components/WhaleAnalyticsTab.jsx (NEW - Wrapper component quan ly state va layout)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - thay the BubbleChart bang AnalyticsTab)
+- frontend/src/i18n/vi.js (MODIFIED - bo sung key whaleAnalytics)
+- docs/IMPLEMENTATION_PLAN_WHALE_INTEGRATION_20260423.md (MODIFIED - cap nhat criteria)
+- docs/TECH_SPEC_WHALE_INTEGRATION_20260423.md (MODIFIED - cap nhat contract)
+- docs/TASKBOARD_WHALE_INTEGRATION_20260423.md (MODIFIED - mark DONE 100%)
+
+Validation:
+- PASSED: `session` mode su dung dung contract `period=1D, interval=1m`.
+- PASSED: Crosshair sync hoat dong giua ECharts va Lightweight Charts qua `syncTimestamp`.
+- PASSED: Institutional Strength khong con mock, su dung series thuc tu `flowData.history`.
+- PASSED: Toan bo nhãn (labels) da duoc i18n hoa sang tieng Viet.
+- PASSED: `docker-compose.dev.yml` restart thanh cong.
+
+
+## Entry 2026-04-23as - Whale service runtime unblock for USER_REFRESH pending lock
+
+Muc tieu:
+- Khac phuc tinh trang job Whale Service (dac biet USER_REFRESH) bi PENDING vo thoi han nhung worker khong xu ly.
+- Loai bo duplicate gia tren frontend do idempotency gap lock cua stale PENDING jobs.
+- Dam bao worker dang ky day du task watchlist va whale service sau restart.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tasks.py (MODIFIED - re-export them `compute_watchlist_indicators` va `whale_service_job_task` de worker autodiscover dang ky task)
+- backend/portfolio/whale_service_manager.py (MODIFIED - them stale active job auto-recovery cho PENDING/RUNNING qua han)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - add runtime incident fix checklist)
+
+Validation:
+- PASSED: `celery -A config inspect registered` co `portfolio.tasks.whale_service_job_task` va `portfolio.compute_watchlist_indicators`.
+- PASSED: Worker khong con unregistered error cho `portfolio.compute_watchlist_indicators`; task da duoc receive/succeed.
+- PASSED: Kich hoat lai USER_REFRESH cung scope ACB: job stale #12 duoc auto-mark FAILED, job moi #15 duoc tao va COMPLETED.
+
+## Entry 2026-04-23ar - Whale service update button relocation + admin orchestration UI
+
+Muc tieu:
+- Dua nut cap nhat whale buy/sell ve khu vuc Bieu do Ket hop tren trang whale-alerts/{symbol}.
+- Bo nut cap nhat khoi Bubble Chart de tranh phan tan UX.
+- Bo sung admin UI cho Whale Service: trigger GLOBAL_RECOMPUTE, trigger BACKFILL (default 3 thang), registry filter theo status/service_type/date, retry an toan cho FAILED/PARTIAL.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_orchestration.py (MODIFIED - them filter jobs list + retry endpoint)
+- backend/portfolio/urls.py (MODIFIED - expose whale-service/jobs/{id}/retry)
+- frontend/src/api/client.js (MODIFIED - them getWhaleServiceJobs(params), retryWhaleServiceJob)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - them nut cap nhat Whale Buy/Sell tai Combined Chart + poll job progress)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - go bo nut refresh whale service khoi bubble chart)
+- frontend/src/components/adminops/WhaleServiceOpsPanel.jsx (ADDED - panel quan tri orchestration Whale Service)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - tich hop WhaleServiceOpsPanel vao tab Whale Ops)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: get_errors tren cac file thay doi khong bao loi.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong.
+- PASSED: frontend bundle moi da deploy local (`main.c2bc589e.js`).
+
+## Entry 2026-04-23aq - Modern dashboard AI News runtime crash fix
+
+Muc tieu:
+- Sua loi runtime `TypeError: a.slice is not a function` khi bam tab AI News trong modern dashboard.
+- Dam bao component AI news cua modern dashboard chap nhan duoc ca payload digest object va payload array.
+
+Danh sach tep cap nhat:
+- frontend/src/components/modern/AIAdvisorAlertPanel.jsx (MODIFIED - normalize `newsDigest` ve mang truoc khi `slice/map`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong.
+- PASSED: Crash root cause xac nhan la `newsDigest` la object digest nhung component xu ly nhu array.
+- PASSED: Local frontend da duoc rebuild/restart voi bundle moi `main.f2a6c1d9.js`.
+
+## Entry 2026-04-23ap - Final whale wording cleanup
+
+Muc tieu:
+- Rut gon wording tooltip whale values theo yeu cau user.
+- Bo dong giai thich lookback duoi SMFI vi label tong theo so phien da du ro nghia.
+
+Danh sach tep cap nhat:
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - bo note SMFI, rut gon label tooltip whale)
+- frontend/src/i18n/vi.js (MODIFIED - `Mua lon` / `Ban lon`)
+- frontend/src/i18n/en.js (MODIFIED - `Whale Buy` / `Whale Sell`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend static errors clean.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong.
+- PASSED: Local UI chi con label gon, khong con note du thua duoi SMFI.
+
+## Entry 2026-04-23ao - Vietnamese whale tooltip and SMFI explanation refinement
+
+Muc tieu:
+- Dong bo tooltip whale values sang tieng Viet de tranh pha tron ngon ngu trong trang Dark Money.
+- Them chu thich ngan giai thich tong whale trong khoi SMFI la theo lookback sessions.
+- Giam nghi ngo cua nguoi dung ve tinh nhat quan giua tooltip va chi bao SMFI.
+
+Danh sach tep cap nhat:
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - tooltip whale labels sang tieng Viet, them note giai thich lookback cho SMFI)
+- frontend/src/i18n/vi.js (MODIFIED - them key cho tooltip whale theo nen va note SMFI)
+- frontend/src/i18n/en.js (MODIFIED - them key tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend static errors clean.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong.
+- PASSED: Local UI da hien tooltip tieng Viet va note giai thich pham vi tong whale cua SMFI.
+
+## Entry 2026-04-23an - Whale tooltip vs SMFI scope clarification
+
+Muc tieu:
+- Giai quyet su mo ho gay mat niem tin khi tooltip va SMFI hien thi whale buy/sell o hai pham vi khac nhau nhung label tuong tu nhau.
+- Lam ro tooltip la tong theo nen dang hover.
+- Lam ro khoi SMFI la tong theo so phien lookback cua chi bao.
+
+Danh sach tep cap nhat:
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - label tooltip theo nen hover, label SMFI theo lookback sessions)
+- frontend/src/i18n/vi.js (MODIFIED - them label whale total theo so phien)
+- frontend/src/i18n/en.js (MODIFIED - them label whale total theo so phien)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend static errors clean.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build thanh cong.
+- PASSED: Local UI da co label tach biet giua whale theo nen hover va whale total theo lookback.
+
+## Entry 2026-04-23am - Dark Money SHB duplicate-tick aggregation fix
+
+Muc tieu:
+- Sua loi tooltip va khoi Dark Money Detection hien tong whale phi ly tren trang whale-alerts/SHB.
+- Loai bo viec cong lap exact duplicate intraday ticks trong dark money history API.
+- Them regression test de khoa lai hanh vi tong hop whale signal.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_dark_money_history.py (MODIFIED - deduplicate exact intraday tick rows truoc khi group whale signals)
+- backend/portfolio/tests/test_dark_money_history_api.py (NEW - regression test cho duplicate-tick aggregation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_dark_money_history_api -v 2` -> 1/1.
+- PASSED: Live SHB API sau patch tra `smfi_components` o muc hop ly (`whale_buy_total` ~ 166.65 ty, `whale_sell_total` ~ 7.47 ty), khong con nghin ty.
+- PASSED: Root cause xac nhan la duplicate exact ticks trong du lieu intraday, khong phai formatter frontend.
+
 ## Entry 2026-04-23al - Full-scope re-audit documentation normalization and release prep
 
 Muc tieu:

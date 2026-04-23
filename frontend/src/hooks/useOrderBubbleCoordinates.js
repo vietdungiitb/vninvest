@@ -3,6 +3,7 @@
  * Handles coordinate transformation, size normalization, and data categorization
  */
 import { useMemo } from 'react';
+import { toCanonicalMinute } from '../utils/whaleTimeAdapter';
 
 const MARKET_OPEN_HOUR = 9;
 const ONE_BILLION_VND = 1_000_000_000;
@@ -103,9 +104,9 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
           return;
         }
         
-        // X-axis: minutes since session start
-        const timeDiff = orderTime - sessionStartDate;
-        const xMinutes = timeDiff / (1000 * 60);
+        // Canonical X-axis: Epoch seconds at the start of the minute
+        const xEpoch = toCanonicalMinute(order.ts);
+        if (xEpoch === null) return;
         
         // Y-axis: price difference from reference
         const rawPriceNum = parseFloat(order.price);
@@ -131,11 +132,11 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
         const strokeAlpha = clamp(baseAlpha + 0.1, 0.56, 1);
         
         const bubble = {
-          x: xMinutes,
+          x: xEpoch,
           y: yVnd,
           yPct: yPct,
-          yValue: matchedValue, // New Y-axis option: Trading Value
-          value: [xMinutes, yVnd, size], // Default coordinates (legacy price delta)
+          yValue: matchedValue, 
+          value: [xEpoch, yVnd, size], 
           price: priceNum,
           volume,
           matchedValue,

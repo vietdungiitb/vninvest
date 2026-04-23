@@ -9,6 +9,26 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
   const [lastRecCount, setLastRecCount] = useState(0);
   
   const { recommendations } = useAIAdvisor({ holdings, watchlist, technicals, alerts });
+  const newsItems = useMemo(() => {
+    if (Array.isArray(newsDigest)) {
+      return newsDigest;
+    }
+    if (Array.isArray(newsDigest?.items)) {
+      return newsDigest.items;
+    }
+    if (typeof newsDigest?.digest_full === 'string') {
+      return newsDigest.digest_full
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 5)
+        .map((line) => ({
+          title: line.replace(/^[-*•]\s*/, ''),
+          created_at: newsDigest?.created_at || null,
+          sentiment: null,
+        }));
+    }
+    return [];
+  }, [newsDigest]);
 
   // Play sound when new recommendations appear
   useEffect(() => {
@@ -127,13 +147,13 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
             </div>
           ) : (
             <div className="space-y-4">
-              {(!newsDigest || newsDigest.length === 0) ? (
+              {newsItems.length === 0 ? (
                 <div className="py-12 text-center">
                   <span className="text-2xl mb-2 block">📰</span>
                   <p className="text-xs text-slate-500 italic">Chưa có bản tin AI mới nhất.</p>
                 </div>
               ) : (
-                newsDigest.slice(0, 5).map((item, idx) => (
+                newsItems.slice(0, 5).map((item, idx) => (
                   <div key={idx} className="border-l-2 border-sky-500/30 pl-3 py-1">
                     <p className="text-xs font-bold text-slate-200 hover:text-sky-400 cursor-pointer transition-colors line-clamp-2">
                       {item.headline || item.title}

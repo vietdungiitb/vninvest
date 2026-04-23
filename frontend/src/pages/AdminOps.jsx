@@ -33,6 +33,7 @@ import {
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
+import WhaleServiceOpsPanel from '../components/adminops/WhaleServiceOpsPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -1412,6 +1413,8 @@ export default function AdminOps() {
             ) : null}
           </div>
         </div>
+
+        <WhaleServiceOpsPanel />
       </section>
       ) : null}
 

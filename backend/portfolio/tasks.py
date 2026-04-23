@@ -132,10 +132,17 @@ from portfolio.tasks_realtime import (
     _whale_thresholds_for_user,
     collect_and_publish_realtime,
 )
+from portfolio.tasks_watchlist_indicators import (
+    compute_watchlist_indicators,
+)
+from portfolio.tasks_whale_service import (
+    whale_service_job_task,
+)
 from portfolio.tasks_sync import (
     sync_user_watch_assets,
     sync_all_watch_assets,
 )
+from portfolio.tasks_symbol_engagement import warmup_symbol_intraday  # noqa: F401
 from portfolio.tasks_maintenance import (
     run_stream_consumer_batch,
     cleanup_old_intraday_ticks,

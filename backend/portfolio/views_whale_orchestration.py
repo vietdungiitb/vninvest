@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -82,6 +83,31 @@ def whale_service_jobs_list_api(request):
     queryset = WhaleServiceJob.objects.all()
     if not request.user.is_staff:
         queryset = queryset.filter(created_by=request.user)
+
+    status_filter = str(request.query_params.get('status', '') or '').strip().upper()
+    service_type_filter = str(request.query_params.get('service_type', '') or '').strip().upper()
+    date_from_raw = str(request.query_params.get('date_from', '') or '').strip()
+    date_to_raw = str(request.query_params.get('date_to', '') or '').strip()
+
+    if status_filter and status_filter != 'ALL':
+        queryset = queryset.filter(status=status_filter)
+
+    if service_type_filter and service_type_filter != 'ALL':
+        queryset = queryset.filter(service_type=service_type_filter)
+
+    if date_from_raw:
+        try:
+            date_from = datetime.fromisoformat(date_from_raw).date()
+            queryset = queryset.filter(created_at__date__gte=date_from)
+        except ValueError:
+            return Response({"error": "Invalid date_from format (YYYY-MM-DD expected)."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if date_to_raw:
+        try:
+            date_to = datetime.fromisoformat(date_to_raw).date()
+            queryset = queryset.filter(created_at__date__lte=date_to)
+        except ValueError:
+            return Response({"error": "Invalid date_to format (YYYY-MM-DD expected)."}, status=status.HTTP_400_BAD_REQUEST)
     
     queryset = queryset.order_by('-created_at')[:50]
     serializer = WhaleServiceJobSerializer(queryset, many=True)
@@ -101,3 +127,67 @@ def whale_service_job_status_api(request, job_id):
         
     serializer = WhaleServiceJobSerializer(job)
     return Response(serializer.data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated, IsProPlan])
+def whale_service_job_retry_api(request, job_id):
+    """Retry a FAILED/PARTIAL whale service job safely by reusing idempotency and lock checks."""
+    try:
+        source_job = WhaleServiceJob.objects.get(id=job_id)
+    except WhaleServiceJob.DoesNotExist:
+        return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if not request.user.is_staff:
+        return Response({"error": "Staff permission required"}, status=status.HTTP_403_FORBIDDEN)
+
+    if source_job.status not in [WhaleServiceJob.StatusChoices.FAILED, WhaleServiceJob.StatusChoices.PARTIAL]:
+        return Response(
+            {
+                "error": "Only FAILED/PARTIAL jobs can be retried.",
+                "code": "invalid_retry_status",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    retry_params = dict(source_job.params or {})
+    retry_params['user_id'] = request.user.id
+
+    job, created, st = WhaleJobManager.get_or_create_job(
+        source_job.service_type,
+        retry_params,
+        created_by=request.user,
+    )
+
+    if st == 'duplicate':
+        return Response(
+            {
+                "status": "duplicate",
+                "message": "An identical retry job is already pending or running.",
+                "job": WhaleServiceJobSerializer(job).data if job else None,
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    if st == 'in_progress':
+        return Response(
+            {
+                "status": "in_progress",
+                "message": "A job with the same scope is currently in progress.",
+                "job": WhaleServiceJobSerializer(job).data if job else None,
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    if created:
+        from .tasks_whale_service import whale_service_job_task
+        whale_service_job_task.delay(job.id)
+
+    return Response(
+        {
+            "status": "accepted",
+            "message": "Retry job registered and queued successfully.",
+            "job": WhaleServiceJobSerializer(job).data,
+        },
+        status=status.HTTP_201_CREATED,
+    )

@@ -3,6 +3,228 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23bd)
+- backend/portfolio/views_stock_management.py (MODIFIED - add default threshold fallback to prevent NULL write on tracked-symbol create)
+- backend/portfolio/tests/test_symbol_engagement_e2e.py (NEW - E2E smoke tests for tracked/watchlist/holding warm-up entry points)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_symbol_engagement_e2e -v 2` passed 6/6.
+- PASSED: TrackedSymbol create no longer raises `IntegrityError` when threshold is omitted.
+- PASSED: Smoke flow confirms warm-up trigger path for all 3 operation entry points.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23bc)
+- backend/portfolio/tasks_symbol_engagement.py (MODIFIED - fix TickProducer import path to realtime tick producer)
+- backend/portfolio/services_symbol_engagement.py (MODIFIED - local timezone freshness age/date handling + tick_count filter fix)
+- backend/portfolio/tests/test_symbol_engagement.py (MODIFIED - remove pytest-only dependency, correct patch targets, stabilize Django test execution)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_symbol_engagement -v 2` passed 6/6.
+- PASSED: Symbol engagement warm-up no longer fails at TickProducer import runtime.
+- PASSED: Freshness decision path works with local market day alignment.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ba)
+- docs/IMPLEMENTATION_PLAN_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - market-phase freshness + transaction toggle coverage + consumer visibility acceptance)
+- docs/TECH_SPEC_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - lock/freshness/observability contracts aligned to runtime)
+- docs/TASKBOARD_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (MODIFIED - explicit tasks for legacy/refactored transaction hooks and visibility test)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Plan delta da chot theo 6 dieu kien ky thuat da phe duyet.
+- PASSED: Taskboard da ro pham vi implementation cho ca 2 transaction paths.
+- PASSED: Centralized audit tracking da dong bo day du.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23az)
+- docs/AUDIT_PACKAGE_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - audit package for handoff and sign-off)
+- docs/QA_TEST_MATRIX_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - QA matrix for functional, idempotency, and load cases)
+- docs/RUNBOOK_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - operations runbook and incident handling)
+- docs/TRACEABILITY_MATRIX_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - requirement to test and evidence mapping)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Audit work package expanded for dev, QA, and DevOps execution.
+- PASSED: Required traceability and acceptance evidence templates are available.
+- PASSED: Centralized audit list updated for repository-level tracking.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ay)
+- docs/IMPLEMENTATION_PLAN_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - implementation plan for shared symbol engagement warm-up behavior)
+- docs/TECH_SPEC_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - technical specification for freshness check, lock, and warm-up task)
+- docs/TASKBOARD_SYMBOL_ENGAGEMENT_WARMUP_20260423.md (NEW - execution checklist across tracked/watchlist/holdings)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Mandatory documentation bundle created in docs/.
+- PASSED: Audit ledger updated with objective, file list, and validation.
+- PASSED: Centralized audit file list synchronized in this dashboard.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ax)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - bo `min-h-[720px]`, giam `gap` content va `py` footer de panel chinh gon hon)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - embedded mode khong con stretch `h-full`, viewport chart co dinh `400px`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `WhaleAnalyticsTab.jsx` va `WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong.
+- PASSED: Frontend da load bundle moi trong logs build: `main.d86ee3f7.js`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23aw)
+- frontend/src/utils/whaleTimeAdapter.js (MODIFIED - them logic khung gio thi truong va timeframe dong theo `15m/30m/1h/phiên sáng/phiên chiều/cả phiên`)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - normalize va filter du lieu theo market window, polling 30s trong gio giao dich)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - chi con mot chart wrapper thay vi hai card chart tach rieng)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - dual-pane ECharts chung xAxis/grid, canh thang truc va plotting width)
+- frontend/src/i18n/vi.js (MODIFIED - label giao dien cho chart hop nhat)
+- frontend/src/i18n/en.js (MODIFIED - label giao dien cho chart hop nhat)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren cac file Whale Analytics da chinh sua.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong, bundle moi `main.3ad95139.js`.
+- PASSED: Hai pane Whale Analytics da duoc dua ve cung mot ECharts layout engine de giong truc X/Y va do rong plotting area.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23av)
+- frontend/src/components/CompactDarkMoneyFlow.jsx (MODIFIED - them lightweight-charts v4/v5 compatibility helper va fallback UI cho compact flow pane)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `CompactDarkMoneyFlow.jsx`.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong, bundle moi `main.fcccc751.js`.
+- PASSED: Frontend dev container da start lai thanh cong sau khi fix loi runtime `addAreaSeries`.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23au)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - normalize dark money payload ve shape SSOT duy nhat cho Whale Analytics)
+- frontend/src/components/CompactDarkMoneyFlow.jsx (MODIFIED - sua import/i18n, doc `cvd_series` va `strength_series`, sync crosshair theo canonical minute)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - sua controlled sync refs/props va fix JSX de production build pass)
+- frontend/src/i18n/vi.js (MODIFIED - bo sung namespace `whaleAnalytics`)
+- frontend/src/i18n/en.js (MODIFIED - bo sung namespace `whaleAnalytics`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren cac file Whale Analytics da chinh sua.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` build/restart thanh cong tren local Docker.
+- PASSED: Frontend dev container da duoc rebuild va start lai voi bundle moi.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23as)
+- backend/portfolio/tasks.py (MODIFIED - bo sung import task de worker dang ky whale/watchlist task)
+- backend/portfolio/whale_service_manager.py (MODIFIED - auto-recover stale PENDING/RUNNING jobs theo TTL)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - them runtime incident fix checklist)
+
+Validation:
+- PASSED: `celery -A config inspect registered` da co `portfolio.tasks.whale_service_job_task` va `portfolio.compute_watchlist_indicators`.
+- PASSED: Worker da receive/succeed task watchlist indicators sau restart, khong con unregistered error.
+- PASSED: User refresh ACB cung scope da chay lai thanh cong (job stale bi close, job moi COMPLETED).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ar)
+- backend/portfolio/views_whale_orchestration.py (MODIFIED - jobs list filter + retry FAILED/PARTIAL)
+- backend/portfolio/urls.py (MODIFIED - route retry whale service job)
+- frontend/src/api/client.js (MODIFIED - whale service jobs query params + retry api)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - nut cap nhat Whale Buy/Sell tai Combined Chart)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo nut cap nhat khoi bubble chart)
+- frontend/src/components/adminops/WhaleServiceOpsPanel.jsx (ADDED - trigger/retry/registry filter admin UI)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - nhung panel WhaleServiceOpsPanel vao Whale Ops)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: get_errors clean tren file da thay doi.
+- PASSED: frontend da build/restart thanh cong tren local Docker.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23aq)
+- frontend/src/components/modern/AIAdvisorAlertPanel.jsx (MODIFIED - normalize newsDigest object/array truoc khi render AI News tab)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build/restart local dev thanh cong.
+- PASSED: Luong bam tab AI News tren modern dashboard khong con goi `.slice()` tren object digest.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ap)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - bo note SMFI, rut gon label tooltip whale)
+- frontend/src/i18n/vi.js (MODIFIED - `Mua lớn`, `Bán lớn`)
+- frontend/src/i18n/en.js (MODIFIED - `Whale Buy`, `Whale Sell`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build/restart local dev thanh cong.
+- PASSED: wording UI da rut gon theo yeu cau user.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ao)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - tooltip whale sang tieng Viet, them note giai thich SMFI lookback)
+- frontend/src/i18n/vi.js (MODIFIED - them key whale theo nen va ghi chu SMFI)
+- frontend/src/i18n/en.js (MODIFIED - them key tuong ung tieng Anh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build/restart local dev thanh cong.
+- PASSED: Trang Dark Money da nhat quan hon ve ngon ngu va pham vi metric.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23an)
+- frontend/src/components/DarkMoneyMasterChart.jsx (MODIFIED - tach ro label whale theo nen hover va whale total theo lookback sessions)
+- frontend/src/i18n/vi.js (MODIFIED - label whale total co tham so so phien)
+- frontend/src/i18n/en.js (MODIFIED - label whale total co tham so so phien)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: frontend build/restart local dev thanh cong.
+- PASSED: UI da giam ambiguity giua tooltip whale values va SMFI whale totals.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23am)
+- backend/portfolio/views_dark_money_history.py (MODIFIED - khu duplicate exact intraday ticks truoc khi tong hop whale_signals)
+- backend/portfolio/tests/test_dark_money_history_api.py (NEW - regression test cho SHB duplicate-tick inflation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_dark_money_history_api -v 2` passed 1/1.
+- PASSED: Live SHB dark money API khong con tra tong whale buy/sell o muc nghin ty.
+- PASSED: Tooltip va khoi Dark Money Detection cung dung chung payload da duoc khuu lap.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23al)
 - docs/API_CONTRACT_WHALE_SERVICE_20260423.md (MODIFIED - runtime contract normalized: trigger status codes and status endpoint path)
 - docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - checklist wording aligned with transactional DB guard/create-gate)

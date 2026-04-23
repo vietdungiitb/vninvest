@@ -74,6 +74,11 @@ def _to_unix_seconds(value) -> int | None:
             dt_val = datetime.fromisoformat(text.replace('Z', '+00:00'))
         except ValueError:
             return None
+    # Use timestamp() for tz-aware datetimes so timezone offset is respected.
+    # calendar.timegm() ignores tzinfo (treats timetuple as UTC), causing
+    # VN-time (+07:00) datetimes to be shifted 7h into the future.
+    if dt_val.tzinfo is not None:
+        return int(dt_val.timestamp())
     return calendar.timegm(dt_val.timetuple())
 
 
@@ -117,6 +122,15 @@ def _normalize_tick_side(value) -> str:
     if raw in {'sell', 'sd', 's'}:
         return 'sell'
     return 'unknown'
+
+
+def _deduplicate_intraday_tick_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    return frame.drop_duplicates(
+        subset=['trade_date', 'trade_time', 'side', 'price', 'volume'],
+        keep='first',
+    ).copy()
 
 
 def _build_reference_price_by_trade_date(symbol: str, trade_dates: list[date]) -> dict[date, float]:
@@ -354,30 +368,52 @@ def dark_money_history_api(request, symbol: str):
     dark_flow_series = []
     try:
         trunc_fn = TRUNC_FN_MAP.get(interval, TruncDate)
-        from django.db.models.functions import Coalesce, Cast
-        from django.db.models import DateField
-        qs = (
-            OrderFlowSignal.objects
-            .filter(
-                symbol=normalized_symbol,
+
+        if is_intraday:
+            # Intraday bucket phai dua tren created_at (co gio-phut),
+            # khong the dua tren trade_date vi trade_date chi co ngay.
+            qs = (
+                OrderFlowSignal.objects
+                .filter(
+                    symbol=normalized_symbol,
+                    created_at__date__gte=cutoff_date,
+                )
+                .annotate(bucket=trunc_fn('created_at'))
+                .values('bucket')
+                .annotate(
+                    avg_strength=Avg('strength'),
+                    max_strength=Max('strength'),
+                    signal_count=Count('id'),
+                    avg_cvd=Avg('cvd_at_signal'),
+                    avg_price=Avg('price_at_signal'),
+                )
+                .order_by('bucket')
             )
-            .annotate(
-                resolved_date=Coalesce('trade_date', Cast('created_at', DateField()))
+        else:
+            from django.db.models.functions import Coalesce, Cast
+            from django.db.models import DateField
+            qs = (
+                OrderFlowSignal.objects
+                .filter(
+                    symbol=normalized_symbol,
+                )
+                .annotate(
+                    resolved_date=Coalesce('trade_date', Cast('created_at', DateField()))
+                )
+                .filter(
+                    resolved_date__gte=cutoff_date,
+                )
+                .annotate(bucket=trunc_fn('resolved_date'))
+                .values('bucket')
+                .annotate(
+                    avg_strength=Avg('strength'),
+                    max_strength=Max('strength'),
+                    signal_count=Count('id'),
+                    avg_cvd=Avg('cvd_at_signal'),
+                    avg_price=Avg('price_at_signal'),
+                )
+                .order_by('bucket')
             )
-            .filter(
-                resolved_date__gte=cutoff_date,
-            )
-            .annotate(bucket=trunc_fn('resolved_date'))
-            .values('bucket')
-            .annotate(
-                avg_strength=Avg('strength'),
-                max_strength=Max('strength'),
-                signal_count=Count('id'),
-                avg_cvd=Avg('cvd_at_signal'),
-                avg_price=Avg('price_at_signal'),
-            )
-            .order_by('bucket')
-        )
 
         for row in qs:
             bucket_date = row['bucket']
@@ -475,6 +511,74 @@ def dark_money_history_api(request, symbol: str):
 
     except Exception as exc:
         logger.warning('Failed to fetch dark flow series for %s: %s', normalized_symbol, exc)
+
+    # ─── 2b. Fallback: build CVD/strength from IntradayTick ───────────────
+    # Used when OrderFlowSignal has no data for the requested symbol/period.
+    if is_intraday and len(dark_flow_series) < 2:
+        try:
+            from zoneinfo import ZoneInfo
+            _VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+
+            tick_raw = list(
+                IntradayTick.objects
+                .filter(symbol=normalized_symbol, trade_date__gte=cutoff_date)
+                .values('trade_date', 'trade_time', 'side', 'price', 'volume')
+                .order_by('trade_date', 'trade_time')
+            )
+            if tick_raw:
+                tframe = pd.DataFrame.from_records(tick_raw)
+                tframe = _deduplicate_intraday_tick_frame(tframe)
+                tframe['price'] = pd.to_numeric(tframe['price'], errors='coerce').fillna(0.0)
+                tframe['volume'] = pd.to_numeric(tframe['volume'], errors='coerce').fillna(0.0)
+                # Canonical value: price >= 1000 → already VND, else multiply by 1000
+                tframe['value'] = tframe.apply(
+                    lambda r: r['price'] * r['volume'] * (1 if r['price'] >= 1000 else 1000),
+                    axis=1,
+                )
+                # Build tz-aware datetime in VN timezone for correct bucketing
+                tframe['dt'] = tframe.apply(
+                    lambda r: datetime.combine(r['trade_date'], r['trade_time']).replace(tzinfo=_VN_TZ),
+                    axis=1,
+                )
+                tframe['bucket_dt'] = tframe['dt'].map(lambda d: _floor_intraday_bucket(d, interval))
+                tframe['side_norm'] = tframe['side'].map(_normalize_tick_side)
+                tframe['buy_v'] = tframe['value'].where(tframe['side_norm'] == 'buy', 0.0)
+                tframe['sell_v'] = tframe['value'].where(tframe['side_norm'] == 'sell', 0.0)
+
+                grouped_tick = (
+                    tframe.groupby('bucket_dt')
+                    .agg(buy_v=('buy_v', 'sum'), sell_v=('sell_v', 'sum'), total_v=('value', 'sum'))
+                    .sort_index()
+                )
+
+                dark_flow_series = []
+                cum_cvd = 0.0
+                for bucket_dt, row in grouped_tick.iterrows():
+                    # bucket_dt is tz-aware (VN) → _to_unix_seconds uses .timestamp() correctly
+                    bucket_ts = _to_unix_seconds(bucket_dt)
+                    if bucket_ts is None:
+                        continue
+                    buy_v = float(row['buy_v'])
+                    sell_v = float(row['sell_v'])
+                    total_v = float(row['total_v']) or 1.0
+                    cvd = buy_v - sell_v
+                    cum_cvd += cvd
+                    strength = min(100.0, abs(cvd) / total_v * 100.0)
+                    dark_flow_series.append({
+                        'time': bucket_ts,
+                        'strength': round(strength, 2),
+                        'max_strength': round(strength, 2),
+                        'signal_count': 1,
+                        'cvd': round(cum_cvd, 2),
+                        'signal_type': 'none',
+                        'confidence': 'low',
+                    })
+                logger.info(
+                    'IntradayTick fallback CVD built for %s: %d buckets (interval=%s)',
+                    normalized_symbol, len(dark_flow_series), interval,
+                )
+        except Exception as exc_fb:
+            logger.warning('IntradayTick CVD fallback failed for %s: %s', normalized_symbol, exc_fb)
 
     # ─── 3. Whale Buy/Sell Signals (SSOT: WhaleAdvisory) ───────────────────
     # WhaleAdvisory lưu lịch sử vĩnh viễn mỗi sự kiện whale → là nguồn sự thật

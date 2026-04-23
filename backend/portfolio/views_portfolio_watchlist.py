@@ -80,7 +80,24 @@ class WatchlistItemCreateView(generics.CreateAPIView):
     def perform_create(self, serializer):
         group_id = self.kwargs['group_id']
         group = generics.get_object_or_404(WatchlistGroup, pk=group_id, user=self.request.user)
-        serializer.save(group=group)
+        instance = serializer.save(group=group)
+
+        from .services_symbol_engagement import activate_symbol_engagement
+        from django.db import transaction as db_transaction
+        
+        def _trigger_engagement():
+            try:
+                activate_symbol_engagement(
+                    user_id=self.request.user.id,
+                    symbol=instance.symbol,
+                    source='watchlist_add'
+                )
+            except Exception as e:
+                # Fail-soft: engagement failure should not break the main response
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to trigger engagement warm-up for {instance.symbol}: {e}")
+
+        db_transaction.on_commit(_trigger_engagement)
 
 
 class WatchlistItemDeleteView(generics.DestroyAPIView):

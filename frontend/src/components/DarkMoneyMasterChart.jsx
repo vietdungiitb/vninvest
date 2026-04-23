@@ -8,7 +8,7 @@ import {
   AreaSeries,
   createSeriesMarkers,
 } from 'lightweight-charts';
-import { getDarkMoneyHistory } from '../api/client';
+import { getDarkMoneyHistory, getWhaleServiceJobStatus, triggerWhaleServiceJob } from '../api/client';
 import { useI18n } from '../context/LangContext';
 
 const PERIODS = ['1M', '3M', '6M', '1Y', '10Y'];
@@ -419,7 +419,7 @@ function QuickSignalBar({ strategyTable }) {
 }
 
 // ─── OHLC Crosshair Tooltip ───────────────────────────────────────────────────
-function OhlcTooltip({ data: d, chartType = 'candle', locale }) {
+function OhlcTooltip({ data: d, chartType = 'candle', t, locale }) {
   if (!d) return null;
   const changeColor = d.change == null ? 'text-slate-400' : d.change >= 0 ? 'text-emerald-400' : 'text-rose-400';
   // Whale buy/sell tính theo nến đang hover (tổng sự kiện trong khoảng thời gian đó)
@@ -444,11 +444,11 @@ function OhlcTooltip({ data: d, chartType = 'candle', locale }) {
       )}
       {d.volume != null && <span><span className="text-slate-500">Vol </span><span className="text-cyan-300">{fmtVolume(d.volume)}</span></span>}
       <span>
-        <span className="text-slate-500">Whale Buy </span>
+        <span className="text-slate-500">{t('darkMoneyChart.whaleBuyCandle')} </span>
         <span className="text-lime-300">{fmtCompact(whaleInfo.buyValue, locale)} ({whaleInfo.buyCount || 0})</span>
       </span>
       <span>
-        <span className="text-slate-500">Whale Sell </span>
+        <span className="text-slate-500">{t('darkMoneyChart.whaleSellCandle')} </span>
         <span className="text-rose-300">{fmtCompact(whaleInfo.sellValue, locale)} ({whaleInfo.sellCount || 0})</span>
       </span>
     </div>
@@ -515,6 +515,8 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t, locale }) {
   const strengthValue = darkFlow?.strength || darkFlow?.max_strength || 0;
   const smfiColor = smfi >= 0 ? '#22c55e' : '#f43f5e';
   const confidenceDisplay = darkFlow?.confidence || 'low';
+  const smfiBarWidth = Math.min(50, Math.max(0, Math.abs(smfi)));
+  const smfiBarLeft = smfi >= 0 ? 50 : Math.max(0, 50 - smfiBarWidth);
 
   return (
     <section className="card-section p-4">
@@ -575,12 +577,13 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t, locale }) {
             {smfi >= 0 ? '+' : ''}{smfi.toFixed(1)}
           </span>
         </div>
-        <div className="mt-2 h-1.5 rounded-full bg-slate-800">
+        <div className="relative mt-2 h-1.5 overflow-hidden rounded-full bg-slate-800">
+          <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-700" />
           <div
-            className="h-full rounded-full transition-all duration-500"
+            className="absolute inset-y-0 rounded-full transition-all duration-500"
             style={{
-              width: `${Math.min(100, Math.max(2, Math.abs(smfi) * 2))}%`,
-              marginLeft: smfi < 0 ? `${Math.max(0, 50 - Math.abs(smfi))}%` : '50%',
+              left: `${smfiBarLeft}%`,
+              width: `${smfiBarWidth}%`,
               background: smfi >= 0
                 ? 'linear-gradient(90deg, #064e3b, #22c55e)'
                 : 'linear-gradient(270deg, #4c0519, #f43f5e)',
@@ -589,8 +592,8 @@ function SmfiGauge({ smfi, smfiComponents, darkFlow, t, locale }) {
         </div>
         {smfiComponents && (
           <div className="mt-2 flex justify-between text-[10px] text-slate-500">
-            <span>{t('darkMoneyChart.whaleBuyTotal')}: <span className="text-emerald-400">{fmtCompact(smfiComponents.whale_buy_total, locale)}</span></span>
-            <span>{t('darkMoneyChart.whaleSellTotal')}: <span className="text-rose-400">{fmtCompact(smfiComponents.whale_sell_total, locale)}</span></span>
+            <span>{t('darkMoneyChart.whaleBuyTotalLookback', { count: smfiComponents.lookback_sessions || 0 })}: <span className="text-emerald-400">{fmtCompact(smfiComponents.whale_buy_total, locale)}</span></span>
+            <span>{t('darkMoneyChart.whaleSellTotalLookback', { count: smfiComponents.lookback_sessions || 0 })}: <span className="text-rose-400">{fmtCompact(smfiComponents.whale_sell_total, locale)}</span></span>
           </div>
         )}
       </div>
@@ -628,6 +631,9 @@ export default function DarkMoneyMasterChart({ symbol }) {
     loaded: false,
     error: '',
   });
+  const [refreshingSignal, setRefreshingSignal] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(0);
+  const [refreshMessage, setRefreshMessage] = useState('');
 
   // Refs for chart containers
   const priceChartRef = useRef(null);
@@ -644,6 +650,14 @@ export default function DarkMoneyMasterChart({ symbol }) {
   const datasetCacheRef = useRef({});
   const hasMovedAwayFromLeftEdgeRef = useRef(false);
   const autoExpandInFlightRef = useRef(false);
+  const refreshPollTimerRef = useRef(null);
+
+  const clearRefreshPollTimer = useCallback(() => {
+    if (refreshPollTimerRef.current) {
+      window.clearTimeout(refreshPollTimerRef.current);
+      refreshPollTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     datasetCacheRef.current = datasetCache;
@@ -753,6 +767,89 @@ export default function DarkMoneyMasterChart({ symbol }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => () => {
+    clearRefreshPollTimer();
+  }, [clearRefreshPollTimer]);
+
+  const pollRefreshJobStatus = useCallback(async (jobId, attempt = 1) => {
+    try {
+      const resp = await getWhaleServiceJobStatus(jobId);
+      const job = resp?.data || {};
+      const statusValue = String(job.status || '').toUpperCase();
+      setRefreshProgress(Math.max(0, Math.min(100, Number(job.progress_pct || 0))));
+
+      if (statusValue === 'COMPLETED' || statusValue === 'PARTIAL') {
+        clearRefreshPollTimer();
+        setRefreshingSignal(false);
+        setRefreshMessage(statusValue === 'PARTIAL'
+          ? 'Cập nhật hoàn thành một phần. Dữ liệu đã được làm mới.'
+          : 'Cập nhật Whale Buy/Sell thành công.');
+        await loadDataset(period, interval, { force: true });
+        await fetchData();
+        return;
+      }
+
+      if (statusValue === 'FAILED') {
+        clearRefreshPollTimer();
+        setRefreshingSignal(false);
+        setRefreshMessage(job.log || 'Cập nhật Whale Buy/Sell thất bại.');
+        return;
+      }
+
+      if (attempt > 40) {
+        clearRefreshPollTimer();
+        setRefreshingSignal(false);
+        setRefreshMessage('Hết thời gian chờ cập nhật. Vui lòng thử lại.');
+        return;
+      }
+
+      const delay = Math.min(1000 * (2 ** Math.min(attempt - 1, 3)), 5000);
+      clearRefreshPollTimer();
+      refreshPollTimerRef.current = window.setTimeout(() => {
+        pollRefreshJobStatus(jobId, attempt + 1);
+      }, delay);
+    } catch (err) {
+      if (attempt < 3) {
+        clearRefreshPollTimer();
+        refreshPollTimerRef.current = window.setTimeout(() => {
+          pollRefreshJobStatus(jobId, attempt + 1);
+        }, 2000);
+        return;
+      }
+      clearRefreshPollTimer();
+      setRefreshingSignal(false);
+      setRefreshMessage('Mất kết nối khi theo dõi tiến độ cập nhật.');
+    }
+  }, [clearRefreshPollTimer, fetchData, interval, loadDataset, period]);
+
+  const handleRefreshWhaleSignal = useCallback(async () => {
+    if (!symbol || refreshingSignal) return;
+    setRefreshingSignal(true);
+    setRefreshProgress(0);
+    setRefreshMessage('');
+
+    try {
+      const resp = await triggerWhaleServiceJob('USER_REFRESH', { symbol });
+      const jobId = resp?.data?.job?.id;
+      if (!jobId) {
+        setRefreshingSignal(false);
+        setRefreshMessage('Không nhận được job id từ hệ thống.');
+        return;
+      }
+      pollRefreshJobStatus(jobId);
+    } catch (err) {
+      const status = err?.response?.status;
+      const payload = err?.response?.data;
+      if (status === 409 && payload?.job?.id) {
+        setRefreshMessage(payload?.message || 'Đang có job cùng scope, tự động theo dõi tiến độ.');
+        pollRefreshJobStatus(payload.job.id);
+        return;
+      }
+      setRefreshingSignal(false);
+      setRefreshMessage(payload?.error || payload?.message || 'Không thể bắt đầu cập nhật Whale Buy/Sell.');
+    }
+  }, [pollRefreshJobStatus, refreshingSignal, symbol]);
 
   // ─── Render Charts ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -1326,6 +1423,7 @@ export default function DarkMoneyMasterChart({ symbol }) {
   // B3: Giá trị hiện tại của MA để hiển thị trong legend
   const ma20Last = data?.moving_averages?.ma20?.at?.(-1)?.value ?? null;
   const ma50Last = data?.moving_averages?.ma50?.at?.(-1)?.value ?? null;
+  const isSynthetic = !(data?.dark_flow_series?.length);
 
   // ─── Render ──────────────────────────────────────────────────────────────
   return (
@@ -1409,6 +1507,21 @@ export default function DarkMoneyMasterChart({ symbol }) {
               >
                 {showMa50 ? t('darkMoneyChart.hideMa50') : t('darkMoneyChart.showMa50')}
               </button>
+              <button
+                type="button"
+                onClick={handleRefreshWhaleSignal}
+                disabled={refreshingSignal || loading || !symbol}
+                className={`rounded-full border px-3 py-1.5 font-semibold transition-colors ${
+                  refreshingSignal
+                    ? 'cursor-not-allowed border-emerald-700/60 bg-emerald-950/40 text-emerald-200 opacity-80'
+                    : 'border-emerald-700/70 bg-emerald-950/30 text-emerald-200 hover:bg-emerald-900/40'
+                }`}
+              >
+                {refreshingSignal ? `Cập nhật ${refreshProgress}%` : 'Cập nhật Whale Buy/Sell'}
+              </button>
+              {refreshMessage ? (
+                <span className="text-[11px] text-slate-300">{refreshMessage}</span>
+              ) : null}
             </div>
           </div>
           <div className="flex items-center gap-3">

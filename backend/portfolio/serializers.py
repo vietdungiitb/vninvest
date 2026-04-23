@@ -66,6 +66,25 @@ class TransactionSerializer(serializers.ModelSerializer):
             )
         return attrs
 
+    def create(self, validated_data):
+        from .services_symbol_engagement import activate_symbol_engagement
+        from django.db import transaction as db_transaction
+
+        instance = super().create(validated_data)
+
+        # Trigger engagement warm-up (ensure transaction is committed)
+        # Note: instance.sub_account is set by the view before saving
+        user_id = getattr(instance.sub_account.portfolio, 'user_id', None)
+        if user_id and instance.symbol:
+            db_transaction.on_commit(
+                lambda: activate_symbol_engagement(
+                    user_id=user_id,
+                    symbol=instance.symbol,
+                    source='holding_add'
+                )
+            )
+        return instance
+
 
 
 

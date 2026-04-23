@@ -1,6 +1,7 @@
 import hashlib
 import json
 import uuid
+from datetime import timedelta
 from django.utils import timezone
 from django.db import transaction
 from django.conf import settings
@@ -11,8 +12,45 @@ from .models import WhaleServiceJob
 _REDIS_CLIENT = Redis.from_url(getattr(settings, "CELERY_BROKER_URL", "redis://localhost:6379/0"))
 _DEFAULT_LOCK_TTL = 300  # 5 minutes default
 _CREATE_GATE_TTL = 10
+_PENDING_STALE_SECONDS = 90
+_RUNNING_STALE_SECONDS = _DEFAULT_LOCK_TTL * 2
 
 class WhaleJobManager:
+    @staticmethod
+    def _mark_stale_active_jobs(lock_key):
+        """Close stale active jobs so idempotency does not get stuck forever."""
+        now = timezone.now()
+        pending_cutoff = now - timedelta(seconds=_PENDING_STALE_SECONDS)
+        running_cutoff = now - timedelta(seconds=_RUNNING_STALE_SECONDS)
+
+        candidates = (
+            WhaleServiceJob.objects.select_for_update()
+            .filter(
+                lock_key=lock_key,
+                status__in=[WhaleServiceJob.StatusChoices.PENDING, WhaleServiceJob.StatusChoices.RUNNING],
+            )
+            .order_by('-created_at')
+        )
+
+        for job in candidates:
+            stale_reason = None
+            if job.status == WhaleServiceJob.StatusChoices.PENDING:
+                if job.created_at and job.created_at <= pending_cutoff and not job.started_at:
+                    stale_reason = 'pending_timeout'
+            elif job.status == WhaleServiceJob.StatusChoices.RUNNING:
+                last_signal = job.heartbeat_at or job.started_at or job.updated_at
+                if last_signal and last_signal <= running_cutoff:
+                    stale_reason = 'running_heartbeat_timeout'
+
+            if stale_reason:
+                log_suffix = (
+                    f"[auto-recovery] Marked stale active job as FAILED: {stale_reason}"
+                )
+                job.status = WhaleServiceJob.StatusChoices.FAILED
+                job.finished_at = now
+                job.log = (job.log + "\n" + log_suffix).strip()
+                job.save(update_fields=['status', 'finished_at', 'log', 'updated_at'])
+
     @staticmethod
     def _release_token_lock(lock_key, token):
         """Release Redis lock only if token matches current owner."""
@@ -92,6 +130,9 @@ class WhaleJobManager:
         
         try:
             with transaction.atomic():
+                # Auto-recover stale active jobs on the same lock scope.
+                cls._mark_stale_active_jobs(lock_key)
+
                 # 1. Check for existing active job with same idempotency key
                 existing_job = WhaleServiceJob.objects.select_for_update().filter(
                     idempotency_key=idempotency_key,
