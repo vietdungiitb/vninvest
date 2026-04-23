@@ -445,10 +445,19 @@ class TrackedSymbol(models.Model):
     whale_alert_threshold_million = models.DecimalField(
         max_digits=10,
         decimal_places=2,
-        null=True,
-        blank=True,
+        default=Decimal('500.00'),
         validators=[MinValueValidator(Decimal('1'))],
         verbose_name='Ngưỡng whale riêng (triệu VNĐ)',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name='Bật theo dõi',
+        db_index=True,
+    )
+    is_stale = models.BooleanField(
+        default=False,
+        verbose_name='Dữ liệu cũ?',
+        help_text='Đánh dấu nếu thống kê cần được tính toán lại.',
     )
     added_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -1439,7 +1448,7 @@ class WhaleAdvisory(models.Model):
     ai_model          = models.CharField(max_length=100, blank=True, default='', verbose_name='AI model')
     prompt_tokens     = models.PositiveIntegerField(default=0, verbose_name='Prompt tokens dùng')
     completion_tokens = models.PositiveIntegerField(default=0, verbose_name='Completion tokens dùng')
-    created_at        = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Thời điểm tạo')
+    created_at        = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Thời điểm tạo')
     
     # PHASE 1 fields: Auto-generation & refresh tracking
     next_refresh_at   = models.DateTimeField(null=True, blank=True, db_index=True, verbose_name='Lần refresh tự động tiếp theo')
@@ -2493,3 +2502,79 @@ class CrawlAuditLog(models.Model):
 
     def __str__(self):
         return f"{self.event} at {self.timestamp}"
+
+
+# ---------------------------------------------------------------------------
+# Whale Service Orchestration
+# ---------------------------------------------------------------------------
+
+class WhaleServiceJob(models.Model):
+    class ServiceType(models.TextChoices):
+        BACKFILL = 'BACKFILL', 'Backfill historical data'
+        GLOBAL_RECOMPUTE = 'GLOBAL_RECOMPUTE', 'Recompute all signals'
+        USER_REFRESH = 'USER_REFRESH', 'User-triggered refresh'
+
+    class StatusChoices(models.TextChoices):
+        PENDING = 'PENDING', 'Đang chờ'
+        RUNNING = 'RUNNING', 'Đang chạy'
+        COMPLETED = 'COMPLETED', 'Hoàn thành'
+        FAILED = 'FAILED', 'Thất bại'
+        PARTIAL = 'PARTIAL', 'Hoàn thành một phần'
+        SKIPPED_DUPLICATE = 'SKIPPED_DUPLICATE', 'Bỏ qua (Trùng lặp)'
+
+    service_type = models.CharField(
+        max_length=20,
+        choices=ServiceType.choices,
+        verbose_name='Loại dịch vụ'
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.PENDING,
+        verbose_name='Trạng thái'
+    )
+    params = models.JSONField(default=dict, verbose_name='Tham số đầu vào')
+    idempotency_key = models.CharField(
+        max_length=128,
+        db_index=True,
+        verbose_name='Idempotency Key'
+    )
+    lock_key = models.CharField(
+        max_length=255,
+        db_index=True,
+        verbose_name='Lock Key'
+    )
+    progress_pct = models.FloatField(default=0.0, verbose_name='Tiến độ (%)')
+    total_items = models.PositiveIntegerField(default=0, verbose_name='Tổng số mục')
+    processed_items = models.PositiveIntegerField(default=0, verbose_name='Đã xử lý')
+    failed_items = models.PositiveIntegerField(default=0, verbose_name='Bị lỗi')
+    
+    log = models.TextField(blank=True, verbose_name='Nhật ký thực thi')
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='whale_service_jobs',
+        verbose_name='Người tạo'
+    )
+    
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name='Bắt đầu')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc')
+    heartbeat_at = models.DateTimeField(null=True, blank=True, verbose_name='Heartbeat cuối')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật cuối')
+
+    class Meta:
+        verbose_name = 'Whale Service Job'
+        verbose_name_plural = 'Whale Service Jobs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'service_type']),
+            models.Index(fields=['idempotency_key']),
+        ]
+
+    def __str__(self):
+        return f"{self.service_type} - {self.status} ({self.id})"

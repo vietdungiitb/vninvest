@@ -14,7 +14,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .market_data_service import market_data_service
-from .models import TickerSessionClose
+from .models import TickerSessionClose, DailyPrice
 from .permissions import IsProPlan
 
 
@@ -35,53 +35,68 @@ def _get_session_start_time(trade_date):
 
 def _get_reference_price(symbol: str, trade_date) -> Decimal:
     """
-    Get the reference price (prev_close_price) for a symbol on a given date.
-    Falls back to close_price if prev_close_price is not available.
-    
-    Returns: Decimal price or None if not found
+    Get the reference price for a symbol on a given date using 4-tier fallback:
+    1. TickerSessionClose.prev_close_price (LTE trade_date)
+    2. TickerSessionClose.close_price (LTE trade_date)
+    3. DailyPrice.close_price (LTE trade_date - 1 day) -> [D-1]
+    4. DailyPrice.close_price (LTE trade_date) -> [D]
     """
     try:
         normalized_symbol = str(symbol or '').strip().upper()
         if not normalized_symbol:
             return None
 
-        def _resolve_from_queryset(base_qs):
-            # Prefer the latest session not newer than requested trade_date.
-            session = base_qs.filter(session_date__lte=trade_date).order_by('-session_date', '-captured_at').first()
-            if session:
-                return session.prev_close_price or session.close_price
-            return None
+        # Tier 1 & 2: TickerSessionClose
+        session = TickerSessionClose.objects.filter(
+            symbol=normalized_symbol, 
+            session_date__lte=trade_date
+        ).order_by('-session_date', '-captured_at').first()
+        
+        if session:
+            if session.prev_close_price:
+                return session.prev_close_price
+            if session.close_price:
+                return session.close_price
 
-        ref_price = _resolve_from_queryset(
-            TickerSessionClose.objects.filter(symbol=normalized_symbol, market_code='VN_STOCK')
-        )
-        if ref_price:
-            return ref_price
+        # Tier 3: DailyPrice (D-1)
+        yesterday = trade_date - timedelta(days=1)
+        daily_prev = DailyPrice.objects.filter(
+            symbol=normalized_symbol, 
+            date__lte=yesterday
+        ).order_by('-date').first()
+        if daily_prev:
+            return daily_prev.close_price
 
-        # Fallback for unexpected market_code drift in stored snapshots.
-        ref_price = _resolve_from_queryset(TickerSessionClose.objects.filter(symbol=normalized_symbol))
-        if ref_price:
-            return ref_price
+        # Tier 4: DailyPrice (D)
+        daily_today = DailyPrice.objects.filter(
+            symbol=normalized_symbol, 
+            date__lte=trade_date
+        ).order_by('-date').first()
+        if daily_today:
+            return daily_today.close_price
+
     except Exception as e:
         print(f"[WhaleOrders] Error fetching reference price for {symbol}: {e}")
     
     return None
 
 
-def _calculate_bubbles(orders: list, ref_price: Decimal | None, session_start_time, whale_threshold_vnd: float) -> list:
+def _get_extreme_threshold(whale_threshold_vnd: float, avg_matched_value: float, total_orders_count: int) -> float:
+    """Calculate extreme threshold based on volume and average."""
+    resolved_threshold = float(whale_threshold_vnd or 0)
+    if total_orders_count >= 10:
+        return max(resolved_threshold, avg_matched_value * 10)
+    # Small sample fallback: use 2x threshold or fixed 1B if threshold is 0
+    return resolved_threshold * 2 if resolved_threshold > 0 else 1_000_000_000
+
+
+def _calculate_bubbles(orders: list, ref_price: Decimal | None, session_start_time, whale_threshold_vnd: float, avg_matched_value: float = 0, total_orders_count: int = 0) -> list:
     """
-    Convert IntradayTick orders to bubble chart coordinates.
-    
-    Args:
-        orders: List of IntradayTick objects
-        ref_price: Reference price for Y-axis centering
-        session_start_time: Market session start time (9:00 AM)
-    
-    Returns:
-        List of bubble data dicts with coordinates and metadata
+    Convert IntradayTick orders to bubble chart coordinates with extreme detection.
     """
     bubbles = []
     resolved_threshold_vnd = float(whale_threshold_vnd or 0)
+    extreme_threshold = _get_extreme_threshold(resolved_threshold_vnd, avg_matched_value, total_orders_count)
     
     for order in orders:
         try:
@@ -135,7 +150,8 @@ def _calculate_bubbles(orders: list, ref_price: Decimal | None, session_start_ti
                 'y_pct': y_pct,  # percentage delta
                 'size': size,
                 'side': side,
-                'is_large': resolved_threshold_vnd > 0 and matched_value >= resolved_threshold_vnd,
+                'is_large': matched_value >= resolved_threshold_vnd,
+                'is_extreme': matched_value >= extreme_threshold,
                 'event_score': order.get('event_score'),
                 'display_score': order.get('display_score'),
                 'severity': order.get('severity'),
@@ -255,12 +271,8 @@ def whale_orders_by_symbol_api(request, symbol: str):
     # Extract date from start_dt for reference price lookup
     trade_date = start_dt.date()
 
-    # Get reference price
+    # Get reference price (using 4-tier internal fallback)
     ref_price = _get_reference_price(symbol, trade_date)
-
-    if not ref_price:
-        # Try yesterday if today's reference is not found
-        ref_price = _get_reference_price(symbol, trade_date - timedelta(days=1))
 
     whale_payload = market_data_service.get_whale_feed(request.user, symbol)
     whale_threshold_vnd = float(whale_payload.get('threshold') or 0)
@@ -280,18 +292,22 @@ def whale_orders_by_symbol_api(request, symbol: str):
             filtered_orders.append(order)
 
     
+    # Pre-calculate averages for extreme threshold detection
+    total_raw_orders = len(filtered_orders)
+    avg_matched_value = sum(float(o.get('matched_value') or (float(o.get('price', 0)) * float(o.get('volume', 0)))) for o in filtered_orders) / total_raw_orders if total_raw_orders > 0 else 0
+    
     # Calculate bubbles with coordinates
     session_start = _get_session_start_time(trade_date)
-    bubbles = _calculate_bubbles(filtered_orders, ref_price, session_start, whale_threshold_vnd)
+    bubbles = _calculate_bubbles(filtered_orders, ref_price, session_start, whale_threshold_vnd, avg_matched_value, total_raw_orders)
     
     # Categorize by side
     categorized = _categorize_orders(filtered_orders)
     
     # Build categorized bubble response
     response_orders = {
-        'buy': _calculate_bubbles(categorized['buy'], ref_price, session_start, whale_threshold_vnd),
-        'sell': _calculate_bubbles(categorized['sell'], ref_price, session_start, whale_threshold_vnd),
-        'internal': _calculate_bubbles(categorized['internal'], ref_price, session_start, whale_threshold_vnd),
+        'buy': _calculate_bubbles(categorized['buy'], ref_price, session_start, whale_threshold_vnd, avg_matched_value, total_raw_orders),
+        'sell': _calculate_bubbles(categorized['sell'], ref_price, session_start, whale_threshold_vnd, avg_matched_value, total_raw_orders),
+        'internal': _calculate_bubbles(categorized['internal'], ref_price, session_start, whale_threshold_vnd, avg_matched_value, total_raw_orders),
     }
     
     session_end = _get_session_start_time(trade_date).replace(hour=MARKET_CLOSE_HOUR)
@@ -326,7 +342,19 @@ def whale_orders_by_symbol_api(request, symbol: str):
             'buy_orders': len(response_orders['buy']),
             'sell_orders': len(response_orders['sell']),
             'internal_orders': len(response_orders['internal']),
+            'raw_counts': {
+                'buy': len(response_orders['buy']),
+                'sell': len(response_orders['sell']),
+                'internal': len(response_orders['internal']),
+            },
             'buy_volume': sum(b['volume'] for b in response_orders['buy']),
             'sell_volume': sum(b['volume'] for b in response_orders['sell']),
+            'avg_matched_value': avg_matched_value,
+            'avg_volume': sum(b['volume'] for b in bubbles) / len(bubbles) if bubbles else 0,
+            'extreme_threshold_value': _get_extreme_threshold(whale_threshold_vnd, avg_matched_value, total_raw_orders),
+            'extreme_order_count': len([b for b in bubbles if b.get('is_extreme')]),
+            'threshold_warning': whale_threshold_vnd < 50_000_000, # Warn if threshold < 50M
+            'data_state': 'live' if (now - (datetime.fromisoformat(whale_payload.get('fetched_at').replace('Z', '+00:00')) if whale_payload.get('fetched_at') else now)).total_seconds() < 300 else 'stale',
+            'last_sync_seconds': (now - (datetime.fromisoformat(whale_payload.get('fetched_at').replace('Z', '+00:00')) if whale_payload.get('fetched_at') else now)).total_seconds(),
         },
     })

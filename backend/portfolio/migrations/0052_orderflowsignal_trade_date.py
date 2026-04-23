@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('portfolio', '0050_seed_crawl_jobs'),
+        ('portfolio', '0051_trackedsymbol_is_active_alter_crawlauditlog_id_and_more'),
     ]
 
     operations = [

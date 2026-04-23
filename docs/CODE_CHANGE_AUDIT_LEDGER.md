@@ -1,5 +1,237 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23al - Full-scope re-audit documentation normalization and release prep
+
+Muc tieu:
+- Audit toan bo goi Whale Service de phat hien diem chua nhat quan giua runtime va tai lieu.
+- Chuan hoa lai contract tai lieu theo implementation runtime hien tai.
+- Dong bo governance evidence truoc khi chot commit release len dev/main.
+
+Danh sach tep cap nhat:
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (MODIFIED - chuan hoa status codes 201/409 va endpoint jobs/{job_id})
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - chuan hoa item anti-race va endpoint status)
+- docs/DECISION_LOG_WHALE_SERVICE_20260423.md (MODIFIED - thay DB unique guard bang transactional DB guard/create-gate)
+- docs/IMPLEMENTATION_PLAN_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - chuan hoa endpoint jobs/{job_id})
+- docs/PLAN_WHALE_SERVICE_IMPLEMENTATION_20260423.md (MODIFIED - cap nhat anti-spam wording)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - cap nhat B4 theo create-gate strategy)
+- backend/migration_out.txt (DELETED - loai bo artifact log tam)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py check` -> no issues.
+- PASSED: `python manage.py test portfolio.tests.test_whale_service_orchestration -v 2` -> 6/6.
+- PASSED: Khong con mismatch contract chinh (trigger status codes, status endpoint path, anti-race wording) trong bo docs Whale Service.
+
+## Entry 2026-04-23ak - Whale Service re-audit hardening (concurrency, permission test fidelity, polling backoff, env sync)
+
+Muc tieu:
+- Dong fix loi Critical race/orphan trong orchestration sau khi bo DB unique lock.
+- Nang do tin cay test permission matrix (runtime behavior, khong monkeypatch).
+- Chuan hoa frontend polling theo exponential backoff.
+- Dong bo production env backend voi policy production de loai drift.
+- Re-audit lai theo toan bo danh muc tai lieu Whale Service execution pack.
+
+Danh sach tep cap nhat:
+- backend/portfolio/whale_service_manager.py (MODIFIED - them Redis create-gate + mark SKIPPED_DUPLICATE helper)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - close lifecycle khi lock conflict, tranh PENDING orphan)
+- backend/portfolio/views_whale_orchestration.py (MODIFIED - xu ly an toan khi concurrent gate chua co row)
+- backend/portfolio/tests/test_whale_service_orchestration.py (MODIFIED - bo monkeypatch permission, them runtime matrix + duplicate-skip test)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - polling exponential backoff)
+- backend/.env.production (MODIFIED - dong bo secret + SSL redirect voi policy production)
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (MODIFIED - cap nhat runtime contract re-audit)
+- docs/TECH_SPEC_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - cap nhat anti-race strategy)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - them ket qua re-audit)
+- docs/QA_TEST_MATRIX_WHALE_SERVICE_20260423.md (MODIFIED - them ket qua test da chay)
+- docs/RUNBOOK_WHALE_SERVICE_OPERATIONS_20260423.md (MODIFIED - bo sung lock conflict handling)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - them hotfix slice 2026-04-23ak)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_whale_service_orchestration -v 2` -> 6/6.
+- PASSED: Runtime permission matrix dung contract (free/pro/staff-free/admin).
+- PASSED: Concurrency probe 16 request song song -> 1 accepted, 15 in_progress; active_jobs=1.
+- PASSED: `python manage.py check` -> no issues.
+- PASSED: `docker compose --env-file .env.production -f docker-compose.prod.yml config` render thanh cong.
+
+## Entry 2026-04-23aj - Portainer first-time installation and recovery runbook
+
+Muc tieu:
+- Tao tai lieu duy nhat de cai dat/deploy lai tu dau tren Portainer khong can hoi lai.
+- Dong bo kinh nghiem runtime thuc te: APP_RELEASE image tagging, xu ly 502, xu ly migration history conflict 0051/0052.
+
+Danh sach tep cap nhat:
+- docs/PORTAINER_FRESH_INSTALL_RUNBOOK_20260423.md (NEW - runbook cai dat tu dau + incident playbook)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Runbook co quy trinh end-to-end tu chuan bi server -> build image -> update Portainer stack -> verify sau deploy.
+- PASSED: Runbook bo sung quy trinh xu ly su co 502 va migration mismatch da gap trong thuc te.
+- PASSED: Tat ca lenh duoc viet theo copy-paste format cho Linux server.
+
+## Entry 2026-04-23ai - Whale Service Production Hardening & Security Fixes
+
+Muc tieu:
+- Fix critical circular dependency va loi serializer runtime (CrawlAuditLogSerializer missing fields).
+- Refactor DB schema: go bo `unique=True` o `lock_key` de cho phep re-run jobs nhung van giu nguyen co che Redis lock concurrency.
+- Enforce Permission Matrix: Admin-only cho Backfill/Global, Pro-Plan cho User Refresh.
+- Standardize response codes: 201 (Accepted), 409 (Conflict/Duplicate), 403 (Forbidden).
+- Fix bao mat .env: Escape `$` trong `DJANGO_SECRET_KEY` va loai bo duplicate keys.
+
+Danh sach tep cap nhat:
+- backend/portfolio/serializers.py (MODIFIED - moved imports, fixed CrawlAuditLogSerializer)
+- backend/portfolio/models.py (MODIFIED - removed unique=True from lock_key)
+- backend/portfolio/tasks_whale_service.py (NEW - main orchestration task)
+- backend/portfolio/views_whale_orchestration.py (MODIFIED - Celery integration, hardened permissions)
+- backend/portfolio/views_whale_orders.py (MODIFIED - enhanced stats with raw_counts & data_state)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - updated refresh to USER_REFRESH, improved polling)
+- .env.production (MODIFIED - escaped secret key, removed duplicates)
+- backend/portfolio/tests/test_whale_service_orchestration.py (NEW - automated tests for new flow)
+
+Validation:
+- PASSED: `test_whale_service_orchestration.py` (3/3 tests: USER_REFRESH, ADMIN_ONLY, IDEMPOTENCY).
+- PASSED: Serializer error (circular import) resolved.
+- PASSED: Database migration applied successfully.
+
+---
+
+## Entry 2026-04-23ah - Portainer image tag strategy to prevent stale code reuse
+
+Muc tieu:
+- Loai bo rui ro stack van chay image cu khi chi doi `APP_RELEASE`.
+- Chuan hoa image reference theo mau `repo:tag` de rollout ban moi bang 1 bien release.
+
+Danh sach tep cap nhat:
+- portainer-stack-nginx-proxy.yml (MODIFIED - doi image backend/frontend/celery sang `${IMAGE_REPO}:${APP_RELEASE}`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Compose stack da tham chieu image theo `APP_RELEASE` thay vi hardcode tag `prod`.
+- PASSED: Co the bump release khong can sua lai image string tung service.
+ 
+## Entry 2026-04-23ag - Whale Service Phase 3-5: Compute Engine, Orchestration API & Frontend Integration
+ 
+Muc tieu:
+- Trien khai engine tinh toan lich su WhaleBackfillService & WhaleComputeEngine toi uu cho batch processing.
+- Orchestration API lop tren de dieu khien recompute/backfill jobs co quan ly trang thai va tien do.
+- Tich hop nut Lam moi (Manual Refresh 🔄) va hien thi tien do thoi gian thuc (0-100%) tren WhaleBubbleChart.
+- Dam bao quyen loi goi Pro-Plan duoc ap dung chat che cho cac tac vu tieu ton tai nguyen tinh toan.
+ 
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_compute.py (NEW - core engine tinh toan batch tin hieu ca map tu du lieu tho)
+- backend/portfolio/views_whale_orchestration.py (NEW - endpoints trigger/jobs/status cho whale service)
+- backend/portfolio/whale_service_manager.py (MODIFIED - ho tro tham so ngay bat dau/ket thuc linh hoat cho lock key)
+- backend/portfolio/models.py (MODIFIED - default created_at thanh timezone.now de cho phep backfill timestamp lich su)
+- backend/portfolio/serializers.py (MODIFIED - them WhaleServiceJobSerializer cho API transparency)
+- backend/portfolio/urls.py (MODIFIED - dang ky orchestration endpoints /whale-service/)
+- backend/portfolio/verify_phase3.py (NEW - automated verification cho compute engine)
+- backend/portfolio/verify_phase4.py (NEW - automated verification cho API orchestration va permissions)
+- frontend/src/api/client.js (MODIFIED - them API methods trigger/jobs/status)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tich hop nut Manual Refresh va progress polling loop)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+ 
+Validation:
+- PASSED: `WhaleBackfillService` thuc thi dung logic SSOT va luu tru ban ghi voi timestamp lich su chuan xac.
+- PASSED: API orchestration block dung Free users va cho phep Pro users trigger jobs voi concurrency guard (Redis lock).
+- PASSED: Frontend 🔄 nut hoat dong dung ky vong: trigger job -> poll status -> hien thi % -> refetch data khi xong.
+
+Muc tieu:
+- Trien khai co che anti-spam 5 lop: Rate-limit, Idempotency, Redis Lock, DB Guard, Queue Dedupe.
+- Chuyen giao viec quan ly lifecycle job cho WhaleJobManager.
+- Dam bao tinh toan ven khi chay concurrent jobs cung scope.
+
+Danh sach tep cap nhat:
+- backend/portfolio/whale_service_manager.py (NEW - service manager quan ly job creation, lock, heartbeat, progress, va completion)
+- backend/portfolio/verify_phase2.py (NEW - script verify idempotency va lock conflict)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23af)
+
+Validation:
+- PASSED: Idempotency check xac nhan khong tao trung job voi cung tham so (Duplicate state).
+- PASSED: Redis lock xac nhan chan cac jobs trung scope.
+- PASSED: Heartbeat LUA script xac nhan gia han lock dung task_id.
+- PASSED: Status transitions (PENDING -> RUNNING -> COMPLETED) hoat dong dung ky vong.
+
+## Entry 2026-04-23ae - Whale Service Phase 1: Data Model & Migration Hardening
+
+Muc tieu:
+- Loai bo tinh trang threshold null tren toan bo he thong de dam bao contract du lieu SSOT.
+- Trien khai model orchestration WhaleServiceJob de quan ly lifecycle background tasks.
+- Enforce snapshot threshold per symbol tai thoi diem theo doi (TrackedSymbol).
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - them is_stale vao TrackedSymbol; them model WhaleServiceJob; enforce null=False cho threshold)
+- backend/portfolio/migrations/0053_add_is_stale_and_whale_service_job.py (NEW - schema migration)
+- backend/portfolio/migrations/0054_fill_tracked_symbol_thresholds.py (NEW - data migration fill null values)
+- backend/portfolio/migrations/0055_enforce_null_false_on_threshold.py (NEW - schema migration enforce null=False)
+- backend/portfolio/verify_phase1.py (NEW - script verify data integrity sau migration)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ae)
+
+Validation:
+- PASSED: Migration 0053, 0054, 0055 applied thanh cong tren PostgreSQL.
+- PASSED: `verify_phase1.py` xac nhan 0 records threshold null (Total: 18 symbols).
+- PASSED: `WhaleServiceJob` model khoi tao thanh cong va accessible.
+- PASSED: `is_stale` field accessible tren `TrackedSymbol`.
+
+## Entry 2026-04-23ad - Add execution checklist for coding team
+
+Muc tieu:
+- Bo sung checklist thuc thi theo tung lane/phase de doi code co the trien khai truc tiep khong can hoi lai.
+- Chot bo kiem soat quality gate tu kickoff den deployment va handoff evidence.
+
+Danh sach tep cap nhat:
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (NEW - checklist implementation chi tiet cho backend/api/frontend/admin/qa/deploy)
+- docs/WHALE_SERVICE_EXECUTION_PACK_20260423.md (MODIFIED - them checklist vao bo tai lieu bat buoc va thu tu thuc thi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Checklist bao phu du 10 nhom cong viec tu freeze scope den handoff evidence.
+- PASSED: Checklist co item anti-spam/concurrency test cu the (20 requests/30s cung scope).
+- PASSED: Team co the thuc thi theo checklist ma khong can them clarification.
+
+## Entry 2026-04-23ac - Publish full Whale Service execution documentation pack
+
+Muc tieu:
+- Xay dung bo tai lieu implementation-ready day du de team code co the trien khai whale service ma khong can hoi lai.
+- Chot nghiep vu, contract ky thuat, taskboard, walkthrough, runbook, test matrix va decision log cho toan bo scope anti-spam + recompute/backfill.
+
+Danh sach tep cap nhat:
+- docs/WHALE_SERVICE_EXECUTION_PACK_20260423.md (NEW - index bo tai lieu va thu tu thuc thi)
+- docs/IMPLEMENTATION_PLAN_WHALE_SERVICE_EXECUTION_20260423.md (NEW - ke hoach trien khai theo pha va gate)
+- docs/TECH_SPEC_WHALE_SERVICE_EXECUTION_20260423.md (NEW - chi tiet schema, lock strategy, task contracts)
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (NEW - API trigger/status/list/stats contract)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (NEW - taskboard theo lane va dependency)
+- docs/WALKTHROUGH_WHALE_SERVICE_EXECUTION_20260423.md (NEW - thu tu coding-end-to-end)
+- docs/RUNBOOK_WHALE_SERVICE_OPERATIONS_20260423.md (NEW - huong dan van hanh va incident response)
+- docs/QA_TEST_MATRIX_WHALE_SERVICE_20260423.md (NEW - test matrix functional/concurrency/perf/regression)
+- docs/DECISION_LOG_WHALE_SERVICE_20260423.md (NEW - decision da khoa de tranh hoi lai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Bo tai lieu da bao phu du 8 nhom can thiet cho implementation (plan, spec, api, taskboard, walkthrough, runbook, qa, decision log).
+- PASSED: Anti-spam/co-che chong chay trung da duoc define ro theo 5 lop (rate-limit, idempotency, redis lock, db guard, queue dedupe).
+- PASSED: Co huong dan trien khai theo pha va gate de team code thuc thi khong can lam ro them yeu cau.
+
+## Entry 2026-04-23ab - Add CLI production runbook for GitHub-pulled server deploy
+
+Muc tieu:
+- Bo sung tai lieu van hanh production bang dong lenh cho server Linux pull code truc tiep tu GitHub, khong dung Portainer.
+- Chot mot quy trinh deploy duy nhat dua tren `main`, `deploy_prod.sh` va `docker-compose.prod.yml` de giam sai lech van hanh.
+
+Danh sach tep cap nhat:
+- docs/PRODUCTION_CLI_GITHUB_SERVER_RUNBOOK_20260423.md (NEW - runbook deploy production bang CLI cho server git-pull tu GitHub)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Noi dung runbook khop voi script `deploy_prod.sh` va compose file `docker-compose.prod.yml` hien tai.
+- PASSED: Quy trinh deploy nhan manh `git checkout main`, `git pull origin main`, `build --pull`, `up -d --force-recreate`.
+
 ## Entry 2026-04-23aa - Harden Portainer production redeploy against stale image reuse
 
 Muc tieu:

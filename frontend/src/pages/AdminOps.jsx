@@ -9,7 +9,7 @@
  *  - Shortcuts đồng bộ nhanh
  */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   getAdminOpsStats,
   getAdminPrefetchRuntimeSettings,
@@ -1232,6 +1232,23 @@ export default function AdminOps() {
           {syncBtn('prefetchwarmAsync', t('adminOps.triggerPrefetchAsync'), warmTickerPrefetch, 'async')}
           {syncBtn('prefetchwarmSync', t('adminOps.triggerPrefetchSync'), warmTickerPrefetch, 'sync')}
         </div>
+      </section>
+
+      {/* Trung tâm Điều khiển Dịch vụ Nền */}
+      <section>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dịch vụ nền</h2>
+        <Link
+          to="/admin-crawl-control"
+          className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 transition-colors"
+        >
+          <div>
+            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Trung tâm Điều khiển Dịch vụ Nền</p>
+            <p className="mt-0.5 text-xs text-blue-500 dark:text-blue-400">Quản lý, chạy thủ công và dừng các crawl job — xem lịch sử chạy theo thời gian thực</p>
+          </div>
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
       </section>
       </>) : null}
 

@@ -9,6 +9,11 @@ from .opencore_api import (
     DPILicenseViewSet, DPIUsageViewSet, DPIPremiumIndicatorsViewSet,
     DPIBillingViewSet
 )
+from .views_whale_orchestration import (
+    whale_service_trigger_api,
+    whale_service_jobs_list_api,
+    whale_service_job_status_api
+)
 
 
 def _toggle_trading_view(view_name: str):
@@ -110,4 +115,9 @@ urlpatterns += [
     # ── Whale Bubble Chart Orders API (Pro+) ─────────────────────────────────
     path('market-discovery-hub/', market_discovery_hub_api, name='market-discovery-hub'),
     path('whale/orders/<str:symbol>/', whale_orders_by_symbol_api, name='whale-orders-by-symbol'),
+
+    # ── Whale Service Orchestration (Phase 4) ────────────────────────────────
+    path('whale-service/trigger/', whale_service_trigger_api, name='whale-service-trigger'),
+    path('whale-service/jobs/', whale_service_jobs_list_api, name='whale-service-jobs-list'),
+    path('whale-service/jobs/<int:job_id>/', whale_service_job_status_api, name='whale-service-job-status'),
 ]

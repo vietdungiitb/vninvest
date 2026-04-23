@@ -1593,10 +1593,6 @@ def fetch_and_save_daily_prices(
             if data is None:
                 result['errors'] += 1
                 continue
-            
-            # Add price_unit metadata to track canonical unit
-            # This helps future migrations and debugging
-            data['price_unit'] = _SYSTEM_PRICE_UNIT  # THOUSAND_VND
 
             try:
                 with db_transaction.atomic():

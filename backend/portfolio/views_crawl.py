@@ -32,6 +32,20 @@ class CrawlJobViewSet(viewsets.ModelViewSet):
         job = self.get_object()
         if not job.is_active:
             return Response({'error': 'Job is inactive'}, status=400)
+
+        existing_run = CrawlRun.objects.filter(
+            job=job,
+            status__in=['queued', 'running'],
+        ).order_by('-created_at').first()
+        if existing_run:
+            return Response(
+                {
+                    'error': 'Job already has an active run',
+                    'run_id': existing_run.id,
+                    'status': existing_run.status,
+                },
+                status=409,
+            )
             
         run = CrawlRun.objects.create(
             job=job,
