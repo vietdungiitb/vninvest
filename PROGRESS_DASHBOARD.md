@@ -3,6 +3,17 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23bh)
+- portainer-stack-nginx-proxy.yml (MODIFIED - them required `DJANGO_SECRET_KEY`; them default cho `DJANGO_DEBUG`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_BASE_URL`, `OPEN_CORE_*` de tranh inject chuoi rong)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Compose stack da harden cho startup path, giam warning do bien moi truong thieu.
+- PASSED: Backend/Celery se fail-fast ro rang neu chua set `DJANGO_SECRET_KEY`.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23bg)
 - portainer-stack-nginx-proxy.yml (MODIFIED - `pull_policy` cua backend/celery_worker/celery_beat/frontend doi sang `always`)
 - scripts/ops/deploy_build_on_server.sh (NEW - script deploy qua SSH: build tai server, up stack, migrate, health-check)

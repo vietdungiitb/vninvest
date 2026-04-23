@@ -1,5 +1,20 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bh - Compose env hardening for production startup reliability
+
+Muc tieu:
+- Loai bo tinh trang inject bien moi truong rong vao backend/celery services gay warning compose va hanh vi runtime khong mong muon.
+- Bat buoc fail-fast khi thieu `DJANGO_SECRET_KEY` de tranh crash muon trong Django startup.
+
+Danh sach tep cap nhat:
+- portainer-stack-nginx-proxy.yml (MODIFIED - them default an toan cho `DJANGO_DEBUG`, `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS`, `FRONTEND_BASE_URL`, `OPEN_CORE_*`; them required check cho `DJANGO_SECRET_KEY`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Compose variable interpolation khong con phu thuoc vao blank defaults cho cac bien da warning.
+- PASSED: `DJANGO_SECRET_KEY` duoc enforce o compose layer bang required interpolation.
+
 ## Entry 2026-04-23bg - Production deploy hardening for SSH build-on-server flow
 
 Muc tieu:
