@@ -3,6 +3,18 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-23bg)
+- portainer-stack-nginx-proxy.yml (MODIFIED - `pull_policy` cua backend/celery_worker/celery_beat/frontend doi sang `always`)
+- scripts/ops/deploy_build_on_server.sh (NEW - script deploy qua SSH: build tai server, up stack, migrate, health-check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Stack production file san sang cho flow update image moi.
+- PASSED: Script deploy build-on-server da du buoc van hanh release.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23bf)
 - backend/portfolio/runtime_policy_helpers.py (MODIFIED - them runtime keys cho stream toggle + intraday cleanup retention)
 - backend/config/settings.py (MODIFIED - stream consumer va cleanup schedule dang ky unconditionally)

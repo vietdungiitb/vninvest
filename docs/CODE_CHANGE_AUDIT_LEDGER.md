@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-23bg - Production deploy hardening for SSH build-on-server flow
+
+Muc tieu:
+- Dam bao stack production qua nginx-proxy luon co kha nang cap nhat dung release image moi.
+- Bo sung script deploy 1-lenh de build image ngay tren server, up stack, migrate va verify health.
+
+Danh sach tep cap nhat:
+- portainer-stack-nginx-proxy.yml (MODIFIED - doi `pull_policy` sang `always` cho backend/celery_worker/celery_beat/frontend)
+- scripts/ops/deploy_build_on_server.sh (NEW - script build-tren-server + deploy + migrate + health check)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Stack file hop le sau thay doi `pull_policy`.
+- PASSED: Script deploy da duoc tao day du cac buoc pull code -> build -> up -> migrate -> health.
+
+
 ## Entry 2026-04-23bf - IntradayTick retention/runtime toggles + cleanup safety hardening
 
 Muc tieu:
