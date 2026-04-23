@@ -180,6 +180,8 @@ class IsProPlan(BasePermission):
     message = 'Tính năng này yêu cầu gói Chuyên nghiệp (Pro) trở lên.'
 
     def has_permission(self, request, view):
+        plan = _get_plan(request.user)
+        # print(f"DEBUG: User {request.user.username} plan: {plan}")
         return request.user.is_authenticated and has_plan(request.user, 'pro')
 
 

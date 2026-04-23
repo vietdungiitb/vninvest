@@ -16,8 +16,9 @@ const WHALE_BUBBLE_UPGRADE_ENABLED = true;
 import React, { useState, useEffect, useMemo } from 'react';
 import ReactECharts from 'echarts-for-react';
 import { useI18n } from '../context/LangContext';
-import { getWhaleOrdersBySymbol } from '../api/client';
+import { getWhaleOrdersBySymbol, triggerWhaleServiceJob, getWhaleServiceJobStatus } from '../api/client';
 import { useOrderBubbleCoordinates, formatVND, formatTimeFromMinutes } from '../hooks/useOrderBubbleCoordinates';
+import { useCallback } from 'react';
 
 const TIMEFRAME_OPTIONS = [
   { value: '5m', label: '5 phút' },
@@ -89,6 +90,8 @@ export default function WhaleBubbleChart({
   const [loading, setLoading] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [error, setError] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshProgress, setRefreshProgress] = useState(0);
 
   // Available symbols
   const availableSymbols = useMemo(() => {
@@ -112,33 +115,111 @@ export default function WhaleBubbleChart({
     }
   }, [availableSymbols, symbol]);
 
-  // Fetch whale orders when symbol or timeframe changes
-  useEffect(() => {
+  // Fetch whale orders function
+  const fetchOrders = useCallback(async () => {
     if (!symbol || !WHALE_BUBBLE_UPGRADE_ENABLED) return;
+    
+    setLoading(true);
+    setError(null);
 
-    const fetchOrders = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await getWhaleOrdersBySymbol(symbol, { timeframe });
-        const data = response?.data || {};
-        if (data.ok) {
-          setOrderData(data);
-        } else {
-          throw new Error(data.error || 'Unknown error');
-        }
-      } catch (err) {
-        console.error('[WhaleBubbleChart] Fetch error:', err);
-        const message = err?.response?.data?.error || err?.message || 'Unknown error';
-        setError(message);
-      } finally {
-        setLoading(false);
+    try {
+      const response = await getWhaleOrdersBySymbol(symbol, { timeframe });
+      const data = response?.data || {};
+      if (data.ok) {
+        setOrderData(data);
+      } else {
+        throw new Error(data.error || 'Unknown error');
       }
-    };
-
-    fetchOrders();
+    } catch (err) {
+      console.error('[WhaleBubbleChart] Fetch error:', err);
+      const message = err?.response?.data?.error || err?.message || 'Unknown error';
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   }, [symbol, timeframe]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // Refresh background job logic
+  const pollJobStatus = useCallback(async (jobId, attempt = 1) => {
+    try {
+      const resp = await getWhaleServiceJobStatus(jobId);
+      const job = resp.data;
+      
+      setRefreshProgress(job.progress_pct || 0);
+      
+      if (job.status?.toUpperCase() === 'COMPLETED' || job.status?.toUpperCase() === 'PARTIAL') {
+        setRefreshing(false);
+        fetchOrders();
+      } else if (job.status?.toUpperCase() === 'FAILED') {
+        setRefreshing(false);
+        setError(`Làm mới thất bại: ${job.log || 'Lỗi không xác định'}`);
+      } else {
+        // Polling with slight backoff, max 30 attempts (~1 min total)
+        if (attempt > 40) {
+          setRefreshing(false);
+          setError('Hết thời gian chờ (Timeout). Vui lòng kiểm tra lại sau.');
+          return;
+        }
+        const delay = Math.min(1000 * (2 ** Math.min(attempt - 1, 3)), 5000);
+        setTimeout(() => pollJobStatus(jobId, attempt + 1), delay);
+      }
+    } catch (err) {
+      console.error('[WhaleBubbleChart] Status poll error:', err);
+      // Don't immediately fail on a single network error, retry once
+      if (attempt < 3) {
+        setTimeout(() => pollJobStatus(jobId, attempt + 1), 2000);
+      } else {
+        setRefreshing(false);
+        setError('Mất kết nối khi theo dõi tiến độ.');
+      }
+    }
+  }, [fetchOrders]);
+
+  const handleRefreshClick = async () => {
+    if (!symbol || refreshing) return;
+    
+    setRefreshing(true);
+    setRefreshProgress(0);
+    setError(null);
+    
+    try {
+      // Use USER_REFRESH instead of BACKFILL for individual symbol refresh
+      const resp = await triggerWhaleServiceJob('USER_REFRESH', {
+        symbol: symbol
+      });
+      
+      const jobId = resp.data?.job?.id;
+      if (jobId) {
+        pollJobStatus(jobId);
+      } else {
+        setRefreshing(false);
+        // If 200 OK but no jobId, it might be a 409 Conflict handled as success? 
+        // Our new view returns 409, which should go to catch block.
+      }
+    } catch (err) {
+      console.error('[WhaleBubbleChart] Refresh trigger error:', err);
+      setRefreshing(false);
+      
+      const status = err?.response?.status;
+      const errorData = err?.response?.data;
+      
+      if (status === 409) {
+        setError('Tiến trình đang chạy. Vui lòng đợi trong giây lát.');
+        if (errorData?.job?.id) {
+          setRefreshing(true);
+          pollJobStatus(errorData.job.id);
+        }
+      } else if (status === 429) {
+        setError('Bạn đã gửi yêu cầu quá nhanh. Vui lòng thử lại sau vài phút.');
+      } else {
+        setError(errorData?.error || 'Không thể bắt đầu làm mới dữ liệu');
+      }
+    }
+  };
 
   // Convert order data to bubble coordinates
   const bubbles = useOrderBubbleCoordinates(
@@ -475,6 +556,23 @@ export default function WhaleBubbleChart({
               CP
             </button>
           </div>
+          <button 
+            onClick={handleRefreshClick}
+            disabled={refreshing || !symbol}
+            className={`ml-2 p-1.5 rounded border transition-all ${
+              refreshing 
+                ? 'bg-emerald-900/40 border-emerald-500/50 text-emerald-400 cursor-not-allowed px-2' 
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+            }`}
+            title="Làm mới dữ liệu từ nguồn dữ liệu thô (Recompute)"
+          >
+            {refreshing ? (
+              <span className="flex items-center gap-1 text-[10px] font-bold">
+                <div className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-400" />
+                {refreshProgress}%
+              </span>
+            ) : '🔄'}
+          </button>
           <button 
             onClick={handleExportCSV}
             className="ml-2 p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition-colors"

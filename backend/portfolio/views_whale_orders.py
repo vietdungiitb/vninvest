@@ -342,11 +342,19 @@ def whale_orders_by_symbol_api(request, symbol: str):
             'buy_orders': len(response_orders['buy']),
             'sell_orders': len(response_orders['sell']),
             'internal_orders': len(response_orders['internal']),
+            'raw_counts': {
+                'buy': len(response_orders['buy']),
+                'sell': len(response_orders['sell']),
+                'internal': len(response_orders['internal']),
+            },
             'buy_volume': sum(b['volume'] for b in response_orders['buy']),
             'sell_volume': sum(b['volume'] for b in response_orders['sell']),
             'avg_matched_value': avg_matched_value,
             'avg_volume': sum(b['volume'] for b in bubbles) / len(bubbles) if bubbles else 0,
             'extreme_threshold_value': _get_extreme_threshold(whale_threshold_vnd, avg_matched_value, total_raw_orders),
             'extreme_order_count': len([b for b in bubbles if b.get('is_extreme')]),
+            'threshold_warning': whale_threshold_vnd < 50_000_000, # Warn if threshold < 50M
+            'data_state': 'live' if (now - (datetime.fromisoformat(whale_payload.get('fetched_at').replace('Z', '+00:00')) if whale_payload.get('fetched_at') else now)).total_seconds() < 300 else 'stale',
+            'last_sync_seconds': (now - (datetime.fromisoformat(whale_payload.get('fetched_at').replace('Z', '+00:00')) if whale_payload.get('fetched_at') else now)).total_seconds(),
         },
     })

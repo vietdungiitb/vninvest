@@ -37,11 +37,8 @@ services:
     cpus: ${REDIS_CPUS:-1.0}
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: never
     container_name: vninvest-backend
     restart: unless-stopped
     environment:
@@ -109,11 +106,8 @@ services:
     cpus: ${BACKEND_CPUS:-1.5}
 
   celery_worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: never
     container_name: vninvest-celery-worker
     restart: unless-stopped
     environment:
@@ -179,11 +173,8 @@ services:
     cpus: ${CELERY_WORKER_CPUS:-2.0}
 
   celery_beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-      args:
-        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: ${BACKEND_IMAGE:-vninvest-backend}:${APP_RELEASE:-prod}
+    pull_policy: never
     container_name: vninvest-celery-beat
     restart: unless-stopped
     environment:
@@ -249,12 +240,8 @@ services:
     cpus: ${CELERY_BEAT_CPUS:-0.75}
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        REACT_APP_API_BASE_URL: /api
-        APP_RELEASE: ${APP_RELEASE:-main-local}
+    image: ${FRONTEND_IMAGE:-vninvest-frontend}:${APP_RELEASE:-prod}
+    pull_policy: never
     container_name: vninvest-frontend
     restart: unless-stopped
     depends_on:
@@ -282,6 +269,7 @@ volumes:
 
 networks:
   app_net:
+    name: vninvest_app_net
   proxy_net:
     external: true
-    name: ${PROXY_NETWORK:-nginx-proxy_default}
+    name: nginx-proxy_default

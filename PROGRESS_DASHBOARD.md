@@ -1,5 +1,163 @@
-**Date**: 2026-04-22  
-**Status**: Background Services Control Plane Kickoff Pack ✅
+**Date**: 2026-04-23  
+**Status**: Whale Service Phase 5 Complete ✅ (E2E Integration Finished)
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23al)
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (MODIFIED - runtime contract normalized: trigger status codes and status endpoint path)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - checklist wording aligned with transactional DB guard/create-gate)
+- docs/DECISION_LOG_WHALE_SERVICE_20260423.md (MODIFIED - anti-spam 5-layer wording aligned with runtime)
+- docs/IMPLEMENTATION_PLAN_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - status endpoint corrected to `/jobs/{job_id}/`)
+- docs/PLAN_WHALE_SERVICE_IMPLEMENTATION_20260423.md (MODIFIED - anti-spam strategy wording updated)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - orchestration item B4 updated)
+- backend/migration_out.txt (DELETED - temporary artifact removed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py check` clean.
+- PASSED: `python manage.py test portfolio.tests.test_whale_service_orchestration -v 2` passed 6/6.
+- PASSED: Core Whale Service docs no longer conflict on status endpoint and trigger status codes.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ak)
+- backend/portfolio/whale_service_manager.py (MODIFIED - Redis create-gate + duplicate skip lifecycle helper)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - lock conflict no longer leaves PENDING orphan jobs)
+- backend/portfolio/views_whale_orchestration.py (MODIFIED - safe 409 payload under concurrent create gate)
+- backend/portfolio/tests/test_whale_service_orchestration.py (MODIFIED - runtime permission matrix and duplicate-skip regression test)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - exponential polling backoff)
+- backend/.env.production (MODIFIED - synced production secret policy and SSL redirect)
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (MODIFIED - re-audit runtime contract)
+- docs/TECH_SPEC_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - updated anti-race architecture)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - re-audit completion section)
+- docs/QA_TEST_MATRIX_WHALE_SERVICE_20260423.md (MODIFIED - execution evidence)
+- docs/RUNBOOK_WHALE_SERVICE_OPERATIONS_20260423.md (MODIFIED - lock conflict incident flow)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (MODIFIED - hotfix slice tracking)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Orchestration test suite 6/6.
+- PASSED: Concurrency probe no duplicate active jobs for same scope.
+- PASSED: Django system checks clean.
+- PASSED: Production compose config renders successfully with synced env.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23aj)
+- docs/PORTAINER_FRESH_INSTALL_RUNBOOK_20260423.md (NEW - runbook cai dat/deploy lai tu dau tren Portainer + xu ly su co 502/migration)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Co 1 tai lieu duy nhat de trien khai lai he thong khong can hoi lai cac buoc.
+- PASSED: Da gom toan bo command copy-paste cho server Linux va checklist release moi.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ah)
+- portainer-stack-nginx-proxy.yml (MODIFIED - chuan hoa image tham chieu thanh `${IMAGE_REPO}:${APP_RELEASE}` de rollout release moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Stack co the cap nhat backend/frontend/celery bang 1 bien `APP_RELEASE`.
+- PASSED: Loai bo nguy co kẹt tag `prod` khi redeploy tren Portainer.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ag)
+- backend/portfolio/services_whale_compute.py (NEW - core backfill engine)
+- backend/portfolio/views_whale_orchestration.py (NEW - orchestration API layer)
+- backend/portfolio/whale_service_manager.py (MODIFIED - support flexible date params)
+- backend/portfolio/models.py (MODIFIED - default timezone for backfill persistence)
+- backend/portfolio/serializers.py (MODIFIED - added job serializer)
+- backend/portfolio/urls.py (MODIFIED - registered orchestration endpoints)
+- backend/portfolio/verify_phase3.py (NEW - engine verification script)
+- backend/portfolio/verify_phase4.py (NEW - api verification script)
+- frontend/src/api/client.js (MODIFIED - added service orchestration methods)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - integrated manual refresh + progress polling)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `WhaleBackfillService` correctly persists historical records with custom timestamps.
+- PASSED: `IsProPlan` permission gate successfully blocks unauthorized recompute triggers.
+- PASSED: Frontend `🔄` button correctly initiates background job and polls progress until DONE.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23af)
+- backend/portfolio/whale_service_manager.py (NEW - core orchestration service)
+- backend/portfolio/verify_phase2.py (NEW - orchestration verification script)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Idempotency generator produces stable keys for any param set.
+- PASSED: Redis lock prevents concurrent execution of same-scope jobs.
+- PASSED: DB Guard (lock_key unique) prevents race conditions during job creation.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ae)
+- backend/portfolio/models.py (MODIFIED - added `is_stale` to `TrackedSymbol`; created `WhaleServiceJob` model; enforced non-null thresholds)
+- backend/portfolio/migrations/0053_add_is_stale_and_whale_service_job.py (NEW - schema migration)
+- backend/portfolio/migrations/0054_fill_tracked_symbol_thresholds.py (NEW - data migration to fill nulls)
+- backend/portfolio/migrations/0055_enforce_null_false_on_threshold.py (NEW - schema migration to enforce null=False)
+- backend/portfolio/verify_phase1.py (NEW - automated verification script)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Zero null thresholds found in `TrackedSymbol` (18 records verified).
+- PASSED: `WhaleServiceJob` model successfully applied to PostgreSQL and accessible.
+- PASSED: Data migration logic prioritized `UserConfig` then system default (500M).
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ad)
+- docs/CHECKLIST_WHALE_SERVICE_EXECUTION_20260423.md (NEW - checklist implementation chi tiet cho team code)
+- docs/WHALE_SERVICE_EXECUTION_PACK_20260423.md (MODIFIED - bo sung checklist vao danh sach tai lieu bat buoc va thu tu thuc thi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Checklist da cover day du backend, API, frontend, admin UI, QA, deploy va handoff.
+- PASSED: Co checklist anti-spam chong chay nhieu services cung luc theo test scenario ro rang.
+- PASSED: Da dong bo governance voi audit ledger trung tam.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ac)
+- docs/WHALE_SERVICE_EXECUTION_PACK_20260423.md (NEW - index bo tai lieu va thu tu thuc thi cho team code)
+- docs/IMPLEMENTATION_PLAN_WHALE_SERVICE_EXECUTION_20260423.md (NEW - implementation plan theo phase/gate)
+- docs/TECH_SPEC_WHALE_SERVICE_EXECUTION_20260423.md (NEW - technical spec schema/lock/task contracts)
+- docs/API_CONTRACT_WHALE_SERVICE_20260423.md (NEW - API contract trigger/status/list/stats)
+- docs/TASKBOARD_WHALE_SERVICE_EXECUTION_20260423.md (NEW - taskboard theo lane va dependency)
+- docs/WALKTHROUGH_WHALE_SERVICE_EXECUTION_20260423.md (NEW - walkthrough coding sequence)
+- docs/RUNBOOK_WHALE_SERVICE_OPERATIONS_20260423.md (NEW - runbook van hanh + xu ly su co)
+- docs/QA_TEST_MATRIX_WHALE_SERVICE_20260423.md (NEW - qa matrix functional/concurrency/perf/regression)
+- docs/DECISION_LOG_WHALE_SERVICE_20260423.md (NEW - decision da khoa de implementation khong can hoi lai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Da tao day du bo tai lieu implementation-ready theo yeu cau "khong can hoi lai".
+- PASSED: Da bo sung co che anti-spam/chong chay trung service o muc implementation contract va test matrix.
+- PASSED: Da dong bo governance voi audit ledger trung tam va progress dashboard.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-23ab)
+- docs/PRODUCTION_CLI_GITHUB_SERVER_RUNBOOK_20260423.md (NEW - runbook deploy production bang CLI cho server Linux pull code truc tiep tu GitHub)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Runbook moi khop voi `deploy_prod.sh` va `docker-compose.prod.yml` hien tai.
+- PASSED: Huong dan deploy khong con phu thuoc Portainer, tap trung vao CLI server-side.
 
 ---
 
@@ -851,7 +1009,12 @@ Validation:
 
 **Status:**
 - Core implementation: ✅ COMPLETE
-- Parser + 3 new builders: ✅ COMPLETE  
+- [x] Phase 5: Production Readiness & Final Integration (100%)
+    - [x] Sửa lỗi Critical Serializer
+    - [x] Refactor Lock/Idempotency DB Schema
+    - [x] Triển khai Celery Orchestration Task
+    - [x] Hardening API Permissions & Response Codes
+    - [x] Update Frontend Polling & UX Refresh
 - Synthesis refactor: ✅ COMPLETE
 - View integration: ✅ COMPLETE
 - Regression tests: ✅ ALL 9 PASS
