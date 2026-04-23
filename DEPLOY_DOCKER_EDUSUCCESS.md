@@ -416,14 +416,14 @@ APP_RELEASE=2026.04.23-local1 ./scripts/ops/deploy_build_on_server.sh
 # cách 2
 cd /opt/vninvest
 git fetch origin
-git checkout dev
-git pull origin dev
+git checkout main
+git pull origin main
 
 # kiểm tra biến bắt buộc (đặc biệt DJANGO_SECRET_KEY)
 grep -E "^(DJANGO_SECRET_KEY|DOMAIN|POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=" .env
 
-# redeploy
-docker compose --env-file .env -f portainer-stack-nginx-proxy.yml up -d --remove-orphans
-
 # xem log backend nếu cần
 docker logs --tail 120 vninvest-backend
+
+cd /opt/vninvest
+APP_RELEASE=prod ./scripts/ops/deploy_build_on_server.sh
