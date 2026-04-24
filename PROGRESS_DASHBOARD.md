@@ -3,6 +3,21 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24bu)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them docked Information Panel, state hover va tat popup tooltip noi)
+- frontend/src/i18n/vi.js (MODIFIED - them copy panel thong tin Whale Analytics)
+- frontend/src/i18n/en.js (MODIFIED - them copy panel thong tin Whale Analytics locale Anh)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.1` hoan thanh va them ghi chu trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bu)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.ee21dfd4.js` ~743.94 kB gzip.
+- PASSED: Information Panel docked da thay popup tooltip noi lam be mat doc chinh, khong che chart va bind duoc hover bubble/line.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bt)
 - frontend/src/i18n/vi.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu va sua nhan ngan sang tieng Viet day du)
 - frontend/src/i18n/en.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu cho locale Anh)

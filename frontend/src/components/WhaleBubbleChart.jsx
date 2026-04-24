@@ -135,6 +135,90 @@ function getDegradedModeCopy(staleReason, t) {
   };
 }
 
+function formatPanelTimestamp(epochMs, fallbackLabel) {
+  if (Number.isFinite(epochMs)) {
+    return new Date(epochMs).toLocaleTimeString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
+  return fallbackLabel || '--';
+}
+
+function formatPanelSeriesValue(seriesName, value) {
+  const numericValue = Number(value ?? 0);
+  if (!Number.isFinite(numericValue)) return '--';
+
+  if (String(seriesName || '').includes('Giá') || String(seriesName || '').includes('price')) {
+    return `${numericValue.toLocaleString('vi-VN')} đ`;
+  }
+
+  if (String(seriesName || '').includes('Strength') || String(seriesName || '').includes('Sức mạnh')) {
+    return numericValue.toFixed(1);
+  }
+
+  return formatCompactSignedValue(numericValue);
+}
+
+function buildHoverPanelData(params, {
+  t,
+  buyStrengthByTimestamp,
+  institutionalStrengthByTimestamp,
+  priceByTimestamp,
+}) {
+  if (params?.componentType !== 'series') {
+    return null;
+  }
+
+  const timestampMs = getSeriesPointTimestampMs(params);
+  const timestampSec = Number.isFinite(timestampMs) ? Math.floor(timestampMs / 1000) : null;
+  const buyStrengthAtBucket = timestampSec == null ? null : buyStrengthByTimestamp.get(timestampSec);
+  const institutionalStrengthAtBucket = timestampSec == null ? null : institutionalStrengthByTimestamp.get(timestampSec);
+  const priceAtBucket = timestampSec == null ? null : priceByTimestamp.get(timestampSec);
+  const meta = params?.data?.metadata || null;
+
+  if (meta) {
+    const sideLabel = meta.side === 'BUY'
+      ? t('whaleChart.buyFlow', { defaultValue: 'Mua chủ động' })
+      : meta.side === 'SELL'
+        ? t('whaleChart.sellFlow', { defaultValue: 'Bán chủ động' })
+        : t('whaleChart.internal', { defaultValue: 'Giao dịch nội bộ' });
+
+    return {
+      kind: 'bubble',
+      title: sideLabel,
+      accentColor: meta.side === 'BUY' ? COLORS.buy : meta.side === 'SELL' ? COLORS.sell : COLORS.internal,
+      timestampLabel: meta.fullTimestamp || formatPanelTimestamp(timestampMs, meta.timestamp),
+      price: meta.price,
+      volume: meta.volume,
+      matchedValue: meta.matchedValue,
+      referencePrice: meta.referencePrice,
+      deltaValue: meta.y,
+      deltaPct: meta.yPct,
+      buyStrength: buyStrengthAtBucket,
+      institutionalStrength: institutionalStrengthAtBucket,
+      isLarge: meta.isLarge,
+      isExtreme: meta.isExtreme,
+      unitAdjusted: meta.unitAdjusted,
+      eventScore: meta.eventScore ?? meta.score ?? null,
+      whaleThreshold: meta.whaleThreshold ?? meta.threshold ?? null,
+    };
+  }
+
+  const pointValue = Array.isArray(params?.value) ? params.value[1] : params?.value;
+  return {
+    kind: 'line',
+    title: params?.seriesName || 'Whale Analytics',
+    accentColor: params?.color || '#cbd5e1',
+    timestampLabel: formatPanelTimestamp(timestampMs, null),
+    lineValue: formatPanelSeriesValue(params?.seriesName, pointValue),
+    priceAtBucket,
+    buyStrength: buyStrengthAtBucket,
+    institutionalStrength: institutionalStrengthAtBucket,
+  };
+}
+
 export default function WhaleBubbleChart({ 
   selectedSymbol, 
   holdings = [], 
@@ -175,6 +259,7 @@ export default function WhaleBubbleChart({
   const setTimeframe = isControlled ? onTimeframeChange : setInternalTimeframe;
 
   const [showUnit, setShowUnit] = useState('value'); // 'value' (VND) or 'volume' (Shares)
+  const [hoveredPanel, setHoveredPanel] = useState(null);
 
   // Available symbols
   const availableSymbols = useMemo(() => {
@@ -304,6 +389,10 @@ export default function WhaleBubbleChart({
     institutionalStrengthByTimestamp,
     priceByTimestamp,
   }), [t, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp]);
+
+  useEffect(() => {
+    setHoveredPanel(null);
+  }, [symbol, timeframe, orderData?.session_start, totalOrders]);
 
   // Build ECharts option
   const chartOption = useMemo(() => {
@@ -711,6 +800,7 @@ export default function WhaleBubbleChart({
       ],
       tooltip: {
         trigger: 'item',
+        showContent: false,
         axisPointer: {
           type: 'cross',
         },
@@ -756,7 +846,14 @@ export default function WhaleBubbleChart({
   // Handle sync events from chart to parent
   const onEvents = useMemo(() => ({
     mouseover: (params) => {
-      if (!onSyncHover || params?.componentType !== 'series') return;
+      if (params?.componentType !== 'series') return;
+      setHoveredPanel(buildHoverPanelData(params, {
+        t,
+        buyStrengthByTimestamp,
+        institutionalStrengthByTimestamp,
+        priceByTimestamp,
+      }));
+      if (!onSyncHover) return;
       const timestampMs = getSeriesPointTimestampMs(params);
       if (timestampMs != null) {
         const epochSec = Math.floor(timestampMs / 1000);
@@ -764,11 +861,12 @@ export default function WhaleBubbleChart({
       }
     },
     globalout: () => {
+      setHoveredPanel(null);
       if (onSyncHover) {
         onSyncHover(null);
       }
     },
-  }), [onSyncHover]);
+  }), [onSyncHover, t, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp]);
 
   // External sync effect (parent to chart)
   useEffect(() => {
@@ -935,26 +1033,104 @@ export default function WhaleBubbleChart({
                 <div className="mt-0.5 text-amber-100/80">{degradedModeCopy.description}</div>
               </div>
             )}
-            <div className="px-4 pt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-slate-500">
-              <div className="flex items-center gap-5">
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow', { defaultValue: 'Mua chủ động' })}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />{t('whaleChart.sellFlow', { defaultValue: 'Bán chủ động' })}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-cyan-400" />{t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lime-400" />{t('whaleAnalytics.buyStrengthShort', { defaultValue: 'Sức mạnh mua' })}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />{t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' })}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.priceLineShort', { defaultValue: 'Đường giá' })}</span>
+            <div className="flex flex-1 flex-col lg:flex-row lg:items-stretch">
+              <div className="min-w-0 flex-1">
+                <div className="px-4 pt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                  <div className="flex items-center gap-5">
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow', { defaultValue: 'Mua chủ động' })}</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />{t('whaleChart.sellFlow', { defaultValue: 'Bán chủ động' })}</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-cyan-400" />{t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })}</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lime-400" />{t('whaleAnalytics.buyStrengthShort', { defaultValue: 'Sức mạnh mua' })}</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />{t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' })}</span>
+                    <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.priceLineShort', { defaultValue: 'Đường giá' })}</span>
+                  </div>
+                  <span>{t('whaleAnalytics.combinedRealtime', { defaultValue: 'Đồng bộ thời gian thực' })}</span>
+                </div>
+                <div className="h-[520px]">
+                  <ReactEChartsCore 
+                    echarts={echarts}
+                    ref={echartsRef}
+                    option={chartOption} 
+                    onEvents={onEvents}
+                    style={{ width: '100%', height: '520px' }} 
+                    opts={{ renderer: 'canvas' }}
+                  />
+                </div>
               </div>
-              <span>{t('whaleAnalytics.combinedRealtime', { defaultValue: 'Đồng bộ thời gian thực' })}</span>
-            </div>
-            <div className="h-[520px]">
-              <ReactEChartsCore 
-                echarts={echarts}
-                ref={echartsRef}
-                option={chartOption} 
-                onEvents={onEvents}
-                style={{ width: '100%', height: '520px' }} 
-                opts={{ renderer: 'canvas' }}
-              />
+              <aside className="border-t border-slate-800 bg-slate-950/70 p-4 lg:w-[320px] lg:border-l lg:border-t-0">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">{t('whaleAnalytics.infoPanelTitle', { defaultValue: 'Bảng thông tin' })}</div>
+                    <div className="mt-1 text-sm font-semibold text-slate-100">{symbol || '--'} · {timeframe}</div>
+                  </div>
+                  <div className="rounded-full border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                    {hoveredPanel
+                      ? t('whaleAnalytics.infoPanelHoverActive', { defaultValue: 'Đang hover' })
+                      : t('whaleAnalytics.infoPanelSnapshot', { defaultValue: 'Tổng quan' })}
+                  </div>
+                </div>
+
+                {hoveredPanel ? (
+                  <div className="mt-4 space-y-4 text-xs text-slate-300">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: hoveredPanel.accentColor }} />
+                        <div className="text-sm font-semibold text-slate-100">{hoveredPanel.title}</div>
+                      </div>
+                      <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">{hoveredPanel.timestampLabel}</div>
+                    </div>
+
+                    {hoveredPanel.kind === 'bubble' ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.matchedPrice', { defaultValue: 'Giá khớp' })}</span><span className="font-semibold text-slate-100">{Number(hoveredPanel.price || 0).toLocaleString('vi-VN')} đ</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.matchedVolume', { defaultValue: 'Khối lượng' })}</span><span className="font-semibold text-slate-100">{Number(hoveredPanel.volume || 0).toLocaleString('vi-VN')}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.matchedValue', { defaultValue: 'Giá trị khớp' })}</span><span className="font-semibold text-emerald-300">{formatTooltipMoney(hoveredPanel.matchedValue)}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">Giá tham chiếu</span><span className="font-semibold text-slate-100">{hoveredPanel.referencePrice != null ? `${Number(hoveredPanel.referencePrice).toLocaleString('vi-VN')} đ` : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.deltaLabel', { defaultValue: 'Delta' })}</span><span className={`font-semibold ${Number(hoveredPanel.deltaValue || 0) >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{formatTooltipPriceDelta(hoveredPanel.deltaValue)} ({Number(hoveredPanel.deltaPct || 0).toFixed(2)}%)</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.whaleExtreme', { defaultValue: 'Whale / Extreme' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.isLarge ? 'Có' : 'Không'} / {hoveredPanel.isExtreme ? 'Có' : 'Không'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh mua cùng bucket</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh tổ chức</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
+                        {hoveredPanel.eventScore != null && (
+                          <div className="flex items-center justify-between"><span className="text-slate-500">Event score</span><span className="font-semibold text-slate-100">{Number(hoveredPanel.eventScore).toFixed(2)}</span></div>
+                        )}
+                        {hoveredPanel.whaleThreshold != null && (
+                          <div className="flex items-center justify-between"><span className="text-slate-500">Ngưỡng whale</span><span className="font-semibold text-slate-100">{formatTooltipMoney(hoveredPanel.whaleThreshold)}</span></div>
+                        )}
+                        {hoveredPanel.unitAdjusted && (
+                          <div className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-200">
+                            {t('whaleAnalytics.unitAdjustedHint', { defaultValue: 'Dữ liệu giá đã được chuẩn hóa đơn vị trước khi hiển thị trong panel.' })}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.lineValue', { defaultValue: 'Giá trị line' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.lineValue}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.bucketPrice', { defaultValue: 'Giá tại bucket' })}</span><span className="font-semibold text-slate-100">{hoveredPanel.priceAtBucket != null ? `${Number(hoveredPanel.priceAtBucket).toLocaleString('vi-VN')} đ` : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh mua cùng bucket</span><span className="font-semibold text-slate-100">{hoveredPanel.buyStrength != null ? Number(hoveredPanel.buyStrength).toFixed(1) : '--'}</span></div>
+                        <div className="flex items-center justify-between"><span className="text-slate-500">Sức mạnh tổ chức</span><span className="font-semibold text-slate-100">{hoveredPanel.institutionalStrength != null ? Number(hoveredPanel.institutionalStrength).toFixed(1) : '--'}</span></div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-4 text-xs text-slate-300">
+                    <div className="rounded border border-slate-800 bg-slate-900/70 px-3 py-3">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Trạng thái mặc định</div>
+                      <div className="mt-2 text-sm font-semibold text-slate-100">{t('whaleAnalytics.infoPanelDefaultTitle', { defaultValue: 'Rê chuột vào bubble hoặc line để xem chi tiết.' })}</div>
+                      <div className="mt-1 text-slate-400">{t('whaleAnalytics.infoPanelDefaultDescription', { defaultValue: 'Panel này là nguồn đọc chính, nằm ngoài vùng vẽ nên không che chart.' })}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between"><span className="text-slate-500">{t('whaleAnalytics.totalLargeOrders', { defaultValue: 'Tổng lệnh lớn' })}</span><span className="font-semibold text-slate-100">{orderData.summary?.total_orders || 0}</span></div>
+                      <div className="flex items-center justify-between"><span className="text-slate-500">Lệnh mua</span><span className="font-semibold text-emerald-300">{orderData.summary?.buy_orders || 0}</span></div>
+                      <div className="flex items-center justify-between"><span className="text-slate-500">Lệnh bán</span><span className="font-semibold text-rose-300">{orderData.summary?.sell_orders || 0}</span></div>
+                      <div className="flex items-center justify-between"><span className="text-slate-500">Giá tham chiếu</span><span className="font-semibold text-slate-100">{orderData?.ref_price != null ? `${Number(orderData.ref_price).toLocaleString('vi-VN')} đ` : '--'}</span></div>
+                      <div className="flex items-center justify-between"><span className="text-slate-500">Khung thời gian</span><span className="font-semibold text-slate-100">{timeframe}</span></div>
+                    </div>
+                    <div className="rounded border border-slate-800 bg-slate-900/70 px-3 py-3 text-slate-400">
+                      {t('whaleAnalytics.infoPanelHoverHint', { defaultValue: 'Hover bubble: panel ưu tiên field event-level. Hover line: panel ưu tiên field series-level tại đúng timestamp đang rê chuột.' })}
+                    </div>
+                  </div>
+                )}
+              </aside>
             </div>
           </div>
         )}

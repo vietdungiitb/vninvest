@@ -39,7 +39,7 @@ Lý do:
 
 ### FE-1.1 Tạo Information Panel docked
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Frontend Lead
@@ -53,6 +53,13 @@ Trạng thái: `[ ]`
 - Acceptance:
   - không còn popup che vùng dữ liệu chính
   - hover bubble và line đều cập nhật panel đúng timestamp
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm docked Information Panel cố định ở cạnh chart trong `WhaleBubbleChart.jsx`.
+- Hover bubble hiển thị field event-level; hover line hiển thị field series-level cùng timestamp.
+- Tooltip nổi đã bị tắt phần `showContent` để panel trở thành nguồn đọc chính và không che chart.
+- Frontend Docker build/restart đã PASS với bundle `main.ee21dfd4.js`.
 
 ### FE-1.2 Thêm filter ngưỡng lệnh minh bạch
 

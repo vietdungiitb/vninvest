@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bu - Implement FE-1.1 docked Information Panel for Whale Analytics chart
+
+Muc tieu:
+- Hoan thanh slice `FE-1.1` trong taskboard Whale Analytics V2 bang cach dua thong tin hover ra khoi popup tooltip noi va dat mot Information Panel docked co dinh ngoai vung chart.
+- Tao bang chung runtime de xac nhan panel bind dung timestamp cho bubble/line va popup khong con che du lieu chinh.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them state hover, map params -> panel model, render docked Information Panel va tat popup tooltip noi)
+- frontend/src/i18n/vi.js (MODIFIED - them copy cho Information Panel Whale Analytics)
+- frontend/src/i18n/en.js (MODIFIED - them copy cho Information Panel Whale Analytics locale Anh)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.1` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bu)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.ee21dfd4.js` ~743.94 kB gzip.
+- PASSED: Information Panel hien o ngoai plot area, hover bubble/line duoc route vao panel model va tooltip noi khong con render noi dung.
+- NOTE: slice nay giu nguyen API contract hien tai; chi doi be mat frontend va hover semantics.
+
 ## Entry 2026-04-24bt - Lock Whale Analytics chart i18n fallback to prevent raw key leakage
 
 Muc tieu:
