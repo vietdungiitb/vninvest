@@ -79,7 +79,7 @@ Trạng thái: `[ ]`
 
 ### FE-1.3 Khóa rule visual truthfulness
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Frontend + Reviewer
@@ -92,6 +92,13 @@ Trạng thái: `[ ]`
   - không hidden-by-density
 - Acceptance:
   - auditor xác nhận chart không làm sai cảm nhận mật độ giao dịch
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã hợp nhất bubble pane về một scatter series với dataset sort tăng dần theo kích thước bubble.
+- Bubble lớn được vẽ sau cùng nên luôn nổi trên bubble nhỏ mà không cần ẩn hay làm mờ lệnh nhỏ.
+- `opacity: 1` được giữ nguyên, không thêm hidden-by-density hoặc density taper.
+- Frontend Docker build/restart đã PASS với bundle `main.35527167.js`.
 
 ### FE-1.4 Direct label/endLabel cho line chính
 

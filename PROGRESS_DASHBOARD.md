@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24bv)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - hop nhat bubble pane thanh mot scatter series sort theo kich thuoc de bubble lon duoc ve sau cung)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.3` hoan thanh va them ghi chu trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bv)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.35527167.js` ~744.03 kB gzip.
+- PASSED: bubble layering hien da theo kich thuoc toan cuc, giu nguyen bubble nho hop le va khong lam sai cam nhan mat do giao dich.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bu)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them docked Information Panel, state hover va tat popup tooltip noi)
 - frontend/src/i18n/vi.js (MODIFIED - them copy panel thong tin Whale Analytics)

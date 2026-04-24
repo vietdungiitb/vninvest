@@ -58,16 +58,6 @@ const COLORS = {
   internal: '#64748b',
 };
 
-const SERIES_INDEX = {
-  buy: 0,
-  sell: 1,
-  internal: 2,
-  buyCvd: 5,
-  sellCvd: 6,
-  buyStrength: 7,
-  institutionalStrength: 8,
-};
-
 function formatTooltipMoney(value) {
   const numericValue = Number(value || 0);
   const absValue = Math.abs(numericValue);
@@ -414,6 +404,35 @@ export default function WhaleBubbleChart({
       maData.push([allBubbles[i].x, avg]);
     }
 
+    const layeredBubblePoints = [...allBubbles]
+      .sort((left, right) => {
+        const leftSize = Number(left?.value?.[2] ?? 0);
+        const rightSize = Number(right?.value?.[2] ?? 0);
+        if (leftSize === rightSize) {
+          return Number(left?.x ?? 0) - Number(right?.x ?? 0);
+        }
+        return leftSize - rightSize;
+      })
+      .map((bubble) => ({
+        value: [bubble.x * 1000, bubble[yDataKey], bubble.value[2]],
+        itemStyle: {
+          color: bubble.color,
+          borderColor: bubble.strokeColor,
+          borderWidth: bubble.side === 'INTERNAL' ? 1.1 : 1.2,
+          opacity: 1,
+        },
+        emphasis: {
+          itemStyle: {
+            color: bubble.hoverColor,
+            borderColor: bubble.strokeColor,
+            borderWidth: bubble.side === 'INTERNAL' ? 1.6 : 1.8,
+            shadowBlur: bubble.side === 'INTERNAL' ? 8 : 10,
+            shadowColor: bubble.hoverColor,
+          },
+        },
+        metadata: bubble,
+      }));
+
     // Prepare series data
     const series = [
       {
@@ -515,85 +534,8 @@ export default function WhaleBubbleChart({
     const bottomGrid = { left: 72, right: 64, top: '57%', bottom: 8 };
     const bubbleSeries = [
       {
-        name: t('whaleChart.buyFlow') || 'Mua chủ động',
-        data: bubbles.buy.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]],
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.2,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.8,
-              shadowBlur: 10,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
-        symbolSize: (val) => val[2],
-        itemStyle: { opacity: 1 },
-        emphasis: { scale: true, focus: 'self' },
-        tooltip: { show: true },
-        type: 'scatter',
-        animationDuration: 120,
-        animationDurationUpdate: 80,
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-      },
-      {
-        name: t('whaleChart.sellFlow') || 'Bán chủ động',
-        data: bubbles.sell.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]],
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.2,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.8,
-              shadowBlur: 10,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
-        symbolSize: (val) => val[2],
-        itemStyle: { opacity: 1 },
-        emphasis: { scale: true, focus: 'self' },
-        tooltip: { show: true },
-        type: 'scatter',
-        animationDuration: 120,
-        animationDurationUpdate: 80,
-        xAxisIndex: 0,
-        yAxisIndex: 0,
-      },
-      {
-        name: t('whaleChart.internal') || 'Giao dịch nội bộ',
-        data: bubbles.internal.map((b) => ({
-          value: [b.x * 1000, b[yDataKey], b.value[2]],
-          itemStyle: {
-            color: b.color,
-            borderColor: b.strokeColor,
-            borderWidth: 1.1,
-          },
-          emphasis: {
-            itemStyle: {
-              color: b.hoverColor,
-              borderColor: b.strokeColor,
-              borderWidth: 1.6,
-              shadowBlur: 8,
-              shadowColor: b.hoverColor,
-            },
-          },
-          metadata: b,
-        })),
+        name: t('whaleAnalytics.bubblePane', { defaultValue: 'Lệnh cá mập' }),
+        data: layeredBubblePoints,
         symbolSize: (val) => val[2],
         itemStyle: { opacity: 1 },
         emphasis: { scale: true, focus: 'self' },

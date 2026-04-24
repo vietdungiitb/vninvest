@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bv - Lock FE-1.3 visual truthfulness via global bubble layering
+
+Muc tieu:
+- Hoan thanh slice `FE-1.3` de dam bao bubble lon duoc render tren bubble nho ma khong sua semantics hien thi, khong an bot va khong giam opacity theo mat do.
+- Tao bang chung runtime cho quy tac "visual truthfulness" da duoc khoa o lop render bubble cua Whale Analytics.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - hop nhat bubble pane thanh mot scatter series sort theo kich thuoc, giu opacity day du va bo z-order phu thuoc side)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.3` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bv)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.35527167.js` ~744.03 kB gzip.
+- PASSED: bubble pane hien render theo z-order toan cuc dua tren kich thuoc, khong con phu thuoc vao thu tu 3 scatter series tach roi.
+- NOTE: slice nay chi khoa z-order/visual truthfulness; chua them filter threshold hay DataZoom.
+
 ## Entry 2026-04-24bu - Implement FE-1.1 docked Information Panel for Whale Analytics chart
 
 Muc tieu:
