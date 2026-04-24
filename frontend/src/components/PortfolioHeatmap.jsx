@@ -1,7 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+import * as echarts from 'echarts/core';
+import { SunburstChart, TreemapChart } from 'echarts/charts';
+import { CanvasRenderer } from 'echarts/renderers';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
+
+echarts.use([TreemapChart, SunburstChart, CanvasRenderer]);
 
 /**
  * PortfolioHeatmap
@@ -789,7 +794,8 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
       </div>
 
       <div ref={chartContainerRef} className="relative z-10 flex-1 min-h-0" style={{ minHeight: HEATMAP_MIN_HEIGHT }}>
-        <ReactECharts
+        <ReactEChartsCore
+          echarts={echarts}
           key={`${viewMode}-${sizeMetric}-${locale}`}
           ref={chartComponentRef}
           option={option}

@@ -235,13 +235,6 @@ export default function useUnifiedAlerts({
   }, [enableSnapshot, monitoredKey, pageSize]);
 
   useEffect(() => {
-    const resetStack = [null];
-    setCursorStack(resetStack);
-    setCurrentPageIndex(0);
-    fetchUnifiedPage(0, resetStack);
-  }, [sourceFilter, severityFilter, audienceFilter, pageSize]);
-
-  useEffect(() => {
     if (!enableSnapshot || !monitoredSymbols.length) {
       return undefined;
     }

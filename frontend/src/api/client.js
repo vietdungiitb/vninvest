@@ -286,6 +286,14 @@ export const getWhaleOrdersBySymbol = (symbol, { timeframe = 'session' } = {}) =
   apiClient.get(`/portfolio/whale/orders/${encodeURIComponent(symbol)}/`, {
     params: { timeframe },
   });
+export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate } = {}) =>
+  apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
+    params: {
+      timeframe,
+      compact,
+      ...(tradeDate ? { trade_date: tradeDate } : {}),
+    },
+  });
 export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor, signal } = {}) => {
   const params = new URLSearchParams();
   if (Array.isArray(symbols) && symbols.length > 0) {

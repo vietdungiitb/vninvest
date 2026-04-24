@@ -172,12 +172,41 @@ docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f 
 docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml exec -T backend python manage.py migrate --noinput
 ```
 
-Hoac dung script co san:
+### 7.1 Huong dan sau cung cho server dang deploy bang local build
+
+Day la flow uu tien sau cung cho server `vninvest.edusuccess.vn` khi gap ca 2 van de sau:
+- `git pull` bi chan vi working tree tren server dang ban (`scripts/ops/deploy_build_on_server.sh` bi sua tay, `compose.local-build.override.yml` dang la untracked file)
+- `docker compose up` bi `pull access denied` do stack production dang de `pull_policy: always`
+
+Chay dung thu tu nay:
 
 ```bash
 cd /opt/vninvest
-APP_RELEASE=prod ./scripts/ops/deploy_build_on_server.sh
+git checkout main
+git restore scripts/ops/deploy_build_on_server.sh
+rm -f compose.local-build.override.yml
+git pull origin main
+
+docker build -t vninvest-backend:prod ./backend
+docker build -t vninvest-frontend:prod ./frontend
+
+docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml up -d --remove-orphans
+docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml exec -T backend python manage.py migrate --noinput
+docker compose --env-file .env.production -f portainer-stack-nginx-proxy.yml -f compose.local-build.override.yml ps
 ```
+
+Neu ban MUON GIU cac chinh sua local tren server truoc khi pull, thay 3 dong `git restore` / `rm` / `git pull` bang:
+
+```bash
+git checkout main
+git stash push -u -m "server-local-before-main-pull"
+git pull origin main
+```
+
+Luu y:
+- `compose.local-build.override.yml` se duoc lay tu repo sau khi `git pull origin main` thanh cong.
+- File `scripts/ops/deploy_build_on_server.sh` phai khop version tren repo truoc khi dung lai; neu server co sua tay, uu tien flow thu cong o tren.
+- Sau khi stack len, kiem tra them `docker logs --tail 100 vninvest-backend` neu can debug startup.
 
 ## 8) Portainer + HTTPS (Recommended)
 
@@ -408,6 +437,25 @@ token test: [REDACTED - rotate immediately]
 - Trang thai hien tai: local stack da truy cap duoc admin login.
 - Session tam dung tai day de tiep tuc test chuc nang theo UI.
 
+### 10.7 Deploy bằng script 
+cd /opt/vninvest
+git pull origin main
+chmod +x scripts/ops/deploy_build_on_server.sh
+APP_RELEASE=2026.04.23-local1 ./scripts/ops/deploy_build_on_server.sh
+# cách 2
+cd /opt/vninvest
+git fetch origin
+git checkout main
+git pull origin main
+
+# kiểm tra biến bắt buộc (đặc biệt DJANGO_SECRET_KEY)
+grep -E "^(DJANGO_SECRET_KEY|DOMAIN|POSTGRES_DB|POSTGRES_USER|POSTGRES_PASSWORD)=" .env
+
+# xem log backend nếu cần
+docker logs --tail 120 vninvest-backend
+
+cd /opt/vninvest
+APP_RELEASE=prod ./scripts/ops/deploy_build_on_server.sh
 ### 10.7 Deploy bằng script 
 cd /opt/vninvest
 git pull origin main

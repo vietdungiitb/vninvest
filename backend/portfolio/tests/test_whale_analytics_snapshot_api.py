@@ -1,0 +1,495 @@
+from datetime import date, datetime, time
+from zoneinfo import ZoneInfo
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase
+from django.core.cache import cache
+from rest_framework.test import APIRequestFactory, force_authenticate
+
+from portfolio.models import DailyPrice, IntradayTick, UserConfig
+from portfolio.views_whale_analytics import whale_analytics_snapshot_api, _build_snapshot_cache_key
+
+
+VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
+
+
+class WhaleAnalyticsSnapshotApiTestCase(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = APIRequestFactory()
+        self.user = get_user_model().objects.create_user(
+            username='whale-snapshot-user',
+            email='whale-snapshot@example.com',
+            password='test-pass-123',
+        )
+        UserConfig.objects.create(user=self.user, plan=UserConfig.PlanChoices.PRO)
+        self.trade_date = date.today()
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=self.trade_date,
+            trade_time=time(9, 5),
+            price=25.1,
+            volume=100_000,
+            side='BUY',
+        )
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=self.trade_date,
+            trade_time=time(9, 10),
+            price=25.3,
+            volume=80_000,
+            side='SELL',
+        )
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    @patch('portfolio.views_whale_analytics.timezone.localtime')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
+    def test_snapshot_endpoint_returns_contract_and_headers(
+        self,
+        mock_current_vn_now,
+        mock_localtime,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        live_now = datetime.combine(self.trade_date, time(9, 20), tzinfo=VN_TZ)
+        mock_current_vn_now.return_value = live_now
+        mock_localtime.return_value = live_now
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [
+                {
+                    'ts': f'{self.trade_date.isoformat()}T09:05:00+07:00',
+                    'side': 'BUY',
+                    'price': 25.1,
+                    'volume': 100_000,
+                    'matched_value': 2_510_000_000,
+                    'display_score': 88,
+                }
+            ],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=15m&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['symbol'], 'HPG')
+        self.assertEqual(response.data['timeframe'], '15m')
+        self.assertIn('session', response.data)
+        self.assertIn('meta', response.data)
+        self.assertIn('price_series', response.data)
+        self.assertIn('bubble_series', response.data)
+        self.assertIn('flow_series', response.data)
+        self.assertIn('ETag', response)
+        self.assertIn('Last-Modified', response)
+        self.assertIn('Cache-Control', response)
+        self.assertEqual(response['Cache-Control'], 'private, max-age=5, stale-while-revalidate=25')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    @patch('portfolio.views_whale_analytics.timezone.localtime')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
+    def test_snapshot_endpoint_uses_same_day_snapshot_cache_policy_after_market_close(
+        self,
+        mock_current_vn_now,
+        mock_localtime,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        off_hours_now = datetime.combine(self.trade_date, time(15, 10), tzinfo=VN_TZ)
+        mock_current_vn_now.return_value = off_hours_now
+        mock_localtime.return_value = off_hours_now
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T15:00:00+07:00',
+            'whale_orders': [],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['meta']['data_state'], 'snapshot')
+        self.assertEqual(response.data['session']['resolved_from'], 'latest_completed_session')
+        self.assertEqual(response['Cache-Control'], 'private, max-age=60, stale-while-revalidate=300')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_supports_conditional_etag(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [],
+        }
+
+        first_request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=15m&compact=1')
+        force_authenticate(first_request, user=self.user)
+        first_response = whale_analytics_snapshot_api(first_request, 'HPG')
+        etag = first_response['ETag']
+
+        second_request = self.factory.get(
+            '/api/portfolio/whale/analytics/HPG/?timeframe=15m&compact=1',
+            HTTP_IF_NONE_MATCH=etag,
+        )
+        force_authenticate(second_request, user=self.user)
+        second_response = whale_analytics_snapshot_api(second_request, 'HPG')
+
+        self.assertEqual(second_response.status_code, 304)
+        self.assertEqual(second_response['ETag'], etag)
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        friday_trade_date = date(2026, 4, 17)
+        sunday_trade_date = date(2026, 4, 19)
+        IntradayTick.objects.create(
+            symbol='SSI',
+            trade_date=friday_trade_date,
+            trade_time=time(9, 15),
+            price=24.8,
+            volume=120_000,
+            side='BUY',
+        )
+        mock_resolve_reference_price.return_value = 24.5
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{friday_trade_date.isoformat()}T09:20:00+07:00',
+            'whale_orders': [
+                {
+                    'ts': f'{friday_trade_date.isoformat()}T09:15:00+07:00',
+                    'side': 'BUY',
+                    'price': 24.8,
+                    'volume': 120_000,
+                    'matched_value': 2_976_000_000,
+                    'display_score': 90,
+                }
+            ],
+        }
+
+        request = self.factory.get(
+            f'/api/portfolio/whale/analytics/SSI/?timeframe=session&compact=1&trade_date={sunday_trade_date.isoformat()}'
+        )
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'SSI')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['trade_date'], friday_trade_date.isoformat())
+        self.assertEqual(response.data['session']['resolved_from'], 'latest_completed_session')
+        self.assertEqual(response.data['bubble_series'][0]['bucket_ts'][:10], friday_trade_date.isoformat())
+        self.assertEqual(response['Cache-Control'], 'private, max-age=900, stale-while-revalidate=3600')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_falls_back_to_latest_daily_price_session_for_holiday_data_gap(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        friday_trade_date = date(2026, 4, 17)
+        holiday_trade_date = date(2026, 4, 20)
+        DailyPrice.objects.create(
+            symbol='ACB',
+            date=friday_trade_date,
+            close_price=26.4,
+            volume=2_000_000,
+        )
+        mock_resolve_reference_price.return_value = 26.4
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{friday_trade_date.isoformat()}T15:00:00+07:00',
+            'whale_orders': [],
+        }
+
+        request = self.factory.get(
+            f'/api/portfolio/whale/analytics/ACB/?timeframe=session&compact=1&trade_date={holiday_trade_date.isoformat()}'
+        )
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'ACB')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['trade_date'], friday_trade_date.isoformat())
+        self.assertEqual(response.data['session']['resolved_from'], 'latest_completed_session')
+        self.assertTrue(response.data['meta']['degraded_mode'])
+        self.assertEqual(response.data['meta']['stale_reason'], 'missing_intraday_ticks')
+        self.assertEqual(response['Cache-Control'], 'private, max-age=900, stale-while-revalidate=3600')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_sets_degraded_metadata_when_reference_price_missing(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_resolve_reference_price.return_value = None
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['meta']['degraded_mode'])
+        self.assertEqual(response.data['meta']['stale_reason'], 'missing_reference_price')
+        self.assertEqual(response.data['meta']['data_state'], 'live' if response.data['session']['resolved_from'] == 'live_session' else 'snapshot')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_sets_degraded_metadata_when_intraday_ticks_missing(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/VNM/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'VNM')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data['meta']['degraded_mode'])
+        self.assertEqual(response.data['meta']['stale_reason'], 'missing_intraday_ticks')
+        self.assertEqual(response.data['price_series'], [])
+        self.assertEqual(response.data['flow_series']['cvd'], [])
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_reuses_cached_payload_for_identical_request(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [],
+        }
+
+        first_request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=15m&compact=1')
+        force_authenticate(first_request, user=self.user)
+        first_response = whale_analytics_snapshot_api(first_request, 'HPG')
+
+        second_request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=15m&compact=1')
+        force_authenticate(second_request, user=self.user)
+        second_response = whale_analytics_snapshot_api(second_request, 'HPG')
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 200)
+        self.assertEqual(first_response.data['symbol'], second_response.data['symbol'])
+        self.assertEqual(mock_get_whale_feed.call_count, 1)
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
+    def test_snapshot_endpoint_maps_auction_events_to_bucket_start(
+        self,
+        mock_current_vn_now,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_current_vn_now.return_value = datetime.combine(self.trade_date, time(15, 0), tzinfo=VN_TZ)
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T14:59:00+07:00',
+            'whale_orders': [
+                {
+                    'ts': f'{self.trade_date.isoformat()}T09:00:05+07:00',
+                    'side': 'BUY',
+                    'price': 25.0,
+                    'volume': 100_000,
+                    'matched_value': 2_500_000_000,
+                },
+                {
+                    'ts': f'{self.trade_date.isoformat()}T14:59:45+07:00',
+                    'side': 'SELL',
+                    'price': 24.9,
+                    'volume': 150_000,
+                    'matched_value': 3_735_000_000,
+                },
+            ],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['session']['auction_policy']['ato'], 'bucket_start')
+        self.assertEqual(response.data['session']['auction_policy']['atc'], 'bucket_start')
+        self.assertEqual(response.data['bubble_series'][0]['bucket_ts'][11:16], '09:00')
+        self.assertEqual(response.data['bubble_series'][1]['bucket_ts'][11:16], '14:45')
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
+    def test_snapshot_endpoint_keeps_all_threshold_ticks_even_if_whale_feed_only_contains_top_subset(
+        self,
+        mock_current_vn_now,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        mock_current_vn_now.return_value = datetime.combine(self.trade_date, time(9, 20), tzinfo=VN_TZ)
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:20:00+07:00',
+            'whale_orders': [
+                {
+                    'ts': f'{self.trade_date.isoformat()}T09:05:00+07:00',
+                    'side': 'BUY',
+                    'price': 25.1,
+                    'volume': 100_000,
+                    'matched_value': 2_510_000_000,
+                    'display_score': 88,
+                }
+            ],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.data['bubble_series']), 2)
+        self.assertEqual(response.data['bubble_series'][0]['ts'][11:16], '09:05')
+        self.assertEqual(response.data['bubble_series'][1]['ts'][11:16], '09:10')
+        self.assertEqual(response.data['summary']['whale_order_count'], 2)
+
+    @patch('portfolio.views_whale_analytics.time.sleep', return_value=None)
+    @patch('portfolio.views_whale_analytics.cache.delete')
+    @patch('portfolio.views_whale_analytics.cache.set')
+    @patch('portfolio.views_whale_analytics.cache.add')
+    @patch('portfolio.views_whale_analytics.cache.get')
+    @patch('portfolio.views_whale_analytics.build_whale_analytics_snapshot')
+    def test_snapshot_endpoint_reuses_payload_published_by_another_request_while_lock_held(
+        self,
+        mock_build_snapshot,
+        mock_cache_get,
+        mock_cache_add,
+        mock_cache_set,
+        mock_cache_delete,
+        _mock_sleep,
+    ):
+        cached_payload = {
+            'symbol': 'HPG',
+            'trade_date': self.trade_date.isoformat(),
+            'timeframe': 'session',
+            'session': {'resolved_from': 'latest_completed_session'},
+            'meta': {
+                'generated_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+                'cache_age_ms': 0,
+                'data_state': 'snapshot',
+            },
+            'price_series': [],
+            'bubble_series': [],
+            'flow_series': {'cvd': [], 'buy_strength': [], 'institutional_strength': []},
+            'summary': {},
+        }
+        mock_cache_add.return_value = False
+        mock_cache_get.side_effect = [None, None, cached_payload]
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['symbol'], 'HPG')
+        mock_build_snapshot.assert_not_called()
+        mock_cache_set.assert_not_called()
+        mock_cache_delete.assert_not_called()
+
+    @patch('portfolio.views_whale_analytics.time.sleep', return_value=None)
+    @patch('portfolio.views_whale_analytics.cache.delete')
+    @patch('portfolio.views_whale_analytics.cache.set')
+    @patch('portfolio.views_whale_analytics.cache.add')
+    @patch('portfolio.views_whale_analytics.cache.get')
+    @patch('portfolio.views_whale_analytics.build_whale_analytics_snapshot')
+    def test_snapshot_endpoint_falls_back_to_local_build_when_lock_wait_expires(
+        self,
+        mock_build_snapshot,
+        mock_cache_get,
+        mock_cache_add,
+        mock_cache_set,
+        mock_cache_delete,
+        _mock_sleep,
+    ):
+        built_payload = {
+            'symbol': 'HPG',
+            'trade_date': self.trade_date.isoformat(),
+            'timeframe': 'session',
+            'session': {'resolved_from': 'latest_completed_session'},
+            'meta': {
+                'generated_at': f'{self.trade_date.isoformat()}T09:20:00+07:00',
+                'cache_age_ms': 0,
+                'data_state': 'snapshot',
+            },
+            'price_series': [],
+            'bubble_series': [],
+            'flow_series': {'cvd': [], 'buy_strength': [], 'institutional_strength': []},
+            'summary': {},
+        }
+        mock_cache_add.return_value = False
+        mock_cache_get.side_effect = [None, None, None, None, None]
+        mock_build_snapshot.return_value = built_payload
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        expected_cache_key = _build_snapshot_cache_key(
+            user=self.user,
+            symbol='HPG',
+            timeframe='session',
+            compact=True,
+            trade_date=None,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['symbol'], 'HPG')
+        mock_build_snapshot.assert_called_once()
+        mock_cache_set.assert_called_once_with(expected_cache_key, built_payload, timeout=60)
+        mock_cache_delete.assert_not_called()

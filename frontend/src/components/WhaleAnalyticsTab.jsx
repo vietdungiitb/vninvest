@@ -57,6 +57,12 @@ export default function WhaleAnalyticsTab({
 
   const smfi = data?.flow?.smfi ?? null;
   const strength = data?.flow?.dark_flow?.strength ?? 0;
+  const isStale = Boolean(data?.meta?.is_stale);
+  const isDegraded = Boolean(data?.meta?.degraded_mode);
+  const staleReason = data?.meta?.stale_reason || null;
+  const degradedBadgeLabel = staleReason === 'missing_intraday_ticks'
+    ? (t('whaleAnalytics.degradedMissingIntraday') || 'Thiếu tick intraday')
+    : (t('whaleAnalytics.degradedMode') || 'Thiếu dữ liệu tham chiếu');
 
   return (
     <div className="flex flex-col h-full bg-slate-950/20 overflow-hidden">
@@ -111,7 +117,7 @@ export default function WhaleAnalyticsTab({
              <div className="flex items-center gap-3">
                <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden border border-slate-700 shadow-inner">
                  <div 
-                   className="h-full bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 transition-all duration-1000 ease-out" 
+                   className="h-full bg-gradient-to-r from-sky-500 via-cyan-400 to-blue-500 transition-all duration-1000 ease-out" 
                    style={{ width: `${strength}%` }}
                  />
                </div>
@@ -148,9 +154,19 @@ export default function WhaleAnalyticsTab({
           {/* Summary Footer / Info */}
           <div className="flex justify-between items-center px-2 py-2">
              <p className="text-[10px] text-slate-500 italic max-w-md">
-               {t('whaleAnalytics.disclaimer') || '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket 1 phút. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.'}
+               {t('whaleAnalytics.disclaimer') || '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket thời gian tương ứng với timeframe đang chọn. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.'}
              </p>
              <div className="flex gap-2">
+                {isStale && (
+                  <span className="px-2 py-1 rounded bg-amber-950/30 border border-amber-800/50 text-[9px] text-amber-300 font-bold uppercase">
+                    {t('whaleAnalytics.staleData') || 'Dữ liệu chậm'}
+                  </span>
+                )}
+                {isDegraded && (
+                  <span className="px-2 py-1 rounded bg-rose-950/30 border border-rose-800/50 text-[9px] text-rose-300 font-bold uppercase">
+                    {degradedBadgeLabel}
+                  </span>
+                )}
                 <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
                   {t('whaleAnalytics.ssotVerified') || 'Xác thực SSOT'}
                 </span>

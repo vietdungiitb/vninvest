@@ -140,6 +140,9 @@ function PrefetchHealthBadge({ snapshot, t }) {
   if (!snapshot || !snapshot.meta_present) {
     return <Pill>{t('adminOps.noMeta')}</Pill>;
   }
+  if (snapshot.warning) {
+    return <Pill tone="amber">{t('adminOps.warning')}</Pill>;
+  }
   if (snapshot.healthy) {
     return <Pill tone="green">{t('adminOps.healthy')}</Pill>;
   }
@@ -1236,7 +1239,7 @@ export default function AdminOps() {
             <div className="grid gap-3 sm:grid-cols-3">
               <MiniMetric label={t('adminOps.freshness')} value={prefetch.freshness_seconds != null ? `${fmtNumber(prefetch.freshness_seconds)}s` : '—'} />
               <MiniMetric label={t('adminOps.cacheHits')} value={`${fmtNumber(prefetch.sample_cache_hits || 0)}/${fmtNumber(prefetch.sample_cache_total || 0)}`} />
-              <MiniMetric label={t('adminOps.prefetchStatus')} value={prefetch.prefetch?.status || '—'} hint={prefetch.prefetch?.retry_after_seconds ? t('adminOps.retryIn', { value: fmtNumber(prefetch.prefetch.retry_after_seconds) }) : (prefetch.prefetch?.reason || '—')} />
+              <MiniMetric label={t('adminOps.prefetchStatus')} value={prefetch.prefetch?.status || '—'} hint={prefetch.prefetch?.retry_after_seconds ? t('adminOps.retryIn', { value: fmtNumber(prefetch.prefetch.retry_after_seconds) }) : (prefetch.warning ? t('adminOps.sampleCacheMissWarning') : (prefetch.prefetch?.reason || '—'))} />
             </div>
             <div className="rounded-xl border border-gray-100 p-4 dark:border-gray-700">
               <div className="flex flex-wrap items-center justify-between gap-3">

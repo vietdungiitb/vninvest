@@ -1,8 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { Suspense, lazy, useMemo } from 'react';
 import { useI18n } from '../../context/LangContext';
-import AllocationPieChart from '../AllocationPieChart';
 import ModernPortfolioDigest from './ModernPortfolioDigest';
-import EquityVsBenchmarkChart from '../EquityVsBenchmarkChart';
+
+const AllocationPieChart = lazy(() => import('../AllocationPieChart'));
+const EquityVsBenchmarkChart = lazy(() => import('../EquityVsBenchmarkChart'));
+
+function SidebarChartFallback({ minHeightClass = 'min-h-[260px]' }) {
+  return (
+    <div className={`rounded-xl border border-slate-800/50 bg-slate-900/40 ${minHeightClass} flex items-center justify-center text-xs font-medium text-slate-500`}>
+      Đang tải biểu đồ phụ...
+    </div>
+  );
+}
 
 export default function ModernSidebar({ portfolioId, alerts, breadth, analytics, digest, loading, portfolioSymbols = [] }) {
   const { t } = useI18n();
@@ -60,14 +69,18 @@ export default function ModernSidebar({ portfolioId, alerts, breadth, analytics,
         </div>
       </div>
 
-      <div className="shrink-0">
-        <EquityVsBenchmarkChart portfolioId={portfolioId} />
-      </div>
+      <Suspense fallback={<SidebarChartFallback minHeightClass="min-h-[320px]" />}>
+        <div className="shrink-0">
+          <EquityVsBenchmarkChart portfolioId={portfolioId} />
+        </div>
+      </Suspense>
 
       {/* Allocation Module */}
-      <div className="shrink-0">
-        <AllocationPieChart portfolioId={portfolioId} />
-      </div>
+      <Suspense fallback={<SidebarChartFallback minHeightClass="min-h-[300px]" />}>
+        <div className="shrink-0">
+          <AllocationPieChart portfolioId={portfolioId} />
+        </div>
+      </Suspense>
 
 
       {/* Live Alerts Stream */}

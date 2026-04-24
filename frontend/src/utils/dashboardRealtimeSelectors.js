@@ -8,6 +8,21 @@ function toFiniteNumber(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function resolveLiveChangePct({ quoteChangePct, livePrice, prevPrice }) {
+  const normalizedQuoteChangePct = toFiniteNumber(quoteChangePct);
+  if (normalizedQuoteChangePct !== null) {
+    return normalizedQuoteChangePct;
+  }
+
+  const normalizedLivePrice = toFiniteNumber(livePrice);
+  const normalizedPrevPrice = toFiniteNumber(prevPrice);
+  if (normalizedLivePrice === null || normalizedPrevPrice === null || normalizedPrevPrice <= 0) {
+    return null;
+  }
+
+  return ((normalizedLivePrice - normalizedPrevPrice) / normalizedPrevPrice) * 100;
+}
+
 // REMOVED: normalizeLivePriceUnit() function
 // REASON: Backend now guarantees all prices in canonical THOUSAND_VND
 // No heuristic unit detection needed on frontend anymore
@@ -26,6 +41,11 @@ export function buildLiveHoldingsOverlay(holdings, quotesBySymbol) {
     const liveMarketValue = hasLivePrice ? livePrice * quantity : snapshotMarketValue;
     const liveUnrealizedPL = liveMarketValue - costBasis;
     const liveUnrealizedPLPct = costBasis > 0 ? (liveUnrealizedPL / costBasis) * 100 : 0;
+    const liveChangePct = resolveLiveChangePct({
+      quoteChangePct: quote.change_pct,
+      livePrice,
+      prevPrice: quote.prev_price ?? holding.prev_close,
+    });
 
     return {
       ...holding,
@@ -33,6 +53,7 @@ export function buildLiveHoldingsOverlay(holdings, quotesBySymbol) {
       live_market_value: liveMarketValue,
       live_unrealized_pl: liveUnrealizedPL,
       live_unrealized_pl_pct: liveUnrealizedPLPct,
+      live_change_pct: liveChangePct,
       live_is_stale: Boolean(quote.stale),
       live_freshness_seconds: quote.freshness_seconds,
     };

@@ -1,5 +1,751 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24br - Rebaseline Whale Analytics V2 documentation pack for implementation and audit accuracy
+
+Muc tieu:
+- Cap nhat bo tai lieu Whale Analytics V2 tu muc "spec rong/ke hoach tong quat" thanh bo tai lieu co the giao viec truc tiep cho doi code va doi audit ma khong can hoi lai.
+- Khoa lai cac nguyen tac moi da duoc chot: visual truthfulness, khong opacity taper/hidden-by-density mac dinh, giu du bubble tren nguong, va tach ro 3 giai doan Giao dien -> Du lieu -> Phan tich chuyen sau.
+- Bo sung traceability matrix de audit bam sat yeu cau goc va thuc te code.
+
+Danh sach tep cap nhat:
+- docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md (MODIFIED - rebaseline ke hoach theo 3 giai doan va them rule trung thuc thi giac)
+- docs/WHALE_ANALYTICS_V2_FRONTEND_IMPLEMENTATION_SPEC_20260424.md (MODIFIED - them spec chi tiet cho Information Panel, filter, direct labels, va visual truthfulness)
+- docs/WHALE_ANALYTICS_V2_BACKEND_IMPLEMENTATION_SPEC_20260424.md (MODIFIED - them phase contract cho session_levels, speed, percentile va rule khong suppress bubble)
+- docs/WHALE_ANALYTICS_V2_API_CONTRACT_AND_DATA_SHAPE_20260424.md (MODIFIED - chot data shape theo tung phase va them `session_levels`, `speed`, percentile fields)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - chuyen taskboard sang trang thai ke hoach thuc thi thuc te, bo danh dau hoan thanh gia)
+- docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md (MODIFIED - khoa quyet dinh khong hoi lai va thu tu uu tien tai lieu)
+- docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md (MODIFIED - them audit gates va fail conditions bam sat yeu cau UX)
+- docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md (NEW - ma tran truy vet requirement -> task -> audit evidence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24br)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: da doi chieu bo doc hien co de hop nhat thanh mot pack tai lieu thuc thi va audit nhat quan cho Whale Analytics V2.
+- PASSED: taskboard da duoc dua ve trang thai ke hoach thuc te, tranh sai lech audit do danh dau hoan thanh truoc khi co code.
+- NOTE: day la slice tai lieu/gov doc, khong bao gom code implementation frontend/backend va khong chay test runtime moi.
+
+## Entry 2026-04-24bq - Fix ModernDashboard black screen caused by TDZ in ModularPositionDeck
+
+Muc tieu:
+- Sua loi runtime `ReferenceError: Cannot access 'P' before initialization` tren bundle production sau cac slice toi uu gan day.
+- Khoi phuc kha nang load trang `/dashboard` bang cach dam bao state `showOptimization` duoc khoi tao truoc khi cac derive values su dung no.
+
+Danh sach tep cap nhat:
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - dua `showOptimization` state len truoc `needsHealthStats` de loai bo TDZ/runtime crash)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle ~741.37 kB gzip.
+- PASSED: root cause duoc xac dinh cu the: `needsHealthStats = isAITab || showOptimization` da tham chieu `showOptimization` truoc dong `useState`, gay TDZ sau minify va dan den man hinh den tren `/dashboard`.
+- NOTE: day la runtime hotfix cho regression moi phat sinh; khong thay doi semantics cua dashboard ngoai viec loai bo crash.
+
+## Entry 2026-04-24bp - Load portfolio news digest only when AI surfaces actually need it
+
+Muc tieu:
+- Loai bo request `getPortfolioNewsDigest()` khoi luong auxiliary load mac dinh cua `ModernDashboard`, vi luot vao dashboard thong thuong chua can tab tin tuc/tom tat AI.
+- Chi fetch digest khi user mo `AI News` trong `AIAdvisorAlertPanel` hoac chuyen sang tab `AI` trong `ModularPositionDeck`.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo fetch digest mac dinh, them `requestPortfolioDigest()` co in-flight/stale guard va truyen callback xuong child surfaces)
+- frontend/src/components/modern/AIAdvisorAlertPanel.jsx (MODIFIED - goi `onRequestDigest` khi user mo tab `AI News`)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - goi `onRequestDigest` khi tab `AI` duoc kich hoat)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bp)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle ~741.38 kB gzip. Chi phi bundle tang nhe do them callback/guard, nhung request digest khong con nam trong luong load mac dinh cua dashboard.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`, `frontend/src/components/modern/AIAdvisorAlertPanel.jsx`, `frontend/src/components/modern/ModularPositionDeck.jsx`.
+- NOTE: `digest` van duoc reset theo portfolio va chi nap lai on-demand, tranh duplicate requests nhờ `digestFetchInFlightRef`.
+
+## Entry 2026-04-24bo - Split ModernDashboard core load from deferred auxiliary fetches
+
+Muc tieu:
+- Rut ngan thoi gian vao khung lam viec chinh cua `ModernDashboard` bang cach khong de `summary/holdings/tracked/watchlist` phai cho `analytics/digest/technicals` trong cung mot `Promise.allSettled`.
+- Giu hanh vi hien tai nhung doi luong du lieu phu sang fetch tre hon sau first paint/idle, dong thoi chan stale response khi user doi portfolio nhanh.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - tach core fetch va deferred auxiliary fetch, them request token + cleanup timer/idle callback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bo)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle ~741.28 kB gzip. Chi phi bundle tang nhe do them guard/scheduler, nhung doi lai main workspace co the render voi core data truoc khi auxiliary surfaces xong.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
+- NOTE: `analytics`, `digest`, `technicals` hien duoc reset va nap lai theo luot phu, nen sidebar/tab AI co the hien fallback ngan trong luc main workspace da san sang.
+
+## Entry 2026-04-24bn - Scope ModularPositionDeck derived data to the active tab only
+
+Muc tieu:
+- Giam runtime churn trong `ModularPositionDeck` khi quotes/realtime state thay doi bang cach bo cac derive arrays khong con duoc su dung va chi tinh dataset cho tab dang mo.
+- Tranh viec dashboard phai filter/paginate overview, technical, AI monitor cung luc, du UI chi render mot tab tai mot thoi diem.
+
+Danh sach tep cap nhat:
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - bo cac derive arrays khong dung va gate `filteredOverviewRows`, `filteredTechnicals`, `paged*`, `aiMonitorSummary`, `healthStats` theo `activeTab`/`showOptimization`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bn)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle ~741.01 kB gzip, xac nhan slice nay nham giam runtime compute theo tab thay vi giam bundle-size.
+- PASSED: editor diagnostics clean tren `frontend/src/components/modern/ModularPositionDeck.jsx`.
+- NOTE: `filteredHoldings`, `pagedHoldings`, `filteredWhaleAlerts`, `pagedWhaleAlerts` da duoc loai bo vi khong con duoc su dung trong render path hien tai.
+
+## Entry 2026-04-24bm - Reduce AIAdvisor hot-path computation in ModernDashboard sidebar
+
+Muc tieu:
+- Toi uu hot path cua `AIAdvisorAlertPanel` khi realtime data thay doi, tranh viec hook AI recommendation lap lai object spread va filter alerts theo tung symbol.
+- Khong tinh recommendation khi panel dang o tab `AI News` hoac da thu gon, vi luc do user khong can ket qua `AI Alerts`.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - chuyen sang one-pass symbol maps + alert counts, them `enabled` gate de bo qua compute khi khong can)
+- frontend/src/components/modern/AIAdvisorAlertPanel.jsx (MODIFIED - chi bat recommendation khi panel mo va dang o tab `AI Alerts`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle ~740.99 kB gzip, xac nhan slice nay khong nham muc tieu cat bundle ma nham giam compute/runtime churn.
+- PASSED: editor diagnostics clean tren `frontend/src/hooks/useAIAdvisor.js` va `frontend/src/components/modern/AIAdvisorAlertPanel.jsx`.
+- NOTE: benefit chinh cua slice nay la giam chi phi tinh toan moi khi `alerts`/`technicals` thay doi, dac biet tren dashboard dang mo tab `AI News` hoac panel dang collapse.
+
+## Entry 2026-04-24bl - Defer ModernSidebar chart modules for progressive sidebar rendering
+
+Muc tieu:
+- Toi uu tiep ben trong sidebar da duoc lazy-load truoc do, thay vi mount eager ngay hai chart phu co fetch rieng (`EquityVsBenchmarkChart`, `AllocationPieChart`).
+- Giam kich thuoc chunk cua sidebar shell va cho phep cot phai render tien dan theo muc uu tien runtime.
+
+Danh sach tep cap nhat:
+- frontend/src/components/modern/ModernSidebar.jsx (MODIFIED - lazy-load `EquityVsBenchmarkChart` va `AllocationPieChart` bang `React.lazy` + `Suspense` fallback cuc bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` giu ~740.97 kB gzip, trong khi chunk sidebar shell giam tu ~4.2 kB xuong ~1.77 kB gzip va chart modules duoc tach them thanh async chunks rieng.
+- PASSED: editor diagnostics clean tren `frontend/src/components/modern/ModernSidebar.jsx`.
+- NOTE: slice nay nham cai thien progressive rendering va tach fetch cua chart phu khoi luc sidebar shell vua duoc mount, uu tien runtime responsiveness hon la cat `main` bundle them.
+
+## Entry 2026-04-24bk - Defer ModernDashboard secondary sidebar panels with local lazy loading
+
+Muc tieu:
+- Tiep tuc toi uu frontend sau khi rollback route-level lazy loading, nhung chi o muc component noi bo de tranh lap lai su co treo loading toan cuc.
+- Dua cac panel phu o cot phai cua `ModernDashboard` ra khoi eager dashboard path, giam parse/render ban dau cho khong gian lam viec chinh.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - lazy-load `AIAdvisorAlertPanel` va `ModernSidebar` bang `React.lazy` + `Suspense` fallback cuc bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bk)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; `main` bundle giam tu ~745.57 kB xuong ~740.97 kB gzip (`-4.6 kB`) va tao them async chunks cho sidebar panels phu.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
+- NOTE: slice nay giu nguyen main workspace path (header + heatmap + unified alerts + position deck) trong eager render, chi deferred cac panel phu o cot phai de giam initial dashboard work ma khong can lazy-load route/page entry.
+
+## Entry 2026-04-24bj - Restore real prefetch scheduler runtime after Celery beat/worker were found offline
+
+Muc tieu:
+- Xac dinh nguyen nhan that su cua `Prefetch health` van `DEGRADED` du policy health da duoc sua: khong phai do UI hay `0/12` nua, ma do scheduler prefetch shard khong chay trong stack dev.
+- Khoi phuc runtime bang cach dua `celery_worker` va `celery_beat` len lai de `ticker:prefetch:meta` duoc publish lien tuc.
+
+Danh sach tep cap nhat:
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: runtime cache inspection truoc khi fix cho thay `ticker:prefetch:meta.trigger=startup_warmup`, `generated_at=2026-04-24T03:44:44+00:00`, toan bo metric `scheduler_runs_total`, `scheduler_enqueued_total`, ... deu `null`, va `ticker:{sample_symbol}` deu `null`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d celery_worker celery_beat` => ca `vninvest-dev-celery-worker` va `vninvest-dev-celery-beat` da start.
+- PASSED: runtime cache inspection sau khi fix cho thay `ticker:prefetch:meta.reason=scheduler_tick`, `generated_at=2026-04-24T03:58:07+00:00`, `policy.effective_interval_seconds=3`, `scheduler_runs_total=8`, `scheduler_enqueued_total=32`, va sample `ticker:CII`, `ticker:FPT`, ... da co payload tu prefetch.
+- NOTE: day la van de van hanh stack dev, khong phai bug logic moi trong code path health sau khi da sua false degraded o slice truoc.
+
+## Entry 2026-04-24bi - Surface prefetch warning state in admin/runtime UI instead of binary healthy/degraded
+
+Muc tieu:
+- Hien dung semantics moi cua `prefetch health`: metadata con tuoi + sample cache miss phai len `warning` mau amber, khong hien do gia va cung khong lam nhu hoan toan xanh sach.
+- Dong bo ca Runtime KPI panel va Admin Ops badge/hint de operator nhin ra day la canh bao mem, khong phai degraded that.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AdminOps.jsx (MODIFIED - badge `Prefetch health` doi sang amber khi snapshot co `warning`, hint status uu tien mo ta sample cache miss)
+- frontend/src/components/RuntimeKPIPanel.jsx (MODIFIED - KPI row `Prefetch` hien trang thai `Cảnh báo` mau amber khi co `warning`)
+- frontend/src/i18n/vi.js (MODIFIED - them label `warning` va copy `sampleCacheMissWarning`)
+- frontend/src/i18n/en.js (MODIFIED - them label `warning` va copy `sampleCacheMissWarning`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/AdminOps.jsx`, `frontend/src/components/RuntimeKPIPanel.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend rebuild/restart thanh cong; bundle `main.ff136302.js` ~745.86 kB gzip.
+
+## Entry 2026-04-24bh - Downgrade sample cache miss to warning so fresh prefetch metadata no longer reports false degraded
+
+Muc tieu:
+- Sua false degraded cua badge `prefetch health` khi scheduler/meta van `ok` va con tuoi, nhung sample cache keys tam thoi miss `0/N`.
+- Giu `stale_prefetch_meta` la loi that; chi ha `sample_cache_miss` xuong muc canh bao mem de endpoint khong tra `503` gia.
+
+Danh sach tep cap nhat:
+- backend/config/health.py (MODIFIED - them `warning`, giu `healthy=true` khi `status=ok` va freshness ok du sample cache miss)
+- backend/portfolio/tests/test_prefetch_health.py (NEW - regression cho fresh sample miss, stale meta va HTTP status cua endpoint)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bh)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_prefetch_health --keepdb -v 1` => 3/3 PASS.
+- PASSED: system check clean trong focused test run.
+- NOTE: `warning=sample_cache_miss` van duoc giu lai cho observability, nhung khong con bi suy dien thanh degraded neu metadata prefetch con tuoi va `status=ok`.
+
+## Entry 2026-04-24bf - Restore correct heatmap market colors by propagating live change percentage
+
+Muc tieu:
+- Sua goc loi khien heatmap hien `0.00%`/mau trung tinh du quote realtime van co gia hien tai va gia tham chieu.
+- Dong bo cho ca legacy va modern dashboard vi ca hai deu dung `buildLiveHoldingsOverlay`.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/dashboardRealtimeSelectors.js (MODIFIED - them `live_change_pct` tu `quote.change_pct` hoac tu current/prev price)
+- frontend/src/utils/dashboardRealtimeSelectors.test.js (ADDED - regression cho propagate/derive `live_change_pct`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm test -- --runInBand --watch=false src/utils/dashboardRealtimeSelectors.test.js` => 2/2 pass.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build backend frontend` => frontend/backend container rebuild/restart thanh cong.
+- PASSED: editor diagnostics clean tren `frontend/src/utils/dashboardRealtimeSelectors.js`.
+- NOTE: `prefetch health = degraded` co the lam quote stale hon, nhung goc loi mau heatmap sai o slice nay la `live_change_pct` khong duoc propagate vao overlay holdings.
+
+## Entry 2026-04-24bg - Make whale analytics bubble chart include all threshold orders across the full session window
+
+Muc tieu:
+- Sua goc loi Whale Bubble Chart bo sot lenh dau phien: snapshot khong con dung tap `top 50` whale orders da sort theo gia tri.
+- Bubble chart va institutional bucket logic nay dung toan bo `IntradayTick` vuot threshold trong cua so time window yeu cau.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - `bubble_series` va `whale_value_by_bucket` duoc build tu threshold-crossing `tick_rows` trong window; chi dung whale feed de enrich `event_score`/`cache_age_ms`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression khi whale feed bi truncate nhung snapshot van giu du session ticks)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_keeps_all_threshold_ticks_even_if_whale_feed_only_contains_top_subset --keepdb -v 1` => pass.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build backend frontend` => backend/frontend container rebuild/restart thanh cong.
+- PASSED: editor diagnostics clean tren `backend/portfolio/services_whale_analytics_snapshot.py` va file test lien quan.
+- NOTE: `prefetch health = degraded` co the van la dau hieu cache prewarm/sample miss, nhung goc loi bo sot lenh dau phien o bubble chart la do snapshot truoc day dung danh sach whale orders da bi sort/cat top-N.
+
+## Entry 2026-04-24bd - Remove unnecessary unified alerts refetches on local filter changes
+
+Muc tieu:
+- Cat request thua trong dashboard khi nguoi dung doi bo loc local cua `UnifiedAlertCenter`.
+- Giu nguyen ket qua hien thi alert, vi `sourceFilter`, `severityFilter`, `audienceFilter` duoc ap dung local trong hook, khong can refetch backend.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - bo effect reset/refetch backend khi chi doi filter local)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => compile thanh cong; `main` ~745.55 kB gzip tren build cuc bo.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend container rebuild/restart thanh cong voi bundle moi.
+- PASSED: editor diagnostics clean tren `frontend/src/hooks/useUnifiedAlerts.js`.
+- NOTE: toi uu nay giam refetch `unified-alerts` backend khi thao tac filter local, dac biet co ich cho legacy/modern dashboard cung dung chung hook.
+
+## Entry 2026-04-24be - Remove redundant technicals request from ModernDashboard happy path
+
+Muc tieu:
+- Giam mot request du o `ModernDashboard`: khong goi `getPortfolioTechnicals(activePortfolioId)` neu `getBulkTechnicalsBySymbols(...)` thanh cong.
+- Chi dung portfolio technicals nhu fallback khi bulk endpoint that bai.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - bo request portfolio technicals o happy path, fallback chi khi bulk fail)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24be)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => compile thanh cong; `main` ~745.57 kB gzip tren build cuc bo.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend container rebuild/restart thanh cong voi `main` ~745.59 kB gzip trong Docker build.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/modern/ModernDashboard.jsx`.
+- NOTE: toi uu nay giam 1 request cho duong tai thanh cong cua modern dashboard ma van giu fallback an toan neu bulk technicals loi.
+
+## Entry 2026-04-24bc - Defer LegacyDashboard heatmap sparkline hydration after first paint
+
+Muc tieu:
+- Giam ap luc runtime o dashboard mac dinh bang cach tri hoan hydrate sparkline cho heatmap sau first paint thay vi ban loat request intraday ngay luc mount.
+- Giu nguyen du lieu chinh cua dashboard; sparkline chi la lop bo tro thi giac va da co fallback line co ban khi chua hydrate xong.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - chi hydrate sparkline cho cac ma con thieu, schedule bang `setTimeout` + `requestIdleCallback`, giu cache da co theo symbol)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => compile thanh cong; `main` ~745.56 kB gzip (`+158 B`) do thay doi chi o scheduling/runtime logic.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend container rebuild/restart thanh cong voi `main` ~745.58 kB gzip trong Docker build.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/LegacyDashboard.jsx`.
+- NOTE: toi uu nay nham rut ngan duong tai dau cua legacy dashboard bang cach day request sparkline sang sau first paint va tranh fetch lai nhung symbol da co cache local.
+
+## Entry 2026-04-24bb - Roll back top-level route lazy-loading to eliminate global loading-screen stalls
+
+Muc tieu:
+- Xu ly su co nhieu trang bi treo o man hinh `Dang tai...` / `Dang tai bang dieu khien...` du static assets va API van tra du lieu.
+- Loai bo diem treo `Suspense` o tang router/page entry, uu tien do on dinh runtime truoc khi toi uu bundle tiep.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - bo `React.lazy` va `Suspense` o cac route page entry, chuyen ve eager import)
+- frontend/src/pages/Dashboard.jsx (MODIFIED - bo lazy loading o dashboard dispatcher, render truc tiep `LegacyDashboard`/`ModernDashboard`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => compile thanh cong sau khi rollback lazy o tang router; `main` tang len ~745.4 kB gzip, xac nhan da dua page entry tro lai chunk chinh.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend container rebuild/restart thanh cong voi `main` ~745.42 kB gzip trong Docker build.
+- PASSED: editor diagnostics clean tren `frontend/src/App.jsx` va `frontend/src/pages/Dashboard.jsx`.
+- NOTE: day la fix uu tien do on dinh de loai bo loading deadlock o tang route; chi phi la mat mot phan code-splitting cap cao va can toi uu lai theo huong khac sau khi runtime on dinh.
+
+## Entry 2026-04-24ba - Lazy-load secondary LegacyDashboard panels to reduce default dashboard runtime work
+
+Muc tieu:
+- Toi uu active path cua dashboard mac dinh (`legacy`) bang cach dua cac panel phu va below-the-fold ra khoi lan render dau.
+- Giu nguyen route va main bundle da duoc toi uu truoc do, tap trung giam runtime work cho `LegacyDashboard` thay vi tiep tuc ep tat ca panel vao chunk dau tien.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - lazy-load `AllocationPieChart`, `PortfolioDigestPanel`, `PortfolioAnalyticsPanel`, `EquityVsBenchmarkChart` voi `Suspense` fallback nhe)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ba)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => frontend compile thanh cong; `main` bundle ~147.93 kB gzip (`+94 B`), dong thoi tao them nhieu async chunks nho cho cac panel phu cua legacy dashboard.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~147.97 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/LegacyDashboard.jsx`.
+- NOTE: day la toi uu runtime tren dashboard default, khong ky vong giam manh `main` vi route dashboard da duoc tach khoi `main` tu truoc.
+
+## Entry 2026-04-24az - Populate Whale Analytics QA/UAT pack with collected automated evidence and explicit manual remainder
+
+Muc tieu:
+- Dua bang chung tu dong da co vao audit pack de phan biet ro nhom da duoc khoa bang regression/build voi nhom con can UAT manual.
+- Chot mat bang audit hien tai: code slices da co evidence tu dong, phan con mo chu yeu la screenshot/video/devtools capture thay vi thieu implementation.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md (MODIFIED - bo sung section bang chung tu dong, danh dau PASS/PARTIAL trong checklist va liet ke hạng mục manual con mo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24az)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 14/14 PASS.
+- PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/components/WhaleBubbleChart.tooltip.test.jsx src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 7/7 PASS.
+- PASSED: `npm run build` => frontend compile thanh cong, `main` bundle ~147.84 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, frontend container da restart.
+- NOTE: phan con mo trong audit pack da duoc tach ro thanh bang chung manual/UAT, khong con dong nham voi phan thieu code.
+
+## Entry 2026-04-24ay - Add focused tooltip binding regression coverage for Whale Analytics chart
+
+Muc tieu:
+- Khoa FE-08 cho nhom tooltip point-anchored bang regression tests xac nhan hover bubble chi hien payload bubble tai dung bucket va hover line chi hien payload line tai dung diem hover.
+- Tach formatter tooltip thanh utility thuần de test duoc hanh vi formatter ma khong phu thuoc runtime ECharts trong Jest.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/whaleTooltipFormatter.js (NEW - utility formatter thuần cho tooltip Whale Analytics)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - dung tooltip formatter utility thay vi formatter inline)
+- frontend/src/components/WhaleBubbleChart.tooltip.test.jsx (NEW - regression tests cho bubble hover va line hover point-anchored)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - cap nhat note regression FE-08 da bao gom tooltip binding)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ay)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/components/WhaleBubbleChart.tooltip.test.jsx src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 7/7 PASS.
+- PASSED: `npm run build` => frontend compile thanh cong, `main` bundle ~147.84 kB gzip (`+1 B` so voi truoc do).
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~147.90 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/utils/whaleTooltipFormatter.js`, `frontend/src/components/WhaleBubbleChart.tooltip.test.jsx`.
+
+## Entry 2026-04-24ax - Lock Whale Analytics hook lifecycle behavior and synchronize execution taskboard with implemented state
+
+Muc tieu:
+- Khoa regression frontend cho `useWhaleAnalyticsData` o nhom hanh vi FE-06: fetch ban dau, pause polling khi background, resume ngay khi visible/focus, va bo response cu khi context da doi.
+- Dong bo taskboard thuc thi voi trang thai code hien tai de tai lieu giao viec khong con lech so voi implementation da duoc phe duyet va ship.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useWhaleAnalyticsData.test.js (NEW - them regression tests cho initial fetch, visibility/focus resume va stale-response race protection)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - dong bo trang thai BE/FE slices sang hoan thanh, giu cac muc QA manual o dang thuc hien)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js` => 3/3 PASS.
+- PASSED: `CI=true npm test -- --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js src/components/WhaleAnalytics.degraded.test.jsx` => 5/5 PASS.
+- PASSED: `npm run build` => frontend compile thanh cong, `main` bundle giu o ~147.83 kB gzip sau slice dashboard-splitting truoc do.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~147.90 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/hooks/useWhaleAnalyticsData.test.js`.
+
+## Entry 2026-04-24aw - Split dashboard dispatcher by UI mode to avoid shipping both workstation implementations in the initial bundle
+
+Muc tieu:
+- Loai bo viec route `dashboard` eager-import dong thoi ca `LegacyDashboard` va `ModernDashboard` du nguoi dung chi xem mot mode.
+- Tiep tuc cat `main` bundle bang code-splitting ngay tai dispatcher, giu nguyen semantics chuyen mode va them loading fallback nhe cho lan tai mode dau tien.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/Dashboard.jsx (MODIFIED - doi `LegacyDashboard` va `ModernDashboard` sang `React.lazy` + `Suspense` theo `uiMode`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => `main` bundle giam tu ~460.49 kB xuong ~147.83 kB gzip (`-312.66 kB`), dong thoi tach hai dashboard mode thanh chunks rieng ~151.42 kB va ~102.53 kB.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~147.90 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/pages/Dashboard.jsx`.
+- NOTE: day la giam manh tren initial bundle cho route mac dinh, cho thay hai workstation da khong con di chung trong main path.
+
+## Entry 2026-04-24av - Lazy-load remaining secondary routes to bring main bundle below the prior CRA warning threshold
+
+Muc tieu:
+- Dua them cac route phu con lai ra khoi eager `main` bundle tai router boundary, thay vi tiep tuc import truc tiep trong `App.jsx`.
+- Giam them kich thuoc `main` sau slice Whale routes, dong thoi giu nguyen route semantics va loading fallback thong nhat.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - doi `StockDetail`, `Transactions`, `Support`, `Watchlist`, `AdminOps`, `AdminCrawlControl`, `Screener`, `PortfolioManagement`, `UserConfig` sang `React.lazy` + `Suspense` route fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => `main` bundle giam tu ~596.58 kB xuong ~460.49 kB gzip (`-136.09 kB`) va tiep tuc tach them async route chunks cho cac page phu.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~460.55 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/App.jsx`.
+- NOTE: slice nay dua `main` bundle xuong duoi moc truoc do gay canh bao bundle-size o CRA, nhung van con co the toi uu tiep neu muon cat them initial route payload.
+
+## Entry 2026-04-24au - Lazy-load Whale pages at the router boundary to cut main bundle further
+
+Muc tieu:
+- Dua Whale pages nang ra khoi `main` bundle bang code-splitting ngay tai router boundary, thay vi de `App.jsx` import eager cac surface Whale Advisory / Whale Alerts.
+- Giam them kich thuoc `main` sau khi da modularize ECharts, dong thoi giu hanh vi route va gate permission khong doi.
+
+Danh sach tep cap nhat:
+- frontend/src/App.jsx (MODIFIED - doi `WhaleAdvisory`, `WhaleAlertsHub`, `WhaleAlertsDashboard` sang `React.lazy` + `Suspense` route fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24au)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` => `main` bundle giam tu ~746.24 kB xuong ~596.58 kB gzip (`-149.66 kB`) va tao them cac route chunks rieng cho Whale surfaces.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong, `main` bundle ~596.66 kB gzip trong Docker build, frontend container da restart.
+- PASSED: editor diagnostics clean tren `frontend/src/App.jsx`.
+- NOTE: tong warning bundle cua CRA van con, nhung Whale pages khong con nam trong eager main path.
+
+## Entry 2026-04-24at - Reduce frontend main bundle by modularizing ECharts and deferring Whale Analytics tab code
+
+Muc tieu:
+- Giam kich thuoc `main` bundle cua frontend bang cach bo import full ECharts runtime o cac component chart dang chay trong production.
+- Tach tab Whale Analytics khoi luong code mac dinh de khi vao dashboard/position deck khong can eager-load toan bo surface cua whale analytics ngay tu lan render dau.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - doi sang `echarts-for-react/lib/core` va chi register line/scatter + component ECharts can dung)
+- frontend/src/components/PortfolioHeatmap.jsx (MODIFIED - doi sang modular ECharts core cho treemap/sunburst thay vi full bundle)
+- frontend/src/components/modern/ModularPositionDeck.jsx (MODIFIED - lazy-load `WhaleAnalyticsTab` bang `React.lazy` + `Suspense`)
+- frontend/src/components/WhaleAnalytics.degraded.test.jsx (MODIFIED - mock modular ECharts core modules cho Jest regression)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24at)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
+- PASSED: `npm run build` => `main` bundle giam tu ~895.32 kB xuong ~746.24 kB gzip (`-149.08 kB`), dong thoi co them chunk async nho ~2.77 kB cho Whale tab.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong va container frontend da restart.
+- NOTE: bundle van lon hon khuyen nghi cua CRA, nhung slice nay da cat duoc phan full ECharts import o runtime path chinh.
+
+## Entry 2026-04-24as - Complete focused production validation sweep for Whale Analytics v2 slice
+
+Muc tieu:
+- Dong slice `Validate production criteria` bang mot vong xac thuc thuc thi tap trung tren backend snapshot, frontend degraded regression va runtime container health.
+- Ghi lai bang chung de doi chieu khi audit production-readiness cua Whale Analytics v2 ma khong can suy doan tu lich su terminal.
+
+Danh sach tep cap nhat:
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24as)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 14/14 PASS.
+- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` voi `CI=true` => 2/2 PASS.
+- PASSED: editor diagnostics clean tren `WhaleBubbleChart.jsx`, `WhaleAnalyticsTab.jsx`, `WhaleAnalytics.degraded.test.jsx`, `useWhaleAnalyticsData.js`, `whaleAnalyticsSnapshotAdapter.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml ps` => backend/frontend/db/redis healthy or up.
+- NOTE: frontend bundle build warning ~897.28 kB gzip van ton tai, khong chan slice Whale Analytics hien tai nhung la debt can xu ly riêng.
+
+## Entry 2026-04-24ar - Align Whale Analytics chart labels and add degraded frontend regression coverage
+
+Muc tieu:
+- Chot lai chart copy/legend/axis theo semantics Whale Analytics v2 de giam nham lan giua institutional strength voi buy flow va bo text footer sai bucket co dinh.
+- Khoa regression frontend cho degraded data-gap state de empty chart va tab badge khong bi drift trong cac lan refactor tiep theo.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - localized institutional axis label, align legend labels/colors va sua footer copy theo timeframe-relative bucket wording)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - giu badge degraded data-gap dong bo voi chart semantics)
+- frontend/src/components/WhaleAnalytics.degraded.test.jsx (NEW - them regression tests cho empty-state degraded notice va missing-intraday badge)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm test -- --watch=false --runTestsByPath src/components/WhaleAnalytics.degraded.test.jsx` => 2/2 PASS.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build thanh cong va container frontend da restart.
+- NOTE: CRA build van canh bao bundle JS ~897.28 kB gzip, khong block slice nay.
+
+## Entry 2026-04-24ak - Add minimal response cache layer for Whale Analytics snapshot API
+
+Muc tieu:
+- Dua Whale Analytics snapshot API buoc dau sang mo hinh response cache thay vi rebuild payload cho moi request giong nhau.
+- Khoa bang test hanh vi cache hit de chuan bi cho slice coalescing/single-flight tiep theo.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_analytics.py (MODIFIED - them cache key builder, response cache lookup/set va timeout theo live/off-hours/historical snapshot)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression test verify request giong nhau reuse cached payload va khong goi lai market feed)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 5/5 PASS.
+
+## Entry 2026-04-24al - Add auction bucket mapping regression coverage for Whale Analytics snapshot API
+
+Muc tieu:
+- Khoa backend contract cho ATO/ATC theo quy tac `bucket_start` trong snapshot API.
+- Dam bao session window full-day khong lam sai bucket cua auction events khi QA/UAT doi chieu voi spec v2.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression test xac nhan ATO vao bucket 09:00 va ATC vao bucket 14:45 tren timeframe session)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 6/6 PASS.
+
+## Entry 2026-04-24am - Add cache-miss coalescing for Whale Analytics snapshot API
+
+Muc tieu:
+- Giam duplicate rebuild khi nhieu request cung gap cache miss tren cung snapshot key.
+- Dung cache lock TTL ngan de follower request cho ngan va reuse payload da duoc request dau tien publish.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_analytics.py (MODIFIED - them lock key, wait loop ngan va fallback build khi lock timeout)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression tests cho lock-held reuse va lock-wait-timeout fallback build)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 8/8 PASS.
+
+## Entry 2026-04-24an - Add same-day off-hours cache policy coverage for Whale Analytics snapshot API
+
+Muc tieu:
+- Khoa cache-control contract cho truong hop cung ngay nhung da ngoai gio giao dich.
+- Dam bao backend khong giu live header sau 15:00 khi payload da chuyen sang `snapshot`.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression test xac nhan same-day off-hours tra ve `snapshot` va `max-age=60`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 9/9 PASS.
+
+## Entry 2026-04-24ao - Add data-gap degraded metadata and DailyPrice holiday fallback coverage
+
+Muc tieu:
+- Bat `degraded_mode` khi snapshot resolve duoc trade_date nhung khong con tick intraday hop le cho flow/price pane.
+- Khoa fallback holiday/off-hours qua `DailyPrice` de backend van tra phien gan nhat co du lieu va metadata canh bao ro rang.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them degraded-state resolver cho `missing_intraday_ticks` ben canh `missing_reference_price`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression tests cho data-gap degraded metadata va holiday fallback qua DailyPrice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 11/11 PASS.
+
+## Entry 2026-04-24ap - Add flow-series formula coverage and fix low-volume confidence labeling
+
+Muc tieu:
+- Them unit tests rieng cho `buy_strength` va `institutional_strength` de khoa dung cac quy tac saturation/abnormality trong spec v2.
+- Sua runtime de bucket volume thap sau khi bi penalty khong con giu `confidence=high` chi vi percentile cao gia.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - ep `confidence=low` khi bucket bi low-volume penalty)
+- backend/portfolio/tests/test_whale_analytics_snapshot_flow_series.py (NEW - them 3 unit tests cho false saturation, abnormal bucket escalation va institutional-strength independence)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 3/3 PASS.
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series --keepdb -v 1` => 14/14 PASS.
+
+## Entry 2026-04-24aq - Surface degraded data-gap semantics in Whale Analytics frontend
+
+Muc tieu:
+- Dam bao frontend hien dung nghia `degraded_mode` khi backend tra `missing_intraday_ticks`, khong chi truong hop thieu gia tham chieu.
+- Hien degraded notice ngay ca trong empty state de nguoi dung va QA phan biet `khong co du lieu` voi `snapshot an toan do data-gap`.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - propagate `stale_reason` va quality flag `missing_intraday_ticks` tu snapshot)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them degraded copy theo reason va render notice ngay trong empty state)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - badge degraded phan biet `missing_intraday_ticks` voi `missing_reference_price`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24aq)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean cho cac file frontend vua sua.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend`.
+- NOTE: CRA build canh bao bundle JS ~897 kB gzip, khong block slice nay nhung can xu ly sau neu toi uu production bundle.
+
+## Entry 2026-04-24aj - Add degraded_mode metadata integration coverage for Whale Analytics snapshot API
+
+Muc tieu:
+- Khoa yeu cau spec backend ve `degraded_mode` khi thieu reference price bang integration test tai lop API snapshot.
+- Dam bao metadata `degraded_mode` va `stale_reason` khong bi drift trong cac lan hardening tiep theo.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them test verify `degraded_mode=true` va `stale_reason=missing_reference_price` khi khong co reference price)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 4/4 PASS.
+
+## Entry 2026-04-24ai - Add dynamic snapshot Cache-Control policy for live and off-hours Whale Analytics responses
+
+Muc tieu:
+- Dua `Cache-Control` cua snapshot API ve dung huong theo spec backend: live data cache ngan, cung-ngay ngoai gio cache vua, historical snapshot cache dai hon.
+- Khoa behavior nay bang focused API test de tranh drift khi tiep tuc hardening backend.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_whale_analytics.py (MODIFIED - them helper resolve `Cache-Control` theo `data_state` va `trade_date`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - test header cache cho live snapshot va historical weekend fallback)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python backend/manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 3/3 PASS.
+
+## Entry 2026-04-24ah - Add weekend fallback regression coverage for Whale Analytics snapshot API
+
+Muc tieu:
+- Khoa bang test hanh vi fallback `trade_date` cuoi tuan ve phien giao dich gan nhat co du lieu trong snapshot API.
+- Tang do tin cay cho rule session/off-hours cua Whale Analytics v2 tai lop backend contract.
+
+Danh sach tep cap nhat:
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression test verify weekend `trade_date` fallback ve latest completed session)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `python manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 3/3 PASS.
+
+## Entry 2026-04-24ag - Harden Whale Analytics chart tooltip and crosshair sync semantics
+
+Muc tieu:
+- Dong bo Whale Analytics chart voi spec frontend v2 cho tooltip point-anchored va crosshair sync theo timestamp.
+- Loai bo hanh vi sync ep tooltip pane con lai, bo sung fail-safe `Khong co du lieu`, va them context tooltip dung bucket hover.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo sync `showTip` cheo pane, dung axis pointer theo timestamp, tooltip bubble/line chi hien du lieu cua diem hover, bo sung reference price va whale/extreme context)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/WhaleBubbleChart.jsx` sau khi sua.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend` => frontend build `Compiled successfully`, frontend container restarted thanh cong.
+
+## Entry 2026-04-24af - Implement first production slice of Whale Analytics v2 snapshot backend and frontend migration
+
+Muc tieu:
+- Bat dau implementation thuc te theo bo handoff/spec da chot: tao snapshot endpoint hop nhat, chuyen frontend sang snapshot contract, sua time adapter 09:00 va siet lifecycle polling/resume.
+- Dua chart Whale Analytics ve dung huong kien truc moi de loai bo over-fetch va chuan bi cho tooltip/time/data semantics production-ready.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (NEW - snapshot builder cho Whale Analytics v2, resolve session window, build bubble/price/flow series, ETag hash helper)
+- backend/portfolio/views_whale_analytics.py (NEW - snapshot endpoint voi ETag, Last-Modified, Cache-Control, conditional 304 support)
+- backend/portfolio/urls.py (MODIFIED - register route `whale/analytics/<symbol>/`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (NEW - focused contract and ETag tests for snapshot endpoint)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (NEW - normalize snapshot payload ve shape ma chart hien tai co the tieu thu)
+- frontend/src/api/client.js (MODIFIED - them client method `getWhaleAnalyticsSnapshot`)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - bo 2 request cu, chuyen sang snapshot endpoint duy nhat, them request invalidation, visibility pause/resume)
+- frontend/src/utils/whaleTimeAdapter.js (MODIFIED - chot session start 09:00, sua live-session detection)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - badge stale/degraded va doi mau institutional strength)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - uncontrolled fetch dung snapshot, render them price line, doi mau institutional strength, tooltip point-anchored theo tung diem)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren toan bo cac file backend/frontend vua sua.
+- PASSED: `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb -v 1` => 2/2 PASS.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => frontend build `Compiled successfully`, backend/frontend image rebuilt.
+- PASSED: `docker compose -f docker-compose.dev.yml ps` => `backend` healthy, `frontend` up, `db`/`redis` healthy.
+
+## Entry 2026-04-24ae - Publish full handoff and audit document pack for Whale Analytics v2.0 execution
+
+Muc tieu:
+- Xay dung bo tai lieu chuyen giao day du de doi code co the thuc thi Whale Analytics v2.0 khong can hoi lai.
+- Dong thoi tao bo tai lieu audit de doi chieu dau viec, contract, acceptance va evidence sau khi implementation xong.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md (NEW - tai lieu master chot thu tu uu tien, quyet dinh khong hoi lai va definition of done toan goi)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (NEW - taskboard giao viec cho backend, frontend, QA va audit close-out)
+- docs/WHALE_ANALYTICS_V2_API_CONTRACT_AND_DATA_SHAPE_20260424.md (NEW - contract snapshot API, metadata, headers, bucket va fail-safe semantics)
+- docs/WHALE_ANALYTICS_V2_FRONTEND_IMPLEMENTATION_SPEC_20260424.md (NEW - frontend state machine, tooltip, crosshair, pause/resume, render rules)
+- docs/WHALE_ANALYTICS_V2_BACKEND_IMPLEMENTATION_SPEC_20260424.md (NEW - backend snapshot builder, time/session rules, formula va cache/coalescing rules)
+- docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md (NEW - checklist nghiem thu, evidence pack va audit gate)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Bo tai lieu da tach ro scope, contract, implementation va audit theo tung lop de co the giao viec thuc thi ngay.
+- PASSED: Tai lieu audit da quy dinh ro bang chung bat buoc, fail conditions va cach doi chieu taskboard voi ket qua code thuc te.
+
+## Entry 2026-04-24ad - Clarify realtime transition, formulas, and dev acceptance rules in Whale Analytics v2.0 plan
+
+Muc tieu:
+- Bo sung cac diem ma doi code de van vo: realtime transition logic, timezone/session edge cases, cong thuc strength, crosshair sync, cache headers, QA checklist va lead-dev checklist.
+- Bien ban ke hoach v2.0 thanh tai lieu giao viec it khoang mo hon truoc khi chot scope code.
+
+Danh sach tep cap nhat:
+- docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md (MODIFIED - bo sung realtime update logic, UTC+7/holiday/ATO-ATC rules, cong thuc sigmoid+percentile, crosshair sync, data gap, API cache headers, acceptance checklist va lead-dev checklist)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Plan v2.0 da co cong thuc va tham so so bo cho strength/institutional strength de dev khong phai tu doan y nghiep vu.
+- PASSED: Tai lieu da chot ro transition tu polling sang snapshot, logic resume khi focus, va cac quy tac linear time/gap/session de tranh sai lech thoi gian.
+
+## Entry 2026-04-24ac - Tighten Whale Analytics tooltip requirements in v2.0 plan
+
+Muc tieu:
+- Chot lai nguyen tac tooltip cho Whale Analytics Chart de tranh hien thi thong tin lan man, sai timestamp hoac tron du lieu khac vi tri hover.
+- Bien quy tac tooltip thanh acceptance criteria bat buoc trong ban ke hoach v2.0 truoc khi code.
+
+Danh sach tep cap nhat:
+- docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md (MODIFIED - bo sung quy tac tooltip point-anchored, hover semantics, data-binding constraints va test criteria)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Ke hoach v2.0 da rang buoc ro tooltip chi duoc hien theo bubble/line point dang hover va dung timestamp cua diem do.
+- PASSED: Tai lieu da bo sung them test nghiep vu va test van hanh de chan truong hop tooltip tron du lieu khac thoi diem gay hieu nham cho nha dau tu.
+
+## Entry 2026-04-24ab - Publish unified Whale Analytics Chart v2.0 approval plan
+
+Muc tieu:
+- Hop nhat cac de xuat nang cap Whale Bubble/CVD/Dark Flow chart thanh mot ban ke hoach v2.0 duy nhat de phe duyet scope.
+- Chot cung luc 3 lop: dung nghiep vu chart, toi uu hieu nang va lo trinh scale cho tai cao.
+
+Danh sach tep cap nhat:
+- docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md (NEW - ban ke hoach hop nhat v2.0 cho UX/chart logic, API/data contract, performance, scale, rollout va approval decisions)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Ban ke hoach v2.0 da hop nhat day du cac van de nguoi dung yeu cau truoc do: time window, off-hours, CVD/strength, mau sac, price line, hieu nang load va scale.
+- PASSED: Tai lieu da tach ro phase thuc thi, KPI, rui ro, rollback/rollout thinking va cac diem can phe duyet.
+
+## Entry 2026-04-24aa - Add whale analytics performance and scale planning document
+
+Muc tieu:
+- Tong hop giai phap tang toc load cho Whale Bubble Chart va Dark Money/CVD chart de dua vao dot nang cap hien tai.
+- Chot huong scale khi co hang nghin nguoi cung mo tinh nang nay, theo huong snapshot cache, compact payload va precompute.
+
+Danh sach tep cap nhat:
+- docs/IMPLEMENTATION_PLAN_WHALE_ANALYTICS_PERFORMANCE_AND_SCALE_20260424.md (NEW - ke hoach chi tiet ve hieu nang load chart, cache, precompute, polling, scale-out va observability)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Tai lieu moi bam sat bottleneck thuc te cua codebase hien tai, bao gom over-fetching trong `useWhaleAnalyticsData.js` va polling 30s cho chart live.
+- PASSED: Ke hoach moi phan tach ro quick wins co the dua ngay vao dot nang cap va phase scale-out tiep theo.
+
 ## Entry 2026-04-23bi - Manual server build deploy override for pull_policy always stack
 
 Muc tieu:
@@ -47,7 +793,6 @@ Danh sach tep cap nhat:
 Validation:
 - PASSED: Stack file hop le sau thay doi `pull_policy`.
 - PASSED: Script deploy da duoc tao day du cac buoc pull code -> build -> up -> migrate -> health.
-
 
 ## Entry 2026-04-23bf - IntradayTick retention/runtime toggles + cleanup safety hardening
 
@@ -301,7 +1046,6 @@ Validation:
 - PASSED: Toan bo nhãn (labels) da duoc i18n hoa sang tieng Viet.
 - PASSED: `docker-compose.dev.yml` restart thanh cong.
 
-
 ## Entry 2026-04-23as - Whale service runtime unblock for USER_REFRESH pending lock
 
 Muc tieu:
@@ -529,8 +1273,6 @@ Validation:
 - PASSED: Serializer error (circular import) resolved.
 - PASSED: Database migration applied successfully.
 
----
-
 ## Entry 2026-04-23ah - Portainer image tag strategy to prevent stale code reuse
 
 Muc tieu:
@@ -545,15 +1287,15 @@ Danh sach tep cap nhat:
 Validation:
 - PASSED: Compose stack da tham chieu image theo `APP_RELEASE` thay vi hardcode tag `prod`.
 - PASSED: Co the bump release khong can sua lai image string tung service.
- 
+
 ## Entry 2026-04-23ag - Whale Service Phase 3-5: Compute Engine, Orchestration API & Frontend Integration
- 
+
 Muc tieu:
 - Trien khai engine tinh toan lich su WhaleBackfillService & WhaleComputeEngine toi uu cho batch processing.
 - Orchestration API lop tren de dieu khien recompute/backfill jobs co quan ly trang thai va tien do.
 - Tich hop nut Lam moi (Manual Refresh 🔄) va hien thi tien do thoi gian thuc (0-100%) tren WhaleBubbleChart.
 - Dam bao quyen loi goi Pro-Plan duoc ap dung chat che cho cac tac vu tieu ton tai nguyen tinh toan.
- 
+
 Danh sach tep cap nhat:
 - backend/portfolio/services_whale_compute.py (NEW - core engine tinh toan batch tin hieu ca map tu du lieu tho)
 - backend/portfolio/views_whale_orchestration.py (NEW - endpoints trigger/jobs/status cho whale service)
@@ -567,11 +1309,13 @@ Danh sach tep cap nhat:
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tich hop nut Manual Refresh va progress polling loop)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-23ag)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
- 
+
 Validation:
 - PASSED: `WhaleBackfillService` thuc thi dung logic SSOT va luu tru ban ghi voi timestamp lich su chuan xac.
 - PASSED: API orchestration block dung Free users va cho phep Pro users trigger jobs voi concurrency guard (Redis lock).
-- PASSED: Frontend 🔄 nut hoat dong dung ky vong: trigger job -> poll status -> hien thi % -> refetch data khi xong.
+- PASSED: Frontend `🔄` nut hoat dong dung ky vong: trigger job -> poll status -> hien thi % -> refetch data khi xong.
+
+## Entry 2026-04-23af - Whale Service Phase 2: Orchestration & Anti-Spam Guardrails
 
 Muc tieu:
 - Trien khai co che anti-spam 5 lop: Rate-limit, Idempotency, Redis Lock, DB Guard, Queue Dedupe.

@@ -2,13 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import useAIAdvisor from '../../hooks/useAIAdvisor';
 import { useI18n } from '../../context/LangContext';
 
-export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, alerts, newsDigest, criticalSoundEnabled }) {
+export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, alerts, newsDigest, criticalSoundEnabled, onRequestDigest }) {
   const { t, formatDateTime } = useI18n();
   const [activeTab, setActiveTab] = useState('alerts'); // 'alerts' | 'news'
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [lastRecCount, setLastRecCount] = useState(0);
+  const recommendationsEnabled = !isCollapsed && activeTab === 'alerts';
   
-  const { recommendations } = useAIAdvisor({ holdings, watchlist, technicals, alerts });
+  const { recommendations } = useAIAdvisor({ holdings, watchlist, technicals, alerts, enabled: recommendationsEnabled });
   const newsItems = useMemo(() => {
     if (Array.isArray(newsDigest)) {
       return newsDigest;
@@ -30,13 +31,23 @@ export default function AIAdvisorAlertPanel({ holdings, watchlist, technicals, a
     return [];
   }, [newsDigest]);
 
+  useEffect(() => {
+    if (activeTab !== 'news') {
+      return;
+    }
+    onRequestDigest?.();
+  }, [activeTab, onRequestDigest]);
+
   // Play sound when new recommendations appear
   useEffect(() => {
+    if (!recommendationsEnabled) {
+      return;
+    }
     if (recommendations.length > lastRecCount) {
        playAlertTone();
     }
     setLastRecCount(recommendations.length);
-  }, [recommendations.length, lastRecCount]);
+  }, [recommendations.length, lastRecCount, recommendationsEnabled]);
 
   const playAlertTone = () => {
     if (!criticalSoundEnabled) return;

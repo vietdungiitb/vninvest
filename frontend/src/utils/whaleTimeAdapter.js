@@ -5,7 +5,7 @@
  * Ensures ECharts analytics panes stay in sync and respect market session windows.
  */
 
-const MORNING_START = { hour: 8, minute: 45 };
+const MORNING_START = { hour: 9, minute: 0 };
 const MORNING_END = { hour: 11, minute: 30 };
 const AFTERNOON_START = { hour: 13, minute: 0 };
 const SESSION_END = { hour: 15, minute: 0 };
@@ -76,7 +76,7 @@ export function isWithinMarketSession(epochSeconds, referenceDate = new Date()) 
   const vnOffsetSeconds = 7 * 3600;
   const secondsInDay = Number(epochSeconds) + vnOffsetSeconds;
   const vnTimeMinutes = Math.floor((secondsInDay % 86400) / 60);
-  const morningStart = 8 * 60 + 45;   // 08:45
+  const morningStart = 9 * 60 + 0;    // 09:00
   const morningEnd   = 11 * 60 + 30;  // 11:30
   const afternoonStart = 13 * 60 + 0; // 13:00
   const sessionEnd     = 15 * 60 + 0; // 15:00
@@ -159,7 +159,7 @@ export function resolveWhaleTimeframeWindow(timeframe, referenceDate = new Date(
     endEpochSec: Math.floor(safeEnd.getTime() / 1000),
     startMs: safeStart.getTime(),
     endMs: safeEnd.getTime(),
-    isLive: now >= morning.start && now <= afternoon.end,
+    isLive: (now >= morning.start && now <= morning.end) || (now >= afternoon.start && now <= afternoon.end),
     sessionSegments: [
       {
         key: 'morning',

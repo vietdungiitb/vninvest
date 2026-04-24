@@ -13,6 +13,7 @@ def build_prefetch_health_snapshot():
         "healthy": False,
         "status": "unknown",
         "reason": None,
+        "warning": None,
         "meta_present": False,
         "freshness_seconds": None,
         "sample_cache_hits": 0,
@@ -84,11 +85,12 @@ def build_prefetch_health_snapshot():
 
     if prefetch_status == 'ok':
         has_sample = len(sample_symbols) == 0 or sample_hits > 0
-        result["healthy"] = bool(freshness_ok and has_sample)
+        result["healthy"] = bool(freshness_ok)
         if not freshness_ok:
             result["reason"] = "stale_prefetch_meta"
         elif not has_sample:
-            result["reason"] = "sample_cache_miss"
+            result["reason"] = "ok"
+            result["warning"] = "sample_cache_miss"
         else:
             result["reason"] = "ok"
         return result

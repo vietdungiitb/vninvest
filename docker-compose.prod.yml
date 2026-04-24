@@ -1,5 +1,6 @@
 # Production override for docker-compose.yml
-# Usage: docker compose -f docker-compose.prod.yml up -d
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Hoặc trên Portainer: thêm cả 2 file hoặc dùng file này thay vì docker-compose.yml
 
 services:
   db:
@@ -43,6 +44,7 @@ services:
     image: axllent/mailpit:latest
     container_name: vninvest-mailpit
     restart: unless-stopped
+    # Khong expose Mailpit tren production.
     ports: []
     networks:
       - vninvest_network

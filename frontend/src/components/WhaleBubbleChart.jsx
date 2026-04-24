@@ -14,11 +14,34 @@ const WHALE_BUBBLE_UPGRADE_ENABLED = true;
  */
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import ReactECharts from 'echarts-for-react';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+import * as echarts from 'echarts/core';
+import { LineChart, ScatterChart } from 'echarts/charts';
+import {
+  AxisPointerComponent,
+  GraphicComponent,
+  GridComponent,
+  MarkLineComponent,
+  TooltipComponent,
+} from 'echarts/components';
+import { CanvasRenderer } from 'echarts/renderers';
 import { useI18n } from '../context/LangContext';
-import { getWhaleOrdersBySymbol } from '../api/client';
+import { getWhaleAnalyticsSnapshot } from '../api/client';
 import { useOrderBubbleCoordinates } from '../hooks/useOrderBubbleCoordinates';
 import { useCallback } from 'react';
+import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
+import { createWhaleTooltipFormatter } from '../utils/whaleTooltipFormatter';
+
+echarts.use([
+  LineChart,
+  ScatterChart,
+  AxisPointerComponent,
+  GraphicComponent,
+  GridComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  CanvasRenderer,
+]);
 
 const TIMEFRAME_OPTIONS = [
   { value: '15m', label: '15 phút' },
@@ -33,6 +56,16 @@ const COLORS = {
   buy: '#10b981',
   sell: '#ef4444',
   internal: '#64748b',
+};
+
+const SERIES_INDEX = {
+  buy: 0,
+  sell: 1,
+  internal: 2,
+  buyCvd: 5,
+  sellCvd: 6,
+  buyStrength: 7,
+  institutionalStrength: 8,
 };
 
 function formatTooltipMoney(value) {
@@ -83,6 +116,25 @@ function formatCompactSignedValue(value) {
   return `${sign}${numericValue.toLocaleString('vi-VN')}`;
 }
 
+function getSeriesPointTimestampMs(seriesPoint) {
+  const rawValue = Array.isArray(seriesPoint?.value) ? seriesPoint.value[0] : null;
+  return Number.isFinite(rawValue) ? rawValue : null;
+}
+
+function getDegradedModeCopy(staleReason, t) {
+  if (staleReason === 'missing_intraday_ticks') {
+    return {
+      title: t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded',
+      description: t('whaleChart.degradedMissingIntraday') || 'Phiên gần nhất chưa có đủ tick intraday hợp lệ, biểu đồ đang trả snapshot an toàn từ nguồn SSOT.',
+    };
+  }
+
+  return {
+    title: t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded',
+    description: t('whaleChart.degradedModeDescription') || 'Thiếu giá tham chiếu, biểu đồ vẫn hiển thị lệnh lớn từ nguồn SSOT.',
+  };
+}
+
 export default function WhaleBubbleChart({ 
   selectedSymbol, 
   holdings = [], 
@@ -109,6 +161,7 @@ export default function WhaleBubbleChart({
   const [internalSymbol, setInternalSymbol] = useState(selectedSymbol || '');
   const [internalLoading, setInternalLoading] = useState(false);
   const [internalOrderData, setInternalOrderData] = useState(null);
+  const [internalFlowData, setInternalFlowData] = useState(null);
   const [internalError, setInternalError] = useState(null);
 
   const symbol = isControlled ? externalSymbol : internalSymbol;
@@ -116,7 +169,7 @@ export default function WhaleBubbleChart({
   const loading = isControlled ? externalLoading : internalLoading;
   const orderData = isControlled ? externalData : internalOrderData;
   const error = isControlled ? externalError : internalError;
-  const flowData = isControlled ? externalFlowData : null;
+  const flowData = isControlled ? externalFlowData : internalFlowData;
 
   const setSymbol = isControlled ? onSymbolChange : setInternalSymbol;
   const setTimeframe = isControlled ? onTimeframeChange : setInternalTimeframe;
@@ -153,13 +206,11 @@ export default function WhaleBubbleChart({
     setInternalError(null);
 
     try {
-      const response = await getWhaleOrdersBySymbol(symbol, { timeframe });
-      const data = response?.data || {};
-      if (data.ok) {
-        setInternalOrderData(data);
-      } else {
-        throw new Error(data.error || 'Unknown error');
-      }
+      const response = await getWhaleAnalyticsSnapshot(symbol, { timeframe, compact: 1 });
+      const snapshot = response?.data || {};
+      const normalized = normalizeWhaleAnalyticsSnapshot(snapshot, timeframe);
+      setInternalOrderData(normalized.bubbles);
+      setInternalFlowData(normalized.flow);
     } catch (err) {
       console.error('[WhaleBubbleChart] Fetch error:', err);
       const message = err?.response?.data?.error || err?.message || 'Unknown error';
@@ -184,8 +235,13 @@ export default function WhaleBubbleChart({
 
   const totalOrders = orderData?.summary?.total_orders || 0;
   const isDegradedMode = Boolean(orderData?.degraded_mode || orderData?.quality_flags?.missing_reference_price);
+  const staleReason = orderData?.stale_reason || orderData?.meta?.stale_reason || null;
+  const degradedModeCopy = useMemo(() => getDegradedModeCopy(staleReason, t), [staleReason, t]);
   const echartsRef = useRef(null);
   const timeframeWindow = orderData?.timeframe_window || flowData?.timeframe_window || null;
+  const priceLineSeries = useMemo(() => (orderData?.price_series || []).map((item) => ({
+    value: [Number(item.ts) * 1000, Number(item.price ?? 0)],
+  })), [orderData]);
   const flowCvdSeries = useMemo(() => (flowData?.cvd_series || []).map((item) => ({
     value: [Number(item.ts) * 1000, Number(item.cvd ?? item.cumulative_cvd ?? 0)],
   })), [flowData]);
@@ -197,7 +253,7 @@ export default function WhaleBubbleChart({
     value: [item.value[0], Math.min(0, item.value[1])],
   })), [flowCvdSeries]);
   // Split Strength into Buy (when CVD >= 0) and Sell (when CVD < 0)
-  const flowStrengthSeries = useMemo(() => (flowData?.strength_series || []).map((item) => ({
+  const flowStrengthSeries = useMemo(() => (flowData?.institutional_strength_series || flowData?.strength_series || []).map((item) => ({
     value: [Number(item.ts) * 1000, Number(item.strength || 0)],
   })), [flowData]);
   const flowBuyStrengthSeries = useMemo(() => {
@@ -218,21 +274,36 @@ export default function WhaleBubbleChart({
   }, [flowData]);
   const hasAnyFlowData = flowCvdSeries.length > 0 || flowStrengthSeries.length > 0;
   const hasAnyChartData = totalOrders > 0 || hasAnyFlowData;
-
-  const syncPoints = useMemo(() => {
-    const buildSeriesPoints = (items, seriesIndex) => items.map((item, dataIndex) => ({
-      ts: item.x,
-      seriesIndex,
-      dataIndex,
-    }));
-
-    return [
-      ...buildSeriesPoints(bubbles.buy, 0),
-      ...buildSeriesPoints(bubbles.sell, 1),
-      ...buildSeriesPoints(bubbles.internal, 2),
-      ...flowCvdSeries.map((item, dataIndex) => ({ ts: Math.floor(item.value[0] / 1000), seriesIndex: 3, dataIndex })),
-    ].sort((left, right) => left.ts - right.ts);
-  }, [bubbles.buy, bubbles.internal, bubbles.sell, flowCvdSeries, flowStrengthSeries]);
+  const priceByTimestamp = useMemo(() => new Map(
+    priceLineSeries
+      .map((item) => {
+        const timestampMs = getSeriesPointTimestampMs(item);
+        return timestampMs == null ? null : [Math.floor(timestampMs / 1000), Number(item.value[1] ?? 0)];
+      })
+      .filter(Boolean)
+  ), [priceLineSeries]);
+  const buyStrengthByTimestamp = useMemo(() => new Map(
+    flowBuyStrengthSeries
+      .map((item) => {
+        const timestampMs = getSeriesPointTimestampMs(item);
+        return timestampMs == null ? null : [Math.floor(timestampMs / 1000), Number(item.value[1] ?? 0)];
+      })
+      .filter(Boolean)
+  ), [flowBuyStrengthSeries]);
+  const institutionalStrengthByTimestamp = useMemo(() => new Map(
+    flowStrengthSeries
+      .map((item) => {
+        const timestampMs = getSeriesPointTimestampMs(item);
+        return timestampMs == null ? null : [Math.floor(timestampMs / 1000), Number(item.value[1] ?? 0)];
+      })
+      .filter(Boolean)
+  ), [flowStrengthSeries]);
+  const tooltipFormatter = useMemo(() => createWhaleTooltipFormatter({
+    t,
+    buyStrengthByTimestamp,
+    institutionalStrengthByTimestamp,
+    priceByTimestamp,
+  }), [t, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp]);
 
   // Build ECharts option
   const chartOption = useMemo(() => {
@@ -455,6 +526,17 @@ export default function WhaleBubbleChart({
         xAxisIndex: 0,
         yAxisIndex: 0,
       },
+      {
+        name: 'Đường giá intraday',
+        type: 'line',
+        data: priceLineSeries,
+        xAxisIndex: 0,
+        yAxisIndex: 1,
+        showSymbol: false,
+        smooth: true,
+        lineStyle: { color: '#f59e0b', width: 2, opacity: 0.95 },
+        z: 5,
+      },
     ];
 
     const flowSeries = [
@@ -464,7 +546,7 @@ export default function WhaleBubbleChart({
         type: 'line',
         data: flowCvdPosSeries,
         xAxisIndex: 1,
-        yAxisIndex: 1,
+        yAxisIndex: 2,
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#22c55e', width: 1.5, opacity: 0.8 },
@@ -484,7 +566,7 @@ export default function WhaleBubbleChart({
         type: 'line',
         data: flowCvdNegSeries,
         xAxisIndex: 1,
-        yAxisIndex: 1,
+        yAxisIndex: 2,
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#f43f5e', width: 1.5, opacity: 0.8 },
@@ -497,7 +579,7 @@ export default function WhaleBubbleChart({
         type: 'line',
         data: flowBuyStrengthSeries,
         xAxisIndex: 1,
-        yAxisIndex: 2,
+        yAxisIndex: 3,
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#4ade80', width: 2 },
@@ -509,10 +591,10 @@ export default function WhaleBubbleChart({
         type: 'line',
         data: flowStrengthSeries,
         xAxisIndex: 1,
-        yAxisIndex: 2,
+        yAxisIndex: 3,
         showSymbol: false,
         smooth: true,
-        lineStyle: { color: '#fbbf24', width: 2 },
+        lineStyle: { color: '#38bdf8', width: 2 },
         z: 4,
       },
 	];
@@ -578,6 +660,22 @@ export default function WhaleBubbleChart({
         },
         {
           type: 'value',
+          gridIndex: 0,
+          name: 'Giá',
+          nameLocation: 'middle',
+          nameGap: 42,
+          position: 'right',
+          axisLabel: {
+            formatter: (val) => Number(val || 0).toLocaleString('vi-VN'),
+            fontSize: 10,
+            color: '#fbbf24',
+          },
+          axisLine: { lineStyle: { color: '#b45309' } },
+          splitLine: { show: false },
+          scale: true,
+        },
+        {
+          type: 'value',
           gridIndex: 1,
           name: t('whaleAnalytics.cvdLabel') || 'CVD',
           nameLocation: 'middle',
@@ -596,7 +694,7 @@ export default function WhaleBubbleChart({
         {
           type: 'value',
           gridIndex: 1,
-          name: 'Institutional Strength',
+          name: t('whaleAnalytics.instStrength') || 'Sức mạnh tổ chức',
           nameLocation: 'middle',
           nameGap: 46,
           min: 0,
@@ -605,14 +703,14 @@ export default function WhaleBubbleChart({
           axisLabel: {
             formatter: (val) => `${val}`,
             fontSize: 10,
-            color: '#86efac',
+            color: '#38bdf8',
           },
-          axisLine: { lineStyle: { color: '#16a34a' } },
+          axisLine: { lineStyle: { color: '#0369a1' } },
           splitLine: { show: false },
         },
       ],
       tooltip: {
-        trigger: 'axis',
+        trigger: 'item',
         axisPointer: {
           type: 'cross',
         },
@@ -621,75 +719,7 @@ export default function WhaleBubbleChart({
         borderColor: '#64748b',
         borderWidth: 1,
         textStyle: { color: '#e2e8f0', fontSize: 11 },
-        formatter: (params) => {
-          if (!Array.isArray(params) || !params.length) return '';
-
-          const axisValue = params[0]?.axisValue;
-          const timeLabel = axisValue ? formatAxisTime(axisValue) : '--';
-          const bubbleEntries = params
-            .filter((item) => item?.data?.metadata)
-            .map((item) => item.data.metadata);
-          const cvdPosEntry = params.find((item) => item.seriesName === 'Dòng tiền mua tích cực');
-          const cvdNegEntry = params.find((item) => item.seriesName === 'Dòng tiền bán tích cực');
-          const strengthEntry = params.find((item) => item.seriesName === 'Sức mạnh tổ chức');
-          const rawCvdPos = cvdPosEntry?.value?.[1] ?? 0;
-          const rawCvdNeg = cvdNegEntry?.value?.[1] ?? 0;
-          const cvdVal = rawCvdPos !== 0 ? rawCvdPos : rawCvdNeg;
-          const strengthVal = strengthEntry?.value?.[1] ?? 0;
-
-          const flowBlock = `
-            <div style="display:flex; gap:12px; margin: 6px 0 8px;">
-              <div><span style="color:#64748b;">CVD:</span> <span style="color:${cvdVal >= 0 ? '#22c55e' : '#f43f5e'}; font-weight:700;">${formatCompactSignedValue(cvdVal)}</span></div>
-              <div><span style="color:#64748b;">Strength:</span> <span style="color:#fbbf24; font-weight:700;">${Number(strengthVal).toFixed(1)}</span></div>
-            </div>
-          `;
-
-          const bubbleBlock = bubbleEntries.length
-            ? bubbleEntries.slice(0, 3).map((meta) => {
-              const sideColor = meta.side === 'BUY' ? COLORS.buy : meta.side === 'SELL' ? COLORS.sell : COLORS.internal;
-              const sideLabel = meta.side === 'BUY'
-                ? (t('whaleChart.buyFlow') || 'MUA CHỦ ĐỘNG')
-                : meta.side === 'SELL'
-                  ? (t('whaleChart.sellFlow') || 'BÁN CHỦ ĐỘNG')
-                  : (t('whaleChart.internal') || 'NỘI BỘ / KHÔNG RÕ');
-              return `
-                <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #334155;">
-                  <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span style="color:${sideColor}; font-weight:800; font-size:11px;">${sideLabel}</span>
-                    <span style="color:#94a3b8; font-size:10px;">${meta.timestamp}</span>
-                  </div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span style="color:#64748b;">Giá khớp:</span>
-                    <span style="color:#f1f5f9; font-weight:700;">${meta.price.toLocaleString('vi-VN')} đ</span>
-                  </div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span style="color:#64748b;">Khối lượng:</span>
-                    <span style="color:#f1f5f9; font-weight:700;">${meta.volume.toLocaleString('vi-VN')}</span>
-                  </div>
-                  <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span style="color:#64748b;">Giá trị:</span>
-                    <span style="color:#10b981; font-weight:700;">${formatTooltipMoney(meta.matchedValue)}</span>
-                  </div>
-                  <div style="display:flex; justify-content:space-between;">
-                    <span style="color:#64748b;">Biến động:</span>
-                    <span style="color:${meta.y >= 0 ? '#10b981' : '#ef4444'}; font-weight:700;">${formatTooltipPriceDelta(meta.y)} (${meta.yPct.toFixed(2)}%)</span>
-                  </div>
-                </div>
-              `;
-            }).join('')
-            : `<div style="margin-top:6px; color:#94a3b8;">Không có lệnh lớn tại phút này.</div>`;
-
-          return `
-            <div style="min-width: 240px;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; border-bottom:1px solid #334155; padding-bottom:4px;">
-                <span style="color:#e2e8f0; font-weight:800; font-size:12px;">${t('whaleAnalytics.darkMoneyDynamics') || 'Whale Analytics'}</span>
-                <span style="color:#94a3b8; font-size:10px;">${timeLabel}</span>
-              </div>
-              ${flowBlock}
-              ${bubbleBlock}
-            </div>
-          `;
-        },
+        formatter: tooltipFormatter,
       },
       series: [...bubbleSeries, ...flowSeries],
       animation: true,
@@ -721,45 +751,52 @@ export default function WhaleBubbleChart({
         },
       ],
     };
-  }, [orderData, bubbles, showUnit, t, timeframeWindow, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries]);
+  }, [orderData, bubbles, showUnit, t, timeframeWindow, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp, priceLineSeries, flowBuyStrengthSeries, tooltipFormatter]);
 
   // Handle sync events from chart to parent
   const onEvents = useMemo(() => ({
-    'updateAxisPointer': (params) => {
-      if (!onSyncHover || !params.axesInfo) return;
-      const axisInfo = params.axesInfo[0];
-      if (axisInfo && axisInfo.value) {
-        const epochSec = Math.floor(axisInfo.value / 1000);
+    mouseover: (params) => {
+      if (!onSyncHover || params?.componentType !== 'series') return;
+      const timestampMs = getSeriesPointTimestampMs(params);
+      if (timestampMs != null) {
+        const epochSec = Math.floor(timestampMs / 1000);
         onSyncHover(epochSec);
       }
-    }
+    },
+    globalout: () => {
+      if (onSyncHover) {
+        onSyncHover(null);
+      }
+    },
   }), [onSyncHover]);
 
   // External sync effect (parent to chart)
   useEffect(() => {
-    if (!syncTimestamp || !isControlled || !echartsRef.current || !syncPoints.length) return;
+    if (!isControlled || !echartsRef.current) return;
     const chartInstance = echartsRef.current.getEchartsInstance();
-    const targetPoint = syncPoints.find((item) => item.ts === syncTimestamp)
-      || syncPoints.reduce((closest, candidate) => {
-        if (!closest) {
-          return candidate;
-        }
-
-        return Math.abs(candidate.ts - syncTimestamp) < Math.abs(closest.ts - syncTimestamp)
-          ? candidate
-          : closest;
-      }, null);
-
-    if (!targetPoint) {
+    if (!Number.isFinite(syncTimestamp)) {
+      chartInstance.dispatchAction({
+        type: 'hideTip',
+      });
+      chartInstance.dispatchAction({
+        type: 'updateAxisPointer',
+        currTrigger: 'leave',
+      });
       return;
     }
-    
+
+    const syncValueMs = Number(syncTimestamp) * 1000;
     chartInstance.dispatchAction({
-      type: 'showTip',
-      seriesIndex: targetPoint.seriesIndex,
-      dataIndex: targetPoint.dataIndex,
+      type: 'updateAxisPointer',
+      xAxisIndex: 0,
+      value: syncValueMs,
     });
-  }, [isControlled, syncPoints, syncTimestamp]);
+    chartInstance.dispatchAction({
+      type: 'updateAxisPointer',
+      xAxisIndex: 1,
+      value: syncValueMs,
+    });
+  }, [isControlled, syncTimestamp]);
 
   const handleExportCSV = () => {
     if (!orderData || !orderData.orders) return;
@@ -880,16 +917,22 @@ export default function WhaleBubbleChart({
           </div>
         ) : !hasAnyChartData ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-slate-500">
+            {isDegradedMode && (
+              <div className="mx-6 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-xs text-amber-200">
+                <div className="font-semibold">{degradedModeCopy.title}</div>
+                <div className="mt-0.5 text-amber-100/80">{degradedModeCopy.description}</div>
+              </div>
+            )}
             <div className="text-4xl opacity-30">📭</div>
-            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe') || 'Không có dữ liệu trong khoảng thời gian này'}</p>
-            <p className="text-xs">{t('whaleChart.tryDifferentTimeframe') || 'Thử khoảng thời gian khác'}</p>
+            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe') || 'Không có dữ liệu'}</p>
+            <p className="text-xs">{isDegradedMode ? (t('whaleChart.awaitingValidIntradayData') || 'Dữ liệu chi tiết của phiên này chưa đủ ổn định để hiển thị đầy đủ.') : (t('whaleChart.tryDifferentTimeframe') || 'Thử khoảng thời gian khác')}</p>
           </div>
         ) : (
           <div className="h-full w-full flex flex-col">
             {isDegradedMode && (
               <div className="mx-3 mt-3 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                <div className="font-semibold">{t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded'}</div>
-                <div className="mt-0.5 text-amber-100/80">{t('whaleChart.degradedModeDescription') || 'Thiếu giá tham chiếu, biểu đồ vẫn hiển thị lệnh lớn từ nguồn SSOT.'}</div>
+                <div className="font-semibold">{degradedModeCopy.title}</div>
+                <div className="mt-0.5 text-amber-100/80">{degradedModeCopy.description}</div>
               </div>
             )}
             <div className="px-4 pt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-slate-500">
@@ -897,12 +940,15 @@ export default function WhaleBubbleChart({
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow') || 'Mua chủ động'}</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />{t('whaleChart.sellFlow') || 'Bán chủ động'}</span>
                 <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-cyan-400" />{t('whaleAnalytics.cvdLabel') || 'CVD'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.instStrengthShort') || 'Strength'}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lime-400" />{t('whaleAnalytics.buyStrengthShort') || 'Sức mạnh mua'}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />{t('whaleAnalytics.instStrengthShort') || 'Sức mạnh tổ chức'}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.priceLineShort') || 'Đường giá'}</span>
               </div>
               <span>{t('whaleAnalytics.combinedRealtime') || 'Đồng bộ thời gian thực'}</span>
             </div>
             <div className="h-[520px]">
-              <ReactECharts 
+              <ReactEChartsCore 
+                echarts={echarts}
                 ref={echartsRef}
                 option={chartOption} 
                 onEvents={onEvents}

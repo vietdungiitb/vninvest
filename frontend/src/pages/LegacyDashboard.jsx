@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePortfolio } from '../context/PortfolioContext';
 import {
@@ -10,10 +10,6 @@ import {
 } from '../api/client';
 import StatCard from '../components/StatCard';
 import HoldingsTable from '../components/HoldingsTable';
-import AllocationPieChart from '../components/AllocationPieChart';
-import PortfolioAnalyticsPanel from '../components/PortfolioAnalyticsPanel';
-import EquityVsBenchmarkChart from '../components/EquityVsBenchmarkChart';
-import PortfolioDigestPanel from '../components/PortfolioDigestPanel';
 import UnifiedAlertBar from '../components/UnifiedAlertBar';
 import UnifiedAlertCenter from '../components/UnifiedAlertCenter';
 import PortfolioHeatmap from '../components/PortfolioHeatmap';
@@ -25,6 +21,19 @@ import {
   buildLiveHoldingsOverlay,
   buildLiveSummaryFromHoldings,
 } from '../utils/dashboardRealtimeSelectors';
+
+const AllocationPieChart = lazy(() => import('../components/AllocationPieChart'));
+const PortfolioAnalyticsPanel = lazy(() => import('../components/PortfolioAnalyticsPanel'));
+const EquityVsBenchmarkChart = lazy(() => import('../components/EquityVsBenchmarkChart'));
+const PortfolioDigestPanel = lazy(() => import('../components/PortfolioDigestPanel'));
+
+function DashboardPanelFallback({ minHeightClass = 'min-h-[220px]' }) {
+  return (
+    <div className={`rounded-xl border border-slate-800/50 bg-slate-900/40 ${minHeightClass} flex items-center justify-center text-xs font-medium text-slate-500`}>
+      Đang tải bảng phụ...
+    </div>
+  );
+}
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
@@ -220,6 +229,8 @@ export default function LegacyDashboard() {
 
   useEffect(() => {
     let cancelled = false;
+    let delayTimer = 0;
+    let idleHandle = 0;
 
     async function hydrateHeatmapSparkline() {
       if (!isAuthenticated || !activePortfolioId || monitoredSymbols.length === 0) {
@@ -229,11 +240,29 @@ export default function LegacyDashboard() {
         return;
       }
 
+      const symbolsToHydrate = monitoredSymbols.filter((symbol) => {
+        const existing = heatmapSparklineBySymbol[symbol];
+        return !Array.isArray(existing) || existing.length <= 1;
+      });
+
+      if (symbolsToHydrate.length === 0) {
+        setHeatmapSparklineBySymbol((prev) => {
+          const next = {};
+          monitoredSymbols.forEach((symbol) => {
+            if (Array.isArray(prev[symbol]) && prev[symbol].length > 1) {
+              next[symbol] = prev[symbol];
+            }
+          });
+          return next;
+        });
+        return;
+      }
+
       const CONCURRENCY = 3;
       const results = [];
-      for (let i = 0; i < monitoredSymbols.length; i += CONCURRENCY) {
+      for (let i = 0; i < symbolsToHydrate.length; i += CONCURRENCY) {
         if (cancelled) return;
-        const batch = monitoredSymbols.slice(i, i + CONCURRENCY).map(async (symbol) => {
+        const batch = symbolsToHydrate.slice(i, i + CONCURRENCY).map(async (symbol) => {
           try {
             const resp = await getIntradayMatched(symbol, 24);
             const payload = resp?.data || {};
@@ -253,22 +282,56 @@ export default function LegacyDashboard() {
       const settled = results;
       if (cancelled) return;
 
-      const next = {};
+      const fetched = {};
       settled.forEach((result) => {
         if (result.status !== 'fulfilled') return;
         const [symbol, points] = result.value;
         if (Array.isArray(points) && points.length > 1) {
-          next[symbol] = points;
+          fetched[symbol] = points;
         }
       });
-      setHeatmapSparklineBySymbol(next);
+
+      setHeatmapSparklineBySymbol((prev) => {
+        const next = {};
+        monitoredSymbols.forEach((symbol) => {
+          if (Array.isArray(fetched[symbol]) && fetched[symbol].length > 1) {
+            next[symbol] = fetched[symbol];
+            return;
+          }
+          if (Array.isArray(prev[symbol]) && prev[symbol].length > 1) {
+            next[symbol] = prev[symbol];
+          }
+        });
+        return next;
+      });
     }
 
-    hydrateHeatmapSparkline();
+    const scheduleHydration = () => {
+      if (cancelled) {
+        return;
+      }
+      hydrateHeatmapSparkline();
+    };
+
+    delayTimer = window.setTimeout(() => {
+      if (cancelled) {
+        return;
+      }
+      if (typeof window.requestIdleCallback === 'function') {
+        idleHandle = window.requestIdleCallback(scheduleHydration, { timeout: 1200 });
+        return;
+      }
+      scheduleHydration();
+    }, 450);
+
     return () => {
       cancelled = true;
+      window.clearTimeout(delayTimer);
+      if (idleHandle && typeof window.cancelIdleCallback === 'function') {
+        window.cancelIdleCallback(idleHandle);
+      }
     };
-  }, [activePortfolioId, isAuthenticated, monitoredSymbols]);
+  }, [activePortfolioId, heatmapSparklineBySymbol, isAuthenticated, monitoredSymbols]);
 
   const realtimeMarketBreadth = useMemo(() => {
     return monitoredQuotes.reduce((acc, item) => {
@@ -508,12 +571,18 @@ export default function LegacyDashboard() {
             setAudienceFilter={setAudienceFilter}
             className="w-full"
           />
-          <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+          <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[320px]" />}>
+            <PortfolioAnalyticsPanel portfolioId={activePortfolioId} />
+          </Suspense>
         </div>
 
         <div className="flex flex-col gap-6 xl:col-span-1">
-          <AllocationPieChart portfolioId={activePortfolioId} />
-          <PortfolioDigestPanel />
+          <Suspense fallback={<DashboardPanelFallback />}>
+            <AllocationPieChart portfolioId={activePortfolioId} />
+          </Suspense>
+          <Suspense fallback={<DashboardPanelFallback />}>
+            <PortfolioDigestPanel />
+          </Suspense>
           <div className="v2-panel-strong rounded-xl p-5 shadow-lg border border-slate-800/50 bg-slate-900/40 backdrop-blur-sm">
             <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400 border-b border-slate-800/60 pb-3 mb-4">
               {t('dashboardRealtime.portfolioStatusTitle')}
@@ -566,7 +635,9 @@ export default function LegacyDashboard() {
 
       <div className="space-y-4">
         <div>
-          <EquityVsBenchmarkChart portfolioId={activePortfolioId} />
+          <Suspense fallback={<DashboardPanelFallback minHeightClass="min-h-[320px]" />}>
+            <EquityVsBenchmarkChart portfolioId={activePortfolioId} />
+          </Suspense>
         </div>
       </div>
 

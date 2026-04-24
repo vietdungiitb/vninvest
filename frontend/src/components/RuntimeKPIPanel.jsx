@@ -220,11 +220,13 @@ export default function RuntimeKPIPanel() {
               label={t('runtimeKPI.prefetchHealthy')}
               value={
                 prefetch?.healthy === undefined ? '—'
-                  : prefetch.healthy
+                  : prefetch?.warning
+                    ? <><span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1" />{t('runtimeKPI.warning')}</>
+                    : prefetch.healthy
                     ? <><StatusDot ok />{t('runtimeKPI.ok')}</>
                     : <><StatusDot ok={false} />{t('runtimeKPI.degraded')}</>
               }
-              tone={prefetch?.healthy === false ? 'red' : prefetch?.healthy ? 'green' : undefined}
+              tone={prefetch?.healthy === false ? 'red' : prefetch?.warning ? 'amber' : prefetch?.healthy ? 'green' : undefined}
             />
             <KPIRow
               label={t('runtimeKPI.prefetchFreshness')}

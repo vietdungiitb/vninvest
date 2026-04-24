@@ -15,7 +15,7 @@ const DEFAULT_AI_CONFIG = {
  * Integrates multiple data sources (Holdings + Watchlist)
  * respects Global AI Source Config as SSOT.
  */
-export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, strategy = 'conservative' }) {
+export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, strategy = 'conservative', enabled = true }) {
   
   const aiConfig = useMemo(() => {
     try {
@@ -33,25 +33,47 @@ export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, 
   }, [strategy]);
 
   const recommendations = useMemo(() => {
-    if (!technicals) return [];
+    if (!enabled || !technicals) return [];
 
-    // Create a unique set of symbols from both Holdings and Watchlist
-    const holdingMap = (holdings || []).reduce((acc, h) => ({ ...acc, [h.symbol.trim().toUpperCase()]: h }), {});
-    const watchlistSymbols = (watchlist || []).map(w => w.symbol.trim().toUpperCase());
-    const allSymbols = Array.from(new Set([...Object.keys(holdingMap), ...watchlistSymbols]));
+    const holdingMap = Object.create(null);
+    const allSymbolsSet = new Set();
+    (holdings || []).forEach((holding) => {
+      const symbol = String(holding?.symbol || '').trim().toUpperCase();
+      if (!symbol) return;
+      holdingMap[symbol] = holding;
+      allSymbolsSet.add(symbol);
+    });
 
-    const techs = (technicals || []).reduce((acc, t) => ({ ...acc, [t.symbol]: t }), {});
+    (watchlist || []).forEach((item) => {
+      const symbol = String(item?.symbol || '').trim().toUpperCase();
+      if (!symbol) return;
+      allSymbolsSet.add(symbol);
+    });
+
+    const techs = Object.create(null);
+    (technicals || []).forEach((technical) => {
+      const symbol = String(technical?.symbol || '').trim().toUpperCase();
+      if (!symbol) return;
+      techs[symbol] = technical;
+    });
+
+    const whaleAlertCounts = Object.create(null);
+    (alerts || []).forEach((alert) => {
+      const symbol = String(alert?.symbol || '').trim().toUpperCase();
+      if (!symbol) return;
+      whaleAlertCounts[symbol] = (whaleAlertCounts[symbol] || 0) + 1;
+    });
+
     const totalValue = (holdings || []).reduce((sum, item) => sum + (item.market_value || 0), 0);
     const sourceCfg = aiConfig.sources;
 
-    return allSymbols.map(symbol => {
+    return Array.from(allSymbolsSet).map(symbol => {
       const h = holdingMap[symbol];
       const tech = techs[symbol] || {};
       const rsi = tech.rsi_14;
       const ma20Dist = tech.ma20_dist_pct;
-      const rvol = tech.rvol;
       const weight = (h && h.market_value > 0 && totalValue > 0) ? (h.market_value / totalValue * 100) : 0;
-      const whaleCount = (alerts || []).filter(a => a.symbol === symbol).length;
+      const whaleCount = whaleAlertCounts[symbol] || 0;
 
       let score = 0; 
       let reasons = [];
@@ -121,7 +143,7 @@ export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, 
     }).filter(r => r.action !== 'HOLD')
       .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
       .slice(0, 4);
-  }, [holdings, watchlist, technicals, aiConfig, strategyParams, alerts]);
+  }, [enabled, holdings, watchlist, technicals, aiConfig, strategyParams, alerts]);
 
   return {
     recommendations,

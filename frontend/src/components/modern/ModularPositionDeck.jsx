@@ -1,21 +1,21 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../../context/LangContext';
 import OptimizationModal from './OptimizationModal';
-import WhaleBubbleChart from '../WhaleBubbleChart';
-import WhaleAnalyticsTab from '../WhaleAnalyticsTab';
 import PaginationBar from '../shared/PaginationBar';
 import { filterUniverseByScope } from '../../utils/modernDashboardSymbolUniverse';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15, 20];
+const WhaleAnalyticsTab = lazy(() => import('../WhaleAnalyticsTab'));
 
-export default function ModularPositionDeck({ holdings, symbolUniverse = [], loading, quotesBySymbol, technicals, alerts, analytics, digest }) {
+export default function ModularPositionDeck({ holdings, symbolUniverse = [], loading, quotesBySymbol, technicals, alerts, analytics, digest, onRequestDigest }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState('overview');
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [symbolScope, setSymbolScope] = useState('holdings');
   const [selectedSymbol, setSelectedSymbol] = useState('all');
+  const [showOptimization, setShowOptimization] = useState(false);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -27,8 +27,18 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     setCurrentPage(1);
   };
 
+  const isOverviewTab = activeTab === 'overview';
+  const isTechnicalTab = activeTab === 'technical';
+  const isAITab = activeTab === 'ai';
+  const needsTechnicalsView = isTechnicalTab || isAITab;
+  const needsHealthStats = isAITab || showOptimization;
+
   // Logic for Health Score Calculation
   const healthStats = useMemo(() => {
+    if (!needsHealthStats) {
+      return { hasData: false, score: 0, grade: 'N/A', color: 'text-slate-500' };
+    }
+
     const hasAnalytics = analytics && [
       analytics.sharpe_ratio,
       analytics.alpha_annual_pct,
@@ -56,9 +66,7 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     else if (total >= 40) { grade = 'D'; color = 'text-orange-400'; }
 
     return { hasData: true, score: total, grade, color };
-  }, [analytics]);
-
-  const [showOptimization, setShowOptimization] = useState(false);
+  }, [analytics, needsHealthStats]);
 
   const tabs = [
     { id: 'overview', label: 'Tổng quan', icon: '📋' },
@@ -103,6 +111,13 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     setCurrentPage(1);
   }, [symbolScope, selectedSymbol]);
 
+  useEffect(() => {
+    if (!isAITab) {
+      return;
+    }
+    onRequestDigest?.();
+  }, [isAITab, onRequestDigest]);
+
   const activeSymbolSet = useMemo(() => {
     if (selectedSymbol !== 'all') {
       return new Set([selectedSymbol]);
@@ -110,48 +125,34 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
     return new Set(symbolOptions);
   }, [selectedSymbol, symbolOptions]);
 
-  // Filter alerts for symbols in current scope
-  const portfolioSymbols = activeSymbolSet;
-  const filteredWhaleAlerts = (alerts || []).filter((alert) => {
-    const symbol = String(alert?.symbol || '').trim().toUpperCase();
-    return symbol && portfolioSymbols.has(symbol);
-  });
-
-  const filteredHoldings = useMemo(
-    () => holdings.filter((holding) => activeSymbolSet.has(String(holding?.symbol || '').trim().toUpperCase())),
-    [holdings, activeSymbolSet],
-  );
-
   const filteredOverviewRows = useMemo(
-    () => scopedUniverse.filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase())),
-    [scopedUniverse, activeSymbolSet],
+    () => {
+      if (!isOverviewTab) return [];
+      return scopedUniverse.filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase()));
+    },
+    [isOverviewTab, scopedUniverse, activeSymbolSet],
   );
 
   const filteredTechnicals = useMemo(
-    () => (technicals || []).filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase())),
-    [technicals, activeSymbolSet],
+    () => {
+      if (!needsTechnicalsView) return [];
+      return (technicals || []).filter((item) => activeSymbolSet.has(String(item?.symbol || '').trim().toUpperCase()));
+    },
+    [needsTechnicalsView, technicals, activeSymbolSet],
   );
 
   // Paginated slices
-  const pagedHoldings = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredHoldings.slice(start, start + pageSize);
-  }, [filteredHoldings, currentPage, pageSize]);
-
   const pagedOverviewRows = useMemo(() => {
+    if (!isOverviewTab) return [];
     const start = (currentPage - 1) * pageSize;
     return filteredOverviewRows.slice(start, start + pageSize);
-  }, [filteredOverviewRows, currentPage, pageSize]);
+  }, [isOverviewTab, filteredOverviewRows, currentPage, pageSize]);
 
   const pagedTechnicals = useMemo(() => {
+    if (!isTechnicalTab) return [];
     const start = (currentPage - 1) * pageSize;
     return filteredTechnicals.slice(start, start + pageSize);
-  }, [filteredTechnicals, currentPage, pageSize]);
-
-  const pagedWhaleAlerts = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredWhaleAlerts.slice(start, start + pageSize);
-  }, [filteredWhaleAlerts, currentPage, pageSize]);
+  }, [isTechnicalTab, filteredTechnicals, currentPage, pageSize]);
 
   const fmtNumber = (value, digits = 0) => {
     if (value === null || value === undefined || Number.isNaN(Number(value))) return '--';
@@ -188,6 +189,15 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
   }, [scopeOptions, symbolScope, t]);
 
   const aiMonitorSummary = useMemo(() => {
+    if (!isAITab) {
+      return {
+        symbolsCount: 0,
+        bullishCount: 0,
+        bearishCount: 0,
+        neutralCount: 0,
+      };
+    }
+
     const symbolsCount = symbolOptions.length;
     const bullishCount = filteredTechnicals.filter((item) => Number(item.momentum_20d_pct) > 0).length;
     const bearishCount = filteredTechnicals.filter((item) => Number(item.momentum_20d_pct) < 0).length;
@@ -198,7 +208,7 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
       bearishCount,
       neutralCount,
     };
-  }, [filteredTechnicals, symbolOptions]);
+  }, [isAITab, filteredTechnicals, symbolOptions]);
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col h-full">
@@ -411,12 +421,20 @@ export default function ModularPositionDeck({ holdings, symbolUniverse = [], loa
 
         {activeTab === 'whale' && (
           <div className="h-full flex flex-col overflow-hidden">
-            <WhaleAnalyticsTab
-              holdings={holdings}
-              quotesBySymbol={quotesBySymbol}
-              selectedSymbol={selectedSymbol !== 'all' ? selectedSymbol : undefined}
-              symbolOptions={symbolOptions}
-            />
+            <Suspense
+              fallback={(
+                <div className="flex h-full items-center justify-center rounded-xl border border-slate-800 bg-slate-950/40 text-sm text-slate-400">
+                  {t('modernDeck.loading', { defaultValue: 'Đang tải...' })}
+                </div>
+              )}
+            >
+              <WhaleAnalyticsTab
+                holdings={holdings}
+                quotesBySymbol={quotesBySymbol}
+                selectedSymbol={selectedSymbol !== 'all' ? selectedSymbol : undefined}
+                symbolOptions={symbolOptions}
+              />
+            </Suspense>
           </div>
         )}
 

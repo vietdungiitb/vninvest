@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { getSummary, getHoldings, getAnalytics, getPortfolioTechnicals, getPortfolioNewsDigest, getTrackedSymbols, getWatchlistGroups, getBulkTechnicalsBySymbols } from '../../api/client';
 import { useI18n } from '../../context/LangContext';
@@ -8,20 +8,33 @@ import { buildModernDashboardSymbolUniverse } from '../../utils/modernDashboardS
 
 import SmartStatsHeader from '../../components/modern/SmartStatsHeader';
 import ModularPositionDeck from '../../components/modern/ModularPositionDeck';
-import ModernSidebar from '../../components/modern/ModernSidebar';
 import PortfolioHeatmap from '../../components/PortfolioHeatmap';
 import UnifiedAlertCenter from '../../components/UnifiedAlertCenter';
 import useUnifiedAlerts from '../../hooks/useUnifiedAlerts';
 import usePersistentAlertState from '../../hooks/usePersistentAlertState';
-import AIAdvisorAlertPanel from '../../components/modern/AIAdvisorAlertPanel';
+
+const ModernSidebar = lazy(() => import('../../components/modern/ModernSidebar'));
+const AIAdvisorAlertPanel = lazy(() => import('../../components/modern/AIAdvisorAlertPanel'));
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
 }
 
+function SidebarPanelFallback({ minHeightClass = 'min-h-[220px]', label = 'Đang tải bảng phụ...' }) {
+  return (
+    <div className={`rounded-2xl border border-slate-800/50 bg-slate-900/40 ${minHeightClass} flex items-center justify-center px-4 text-xs font-medium text-slate-500`}>
+      {label}
+    </div>
+  );
+}
+
 export default function ModernDashboard() {
   const { activePortfolioId, isAuthenticated } = usePortfolio();
   const { t } = useI18n();
+  const fetchRequestTokenRef = useRef(0);
+  const deferredAuxTimerRef = useRef(0);
+  const deferredAuxIdleRef = useRef(0);
+  const digestFetchInFlightRef = useRef(false);
 
   const [summary, setSummary] = useState(null);
   const [holdings, setHoldings] = useState([]);
@@ -195,73 +208,174 @@ export default function ModernDashboard() {
     setSeverityFilter((prev) => (prev === targetFilter ? 'all' : targetFilter));
   }, []);
 
+  const clearDeferredAuxFetch = useCallback(() => {
+    if (deferredAuxTimerRef.current) {
+      window.clearTimeout(deferredAuxTimerRef.current);
+      deferredAuxTimerRef.current = 0;
+    }
+    if (deferredAuxIdleRef.current && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(deferredAuxIdleRef.current);
+      deferredAuxIdleRef.current = 0;
+    }
+  }, []);
+
+  const requestPortfolioDigest = useCallback(async () => {
+    const requestToken = fetchRequestTokenRef.current;
+    if (!isAuthenticated || !activePortfolioId) return;
+    if (digest !== null || digestFetchInFlightRef.current) return;
+
+    digestFetchInFlightRef.current = true;
+    try {
+      const digestResp = await getPortfolioNewsDigest();
+      if (fetchRequestTokenRef.current !== requestToken) {
+        return;
+      }
+      setDigest(digestResp.data);
+    } catch (error) {
+      console.warn('Portfolio news digest deferred fetch failed:', error);
+      if (fetchRequestTokenRef.current !== requestToken) {
+        return;
+      }
+      setDigest(null);
+    } finally {
+      digestFetchInFlightRef.current = false;
+    }
+  }, [activePortfolioId, digest, isAuthenticated]);
+
+  const loadAuxiliaryDashboardData = useCallback(async ({
+    portfolioId,
+    nextHoldings,
+    nextTracked,
+    nextWatchlistGroups,
+    requestToken,
+  }) => {
+    const symbolSet = new Set();
+    nextHoldings.forEach((item) => {
+      const symbol = normalizeSymbol(item?.symbol);
+      if (symbol) symbolSet.add(symbol);
+    });
+    nextTracked.forEach((item) => {
+      const symbol = normalizeSymbol(item?.symbol);
+      if (symbol) symbolSet.add(symbol);
+    });
+    nextWatchlistGroups.forEach((group) => {
+      (group?.items || []).forEach((item) => {
+        const symbol = normalizeSymbol(item?.symbol);
+        if (symbol) symbolSet.add(symbol);
+      });
+    });
+
+    const bulkSymbols = Array.from(symbolSet);
+
+    const analyticsResult = await Promise.allSettled([
+      getAnalytics(portfolioId),
+    ]);
+
+    if (fetchRequestTokenRef.current !== requestToken) {
+      return;
+    }
+
+    if (analyticsResult[0].status === 'fulfilled') {
+      setAnalytics(analyticsResult[0].value.data);
+    }
+
+    if (!bulkSymbols.length) {
+      setTechnicals([]);
+      return;
+    }
+
+    try {
+      const bulkResp = await getBulkTechnicalsBySymbols(bulkSymbols);
+      if (fetchRequestTokenRef.current !== requestToken) {
+        return;
+      }
+      setTechnicals(bulkResp.data?.technicals || []);
+    } catch (bulkErr) {
+      console.warn('Bulk technicals fallback to portfolio endpoint:', bulkErr);
+      try {
+        const fallbackResp = await getPortfolioTechnicals(portfolioId);
+        if (fetchRequestTokenRef.current !== requestToken) {
+          return;
+        }
+        setTechnicals(fallbackResp.data?.technicals || []);
+      } catch (fallbackErr) {
+        console.warn('Portfolio technicals fallback failed:', fallbackErr);
+        if (fetchRequestTokenRef.current !== requestToken) {
+          return;
+        }
+        setTechnicals([]);
+      }
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || !activePortfolioId) return;
+    const requestToken = fetchRequestTokenRef.current + 1;
+    fetchRequestTokenRef.current = requestToken;
+    clearDeferredAuxFetch();
     setLoading(true);
+    setAnalytics(null);
+    setDigest(null);
+    setTechnicals(null);
+    digestFetchInFlightRef.current = false;
+
     try {
       const results = await Promise.allSettled([
         getSummary(activePortfolioId),
         getHoldings(activePortfolioId),
-        getAnalytics(activePortfolioId),
-        getPortfolioTechnicals(activePortfolioId),
-        getPortfolioNewsDigest(),
         getTrackedSymbols(),
         getWatchlistGroups(),
       ]);
 
+      if (fetchRequestTokenRef.current !== requestToken) {
+        return;
+      }
+
       if (results[0].status === 'fulfilled') setSummary(results[0].value.data);
       if (results[1].status === 'fulfilled') setHoldings(results[1].value.data);
-      if (results[2].status === 'fulfilled') setAnalytics(results[2].value.data);
-      if (results[4].status === 'fulfilled') setDigest(results[4].value.data);
-      if (results[5].status === 'fulfilled') setTrackedSymbols(results[5].value.data || []);
-      if (results[6].status === 'fulfilled') setWatchlistGroups(results[6].value.data || []);
-
-      const fallbackTechnicals = results[3].status === 'fulfilled'
-        ? (results[3].value.data?.technicals || [])
-        : [];
+      if (results[2].status === 'fulfilled') setTrackedSymbols(results[2].value.data || []);
+      if (results[3].status === 'fulfilled') setWatchlistGroups(results[3].value.data || []);
 
       const nextHoldings = results[1].status === 'fulfilled' ? (results[1].value.data || []) : [];
-      const nextTracked = results[5].status === 'fulfilled' ? (results[5].value.data || []) : [];
-      const nextWatchlistGroups = results[6].status === 'fulfilled' ? (results[6].value.data || []) : [];
+      const nextTracked = results[2].status === 'fulfilled' ? (results[2].value.data || []) : [];
+      const nextWatchlistGroups = results[3].status === 'fulfilled' ? (results[3].value.data || []) : [];
 
-      const symbolSet = new Set();
-      nextHoldings.forEach((item) => {
-        const symbol = normalizeSymbol(item?.symbol);
-        if (symbol) symbolSet.add(symbol);
-      });
-      nextTracked.forEach((item) => {
-        const symbol = normalizeSymbol(item?.symbol);
-        if (symbol) symbolSet.add(symbol);
-      });
-      nextWatchlistGroups.forEach((group) => {
-        (group?.items || []).forEach((item) => {
-          const symbol = normalizeSymbol(item?.symbol);
-          if (symbol) symbolSet.add(symbol);
+      const scheduleAuxFetch = () => {
+        loadAuxiliaryDashboardData({
+          portfolioId: activePortfolioId,
+          nextHoldings,
+          nextTracked,
+          nextWatchlistGroups,
+          requestToken,
         });
-      });
+      };
 
-      const bulkSymbols = Array.from(symbolSet);
-      if (!bulkSymbols.length) {
-        setTechnicals([]);
-      } else {
-        try {
-          const bulkResp = await getBulkTechnicalsBySymbols(bulkSymbols);
-          setTechnicals(bulkResp.data?.technicals || []);
-        } catch (bulkErr) {
-          console.warn('Bulk technicals fallback to portfolio endpoint:', bulkErr);
-          setTechnicals(fallbackTechnicals);
+      deferredAuxTimerRef.current = window.setTimeout(() => {
+        if (typeof window.requestIdleCallback === 'function') {
+          deferredAuxIdleRef.current = window.requestIdleCallback(() => {
+            deferredAuxIdleRef.current = 0;
+            scheduleAuxFetch();
+          }, { timeout: 900 });
+          return;
         }
-      }
+        scheduleAuxFetch();
+      }, 120);
     } catch (err) {
       console.error('ModernDashboard data fetch error:', err);
     } finally {
-      setLoading(false);
+      if (fetchRequestTokenRef.current === requestToken) {
+        setLoading(false);
+      }
     }
-  }, [isAuthenticated, activePortfolioId]);
+  }, [isAuthenticated, activePortfolioId, clearDeferredAuxFetch, loadAuxiliaryDashboardData]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => () => {
+    clearDeferredAuxFetch();
+  }, [clearDeferredAuxFetch]);
 
   if (!activePortfolioId) {
     return (
@@ -339,28 +453,34 @@ export default function ModernDashboard() {
                 alerts={alerts}
                 analytics={analytics}
                 digest={digest}
+                onRequestDigest={requestPortfolioDigest}
               />
             </div>
           </div>
 
           <div className="h-full min-h-[460px] min-w-0 self-start xl:col-span-1 space-y-4">
-            <AIAdvisorAlertPanel 
-              holdings={holdings}
-              watchlist={trackedSymbols}
-              technicals={technicals}
-              alerts={alerts}
-              newsDigest={digest}
-              criticalSoundEnabled={criticalSoundEnabled}
-            />
-            <ModernSidebar
-              portfolioId={activePortfolioId}
-              alerts={alerts}
-              breadth={realtimeMarketBreadth}
-              analytics={analytics}
-              digest={digest}
-              loading={loading}
-              portfolioSymbols={monitoredSymbols}
-            />
+            <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[420px]" label="Đang tải bảng AI phụ trợ..." />}>
+              <AIAdvisorAlertPanel 
+                holdings={holdings}
+                watchlist={trackedSymbols}
+                technicals={technicals}
+                alerts={alerts}
+                newsDigest={digest}
+                onRequestDigest={requestPortfolioDigest}
+                criticalSoundEnabled={criticalSoundEnabled}
+              />
+            </Suspense>
+            <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[460px]" label="Đang tải bảng phân tích phụ..." />}>
+              <ModernSidebar
+                portfolioId={activePortfolioId}
+                alerts={alerts}
+                breadth={realtimeMarketBreadth}
+                analytics={analytics}
+                digest={digest}
+                loading={loading}
+                portfolioSymbols={monitoredSymbols}
+              />
+            </Suspense>
           </div>
         </div>
       </div>
