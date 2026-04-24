@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24bx)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them direct endLabel cho price/buy strength/institutional strength va label-carrier series cho CVD)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.4` hoan thanh va xac nhan Giai doan 1 da complete)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bx)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.dde261c3.js` ~745.36 kB gzip.
+- PASSED: 4 line chinh (price, CVD, buy strength, institutional strength) da co nhan truc tiep tren chart; Giai doan 1 taskboard da duoc hoan tat day du tren `dev`.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bw)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them preset nguong, slider log-scale va local bubble filter chi danh cho bubble pane)
 - frontend/src/i18n/vi.js (MODIFIED - them copy filter nguong Whale Analytics)

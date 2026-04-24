@@ -195,6 +195,20 @@ function formatBubbleThresholdLabel(threshold, t) {
   return `>= ${formatTooltipMoney(threshold)}`;
 }
 
+function buildEndLabel(text, color, formatter) {
+  return {
+    show: true,
+    distance: 10,
+    color,
+    fontSize: 10,
+    fontWeight: 700,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    borderRadius: 6,
+    padding: [3, 6],
+    formatter,
+  };
+}
+
 function buildHoverPanelData(params, {
   t,
   buyStrengthByTimestamp,
@@ -624,6 +638,12 @@ export default function WhaleBubbleChart({
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#f59e0b', width: 2, opacity: 0.95 },
+        endLabel: buildEndLabel(
+          t('whaleAnalytics.priceLineShort', { defaultValue: 'Đường giá' }),
+          '#fbbf24',
+          ({ value }) => `${t('whaleAnalytics.priceLineShort', { defaultValue: 'Đường giá' })} ${Number(Array.isArray(value) ? value[1] : value || 0).toLocaleString('vi-VN')}`,
+        ),
+        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
         z: 5,
       },
     ];
@@ -662,6 +682,25 @@ export default function WhaleBubbleChart({
         areaStyle: { color: 'rgba(244, 63, 94, 0.25)', origin: 0 },
         z: 2,
       },
+      {
+        name: t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' }),
+        type: 'line',
+        data: flowCvdSeries,
+        xAxisIndex: 1,
+        yAxisIndex: 2,
+        showSymbol: false,
+        smooth: true,
+        lineStyle: { opacity: 0, width: 0 },
+        tooltip: { show: false },
+        silent: true,
+        endLabel: buildEndLabel(
+          t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' }),
+          '#67e8f9',
+          ({ value }) => `${t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })} ${formatCompactSignedValue(Array.isArray(value) ? value[1] : value || 0)}`,
+        ),
+        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
+        z: 5,
+      },
       // Buy Strength line (when CVD is positive)
       {
         name: 'Sức mạnh mua',
@@ -672,6 +711,12 @@ export default function WhaleBubbleChart({
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#4ade80', width: 2 },
+        endLabel: buildEndLabel(
+          t('whaleAnalytics.buyStrengthShort', { defaultValue: 'Sức mạnh mua' }),
+          '#86efac',
+          ({ value }) => `${t('whaleAnalytics.buyStrengthShort', { defaultValue: 'Sức mạnh mua' })} ${Number(Array.isArray(value) ? value[1] : value || 0).toFixed(1)}`,
+        ),
+        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
         z: 4,
       },
       // Institutional Strength line
@@ -684,6 +729,12 @@ export default function WhaleBubbleChart({
         showSymbol: false,
         smooth: true,
         lineStyle: { color: '#38bdf8', width: 2 },
+        endLabel: buildEndLabel(
+          t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' }),
+          '#7dd3fc',
+          ({ value }) => `${t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' })} ${Number(Array.isArray(value) ? value[1] : value || 0).toFixed(1)}`,
+        ),
+        labelLayout: { hideOverlap: true, moveOverlap: 'shiftY' },
         z: 4,
       },
 	];

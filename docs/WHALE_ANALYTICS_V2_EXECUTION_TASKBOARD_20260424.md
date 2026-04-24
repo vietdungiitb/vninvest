@@ -109,7 +109,7 @@ Ghi chú triển khai 2026-04-24:
 
 ### FE-1.4 Direct label/endLabel cho line chính
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Frontend
@@ -119,6 +119,22 @@ Trạng thái: `[ ]`
   - label trực tiếp cho price, CVD, buy strength, institutional strength
 - Acceptance:
   - người dùng đọc được line chính mà không cần dò legend
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm endLabel trực tiếp cho price line, buy strength, institutional strength.
+- Đã thêm một label-carrier series riêng cho CVD để hiện nhãn trực tiếp mà không làm hỏng phần area hiện có.
+- Frontend Docker build/restart đã PASS với bundle `main.dde261c3.js`.
+
+### Trạng thái Giai đoạn 1 sau checkpoint 2026-04-24
+
+- `FE-1.1`: `[x]`
+- `FE-1.2`: `[x]`
+- `FE-1.3`: `[x]`
+- `FE-1.4`: `[x]`
+- `FE-1.5`: `[x]`
+
+Kết luận: toàn bộ checklist Giai đoạn 1 đã có code, validation runtime và audit trail tương ứng trên nhánh `dev`.
 
 ### FE-1.5 Sửa fallback i18n của chart
 

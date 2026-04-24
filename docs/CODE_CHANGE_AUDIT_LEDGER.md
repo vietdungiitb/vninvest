@@ -1,5 +1,23 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bx - Implement FE-1.4 direct labels for main Whale Analytics lines
+
+Muc tieu:
+- Hoan thanh slice `FE-1.4` de nguoi dung doc duoc line chinh ngay tren chart ma khong can phu thuoc vao legend.
+- Chot moc ket thuc toan bo Giai doan 1 bang chung code + runtime validation + audit trail tren nhanh `dev`.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them endLabel cho price/buy strength/institutional strength va label-carrier series cho CVD)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.4` hoan thanh va xac nhan Giai doan 1 da hoan tat)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bx)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.dde261c3.js` ~745.36 kB gzip.
+- PASSED: price line, CVD, buy strength va institutional strength da co nhan truc tiep tren chart, giup doc line ma khong can do legend.
+- NOTE: ket thuc checkpoint nay, toan bo Giai doan 1 cua Whale Analytics V2 da duoc hoan thanh tren `dev`.
+
 ## Entry 2026-04-24bw - Implement FE-1.2 transparent bubble threshold filter
 
 Muc tieu:
