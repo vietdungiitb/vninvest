@@ -52,6 +52,18 @@ const TIMEFRAME_OPTIONS = [
   { value: 'session', label: 'Cả phiên' },
 ];
 
+const BUBBLE_FILTER_PRESETS = [
+  { key: 'all', value: 0, labelKey: 'whaleAnalytics.filterAll', defaultLabel: 'Tất cả' },
+  { key: '500m', value: 500_000_000, labelKey: 'whaleAnalytics.filterPreset500m', defaultLabel: '> 500 triệu' },
+  { key: '1b', value: 1_000_000_000, labelKey: 'whaleAnalytics.filterPreset1b', defaultLabel: '> 1 tỷ' },
+  { key: '3b', value: 3_000_000_000, labelKey: 'whaleAnalytics.filterPreset3b', defaultLabel: '> 3 tỷ' },
+  { key: '5b', value: 5_000_000_000, labelKey: 'whaleAnalytics.filterPreset5b', defaultLabel: '> 5 tỷ' },
+  { key: '10b', value: 10_000_000_000, labelKey: 'whaleAnalytics.filterPreset10b', defaultLabel: '> 10 tỷ' },
+];
+
+const MIN_BUBBLE_FILTER_THRESHOLD = 100_000_000;
+const MAX_BUBBLE_FILTER_THRESHOLD = 10_000_000_000;
+
 const COLORS = {
   buy: '#10b981',
   sell: '#ef4444',
@@ -149,6 +161,38 @@ function formatPanelSeriesValue(seriesName, value) {
   }
 
   return formatCompactSignedValue(numericValue);
+}
+
+function thresholdToSliderValue(threshold) {
+  const numericThreshold = Number(threshold || 0);
+  if (!Number.isFinite(numericThreshold) || numericThreshold <= 0) {
+    return 0;
+  }
+
+  const clampedThreshold = Math.min(MAX_BUBBLE_FILTER_THRESHOLD, Math.max(MIN_BUBBLE_FILTER_THRESHOLD, numericThreshold));
+  const logMin = Math.log10(MIN_BUBBLE_FILTER_THRESHOLD);
+  const logMax = Math.log10(MAX_BUBBLE_FILTER_THRESHOLD);
+  return Math.round(((Math.log10(clampedThreshold) - logMin) / (logMax - logMin)) * 100);
+}
+
+function sliderValueToThreshold(sliderValue) {
+  const numericSlider = Number(sliderValue || 0);
+  if (!Number.isFinite(numericSlider) || numericSlider <= 0) {
+    return 0;
+  }
+
+  const logMin = Math.log10(MIN_BUBBLE_FILTER_THRESHOLD);
+  const logMax = Math.log10(MAX_BUBBLE_FILTER_THRESHOLD);
+  const exponent = logMin + (numericSlider / 100) * (logMax - logMin);
+  const rawThreshold = 10 ** exponent;
+  return Math.max(50_000_000, Math.round(rawThreshold / 50_000_000) * 50_000_000);
+}
+
+function formatBubbleThresholdLabel(threshold, t) {
+  if (!Number.isFinite(Number(threshold)) || Number(threshold) <= 0) {
+    return t('whaleAnalytics.filterAll', { defaultValue: 'Tất cả' });
+  }
+  return `>= ${formatTooltipMoney(threshold)}`;
 }
 
 function buildHoverPanelData(params, {
@@ -250,6 +294,7 @@ export default function WhaleBubbleChart({
 
   const [showUnit, setShowUnit] = useState('value'); // 'value' (VND) or 'volume' (Shares)
   const [hoveredPanel, setHoveredPanel] = useState(null);
+  const [bubbleThreshold, setBubbleThreshold] = useState(0);
 
   // Available symbols
   const availableSymbols = useMemo(() => {
@@ -309,6 +354,19 @@ export default function WhaleBubbleChart({
   );
 
   const totalOrders = orderData?.summary?.total_orders || 0;
+  const visibleBubbleGroups = useMemo(() => {
+    if (!bubbleThreshold) {
+      return bubbles;
+    }
+
+    const applyThreshold = (items) => items.filter((item) => Number(item?.matchedValue || 0) >= bubbleThreshold);
+    return {
+      buy: applyThreshold(bubbles.buy || []),
+      sell: applyThreshold(bubbles.sell || []),
+      internal: applyThreshold(bubbles.internal || []),
+    };
+  }, [bubbles, bubbleThreshold]);
+  const visibleBubbleCount = (visibleBubbleGroups.buy?.length || 0) + (visibleBubbleGroups.sell?.length || 0) + (visibleBubbleGroups.internal?.length || 0);
   const isDegradedMode = Boolean(orderData?.degraded_mode || orderData?.quality_flags?.missing_reference_price);
   const staleReason = orderData?.stale_reason || orderData?.meta?.stale_reason || null;
   const degradedModeCopy = useMemo(() => getDegradedModeCopy(staleReason, t), [staleReason, t]);
@@ -404,7 +462,7 @@ export default function WhaleBubbleChart({
       maData.push([allBubbles[i].x, avg]);
     }
 
-    const layeredBubblePoints = [...allBubbles]
+    const layeredBubblePoints = [...(visibleBubbleGroups.buy || []), ...(visibleBubbleGroups.sell || []), ...(visibleBubbleGroups.internal || [])]
       .sort((left, right) => {
         const leftSize = Number(left?.value?.[2] ?? 0);
         const rightSize = Number(right?.value?.[2] ?? 0);
@@ -783,7 +841,7 @@ export default function WhaleBubbleChart({
         },
       ],
     };
-  }, [orderData, bubbles, showUnit, t, timeframeWindow, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp, priceLineSeries, flowBuyStrengthSeries, tooltipFormatter]);
+  }, [orderData, bubbles, visibleBubbleGroups, showUnit, t, timeframeWindow, flowCvdPosSeries, flowCvdNegSeries, flowStrengthSeries, buyStrengthByTimestamp, institutionalStrengthByTimestamp, priceByTimestamp, priceLineSeries, flowBuyStrengthSeries, tooltipFormatter]);
 
   // Handle sync events from chart to parent
   const onEvents = useMemo(() => ({
@@ -977,6 +1035,41 @@ export default function WhaleBubbleChart({
             )}
             <div className="flex flex-1 flex-col lg:flex-row lg:items-stretch">
               <div className="min-w-0 flex-1">
+                <div className="px-4 pt-3">
+                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-3">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{t('whaleAnalytics.filterTitle', { defaultValue: 'Lọc ngưỡng bubble' })}</div>
+                        <div className="mt-1 text-xs text-slate-300">{t('whaleAnalytics.filterThresholdActive', { defaultValue: 'Ngưỡng hiện hành' })}: <span className="font-semibold text-slate-100">{formatBubbleThresholdLabel(bubbleThreshold, t)}</span></div>
+                        <div className="mt-1 text-[11px] text-slate-500">{t('whaleAnalytics.filterVisibleCount', { count: visibleBubbleCount, defaultValue: `${visibleBubbleCount} bubble đang hiển thị` })}</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {BUBBLE_FILTER_PRESETS.map((preset) => (
+                          <button
+                            key={preset.key}
+                            type="button"
+                            onClick={() => setBubbleThreshold(preset.value)}
+                            className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${bubbleThreshold === preset.value ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300' : 'border-slate-700 bg-slate-900/80 text-slate-300 hover:border-slate-500 hover:text-slate-100'}`}
+                          >
+                            {t(preset.labelKey, { defaultValue: preset.defaultLabel })}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-center">
+                      <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{t('whaleAnalytics.filterSliderLabel', { defaultValue: 'Tinh chỉnh log-scale' })}</label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={thresholdToSliderValue(bubbleThreshold)}
+                        onChange={(event) => setBubbleThreshold(sliderValueToThreshold(event.target.value))}
+                        className="w-full accent-emerald-500 lg:flex-1"
+                      />
+                    </div>
+                  </div>
+                </div>
                 <div className="px-4 pt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-slate-500">
                   <div className="flex items-center gap-5">
                     <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow', { defaultValue: 'Mua chủ động' })}</span>

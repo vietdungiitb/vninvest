@@ -63,7 +63,7 @@ Ghi chú triển khai 2026-04-24:
 
 ### FE-1.2 Thêm filter ngưỡng lệnh minh bạch
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Frontend
@@ -76,6 +76,13 @@ Trạng thái: `[ ]`
 - Acceptance:
   - mọi bubble trên ngưỡng hiện hành vẫn hiển thị đầy đủ
   - line price/CVD/strength không bị filter theo bubble threshold
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm preset ngưỡng nhanh và slider log-scale cục bộ ngay trong `WhaleBubbleChart.jsx`.
+- Filter chỉ tác động tới bubble dataset, không refetch và không ảnh hưởng price line, CVD, buy strength hay institutional strength.
+- UI hiển thị rõ ngưỡng hiện hành và số bubble còn đang hiển thị.
+- Frontend Docker build/restart đã PASS với bundle `main.bcea4d5d.js`.
 
 ### FE-1.3 Khóa rule visual truthfulness
 

@@ -3,6 +3,21 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24bw)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them preset nguong, slider log-scale va local bubble filter chi danh cho bubble pane)
+- frontend/src/i18n/vi.js (MODIFIED - them copy filter nguong Whale Analytics)
+- frontend/src/i18n/en.js (MODIFIED - them copy filter nguong Whale Analytics locale Anh)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.2` hoan thanh va them ghi chu trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.bcea4d5d.js` ~745.13 kB gzip.
+- PASSED: preset nguong nhanh + slider log-scale da hoat dong theo local frontend state va khong tac dong den line context.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bv)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - hop nhat bubble pane thanh mot scatter series sort theo kich thuoc de bubble lon duoc ve sau cung)
 - docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.3` hoan thanh va them ghi chu trien khai)

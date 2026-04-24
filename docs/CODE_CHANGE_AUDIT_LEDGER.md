@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bw - Implement FE-1.2 transparent bubble threshold filter
+
+Muc tieu:
+- Hoan thanh slice `FE-1.2` bang filter nguong bubble minh bach, chi tac dong vao bubble series o frontend va giu nguyen toan bo line context.
+- Tao bang chung runtime cho preset nguong nhanh + slider log-scale va semantics "khong refetch, khong filter line".
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them bubble threshold state, preset nhanh, slider log-scale va local filter chi cho bubble pane)
+- frontend/src/i18n/vi.js (MODIFIED - them copy filter nguong Whale Analytics)
+- frontend/src/i18n/en.js (MODIFIED - them copy filter nguong Whale Analytics locale Anh)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.2` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend build/restart thanh cong; bundle `main.bcea4d5d.js` ~745.13 kB gzip.
+- PASSED: filter nguong chi thay doi bubble pane; price line, CVD, buy strength va institutional strength van render theo full context.
+- NOTE: slice nay la local transform minh bach; khong thay doi API contract hay fetch lifecycle.
+
 ## Entry 2026-04-24bv - Lock FE-1.3 visual truthfulness via global bubble layering
 
 Muc tieu:
