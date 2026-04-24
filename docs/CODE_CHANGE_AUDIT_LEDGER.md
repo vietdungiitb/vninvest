@@ -1,5 +1,25 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bt - Lock Whale Analytics chart i18n fallback to prevent raw key leakage
+
+Muc tieu:
+- Hoan thanh slice khoi dong `FE-1.5` trong taskboard Whale Analytics V2 de chan tinh trang chart/tab wrapper hien raw i18n key khi dictionary thieu chuoi.
+- Khoa hanh vi fallback theo huong an toan va de audit: bo sung key con thieu trong locale dictionaries, dong thoi doi cac call-site Whale Analytics nhay cam sang `defaultValue` thay vi mau `t(key) || fallback`.
+
+Danh sach tep cap nhat:
+- frontend/src/i18n/vi.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu va sua short labels sang copy tieng Viet co dau)
+- frontend/src/i18n/en.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu cho locale Anh)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - doi badge/disclaimer labels sang `t(..., { defaultValue })`)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - doi degraded copy, legend labels va cac text empty/degraded sang `defaultValue` an toan)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.5` hoan thanh va ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bt)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`, `frontend/src/components/WhaleAnalyticsTab.jsx`, `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: dictionary Whale Analytics hien da co du cac key duoc component Whale su dung trong slice nay, giam nguy co raw-key leakage tren UI.
+- NOTE: slice nay co y thuc giu pham vi hep o be mat Whale Analytics, chua thay doi semantics toan bo i18n engine cua app.
+
 ## Entry 2026-04-24bs - Add ready-to-code kickoff order and per-slice audit cadence for Whale Analytics V2
 
 Muc tieu:

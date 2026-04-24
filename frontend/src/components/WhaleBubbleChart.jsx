@@ -124,14 +124,14 @@ function getSeriesPointTimestampMs(seriesPoint) {
 function getDegradedModeCopy(staleReason, t) {
   if (staleReason === 'missing_intraday_ticks') {
     return {
-      title: t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded',
-      description: t('whaleChart.degradedMissingIntraday') || 'Phiên gần nhất chưa có đủ tick intraday hợp lệ, biểu đồ đang trả snapshot an toàn từ nguồn SSOT.',
+      title: t('whaleChart.degradedModeTitle', { defaultValue: 'Dữ liệu đang ở chế độ degraded' }),
+      description: t('whaleChart.degradedMissingIntraday', { defaultValue: 'Phiên gần nhất chưa có đủ tick intraday hợp lệ, biểu đồ đang trả snapshot an toàn từ nguồn SSOT.' }),
     };
   }
 
   return {
-    title: t('whaleChart.degradedModeTitle') || 'Dữ liệu đang ở chế độ degraded',
-    description: t('whaleChart.degradedModeDescription') || 'Thiếu giá tham chiếu, biểu đồ vẫn hiển thị lệnh lớn từ nguồn SSOT.',
+    title: t('whaleChart.degradedModeTitle', { defaultValue: 'Dữ liệu đang ở chế độ degraded' }),
+    description: t('whaleChart.degradedModeDescription', { defaultValue: 'Thiếu giá tham chiếu, biểu đồ vẫn hiển thị lệnh lớn từ nguồn SSOT.' }),
   };
 }
 
@@ -677,7 +677,7 @@ export default function WhaleBubbleChart({
         {
           type: 'value',
           gridIndex: 1,
-          name: t('whaleAnalytics.cvdLabel') || 'CVD',
+          name: t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' }),
           nameLocation: 'middle',
           nameGap: 54,
           axisLabel: {
@@ -694,7 +694,7 @@ export default function WhaleBubbleChart({
         {
           type: 'value',
           gridIndex: 1,
-          name: t('whaleAnalytics.instStrength') || 'Sức mạnh tổ chức',
+          name: t('whaleAnalytics.instStrength', { defaultValue: 'Sức mạnh tổ chức' }),
           nameLocation: 'middle',
           nameGap: 46,
           min: 0,
@@ -734,7 +734,7 @@ export default function WhaleBubbleChart({
           left: 86,
           top: 14,
           style: {
-            text: t('whaleAnalytics.bubblePane') || 'Lệnh cá mập',
+            text: t('whaleAnalytics.bubblePane', { defaultValue: 'Lệnh cá mập' }),
             fill: '#cbd5e1',
             font: '700 11px sans-serif',
           },
@@ -744,7 +744,7 @@ export default function WhaleBubbleChart({
           left: 86,
           top: '59%',
           style: {
-            text: t('whaleAnalytics.flowPane') || 'Dòng tiền thông minh',
+            text: t('whaleAnalytics.flowPane', { defaultValue: 'Dòng tiền thông minh' }),
             fill: '#cbd5e1',
             font: '700 11px sans-serif',
           },
@@ -924,8 +924,8 @@ export default function WhaleBubbleChart({
               </div>
             )}
             <div className="text-4xl opacity-30">📭</div>
-            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe') || 'Không có dữ liệu'}</p>
-            <p className="text-xs">{isDegradedMode ? (t('whaleChart.awaitingValidIntradayData') || 'Dữ liệu chi tiết của phiên này chưa đủ ổn định để hiển thị đầy đủ.') : (t('whaleChart.tryDifferentTimeframe') || 'Thử khoảng thời gian khác')}</p>
+            <p className="text-sm font-semibold text-slate-300">{t('whaleChart.noOrdersInTimeframe', { defaultValue: 'Không có dữ liệu' })}</p>
+            <p className="text-xs">{isDegradedMode ? t('whaleChart.awaitingValidIntradayData', { defaultValue: 'Dữ liệu chi tiết của phiên này chưa đủ ổn định để hiển thị đầy đủ.' }) : t('whaleChart.tryDifferentTimeframe', { defaultValue: 'Thử khoảng thời gian khác' })}</p>
           </div>
         ) : (
           <div className="h-full w-full flex flex-col">
@@ -937,14 +937,14 @@ export default function WhaleBubbleChart({
             )}
             <div className="px-4 pt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.18em] text-slate-500">
               <div className="flex items-center gap-5">
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow') || 'Mua chủ động'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />{t('whaleChart.sellFlow') || 'Bán chủ động'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-cyan-400" />{t('whaleAnalytics.cvdLabel') || 'CVD'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lime-400" />{t('whaleAnalytics.buyStrengthShort') || 'Sức mạnh mua'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />{t('whaleAnalytics.instStrengthShort') || 'Sức mạnh tổ chức'}</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.priceLineShort') || 'Đường giá'}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />{t('whaleChart.buyFlow', { defaultValue: 'Mua chủ động' })}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-rose-400" />{t('whaleChart.sellFlow', { defaultValue: 'Bán chủ động' })}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-cyan-400" />{t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-lime-400" />{t('whaleAnalytics.buyStrengthShort', { defaultValue: 'Sức mạnh mua' })}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />{t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' })}</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" />{t('whaleAnalytics.priceLineShort', { defaultValue: 'Đường giá' })}</span>
               </div>
-              <span>{t('whaleAnalytics.combinedRealtime') || 'Đồng bộ thời gian thực'}</span>
+              <span>{t('whaleAnalytics.combinedRealtime', { defaultValue: 'Đồng bộ thời gian thực' })}</span>
             </div>
             <div className="h-[520px]">
               <ReactEChartsCore 

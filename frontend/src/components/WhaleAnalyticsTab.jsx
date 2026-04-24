@@ -61,8 +61,8 @@ export default function WhaleAnalyticsTab({
   const isDegraded = Boolean(data?.meta?.degraded_mode);
   const staleReason = data?.meta?.stale_reason || null;
   const degradedBadgeLabel = staleReason === 'missing_intraday_ticks'
-    ? (t('whaleAnalytics.degradedMissingIntraday') || 'Thiếu tick intraday')
-    : (t('whaleAnalytics.degradedMode') || 'Thiếu dữ liệu tham chiếu');
+    ? t('whaleAnalytics.degradedMissingIntraday', { defaultValue: 'Thiếu tick intraday' })
+    : t('whaleAnalytics.degradedMode', { defaultValue: 'Thiếu dữ liệu tham chiếu' });
 
   return (
     <div className="flex flex-col h-full bg-slate-950/20 overflow-hidden">
@@ -154,12 +154,12 @@ export default function WhaleAnalyticsTab({
           {/* Summary Footer / Info */}
           <div className="flex justify-between items-center px-2 py-2">
              <p className="text-[10px] text-slate-500 italic max-w-md">
-               {t('whaleAnalytics.disclaimer') || '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket thời gian tương ứng với timeframe đang chọn. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.'}
+               {t('whaleAnalytics.disclaimer', { defaultValue: '* Dữ liệu dòng tiền và bubble được chuẩn hóa theo bucket thời gian tương ứng với timeframe đang chọn. Sức mạnh tổ chức (0-100) phản ánh mức độ tập trung của dòng tiền thông minh trong phiên.' })}
              </p>
              <div className="flex gap-2">
                 {isStale && (
                   <span className="px-2 py-1 rounded bg-amber-950/30 border border-amber-800/50 text-[9px] text-amber-300 font-bold uppercase">
-                    {t('whaleAnalytics.staleData') || 'Dữ liệu chậm'}
+                    {t('whaleAnalytics.staleData', { defaultValue: 'Dữ liệu chậm' })}
                   </span>
                 )}
                 {isDegraded && (
@@ -168,10 +168,10 @@ export default function WhaleAnalyticsTab({
                   </span>
                 )}
                 <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[9px] text-slate-400 font-bold uppercase">
-                  {t('whaleAnalytics.ssotVerified') || 'Xác thực SSOT'}
+                  {t('whaleAnalytics.ssotVerified', { defaultValue: 'Xác thực SSOT' })}
                 </span>
                 <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
-                  {t('whaleAnalytics.realtimeFeed') || 'Dữ liệu Realtime'}
+                  {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
                 </span>
              </div>
           </div>

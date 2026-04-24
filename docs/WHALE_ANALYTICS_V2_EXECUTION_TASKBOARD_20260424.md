@@ -101,7 +101,7 @@ Trạng thái: `[ ]`
 
 ### FE-1.5 Sửa fallback i18n của chart
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Frontend
@@ -114,6 +114,12 @@ Trạng thái: `[ ]`
   - không còn raw i18n key trên chart
 - Acceptance:
   - screenshot/QA xác nhận mọi nhãn chart hiển thị đúng tiếng Việt/Anh
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã bổ sung các key Whale Analytics/Whale Chart còn thiếu trong `vi.js` và `en.js`.
+- Đã đổi các call-site Whale Analytics dễ lộ raw key sang `t(key, { defaultValue })` tại chart và tab wrapper.
+- Validation đã xác nhận editor diagnostics sạch trên các file chạm tới.
 
 ## 3. Giai đoạn 2 - Dữ liệu và bối cảnh giá
 

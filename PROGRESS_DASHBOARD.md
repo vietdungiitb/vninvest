@@ -3,6 +3,22 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24bt)
+- frontend/src/i18n/vi.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu va sua nhan ngan sang tieng Viet day du)
+- frontend/src/i18n/en.js (MODIFIED - them key Whale Analytics/Whale Chart con thieu cho locale Anh)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - doi disclaimer/badge Whale Analytics sang `defaultValue` an toan)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - doi degraded/legend/empty-state copy sang `defaultValue` an toan)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.5` hoan thanh va them ghi chu trien khai)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bt)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren 4 file frontend vua chinh sua cho slice `FE-1.5`.
+- PASSED: Whale Analytics chart/tab wrapper da co fallback an toan va cac key thieu trong locale da duoc bo sung, giam nguy co hien raw key khi render.
+- NOTE: slice nay khoa be mat Whale Analytics truoc khi mo rong sang Information Panel va visual-truthfulness rendering slices tiep theo.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bs)
 - docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - them thu tu slice khoi dong de doi code bat dau tu dung task FE dau tien)
 - docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md (MODIFIED - them ready-to-code gate va nhip audit bat buoc cho moi slice code)
