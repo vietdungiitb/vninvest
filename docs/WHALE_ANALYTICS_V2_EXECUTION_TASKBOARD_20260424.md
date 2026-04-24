@@ -13,6 +13,28 @@ Quy ước trạng thái:
 
 Lưu ý bắt buộc: trạng thái chỉ được tick khi code, test và bằng chứng thật đã tồn tại. Không được đánh dấu hoàn thành trước.
 
+## 1.1 Slice khởi động để bắt đầu code
+
+Đội code phải bắt đầu theo đúng thứ tự sau, không mở rộng phạm vi ngay từ commit đầu:
+
+1. `FE-1.5` để khóa i18n fallback và loại bỏ raw key.
+2. `FE-1.1` để dựng Information Panel theo skeleton hoạt động được.
+3. `FE-1.3` để khóa visual truthfulness ở lớp render bubble.
+4. `FE-1.2` để thêm filter ngưỡng minh bạch.
+
+Lý do:
+
+- `FE-1.5` là fix nền, rẻ và dễ xác nhận nhanh.
+- `FE-1.1` tạo bề mặt UI đọc chart mới trước khi mở rộng tương tác.
+- `FE-1.3` khóa rule không được làm sai cảm nhận mật độ trước khi thêm tiện ích lọc.
+- `FE-1.2` chỉ nên vào sau khi semantics hiển thị đã được khóa.
+
+Điều kiện kết thúc slice khởi động:
+
+- ít nhất 1 task đầu tiên của Giai đoạn 1 đã có commit, test hoặc bằng chứng UI tương ứng,
+- traceability matrix đã được tham chiếu bằng `Req ID` trong PR hoặc commit message nội bộ,
+- ledger và progress dashboard đã được cập nhật cho slice code đầu tiên.
+
 ## 2. Giai đoạn 1 - Giao diện va tiện ích
 
 ### FE-1.1 Tạo Information Panel docked

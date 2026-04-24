@@ -1,5 +1,22 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-24bs - Add ready-to-code kickoff order and per-slice audit cadence for Whale Analytics V2
+
+Muc tieu:
+- Chot buoc chuyen trang thai tu "da co bo tai lieu" sang "co the bat dau code ngay" cho Whale Analytics V2.
+- Khoa thu tu slice mo man va nhac lai nhip audit bat buoc de cac commit sau nay khong bi troi khoi taskboard/traceability/ledger/progress dashboard.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - them muc `Slice khoi dong de bat dau code` va thu tu uu tien cho 4 task FE dau tien)
+- docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md (MODIFIED - them `Ready-to-code cho slice dau tien` va `Nhip audit van hanh bat buoc cho moi slice code`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bs)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: bo doc Whale Analytics V2 nay da co them huong dan dieu phoi de doi code co the bat dau tu dung task dau tien ma khong can dien giai them.
+- PASSED: nhip audit cho moi slice code da duoc chot thanh checklist van hanh, giam nguy co co code nhung thieu ledger/progress/traceability update.
+- NOTE: day la slice governance/doc tiep noi sau khi commit/push `dev` va `main`; khong thay doi code runtime.
+
 ## Entry 2026-04-24br - Rebaseline Whale Analytics V2 documentation pack for implementation and audit accuracy
 
 Muc tieu:

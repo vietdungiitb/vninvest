@@ -111,6 +111,30 @@ Một phase chỉ được coi là ready để code khi:
 - QA pack đã có checklist tương ứng,
 - traceability matrix đã có mapping requirement -> task -> audit.
 
+## 7.1 Ready-to-code cho slice đầu tiên
+
+Slice code đầu tiên của Whale Analytics V2 được coi là đủ điều kiện bắt đầu ngay khi thỏa đồng thời các điểm sau:
+
+- bắt đầu từ Giai đoạn 1, không nhảy sang Giai đoạn 2 hoặc 3,
+- task được chọn nằm trong nhóm `FE-1.5`, `FE-1.1`, `FE-1.3`, `FE-1.2` theo đúng thứ tự ưu tiên ở taskboard,
+- task đó map được về `Req ID` trong traceability matrix,
+- task đó có tiêu chí nghiệm thu hẹp, đo được, và có thể audit riêng,
+- sau khi merge hoặc commit chính thức phải cập nhật lại ledger và progress dashboard.
+
+## 7.2 Nhịp audit vận hành bắt buộc cho mỗi slice code
+
+Từ đây về sau, mỗi slice code Whale Analytics V2 phải đi theo cùng một nhịp audit, không bỏ bước:
+
+1. Chọn `Task ID` từ taskboard.
+2. Gắn `Req ID` tương ứng từ traceability matrix.
+3. Code trong phạm vi hẹp của đúng task đó.
+4. Chạy validation hẹp nhất có thể.
+5. Cập nhật trạng thái taskboard nếu và chỉ nếu đã có code + validation + evidence.
+6. Ghi entry mới vào `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
+7. Đồng bộ danh sách file sửa vào `PROGRESS_DASHBOARD.md`.
+
+Nếu thiếu bước 5, 6 hoặc 7 thì slice đó chưa được coi là audit-ready.
+
 ## 8. Definition of done toàn gói
 
 Toàn gói chỉ được coi là hoàn thành khi:
