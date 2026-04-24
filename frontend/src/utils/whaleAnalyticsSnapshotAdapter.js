@@ -22,11 +22,13 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
   const timeframeWindow = buildWindowFromSnapshot(snapshot, timeframe);
   const bubbleSeries = Array.isArray(snapshot?.bubble_series) ? snapshot.bubble_series : [];
   const priceSeries = Array.isArray(snapshot?.price_series) ? snapshot.price_series : [];
+  const sessionLevels = snapshot?.session_levels || {};
   const cvdSeries = Array.isArray(snapshot?.flow_series?.cvd) ? snapshot.flow_series.cvd : [];
   const buyStrengthSeries = Array.isArray(snapshot?.flow_series?.buy_strength) ? snapshot.flow_series.buy_strength : [];
   const institutionalStrengthSeries = Array.isArray(snapshot?.flow_series?.institutional_strength)
     ? snapshot.flow_series.institutional_strength
     : [];
+  const speedSeries = Array.isArray(snapshot?.flow_series?.speed) ? snapshot.flow_series.speed : [];
 
   const bubbleOrders = {
     buy: [],
@@ -45,6 +47,9 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       is_whale: Boolean(item?.is_whale),
       bucket_ts: item?.bucket_ts,
       event_score: Number(item?.event_score ?? 0),
+      matched_value_percentile_10d: item?.matched_value_percentile_10d == null ? null : Number(item?.matched_value_percentile_10d),
+      event_score_percentile_10d: item?.event_score_percentile_10d == null ? null : Number(item?.event_score_percentile_10d),
+      baseline_sample_size: item?.baseline_sample_size == null ? null : Number(item?.baseline_sample_size),
       delta_pct: Number(item?.delta_pct ?? 0),
     };
     const normalizedSide = String(order.side || '').trim().toLowerCase();
@@ -95,8 +100,16 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       quality_flags: {
         missing_reference_price: staleReason === 'missing_reference_price',
         missing_intraday_ticks: staleReason === 'missing_intraday_ticks',
+        missing_session_levels: staleReason === 'missing_session_levels',
       },
       stale_reason: staleReason,
+      session_levels: {
+        reference_price: Number(sessionLevels?.reference_price ?? priceSeries[priceSeries.length - 1]?.reference_price ?? priceSeries[0]?.reference_price ?? 0) || null,
+        high_price: Number(sessionLevels?.high_price ?? 0) || null,
+        low_price: Number(sessionLevels?.low_price ?? 0) || null,
+        ceiling_price: Number(sessionLevels?.ceiling_price ?? 0) || null,
+        floor_price: Number(sessionLevels?.floor_price ?? 0) || null,
+      },
       timeframe_window: timeframeWindow,
       meta: snapshot?.meta || null,
     },
@@ -114,6 +127,12 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       institutional_strength_series: institutionalStrengthSeries.map((item) => ({
         ts: toCanonicalMinute(item?.bucket_ts),
         strength: Number(item?.value ?? 0),
+        confidence: item?.confidence || 'low',
+      })).filter((item) => item.ts != null),
+      speed_series: speedSeries.map((item) => ({
+        ts: toCanonicalMinute(item?.bucket_ts),
+        speed: item?.value == null ? null : Number(item?.value),
+        unit: item?.unit || 'events_per_second',
         confidence: item?.confidence || 'low',
       })).filter((item) => item.ts != null),
       dark_flow: {

@@ -1,4 +1,263 @@
+# Entry 2026-04-24cm - Remove redundant lines from Whale Analytics info panel
+
+Mục tiêu:
+- Xóa các dòng trùng lặp ('Giá trần / sàn', 'Khung thời gian', 'Tốc độ sự kiện mới nhất') khỏi info panel tóm tắt của Whale Analytics để tránh lặp lại thông tin đã có ở panel legend phía dưới.
+
+Danh sách tệp cập nhật:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cm)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thành công sau khi loại bỏ các dòng trùng.
+- PASSED: diagnostics sạch trên `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container đã rebuild/restart thành công.
+- NOTE: Info panel tóm tắt giờ chỉ còn các dòng tổng hợp cần thiết, không còn lặp lại thông tin legend phía dưới.
 # Code Change Audit Ledger
+
+## Entry 2026-04-24cl - Restore line-reference panel cues and horizontal chevron for Whale Analytics
+
+Muc tieu:
+- Bo tri lai info panel mac dinh theo huong mot khoi tong hop + mot khoi line-reference rieng de nguoi dung de lien tuong voi cac duong tren chart.
+- Ha `dataZoom` slider xuong duoi truc X de tranh che nhan thoi gian va doi icon toggle sang chevron ngang dung voi mockup audit cuoi.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - tach lai box line-reference trong panel mac dinh, day `dataZoom` xuong thap hon truc X va doi SVG toggle thanh chevron ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi chinh lai panel/slider/icon.
+- PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong.
+- NOTE: day la dot polish UI tap trung vao kha nang doc va do khop visual voi screenshot audit; khong thay doi contract du lieu Whale Analytics.
+
+## Entry 2026-04-24ck - Compact Whale Analytics info panel and align toggle/zoom styling with modern dashboard
+
+Muc tieu:
+- Loai bo phan thong tin lap trong info panel mac dinh de panel chi con mot khoi tong hop, tranh keo cao khung chart va lam vo ty le khung hinh.
+- Doi nut an/hien sang button tron cung ngon ngu thiet ke voi modern dashboard va trung tinh hoa mau `dataZoom` slider de loai bo cam giac mau la.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - hop nhat panel mac dinh thanh mot khoi thong tin duy nhat, doi toggle sang icon tron kieu modern dashboard va dieu chinh theme `dataZoom` ve slate trung tinh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ck)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi rut gon info panel.
+- PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong.
+- NOTE: mau `dataZoom` la style chu dong, khong phai runtime bug; da duoc doi sang tone slate trung tinh de khop tong the dashboard.
+
+## Entry 2026-04-24cj - Complete Whale Analytics UI refactor runtime slice and audit closure
+
+Muc tieu:
+- Hoan tat dot refactor UI Whale Analytics da duoc phe duyet gom header moi, combobox filter, panel toggle, legend migration vao bang thong tin va CTA Tư vấn AI.
+- Khoa bang chung runtime/audit cho final auditor bang build, diagnostics, Docker rebuild va tai lieu truy vet cap nhat dong bo.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - doi header filter sang symbol link + current price, them panel toggle, day du line label/mau vao info panel va bo line labels noi tren chart)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - truyen `quotesBySymbol`, them CTA `Tư vấn AI` va mount advisory modal)
+- frontend/src/components/WhaleAnalyticsAdvisoryModal.jsx (NEW - modal advisory lazy-load theo symbol voi loading/error/refresh/summary states)
+- frontend/src/i18n/vi.js (MODIFIED - them copy Whale Analytics cho combobox, panel toggle, line labels va CTA AI)
+- frontend/src/i18n/en.js (MODIFIED - them ban dich Anh tuong ung)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-UI-1` -> `QA-AUD-5` hoan thanh)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_TRACEABILITY_MATRIX_20260424.md (MODIFIED - thay evidence generic bang bang chung code/runtime cu the cho dot refactor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau refactor Whale Analytics UI.
+- PASSED: diagnostics sach tren `WhaleBubbleChart.jsx`, `WhaleAnalyticsTab.jsx`, `WhaleAnalyticsAdvisoryModal.jsx`, `vi.js`, `en.js`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong.
+- NOTE: advisory modal hien dang dung lazy-load theo thao tac click; chua bo sung focused test rieng cho modal state trong phien nay, nen final auditor nen uu tien kiem tra nhanh happy path + error path bang runtime visual.
+
+## Entry 2026-04-24ci - Create handoff documentation pack for Whale Analytics UI refactor
+
+Muc tieu:
+- Tao bo tai lieu day du de doi code co the trien khai dot refactor UI Whale Analytics theo cac yeu cau moi ma khong phai tu dien giai lai scope.
+- Chuan hoa checklist audit noi bo va bang chung nghiem thu truoc khi mo cong coding.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ANALYTICS_UI_REFACTOR_PLAN_20260424.md (NEW - ke hoach tong the, pham vi, slice, test strategy va dieu kien hoan thanh)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_EXECUTION_TASKBOARD_20260424.md (NEW - taskboard giao viec va acceptance theo tung slice)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_TRACEABILITY_MATRIX_20260424.md (NEW - map requirement moi sang task va bang chung nghiem thu)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_HANDOFF_20260424.md (NEW - huong dan ban giao cho doi code va auditor noi bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ci)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: bo tai lieu da dong goi du 4 lop governance bat buoc cho dot UI refactor: plan, taskboard, matrix, handoff.
+- PASSED: tai lieu da khoa route stock detail canonical, file neo, thu tu slice, acceptance va minh chung toi thieu.
+- NOTE: chua thuc hien coding cho dot nay; theo governance, coding chi duoc bat dau sau khi final user phe duyet ro rang.
+
+## Entry 2026-04-24ch - Polish Whale Analytics right panel spacing and investor guidance copy
+
+Muc tieu:
+- Giai phong them be ngang cho vung chart Whale Analytics de cac nhan overlay ben phai khong bi cut chu tren man hinh thuc te.
+- Loai bo copy huong dan thao tac du thua trong panel mac dinh va thay bang giai thich cach doc chart co y nghia hon voi nha dau tu.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - giam do rong panel phai, bo box huong dan mac dinh va doi khung chu thich cuoi sang guidance doc chart)
+- frontend/src/i18n/vi.js (MODIFIED - cap nhat `infoPanelHoverHint` theo ngu canh nha dau tu)
+- frontend/src/i18n/en.js (MODIFIED - cap nhat ban dich tieng Anh tuong ung)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ch)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi sua layout/copy.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container rebuild/restart thanh cong.
+- NOTE: panel phai da giam tu `320px` xuong `280px` de chart co them khong gian ngang cho cac nhan gia session, trong khi khung note cuoi tap trung vao cach doc dong tien/tich luy-phan phoi thay vi huong dan hover ky thuat.
+
+## Entry 2026-04-24cg - Complete AUD-4.2 traceability audit for Whale Analytics V2
+
+Muc tieu:
+- Hoan thanh slice `AUD-4.2` bang doi chieu lai toan bo traceability matrix voi code, test va evidence thuc te da co.
+- Chuan hoa cot bang chung audit de final auditor co the di tu requirement den code/runtime nhanh, khong phai ghep noi thu cong.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md (MODIFIED - cap nhat cot bang chung audit tu generic sang evidence cu the theo tung requirement)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `AUD-4.2` hoan thanh va them ket luan self-audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: moi requirement trong matrix (`UX-01` -> `AUD-01`) da map duoc toi it nhat mot code path va mot bang chung validation thuc te.
+- PASSED: taskboard, ledger va progress dashboard da dong bo voi ket qua traceability audit cua ngay 2026-04-24.
+- NOTE: day la slice audit tai lieu; khong mo rong them code runtime ngoai cac test harness phuc vu QA.
+
+## Entry 2026-04-24cf - Complete QA-4.1 regression evidence pass for Whale Analytics V2
+
+Muc tieu:
+- Hoan thanh slice `QA-4.1` bang bo evidence ket hop giua backend regression, frontend focused tests va HTTP smoke thuc te tren dev stack.
+- Khoa ket luan regression theo phase ma khong dua vao xac nhan cam tinh hoac build-only.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleAnalytics.degraded.test.jsx (MODIFIED - sua harness de mock dung DataZoom/i18n/bubble coordinates theo contract hien tai)
+- frontend/src/components/WhaleBubbleChart.tooltip.test.jsx (MODIFIED - bo sung `speedByTimestamp` theo formatter contract Phase 3)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `QA-4.1` hoan thanh va ghi ket luan `PASS WITH NOTES`)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
+- PASSED: `npm test -- --watchAll=false --runInBand src/components/WhaleBubbleChart.tooltip.test.jsx src/components/WhaleAnalytics.degraded.test.jsx` => 4/4 PASS.
+- PASSED: HTTP smoke qua `http://localhost:8000/api/portfolio/whale/analytics/{symbol}/` voi user runtime `qa_whale` cho thay `HPG` co `session_levels`, `speed`, percentile; `FPT/DGC` degrade dung voi percentile `null`.
+- NOTE: ket luan `PASS WITH NOTES` do moi truong cong cu hien tai khong tu dong tao duoc video/screenshot browser cho thao tac hover/zoom, nhung code path tuong ung da duoc bao phu bang tests + build + runtime smoke.
+
+## Entry 2026-04-24ce - Implement FE-3.3 speed and percentile panel context for Whale Analytics
+
+Muc tieu:
+- Hoan thanh slice `FE-3.3` de Information Panel thay the semantics nhi phan bang metric co nghia hon: toc do su kien, phan vi 10 phien va co mau baseline.
+- Dam bao du lieu Phase 3 duoc di xuyen suot tu snapshot adapter den hover/default panel ma khong phai suy dien them o UI.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - surface `speed`, percentile progress bars va baseline snapshot trong hover/default information panel)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan Phase 3 cho speed/percentile panel)
+- frontend/src/i18n/en.js (MODIFIED - them nhan Phase 3 cho speed/percentile panel)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-3.3` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ce)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.a2c1d889.js` ~756.73 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+- NOTE: panel hover line va bubble deu doc duoc `speed`; bubble hover va snapshot mac dinh co them phan vi 10 phien + co mau baseline khi co du lieu.
+
+## Entry 2026-04-24cd - Implement BE-3.2 percentile baseline contract for Whale Analytics snapshot
+
+Muc tieu:
+- Hoan thanh slice `BE-3.2` de backend tra ve phan vi `matched_value` va `event_score` theo baseline 10 phien truoc.
+- Khoa rule degrade ro rang: thieu baseline thi tra `null`, khong dua vao payload gia tri 0 gia.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them baseline history sampling va fields percentile 10 phien cho bubble payload)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression xac nhan percentile fields duoc populate khi co baseline lich su)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-3.2` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
+- PASSED: snapshot contract nay tra `matched_value_percentile_10d`, `event_score_percentile_10d`, `baseline_sample_size` va degrade `null` khi baseline khong ton tai.
+- NOTE: baseline duoc tinh tu threshold-exceeding historical ticks su dung cung cong thuc whale scoring hien hanh.
+
+## Entry 2026-04-24cc - Implement BE-3.1 flow speed series for Whale Analytics snapshot
+
+Muc tieu:
+- Hoan thanh slice `BE-3.1` de backend cung cap `flow_series.speed` cho UI/doc semantics thong nhat.
+- Dinh nghia ro speed theo bucket thay vi de frontend hoac auditor tu suy dien.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them `flow_series.speed` va metadata unit `events_per_second`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - mo rong contract test cho speed series)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-3.1` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
+- PASSED: payload Whale Analytics da co `flow_series.speed` voi unit duy nhat `events_per_second`.
+- NOTE: series nay duoc su dung truc tiep o tooltip va Information Panel, tranh suy dien lai o frontend.
+
+## Entry 2026-04-24cb - Implement FE-2.3 synchronized DataZoom for Whale Analytics panes
+
+Muc tieu:
+- Hoan thanh slice `FE-2.3` de nguoi dung co the zoom bubble pane va flow pane dong thoi ma khong lam vo linear time semantics.
+- Giu hover/panel binding theo timestamp khi zoom/drag tren chart Whale Analytics.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them `dataZoom` inside + slider sync cho ca hai x-axis panes)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-2.3` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.43624cbd.js` ~755.4 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+- NOTE: `dataZoom` duoc khoa `xAxisIndex: [0, 1]` va `filterMode: none` de giu time window/hover semantics khong bi boc tach giua hai pane.
+
+## Entry 2026-04-24ca - Implement FE-2.2 price-context overlays for Whale Analytics chart
+
+Muc tieu:
+- Hoan thanh slice `FE-2.2` de chart Whale Analytics hien ro ref/high/low/tran/san ngay tren price pane, khong bat frontend tu suy dien context gia.
+- Dong bo Information Panel voi cung mot nguon `session_levels` de auditor co the doi chieu payload va UI.
+
+Danh sach tep cap nhat:
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them overlay line cho ref/high/low/tran/san va snapshot panel context gia)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - map `session_levels` va `missing_session_levels` quality flag vao frontend shape)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan overlay gia va degraded copy cho session levels)
+- frontend/src/i18n/en.js (MODIFIED - them nhan overlay gia va degraded copy cho session levels)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-2.2` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ca)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/utils/whaleAnalyticsSnapshotAdapter.js`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.9963241a.js` ~746.29 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+- NOTE: degraded path moi `missing_session_levels` da duoc surface len UI ma khong doi bubble/flow thanh du lieu gia.
+
+## Entry 2026-04-24bz - Implement BE-2.1 session_levels in Whale Analytics snapshot contract
+
+Muc tieu:
+- Hoan thanh slice `BE-2.1` de backend tra day du `session_levels` cho Whale Analytics V2 theo traceability `DATA-01`.
+- Khoa degraded semantics cho truong hop price context cua phien thieu mot phan, khong de frontend tu phai suy dien ref/high/low/tran/san.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them resolve `session_levels`, `meta.missing_fields`, va logic uu tien whale-feed timestamps khi du bao phu bubble session)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression contract cho `session_levels`, `missing_session_levels`, va giu nguyen auction bucket semantics)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-2.1` hoan thanh va them ghi chu validation)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bz)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 13/13 PASS.
+- PASSED: payload contract hien co `session_levels.reference_price/high_price/low_price/ceiling_price/floor_price` va degraded semantics `missing_session_levels` + `meta.missing_fields`.
+- PASSED: regression `test_snapshot_endpoint_maps_auction_events_to_bucket_start` van duoc bao toan sau khi sua bubble source selection.
+- NOTE: source gia session duoc uu tien tu stock workspace overview khi co, va fallback intraday/daily context khong tao so 0 gia.
 
 ## Entry 2026-04-24by - Formal handoff to coding team with mandatory self-audit before final audit
 

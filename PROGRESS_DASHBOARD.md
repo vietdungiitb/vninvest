@@ -1,5 +1,186 @@
+# 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cm)
 **Date**: 2026-04-23  
 **Status**: Whale Service Phase 5 Complete ✅ (E2E Integration Finished)
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cl)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - khoi phuc box line-reference rieng trong panel mac dinh, day zoom slider xuong duoi truc X va doi icon toggle thanh chevron ngang)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cl)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi chinh lai panel/slider/icon.
+- PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
+- NOTE: dot polish nay chi sua semantics hien thi va iconography de khop screenshot audit, khong doi contract du lieu hoac hanh vi load advisory.
+
+## ✅ AUDIT FILE LIST (2026-04-24ck)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - bo thong tin lap trong panel mac dinh, chi giu mot khoi tong hop duy nhat; doi nut an/hien sang icon tron kieu modern dashboard; dieu chinh theme zoom slider ve slate trung tinh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ck)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi rut gon panel Whale Analytics.
+- PASSED: diagnostics sach tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
+- NOTE: mau zoom slider truoc do la cau hinh UI, khong phai loi render; nay da duoc dua ve bang mau slate trung tinh de khop design system.
+
+## ✅ AUDIT FILE LIST (2026-04-24cj)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - thay header cu bang symbol link + current price, doi preset buttons thanh combobox, them toggle panel va chuyen toan bo line labels vao bang thong tin)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - truyen `quotesBySymbol`, them CTA `Tư vấn AI` canh cac badge footer va mount advisory modal)
+- frontend/src/components/WhaleAnalyticsAdvisoryModal.jsx (NEW - modal AI advisory lazy-load theo symbol hien tai voi loading/error/refresh/fallback)
+- frontend/src/i18n/vi.js (MODIFIED - them copy Whale Analytics cho header moi, panel toggle, line labels va CTA AI)
+- frontend/src/i18n/en.js (MODIFIED - them ban dich Anh tuong ung)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau cac slice FE-UI-1/2/3, FE-AI-4 va QA-AUD-5 hoan thanh)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_TRACEABILITY_MATRIX_20260424.md (MODIFIED - cap nhat bang chung code/runtime cu the cho moi req ID)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau refactor Whale Analytics UI.
+- PASSED: diagnostics sach tren tat ca file frontend vua cham toi.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong tren `http://localhost`.
+- NOTE: advisory modal dang lazy-load dung theo hanh vi mong muon; focused test rieng cho modal chua duoc bo sung trong phien nay.
+
+## ✅ AUDIT FILE LIST (2026-04-24ci)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_PLAN_20260424.md (NEW - ke hoach chi tiet cho dot refactor UI Whale Analytics theo yeu cau moi)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_EXECUTION_TASKBOARD_20260424.md (NEW - taskboard giao viec va checklist audit noi bo theo slice)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_TRACEABILITY_MATRIX_20260424.md (NEW - matrix truy vet requirement moi sang task va bang chung nghiem thu)
+- docs/WHALE_ANALYTICS_UI_REFACTOR_HANDOFF_20260424.md (NEW - tai lieu ban giao cho doi code va auditor noi bo)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ci)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: bo tai lieu ban giao cho dot `Whale Analytics UI Refactor` da du 4 lop: plan, taskboard, matrix, handoff.
+- PASSED: tai lieu da khoa route canonical `/stocks/:symbol`, file neo chinh, slice cong viec, acceptance va minh chung bat buoc cho doi code.
+- NOTE: chua bat dau code giao dien o slice nay; buoc tiep theo phai qua cong phe duyet coding theo governance da dat.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24ch)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - thu hep info panel phia phai de tra them khong gian ngang cho chart, xoa copy mac dinh thua va doi chu thich duoi sang huong dan doc chart theo nghia dau tu)
+- frontend/src/i18n/vi.js (MODIFIED - cap nhat copy chu thich panel theo ngu canh nha dau tu)
+- frontend/src/i18n/en.js (MODIFIED - cap nhat ban dich tieng Anh tuong ung)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ch)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi chinh layout panel va copy.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong de test tren `http://localhost`.
+- PASSED: panel phai duoc giam tu `320px` xuong `280px`, bo box huong dan mac dinh, giu lai khung chu thich cuoi voi noi dung doc chart huu ich hon cho nha dau tu.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cg)
+- docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md (MODIFIED - cap nhat cot evidence audit theo tung requirement)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `AUD-4.2` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cg)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: matrix Whale Analytics da map day du requirement -> code -> validation/evidence cho `UX-01` den `AUD-01`.
+- PASSED: taskboard/ledger/progress da dong bo voi ket qua traceability audit ngay 2026-04-24.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cf)
+- frontend/src/components/WhaleAnalytics.degraded.test.jsx (MODIFIED - sua harness regression cho degraded rendering theo contract hien tai)
+- frontend/src/components/WhaleBubbleChart.tooltip.test.jsx (MODIFIED - bo sung `speedByTimestamp` cho tooltip formatter tests)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `QA-4.1` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: backend snapshot regression `14/14` PASS.
+- PASSED: frontend focused tests `WhaleBubbleChart.tooltip.test.jsx` + `WhaleAnalytics.degraded.test.jsx` => 4/4 PASS.
+- PASSED: HTTP smoke tren dev stack voi runtime user `qa_whale` xac nhan `HPG` co `session_levels` + `speed` + percentile; `FPT/DGC` degrade dung voi percentile `null`.
+- NOTE: ket luan QA slice = `PASS WITH NOTES` vi chua co clip/screenshot browser tu dong trong phien nay.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24ce)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - surface toc do su kien, progress bar phan vi 10 phien va baseline snapshot trong Information Panel)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan Phase 3 cho speed/percentile panel)
+- frontend/src/i18n/en.js (MODIFIED - them nhan Phase 3 cho speed/percentile panel)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-3.3` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ce)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.a2c1d889.js` ~756.73 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cd)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them percentile 10 phien va co mau baseline cho bubble payload)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression co baseline lich su cho percentile fields)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-3.2` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
+- PASSED: payload Whale Analytics da tra `matched_value_percentile_10d`, `event_score_percentile_10d`, `baseline_sample_size` va degrade `null` khi chua du baseline.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cc)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them `flow_series.speed` voi unit `events_per_second`)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - mo rong contract test cho speed series)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-3.1` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 14/14 PASS.
+- PASSED: payload Whale Analytics da co `flow_series.speed` voi unit canonical ro rang cho UI/auditor.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24cb)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them `dataZoom` sync cho bubble pane va flow pane)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-2.3` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/components/WhaleBubbleChart.jsx`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.43624cbd.js` ~755.4 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24ca)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - render overlay ref/high/low/tran/san va surface session context trong panel)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - map `session_levels` vao frontend payload canonic)
+- frontend/src/i18n/vi.js (MODIFIED - them nhan overlay gia va degraded copy session levels)
+- frontend/src/i18n/en.js (MODIFIED - them nhan overlay gia va degraded copy session levels)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-2.2` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24ca)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren 4 file frontend cua slice `FE-2.2`.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong; bundle `main.9963241a.js` ~746.29 kB gzip.
+- PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container build/restart thanh cong.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-24bz)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - them `session_levels`, `meta.missing_fields`, va preserve whale-feed auction timestamp semantics)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - them regression cho `session_levels` va `missing_session_levels`)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `BE-2.1` hoan thanh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24bz)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` => 13/13 PASS.
+- PASSED: payload Whale Analytics da co day du `session_levels` va degraded semantics `missing_session_levels` + `meta.missing_fields`.
 
 ---
 

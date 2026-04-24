@@ -62,6 +62,7 @@ export function createWhaleTooltipFormatter({
   buyStrengthByTimestamp,
   institutionalStrengthByTimestamp,
   priceByTimestamp,
+  speedByTimestamp,
 }) {
   return (param) => {
     if (!param) return '';
@@ -73,6 +74,7 @@ export function createWhaleTooltipFormatter({
       const pointTimestampSec = Number.isFinite(meta.x) ? meta.x : null;
       const buyStrengthAtBucket = pointTimestampSec == null ? null : buyStrengthByTimestamp.get(pointTimestampSec);
       const institutionalStrengthAtBucket = pointTimestampSec == null ? null : institutionalStrengthByTimestamp.get(pointTimestampSec);
+      const speedAtBucket = pointTimestampSec == null ? null : speedByTimestamp.get(pointTimestampSec);
       const sideColor = meta.side === 'BUY' ? COLORS.buy : meta.side === 'SELL' ? COLORS.sell : COLORS.internal;
       const sideLabel = meta.side === 'BUY'
         ? (t('whaleChart.buyFlow') || 'MUA CHỦ ĐỘNG')
@@ -114,6 +116,11 @@ export function createWhaleTooltipFormatter({
             <span style="color:#64748b;">Strength cùng bucket:</span>
             <span style="color:#f1f5f9; font-weight:700;">${buyStrengthAtBucket != null ? `Mua ${buyStrengthAtBucket.toFixed(1)}` : '--'}${institutionalStrengthAtBucket != null ? ` | Tổ chức ${institutionalStrengthAtBucket.toFixed(1)}` : ''}</span>
           </div>` : ''}
+          ${speedAtBucket != null ? `
+          <div style="display:flex; justify-content:space-between; margin-top:2px;">
+            <span style="color:#64748b;">Tốc độ dòng lệnh:</span>
+            <span style="color:#f1f5f9; font-weight:700;">${speedAtBucket.toFixed(4)} evt/s</span>
+          </div>` : ''}
         </div>
       `;
     }
@@ -125,6 +132,7 @@ export function createWhaleTooltipFormatter({
     const priceAtBucket = pointTimestampSec == null ? null : priceByTimestamp.get(pointTimestampSec);
     const buyStrengthAtBucket = pointTimestampSec == null ? null : buyStrengthByTimestamp.get(pointTimestampSec);
     const institutionalStrengthAtBucket = pointTimestampSec == null ? null : institutionalStrengthByTimestamp.get(pointTimestampSec);
+    const speedAtBucket = pointTimestampSec == null ? null : speedByTimestamp.get(pointTimestampSec);
     const formattedValue = seriesName === 'Đường giá intraday'
       ? `${pointValue.toLocaleString('vi-VN')} đ`
       : seriesName.includes('Strength') || seriesName.includes('Sức mạnh')
@@ -155,6 +163,11 @@ export function createWhaleTooltipFormatter({
         <div style="display:flex; justify-content:space-between; margin-top:2px;">
           <span style="color:#64748b;">Sức mạnh tổ chức:</span>
           <span style="color:#f1f5f9; font-weight:700;">${institutionalStrengthAtBucket.toFixed(1)}</span>
+        </div>` : ''}
+        ${(speedAtBucket != null && !seriesName.includes('Tốc độ')) ? `
+        <div style="display:flex; justify-content:space-between; margin-top:2px;">
+          <span style="color:#64748b;">Tốc độ dòng lệnh:</span>
+          <span style="color:#f1f5f9; font-weight:700;">${speedAtBucket.toFixed(4)} evt/s</span>
         </div>` : ''}
       </div>
     `;

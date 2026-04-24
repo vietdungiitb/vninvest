@@ -164,7 +164,7 @@ Ghi chú triển khai 2026-04-24:
 
 ### BE-2.1 Mở rộng snapshot với session_levels
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Backend Lead
@@ -175,9 +175,15 @@ Trạng thái: `[ ]`
 - Acceptance:
   - payload thật có đủ field và đúng đơn vị
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm `session_levels.reference_price/high_price/low_price/ceiling_price/floor_price` vào `build_whale_analytics_snapshot(...)`.
+- Đã khóa degraded semantics `missing_session_levels` cùng `meta.missing_fields` theo API contract khi thiếu price context của phiên.
+- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`.
+
 ### FE-2.2 Render dashed price context lines
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Frontend
@@ -189,9 +195,15 @@ Trạng thái: `[ ]`
 - Acceptance:
   - UI phân biệt được các line mà không nhầm màu/ý nghĩa
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã map `session_levels` qua `normalizeWhaleAnalyticsSnapshot()` sang frontend state chuẩn.
+- Đã render ref/high/low/trần/sàn trên price pane bằng các overlay line có nhãn trực tiếp và panel snapshot đồng bộ cùng nguồn dữ liệu.
+- Validation đã pass với `npm run build` trong `frontend/` và `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend`.
+
 ### FE-2.3 Thêm DataZoom sync hai pane
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Frontend
@@ -202,11 +214,17 @@ Trạng thái: `[ ]`
 - Acceptance:
   - zoom không phá linear time và hover semantics
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm `dataZoom` kiểu `inside` + `slider` với `xAxisIndex: [0, 1]` để zoom đồng thời bubble pane và flow pane.
+- Đã giữ `filterMode: none` để không phá linear time window và hover binding theo timestamp.
+- Validation đã pass với `npm run build` trong `frontend/` và frontend dev container đã rebuild/restart thành công.
+
 ## 4. Giai đoạn 3 - Phân tích chuyên sâu
 
 ### BE-3.1 Thêm flow speed series
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Backend Quant/Platform
@@ -219,9 +237,15 @@ Trạng thái: `[ ]`
 - Acceptance:
   - QA/auditor xác định được speed definition duy nhất
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm `flow_series.speed` vào snapshot Whale Analytics với canonical unit `events_per_second`.
+- Speed được tính theo số whale events trên mỗi bucket thời gian, đi cùng metadata đơn vị rõ ràng trong payload flow series.
+- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`.
+
 ### BE-3.2 Thêm percentile baseline 10 phiên
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Backend Quant
@@ -235,9 +259,15 @@ Trạng thái: `[ ]`
 - Acceptance:
   - thiếu baseline phải degrade rõ ràng, không trả 0 giả
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã thêm `matched_value_percentile_10d`, `event_score_percentile_10d` và `baseline_sample_size` cho bubble payload.
+- Baseline được dựng từ các phiên trước bằng cùng logic event score chuẩn, và trả `null` thay vì 0 giả khi chưa đủ mẫu.
+- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`, bao gồm regression có baseline lịch sử.
+
 ### FE-3.3 Hiển thị speed và percentile trong panel
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: High
 - Owner: Frontend
@@ -250,20 +280,33 @@ Trạng thái: `[ ]`
 - Acceptance:
   - thay thế được semantics nhị phân `Có/Có`
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã hoàn tất plumbing `speed_series` và percentile fields từ adapter -> bubble metadata -> tooltip/panel của `WhaleBubbleChart.jsx`.
+- Information Panel nay hiển thị tốc độ sự kiện, progress bar phân vị 10 phiên và cỡ mẫu baseline ở cả trạng thái hover lẫn snapshot mặc định.
+- Validation đã pass với editor diagnostics sạch, `npm run build` trong `frontend/` và frontend dev container rebuild/restart thành công.
+
 ## 5. QA và audit
 
 ### QA-4.1 Chạy regression theo phase
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: QA
 - Output bắt buộc:
   - evidence cho hover, filter, zoom, session levels, speed, percentile theo phase tương ứng
 
+Ghi chú triển khai 2026-04-24:
+
+- Đã chạy backend regression `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` và pass `14/14` cho contract `session_levels`, `speed`, percentile, degraded semantics và cache headers.
+- Đã chạy frontend focused tests `src/components/WhaleBubbleChart.tooltip.test.jsx` và `src/components/WhaleAnalytics.degraded.test.jsx`, pass `4/4` cho hover binding và degraded rendering.
+- Đã chạy HTTP smoke thật qua `http://localhost:8000/api/portfolio/whale/analytics/{symbol}/` bằng user Pro runtime; `HPG` trả đủ session levels + speed + percentile, `FPT/DGC` degrade đúng với percentile `null`.
+- Kết luận self-audit: `PASS WITH NOTES` do môi trường công cụ hiện tại không tự sinh được clip/screenshot browser cho thao tác hover/zoom, nhưng code path tương ứng đã được bao phủ bằng build, focused tests và runtime payload smoke.
+
 ### AUD-4.2 Đối chiếu traceability matrix
 
-Trạng thái: `[ ]`
+Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Auditor
@@ -271,6 +314,12 @@ Trạng thái: `[ ]`
   - `docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md`
 - Acceptance:
   - mọi requirement đều map được tới code, test và evidence
+
+Ghi chú triển khai 2026-04-24:
+
+- Đã đối chiếu lại toàn bộ các hàng `UX-01` đến `AUD-01` với code runtime, focused tests, backend regression và evidence HTTP smoke của phiên hiện tại.
+- Ma trận truy vết đã được cập nhật từ mức mô tả generic sang evidence cụ thể theo từng requirement để final auditor kiểm tra nhanh hơn.
+- Kết luận self-audit: `PASS` cho traceability coverage; không còn requirement nào trong matrix ở trạng thái không map được tới code hoặc validation.
 
 ## 6. Điều kiện fail ngay trên taskboard
 

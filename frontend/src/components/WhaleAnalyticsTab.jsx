@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useI18n } from '../context/LangContext';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import WhaleBubbleChart from './WhaleBubbleChart';
+import WhaleAnalyticsAdvisoryModal from './WhaleAnalyticsAdvisoryModal';
 
 const TIMEFRAME_OPTIONS = [
   { value: '15m', label: '15 phút' },
@@ -28,6 +29,7 @@ export default function WhaleAnalyticsTab({
   const { t } = useI18n();
   const [timeframe, setTimeframe] = useState('session');
   const [symbol, setSymbol] = useState(selectedSymbol || '');
+  const [isAdvisoryModalOpen, setIsAdvisoryModalOpen] = useState(false);
 
   // Parallel data fetching (Bubbles + Flow)
   const { data, loading, error } = useWhaleAnalyticsData(symbol, timeframe);
@@ -140,13 +142,14 @@ export default function WhaleAnalyticsTab({
                   externalSymbol={symbol}
                   externalTimeframe={timeframe}
                   externalData={data.bubbles}
-                externalFlowData={data.flow}
+				  externalFlowData={data.flow}
                   externalLoading={loading}
                   externalError={error}
                   onTimeframeChange={setTimeframe}
                   onSymbolChange={setSymbol}
                   isEmbedded={true}
                   selectedSymbol={symbol}
+                  quotesBySymbol={quotesBySymbol}
                 />
              </div>
           </div>
@@ -173,10 +176,22 @@ export default function WhaleAnalyticsTab({
                 <span className="px-2 py-1 rounded bg-emerald-950/30 border border-emerald-800/50 text-[9px] text-emerald-400 font-bold uppercase">
                   {t('whaleAnalytics.realtimeFeed', { defaultValue: 'Dữ liệu Realtime' })}
                 </span>
+                <button
+                  type="button"
+                  onClick={() => setIsAdvisoryModalOpen(true)}
+                  className="px-2 py-1 rounded bg-cyan-950/30 border border-cyan-800/50 text-[9px] text-cyan-300 font-bold uppercase transition-colors hover:bg-cyan-900/30"
+                >
+                  {t('whaleAnalytics.aiAdvisoryCta', { defaultValue: 'Tư vấn AI' })}
+                </button>
              </div>
           </div>
         </div>
       </div>
+      <WhaleAnalyticsAdvisoryModal
+        isOpen={isAdvisoryModalOpen}
+        symbol={symbol}
+        onClose={() => setIsAdvisoryModalOpen(false)}
+      />
     </div>
   );
 }

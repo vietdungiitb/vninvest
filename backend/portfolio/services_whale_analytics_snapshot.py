@@ -13,6 +13,7 @@ from .market_data_service import market_data_service
 from .models import DailyPrice, IntradayTick
 from .services import WhaleSignalEngine
 from .views_whale_orders import _get_reference_price
+from .whale_scoring import calculate_event_score, resolve_whale_score_config
 
 
 VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
@@ -201,6 +202,7 @@ def _build_flow_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str,
     cvd_points = []
     strength_points = []
     institutional_points = []
+    speed_points = []
     cumulative_cvd = 0.0
     raw_strength_history = []
     raw_institutional_history = []
@@ -256,6 +258,15 @@ def _build_flow_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str,
             'baseline_window': bucket_window,
             'confidence': _confidence_label(institutional_value, institutional_percentile),
         })
+        bucket_duration_seconds = max(1, int(bucket_window) * 60)
+        event_count = int(row.get('event_count') or 0)
+        speed_value = event_count / bucket_duration_seconds if event_count > 0 else 0.0
+        speed_points.append({
+            'bucket_ts': bucket_key,
+            'value': round(speed_value, 6),
+            'unit': 'events_per_second',
+            'confidence': 'high' if event_count >= 3 else 'medium' if event_count >= 2 else 'low',
+        })
 
         raw_strength_history.append(raw_strength)
         raw_institutional_history.append(raw_institutional)
@@ -265,6 +276,7 @@ def _build_flow_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str,
         'cvd': cvd_points,
         'buy_strength': strength_points,
         'institutional_strength': institutional_points,
+        'speed': speed_points,
     }
 
 
@@ -275,12 +287,115 @@ def _resolve_reference_price(symbol: str, trade_date: date) -> float | None:
     return float(reference_price)
 
 
-def _resolve_degraded_state(*, reference_price: float | None, tick_rows: list[dict]) -> tuple[bool, str | None]:
+def _calculate_whale_event_score(*, matched_value: float, threshold_vnd: float, side: str, score_config: dict) -> float:
+    score_result = calculate_event_score(
+        trade={'matched_value': matched_value, 'threshold': threshold_vnd, 'side': side},
+        context={'threshold_vnd': threshold_vnd, 'side': side},
+        config=score_config,
+    )
+    return float(score_result.get('event_score') or 0.0)
+
+
+def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, threshold_vnd: float, score_config: dict, session_limit: int = 10) -> dict:
+    previous_trade_dates = list(
+        IntradayTick.objects
+        .filter(symbol=symbol, trade_date__lt=trade_date)
+        .values_list('trade_date', flat=True)
+        .distinct()
+        .order_by('-trade_date')[:session_limit]
+    )
+    if not previous_trade_dates:
+        return {
+            'matched_values': [],
+            'event_scores': [],
+            'sample_size': 0,
+        }
+
+    matched_values = []
+    event_scores = []
+    baseline_rows = (
+        IntradayTick.objects
+        .filter(symbol=symbol, trade_date__in=previous_trade_dates)
+        .values('price', 'volume', 'side')
+    )
+    for row in baseline_rows:
+        matched_value = _matched_value_from_price_volume(float(row.get('price') or 0), float(row.get('volume') or 0))
+        if threshold_vnd > 0 and matched_value < threshold_vnd:
+            continue
+        normalized_side = str(row.get('side') or '').strip().upper()
+        if normalized_side in {'BUY', 'BU', 'B'}:
+            normalized_side = 'BUY'
+        elif normalized_side in {'SELL', 'SD', 'S'}:
+            normalized_side = 'SELL'
+        else:
+            normalized_side = 'NEUTRAL'
+        matched_values.append(float(matched_value))
+        event_scores.append(_calculate_whale_event_score(
+            matched_value=matched_value,
+            threshold_vnd=threshold_vnd,
+            side=normalized_side,
+            score_config=score_config,
+        ))
+
+    return {
+        'matched_values': matched_values,
+        'event_scores': event_scores,
+        'sample_size': len(matched_values),
+    }
+
+
+def _resolve_session_levels(*, user, symbol: str, trade_date: date, reference_price: float | None) -> tuple[dict, list[str]]:
+    session_levels = {
+        'reference_price': reference_price,
+        'high_price': None,
+        'low_price': None,
+        'ceiling_price': None,
+        'floor_price': None,
+    }
+
+    daily_price = (
+        DailyPrice.objects
+        .filter(symbol=symbol, date=trade_date)
+        .values('high_price', 'low_price')
+        .first()
+    )
+    if daily_price:
+        if daily_price.get('high_price') is not None:
+            session_levels['high_price'] = float(daily_price['high_price'])
+        if daily_price.get('low_price') is not None:
+            session_levels['low_price'] = float(daily_price['low_price'])
+
+    if trade_date == _current_vn_now().date():
+        try:
+            overview = market_data_service.get_stock_workspace_overview(user, symbol)
+        except Exception:
+            overview = None
+        if overview:
+            for field_name in ('reference_price', 'high_price', 'low_price', 'ceiling_price', 'floor_price'):
+                field_value = overview.get(field_name)
+                if field_value is None:
+                    continue
+                try:
+                    session_levels[field_name] = float(field_value)
+                except (TypeError, ValueError):
+                    continue
+
+    missing_fields = [
+        f'session_levels.{field_name}'
+        for field_name, field_value in session_levels.items()
+        if field_value is None
+    ]
+    return session_levels, missing_fields
+
+
+def _resolve_degraded_state(*, reference_price: float | None, tick_rows: list[dict], missing_session_level_fields: list[str] | None = None) -> tuple[bool, str | None, list[str]]:
     if reference_price is None:
-        return True, 'missing_reference_price'
+        return True, 'missing_reference_price', []
     if not tick_rows:
-        return True, 'missing_intraday_ticks'
-    return False, None
+        return True, 'missing_intraday_ticks', []
+    if missing_session_level_fields:
+        return True, 'missing_session_levels', missing_session_level_fields
+    return False, None, []
 
 
 def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'session', compact: bool = True, trade_date: date | None = None) -> dict:
@@ -292,6 +407,13 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
     threshold_vnd, threshold_source = WhaleSignalEngine.resolve_threshold_vnd(user, normalized_symbol)
     reference_price = _resolve_reference_price(normalized_symbol, resolved_trade_date)
     now_vn = _current_vn_now()
+    score_config = resolve_whale_score_config()
+    session_levels, missing_session_level_fields = _resolve_session_levels(
+        user=user,
+        symbol=normalized_symbol,
+        trade_date=resolved_trade_date,
+        reference_price=reference_price,
+    )
 
     tick_rows = []
     tick_qs = (
@@ -335,6 +457,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         'buy_value': 0.0,
         'sell_value': 0.0,
         'total_value': 0.0,
+        'event_count': 0,
         'last_price': None,
         'last_ts': None,
     })
@@ -343,6 +466,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         bucket_entry = bucket_map[key]
         bucket_entry['bucket_ts'] = row['bucket_ts']
         bucket_entry['total_value'] += row['matched_value']
+        bucket_entry['event_count'] += 1
         if row['side'] == 'buy':
             bucket_entry['buy_value'] += row['matched_value']
         elif row['side'] == 'sell':
@@ -367,6 +491,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
 
     whale_payload = market_data_service.get_whale_feed(user, normalized_symbol)
     whale_scores_by_key = {}
+    whale_order_rows = []
     for order in whale_payload.get('whale_orders') or []:
         ts_raw = str(order.get('ts') or '').replace('Z', '+00:00')
         try:
@@ -383,17 +508,40 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             normalized_side = 'SELL'
         else:
             normalized_side = 'NEUTRAL'
+        price_value = float(order.get('price') or 0)
+        volume_value = float(order.get('volume') or 0)
+        matched_value = float(order.get('matched_value') or _matched_value_from_price_volume(price_value, volume_value))
         whale_scores_by_key[(
             order_dt.isoformat(),
-            round(float(order.get('price') or 0), 4),
-            int(float(order.get('volume') or 0)),
+            round(price_value, 4),
+            int(volume_value),
             normalized_side,
         )] = order.get('display_score') or order.get('event_score') or 0
+        whale_order_rows.append({
+            'dt': order_dt,
+            'bucket_ts': _floor_bucket(order_dt, bucket_minutes),
+            'side': normalized_side,
+            'price': price_value,
+            'volume': volume_value,
+            'matched_value': matched_value,
+            'event_score': order.get('display_score') or order.get('event_score') or 0,
+        })
 
     whale_value_by_bucket = defaultdict(float)
     bubble_series = []
     threshold_value = float(threshold_vnd or 0)
-    for row in tick_rows:
+    percentile_baseline = _build_percentile_baseline_samples(
+        symbol=normalized_symbol,
+        trade_date=resolved_trade_date,
+        threshold_vnd=threshold_value,
+        score_config=score_config,
+    )
+    threshold_tick_rows = [
+        row for row in tick_rows
+        if threshold_value <= 0 or float(row['matched_value']) >= threshold_value
+    ]
+    bubble_source_rows = whale_order_rows if whale_order_rows and len(whale_order_rows) >= len(threshold_tick_rows) else tick_rows
+    for row in bubble_source_rows:
         matched_value = float(row['matched_value'])
         if threshold_value > 0 and matched_value < threshold_value:
             continue
@@ -416,6 +564,28 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         else:
             normalized_side = 'NEUTRAL'
 
+        event_score = float(
+            row.get('event_score')
+            or whale_scores_by_key.get((order_dt.isoformat(), round(price_value, 4), int(volume_value), normalized_side), 0)
+            or _calculate_whale_event_score(
+                matched_value=matched_value,
+                threshold_vnd=max(threshold_value, 1.0),
+                side=normalized_side,
+                score_config=score_config,
+            )
+        )
+        baseline_sample_size = int(percentile_baseline['sample_size']) if percentile_baseline['sample_size'] > 0 else None
+        matched_value_percentile = (
+            round(_percentile_rank(percentile_baseline['matched_values'], matched_value) * 100.0, 2)
+            if baseline_sample_size
+            else None
+        )
+        event_score_percentile = (
+            round(_percentile_rank(percentile_baseline['event_scores'], event_score) * 100.0, 2)
+            if baseline_sample_size
+            else None
+        )
+
         bubble_series.append({
             'bucket_ts': bucket_ts.isoformat(),
             'ts': order_dt.isoformat(),
@@ -426,7 +596,10 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'delta_pct': round(delta_pct, 4),
             'is_whale': True if threshold_value > 0 else matched_value > 0,
             'is_extreme': matched_value >= threshold_value * 3 if threshold_value > 0 else False,
-            'event_score': whale_scores_by_key.get((order_dt.isoformat(), round(price_value, 4), int(volume_value), normalized_side), 0),
+            'event_score': round(event_score, 2),
+            'matched_value_percentile_10d': matched_value_percentile,
+            'event_score_percentile_10d': event_score_percentile,
+            'baseline_sample_size': baseline_sample_size,
         })
 
     flow_series = _build_flow_series(sorted_buckets, whale_value_by_bucket, bucket_window=30 if normalized_timeframe != 'session' else 60)
@@ -445,9 +618,10 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         except ValueError:
             cache_age_ms = 0
     is_live_session = resolved_trade_date == now_vn.date() and _combine_dt(resolved_trade_date, MARKET_OPEN) <= now_vn <= _combine_dt(resolved_trade_date, MARKET_CLOSE)
-    degraded_mode, stale_reason = _resolve_degraded_state(
+    degraded_mode, stale_reason, missing_fields = _resolve_degraded_state(
         reference_price=reference_price,
         tick_rows=tick_rows,
+        missing_session_level_fields=missing_session_level_fields,
     )
     payload = {
         'symbol': normalized_symbol,
@@ -470,6 +644,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'degraded_mode': degraded_mode,
             'data_state': 'live' if is_live_session else 'snapshot',
             'stale_reason': stale_reason,
+            'missing_fields': missing_fields,
             'request_key': f'{normalized_symbol}:{resolved_trade_date.isoformat()}:{normalized_timeframe}:{1 if compact else 0}',
             'threshold_vnd': float(threshold_vnd or 0),
             'threshold_source': threshold_source,
@@ -481,6 +656,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'window_start': _to_iso(window_start),
             'window_end': _to_iso(window_end),
         },
+        'session_levels': session_levels,
         'price_series': price_series,
         'bubble_series': bubble_series,
         'flow_series': flow_series,

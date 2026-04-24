@@ -5,6 +5,7 @@ import '@testing-library/jest-dom';
 import WhaleAnalyticsTab from './WhaleAnalyticsTab';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import { useI18n } from '../context/LangContext';
+import { useOrderBubbleCoordinates } from '../hooks/useOrderBubbleCoordinates';
 
 jest.mock('echarts/core', () => ({
   use: jest.fn(),
@@ -17,6 +18,7 @@ jest.mock('echarts/charts', () => ({
 
 jest.mock('echarts/components', () => ({
   AxisPointerComponent: {},
+  DataZoomComponent: {},
   GraphicComponent: {},
   GridComponent: {},
   MarkLineComponent: {},
@@ -52,8 +54,9 @@ const ActualWhaleBubbleChart = jest.requireActual('./WhaleBubbleChart').default;
 describe('Whale Analytics degraded rendering', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useOrderBubbleCoordinates.mockReturnValue({ buy: [], sell: [], internal: [] });
     useI18n.mockReturnValue({
-      t: () => undefined,
+      t: (_key, options) => options?.defaultValue,
     });
   });
 

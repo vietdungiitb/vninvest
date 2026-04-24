@@ -151,6 +151,11 @@ export function useOrderBubbleCoordinates(orders, refPrice, sessionStart) {
           isLarge: matchedValue >= 1_000_000_000,
           isExtreme: order.is_extreme,
           unitAdjusted,
+          eventScore: order.event_score ?? null,
+          whaleThreshold: order.threshold ?? null,
+          matchedValuePercentile10d: order.matched_value_percentile_10d ?? null,
+          eventScorePercentile10d: order.event_score_percentile_10d ?? null,
+          baselineSampleSize: order.baseline_sample_size ?? null,
         };
 
         // Categorize by side

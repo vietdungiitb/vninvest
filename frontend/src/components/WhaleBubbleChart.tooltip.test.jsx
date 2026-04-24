@@ -9,6 +9,7 @@ describe('WhaleBubbleChart tooltip formatter', () => {
       buyStrengthByTimestamp: new Map([[1713949200, 61.2]]),
       institutionalStrengthByTimestamp: new Map([[1713949200, 74.5]]),
       priceByTimestamp: new Map([[1713949200, 25200]]),
+      speedByTimestamp: new Map([[1713949200, 0.1234]]),
     });
 
     const html = formatter({
@@ -44,6 +45,7 @@ describe('WhaleBubbleChart tooltip formatter', () => {
       buyStrengthByTimestamp: new Map([[1713949200, 61.2]]),
       institutionalStrengthByTimestamp: new Map([[1713949200, 74.5]]),
       priceByTimestamp: new Map([[1713949200, 25200]]),
+      speedByTimestamp: new Map([[1713949200, 0.1234]]),
     });
 
     const html = formatter({
