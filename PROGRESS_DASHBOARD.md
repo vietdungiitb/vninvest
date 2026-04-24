@@ -3,6 +3,19 @@
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-24by)
+- docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md (MODIFIED - them muc chuyen giao chinh thuc cho doi code, self-audit bat buoc va vai tro final auditor)
+- docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - them quy tac dua slice sang audit vong cuoi sau khi doi code tu audit)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24by)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: bo tai lieu Whale Analytics V2 da du de giao viec chinh thuc cho doi code tiep tuc implement theo checklist da phe duyet.
+- PASSED: co che audit moi da duoc chot ro: doi code phai tu audit sau moi slice, nguoi dung la final auditor truoc khi chot production-ready.
+- NOTE: slice nay chi cap nhat governance/handoff, khong thay doi runtime.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-24bx)
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - them direct endLabel cho price/buy strength/institutional strength va label-carrier series cho CVD)
 - docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md (MODIFIED - danh dau `FE-1.4` hoan thanh va xac nhan Giai doan 1 da complete)

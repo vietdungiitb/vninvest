@@ -149,3 +149,37 @@ Toàn gói chỉ được coi là hoàn thành khi:
 Whale Analytics v2 không phải là dự án "làm đẹp chart".
 
 Đây là dự án khóa lại một chart có thể dùng thực chiến, có audit trail rõ ràng, và không lừa người dùng bằng các kỹ thuật làm sạch thị giác thiếu trung thực.
+
+## 10. Chuyển giao chính thức cho đội code
+
+Trạng thái tài liệu tại checkpoint 2026-04-24:
+
+- Đã đủ plan, spec, API contract, taskboard, traceability matrix, QA/UAT pack và audit ledger để giao việc cho đội code mà không cần hỏi lại semantics cơ bản.
+- Giai đoạn 1 đã có code mẫu + evidence thực tế trên nhánh `dev`, nên đội code có baseline rõ ràng để tiếp tục Giai đoạn 2 và 3.
+
+Yêu cầu bắt buộc khi đội code tiếp nhận:
+
+1. Chỉ được triển khai theo đúng thứ tự taskboard đã phê duyệt.
+2. Mỗi slice phải gắn `Task ID` và `Req ID` trước khi code.
+3. Sau mỗi slice code phải tự audit ngay bằng QA pack và traceability matrix.
+4. Chỉ được tick task khi đã có đủ code + validation + evidence.
+5. Sau mỗi slice phải cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` và `PROGRESS_DASHBOARD.md`.
+
+## 11. Cơ chế self-audit bắt buộc của đội code
+
+Sau mỗi slice, đội code phải tự nộp tối thiểu các mục sau:
+
+- danh sách file sửa,
+- command/test/build đã chạy,
+- kết quả PASS/FAIL,
+- evidence UI hoặc payload capture theo QA pack,
+- đối chiếu `Req ID -> Task ID -> evidence` theo traceability matrix,
+- kết luận tạm thời: `PASS`, `PASS WITH NOTES` hoặc `FAIL`.
+
+Nếu thiếu một trong các mục trên thì slice đó chưa đủ điều kiện chuyển sang audit vòng cuối.
+
+## 12. Vai trò final audit trước production-ready
+
+- Đội code chịu trách nhiệm self-audit sau mỗi slice.
+- Người dùng là final auditor, audit vòng cuối theo đúng bộ tài liệu đã phê duyệt.
+- Chỉ khi final auditor xác nhận PASS theo QA/UAT pack, traceability matrix, taskboard và evidence thực tế thì Whale Analytics V2 mới được coi là `production ready`.

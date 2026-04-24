@@ -4,6 +4,8 @@
 
 Taskboard này dùng để giao việc thực tế cho đội code và là checklist audit sau triển khai.
 
+Trạng thái giao việc hiện tại: bo tai lieu da du dieu kien chuyen giao cho doi code tiep tuc Giai doan 2 va Giai doan 3. Moi slice sau checkpoint nay phai tu audit truoc khi trinh final auditor.
+
 Quy ước trạng thái:
 
 - `[ ]` Chưa bắt đầu
@@ -279,3 +281,15 @@ Nếu xảy ra một trong các điều sau thì task tương ứng phải bị 
 - raw i18n key còn hiện,
 - session levels sai đơn vị,
 - speed/percentile hiển thị dữ liệu giả khi backend thiếu source.
+
+## 7. Quy tắc chuyển slice sang audit vòng cuối
+
+Một slice chỉ được chuyển sang audit vòng cuối khi đội code đã tự hoàn tất đồng thời:
+
+- self-audit theo QA/UAT pack,
+- cập nhật traceability mapping tương ứng,
+- ghi ledger entry,
+- đồng bộ progress dashboard,
+- nêu rõ kết luận `PASS`, `PASS WITH NOTES` hoặc `FAIL` cho slice đó.
+
+Người dùng là final auditor và sẽ dùng đúng bộ tài liệu này để chốt hoặc bác bỏ trạng thái production-ready.
