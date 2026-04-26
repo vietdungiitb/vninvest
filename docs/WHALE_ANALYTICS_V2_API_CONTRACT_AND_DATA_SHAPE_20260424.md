@@ -1,155 +1,147 @@
-# SPEC API VA DATA SHAPE - WHALE ANALYTICS V2
+# SPEC API VÀ DATA SHAPE - WHALE ANALYTICS v2.0
 
 ## 1. Mục tiêu
 
-Tài liệu này khóa contract dữ liệu cho từng giai đoạn triển khai để:
+Tài liệu này khóa chặt contract dữ liệu giữa backend và frontend cho Whale Analytics v2.0.
 
-- đội frontend không phải suy diễn,
-- đội backend không trả thiếu context,
-- auditor đối chiếu được yêu cầu UX với payload thực tế.
+Mọi implementation mới phải bám vào contract này. Không được để frontend tự suy diễn dữ liệu bằng cách ghép 2 endpoint cũ.
 
-## 2. Endpoint chính
+## 2. Endpoint mục tiêu
+
+### 2.1 Endpoint chính
 
 `GET /portfolio/whale/analytics/{symbol}/?timeframe=15m&compact=1`
 
-Query params được phép:
+### 2.2 Query params được phép
 
 - `timeframe`: `15m | 30m | 1h | morning | afternoon | session`
-- `compact`: `1` mặc định
-- `trade_date`: optional cho replay/audit nội bộ
+- `compact`: `1` mặc định cho chart UI
+- `trade_date`: optional, chỉ dùng cho chế độ nội bộ hoặc audit replay
 
-## 3. Headers bắt buộc
+Không cho phép frontend truyền cả `start` và `end` để tự điều khiển window trong phase đầu. Window phải được resolve từ contract thống nhất.
+
+## 3. HTTP headers bắt buộc
 
 - `ETag`
 - `Last-Modified`
 - `Cache-Control`
 
-## 4. Contract top-level chuẩn
+Kỳ vọng sử dụng:
+- client gửi `If-None-Match` nếu có `ETag`
+- server có thể trả `304 Not Modified`
+- metadata trong body và header phải không mâu thuẫn nhau
+
+## 4. Response shape chuẩn
 
 ```json
 {
   "symbol": "HPG",
   "trade_date": "2026-04-24",
   "timeframe": "15m",
-  "session": {},
-  "meta": {},
-  "axis": {},
-  "session_levels": {},
+  "session": {
+    "timezone": "Asia/Ho_Chi_Minh",
+    "market_open": "09:00",
+    "market_close": "15:00",
+    "resolved_from": "latest_completed_session",
+    "auction_policy": {
+      "ato": "bucket_start",
+      "atc": "bucket_start"
+    }
+  },
+  "meta": {
+    "generated_at": "2026-04-24T14:31:10+07:00",
+    "cache_age_ms": 4200,
+    "is_stale": false,
+    "degraded_mode": false,
+    "data_state": "live",
+    "stale_reason": null,
+    "request_key": "HPG:2026-04-24:15m:compact"
+  },
+  "axis": {
+    "x_mode": "linear_time",
+    "show_session_gaps": true,
+    "bucket_interval": "15m"
+  },
   "price_series": [],
   "bubble_series": [],
   "flow_series": {
     "cvd": [],
     "buy_strength": [],
-    "institutional_strength": [],
-    "speed": []
+    "institutional_strength": []
   },
-  "summary": {}
-}
-```
-
-## 5. Timestamp rules
-
-- toàn bộ timestamp phải cùng một chuẩn timezone `+07:00` hoặc cùng một chuẩn epoch đã được khóa,
-- không trộn nhiều chuẩn timestamp trong cùng payload,
-- `bucket_ts` luôn là đầu bucket,
-- `ts` ở bubble là thời điểm gốc của event.
-
-## 6. Phase contract matrix
-
-### 6.1 Phase 1 - UI va tiện ích
-
-Required:
-
-- `meta.generated_at`
-- `meta.cache_age_ms`
-- `meta.is_stale`
-- `meta.degraded_mode`
-- `meta.stale_reason`
-- `meta.threshold_vnd`
-- `meta.threshold_source`
-- `bubble_series[].bucket_ts`
-- `bubble_series[].ts`
-- `bubble_series[].side`
-- `bubble_series[].price`
-- `bubble_series[].volume`
-- `bubble_series[].matched_value`
-- `bubble_series[].delta_pct`
-- `bubble_series[].is_whale`
-- `bubble_series[].is_extreme`
-- `bubble_series[].event_score`
-
-### 6.2 Phase 2 - Price context
-
-Required additions:
-
-```json
-"session_levels": {
-  "reference_price": 25700,
-  "high_price": 26150,
-  "low_price": 25450,
-  "ceiling_price": 27100,
-  "floor_price": 23900
-}
-```
-
-Rules:
-
-- cùng đơn vị với `price_series[].price`,
-- cùng phiên với chart đang render,
-- không optional một nửa nếu source thực tế có đủ toàn bộ.
-
-### 6.3 Phase 3 - Advanced analytics
-
-Required additions:
-
-```json
-"bubble_series": [
-  {
-    "matched_value_percentile_10d": 95.4,
-    "event_score_percentile_10d": 91.8,
-    "baseline_sample_size": 284
+  "summary": {
+    "total_buy_value": 0,
+    "total_sell_value": 0,
+    "net_cvd": 0,
+    "whale_order_count": 0,
+    "extreme_order_count": 0
   }
-],
-"flow_series": {
-  "speed": [
-    {
-      "bucket_ts": "2026-04-24T10:20:00+07:00",
-      "value": 4.7,
-      "unit": "events_per_second"
-    }
-  ]
 }
 ```
 
-## 7. Bubble record canonical shape
+## 5. Quy tắc timestamp
+
+- Tất cả timestamp trong body phải là ISO 8601 kèm offset `+07:00` hoặc epoch millisecond đã được thống nhất trước trong implementation.
+- Không trộn nhiều chuẩn timestamp trong cùng payload.
+- `generated_at` và `bucket_ts` phải cùng logic timezone `UTC+7`.
+- `bucket_ts` đại diện cho thời điểm bắt đầu bucket.
+
+## 6. Quy tắc session resolve
+
+### 6.1 Session live
+
+- Nếu đang trong phiên giao dịch, trả phiên hiện tại.
+
+### 6.2 Off-hours cùng ngày giao dịch
+
+- Nếu ngoài giờ giao dịch nhưng vẫn là ngày giao dịch, trả snapshot của phiên vừa hoàn tất.
+
+### 6.3 Cuối tuần và ngày nghỉ
+
+- Trả snapshot của phiên giao dịch gần nhất có dữ liệu.
+
+Không được giả định ngày lịch gần nhất luôn là ngày giao dịch.
+
+## 7. Quy tắc series
+
+### 7.1 price_series
+
+Mỗi phần tử tối thiểu gồm:
+
+```json
+{
+  "bucket_ts": "2026-04-24T09:15:00+07:00",
+  "price": 25.7,
+  "reference_price": 25.4,
+  "delta_pct": 1.18
+}
+```
+
+### 7.2 bubble_series
+
+Mỗi phần tử tối thiểu gồm:
 
 ```json
 {
   "bucket_ts": "2026-04-24T09:15:00+07:00",
   "ts": "2026-04-24T09:17:23+07:00",
   "side": "BUY",
-  "price": 25700,
+  "price": 25.7,
   "volume": 120000,
   "matched_value": 3084000000,
   "delta_pct": 1.18,
   "is_whale": true,
   "is_extreme": false,
-  "event_score": 87.5,
-  "matched_value_percentile_10d": null,
-  "event_score_percentile_10d": null,
-  "baseline_sample_size": null
+  "event_score": 87.5
 }
 ```
 
-Rules:
+Quy tắc:
+- Bubble là event-level data.
+- `bucket_ts` dùng để align với flow/price pane.
+- `ts` giữ thời điểm gốc của lệnh để tooltip có thể hiển thị chi tiết.
 
-- event-level data phải còn đầy đủ trong window,
-- không top-N truncate,
-- percentile fields có thể `null` trước Phase 3 nhưng key semantics phải được tài liệu hóa rõ.
-
-## 8. Flow series canonical shape
-
-### 8.1 CVD
+### 7.3 flow_series.cvd
 
 ```json
 {
@@ -158,7 +150,7 @@ Rules:
 }
 ```
 
-### 8.2 Buy strength
+### 7.4 flow_series.buy_strength
 
 ```json
 {
@@ -169,7 +161,7 @@ Rules:
 }
 ```
 
-### 8.3 Institutional strength
+### 7.5 flow_series.institutional_strength
 
 ```json
 {
@@ -180,60 +172,48 @@ Rules:
 }
 ```
 
-### 8.4 Speed
+## 8. Quy tắc empty state và fail-safe semantics
 
-```json
-{
-  "bucket_ts": "2026-04-24T10:20:00+07:00",
-  "value": 4.7,
-  "unit": "events_per_second",
-  "confidence": "medium"
-}
-```
+### 8.1 Bubble rỗng, flow có dữ liệu
 
-## 9. Empty va degraded semantics
+- `bubble_series` không cần sinh record giả.
+- Frontend sẽ hiển thị flow bình thường tại bucket đó.
+- Tooltip bubble phải ẩn phần bubble nếu không có event hợp lệ.
 
-### 9.1 Bubble rỗng nhưng flow có dữ liệu
+### 8.2 Không có dữ liệu cả bucket
 
-- `bubble_series` được để rỗng ở bucket đó,
-- frontend không được tự sinh bubble,
-- panel hover line chỉ hiển thị flow context.
+- Trả mảng rỗng hoặc bỏ điểm đó khỏi series theo strategy đã thống nhất.
+- Không được nội suy dữ liệu chỉ để line đẹp hơn.
 
-### 9.2 Thiếu price context Phase 2
+### 8.3 degraded_mode
 
-Nếu thiếu `session_levels`, backend phải đánh dấu trong `meta`:
+Nếu `degraded_mode = true` thì phải có:
+- `data_state`
+- `stale_reason`
+- `generated_at`
+- `cache_age_ms`
 
-```json
-{
-  "degraded_mode": true,
-  "stale_reason": "missing_session_levels",
-  "missing_fields": ["session_levels.reference_price", "session_levels.high_price"]
-}
-```
+Frontend được phép render snapshot cũ, nhưng phải gắn notice dữ liệu chậm.
 
-### 9.3 Thiếu speed hoặc percentile Phase 3
+## 9. Quy tắc ATO/ATC
 
-Không trả `0` giả.
+- ATO/ATC là dữ liệu hợp lệ trong session.
+- Với `15m`, `30m`, `1h`, dữ liệu auction phải vào đúng bucket chứa thời điểm đó.
+- Không tạo minute giả để kéo đều volume.
+- Nếu tooltip đang đứng trên bubble auction, phải có field hoặc label giải thích đây là dữ liệu aggregate auction bucket.
 
-Phải trả một trong hai cách:
+## 10. Quy tắc formula metadata
 
-- field `null`,
-- hoặc bỏ field nhưng có `missing_fields` rõ ràng.
+Nếu response trả strength đã chuẩn hóa theo pipeline mới, backend phải giữ được ít nhất các thông tin sau cho debug/audit nội bộ:
+- `baseline_window`
+- `confidence`
+- version công thức nếu hệ thống có cơ chế version hóa
 
-## 10. Audit assertions bắt buộc
-
-Auditor phải kiểm các assertion sau trên payload thật:
-
-1. Toàn bộ bubble vượt ngưỡng trong window đều có mặt.
-2. `threshold_vnd` và `threshold_source` khớp thực tế đang dùng.
-3. `session_levels` nếu có thì đúng đơn vị và đúng phiên.
-4. `speed.unit` chỉ có một canonical definition.
-5. percentile không xuất hiện khi baseline chưa đủ.
+Không bắt buộc trả toàn bộ biến trung gian ra client nếu `compact=1`, nhưng backend phải có khả năng audit nội bộ.
 
 ## 11. Anti-pattern bị cấm
 
-- payload compact bằng cách cắt bớt event-level records,
-- timestamp lệch timezone giữa series,
-- bubble không có `bucket_ts`,
-- price context trả nửa vời mà không degrade,
-- speed/percentile placeholder 0 để UI dễ render hơn.
+- Trả payload trộn cả session lớn rồi để frontend tự cắt.
+- Trả timestamp ở nhiều timezone khác nhau.
+- Trả data line theo bucket nhưng bubble lại không có `bucket_ts` để sync.
+- Không có metadata stale/degraded nhưng lại phục vụ cache cũ.

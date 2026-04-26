@@ -1,245 +1,185 @@
-# BACKEND IMPLEMENTATION SPEC - WHALE ANALYTICS V2
+# BACKEND IMPLEMENTATION SPEC - WHALE ANALYTICS v2.0
 
 ## 1. Mục tiêu
 
-Backend phải trả được snapshot analytics đủ chuẩn để frontend render trực tiếp mà không phải suy diễn về:
-
-- session window,
-- bucket semantics,
-- price context,
-- speed,
-- percentile,
-- degraded/stale semantics.
+Backend phải cung cấp một snapshot analytics đáng tin cậy, đủ nhanh để frontend chỉ việc render, không phải suy diễn thêm về session, bucket hay strength semantics.
 
 ## 2. File neo chính
 
-- `backend/portfolio/services_whale_analytics_snapshot.py`
 - `backend/portfolio/views_whale_orders.py`
+- `backend/portfolio/views_dark_money_history.py`
 - `backend/portfolio/order_flow.py`
-- `backend/portfolio/serializers.py` nếu cần mở rộng serializer contract
-- các module helper market data nếu cần lấy `ceiling_price`, `floor_price`, `high_price`, `low_price`
+- `backend/portfolio/services/` cho service snapshot/cache mới
 
-## 3. Quy tắc nền bắt buộc
+Khuyến nghị tạo service mới thay vì nhồi thêm logic vào view:
+- `backend/portfolio/services/whale_analytics_snapshot.py`
 
-### 3.1 Time contract
+## 3. Trách nhiệm theo lớp
+
+### 3.1 View layer
+
+- validate request
+- resolve symbol/timeframe
+- gọi snapshot service
+- set headers `ETag`, `Last-Modified`, `Cache-Control`
+- trả response đã chuẩn hóa
+
+### 3.2 Snapshot service
+
+- resolve session theo `UTC+7`
+- resolve `trade_date`
+- load dữ liệu nguồn cần thiết
+- aggregate theo bucket
+- build `price_series`, `bubble_series`, `flow_series`, `summary`
+- set metadata `generated_at`, `cache_age_ms`, `is_stale`, `degraded_mode`
+
+### 3.3 Formula layer
+
+- tính CVD
+- tính buy strength
+- tính institutional strength
+- áp low-volume penalty hoặc confidence band
+
+## 4. Quy tắc thời gian bắt buộc
 
 - Timezone chuẩn: `Asia/Ho_Chi_Minh`
-- Session intraday chuẩn: `09:00-15:00`
+- Session intraday: `09:00-15:00`
+- Off-hours: trả phiên gần nhất có dữ liệu
+- Weekend/holiday: trả phiên gần nhất có dữ liệu
 - `bucket_ts` là thời điểm bắt đầu bucket
-- weekend/holiday/off-hours phải resolve về phiên gần nhất có dữ liệu
 
-### 3.2 Visual truthfulness support
+## 5. Quy tắc bucket
 
-Backend không được tối ưu payload theo hướng làm frontend mất khả năng hiển thị đủ các lệnh đã vượt ngưỡng lọc.
+### 5.1 Timeframes hỗ trợ
 
-Nghĩa là:
+- `15m`
+- `30m`
+- `1h`
+- `morning`
+- `afternoon`
+- `session`
 
-- bubble snapshot phải giữ đủ event-level records trong window đang yêu cầu,
-- không top-N truncate chỉ để payload nhỏ hơn,
-- nếu có compact mode thì compact bằng field reduction, không compact bằng event suppression.
+### 5.2 ATO/ATC
 
-### 3.3 Threshold semantics
+- Auction orders phải thuộc bucket chứa thời gian của chúng.
+- Không được phân bổ sang các phút giả để làm trơn.
+- Nếu timeframe dài hơn `1m`, aggregate theo `bucket_start`.
 
-Threshold phải được surfacing rõ trong metadata để frontend và audit biết chart đang hiển thị theo ngưỡng nào.
+## 6. Công thức strength bắt buộc
 
-## 4. Phân kỳ backend theo giai đoạn
+### 6.1 Raw intensity
 
-## 4.1 Giai đoạn 1
+$$
+x = w_1 \cdot \left|\frac{buy\_value - sell\_value}{buy\_value + sell\_value + \epsilon}\right| + w_2 \cdot \log\left(1 + \frac{bucket\_value}{baseline\_value + \epsilon}\right)
+$$
 
-Backend phải đảm bảo các field hiện có đủ tốt cho frontend làm:
+Mặc định đề xuất:
+- $w_1 = 0.6$
+- $w_2 = 0.4$
 
-- Information Panel,
-- filter bubble tại FE,
-- event score surfacing,
-- threshold surfacing.
+### 6.2 Rolling baseline window
 
-Required fields:
+- `N = 30` bucket cho `15m`, `30m`, `1h`
+- `N = 60` bucket cho session live hoặc chế độ cần baseline dài hơn
 
-- `meta.threshold_vnd`
-- `meta.threshold_source`
-- `bubble_series[].event_score`
-- `bubble_series[].bucket_ts`
-- `bubble_series[].ts`
+### 6.3 Soft saturation
 
-## 4.2 Giai đoạn 2
+$$
+Strength = \frac{100}{1 + e^{-k \cdot (x - m)}}
+$$
 
-Backend phải mở rộng contract cho price context.
+Trong đó:
+- $m$ là điểm uốn từ rolling baseline
+- $k$ đề xuất benchmark trong khoảng `0.8 - 1.2`
 
-Required fields mới:
+### 6.4 Rule nghiệp vụ
 
-- `session_levels.reference_price`
-- `session_levels.high_price`
-- `session_levels.low_price`
-- `session_levels.ceiling_price`
-- `session_levels.floor_price`
+- Chỉ bucket thật sự bất thường mới được tiến gần vùng `90-100`.
+- Bucket volume thấp không được chạm 100 chỉ vì lệch buy/sell quá sạch.
+- Nếu bucket quá nhỏ, phải giảm trọng số hoặc gắn confidence thấp.
 
-Các field này phải cùng đơn vị giá với `price_series[].price` và `bubble_series[].price`.
+## 7. Công thức institutional strength
 
-## 4.3 Giai đoạn 3
+$$
+Institutional\_Raw = \alpha \cdot whale\_ratio + \beta \cdot dark\_flow\_ratio + \gamma \cdot \log(1 + institutional\_value\_multiple)
+$$
 
-Backend phải mở rộng contract cho tín hiệu chuyên sâu.
+Sau đó chạy pipeline:
+- rolling baseline riêng
+- percentile window riêng
+- sigmoid soft-saturation riêng
 
-Required fields mới:
+Không dùng lại trực tiếp output raw strength.
 
-- `flow_series.speed`
-- `bubble_series[].matched_value_percentile_10d`
-- `bubble_series[].event_score_percentile_10d`
-- `bubble_series[].baseline_sample_size`
+## 8. degraded mode
 
-Nếu không đủ dữ liệu baseline hoặc speed source chưa tin cậy, backend phải trả semantics thiếu dữ liệu rõ ràng thay vì giá trị 0 giả.
+Backend phải bật `degraded_mode = true` khi:
+- thiếu reference price nhưng vẫn muốn trả snapshot an toàn
+- cache/source dữ liệu chưa kịp refresh nhưng còn snapshot gần nhất
+- có data gap ngoài dự kiến khiến không thể khẳng định realtime tuyệt đối
 
-## 5. Snapshot shape bắt buộc
-
-Backend phải tiếp tục duy trì snapshot response thống nhất, nhưng cần mở rộng rõ thành 3 lớp:
-
-1. lớp render hiện tại,
-2. lớp price context,
-3. lớp advanced analytics.
-
-Suggested top-level shape:
-
-```json
-{
-  "symbol": "HPG",
-  "trade_date": "2026-04-24",
-  "timeframe": "15m",
-  "session": {},
-  "meta": {},
-  "axis": {},
-  "session_levels": {},
-  "price_series": [],
-  "bubble_series": [],
-  "flow_series": {
-    "cvd": [],
-    "buy_strength": [],
-    "institutional_strength": [],
-    "speed": []
-  },
-  "summary": {}
-}
-```
-
-## 6. Price context rules
-
-### 6.1 Ref/high/low/trần/sàn
-
-Phải được tính hoặc lấy từ một nguồn chuẩn duy nhất.
-
-Không chấp nhận:
-
-- frontend tự suy ra trần/sàn từ reference,
-- frontend tự tổng hợp high/low từ partial response không được backend chuẩn hóa,
-- trộn unit `VND` và `thousand VND` giữa các field.
-
-### 6.2 Session high/low
-
-Phải là high/low của phiên đang resolve cho chart, không phải high/low của ngày lịch khác.
-
-## 7. Speed rules
-
-### 7.1 Speed definition
-
-Backend phải chốt một definition duy nhất và version hóa nếu cần.
-
-Cho phép một trong hai hướng:
-
-- `events_per_second`
-- `value_velocity_vnd_per_second`
-
-Không được trả cả hai mà không nêu rõ field nào là canonical.
-
-### 7.2 Speed sampling
-
-Khuyến nghị:
-
-- bucket 5 giây hoặc 10 giây,
-- giữ linear time semantics,
-- degraded nếu source intraday không đủ dày.
-
-## 8. Percentile rules
-
-### 8.1 Baseline
-
-Percentile phải bám trên baseline 10 phiên trước của cùng symbol.
-
-### 8.2 Required metadata
-
-Mỗi record có percentile phải kèm:
-
-- `baseline_sample_size`
-- optional `baseline_window_sessions`
-- optional `percentile_version`
-
-### 8.3 Fail-safe
-
-Nếu sample size dưới ngưỡng chấp nhận được:
-
-- không trả percentile giả,
-- đánh dấu unavailable rõ ràng.
-
-## 9. degraded mode bắt buộc
-
-Response phải có degraded semantics chi tiết cho từng nhóm field:
-
-- `stale_reason`
-- `data_state`
+Khi đó response bắt buộc phải có:
+- `generated_at`
 - `cache_age_ms`
-- optional `missing_fields`
+- `data_state`
+- `stale_reason`
 
-Ví dụ hợp lệ:
+## 9. Cache strategy
 
-- có bubble và flow cơ bản nhưng thiếu session_levels,
-- có snapshot cơ bản nhưng thiếu speed,
-- có speed nhưng thiếu percentile baseline.
+### 9.1 Cache key
 
-## 10. Cache strategy
+Đề xuất:
 
-### 10.1 Cache key
+`whale:analytics:v2:{symbol}:{trade_date}:{timeframe}:{profile}`
 
-`whale:analytics:v2:{symbol}:{trade_date}:{timeframe}:{compact}:{contract_version}`
+### 9.2 TTL
 
-### 10.2 Không được cache sai semantics
+- Trong giờ giao dịch: `5-15s`
+- Nghỉ trưa: `60s`
+- Ngoài giờ: `15-60 phút`
 
-Nếu đổi contract price context hoặc percentile version, key phải đổi tương ứng.
+### 9.3 Coalescing
 
-### 10.3 Coalescing
+- Khi nhiều request cùng key bị miss cache, chỉ một worker build snapshot.
+- Request còn lại chờ cache hoặc đọc kết quả đã được build xong.
 
-Coalescing vẫn là bắt buộc, đặc biệt với Giai đoạn 3 khi baseline queries sẽ nặng hơn.
+## 10. Response consistency rules
 
-## 11. Test bắt buộc
+- Bubble, price, flow phải dùng cùng logic `trade_date` và `bucket_ts`.
+- Không để bubble thuộc phiên trước còn flow thuộc phiên sau.
+- Nếu một phần dữ liệu thiếu, phải degrade rõ ràng thay vì ghép hai phiên khác nhau.
 
-### 11.1 Giai đoạn 1
+## 11. Test bắt buộc cho backend
 
-- snapshot giữ đủ threshold ticks trong window,
-- threshold metadata hiện đúng,
-- event_score không mất trên bubble payload.
+### 11.1 Unit tests
 
-### 11.2 Giai đoạn 2
+- resolve session live
+- off-hours fallback
+- weekend/holiday fallback
+- ATO/ATC bucket mapping
+- strength sparse volume
+- strength abnormal bucket
+- institutional strength baseline riêng
 
-- session_levels có ref/high/low/trần/sàn đúng đơn vị,
-- off-hours và holiday không resolve sai price context,
-- payload không mâu thuẫn giữa `session_levels` và `price_series`.
+### 11.2 Integration tests
 
-### 11.3 Giai đoạn 3
+- snapshot endpoint trả đúng schema
+- header `ETag` và `Last-Modified` tồn tại
+- conditional request nhận `304` khi phù hợp
+- degraded mode response có đủ metadata
 
-- speed series đúng sampling,
-- percentile đúng baseline 10 phiên,
-- missing-baseline path degrade đúng.
+## 12. Anti-pattern bị cấm ở backend
 
-## 12. Anti-pattern bị cấm
-
-- top-N truncate bubble records trong window,
-- trả high/low/trần/sàn không rõ source,
-- trả speed hoặc percentile kiểu placeholder `0` khi thực chất thiếu dữ liệu,
-- thay đổi contract mà không đổi tài liệu audit tương ứng.
+- build response bằng cách ghép “tạm” từ 2 endpoint cũ ngay tại frontend contract mà không normalize chung.
+- để frontend tự sửa timezone mismatch.
+- giữ công thức `max(strength_sources)` như hiện tại nếu còn gây bão hòa giả.
+- bỏ qua metadata stale/degraded vì “UI không dùng tới”.
 
 ## 13. Definition of done cho backend
 
 Backend chỉ được coi là xong khi:
-
-- snapshot response đủ cho phase đang triển khai,
-- event-level bubble không bị suppress sai,
-- session_levels đúng source và đúng đơn vị,
-- speed/percentile có degraded path rõ ràng,
-- test contract pass,
-- QA/auditor truy vết được từng field về đúng nguồn và đúng semantics.
+- snapshot endpoint hoạt động đúng spec
+- formulas mới có test
+- session/timezone rules nhất quán
+- cache headers và coalescing tối thiểu đã có
+- QA verify payload thật khớp contract

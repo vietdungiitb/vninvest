@@ -1,187 +1,181 @@
-# TASKBOARD THUC THI - WHALE ANALYTICS V2
+# TASKBOARD THỰC THI - WHALE ANALYTICS v2.0
 
 ## 1. Mục đích
 
-Taskboard này dùng để giao việc thực tế cho đội code và là checklist audit sau triển khai.
-
-Trạng thái giao việc hiện tại: bo tai lieu da du dieu kien chuyen giao cho doi code tiep tuc Giai doan 2 va Giai doan 3. Moi slice sau checkpoint nay phai tu audit truoc khi trinh final auditor.
+Taskboard này dùng để giao việc trực tiếp cho đội code và cũng là checklist audit sau khi họ hoàn thành.
 
 Quy ước trạng thái:
-
 - `[ ]` Chưa bắt đầu
 - `[/]` Đang làm
 - `[x]` Hoàn thành
-- `[!]` Bị chặn
 
-Lưu ý bắt buộc: trạng thái chỉ được tick khi code, test và bằng chứng thật đã tồn tại. Không được đánh dấu hoàn thành trước.
+## 2. Slice Backend
 
-## 1.1 Slice khởi động để bắt đầu code
-
-Đội code phải bắt đầu theo đúng thứ tự sau, không mở rộng phạm vi ngay từ commit đầu:
-
-1. `FE-1.5` để khóa i18n fallback và loại bỏ raw key.
-2. `FE-1.1` để dựng Information Panel theo skeleton hoạt động được.
-3. `FE-1.3` để khóa visual truthfulness ở lớp render bubble.
-4. `FE-1.2` để thêm filter ngưỡng minh bạch.
-
-Lý do:
-
-- `FE-1.5` là fix nền, rẻ và dễ xác nhận nhanh.
-- `FE-1.1` tạo bề mặt UI đọc chart mới trước khi mở rộng tương tác.
-- `FE-1.3` khóa rule không được làm sai cảm nhận mật độ trước khi thêm tiện ích lọc.
-- `FE-1.2` chỉ nên vào sau khi semantics hiển thị đã được khóa.
-
-Điều kiện kết thúc slice khởi động:
-
-- ít nhất 1 task đầu tiên của Giai đoạn 1 đã có commit, test hoặc bằng chứng UI tương ứng,
-- traceability matrix đã được tham chiếu bằng `Req ID` trong PR hoặc commit message nội bộ,
-- ledger và progress dashboard đã được cập nhật cho slice code đầu tiên.
-
-## 2. Giai đoạn 1 - Giao diện va tiện ích
-
-### FE-1.1 Tạo Information Panel docked
-
-Trạng thái: `[x]`
-
-- Priority: Critical
-- Owner: Frontend Lead
-- Files neo:
-  - `frontend/src/components/WhaleBubbleChart.jsx`
-  - `frontend/src/utils/whaleTooltipFormatter.js`
-- Output bắt buộc:
-  - panel cố định ngoài vùng chart
-  - cập nhật nội dung theo bubble/line hover
-  - fallback khi không hover
-- Acceptance:
-  - không còn popup che vùng dữ liệu chính
-  - hover bubble và line đều cập nhật panel đúng timestamp
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm docked Information Panel cố định ở cạnh chart trong `WhaleBubbleChart.jsx`.
-- Hover bubble hiển thị field event-level; hover line hiển thị field series-level cùng timestamp.
-- Tooltip nổi đã bị tắt phần `showContent` để panel trở thành nguồn đọc chính và không che chart.
-- Frontend Docker build/restart đã PASS với bundle `main.ee21dfd4.js`.
-
-### FE-1.2 Thêm filter ngưỡng lệnh minh bạch
-
-Trạng thái: `[x]`
-
-- Priority: Critical
-- Owner: Frontend
-- Files neo:
-  - `frontend/src/components/WhaleBubbleChart.jsx`
-- Output bắt buộc:
-  - preset ngưỡng nhanh
-  - slider log-scale
-  - text hiển thị ngưỡng đang áp dụng
-- Acceptance:
-  - mọi bubble trên ngưỡng hiện hành vẫn hiển thị đầy đủ
-  - line price/CVD/strength không bị filter theo bubble threshold
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm preset ngưỡng nhanh và slider log-scale cục bộ ngay trong `WhaleBubbleChart.jsx`.
-- Filter chỉ tác động tới bubble dataset, không refetch và không ảnh hưởng price line, CVD, buy strength hay institutional strength.
-- UI hiển thị rõ ngưỡng hiện hành và số bubble còn đang hiển thị.
-- Frontend Docker build/restart đã PASS với bundle `main.bcea4d5d.js`.
-
-### FE-1.3 Khóa rule visual truthfulness
-
-Trạng thái: `[x]`
-
-- Priority: Critical
-- Owner: Frontend + Reviewer
-- Files neo:
-  - `frontend/src/hooks/useOrderBubbleCoordinates.js`
-  - `frontend/src/components/WhaleBubbleChart.jsx`
-- Output bắt buộc:
-  - bubble lớn nằm lớp trên
-  - không opacity taper mặc định
-  - không hidden-by-density
-- Acceptance:
-  - auditor xác nhận chart không làm sai cảm nhận mật độ giao dịch
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã hợp nhất bubble pane về một scatter series với dataset sort tăng dần theo kích thước bubble.
-- Bubble lớn được vẽ sau cùng nên luôn nổi trên bubble nhỏ mà không cần ẩn hay làm mờ lệnh nhỏ.
-- `opacity: 1` được giữ nguyên, không thêm hidden-by-density hoặc density taper.
-- Frontend Docker build/restart đã PASS với bundle `main.35527167.js`.
-
-### FE-1.4 Direct label/endLabel cho line chính
-
-Trạng thái: `[x]`
-
-- Priority: High
-- Owner: Frontend
-- Files neo:
-  - `frontend/src/components/WhaleBubbleChart.jsx`
-- Output bắt buộc:
-  - label trực tiếp cho price, CVD, buy strength, institutional strength
-- Acceptance:
-  - người dùng đọc được line chính mà không cần dò legend
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm endLabel trực tiếp cho price line, buy strength, institutional strength.
-- Đã thêm một label-carrier series riêng cho CVD để hiện nhãn trực tiếp mà không làm hỏng phần area hiện có.
-- Frontend Docker build/restart đã PASS với bundle `main.dde261c3.js`.
-
-### Trạng thái Giai đoạn 1 sau checkpoint 2026-04-24
-
-- `FE-1.1`: `[x]`
-- `FE-1.2`: `[x]`
-- `FE-1.3`: `[x]`
-- `FE-1.4`: `[x]`
-- `FE-1.5`: `[x]`
-
-Kết luận: toàn bộ checklist Giai đoạn 1 đã có code, validation runtime và audit trail tương ứng trên nhánh `dev`.
-
-### FE-1.5 Sửa fallback i18n của chart
-
-Trạng thái: `[x]`
-
-- Priority: High
-- Owner: Frontend
-- Files neo:
-  - `frontend/src/i18n/index.js`
-  - `frontend/src/i18n/vi.js`
-  - `frontend/src/i18n/en.js`
-  - `frontend/src/components/WhaleBubbleChart.jsx`
-- Output bắt buộc:
-  - không còn raw i18n key trên chart
-- Acceptance:
-  - screenshot/QA xác nhận mọi nhãn chart hiển thị đúng tiếng Việt/Anh
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã bổ sung các key Whale Analytics/Whale Chart còn thiếu trong `vi.js` và `en.js`.
-- Đã đổi các call-site Whale Analytics dễ lộ raw key sang `t(key, { defaultValue })` tại chart và tab wrapper.
-- Validation đã xác nhận editor diagnostics sạch trên các file chạm tới.
-
-## 3. Giai đoạn 2 - Dữ liệu và bối cảnh giá
-
-### BE-2.1 Mở rộng snapshot với session_levels
+### BE-01. Tạo snapshot endpoint hợp nhất
 
 Trạng thái: `[x]`
 
 - Priority: Critical
 - Owner: Backend Lead
 - Files neo:
-  - `backend/portfolio/services_whale_analytics_snapshot.py`
+  - `backend/portfolio/views_whale_orders.py`
+  - `backend/portfolio/views_dark_money_history.py`
+  - `backend/portfolio/services/` hoặc module service mới
 - Output bắt buộc:
-  - `reference_price`, `high_price`, `low_price`, `ceiling_price`, `floor_price`
+  - endpoint snapshot hợp nhất cho Whale Analytics
+  - response có `symbol`, `trade_date`, `timeframe`, `session`, `meta`, `price_series`, `bubble_series`, `flow_series`, `summary`
 - Acceptance:
-  - payload thật có đủ field và đúng đơn vị
+  - chỉ 1 request logic cho 1 chart view
+  - response đúng timeframe được yêu cầu
+  - có `generated_at`, `cache_age_ms`, `is_stale`, `degraded_mode`, `data_state`
 
-Ghi chú triển khai 2026-04-24:
+### BE-02. Chuẩn hóa time contract UTC+7 và fallback phiên gần nhất
 
-- Đã thêm `session_levels.reference_price/high_price/low_price/ceiling_price/floor_price` vào `build_whale_analytics_snapshot(...)`.
-- Đã khóa degraded semantics `missing_session_levels` cùng `meta.missing_fields` theo API contract khi thiếu price context của phiên.
-- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`.
+Trạng thái: `[x]`
 
-### FE-2.2 Render dashed price context lines
+- Priority: Critical
+- Owner: Backend
+- Files neo:
+  - `backend/portfolio/views_whale_orders.py`
+  - `backend/portfolio/views_dark_money_history.py`
+  - service time/session mới nếu cần
+- Output bắt buộc:
+  - logic resolve phiên theo `UTC+7`
+  - weekend/holiday fallback về phiên gần nhất có dữ liệu
+- Acceptance:
+  - session `09:00-15:00`
+  - không còn mismatch 08:45 vs 09:00
+  - timestamp trong response đồng nhất timezone
+
+### BE-03. Chốt rule bucket ATO/ATC và linear time gaps
+
+Trạng thái: `[x]`
+
+- Priority: High
+- Owner: Backend
+- Files neo:
+  - service aggregate intraday mới hoặc logic hiện hữu trong views
+- Output bắt buộc:
+  - bucket rule cho `1m`, `15m`, `30m`, `1h`
+  - metadata hoặc timestamp semantics đủ rõ để frontend render gap chính xác
+- Acceptance:
+  - không rải auction volume sang phút giả
+  - bucket timestamp nhất quán với spec API
+
+### BE-04. Refactor công thức strength
+
+Trạng thái: `[x]`
+
+- Priority: Critical
+- Owner: Backend Quant/Lead
+- Files neo:
+  - `backend/portfolio/order_flow.py`
+  - logic fallback trong `backend/portfolio/views_dark_money_history.py`
+- Output bắt buộc:
+  - rolling baseline
+  - percentile window
+  - sigmoid soft-saturation
+  - low-volume penalty hoặc confidence band
+- Acceptance:
+  - strength không chạm 100 hàng loạt trên bucket nhỏ
+  - công thức khớp spec backend
+  - có test cho sparse bucket, skewed bucket, abnormal bucket
+
+### BE-05. Refactor institutional strength
+
+Trạng thái: `[x]`
+
+- Priority: Critical
+- Owner: Backend Quant/Lead
+- Files neo:
+  - `backend/portfolio/order_flow.py`
+  - module helper liên quan dark flow
+- Output bắt buộc:
+  - pipeline baseline riêng cho institutional strength
+- Acceptance:
+  - không copy raw strength
+  - response trả field rõ ràng cho institutional strength
+
+### BE-06. Thêm cache headers và snapshot cache
+
+Trạng thái: `[x]`
+
+- Priority: High
+- Owner: Backend Platform
+- Files neo:
+  - view snapshot mới
+  - service cache mới
+- Output bắt buộc:
+  - `ETag`
+  - `Last-Modified`
+  - `Cache-Control`
+  - cache key theo `symbol + trade_date + timeframe + profile`
+- Acceptance:
+  - request lặp lại có thể nhận `304`
+  - response khi cache hit không rebuild snapshot
+
+### BE-07. Single-flight/coalescing cho cache miss
+
+Trạng thái: `[x]`
+
+- Priority: Medium
+- Owner: Backend Platform
+- Files neo:
+  - service snapshot/cache mới
+- Output bắt buộc:
+  - lock/coalescing khi nhiều request cùng key
+- Acceptance:
+  - cache miss hàng loạt không gây build trùng nhiều lần
+
+### BE-08. Test backend contract và formulas
+
+Trạng thái: `[x]`
+
+- Priority: Critical
+- Owner: Backend + QA
+- Output bắt buộc:
+  - test unit
+  - test integration cho endpoint snapshot
+  - fixture cho ngày giao dịch, cuối tuần, holiday, bucket rỗng, degraded mode
+- Acceptance:
+  - test pass
+  - có evidence file/log đính kèm audit pack
+
+## 3. Slice Frontend
+
+### FE-01. Chuyển data hook sang snapshot endpoint
+
+Trạng thái: `[x]`
+
+- Priority: Critical
+- Owner: Frontend Lead
+- Files neo:
+  - `frontend/src/hooks/useWhaleAnalyticsData.js`
+  - `frontend/src/api/client.js`
+- Output bắt buộc:
+  - hook chỉ gọi snapshot endpoint
+  - bỏ pattern `session + 1M`
+- Acceptance:
+  - mở chart intraday không còn 2 request nặng song song
+  - cache key/state key đúng spec
+
+### FE-02. Viết lại time adapter theo contract mới
+
+Trạng thái: `[x]`
+
+- Priority: Critical
+- Owner: Frontend
+- Files neo:
+  - `frontend/src/utils/whaleTimeAdapter.js`
+- Output bắt buộc:
+  - session `09:00-15:00`
+  - linear time axis
+  - focus/off-hours behavior khớp backend contract
+- Acceptance:
+  - không còn 08:45 start
+  - gap trưa hiện đúng
+
+### FE-03. Refactor chart render 2 pane theo snapshot
 
 Trạng thái: `[x]`
 
@@ -189,19 +183,32 @@ Trạng thái: `[x]`
 - Owner: Frontend
 - Files neo:
   - `frontend/src/components/WhaleBubbleChart.jsx`
-  - `frontend/src/utils/whaleAnalyticsSnapshotAdapter.js`
+  - `frontend/src/components/WhaleAnalyticsTab.jsx`
 - Output bắt buộc:
-  - render ref/high/low/trần/sàn theo session_levels
+  - bubble pane + price line
+  - flow pane + CVD/strength/institutional strength
+  - legend đúng màu
 - Acceptance:
-  - UI phân biệt được các line mà không nhầm màu/ý nghĩa
+  - institutional strength không dùng màu dễ nhầm với buy
+  - price line nhìn rõ nhưng không lấn bubble
 
-Ghi chú triển khai 2026-04-24:
+### FE-04. Refactor tooltip point-anchored
 
-- Đã map `session_levels` qua `normalizeWhaleAnalyticsSnapshot()` sang frontend state chuẩn.
-- Đã render ref/high/low/trần/sàn trên price pane bằng các overlay line có nhãn trực tiếp và panel snapshot đồng bộ cùng nguồn dữ liệu.
-- Validation đã pass với `npm run build` trong `frontend/` và `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend`.
+Trạng thái: `[x]`
 
-### FE-2.3 Thêm DataZoom sync hai pane
+- Priority: Critical
+- Owner: Frontend
+- Files neo:
+  - `frontend/src/components/WhaleBubbleChart.jsx`
+- Output bắt buộc:
+  - tooltip chỉ bind đúng điểm hover
+  - empty state fail-safe
+- Acceptance:
+  - hover bubble chỉ ra dữ liệu bubble tại đúng timestamp
+  - hover line chỉ ra dữ liệu line tại đúng timestamp
+  - không có cross-bucket inference
+
+### FE-05. Đồng bộ crosshair theo timestamp giữa 2 pane
 
 Trạng thái: `[x]`
 
@@ -210,62 +217,27 @@ Trạng thái: `[x]`
 - Files neo:
   - `frontend/src/components/WhaleBubbleChart.jsx`
 - Output bắt buộc:
-  - zoom bubble pane và flow pane đồng thời
+  - vertical crosshair sync hai chiều giữa 2 pane
 - Acceptance:
-  - zoom không phá linear time và hover semantics
+  - crosshair sync vẫn không làm tooltip trộn dữ liệu khác điểm hover
 
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm `dataZoom` kiểu `inside` + `slider` với `xAxisIndex: [0, 1]` để zoom đồng thời bubble pane và flow pane.
-- Đã giữ `filterMode: none` để không phá linear time window và hover binding theo timestamp.
-- Validation đã pass với `npm run build` trong `frontend/` và frontend dev container đã rebuild/restart thành công.
-
-## 4. Giai đoạn 3 - Phân tích chuyên sâu
-
-### BE-3.1 Thêm flow speed series
+### FE-06. Polling, background pause, immediate resume
 
 Trạng thái: `[x]`
 
-- Priority: High
-- Owner: Backend Quant/Platform
+- Priority: Critical
+- Owner: Frontend
 - Files neo:
-  - `backend/portfolio/services_whale_analytics_snapshot.py`
-  - module tính toán intraday tốc độ nếu cần
+  - `frontend/src/hooks/useWhaleAnalyticsData.js`
 - Output bắt buộc:
-  - `flow_series.speed`
-  - canonical unit rõ ràng
+  - pause polling khi tab background
+  - fetch ngay khi tab active trở lại
+  - bỏ response stale hoặc response trễ không còn đúng context
 - Acceptance:
-  - QA/auditor xác định được speed definition duy nhất
+  - không chờ đến chu kỳ 30s tiếp theo mới refresh
+  - đổi symbol/timeframe không bị race
 
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm `flow_series.speed` vào snapshot Whale Analytics với canonical unit `events_per_second`.
-- Speed được tính theo số whale events trên mỗi bucket thời gian, đi cùng metadata đơn vị rõ ràng trong payload flow series.
-- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`.
-
-### BE-3.2 Thêm percentile baseline 10 phiên
-
-Trạng thái: `[x]`
-
-- Priority: High
-- Owner: Backend Quant
-- Files neo:
-  - service snapshot
-  - module baseline/history liên quan
-- Output bắt buộc:
-  - `matched_value_percentile_10d`
-  - `event_score_percentile_10d`
-  - `baseline_sample_size`
-- Acceptance:
-  - thiếu baseline phải degrade rõ ràng, không trả 0 giả
-
-Ghi chú triển khai 2026-04-24:
-
-- Đã thêm `matched_value_percentile_10d`, `event_score_percentile_10d` và `baseline_sample_size` cho bubble payload.
-- Baseline được dựng từ các phiên trước bằng cùng logic event score chuẩn, và trả `null` thay vì 0 giả khi chưa đủ mẫu.
-- Validation đã pass với `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb`, bao gồm regression có baseline lịch sử.
-
-### FE-3.3 Hiển thị speed và percentile trong panel
+### FE-07. Trạng thái degraded/stale và empty data
 
 Trạng thái: `[x]`
 
@@ -273,72 +245,78 @@ Trạng thái: `[x]`
 - Owner: Frontend
 - Files neo:
   - `frontend/src/components/WhaleBubbleChart.jsx`
-  - `frontend/src/utils/whaleTooltipFormatter.js`
+  - `frontend/src/components/WhaleAnalyticsTab.jsx`
 - Output bắt buộc:
-  - progress bar percentile
-  - label speed rõ nghĩa
+  - badge hoặc notice ngắn gọn khi dữ liệu stale/degraded
+  - trạng thái `Không có dữ liệu` đúng ngữ cảnh
 - Acceptance:
-  - thay thế được semantics nhị phân `Có/Có`
+  - không render giá trị gây hiểu nhầm khi payload thiếu
 
-Ghi chú triển khai 2026-04-24:
-
-- Đã hoàn tất plumbing `speed_series` và percentile fields từ adapter -> bubble metadata -> tooltip/panel của `WhaleBubbleChart.jsx`.
-- Information Panel nay hiển thị tốc độ sự kiện, progress bar phân vị 10 phiên và cỡ mẫu baseline ở cả trạng thái hover lẫn snapshot mặc định.
-- Validation đã pass với editor diagnostics sạch, `npm run build` trong `frontend/` và frontend dev container rebuild/restart thành công.
-
-## 5. QA và audit
-
-### QA-4.1 Chạy regression theo phase
+### FE-08. Test frontend behavior
 
 Trạng thái: `[x]`
 
-- Priority: Critical
-- Owner: QA
+- Priority: High
+- Owner: Frontend + QA
 - Output bắt buộc:
-  - evidence cho hover, filter, zoom, session levels, speed, percentile theo phase tương ứng
+  - test logic hook/state
+  - test tooltip binding
+  - test pause/resume lifecycle
+- Acceptance:
+  - có evidence log/network/video cho audit
 
-Ghi chú triển khai 2026-04-24:
+## 4. Slice QA và Audit
 
-- Đã chạy backend regression `manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb` và pass `14/14` cho contract `session_levels`, `speed`, percentile, degraded semantics và cache headers.
-- Đã chạy frontend focused tests `src/components/WhaleBubbleChart.tooltip.test.jsx` và `src/components/WhaleAnalytics.degraded.test.jsx`, pass `4/4` cho hover binding và degraded rendering.
-- Đã chạy HTTP smoke thật qua `http://localhost:8000/api/portfolio/whale/analytics/{symbol}/` bằng user Pro runtime; `HPG` trả đủ session levels + speed + percentile, `FPT/DGC` degrade đúng với percentile `null`.
-- Kết luận self-audit: `PASS WITH NOTES` do môi trường công cụ hiện tại không tự sinh được clip/screenshot browser cho thao tác hover/zoom, nhưng code path tương ứng đã được bao phủ bằng build, focused tests và runtime payload smoke.
-
-### AUD-4.2 Đối chiếu traceability matrix
+### QA-01. Contract verification
 
 Trạng thái: `[x]`
 
-- Priority: Critical
-- Owner: Auditor
-- Files neo:
-  - `docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md`
-- Acceptance:
-  - mọi requirement đều map được tới code, test và evidence
+- Verify response thật khớp API spec
+- Verify headers, metadata, timeframe, data_state
 
-Ghi chú triển khai 2026-04-24:
+### QA-02. UI behavior verification
 
-- Đã đối chiếu lại toàn bộ các hàng `UX-01` đến `AUD-01` với code runtime, focused tests, backend regression và evidence HTTP smoke của phiên hiện tại.
-- Ma trận truy vết đã được cập nhật từ mức mô tả generic sang evidence cụ thể theo từng requirement để final auditor kiểm tra nhanh hơn.
-- Kết luận self-audit: `PASS` cho traceability coverage; không còn requirement nào trong matrix ở trạng thái không map được tới code hoặc validation.
+Trạng thái: `[/]`
 
-## 6. Điều kiện fail ngay trên taskboard
+- Verify chart với live session, off-hours, lunch gap, cuối tuần, holiday
+- Verify tooltip/crosshair/resume logic
 
-Nếu xảy ra một trong các điều sau thì task tương ứng phải bị trả về `FAIL`, không được tick hoàn thành:
+### QA-03. Formula sanity verification
 
-- bubble trên ngưỡng bị mất khỏi chart,
-- Information Panel bind sai timestamp,
-- raw i18n key còn hiện,
-- session levels sai đơn vị,
-- speed/percentile hiển thị dữ liệu giả khi backend thiếu source.
+Trạng thái: `[x]`
 
-## 7. Quy tắc chuyển slice sang audit vòng cuối
+- Verify strength/institutional strength không bão hòa giả
+- Verify bucket nhỏ không đẩy strength lên 100 vô lý
 
-Một slice chỉ được chuyển sang audit vòng cuối khi đội code đã tự hoàn tất đồng thời:
+### QA-04. Load and cache verification
 
-- self-audit theo QA/UAT pack,
-- cập nhật traceability mapping tương ứng,
-- ghi ledger entry,
-- đồng bộ progress dashboard,
-- nêu rõ kết luận `PASS`, `PASS WITH NOTES` hoặc `FAIL` cho slice đó.
+Trạng thái: `[x]`
 
-Người dùng là final auditor và sẽ dùng đúng bộ tài liệu này để chốt hoặc bác bỏ trạng thái production-ready.
+- Verify cache hit behavior
+- Verify conditional request
+- Verify response `304` nếu chưa đổi
+
+### QA-05. Evidence pack completion
+
+Trạng thái: `[/]`
+
+- Thu đủ screenshot, video, test log, payload mẫu, curl/devtools capture
+
+### QA-06. Audit close-out
+
+Trạng thái: `[/]`
+
+- Ghi pass/fail theo từng task vào audit pack
+
+## 4.1. Cập nhật trạng thái thực thi 2026-04-24
+
+- Backend slice BE-01 -> BE-08 da duoc code hoa va khoa bang regression tests snapshot API / flow formula.
+- Frontend slice FE-01 -> FE-08 da duoc code hoa; regression hien co gom degraded rendering, tooltip point-anchored binding va hook lifecycle `pause/resume + stale-response drop`.
+- QA-02, QA-05, QA-06 giu `[/]` vi van can them bang chung manual nhu screenshot, video va devtools capture theo audit pack.
+
+## 5. Điều kiện đóng taskboard
+
+Taskboard chỉ được đóng khi:
+- toàn bộ task Critical đạt `[x]`
+- không còn bug blocker ở nhóm time, tooltip, snapshot contract, race condition
+- audit pack có đủ bằng chứng cho BE, FE và QA

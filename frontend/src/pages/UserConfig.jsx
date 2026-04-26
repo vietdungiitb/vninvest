@@ -9,6 +9,8 @@ import {
 } from '../api/client';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
+import { useInterface } from '../context/InterfaceContext';
+
 
 const FALLBACK_MODELS = {
   openai: ['gpt-4o', 'gpt-4-turbo', 'gpt-3.5-turbo'],
@@ -35,6 +37,8 @@ function buildFallbackModelCatalog(providerMap) {
 export default function UserConfig() {
   const { t, setLanguage } = useI18n();
   const { isAuthenticated } = usePortfolio();
+  const { uiMode, setUiMode } = useInterface();
+
 
   const [loading, setLoading] = useState(true);
   const [savingGeneral, setSavingGeneral] = useState(false);
@@ -264,6 +268,19 @@ export default function UserConfig() {
                   value={form.whale_alert_threshold}
                   onChange={(e) => onField('whale_alert_threshold', e.target.value)}
                 />
+              </label>
+
+              <label className="text-xs text-slate-400">
+                Interface Mode
+                <select
+                  className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100"
+                  value={uiMode}
+                  onChange={(e) => setUiMode(e.target.value)}
+                >
+                  <option value="legacy">Legacy (Standard)</option>
+                  <option value="modern">Modern (Workstation)</option>
+                  <option value="decision_hub">Decision Hub (Pro)</option>
+                </select>
               </label>
             </div>
           </section>

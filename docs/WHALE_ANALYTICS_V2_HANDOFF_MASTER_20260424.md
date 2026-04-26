@@ -1,185 +1,162 @@
-# WHALE ANALYTICS V2 - BO TAI LIEU CHUYEN GIAO THUC THI
+# WHALE ANALYTICS v2.0 - BỘ TÀI LIỆU CHUYỂN GIAO THỰC THI
 
 ## 1. Mục tiêu
 
-Tài liệu này là entry point cho đội code và đội audit. Người nhận việc phải có thể triển khai mà không cần hỏi thêm về:
+Đây là tài liệu master để chuyển giao công việc Whale Analytics v2.0 cho đội code mà không cần hỏi lại thêm về scope, nguyên tắc dữ liệu, thứ tự triển khai hay tiêu chí nghiệm thu.
 
-- ưu tiên sản phẩm,
-- rule hiển thị,
-- contract dữ liệu,
-- thứ tự phase,
-- cách audit pass/fail.
+Tài liệu này không thay thế bản kế hoạch duyệt scope. Nó là lớp triển khai thực thi bám trên các quyết định đã chốt trong:
+- `docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md`
+- `docs/IMPLEMENTATION_PLAN_WHALE_ANALYTICS_PERFORMANCE_AND_SCALE_20260424.md`
 
-## 2. Quyết định đã khóa, không hỏi lại
+## 2. Mục tiêu đầu ra của đội code
 
-### 2.1 Quyết định sản phẩm
+Sau khi hoàn thành, hệ thống phải đạt đồng thời 4 nhóm kết quả:
 
-- Tooltip popup nổi không còn là cơ chế đọc chính; phải chuyển sang Information Panel docked.
-- Chart phải ưu tiên đọc đúng trước, không ưu tiên "sạch" theo kiểu làm mất dữ liệu.
-- Mọi lệnh trên ngưỡng đang chọn phải hiển thị đầy đủ.
-- Không opacity taper mặc định.
-- Không cluster mặc định.
-- Zoom và filter là hai công cụ hợp lệ để giảm nhiễu, nhưng đều phải minh bạch với người dùng.
+1. Chart đúng nghiệp vụ
+- Trục X luôn chuẩn hóa theo phiên 09:00-15:00.
+- Ngoài giờ giao dịch, cuối tuần và ngày lễ hiển thị phiên giao dịch gần nhất có dữ liệu.
+- Bubble, price, CVD, strength và institutional strength cùng dùng chung contract thời gian.
 
-### 2.2 Quyết định dữ liệu
+2. Chart đúng ngữ nghĩa dữ liệu
+- Tooltip chỉ hiển thị dữ liệu của đúng điểm đang hover.
+- Không suy diễn dữ liệu từ bucket khác hoặc timestamp gần đó.
+- Nếu không có dữ liệu hợp lệ thì hiển thị `Không có dữ liệu` hoặc trạng thái fail-safe tương đương.
 
-- Session chuẩn `09:00-15:00`, `UTC+7`.
-- Off-hours/weekend/holiday phải trả phiên gần nhất có dữ liệu.
-- Giai đoạn 2 mới khóa `ref/high/low/trần/sàn` bằng contract backend.
-- Giai đoạn 3 mới khóa `speed` và `percentile 10 phiên`.
+3. Chart đủ nhanh để dùng thực tế
+- Frontend không over-fetch full session hoặc `1M` khi người dùng chỉ xem intraday ngắn.
+- Backend có snapshot endpoint, metadata, cache headers và degraded mode rõ ràng.
 
-### 2.3 Quyết định audit
-
-- Taskboard không được tick hoàn thành trước khi có code và evidence thật.
-- Auditor phải đối chiếu qua traceability matrix.
-- Audit fail ngay nếu chart làm mất lệnh hợp lệ trên ngưỡng hoặc bind sai timestamp.
+4. Có thể audit sau triển khai
+- Mỗi task đều có owner, file neo, acceptance criteria và bằng chứng nghiệm thu.
+- QA có checklist đủ để bắt lỗi lệch thời gian, lệch tooltip, saturation giả và race condition khi polling/resume.
 
 ## 3. Thứ tự ưu tiên tài liệu
 
-Khi có mâu thuẫn diễn giải, dùng thứ tự sau:
+Khi có xung đột diễn giải, áp dụng thứ tự sau:
 
 1. `docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md`
+Vai trò: nguồn sự thật về nghiệp vụ và quyết định sản phẩm.
+
 2. `docs/WHALE_ANALYTICS_V2_API_CONTRACT_AND_DATA_SHAPE_20260424.md`
+Vai trò: nguồn sự thật cho request/response, header, metadata, bucket time và fail-safe semantics.
+
 3. `docs/WHALE_ANALYTICS_V2_FRONTEND_IMPLEMENTATION_SPEC_20260424.md`
+Vai trò: nguồn sự thật cho logic UI, state, tooltip, crosshair sync, polling/resume, rendering.
+
 4. `docs/WHALE_ANALYTICS_V2_BACKEND_IMPLEMENTATION_SPEC_20260424.md`
-5. `docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md`
-6. `docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md`
-7. `docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md`
+Vai trò: nguồn sự thật cho snapshot build, normalize dữ liệu, công thức strength và cache strategy.
 
-## 4. Thứ tự triển khai bắt buộc
+5. `docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md`
+Vai trò: nguồn sự thật cho test, UAT, bằng chứng và audit sau bàn giao.
 
-1. Giai đoạn 1 - FE usability và visual truthfulness.
-2. Giai đoạn 2 - price context contract và rendering.
-3. Giai đoạn 3 - speed và percentile.
+6. `docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md`
+Vai trò: danh sách đầu việc thực thi và trạng thái hoàn thành.
 
-Không được nhảy sang Giai đoạn 3 khi Giai đoạn 1 chưa khóa xong rule hiển thị trung thực.
+## 4. Danh mục tài liệu trong gói bàn giao
 
-## 5. Bộ tài liệu trong gói chuyển giao
+### 4.1 Tài liệu chỉ đạo chung
 
-### 5.1 Tài liệu chỉ đạo
-
-- `docs/KE_HOACH_NANG_CAP_WHALE_ANALYTICS_CHART_V2_20260424.md`
 - `docs/WHALE_ANALYTICS_V2_HANDOFF_MASTER_20260424.md`
-
-### 5.2 Tài liệu triển khai
-
-- `docs/WHALE_ANALYTICS_V2_FRONTEND_IMPLEMENTATION_SPEC_20260424.md`
-- `docs/WHALE_ANALYTICS_V2_BACKEND_IMPLEMENTATION_SPEC_20260424.md`
-- `docs/WHALE_ANALYTICS_V2_API_CONTRACT_AND_DATA_SHAPE_20260424.md`
 - `docs/WHALE_ANALYTICS_V2_EXECUTION_TASKBOARD_20260424.md`
 
-### 5.3 Tài liệu audit
+### 4.2 Tài liệu kỹ thuật
+
+- `docs/WHALE_ANALYTICS_V2_API_CONTRACT_AND_DATA_SHAPE_20260424.md`
+- `docs/WHALE_ANALYTICS_V2_FRONTEND_IMPLEMENTATION_SPEC_20260424.md`
+- `docs/WHALE_ANALYTICS_V2_BACKEND_IMPLEMENTATION_SPEC_20260424.md`
+
+### 4.3 Tài liệu nghiệm thu và audit
 
 - `docs/WHALE_ANALYTICS_V2_QA_UAT_AUDIT_PACK_20260424.md`
-- `docs/WHALE_ANALYTICS_V2_TRACEABILITY_MATRIX_20260424.md`
 
-## 6. Hướng dẫn cho đội code
+## 5. Các quyết định đã chốt, đội code không được hỏi lại
 
-### 6.1 Frontend team
+### 5.1 Timezone và session
 
-Phải đọc tối thiểu:
+- Toàn bộ hệ thống dùng `UTC+7`.
+- Session intraday chuẩn là `09:00-15:00`.
+- Trục X hiển thị tuyến tính theo thời gian, không được nén khoảng trống giao dịch.
+- Khoảng nghỉ trưa phải hiện gap thời gian thật.
 
-- frontend spec,
-- API contract,
-- taskboard,
-- traceability matrix.
+### 5.2 Off-hours, weekend, holiday
 
-### 6.2 Backend team
+- Khi không ở ngày giao dịch, chart mặc định hiển thị phiên giao dịch gần nhất có dữ liệu.
+- Không hiển thị ngày lịch gần nhất nếu ngày đó không có giao dịch.
 
-Phải đọc tối thiểu:
+### 5.3 Tooltip và crosshair
 
-- backend spec,
-- API contract,
-- taskboard,
-- traceability matrix.
+- Tooltip là point-anchored.
+- Crosshair chỉ dùng để đồng bộ vị trí thời gian giữa 2 pane.
+- Crosshair không phải là lý do để ghép dữ liệu từ điểm khác vào tooltip.
 
-### 6.3 QA/auditor
+### 5.4 Data gap và empty state
 
-Phải đọc tối thiểu:
+- Nếu `bubble_series` rỗng tại thời điểm $T$ nhưng `flow_series` có dữ liệu, tooltip chỉ hiển thị flow.
+- Nếu không có dữ liệu hợp lệ thì ưu tiên `Không có dữ liệu` thay vì nội suy hoặc xấp xỉ.
 
-- plan,
-- QA/UAT pack,
-- traceability matrix,
-- taskboard.
+### 5.5 ATO/ATC
 
-## 7. Definition of ready cho từng phase
+- ATO/ATC là bucket hợp lệ và phải được aggregate theo bucket time tương ứng.
+- Không được rải volume auction sang các phút giả chỉ để làm chart “mượt”.
 
-Một phase chỉ được coi là ready để code khi:
+### 5.6 Strength và institutional strength
 
-- requirements phase đó đã map vào taskboard,
-- contract phase đó đã khóa trong spec API nếu có thay đổi backend,
-- QA pack đã có checklist tương ứng,
-- traceability matrix đã có mapping requirement -> task -> audit.
+- Không dùng logic saturate thô khiến strength chạm 100 hàng loạt.
+- Bắt buộc dùng rolling baseline + percentile + sigmoid soft-saturation theo spec backend.
+- Institutional strength phải có baseline riêng, không được là bản sao của buy strength.
 
-## 7.1 Ready-to-code cho slice đầu tiên
+## 6. Phạm vi file dự kiến sẽ bị tác động
 
-Slice code đầu tiên của Whale Analytics V2 được coi là đủ điều kiện bắt đầu ngay khi thỏa đồng thời các điểm sau:
+### 6.1 Frontend file anchors
 
-- bắt đầu từ Giai đoạn 1, không nhảy sang Giai đoạn 2 hoặc 3,
-- task được chọn nằm trong nhóm `FE-1.5`, `FE-1.1`, `FE-1.3`, `FE-1.2` theo đúng thứ tự ưu tiên ở taskboard,
-- task đó map được về `Req ID` trong traceability matrix,
-- task đó có tiêu chí nghiệm thu hẹp, đo được, và có thể audit riêng,
-- sau khi merge hoặc commit chính thức phải cập nhật lại ledger và progress dashboard.
+- `frontend/src/components/WhaleAnalyticsTab.jsx`
+- `frontend/src/components/WhaleBubbleChart.jsx`
+- `frontend/src/hooks/useWhaleAnalyticsData.js`
+- `frontend/src/utils/whaleTimeAdapter.js`
+- `frontend/src/api/client.js`
 
-## 7.2 Nhịp audit vận hành bắt buộc cho mỗi slice code
+### 6.2 Backend file anchors
 
-Từ đây về sau, mỗi slice code Whale Analytics V2 phải đi theo cùng một nhịp audit, không bỏ bước:
+- `backend/portfolio/views_whale_orders.py`
+- `backend/portfolio/views_dark_money_history.py`
+- `backend/portfolio/order_flow.py`
+- `backend/portfolio/serializers.py` nếu cần serializer riêng cho snapshot
+- `backend/portfolio/services/*` nếu tách snapshot builder/cache service
 
-1. Chọn `Task ID` từ taskboard.
-2. Gắn `Req ID` tương ứng từ traceability matrix.
-3. Code trong phạm vi hẹp của đúng task đó.
-4. Chạy validation hẹp nhất có thể.
-5. Cập nhật trạng thái taskboard nếu và chỉ nếu đã có code + validation + evidence.
-6. Ghi entry mới vào `docs/CODE_CHANGE_AUDIT_LEDGER.md`.
-7. Đồng bộ danh sách file sửa vào `PROGRESS_DASHBOARD.md`.
+## 7. Thứ tự triển khai bắt buộc
 
-Nếu thiếu bước 5, 6 hoặc 7 thì slice đó chưa được coi là audit-ready.
+1. Backend chốt data contract và snapshot builder.
+2. Frontend chuyển hook sang snapshot contract và state machine mới.
+3. Frontend chỉnh chart rendering, tooltip, crosshair, data gap.
+4. Backend tối ưu cache/coalescing/headers.
+5. QA chạy full matrix nghiệm thu và audit bằng chứng.
 
-## 8. Definition of done toàn gói
+Không được làm ngược theo kiểu chỉnh chart trước khi data contract mới được khóa, vì sẽ dẫn tới vá tạm và phải sửa lại lần hai.
 
-Toàn gói chỉ được coi là hoàn thành khi:
+## 8. Định nghĩa hoàn thành của gói Whale Analytics v2.0
 
-- mọi requirement trong traceability matrix đều có trạng thái cuối,
-- taskboard phản ánh đúng code thực tế,
-- ledger và progress dashboard đã đồng bộ danh sách file sửa,
-- auditor có thể audit mà không phải hỏi lại người viết code về semantics cơ bản.
+Chỉ được coi là xong khi đồng thời đạt đủ:
 
-## 9. Chốt hướng triển khai
+1. API snapshot hoạt động và trả đúng metadata.
+2. Frontend không còn gọi combo `session + 1M` cho view intraday ngắn.
+3. Tooltip không còn trộn dữ liệu khác timestamp.
+4. Resume từ background fetch ngay snapshot mới.
+5. QA pack có đầy đủ bằng chứng trước/sau và checklist được tick hoàn chỉnh.
+6. Audit ledger đã ghi nhận toàn bộ file đổi thực tế.
 
-Whale Analytics v2 không phải là dự án "làm đẹp chart".
+## 9. Nguyên tắc audit sau khi đội code bàn giao
 
-Đây là dự án khóa lại một chart có thể dùng thực chiến, có audit trail rõ ràng, và không lừa người dùng bằng các kỹ thuật làm sạch thị giác thiếu trung thực.
+Khi audit, reviewer phải đối chiếu theo thứ tự:
 
-## 10. Chuyển giao chính thức cho đội code
+1. So taskboard với commit/diff thực tế.
+2. So API contract với payload thật trên network.
+3. So frontend behavior với video/screenshot bằng chứng.
+4. So backend formulas với code thật và test output.
+5. So QA evidence với tiêu chí trong audit pack.
 
-Trạng thái tài liệu tại checkpoint 2026-04-24:
+## 10. Câu chốt bắt buộc cho toàn đội
 
-- Đã đủ plan, spec, API contract, taskboard, traceability matrix, QA/UAT pack và audit ledger để giao việc cho đội code mà không cần hỏi lại semantics cơ bản.
-- Giai đoạn 1 đã có code mẫu + evidence thực tế trên nhánh `dev`, nên đội code có baseline rõ ràng để tiếp tục Giai đoạn 2 và 3.
+Whale Analytics v2.0 là bài toán độ tin cậy trước, tối ưu đẹp sau.
 
-Yêu cầu bắt buộc khi đội code tiếp nhận:
-
-1. Chỉ được triển khai theo đúng thứ tự taskboard đã phê duyệt.
-2. Mỗi slice phải gắn `Task ID` và `Req ID` trước khi code.
-3. Sau mỗi slice code phải tự audit ngay bằng QA pack và traceability matrix.
-4. Chỉ được tick task khi đã có đủ code + validation + evidence.
-5. Sau mỗi slice phải cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` và `PROGRESS_DASHBOARD.md`.
-
-## 11. Cơ chế self-audit bắt buộc của đội code
-
-Sau mỗi slice, đội code phải tự nộp tối thiểu các mục sau:
-
-- danh sách file sửa,
-- command/test/build đã chạy,
-- kết quả PASS/FAIL,
-- evidence UI hoặc payload capture theo QA pack,
-- đối chiếu `Req ID -> Task ID -> evidence` theo traceability matrix,
-- kết luận tạm thời: `PASS`, `PASS WITH NOTES` hoặc `FAIL`.
-
-Nếu thiếu một trong các mục trên thì slice đó chưa đủ điều kiện chuyển sang audit vòng cuối.
-
-## 12. Vai trò final audit trước production-ready
-
-- Đội code chịu trách nhiệm self-audit sau mỗi slice.
-- Người dùng là final auditor, audit vòng cuối theo đúng bộ tài liệu đã phê duyệt.
-- Chỉ khi final auditor xác nhận PASS theo QA/UAT pack, traceability matrix, taskboard và evidence thực tế thì Whale Analytics V2 mới được coi là `production ready`.
+Nguyên tắc vận hành không được vi phạm:
+- Thà hiển thị `Không có dữ liệu` còn tốt hơn hiển thị dữ liệu sai hoặc dữ liệu gây hiểu lầm.
