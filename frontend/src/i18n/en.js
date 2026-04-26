@@ -47,6 +47,7 @@ const en = {
       adminOps: 'Admin Ops',
       portfolioManagement: 'Manage Portfolios',
       settings: 'UserConfig',
+      aiCommandCenter: 'AI Command Center',
       support: 'Support',
     },
   },

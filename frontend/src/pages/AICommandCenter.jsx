@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 import { 
   CpuChipIcon, 
   AdjustmentsHorizontalIcon, 
@@ -10,10 +9,24 @@ import {
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
+import { getAIConfig, testAIConnection, updateAIConfig } from '../api/client';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
+
+const DEFAULT_AI_CONFIG = {
+  ai_provider: 'openclaw',
+  ai_model: '',
+  ai_api_key: '',
+  ai_api_key_configured: false,
+  ai_ready: false,
+  effective_ai_source: 'Unknown',
+  ai_prompt_config: {},
+  advisory_refresh_interval_hours: 24,
+  advisory_max_auto_refreshes_per_day: 24,
+  advisory_max_tokens_per_day: 5000,
+};
 
 const AICommandCenter = () => {
   const [loading, setLoading] = useState(true);
@@ -21,6 +34,7 @@ const AICommandCenter = () => {
   const [config, setConfig] = useState(null);
   const [testStatus, setTestStatus] = useState(null); // 'testing', 'success', 'error'
   const [testResult, setTestResult] = useState('');
+  const currentConfig = config || DEFAULT_AI_CONFIG;
 
   useEffect(() => {
     fetchConfig();
@@ -29,8 +43,12 @@ const AICommandCenter = () => {
   const fetchConfig = async () => {
     setLoading(true);
     try {
-      const resp = await axios.get('/api/portfolio/userconfig/ai/');
-      setConfig(resp.data);
+      const resp = await getAIConfig();
+      setConfig({
+        ...DEFAULT_AI_CONFIG,
+        ...(resp?.data || {}),
+        ai_prompt_config: resp?.data?.ai_prompt_config || {},
+      });
     } catch (err) {
       console.error('Failed to fetch AI config:', err);
     } finally {
@@ -41,8 +59,30 @@ const AICommandCenter = () => {
   const handleSave = async (updatedFields) => {
     setSaving(true);
     try {
-      const resp = await axios.patch('/api/portfolio/userconfig/ai/', updatedFields);
-      setConfig(resp.data);
+      const resp = await updateAIConfig(updatedFields);
+      const responseData = resp?.data || {};
+      setConfig((prev) => {
+        const nextConfig = {
+          ...DEFAULT_AI_CONFIG,
+          ...(prev || {}),
+          ...(updatedFields || {}),
+          ...responseData,
+          ai_prompt_config:
+            responseData.ai_prompt_config ||
+            updatedFields?.ai_prompt_config ||
+            prev?.ai_prompt_config ||
+            {},
+        };
+
+        if (Object.prototype.hasOwnProperty.call(updatedFields || {}, 'ai_api_key')) {
+          nextConfig.ai_api_key = '';
+          if (typeof responseData.ai_api_key_configured === 'boolean') {
+            nextConfig.ai_api_key_configured = responseData.ai_api_key_configured;
+          }
+        }
+
+        return nextConfig;
+      });
     } catch (err) {
       console.error('Failed to save AI config:', err);
     } finally {
@@ -53,11 +93,15 @@ const AICommandCenter = () => {
   const testConnection = async () => {
     setTestStatus('testing');
     try {
-      const resp = await axios.post('/api/ai-config/test-connection/', {
-        ai_provider: config.ai_provider,
-        ai_model: config.ai_model,
-        ai_api_key: config.ai_api_key
-      });
+      const payload = {
+        ai_provider: currentConfig.ai_provider,
+        ai_model: currentConfig.ai_model,
+      };
+      const apiKey = String(currentConfig.ai_api_key || '').trim();
+      if (apiKey) {
+        payload.ai_api_key = apiKey;
+      }
+      const resp = await testAIConnection(payload);
       setTestStatus('success');
       setTestResult(resp.data.message || 'Connection successful!');
       // After testing connection, we might want to refresh config to see if ai_ready changed
@@ -92,10 +136,10 @@ const AICommandCenter = () => {
         <div className="flex items-center gap-3 bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-700/50">
           <div className={classNames(
             "w-3 h-3 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]",
-            config?.ai_ready ? "bg-emerald-500" : "bg-red-500"
+            currentConfig.ai_ready ? "bg-emerald-500" : "bg-red-500"
           )}></div>
           <span className="text-sm font-medium text-slate-300">
-            {config?.ai_ready ? 'AI Runtime: Ready' : 'AI Runtime: Offline'}
+            {currentConfig.ai_ready ? 'AI Runtime: Ready' : 'AI Runtime: Offline'}
           </span>
         </div>
       </div>
@@ -165,13 +209,13 @@ const AICommandCenter = () => {
                       AI Provider
                     </label>
                     <select 
-                      value={config.ai_provider}
+                      value={currentConfig.ai_provider}
                       onChange={(e) => handleSave({ ai_provider: e.target.value })}
                       className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
                     >
                       <option value="openai">OpenAI (ChatGPT)</option>
                       <option value="gemini">Google Gemini</option>
-                      <option value="anthropic">Anthropic (Claude)</option>
+                      <option value="claude">Anthropic (Claude)</option>
                       <option value="openclaw">OpenClaw (System Default)</option>
                     </select>
                   </div>
@@ -181,8 +225,8 @@ const AICommandCenter = () => {
                     <label className="text-sm font-medium text-slate-300">AI Model</label>
                     <input 
                       type="text"
-                      value={config.ai_model || ''}
-                      onChange={(e) => setConfig({ ...config, ai_model: e.target.value })}
+                      value={currentConfig.ai_model || ''}
+                      onChange={(e) => setConfig({ ...currentConfig, ai_model: e.target.value })}
                       onBlur={(e) => handleSave({ ai_model: e.target.value })}
                       className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                       placeholder="e.g. gpt-4o, gemini-1.5-pro"
@@ -195,13 +239,17 @@ const AICommandCenter = () => {
                     <div className="relative">
                       <input 
                         type="password"
-                        value={config.ai_api_key || (config.ai_api_key_configured ? '********' : '')}
-                        onChange={(e) => setConfig({ ...config, ai_api_key: e.target.value })}
-                        onBlur={(e) => handleSave({ ai_api_key: e.target.value })}
+                        value={currentConfig.ai_api_key || ''}
+                        onChange={(e) => setConfig({ ...currentConfig, ai_api_key: e.target.value })}
+                        onBlur={(e) => {
+                          const apiKey = String(e.target.value || '').trim();
+                          if (!apiKey) return;
+                          handleSave({ ai_api_key: apiKey });
+                        }}
                         className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
-                        placeholder="Nhập API Key của bạn..."
+                        placeholder={currentConfig.ai_api_key_configured ? 'Đã lưu, nhập key mới để thay đổi' : 'Nhập API Key của bạn...'}
                       />
-                      {config.ai_api_key_configured && !config.ai_api_key && (
+                      {currentConfig.ai_api_key_configured && !currentConfig.ai_api_key && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
                           <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Configured</span>
@@ -215,15 +263,15 @@ const AICommandCenter = () => {
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-4 bg-slate-800/30 rounded-2xl border border-slate-700/30">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Effective Source</span>
-                    <span className="text-sm text-slate-300 font-mono">{config.effective_ai_source || 'Unknown'}</span>
+                    <span className="text-sm text-slate-300 font-mono">{currentConfig.effective_ai_source || 'Unknown'}</span>
                   </div>
                   <div className="p-4 bg-slate-800/30 rounded-2xl border border-slate-700/30">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Runtime Status</span>
                     <span className={classNames(
                       "text-sm font-bold",
-                      config.ai_ready ? "text-emerald-400" : "text-red-400"
+                      currentConfig.ai_ready ? "text-emerald-400" : "text-red-400"
                     )}>
-                      {config.ai_ready ? "Ready to compute" : "Setup Required"}
+                      {currentConfig.ai_ready ? "Ready to compute" : "Setup Required"}
                     </span>
                   </div>
                 </div>
@@ -288,7 +336,7 @@ const AICommandCenter = () => {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {['technical', 'whale', 'fundamental', 'sentiment', 'news', 'dark_flow', 'market', 'ownership', 'sector'].map((sourceId) => {
-                        const stockAdvisory = config.ai_prompt_config?.tasks?.stock_advisory || config.ai_prompt_config?.stock_advisory || {};
+                        const stockAdvisory = currentConfig.ai_prompt_config?.tasks?.stock_advisory || currentConfig.ai_prompt_config?.stock_advisory || {};
                         const sources = stockAdvisory.sources || {};
                         
                         // Support both string list and object dict
@@ -301,7 +349,7 @@ const AICommandCenter = () => {
                             "p-4 rounded-2xl border transition-all duration-300 cursor-pointer",
                             isEnabled ? "bg-indigo-500/5 border-indigo-500/20" : "bg-slate-800/20 border-slate-800/50 opacity-60"
                           )} onClick={() => {
-                            const newPromptConfig = { ...(config.ai_prompt_config || {}) };
+                            const newPromptConfig = { ...(currentConfig.ai_prompt_config || {}) };
                             if (!newPromptConfig.tasks) newPromptConfig.tasks = {};
                             if (!newPromptConfig.tasks.stock_advisory) newPromptConfig.tasks.stock_advisory = { sources: {} };
                             
@@ -358,8 +406,8 @@ const AICommandCenter = () => {
                         <div className="flex items-center gap-3">
                           <input 
                             type="number"
-                            value={config.advisory_refresh_interval_hours || 0}
-                            onChange={(e) => setConfig({ ...config, advisory_refresh_interval_hours: parseInt(e.target.value) || 0 })}
+                            value={currentConfig.advisory_refresh_interval_hours || 0}
+                            onChange={(e) => setConfig({ ...currentConfig, advisory_refresh_interval_hours: parseInt(e.target.value) || 0 })}
                             onBlur={(e) => handleSave({ advisory_refresh_interval_hours: parseInt(e.target.value) || 0 })}
                             className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
                           />
@@ -370,8 +418,8 @@ const AICommandCenter = () => {
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Max Auto Refresh/Day</label>
                         <input 
                           type="number"
-                          value={config.advisory_max_auto_refreshes_per_day || 0}
-                          onChange={(e) => setConfig({ ...config, advisory_max_auto_refreshes_per_day: parseInt(e.target.value) || 0 })}
+                          value={currentConfig.advisory_max_auto_refreshes_per_day || 0}
+                          onChange={(e) => setConfig({ ...currentConfig, advisory_max_auto_refreshes_per_day: parseInt(e.target.value) || 0 })}
                           onBlur={(e) => handleSave({ advisory_max_auto_refreshes_per_day: parseInt(e.target.value) || 0 })}
                           className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
                         />
@@ -380,8 +428,8 @@ const AICommandCenter = () => {
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Daily Token Budget</label>
                         <input 
                           type="number"
-                          value={config.advisory_max_tokens_per_day || 0}
-                          onChange={(e) => setConfig({ ...config, advisory_max_tokens_per_day: parseInt(e.target.value) || 0 })}
+                          value={currentConfig.advisory_max_tokens_per_day || 0}
+                          onChange={(e) => setConfig({ ...currentConfig, advisory_max_tokens_per_day: parseInt(e.target.value) || 0 })}
                           onBlur={(e) => handleSave({ advisory_max_tokens_per_day: parseInt(e.target.value) || 0 })}
                           className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
                         />

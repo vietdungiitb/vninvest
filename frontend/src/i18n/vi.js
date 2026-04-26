@@ -47,6 +47,7 @@ const vi = {
       adminOps: 'Admin Ops',
       portfolioManagement: 'Quản lý Danh mục',
       settings: 'UserConfig',
+      aiCommandCenter: 'Trung tâm AI',
       support: 'Hỗ trợ',
     },
   },

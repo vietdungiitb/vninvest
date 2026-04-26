@@ -15,6 +15,7 @@ import AdminCrawlControl from './pages/AdminCrawlControl';
 import Screener from './pages/Screener';
 import PortfolioManagement from './pages/PortfolioManagement';
 import UserConfig from './pages/UserConfig';
+import AICommandCenter from './pages/AICommandCenter';
 import Upgrade from './pages/Upgrade';
 import VerifyEmail from './pages/VerifyEmail';
 import ResetPassword from './pages/ResetPassword';
@@ -87,6 +88,7 @@ export default function App() {
                   <Route path="screener" element={<Screener />} />
                   <Route path="portfolios" element={<PortfolioManagement />} />
                   <Route path="settings" element={<UserConfig />} />
+                  <Route path="settings/ai" element={<AICommandCenter />} />
                 </Route>
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

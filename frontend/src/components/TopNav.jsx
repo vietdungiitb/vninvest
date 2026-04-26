@@ -52,6 +52,7 @@ export default function TopNav() {
     { to: '/support', label: t('layout.nav.support') },
     { to: '/screener', label: t('layout.nav.screener') },
     { to: '/settings', label: t('layout.nav.settings') },
+    { to: '/settings/ai', label: t('layout.nav.aiCommandCenter') },
     { to: '/admin-ops', label: t('layout.nav.adminOps') },
   ].filter((item) => item.to !== '/admin-ops' || ability.can('manage', 'all'));
 
