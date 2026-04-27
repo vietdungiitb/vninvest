@@ -4,7 +4,7 @@ from typing import Any
 
 from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_provider
 from .ai_service import _resolve_provider_api_key
-from .models import AICommandCenterConfig, SystemAISettings, UserConfig
+from .models import AICommandCenterConfig, SystemAISettings
 
 
 def _normalize_provider(value: str | None) -> str:
@@ -36,15 +36,12 @@ def resolve_ai_runtime_config(user=None, system_settings: SystemAISettings | Non
     """
     Resolve effective AI runtime config with priority:
     1) AI Command Center config (provider/model/key)
-    2) Legacy UserConfig AI fields (compatibility fallback)
     2) System AI settings
     3) Env fallback (if enabled by system settings)
     """
     command_center_cfg = None
-    user_cfg = None
     if user is not None:
         command_center_cfg = AICommandCenterConfig.objects.filter(user=user).first()
-        user_cfg, _ = UserConfig.objects.get_or_create(user=user)
 
     if command_center_cfg is not None:
         command_center_provider = _normalize_provider(getattr(command_center_cfg, 'ai_provider', 'openclaw'))
@@ -78,32 +75,6 @@ def resolve_ai_runtime_config(user=None, system_settings: SystemAISettings | Non
             provider=command_center_provider,
             model=command_center_model,
         )
-
-    if user_cfg is not None:
-        user_provider = _normalize_provider(getattr(user_cfg, 'ai_provider', 'openclaw'))
-        user_model = str(user_cfg.get_effective_ai_model() or get_default_model(user_provider)).strip()
-        user_key = _resolve_api_key(
-            provider=user_provider,
-            raw_key=str(user_cfg.get_ai_api_key() or '').strip(),
-            allow_env_fallback=True,
-        )
-
-        if (
-            is_valid_provider(user_provider)
-            and bool(user_model)
-            and is_model_allowed_for_capability(user_provider, user_model, ADVISORY_CAPABILITY)
-            and bool(user_key)
-        ):
-            return {
-                'ready': True,
-                'source': 'legacy_user_config',
-                'provider': user_provider,
-                'model': user_model,
-                'api_key': user_key,
-                'reason': None,
-                'message': '',
-                'user_config_id': user_cfg.pk,
-            }
 
     system_cfg = system_settings or SystemAISettings.get_active()
     if system_cfg is None:

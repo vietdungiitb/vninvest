@@ -20,6 +20,7 @@ import pandas as pd
 
 from .models import (
     AccountSnapshot,
+    AICommandCenterAuditLog,
     DailyPrice,
     IntradayTick,
     MarketGroupSyncLog,
@@ -1436,6 +1437,23 @@ class SystemAISettingsAuditLogAdmin(admin.ModelAdmin):
     list_filter = ('action', 'actor')
     search_fields = ('reason', 'actor__username', 'settings__name')
     readonly_fields = ('settings', 'actor', 'action', 'reason', 'before_json', 'after_json', 'created_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(AICommandCenterAuditLog)
+class AICommandCenterAuditLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'created_at', 'actor', 'action', 'command_center_config', 'reason')
+    list_filter = ('action', 'actor', 'created_at')
+    search_fields = ('reason', 'actor__username', 'command_center_config__user__username')
+    readonly_fields = ('command_center_config', 'actor', 'action', 'reason', 'before_json', 'after_json', 'created_at')
 
     def has_add_permission(self, request):
         return False

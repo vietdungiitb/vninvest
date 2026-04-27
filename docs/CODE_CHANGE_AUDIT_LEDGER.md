@@ -1,5 +1,31 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-27ac - Harden AI Command Center SSOT, audit filters, and scoring policy
+
+Muc tieu:
+- Loai bo fallback runtime Legacy UserConfig de AI Command Center tro thanh SSOT dung nghia.
+- Backfill du lieu cu sang AI Command Center bang migration an toan, dong thoi them filter + diff summary cho audit log.
+- Version hoa scoring policy cua AI Advisor va giu logic co hoc minh bach hon.
+
+Danh sach tep cap nhat:
+- backend/portfolio/ai_runtime_config.py (MODIFIED - bo legacy UserConfig fallback, chi giu AI Command Center va system)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - bootstrapping command center default, filter audit logs theo action/actor/date, them diff summary)
+- backend/portfolio/admin.py (MODIFIED - dang ky AICommandCenterAuditLog trong Django admin)
+- backend/portfolio/migrations/0060_backfill_aicommandcenterconfig_from_legacy_userconfig.py (NEW - backfill command center tu legacy UserConfig)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho audit filters/diff summary)
+- backend/portfolio/tests/test_ai_runtime_config.py (MODIFIED - cap nhat expectation sau khi bo legacy fallback)
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - version hoa scoring policy va tach cac nguong/diem so thanh registry)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - them audit filter controls va diff summary trong card)
+- module_tree_full.md (MODIFIED - regenerate sau code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe backend/manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 16/16 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi audit UI va scoring policy.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: Frontend build chi con canh bao chung ve bundle size/dep deprecation, khong lam fail build.
+
 ## Entry 2026-04-27ab - Polish AI Command Center SSOT task tuning and audit pagination
 
 Muc tieu:

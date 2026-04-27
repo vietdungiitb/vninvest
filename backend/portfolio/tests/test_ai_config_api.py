@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -63,6 +64,40 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(cfg.ai_provider, 'claude')
         self.assertEqual(cfg.ai_model, 'claude-3-5-sonnet-20240620')
         self.assertTrue(cfg.ai_api_key_configured)
+
+    def test_ai_command_center_audit_logs_support_filters_and_diff_summary(self):
+        self.client.put(
+            '/api/portfolio/ai-command-center/',
+            {
+                'ai_provider': 'claude',
+                'ai_model': 'claude-3-5-sonnet-20240620',
+                'ai_api_key': 'test-anthropic-key',
+            },
+            format='json',
+        )
+
+        today = timezone.localdate().isoformat()
+        response = self.client.get(
+            '/api/portfolio/ai-command-center/audit-logs/',
+            {
+                'action': 'update_settings',
+                'actor': self.user.username,
+                'date_from': today,
+                'date_to': today,
+                'limit': 10,
+                'offset': 0,
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['total'], 1)
+        self.assertFalse(response.data['has_more'])
+        self.assertEqual(response.data['results'][0]['action'], 'update_settings')
+        self.assertEqual(response.data['results'][0]['actor'], self.user.username)
+        self.assertGreater(response.data['results'][0]['diff_count'], 0)
+        self.assertIn('ai_provider', response.data['results'][0]['diff_summary'])
+        self.assertIn('changed_fields', response.data['results'][0])
 
     def test_ai_config_put_rejects_missing_model(self):
         response = self.client.put(

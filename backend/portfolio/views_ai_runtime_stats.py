@@ -1,6 +1,8 @@
+import json
 from datetime import timedelta
 
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -18,24 +20,14 @@ def _legacy_views_module():
 
 
 def _get_or_create_ai_command_center_config(user):
-    legacy_views = _legacy_views_module()
-    command_center_cfg = AICommandCenterConfig.objects.filter(user=user).first()
-    if command_center_cfg is not None:
-        return command_center_cfg
-
-    legacy_cfg, _ = legacy_views.UserConfig.objects.get_or_create(user=user)
-    command_center_cfg = AICommandCenterConfig.objects.create(
+    command_center_cfg, _ = AICommandCenterConfig.objects.get_or_create(
         user=user,
-        ai_provider=str(getattr(legacy_cfg, 'ai_provider', 'openclaw') or 'openclaw').strip().lower(),
-        ai_model=str(getattr(legacy_cfg, 'ai_model', '') or '').strip(),
-        ai_prompt_config={},
+        defaults={
+            'ai_provider': 'openclaw',
+            'ai_model': '',
+            'ai_prompt_config': {},
+        },
     )
-    try:
-        command_center_cfg.set_ai_api_key(legacy_cfg.get_ai_api_key())
-        command_center_cfg.save(update_fields=['ai_api_key'])
-    except Exception:
-        command_center_cfg.ai_api_key = ''
-        command_center_cfg.save(update_fields=['ai_api_key'])
     return command_center_cfg
 
 
@@ -62,6 +54,89 @@ def _ai_command_center_snapshot(command_center_cfg, runtime_cfg=None):
         'effective_ai_model': str(runtime_cfg.get('model') or command_center_cfg.get_effective_ai_model() or '').strip(),
         'ai_config_message': str(runtime_cfg.get('message') or '').strip(),
         'updated_at': command_center_cfg.updated_at.isoformat() if command_center_cfg.updated_at else None,
+    }
+
+
+def _parse_positive_int(value, default: int, minimum: int, maximum: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, parsed))
+
+
+def _format_audit_value(value) -> str:
+    if value is None:
+        return '∅'
+    if isinstance(value, bool):
+        return 'true' if value else 'false'
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return '""'
+        return text if len(text) <= 80 else f'{text[:77]}...'
+
+    try:
+        serialized = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except TypeError:
+        serialized = str(value)
+
+    return serialized if len(serialized) <= 120 else f'{serialized[:117]}...'
+
+
+def _collect_audit_diff(before_value, after_value, prefix: str = '', depth: int = 0, max_depth: int = 4, max_items: int = 12):
+    if before_value == after_value:
+        return []
+
+    if depth >= max_depth:
+        return [(prefix or 'value', before_value, after_value)]
+
+    if isinstance(before_value, dict) and isinstance(after_value, dict):
+        changes = []
+        keys = sorted(set(before_value.keys()) | set(after_value.keys()))
+        for key in keys:
+            child_prefix = f'{prefix}.{key}' if prefix else str(key)
+            changes.extend(
+                _collect_audit_diff(
+                    before_value.get(key),
+                    after_value.get(key),
+                    prefix=child_prefix,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                    max_items=max_items,
+                )
+            )
+            if len(changes) >= max_items:
+                return changes[:max_items]
+        return changes
+
+    if isinstance(before_value, list) and isinstance(after_value, list):
+        return [(prefix or 'value', before_value, after_value)]
+
+    return [(prefix or 'value', before_value, after_value)]
+
+
+def _build_audit_diff_summary(before_json, after_json) -> dict:
+    changes = _collect_audit_diff(before_json or {}, after_json or {})
+    if not changes:
+        return {
+            'changed_fields': [],
+            'diff_count': 0,
+            'diff_summary': 'Không có thay đổi chi tiết.',
+        }
+
+    changed_fields = [path for path, _, _ in changes]
+    formatted_changes = [f'{path}: {_format_audit_value(before)} -> {_format_audit_value(after)}' for path, before, after in changes[:8]]
+    remaining = len(changes) - len(formatted_changes)
+    if remaining > 0:
+        formatted_changes.append(f'... +{remaining} thay đổi nữa')
+
+    return {
+        'changed_fields': changed_fields,
+        'diff_count': len(changes),
+        'diff_summary': '; '.join(formatted_changes),
     }
 
 
@@ -162,7 +237,7 @@ def _get_ai_runtime_config_status(user_cfg) -> dict:
         }
 
     if not message:
-        message = 'AI runtime chưa sẵn sàng. Vui lòng kiểm tra User AI hoặc System AI Settings.'
+            message = 'AI runtime chưa sẵn sàng. Vui lòng kiểm tra AI Command Center hoặc System AI Settings.'
 
     return {
         'provider': provider,
@@ -257,17 +332,41 @@ def ai_config_api(request):
 @permission_classes([IsAuthenticated])
 def ai_command_center_audit_logs_api(request):
     """GET /api/portfolio/ai-command-center/audit-logs/ - lịch sử thay đổi và test connection của AI Command Center."""
-    limit = max(1, min(int(request.query_params.get('limit', 50)), 200))
-    offset = max(0, int(request.query_params.get('offset', 0)))
+    limit = _parse_positive_int(request.query_params.get('limit', 50), default=50, minimum=1, maximum=200)
+    offset = _parse_positive_int(request.query_params.get('offset', 0), default=0, minimum=0, maximum=10_000_000)
     action = str(request.query_params.get('action') or '').strip().lower()
+    actor = str(request.query_params.get('actor') or '').strip()
+    date_from_raw = str(request.query_params.get('date_from') or '').strip()
+    date_to_raw = str(request.query_params.get('date_to') or '').strip()
     order = str(request.query_params.get('order') or 'desc').strip().lower()
     if order not in {'asc', 'desc'}:
         return Response({'ok': False, 'message': 'order chỉ hỗ trợ asc hoặc desc.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    valid_actions = {choice[0] for choice in AICommandCenterAuditLog.ACTION_CHOICES}
+    if action and action not in valid_actions:
+        return Response({'ok': False, 'message': f'action chỉ hỗ trợ: {", ".join(sorted(valid_actions))}.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    date_from = parse_date(date_from_raw) if date_from_raw else None
+    if date_from_raw and date_from is None:
+        return Response({'ok': False, 'message': 'date_from phải có định dạng YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    date_to = parse_date(date_to_raw) if date_to_raw else None
+    if date_to_raw and date_to is None:
+        return Response({'ok': False, 'message': 'date_to phải có định dạng YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
 
     command_center_cfg = _get_or_create_ai_command_center_config(request.user)
     logs_qs = AICommandCenterAuditLog.objects.select_related('actor', 'command_center_config').filter(command_center_config=command_center_cfg)
     if action:
         logs_qs = logs_qs.filter(action=action)
+    if actor:
+        if actor.lower() == 'system':
+            logs_qs = logs_qs.filter(actor__isnull=True)
+        else:
+            logs_qs = logs_qs.filter(actor__username__iexact=actor)
+    if date_from:
+        logs_qs = logs_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        logs_qs = logs_qs.filter(created_at__date__lte=date_to)
 
     ordering = 'created_at' if order == 'asc' else '-created_at'
     logs_qs = logs_qs.order_by(ordering)
@@ -277,6 +376,7 @@ def ai_command_center_audit_logs_api(request):
 
     results = []
     for log in logs:
+        diff_meta = _build_audit_diff_summary(log.before_json, log.after_json)
         results.append(
             {
                 'id': log.id,
@@ -287,6 +387,9 @@ def ai_command_center_audit_logs_api(request):
                 'command_center_config_id': log.command_center_config_id,
                 'before_json': log.before_json,
                 'after_json': log.after_json,
+                'diff_summary': diff_meta['diff_summary'],
+                'changed_fields': diff_meta['changed_fields'],
+                'diff_count': diff_meta['diff_count'],
             }
         )
 
@@ -298,6 +401,12 @@ def ai_command_center_audit_logs_api(request):
             'offset': offset,
             'limit': limit,
             'order': order,
+            'filters': {
+                'action': action,
+                'actor': actor,
+                'date_from': date_from_raw,
+                'date_to': date_to_raw,
+            },
             'has_more': (offset + len(results)) < total,
             'results': results,
         },

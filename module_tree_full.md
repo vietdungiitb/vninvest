@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-04-27 18:25:15`
+Generated at: `2026-04-27 18:51:21`
 
 ## Summary
 
 - Total modules: 490
 - Python modules: 314
 - JS/TS modules: 176
-- Total classes: 534
-- Total functions: 1831
-- Total top-level variables: 3288
+- Total classes: 535
+- Total functions: 1838
+- Total top-level variables: 3293
 
 ## Python Modules
 
@@ -115,6 +115,7 @@ Generated at: `2026-04-27 18:25:15`
 
 - Classes:
   - `AccountSnapshotAdmin`
+  - `AICommandCenterAuditLogAdmin` -> methods: `has_add_permission`, `has_change_permission`, `has_delete_permission`
   - `DailyPriceAdmin` -> methods: `workspace_link`
   - `IntradayTickAdmin`
   - `LegalPageAdmin` -> methods: `activate_selected_legal_page`, `has_add_permission`, `has_change_permission`, `has_delete_permission`, `save_model`
@@ -1271,7 +1272,7 @@ Generated at: `2026-04-27 18:25:15`
 ### `backend/portfolio/tests/test_ai_config_api.py`
 
 - Classes:
-  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
+  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_command_center_audit_logs_support_filters_and_diff_summary`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
 
 ### `backend/portfolio/tests/test_ai_context.py`
 
@@ -1281,7 +1282,7 @@ Generated at: `2026-04-27 18:25:15`
 ### `backend/portfolio/tests/test_ai_runtime_config.py`
 
 - Classes:
-  - `AIRuntimeConfigTests` -> methods: `setUp`, `test_resolver_falls_back_to_system_when_user_missing_model_and_key`, `test_resolver_prefers_command_center_over_legacy_and_system`, `test_resolver_prefers_user_config_over_system`
+  - `AIRuntimeConfigTests` -> methods: `setUp`, `test_resolver_falls_back_to_system_when_user_missing_model_and_key`, `test_resolver_ignores_legacy_user_config_when_command_center_missing`, `test_resolver_prefers_command_center_over_legacy_and_system`
 
 ### `backend/portfolio/tests/test_ai_service_prompt.py`
 
@@ -1837,7 +1838,7 @@ Generated at: `2026-04-27 18:25:15`
 ### `backend/portfolio/views_ai_runtime_stats.py`
 
 - Functions:
-  - `_ai_command_center_prompt_config`, `_ai_command_center_snapshot`, `_create_ai_command_center_audit_log`, `_get_ai_runtime_config_status`, `_get_or_create_ai_command_center_config`, `_legacy_views_module`, `ai_command_center_audit_logs_api`, `ai_config_api`, `ai_options_api`, `ai_test_connection_api`, `whale_advisory_symbol_stats_api`
+  - `_ai_command_center_prompt_config`, `_ai_command_center_snapshot`, `_build_audit_diff_summary`, `_collect_audit_diff`, `_create_ai_command_center_audit_log`, `_format_audit_value`, `_get_ai_runtime_config_status`, `_get_or_create_ai_command_center_config`, `_legacy_views_module`, `_parse_positive_int`, `ai_command_center_audit_logs_api`, `ai_config_api`, `ai_options_api`, `ai_test_connection_api`, `whale_advisory_symbol_stats_api`
 
 ### `backend/portfolio/views_analytics_extended.py`
 
@@ -2848,9 +2849,9 @@ Generated at: `2026-04-27 18:25:15`
 ### `frontend/src/hooks/useAIAdvisor.js`
 
 - Functions:
-  - `loadAiConfig`, `totalValue`
+  - `loadAiConfig`, `resolveScoringPolicy`, `totalValue`
 - Top-level variables:
-  - `DEFAULT_AI_CONFIG`, `action`, `allSymbolsSet`, `cancelled`, `h`, `holdingMap`, `indicators`, `logics`, `ma20Dist`, `promptConfig`, `reasons`, `recommendations`, `response`, `rsi`, `score`, `sourceCfg`, `strategyParams`, `symbol`, `tech`, `techs`, `weight`, `whaleAlertCounts`, `whaleCount`
+  - `DEFAULT_AI_CONFIG`, `SCORING_POLICY_REGISTRY`, `SCORING_POLICY_VERSION`, `action`, `allSymbolsSet`, `cancelled`, `h`, `holdingMap`, `indicators`, `logics`, `ma20Dist`, `promptConfig`, `reasons`, `recommendations`, `response`, `rsi`, `score`, `sourceCfg`, `strategyParams`, `symbol`, `tech`, `techs`, `weight`, `whaleAlertCounts`, `whaleCount`
 
 ### `frontend/src/hooks/useOrderBubbleCoordinates.js`
 
@@ -2962,9 +2963,9 @@ Generated at: `2026-04-27 18:25:15`
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
-  - `AICommandCenter`, `applyPromptPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
+  - `AICommandCenter`, `applyAuditFilters`, `applyPromptPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `resetAuditFilters`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
+  - `AUDIT_ACTION_OPTIONS`, `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `DEFAULT_AUDIT_FILTERS`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextFilters`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
 
 ### `frontend/src/pages/Dashboard.jsx`
 

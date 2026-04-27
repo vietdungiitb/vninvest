@@ -1,19 +1,21 @@
-# ✅ AUDIT FILE LIST (2026-04-27ab)
-- backend/portfolio/ai_advisory_helpers.py (MODIFIED - chuan hoa canonical prompt config va legacy nested layout)
-- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho canonical/legacy prompt config)
-- frontend/src/pages/AICommandCenter.jsx (MODIFIED - task tuning control thuc, preset, audit pager)
-- frontend/src/pages/UserConfig.jsx (MODIFIED - loai bo advisory editor cu)
-- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cap nhat test theo SSOT moi)
+# ✅ AUDIT FILE LIST (2026-04-27ac)
+- backend/portfolio/ai_runtime_config.py (MODIFIED - bo legacy UserConfig fallback, chi giu AI Command Center va system)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - filter audit logs theo action/actor/date, them diff summary)
+- backend/portfolio/admin.py (MODIFIED - dang ky AICommandCenterAuditLog trong Django admin)
+- backend/portfolio/migrations/0060_backfill_aicommandcenterconfig_from_legacy_userconfig.py (NEW - backfill command center tu legacy UserConfig)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho audit filters/diff summary)
+- backend/portfolio/tests/test_ai_runtime_config.py (MODIFIED - cap nhat expectation sau khi bo legacy fallback)
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - version hoa scoring policy)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - audit filter controls va diff summary)
 - module_tree_full.md (MODIFIED - regenerate sau code changes)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ab)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ac)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 15/15 PASS.
-- PASSED: `npm test -- --watch=false --runInBand src/pages/UserConfig.test.jsx` => 10/10 PASS.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi UI/SSOT.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe backend/manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 16/16 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi audit UI va scoring policy.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
-- NOTE: React Router future-flag warnings va act warnings trong test UserConfig con xuat hien, nhung khong lam fail suite.
+- NOTE: Frontend build chi con canh bao chung ve bundle size/dep deprecation, khong lam fail build.
 
 # 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)

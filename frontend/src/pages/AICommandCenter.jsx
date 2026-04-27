@@ -24,6 +24,20 @@ function classNames(...classes) {
 
 const AUDIT_PAGE_SIZE = 1;
 
+const AUDIT_ACTION_OPTIONS = [
+  { value: '', label: 'Tất cả hành động' },
+  { value: 'update_settings', label: 'Cập nhật cấu hình' },
+  { value: 'test_connection_success', label: 'Test kết nối thành công' },
+  { value: 'test_connection_failed', label: 'Test kết nối thất bại' },
+];
+
+const DEFAULT_AUDIT_FILTERS = {
+  action: '',
+  actor: '',
+  date_from: '',
+  date_to: '',
+};
+
 const TECHNICAL_INDICATOR_OPTIONS = [
   { id: 'vols', label: 'Khối lượng', description: 'Thanh khoản, volume spike, dòng tiền vào/ra.' },
   { id: 'prices', label: 'Giá', description: 'Xu hướng giá, breakout, hỗ trợ và kháng cự.' },
@@ -310,6 +324,8 @@ const AICommandCenter = () => {
   const [auditError, setAuditError] = useState('');
   const [auditPage, setAuditPage] = useState(1);
   const [auditTotal, setAuditTotal] = useState(0);
+  const [auditFilters, setAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
+  const [appliedAuditFilters, setAppliedAuditFilters] = useState(DEFAULT_AUDIT_FILTERS);
   const currentConfig = config || DEFAULT_AI_CONFIG;
   const currentPromptConfig = normalizePromptConfig(currentConfig.ai_prompt_config);
   const totalAuditPages = Math.max(1, Math.ceil((auditTotal || 0) / AUDIT_PAGE_SIZE));
@@ -336,13 +352,18 @@ const AICommandCenter = () => {
     }
   };
 
-  const loadAuditLogs = async (page = 1) => {
+  const loadAuditLogs = async (page = 1, filters = appliedAuditFilters) => {
     setAuditLoading(true);
     setAuditError('');
     try {
       const limit = AUDIT_PAGE_SIZE;
       const offset = Math.max(0, (page - 1) * limit);
-      const resp = await getAICommandCenterAuditLogs({ limit, offset, order: 'desc' });
+      const resp = await getAICommandCenterAuditLogs({
+        limit,
+        offset,
+        order: 'desc',
+        ...(filters || {}),
+      });
       setAuditPage(page);
       setAuditTotal(Number(resp?.data?.total || 0));
       setAuditLogs(Array.isArray(resp?.data?.results) ? resp.data.results : []);
@@ -466,6 +487,23 @@ const AICommandCenter = () => {
 
   const applyPromptPreset = async (presetId) => {
     await savePromptConfig(buildPromptConfigPreset(presetId));
+  };
+
+  const applyAuditFilters = async () => {
+    const nextFilters = {
+      action: String(auditFilters.action || '').trim(),
+      actor: String(auditFilters.actor || '').trim(),
+      date_from: String(auditFilters.date_from || '').trim(),
+      date_to: String(auditFilters.date_to || '').trim(),
+    };
+    setAppliedAuditFilters(nextFilters);
+    await loadAuditLogs(1, nextFilters);
+  };
+
+  const resetAuditFilters = async () => {
+    setAuditFilters(DEFAULT_AUDIT_FILTERS);
+    setAppliedAuditFilters(DEFAULT_AUDIT_FILTERS);
+    await loadAuditLogs(1, DEFAULT_AUDIT_FILTERS);
   };
 
   if (loading && !config) {
@@ -946,7 +984,7 @@ const AICommandCenter = () => {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => void loadAuditLogs(Math.max(1, auditPage - 1))}
+                      onClick={() => void loadAuditLogs(Math.max(1, auditPage - 1), appliedAuditFilters)}
                       disabled={auditPage <= 1 || auditLoading}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-800"
                     >
@@ -955,12 +993,84 @@ const AICommandCenter = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => void loadAuditLogs(Math.min(totalAuditPages, auditPage + 1))}
+                      onClick={() => void loadAuditLogs(Math.min(totalAuditPages, auditPage + 1), appliedAuditFilters)}
                       disabled={auditPage >= totalAuditPages || auditLoading}
                       className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-800"
                     >
                       Sau
                       <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Bộ lọc audit</div>
+                      <p className="mt-1 text-xs text-slate-400">Lọc theo hành động, actor và ngày để tập trung vào đúng thay đổi.</p>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Đang áp dụng: {appliedAuditFilters.action || 'all'} · {appliedAuditFilters.actor || 'any'}
+                    </div>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <label className="text-xs font-medium text-slate-400">
+                      Hành động
+                      <select
+                        value={auditFilters.action}
+                        onChange={(e) => setAuditFilters((prev) => ({ ...prev, action: e.target.value }))}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                      >
+                        {AUDIT_ACTION_OPTIONS.map((option) => (
+                          <option key={option.value || 'all'} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-xs font-medium text-slate-400">
+                      Actor
+                      <input
+                        type="text"
+                        value={auditFilters.actor}
+                        onChange={(e) => setAuditFilters((prev) => ({ ...prev, actor: e.target.value }))}
+                        placeholder="username hoặc system"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                      />
+                    </label>
+                    <label className="text-xs font-medium text-slate-400">
+                      Từ ngày
+                      <input
+                        type="date"
+                        value={auditFilters.date_from}
+                        onChange={(e) => setAuditFilters((prev) => ({ ...prev, date_from: e.target.value }))}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                      />
+                    </label>
+                    <label className="text-xs font-medium text-slate-400">
+                      Đến ngày
+                      <input
+                        type="date"
+                        value={auditFilters.date_to}
+                        onChange={(e) => setAuditFilters((prev) => ({ ...prev, date_to: e.target.value }))}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void applyAuditFilters()}
+                      className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+                    >
+                      Áp dụng bộ lọc
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void resetAuditFilters()}
+                      className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:bg-slate-800"
+                    >
+                      Xóa bộ lọc
                     </button>
                   </div>
                 </div>
@@ -996,6 +1106,9 @@ const AICommandCenter = () => {
                               </div>
                               <div className="text-xs text-slate-500">
                                 {log.actor ? `Bởi ${log.actor}` : 'Bởi hệ thống'} · {log.created_at || 'N/A'}
+                              </div>
+                              <div className="text-xs text-cyan-300/90">
+                                {log.diff_summary || 'Không có diff summary.'}
                               </div>
                             </div>
                             <div className="text-xs text-slate-500 md:text-right">
