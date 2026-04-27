@@ -1,5 +1,43 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-27af - Tighten AI Command Center header spacing and panel alignment
+
+Muc tieu:
+- Keo khhoi AI Command Center len gan header hon, giam khoang trong thua giua header va module chinh.
+- Lam cho khong gian noi dung can doi hon voi panel ben trai tren cung mot hang.
+- Cap nhat snapshot module tree va dong bo audit file list sau khi rebuild dev stack.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - giam outer spacing, header padding va panel padding)
+- module_tree_full.md (MODIFIED - regenerate sau spacing fix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27af)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau spacing fix.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `get_errors` tren `frontend/src/pages/AICommandCenter.jsx` => no errors found.
+
+## Entry 2026-04-27ae - Compact AI Command Center layout and source tabs
+
+Muc tieu:
+- Nen AI Command Center gon hon de dequet tren man hinh hep, giu mat do cao nhung giam chu thua.
+- Chuyen phan nguon du lieu sang tabs noi bo va chuan hoa cac label visible con sot.
+- Cap nhat snapshot module tree va dong bo audit file list sau khi rebuild frontend/dev stack.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - compact header, source tabs, label polish, nén audit card)
+- module_tree_full.md (MODIFIED - regenerate sau UI density changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau UI density pass.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `get_errors` tren `frontend/src/pages/AICommandCenter.jsx` => no errors found.
+
 ## Entry 2026-04-27ad - Remove redundant AI API aliases and wrapper indirection
 
 Muc tieu:

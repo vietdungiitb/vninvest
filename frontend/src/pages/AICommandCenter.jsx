@@ -39,21 +39,21 @@ const DEFAULT_AUDIT_FILTERS = {
 };
 
 const TECHNICAL_INDICATOR_OPTIONS = [
-  { id: 'vols', label: 'Khối lượng', description: 'Thanh khoản, volume spike, dòng tiền vào/ra.' },
-  { id: 'prices', label: 'Giá', description: 'Xu hướng giá, breakout, hỗ trợ và kháng cự.' },
-  { id: 'cdms', label: 'Dòng tiền', description: 'CVD, tích lũy, phân phối và áp lực lệnh.' },
-  { id: 'ma20', label: 'MA 20', description: 'Xu hướng ngắn hạn và nhịp hồi.' },
-  { id: 'ma50', label: 'MA 50', description: 'Xu hướng trung hạn và cấu trúc giá.' },
-  { id: 'rsi', label: 'RSI', description: 'Động lượng và trạng thái quá mua/quá bán.' },
-  { id: 'bollinger', label: 'Bollinger', description: 'Biến động và biên độ dao động.' },
-  { id: 'snapshot', label: 'Snapshot', description: 'Bối cảnh tổng quan trong một mắt nhìn.' },
+  { id: 'vols', label: 'Khối lượng', description: 'Volume, thanh khoản, spike.' },
+  { id: 'prices', label: 'Giá', description: 'Xu hướng, breakout, hỗ trợ.' },
+  { id: 'cdms', label: 'Dòng tiền', description: 'CVD, tích lũy, áp lực lệnh.' },
+  { id: 'ma20', label: 'MA 20', description: 'Xu hướng ngắn hạn.' },
+  { id: 'ma50', label: 'MA 50', description: 'Xu hướng trung hạn.' },
+  { id: 'rsi', label: 'RSI', description: 'Động lượng mua/bán.' },
+  { id: 'bollinger', label: 'Bollinger', description: 'Biên độ dao động.' },
+  { id: 'snapshot', label: 'Snapshot', description: 'Tổng quan nhanh.' },
 ];
 
 const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'whale',
     label: 'Whale / dòng tiền lớn',
-    description: 'Dữ liệu giao dịch lớn, tín hiệu tích lũy và phân phối.',
+    description: 'Dòng tiền lớn, tích lũy, phân phối.',
     enabledByDefault: true,
     defaultLookback: 180,
     lookbackUnit: 'ngày',
@@ -62,7 +62,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'dark_flow',
     label: 'Dark flow / order flow',
-    description: 'Dòng lệnh ẩn, chuyển động của lệnh và áp lực khối lượng.',
+    description: 'Lệnh ẩn, áp lực order flow.',
     enabledByDefault: true,
     defaultLookback: 90,
     lookbackUnit: 'ngày',
@@ -71,7 +71,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'technical',
     label: 'Phân tích kỹ thuật',
-    description: 'Chỉ báo xu hướng, động lượng và biến động giá.',
+    description: 'Xu hướng, động lượng, biến động.',
     enabledByDefault: true,
     defaultLookback: 30,
     lookbackUnit: 'phiên',
@@ -80,7 +80,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'news',
     label: 'Tin tức / sự kiện',
-    description: 'Tin nóng, công bố doanh nghiệp và bối cảnh thị trường.',
+    description: 'Tin nóng, công bố, sự kiện.',
     enabledByDefault: true,
     defaultLookback: 14,
     lookbackUnit: 'ngày',
@@ -89,7 +89,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'market',
     label: 'Bối cảnh thị trường',
-    description: 'VNINDEX, độ rộng thị trường và tâm lý chung.',
+    description: 'Bối cảnh thị trường chung.',
     enabledByDefault: true,
     defaultLookback: 7,
     lookbackUnit: 'ngày',
@@ -98,7 +98,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'fundamental',
     label: 'Nền tảng cơ bản',
-    description: 'KQKD, định giá, tăng trưởng và chất lượng doanh nghiệp.',
+    description: 'KQKD, định giá, tăng trưởng.',
     enabledByDefault: false,
     defaultLookback: 1,
     lookbackUnit: 'quý',
@@ -107,7 +107,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'ownership',
     label: 'Sở hữu / nội bộ',
-    description: 'Giao dịch nội bộ, thay đổi sở hữu và hành vi cổ đông lớn.',
+    description: 'Sở hữu, nội bộ, cổ đông lớn.',
     enabledByDefault: false,
     defaultLookback: 365,
     lookbackUnit: 'ngày',
@@ -116,7 +116,7 @@ const PROMPT_SOURCE_DEFINITIONS = [
   {
     id: 'sector',
     label: 'Ngành / peer group',
-    description: 'So sánh cùng ngành, benchmark và tương quan nhóm cổ phiếu.',
+    description: 'So sánh ngành và peer.',
     enabledByDefault: false,
     defaultLookback: 60,
     lookbackUnit: 'phiên',
@@ -298,6 +298,181 @@ function buildPromptConfigPreset(presetId) {
   }
 
   return nextConfig;
+}
+
+function PromptSourceTabs({
+  currentPromptConfig,
+  onToggleSource,
+  onChangeLookback,
+  onToggleTechnicalIndicator,
+  onApplyTechnicalPreset,
+}) {
+  return (
+    <Tab.Group>
+      <div className="space-y-4">
+        <Tab.List className="flex gap-2 overflow-x-auto border-b border-slate-800 pb-2">
+          {PROMPT_SOURCE_DEFINITIONS.map((definition) => {
+            const sourceConfig = currentPromptConfig?.[definition.id] || createDefaultSourceConfig(definition);
+            const enabled = Boolean(sourceConfig.enabled);
+
+            return (
+              <Tab
+                key={definition.id}
+                className={({ selected }) => classNames(
+                  'inline-flex shrink-0 items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold outline-none transition-all',
+                  selected
+                    ? 'border-indigo-500/30 bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                    : 'border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:text-white',
+                )}
+              >
+                <span className="max-w-[140px] truncate">{definition.label}</span>
+                <span className={classNames('h-2 w-2 rounded-full', enabled ? 'bg-emerald-400' : 'bg-slate-500')} />
+              </Tab>
+            );
+          })}
+        </Tab.List>
+
+        <Tab.Panels>
+          {PROMPT_SOURCE_DEFINITIONS.map((definition) => {
+            const sourceConfig = currentPromptConfig?.[definition.id] || createDefaultSourceConfig(definition);
+            const enabled = Boolean(sourceConfig.enabled);
+            const indicatorCount = Array.isArray(sourceConfig.indicators)
+              ? sourceConfig.indicators.length
+              : TECHNICAL_INDICATOR_OPTIONS.length;
+
+            return (
+              <Tab.Panel key={definition.id} className="space-y-3 outline-none">
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-100">
+                            {definition.label}
+                          </span>
+                          <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                            {definition.lookbackUnit}
+                          </span>
+                          <span className={classNames(
+                            'rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-widest',
+                            enabled ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-800 text-slate-400',
+                          )}>
+                            {enabled ? 'Bật' : 'Tắt'}
+                          </span>
+                        </div>
+                        <p className="text-sm leading-6 text-slate-400">{definition.description}</p>
+                      </div>
+                      <label className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">
+                        <input
+                          type="checkbox"
+                          checked={enabled}
+                          onChange={() => void onToggleSource(definition.id)}
+                        />
+                        <span>{enabled ? 'Bật' : 'Tắt'}</span>
+                      </label>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-widest text-slate-500">Lookback</div>
+                        <div className="mt-1 text-sm font-semibold text-slate-100">
+                          {sourceConfig.lookback} {definition.lookbackUnit}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
+                        <div className="text-[10px] uppercase tracking-widest text-slate-500">
+                          {definition.id === 'technical' ? 'Chỉ báo' : 'Mục đích'}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-300">
+                          {definition.id === 'technical'
+                            ? `${indicatorCount} chỉ báo đang nạp`
+                            : 'Tối ưu cho quét nhanh.'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4 space-y-3">
+                    <label className="text-xs font-medium text-slate-400">
+                      Khoảng nhìn lại
+                      <select
+                        value={sourceConfig.lookback}
+                        onChange={(e) => void onChangeLookback(definition.id, e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                      >
+                        {definition.lookbackOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option} {definition.lookbackUnit}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    {definition.id === 'technical' ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between text-xs text-slate-500">
+                          <span>Chỉ báo kỹ thuật</span>
+                          <span>{indicatorCount} / {TECHNICAL_INDICATOR_OPTIONS.length}</span>
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {TECHNICAL_INDICATOR_OPTIONS.map((indicator) => {
+                            const isSelected = Array.isArray(sourceConfig.indicators) && sourceConfig.indicators.includes(indicator.id);
+
+                            return (
+                              <button
+                                key={indicator.id}
+                                type="button"
+                                onClick={() => void onToggleTechnicalIndicator(indicator.id)}
+                                className={classNames(
+                                  'flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left transition-all',
+                                  isSelected
+                                    ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100'
+                                    : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700',
+                                )}
+                              >
+                                <span className="text-sm font-medium">{indicator.label}</span>
+                                <span className={classNames('h-2.5 w-2.5 rounded-full', isSelected ? 'bg-cyan-400' : 'bg-slate-600')} />
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void onApplyTechnicalPreset('full')}
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
+                          >
+                            Bật toàn bộ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void onApplyTechnicalPreset('lean')}
+                            className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
+                          >
+                            Bộ gọn
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs leading-5 text-slate-400">
+                        {definition.id === 'whale' && 'Ưu tiên dòng tiền lớn theo phiên.'}
+                        {definition.id === 'dark_flow' && 'Giữ tín hiệu ẩn và áp lực lệnh trong tầm nhìn.'}
+                        {definition.id === 'news' && 'Bám sát tin gần đây, không lan man.'}
+                        {definition.id === 'market' && 'Đặt kết quả vào bối cảnh thị trường.'}
+                        {definition.id === 'fundamental' && 'Dùng khi cần góc nhìn dài hơi hơn.'}
+                        {definition.id === 'ownership' && 'Hữu ích để kiểm tra động thái sở hữu.'}
+                        {definition.id === 'sector' && 'So sánh nhanh với nhóm ngành cùng nhịp.'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Tab.Panel>
+            );
+          })}
+        </Tab.Panels>
+      </div>
+    </Tab.Group>
+  );
 }
 
 const DEFAULT_AI_CONFIG = {
@@ -489,6 +664,16 @@ const AICommandCenter = () => {
     await savePromptConfig(buildPromptConfigPreset(presetId));
   };
 
+  const applyTechnicalPreset = async (presetId) => {
+    await savePromptConfig(updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => ({
+      ...sourceConfig,
+      enabled: true,
+      indicators: presetId === 'full'
+        ? TECHNICAL_INDICATOR_OPTIONS.map((indicator) => indicator.id)
+        : ['vols', 'prices', 'rsi', 'snapshot'],
+    })));
+  };
+
   const applyAuditFilters = async () => {
     const nextFilters = {
       action: String(auditFilters.action || '').trim(),
@@ -515,97 +700,97 @@ const AICommandCenter = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8 animate-in fade-in duration-700">
+    <div className="mx-auto max-w-[1500px] space-y-3 px-4 py-3 animate-in fade-in duration-700 xl:px-5">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
+      <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900/50 p-4 shadow-2xl backdrop-blur-xl md:flex md:items-center md:justify-between md:gap-3 md:p-5">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
         <div className="relative z-10">
-          <h1 className="text-4xl font-black bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+          <h1 className="bg-gradient-to-r from-white to-slate-400 bg-clip-text text-3xl font-black text-transparent md:text-4xl">
             AI Command Center
           </h1>
-          <p className="text-slate-400 mt-2 text-lg">
-            Hệ thống quản trị và điều phối trí tuệ nhân tạo toàn diện.
+          <p className="mt-2 text-sm text-slate-400 md:text-base">
+            Điều phối AI tập trung, ngắn gọn và dễ quét.
           </p>
         </div>
-        <div className="flex items-center gap-3 bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-700/50">
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-700/50 bg-slate-800/50 px-3 py-2 md:mt-0 md:px-4">
           <div className={classNames(
-            "w-3 h-3 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]",
+            'h-3 w-3 rounded-full animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]',
             currentConfig.ai_ready ? "bg-emerald-500" : "bg-red-500"
           )}></div>
-          <span className="text-sm font-medium text-slate-300">
-            {currentConfig.ai_ready ? 'AI Runtime: Ready' : 'AI Runtime: Offline'}
+          <span className="text-xs font-medium text-slate-300 md:text-sm">
+            {currentConfig.ai_ready ? 'AI Runtime: Sẵn sàng' : 'AI Runtime: Chưa sẵn sàng'}
           </span>
         </div>
       </div>
 
       {/* Main Configuration Tabs */}
       <Tab.Group>
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           {/* Sidebar Tabs */}
-          <Tab.List className="flex lg:flex-col gap-2 bg-slate-900/50 backdrop-blur-md p-3 rounded-2xl border border-slate-800 h-fit overflow-x-auto lg:overflow-visible">
+          <Tab.List className="flex h-fit gap-2 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900/50 p-2 backdrop-blur-md xl:flex-col xl:overflow-visible">
             <Tab className={({ selected }) => classNames(
-              'flex items-center gap-3 px-5 py-4 rounded-xl text-sm font-semibold transition-all duration-300 outline-none',
+              'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 outline-none',
               selected 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 translate-x-1' 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 xl:translate-x-1' 
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             )}>
               <CpuChipIcon className="w-5 h-5" />
-              <span>Engine Control</span>
+              <span>Điều khiển lõi</span>
             </Tab>
             <Tab className={({ selected }) => classNames(
-              'flex items-center gap-3 px-5 py-4 rounded-xl text-sm font-semibold transition-all duration-300 outline-none',
+              'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 outline-none',
               selected 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 translate-x-1' 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 xl:translate-x-1' 
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             )}>
               <AdjustmentsHorizontalIcon className="w-5 h-5" />
-              <span>Task Tuning</span>
+              <span>Tinh chỉnh</span>
             </Tab>
             <Tab className={({ selected }) => classNames(
-              'flex items-center gap-3 px-5 py-4 rounded-xl text-sm font-semibold transition-all duration-300 outline-none',
+              'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-300 outline-none',
               selected 
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 translate-x-1' 
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25 xl:translate-x-1' 
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             )}>
               <BeakerIcon className="w-5 h-5" />
-                <span>Audit & Logs</span>
+                <span>Nhật ký</span>
             </Tab>
           </Tab.List>
 
           {/* Content Panels */}
-          <Tab.Panels className="lg:col-span-3 space-y-6">
+          <Tab.Panels className="min-w-0 space-y-4">
             
             {/* Panel 1: Engine Control */}
-            <Tab.Panel className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-xl">
-                <div className="flex items-center justify-between mb-8">
+            <Tab.Panel className="space-y-4 animate-in slide-in-from-right-4 duration-500">
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/50 p-4 shadow-xl backdrop-blur-xl md:p-5">
+                <div className="mb-5 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 bg-indigo-500/10 rounded-2xl">
+                    <div className="rounded-2xl bg-indigo-500/10 p-3">
                       <KeyIcon className="w-6 h-6 text-indigo-400" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">Cấu hình Provider</h2>
-                      <p className="text-slate-400 text-sm">Thiết lập bộ não và kết nối API.</p>
+                      <h2 className="text-lg font-bold text-white md:text-xl">Cấu hình runtime</h2>
+                      <p className="text-sm text-slate-400">Nhà cung cấp, mô hình, key.</p>
                     </div>
                   </div>
                   {saving && (
-                    <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold animate-pulse">
+                    <div className="flex items-center gap-2 text-xs font-bold text-indigo-400 animate-pulse">
                       <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                      Saving...
+                      Đang lưu...
                     </div>
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   {/* AI Provider */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
-                      AI Provider
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-300">
+                      Nhà cung cấp AI
                     </label>
                     <select 
                       value={currentConfig.ai_provider}
                       onChange={(e) => handleSave({ ai_provider: e.target.value })}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:border-transparent focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="openai">OpenAI (ChatGPT)</option>
                       <option value="gemini">Google Gemini</option>
@@ -617,13 +802,13 @@ const AICommandCenter = () => {
 
                   {/* AI Model */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium text-slate-300">AI Model</label>
+                    <label className="text-sm font-medium text-slate-300">Mô hình AI</label>
                     <input 
                       type="text"
                       value={currentConfig.ai_model || ''}
                       onChange={(e) => setConfig({ ...currentConfig, ai_model: e.target.value })}
                       onBlur={(e) => handleSave({ ai_model: e.target.value })}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                      className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 text-white outline-none transition-all focus:ring-2 focus:ring-indigo-500"
                       placeholder="e.g. gpt-4o, gemini-1.5-pro"
                     />
                   </div>
@@ -641,13 +826,13 @@ const AICommandCenter = () => {
                           if (!apiKey) return;
                           handleSave({ ai_api_key: apiKey });
                         }}
-                        className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono"
+                        className="w-full rounded-xl border border-slate-700 bg-slate-800/50 px-4 py-3 font-mono text-white outline-none transition-all focus:ring-2 focus:ring-indigo-500"
                         placeholder={currentConfig.ai_api_key_configured ? 'Đã lưu, nhập key mới để thay đổi' : 'Nhập API Key của bạn...'}
                       />
                       {currentConfig.ai_api_key_configured && !currentConfig.ai_api_key && (
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
                           <CheckCircleIcon className="w-5 h-5 text-emerald-500" />
-                          <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Configured</span>
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Đã cấu hình</span>
                         </div>
                       )}
                     </div>
@@ -655,48 +840,48 @@ const AICommandCenter = () => {
                 </div>
 
                 {/* Runtime Visibility */}
-                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-slate-800/30 rounded-2xl border border-slate-700/30">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Effective Source</span>
+                <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-700/30 bg-slate-800/30 p-3">
+                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">Nguồn hiệu lực</span>
                     <span className="text-sm text-slate-300 font-mono">{currentConfig.effective_ai_source || 'Unknown'}</span>
                   </div>
-                  <div className="p-4 bg-slate-800/30 rounded-2xl border border-slate-700/30">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Runtime Status</span>
+                  <div className="rounded-2xl border border-slate-700/30 bg-slate-800/30 p-3">
+                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-widest text-slate-500">Trạng thái runtime</span>
                     <span className={classNames(
                       "text-sm font-bold",
                       currentConfig.ai_ready ? "text-emerald-400" : "text-red-400"
                     )}>
-                      {currentConfig.ai_ready ? "Ready to compute" : "Setup Required"}
+                      {currentConfig.ai_ready ? 'Sẵn sàng' : 'Cần cấu hình'}
                     </span>
                   </div>
                 </div>
 
                 {/* Test Connection Section */}
-                <div className="mt-12 p-6 bg-slate-800/30 border border-slate-700/50 rounded-2xl space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="mt-5 space-y-3 rounded-2xl border border-slate-700/50 bg-slate-800/30 p-4">
+                  <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h3 className="text-sm font-bold text-white uppercase tracking-wider">Test Connection</h3>
-                      <p className="text-xs text-slate-500 mt-1">Xác thực kết nối tới AI Provider hiện tại.</p>
+                      <h3 className="text-sm font-bold uppercase tracking-wider text-white">Kiểm tra kết nối</h3>
+                      <p className="mt-1 text-xs text-slate-500">Xác thực nhanh kết nối hiện tại.</p>
                     </div>
                     <button 
                       onClick={testConnection}
                       disabled={testStatus === 'testing'}
                       className={classNames(
-                        "px-6 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                        'flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all',
                         testStatus === 'testing' 
-                          ? "bg-slate-700 text-slate-400 cursor-not-allowed" 
-                          : "bg-white text-slate-900 hover:bg-slate-200 shadow-lg"
+                          ? 'cursor-not-allowed bg-slate-700 text-slate-400' 
+                          : 'bg-white text-slate-900 shadow-lg hover:bg-slate-200'
                       )}
                     >
                       {testStatus === 'testing' && <ArrowPathIcon className="w-4 h-4 animate-spin" />}
-                      {testStatus === 'testing' ? 'Verifying...' : 'Run Test'}
+                      {testStatus === 'testing' ? 'Đang kiểm tra...' : 'Chạy kiểm tra'}
                     </button>
                   </div>
 
                   {testStatus && testStatus !== 'testing' && (
                     <div className={classNames(
-                      "flex items-start gap-3 p-4 rounded-xl border animate-in zoom-in-95",
-                      testStatus === 'success' ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-red-500/10 border-red-500/20 text-red-400"
+                      'flex items-start gap-3 rounded-xl border p-4 animate-in zoom-in-95',
+                      testStatus === 'success' ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400' : 'border-red-500/20 bg-red-500/10 text-red-400'
                     )}>
                       {testStatus === 'success' ? <CheckCircleIcon className="w-5 h-5" /> : <ExclamationCircleIcon className="w-5 h-5" />}
                       <div className="text-sm font-medium">
@@ -709,23 +894,23 @@ const AICommandCenter = () => {
             </Tab.Panel>
 
             {/* Panel 2: Task Tuning */}
-            <Tab.Panel className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-xl space-y-8">
+            <Tab.Panel className="space-y-4 animate-in slide-in-from-right-4 duration-500">
+              <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-900/50 p-4 shadow-xl backdrop-blur-xl md:p-5">
                 <div className="flex items-center gap-4">
-                  <div className="p-3 bg-indigo-500/10 rounded-2xl">
+                  <div className="rounded-2xl bg-indigo-500/10 p-3">
                     <AdjustmentsHorizontalIcon className="w-6 h-6 text-indigo-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">Tinh chỉnh nguồn dữ liệu</h2>
-                    <p className="text-slate-400 text-sm">Chọn nguồn, khoảng nhìn lại và chỉ báo cho từng tác vụ.</p>
+                    <h2 className="text-lg font-bold text-white md:text-xl">Tinh chỉnh nguồn dữ liệu</h2>
+                    <p className="text-sm text-slate-400">Chọn nguồn, lookback và chỉ báo trong một màn.</p>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
                       <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Mẫu cấu hình nhanh</div>
-                      <p className="mt-1 text-sm text-slate-400">Dùng preset làm điểm xuất phát, rồi chỉnh từng nguồn theo nhu cầu thực tế.</p>
+                      <p className="mt-1 text-sm text-slate-400">Chọn preset rồi tinh chỉnh nhanh theo nhu cầu.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {[
@@ -747,168 +932,41 @@ const AICommandCenter = () => {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3.5">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Nguồn đang bật</div>
-                    <div className="mt-2 text-3xl font-black text-white">{activeSourceCount}</div>
-                    <div className="mt-1 text-xs text-slate-400">trên {PROMPT_SOURCE_DEFINITIONS.length} nguồn có thể chọn</div>
+                    <div className="mt-2 text-2xl font-black text-white">{activeSourceCount}</div>
+                    <div className="mt-1 text-xs text-slate-400">/{PROMPT_SOURCE_DEFINITIONS.length} nguồn</div>
                   </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3.5">
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Chỉ báo kỹ thuật</div>
-                    <div className="mt-2 text-3xl font-black text-white">{currentPromptConfig.technical?.indicators?.length || 0}</div>
-                    <div className="mt-1 text-xs text-slate-400">chỉ báo đang được nạp vào prompt</div>
+                    <div className="mt-2 text-2xl font-black text-white">{currentPromptConfig.technical?.indicators?.length || 0}</div>
+                    <div className="mt-1 text-xs text-slate-400">chỉ báo nạp vào prompt</div>
                   </div>
-                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Whale lookback</div>
-                    <div className="mt-2 text-3xl font-black text-white">{currentPromptConfig.whale?.lookback || 0}</div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3.5">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Khoảng whale</div>
+                    <div className="mt-2 text-2xl font-black text-white">{currentPromptConfig.whale?.lookback || 0}</div>
                     <div className="mt-1 text-xs text-slate-400">{getSourceDefinition('whale').lookbackUnit}</div>
                   </div>
                 </div>
 
-                <div className="grid gap-4 xl:grid-cols-2">
-                  {PROMPT_SOURCE_DEFINITIONS.map((definition) => {
-                    const sourceConfig = currentPromptConfig?.[definition.id] || createDefaultSourceConfig(definition);
-                    const enabled = Boolean(sourceConfig.enabled);
-
-                    return (
-                      <article
-                        key={definition.id}
-                        className={classNames(
-                          'rounded-3xl border p-5 transition-all duration-300',
-                          enabled
-                            ? 'border-indigo-500/20 bg-indigo-500/5'
-                            : 'border-slate-800/70 bg-slate-950/35 opacity-80',
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-200">
-                                {definition.label}
-                              </span>
-                              <span className="text-[10px] uppercase tracking-widest text-slate-500">
-                                {definition.lookbackUnit}
-                              </span>
-                            </div>
-                            <p className="mt-2 text-sm text-slate-400">{definition.description}</p>
-                          </div>
-                          <label className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">
-                            <input
-                              type="checkbox"
-                              checked={enabled}
-                              onChange={() => void togglePromptSource(definition.id)}
-                            />
-                            <span>{enabled ? 'Bật' : 'Tắt'}</span>
-                          </label>
-                        </div>
-
-                        <div className="mt-5 grid gap-4 md:grid-cols-2">
-                          <label className="text-xs font-medium text-slate-400">
-                            Khoảng nhìn lại
-                            <select
-                              value={sourceConfig.lookback}
-                              onChange={(e) => void changePromptSourceLookback(definition.id, e.target.value)}
-                              className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
-                            >
-                              {definition.lookbackOptions.map((option) => (
-                                <option key={option} value={option}>
-                                  {option} {definition.lookbackUnit}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
-                            <div className="font-semibold text-slate-200">Mô tả nhanh</div>
-                            <p className="mt-1 leading-5">
-                              {definition.id === 'technical' && 'Tùy chỉnh thêm bộ chỉ báo, ưu tiên động lượng, xu hướng hoặc biến động.'}
-                              {definition.id === 'whale' && 'Phù hợp khi cần theo dõi dòng tiền lớn trong nhiều phiên.'}
-                              {definition.id === 'dark_flow' && 'Giữ nguồn này bật để nhìn rõ áp lực đặt lệnh và tín hiệu ẩn.'}
-                              {definition.id === 'news' && 'Hữu ích cho các tác vụ cần bám sát tin tức gần đây.'}
-                              {definition.id === 'market' && 'Giúp AI đặt kết quả vào bối cảnh thị trường tổng thể.'}
-                              {definition.id === 'fundamental' && 'Dùng khi cần phân tích dài hơi và bền vững hơn.'}
-                              {definition.id === 'ownership' && 'Quan trọng khi muốn kiểm tra thay đổi sở hữu nội bộ.'}
-                              {definition.id === 'sector' && 'Hữu ích khi muốn so sánh tương quan với nhóm ngành.'}
-                            </p>
-                          </div>
-                        </div>
-
-                        {definition.id === 'technical' ? (
-                          <div className="mt-5 space-y-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Chỉ báo kỹ thuật</div>
-                                <p className="mt-1 text-xs text-slate-400">Bấm để chọn nhiều chỉ báo cùng lúc.</p>
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {sourceConfig.indicators?.length || 0} / {TECHNICAL_INDICATOR_OPTIONS.length}
-                              </div>
-                            </div>
-                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                              {TECHNICAL_INDICATOR_OPTIONS.map((indicator) => {
-                                const isSelected = Array.isArray(sourceConfig.indicators) && sourceConfig.indicators.includes(indicator.id);
-                                return (
-                                  <button
-                                    key={indicator.id}
-                                    type="button"
-                                    onClick={() => void toggleTechnicalIndicator(indicator.id)}
-                                    className={classNames(
-                                      'rounded-2xl border p-3 text-left transition-all',
-                                      isSelected
-                                        ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100'
-                                        : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700',
-                                    )}
-                                  >
-                                    <div className="flex items-center justify-between gap-2">
-                                      <span className="text-sm font-semibold">{indicator.label}</span>
-                                      <span className={classNames(
-                                        'h-2.5 w-2.5 rounded-full',
-                                        isSelected ? 'bg-cyan-400' : 'bg-slate-600',
-                                      )} />
-                                    </div>
-                                    <p className="mt-2 text-[11px] leading-5 text-slate-400">{indicator.description}</p>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => void savePromptConfig(updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => ({
-                                  ...sourceConfig,
-                                  enabled: true,
-                                  indicators: TECHNICAL_INDICATOR_OPTIONS.map((indicator) => indicator.id),
-                                }))) }
-                                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
-                              >
-                                Bật toàn bộ
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void savePromptConfig(updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => ({
-                                  ...sourceConfig,
-                                  enabled: true,
-                                  indicators: ['vols', 'prices', 'rsi', 'snapshot'],
-                                }))) }
-                                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
-                              >
-                                Bộ gọn nhẹ
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-                      </article>
-                    );
-                  })}
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/35 p-4">
+                  <PromptSourceTabs
+                    currentPromptConfig={currentPromptConfig}
+                    onToggleSource={togglePromptSource}
+                    onChangeLookback={changePromptSourceLookback}
+                    onToggleTechnicalIndicator={toggleTechnicalIndicator}
+                    onApplyTechnicalPreset={applyTechnicalPreset}
+                  />
                 </div>
 
-                <div className="pt-4 border-t border-slate-800 space-y-6">
+                <div className="border-t border-slate-800 pt-4 space-y-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
-                    <h3 className="text-lg font-bold text-white">Chính sách AI advisory</h3>
+                    <div className="h-5 w-1.5 rounded-full bg-emerald-500"></div>
+                    <h3 className="text-lg font-bold text-white">Chính sách tư vấn AI</h3>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Khoảng cách làm mới (giờ)</label>
                       <div className="flex items-center gap-3">
@@ -953,13 +1011,11 @@ const AICommandCenter = () => {
 
             {/* Panel 3: Audit */}
             <Tab.Panel className="animate-in slide-in-from-right-4 duration-500">
-              <div className="space-y-6 rounded-3xl border border-slate-800 bg-slate-900/50 p-8 shadow-xl backdrop-blur-xl">
-                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-900/50 p-4 shadow-xl backdrop-blur-xl md:p-5">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-white">Nhật ký audit Command Center</h2>
-                    <p className="mt-1 text-sm text-slate-400">
-                      Mỗi trang chỉ hiển thị một bản ghi để bạn tập trung vào một cấu hình tại một thời điểm.
-                    </p>
+                    <h2 className="text-lg font-bold text-white md:text-xl">Nhật ký audit Command Center</h2>
+                    <p className="mt-1 text-sm text-slate-400">Mỗi trang chỉ hiển thị một bản ghi.</p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <button
@@ -1007,7 +1063,7 @@ const AICommandCenter = () => {
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
                       <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Bộ lọc audit</div>
-                      <p className="mt-1 text-xs text-slate-400">Lọc theo hành động, actor và ngày để tập trung vào đúng thay đổi.</p>
+                      <p className="mt-1 text-xs text-slate-400">Lọc theo hành động, actor, ngày.</p>
                     </div>
                     <div className="text-[11px] text-slate-500">
                       Đang áp dụng: {appliedAuditFilters.action || 'all'} · {appliedAuditFilters.actor || 'any'}

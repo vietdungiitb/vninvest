@@ -1,17 +1,14 @@
-# ✅ AUDIT FILE LIST (2026-04-27ad)
-- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - bo wrapper thua va dung parser canonical truc tiep)
-- frontend/src/api/client.js (MODIFIED - xoa alias AI cu)
-- frontend/src/hooks/useAIAdvisor.js (MODIFIED - dung getAIConfig)
-- frontend/src/pages/StockDetail.jsx (MODIFIED - doi cac call site AI sang getAIConfig/updateAIConfig)
-- module_tree_full.md (MODIFIED - regenerate sau cleanup)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ad)
+# ✅ AUDIT FILE LIST (2026-04-27af)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - giam outer spacing, header padding va panel padding)
+- module_tree_full.md (MODIFIED - regenerate sau spacing fix)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27af)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe backend/manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 16/16 PASS.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi AI API names.
-- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau spacing fix.
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `get_errors` tren `frontend/src/pages/AICommandCenter.jsx` => no errors found.
 - NOTE: bundle size warning va fs.F_OK deprecation warning van con, nhung khong lam fail build.
 
 # 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
