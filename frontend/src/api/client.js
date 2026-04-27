@@ -435,12 +435,26 @@ export const getWhaleAdvisorySymbolStats = (params = {}) => {
   return apiClient.get(`/portfolio/ai-advisory-symbol-stats/${suffix}`);
 };
 export const updatePortfolioUserConfig = (data) => apiClient.put('/portfolio/userconfig/', data);
-export const getAIConfig = () => apiClient.get('/ai-config/');
-export const updateAIConfig = (data) => apiClient.put('/ai-config/', data);
+export const getAICommandCenterConfig = () => apiClient.get('/portfolio/ai-command-center/');
+export const updateAICommandCenterConfig = (data) => apiClient.put('/portfolio/ai-command-center/', data);
+export const testAICommandCenterConnection = (data) =>
+  apiClient.post('/portfolio/ai-command-center/test-connection/', data);
+export const getAICommandCenterAuditLogs = (params = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value === null || value === undefined || value === '') return;
+    query.set(key, String(value));
+  });
+  const suffix = query.toString() ? `?${query.toString()}` : '';
+  return apiClient.get(`/portfolio/ai-command-center/audit-logs/${suffix}`);
+};
+
+export const getAIConfig = getAICommandCenterConfig;
+export const updateAIConfig = updateAICommandCenterConfig;
 export const getAIOptions = () => apiClient.get('/ai-options/');
 export const getUserConfig = getAIConfig;
 export const updateUserConfig = updateAIConfig;
-export const testAIConnection = (data) => apiClient.post('/ai-config/test-connection/', data);
+export const testAIConnection = testAICommandCenterConnection;
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
 export const getDepthChart = (symbol) =>

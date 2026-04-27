@@ -52,7 +52,8 @@ const vi = {
     },
   },
   settings: {
-    pageDescription: 'Nơi tập trung mọi tùy chọn cấu hình tài khoản và chính sách AI advisory.',
+    title: 'Cài đặt tài khoản',
+    pageDescription: 'Nơi tập trung các tùy chọn tài khoản chung. Cấu hình AI đã được chuyển sang AI Command Center.',
     general: 'Tùy chọn chung',
     theme: 'Giao diện',
     whaleThreshold: 'Ngưỡng whale alert (triệu VND)',
@@ -66,8 +67,10 @@ const vi = {
     refreshIntervalHours: 'Khoảng cách làm mới (giờ)',
     maxAutoPerDay: 'Số lần auto refresh tối đa/ngày',
     maxTokensPerDay: 'Ngân sách token tối đa/ngày',
-    movedTitle: 'Đã chuyển cấu hình sang UserConfig',
-    movedDescription: 'Cấu hình AI model, chính sách advisory và event-based auto advisory hiện được quản lý trong UserConfig.',
+    movedTitle: 'Cấu hình AI đã chuyển sang AI Command Center',
+    movedDescription: 'Provider, model, API key và prompt config của AI hiện được quản lý tập trung tại AI Command Center.',
+    openAiCommandCenter: 'Mở AI Command Center',
+    generalOnlyNotice: 'Trang này chỉ còn giữ các thiết lập người dùng chung như ngôn ngữ, giao diện và ngưỡng cảnh báo.',
   },
   auth: {
     brandName: 'VNInvest',

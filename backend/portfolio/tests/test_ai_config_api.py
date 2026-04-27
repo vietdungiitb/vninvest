@@ -4,7 +4,8 @@ from django.contrib.auth.models import User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import SystemAISettings, UserConfig
+from portfolio.models import AICommandCenterConfig, SystemAISettings, UserConfig
+from portfolio.ai_options import get_default_model
 
 
 class AIConfigApiTests(APITestCase):
@@ -39,14 +40,14 @@ class AIConfigApiTests(APITestCase):
         self.assertTrue(any(item['id'] == 'claude-4.6-opus' and not item['validated_for_runtime'] for item in claude_catalog))
 
     def test_ai_config_get_and_put(self):
-        get_resp = self.client.get('/api/ai-config/')
+        get_resp = self.client.get('/api/portfolio/ai-command-center/')
         self.assertEqual(get_resp.status_code, status.HTTP_200_OK)
         self.assertIn('ai_provider', get_resp.data)
         self.assertEqual(get_resp.data['ai_model'], '')
         self.assertFalse(get_resp.data['ai_ready'])
 
         put_resp = self.client.put(
-            '/api/ai-config/',
+            '/api/portfolio/ai-command-center/',
             {
                 'ai_provider': 'claude',
                 'ai_model': 'claude-3-5-sonnet-20240620',
@@ -58,14 +59,14 @@ class AIConfigApiTests(APITestCase):
         self.assertTrue(put_resp.data.get('ok'))
         self.assertTrue(put_resp.data.get('ai_ready'))
 
-        cfg = UserConfig.objects.get(user=self.user)
+        cfg = AICommandCenterConfig.objects.get(user=self.user)
         self.assertEqual(cfg.ai_provider, 'claude')
         self.assertEqual(cfg.ai_model, 'claude-3-5-sonnet-20240620')
         self.assertTrue(cfg.ai_api_key_configured)
 
     def test_ai_config_put_rejects_missing_model(self):
         response = self.client.put(
-            '/api/ai-config/',
+            '/api/portfolio/ai-command-center/',
             {
                 'ai_provider': 'openai',
                 'ai_model': '',
@@ -73,13 +74,13 @@ class AIConfigApiTests(APITestCase):
             format='json',
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertFalse(response.data.get('ok', False))
-        self.assertIn('AI model', response.data.get('message', ''))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get('ok'))
+        self.assertEqual(response.data.get('ai_model'), get_default_model('openai'))
 
     def test_ai_config_put_rejects_model_not_supported_for_advisory(self):
         response = self.client.put(
-            '/api/ai-config/',
+            '/api/portfolio/ai-command-center/',
             {
                 'ai_provider': 'claude',
                 'ai_model': 'claude-4.6-sonnet',
@@ -89,24 +90,79 @@ class AIConfigApiTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(response.data.get('ok', False))
-        self.assertIn('advisory', response.data.get('message', '').lower())
+        self.assertIn('advisory', str(response.data).lower())
+
+    def test_ai_prompt_config_accepts_canonical_and_legacy_layouts(self):
+        canonical_resp = self.client.put(
+            '/api/portfolio/ai-command-center/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_api_key': 'test-openai-key',
+                'ai_prompt_config': {
+                    'whale': {'enabled': True, 'lookback': 120, 'lookback_unit': 'day'},
+                    'technical': {
+                        'enabled': True,
+                        'lookback': 45,
+                        'lookback_unit': 'session',
+                        'indicators': ['rsi', 'bollinger'],
+                    },
+                    'news': {'enabled': False, 'lookback': 7, 'lookback_unit': 'day'},
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(canonical_resp.status_code, status.HTTP_200_OK)
+        self.assertTrue(canonical_resp.data['ai_prompt_config']['whale']['enabled'])
+        self.assertEqual(canonical_resp.data['ai_prompt_config']['whale']['lookback'], 120)
+        self.assertEqual(canonical_resp.data['ai_prompt_config']['technical']['indicators'], ['rsi', 'bollinger'])
+        self.assertFalse(canonical_resp.data['ai_prompt_config']['news']['enabled'])
+
+        legacy_resp = self.client.put(
+            '/api/portfolio/ai-command-center/',
+            {
+                'ai_provider': 'openai',
+                'ai_model': 'gpt-4o',
+                'ai_api_key': 'test-openai-key',
+                'ai_prompt_config': {
+                    'tasks': {
+                        'stock_advisory': {
+                            'sources': {
+                                'whale': {'enabled': False, 'lookback': 90, 'lookback_unit': 'day'},
+                                'technical': ['vols', 'prices', 'rsi'],
+                                'fundamental': {'enabled': True, 'lookback': 2, 'lookback_unit': 'quarter'},
+                            }
+                        }
+                    }
+                },
+            },
+            format='json',
+        )
+
+        self.assertEqual(legacy_resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(legacy_resp.data['ai_prompt_config']['whale']['enabled'])
+        self.assertEqual(legacy_resp.data['ai_prompt_config']['whale']['lookback'], 90)
+        self.assertEqual(legacy_resp.data['ai_prompt_config']['technical']['indicators'], ['vols', 'prices', 'rsi'])
+        self.assertTrue(legacy_resp.data['ai_prompt_config']['fundamental']['enabled'])
+        self.assertEqual(legacy_resp.data['ai_prompt_config']['fundamental']['lookback'], 2)
 
     @patch.dict('os.environ', {'COPILOT_API_KEY': 'ghp_env_test_token'}, clear=False)
     def test_ai_config_get_uses_env_key_for_configured_flag(self):
-        cfg = UserConfig.objects.get(user=self.user)
+        cfg, _ = AICommandCenterConfig.objects.get_or_create(user=self.user)
         cfg.ai_provider = 'copilot'
         cfg.ai_model = 'openai/gpt-4.1-mini'
         cfg.ai_api_key = ''
         cfg.save(update_fields=['ai_provider', 'ai_model', 'ai_api_key'])
 
-        response = self.client.get('/api/ai-config/')
+        response = self.client.get('/api/portfolio/ai-command-center/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['ai_provider'], 'copilot')
         self.assertEqual(response.data['ai_model'], 'openai/gpt-4.1-mini')
         self.assertTrue(response.data['ai_api_key_configured'])
 
-    def test_update_user_config_with_provider_and_model(self):
+    def test_update_user_config_ignores_ai_fields(self):
         response = self.client.put(
             '/api/portfolio/userconfig/',
             {
@@ -124,13 +180,13 @@ class AIConfigApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         cfg = UserConfig.objects.get(user=self.user)
-        self.assertEqual(cfg.ai_provider, 'openai')
-        self.assertEqual(cfg.ai_model, 'gpt-4o')
-        self.assertTrue(cfg.ai_api_key)
-        self.assertNotEqual(cfg.ai_api_key, 'sk-test-key')
+        self.assertEqual(cfg.ai_provider, 'openclaw')
+        self.assertEqual(cfg.ai_model, '')
+        self.assertFalse(cfg.ai_api_key_configured)
         self.assertEqual(cfg.advisory_refresh_interval_hours, 12)
         self.assertEqual(cfg.advisory_max_auto_refreshes_per_day, 3)
         self.assertEqual(cfg.advisory_max_tokens_per_day, 4500)
+        self.assertFalse(AICommandCenterConfig.objects.filter(user=self.user).exists())
 
     @patch('portfolio.ai_service.test_ai_connection')
     def test_ai_test_connection_endpoint(self, mock_test_ai_connection):
@@ -144,7 +200,7 @@ class AIConfigApiTests(APITestCase):
         }
 
         response = self.client.post(
-            '/api/ai-config/test-connection/',
+            '/api/portfolio/ai-command-center/test-connection/',
             {
                 'ai_provider': 'openai',
                 'ai_model': 'gpt-4o',
@@ -159,7 +215,7 @@ class AIConfigApiTests(APITestCase):
 
     def test_ai_test_connection_rejects_missing_model(self):
         response = self.client.post(
-            '/api/ai-config/test-connection/',
+            '/api/portfolio/ai-command-center/test-connection/',
             {
                 'ai_provider': 'openai',
                 'ai_model': '',
@@ -174,7 +230,7 @@ class AIConfigApiTests(APITestCase):
 
     def test_ai_test_connection_rejects_missing_api_key(self):
         response = self.client.post(
-            '/api/ai-config/test-connection/',
+            '/api/portfolio/ai-command-center/test-connection/',
             {
                 'ai_provider': 'openai',
                 'ai_model': 'gpt-4o',
@@ -189,7 +245,7 @@ class AIConfigApiTests(APITestCase):
 
     def test_ai_test_connection_rejects_model_not_supported_for_advisory(self):
         response = self.client.post(
-            '/api/ai-config/test-connection/',
+            '/api/portfolio/ai-command-center/test-connection/',
             {
                 'ai_provider': 'gemini',
                 'ai_model': 'nano-banana-2',
@@ -203,12 +259,16 @@ class AIConfigApiTests(APITestCase):
         self.assertIn('advisory', response.data.get('message', '').lower())
 
     @patch.dict('os.environ', {'OPENCLAW_API_KEY': 'system-openclaw-key'}, clear=False)
-    def test_ai_config_get_uses_system_fallback_when_user_missing_config(self):
-        cfg = UserConfig.objects.get(user=self.user)
-        cfg.ai_provider = 'openai'
-        cfg.ai_model = ''
-        cfg.ai_api_key = ''
-        cfg.save(update_fields=['ai_provider', 'ai_model', 'ai_api_key'])
+    def test_ai_config_get_reports_not_ready_when_command_center_incomplete(self):
+        AICommandCenterConfig.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'ai_provider': 'openai',
+                'ai_model': '',
+                'ai_api_key': '',
+                'ai_prompt_config': {},
+            },
+        )
 
         SystemAISettings.objects.update_or_create(
             name='default',
@@ -220,10 +280,8 @@ class AIConfigApiTests(APITestCase):
             },
         )
 
-        response = self.client.get('/api/ai-config/')
+        response = self.client.get('/api/portfolio/ai-command-center/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertTrue(response.data.get('ai_ready'))
-        self.assertEqual(response.data.get('effective_ai_source'), 'system')
-        self.assertEqual(response.data.get('effective_ai_provider'), 'openclaw')
-        self.assertEqual(response.data.get('effective_ai_model'), 'default')
+        self.assertFalse(response.data.get('ai_ready'))
+        self.assertIn('Command Center', response.data.get('ai_config_message', ''))

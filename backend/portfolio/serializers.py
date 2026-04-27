@@ -4,6 +4,7 @@ serializers.py — DRF Serializers cho Portfolio, Transaction, DailyPrice, Watch
 
 from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnstockConfig
+from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
 from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, WhaleServiceJob
 from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
@@ -116,9 +117,6 @@ class DailyPriceSerializer(serializers.ModelSerializer):
 
 
 class UserConfigSerializer(serializers.ModelSerializer):
-    ai_api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
-    ai_api_key_configured = serializers.BooleanField(read_only=True)
-
     class Meta:
         model = UserConfig
         fields = [
@@ -134,10 +132,6 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'email_verified',
             'email_verification_sent_at',
             'email_verified_at',
-            'ai_provider',
-            'ai_model',
-            'ai_api_key',
-            'ai_api_key_configured',
             'advisory_auto_generation_enabled',
             'advisory_whale_signal_enabled',
             'advisory_manual_refresh_enabled',
@@ -157,7 +151,6 @@ class UserConfigSerializer(serializers.ModelSerializer):
             'email_verified',
             'email_verification_sent_at',
             'email_verified_at',
-            'ai_api_key_configured',
             'created_at',
             'updated_at',
         ]
@@ -172,11 +165,46 @@ class UserConfigSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Số lần auto refresh/ngày phải >= 1.')
         return value
 
+
+
+class AICommandCenterConfigSerializer(serializers.ModelSerializer):
+    ai_api_key = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    ai_api_key_configured = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = AICommandCenterConfig
+        fields = [
+            'id',
+            'user',
+            'ai_provider',
+            'ai_model',
+            'ai_api_key',
+            'ai_api_key_configured',
+            'ai_prompt_config',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'user',
+            'ai_api_key_configured',
+            'created_at',
+            'updated_at',
+        ]
+
     def validate_ai_provider(self, value):
         provider = str(value or '').strip().lower()
         if not is_valid_provider(provider):
             raise serializers.ValidationError('AI provider không hợp lệ.')
         return provider
+
+    def validate_ai_prompt_config(self, value):
+        from .ai_advisory_helpers import _parse_prompt_config
+
+        normalized = _parse_prompt_config(value)
+        if not isinstance(normalized, dict):
+            raise serializers.ValidationError('AI prompt_config phải là object.')
+        return normalized
 
     def validate(self, attrs):
         provider = attrs.get('ai_provider')

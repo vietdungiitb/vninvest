@@ -866,6 +866,112 @@ class UserConfig(models.Model):
         return decrypt_text(self.ai_api_key)
 
 
+class AICommandCenterConfig(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='ai_command_center_config',
+        verbose_name='Người dùng',
+    )
+    ai_provider = models.CharField(
+        max_length=50,
+        choices=PROVIDER_CHOICES,
+        default='openclaw',
+        verbose_name='AI provider',
+    )
+    ai_model = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name='AI model',
+        help_text='VD: gpt-4o, claude-3-5-sonnet-20240620',
+    )
+    ai_api_key = models.TextField(
+        blank=True,
+        default='',
+        verbose_name='AI API key (encrypted)',
+    )
+    ai_prompt_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='AI prompt_config canonical',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'AI Command Center Config'
+        verbose_name_plural = 'AI Command Center Config'
+
+    def __str__(self):
+        return f'AI Command Center ({self.user.username})'
+
+    @property
+    def ai_api_key_configured(self) -> bool:
+        return bool(self.ai_api_key)
+
+    def get_effective_ai_model(self) -> str:
+        return (self.ai_model or '').strip() or get_default_model(self.ai_provider)
+
+    def set_ai_api_key(self, raw_key: str) -> None:
+        raw = str(raw_key or '').strip()
+        self.ai_api_key = encrypt_text(raw) if raw else ''
+
+    def get_ai_api_key(self) -> str:
+        return decrypt_text(self.ai_api_key)
+
+    def clean(self):
+        provider = str(self.ai_provider or '').strip().lower()
+        model = self.get_effective_ai_model()
+
+        if not is_valid_provider(provider):
+            raise ValidationError({'ai_provider': 'AI provider không hợp lệ.'})
+        if not is_valid_model(provider, model):
+            raise ValidationError({'ai_model': 'AI model không thuộc provider đã chọn.'})
+        if not is_model_allowed_for_capability(provider, model, ADVISORY_CAPABILITY):
+            raise ValidationError({'ai_model': 'AI model này chưa được hỗ trợ cho luồng advisory hiện tại.'})
+        if self.ai_prompt_config is not None and not isinstance(self.ai_prompt_config, dict):
+            raise ValidationError({'ai_prompt_config': 'AI prompt_config phải là object.'})
+
+
+class AICommandCenterAuditLog(models.Model):
+    ACTION_CHOICES = [
+        ('update_settings', 'Update settings'),
+        ('test_connection_success', 'Test connection success'),
+        ('test_connection_failed', 'Test connection failed'),
+    ]
+
+    command_center_config = models.ForeignKey(
+        AICommandCenterConfig,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_logs',
+        verbose_name='AI Command Center config',
+    )
+    actor = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='ai_command_center_audit_logs',
+        verbose_name='Người thực hiện',
+    )
+    action = models.CharField(max_length=40, choices=ACTION_CHOICES, verbose_name='Hành động')
+    reason = models.TextField(blank=True, default='', verbose_name='Lý do / thông điệp')
+    before_json = models.JSONField(default=dict, blank=True, verbose_name='Snapshot trước')
+    after_json = models.JSONField(default=dict, blank=True, verbose_name='Snapshot sau')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'AI Command Center Audit Log'
+        verbose_name_plural = 'AI Command Center Audit Logs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'AICommandCenterAuditLog#{self.pk or 0} ({self.action})'
+
+
 class RuntimeVnstockConfig(models.Model):
     """Singleton runtime config cho vnstock adapter, hỗ trợ cập nhật không cần restart."""
 

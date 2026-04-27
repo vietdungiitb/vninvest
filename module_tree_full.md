@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-04-26 22:15:05`
+Generated at: `2026-04-27 18:25:15`
 
 ## Summary
 
 - Total modules: 490
 - Python modules: 314
 - JS/TS modules: 176
-- Total classes: 531
-- Total functions: 1810
-- Total top-level variables: 3269
+- Total classes: 534
+- Total functions: 1831
+- Total top-level variables: 3288
 
 ## Python Modules
 
@@ -159,7 +159,7 @@ Generated at: `2026-04-26 22:15:05`
 ### `backend/portfolio/ai_advisory_helpers.py`
 
 - Functions:
-  - `_build_dark_flow_context_for_prompt`, `_build_fundamental_context_for_prompt`, `_build_market_context_for_prompt`, `_build_ownership_context_for_prompt`, `_build_sector_context_for_prompt`, `_build_technical_context_for_prompt`, `_build_whale_context_for_prompt`, `_compute_bollinger_snapshot`, `_compute_macd_series`, `_compute_rsi_series`, `_fetch_live_price_anchor`, `_fetch_news_context_for_advisory`, `_format_billion`, `_format_dt_short`, `_format_price_level`, `_market_session_label`, `_parse_prompt_config`, `_resolve_price_scale_factor`, `_safe_float`, `_sanitize_for_prompt`, `_sprint17_build_component_templates`, `_sprint17_compute_summary_from_components`, `_sprint17_enforce_summary_narrative_policy`, `_sprint17_extract_json_block`, `_sprint17_generate_component_templates_with_ai`, `_sprint17_generate_executive_synthesis_with_ai`, `_sprint17_normalize_ai_component_payload`, `_sprint17_serialize_stock_advisory_session`, `_sprint17_suggested_action_from_status`, `_sprint29_get_enabled_indicators`, `_sprint29_pick_primary_indicator`, `_sprint29_render_chart_context_block`
+  - `_build_dark_flow_context_for_prompt`, `_build_fundamental_context_for_prompt`, `_build_market_context_for_prompt`, `_build_ownership_context_for_prompt`, `_build_sector_context_for_prompt`, `_build_technical_context_for_prompt`, `_build_whale_context_for_prompt`, `_compute_bollinger_snapshot`, `_compute_macd_series`, `_compute_rsi_series`, `_extract_prompt_sources`, `_fetch_live_price_anchor`, `_fetch_news_context_for_advisory`, `_format_billion`, `_format_dt_short`, `_format_price_level`, `_market_session_label`, `_parse_prompt_config`, `_resolve_price_scale_factor`, `_safe_float`, `_sanitize_for_prompt`, `_sprint17_build_component_templates`, `_sprint17_compute_summary_from_components`, `_sprint17_enforce_summary_narrative_policy`, `_sprint17_extract_json_block`, `_sprint17_generate_component_templates_with_ai`, `_sprint17_generate_executive_synthesis_with_ai`, `_sprint17_normalize_ai_component_payload`, `_sprint17_serialize_stock_advisory_session`, `_sprint17_suggested_action_from_status`, `_sprint29_get_enabled_indicators`, `_sprint29_pick_primary_indicator`, `_sprint29_render_chart_context_block`
 - Top-level variables:
   - `VALID_TECHNICAL_INDICATORS`, `_PROMPT_CONFIG_DEFAULTS`, `_PROMPT_CONFIG_REGISTRY`, `_PROMPT_INJECT_PATTERNS`, `_SAFE_INDICATOR_RE`, `_SAFE_SYMBOL_RE`, `_SAFE_TIMEFRAME_RE`, `logger`
 
@@ -498,6 +498,8 @@ Generated at: `2026-04-26 22:15:05`
   - `AdvisoryTokenLog` -> methods: `__str__`
   - `AIAdvisoryComponentRecord` -> methods: `__str__`
   - `AIAdvisoryExecutiveSummary` -> methods: `__str__`
+  - `AICommandCenterAuditLog` -> methods: `__str__`
+  - `AICommandCenterConfig` -> methods: `__str__`, `ai_api_key_configured`, `clean`, `get_ai_api_key`, `get_effective_ai_model`, `set_ai_api_key`
   - `CrawlAuditLog` -> methods: `__str__`
   - `CrawlJob` -> methods: `__str__`
   - `CrawlRun` -> methods: `__str__`
@@ -810,6 +812,7 @@ Generated at: `2026-04-26 22:15:05`
 - Classes:
   - `AIAdvisoryComponentRecordSerializer`
   - `AIAdvisoryExecutiveSummarySerializer`
+  - `AICommandCenterConfigSerializer` -> methods: `update`, `validate`, `validate_ai_prompt_config`, `validate_ai_provider`
   - `ChartPointSerializer`
   - `CrawlAuditLogSerializer`
   - `CrawlJobSerializer`
@@ -843,7 +846,7 @@ Generated at: `2026-04-26 22:15:05`
   - `TrackedSymbolSerializer`
   - `TradingSubAccountCreateRequestSerializer`
   - `TransactionSerializer` -> methods: `create`, `validate`, `validate_symbol`
-  - `UserConfigSerializer` -> methods: `update`, `validate`, `validate_advisory_max_auto_refreshes_per_day`, `validate_ai_provider`, `validate_whale_alert_threshold`
+  - `UserConfigSerializer` -> methods: `validate_advisory_max_auto_refreshes_per_day`, `validate_whale_alert_threshold`
   - `WatchlistGroupSerializer` -> methods: `get_items`
   - `WatchlistItemSerializer` -> methods: `validate_symbol`
   - `WatchlistItemWithPriceSerializer`
@@ -1268,7 +1271,7 @@ Generated at: `2026-04-26 22:15:05`
 ### `backend/portfolio/tests/test_ai_config_api.py`
 
 - Classes:
-  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_config_get_and_put`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_get_uses_system_fallback_when_user_missing_config`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_with_provider_and_model`
+  - `AIConfigApiTests` -> methods: `setUp`, `test_ai_config_get_and_put`, `test_ai_config_get_reports_not_ready_when_command_center_incomplete`, `test_ai_config_get_uses_env_key_for_configured_flag`, `test_ai_config_put_rejects_missing_model`, `test_ai_config_put_rejects_model_not_supported_for_advisory`, `test_ai_options_returns_providers_and_defaults`, `test_ai_prompt_config_accepts_canonical_and_legacy_layouts`, `test_ai_test_connection_endpoint`, `test_ai_test_connection_rejects_missing_api_key`, `test_ai_test_connection_rejects_missing_model`, `test_ai_test_connection_rejects_model_not_supported_for_advisory`, `test_update_user_config_ignores_ai_fields`
 
 ### `backend/portfolio/tests/test_ai_context.py`
 
@@ -1278,7 +1281,7 @@ Generated at: `2026-04-26 22:15:05`
 ### `backend/portfolio/tests/test_ai_runtime_config.py`
 
 - Classes:
-  - `AIRuntimeConfigTests` -> methods: `setUp`, `test_resolver_falls_back_to_system_when_user_missing_model_and_key`, `test_resolver_prefers_user_config_over_system`
+  - `AIRuntimeConfigTests` -> methods: `setUp`, `test_resolver_falls_back_to_system_when_user_missing_model_and_key`, `test_resolver_prefers_command_center_over_legacy_and_system`, `test_resolver_prefers_user_config_over_system`
 
 ### `backend/portfolio/tests/test_ai_service_prompt.py`
 
@@ -1834,7 +1837,7 @@ Generated at: `2026-04-26 22:15:05`
 ### `backend/portfolio/views_ai_runtime_stats.py`
 
 - Functions:
-  - `_get_ai_runtime_config_status`, `_legacy_views_module`, `ai_config_api`, `ai_options_api`, `ai_test_connection_api`, `whale_advisory_symbol_stats_api`
+  - `_ai_command_center_prompt_config`, `_ai_command_center_snapshot`, `_create_ai_command_center_audit_log`, `_get_ai_runtime_config_status`, `_get_or_create_ai_command_center_config`, `_legacy_views_module`, `ai_command_center_audit_logs_api`, `ai_config_api`, `ai_options_api`, `ai_test_connection_api`, `whale_advisory_symbol_stats_api`
 
 ### `backend/portfolio/views_analytics_extended.py`
 
@@ -2293,9 +2296,9 @@ Generated at: `2026-04-26 22:15:05`
 ### `frontend/src/api/client.js`
 
 - Functions:
-  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTransaction`, `createWatchlistGroup`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAIConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getDarkMoneyHistory`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `getWhaleOrdersBySymbol`, `getWhaleServiceJobStatus`, `getWhaleServiceJobs`, `hasAuthTokens`, `isAuthPublicEndpoint`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryWhaleServiceJob`, `runAdminCrawlJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAIConnection`, `toggleStockAIAdvisoryComponentInclude`, `triggerWhaleServiceJob`, `updateAIConfig`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`
+  - `addTrackedSymbol`, `addWatchlistItem`, `adminIntradaySideBackfillApply`, `adminIntradaySideBackfillPreview`, `adminIntradaySideBackfillStatus`, `adminIntradayUniverseWarmNow`, `bulkUpdateTrackedSymbolThreshold`, `clearDeletedStockAIAdvisoryComponents`, `createPortfolio`, `createPriceAlert`, `createScreenerRule`, `createSubAccount`, `createTransaction`, `createWatchlistGroup`, `deleteCurrentWhaleAdvisory`, `deletePortfolio`, `deletePriceAlert`, `deleteScreenerRule`, `deleteStockAIAdvisoryComponent`, `deleteStockAIExecutiveSummary`, `deleteSubAccount`, `deleteTrackedSymbol`, `deleteTransaction`, `deleteWatchlistGroup`, `deleteWatchlistItem`, `fetchLegalPages`, `generateStockAIAdvisoryComponents`, `generateStockNewsAISummary`, `getAICommandCenterAuditLogs`, `getAICommandCenterConfig`, `getAIOptions`, `getAdminCrawlAuditLogs`, `getAdminCrawlJobs`, `getAdminCrawlRuns`, `getAdminOpsStats`, `getAdminPrefetchRuntimeSettings`, `getAdminPrefetchTimePolicy`, `getAdminRuntimeKPI`, `getAdminSystemAiSettings`, `getAdminVnstockBenchmarkLatest`, `getAdminVnstockConfigChangelog`, `getAdminVnstockConfigCurrent`, `getAdvisoryAutoRefreshInfo`, `getAggregateWhaleFeed`, `getAllocation`, `getAllocationBySector`, `getAnalytics`, `getBulkTechnicalsBySymbols`, `getCanonicalAIAdvisory`, `getChartData`, `getDarkMoneyHistory`, `getDepthChart`, `getEquityCurve`, `getHoldings`, `getIntradayMatched`, `getMarketDiscoveryHub`, `getPortfolio`, `getPortfolioNewsDigest`, `getPortfolioTechnicals`, `getPortfolioUserConfig`, `getPortfolios`, `getPriceAlerts`, `getPriceBoard`, `getRVOL`, `getRealtimeHealth`, `getRealtimeTicker`, `getRealtimeTickers`, `getRealtimeWebSocketUrl`, `getScreenerRules`, `getSectorBreadth`, `getSecuritiesGroups`, `getStockAIAdvisoryObservability`, `getStockAIAdvisorySession`, `getStockFinancials`, `getStockNews`, `getStockOrderFlow`, `getStockPriceChart`, `getStockProfile`, `getStockWorkspaceOverview`, `getSubAccounts`, `getSummary`, `getTrackedSymbols`, `getTransactions`, `getUnifiedAlerts`, `getWatchlistGroups`, `getWhaleAdvisories`, `getWhaleAdvisorySymbolStats`, `getWhaleAnalyticsSnapshot`, `getWhaleFeed`, `getWhaleOrdersBySymbol`, `getWhaleServiceJobStatus`, `getWhaleServiceJobs`, `hasAuthTokens`, `isAuthPublicEndpoint`, `markPriceAlertTriggered`, `normalizeChartTimeframe`, `postStockAIAdvisoryObservabilityEvent`, `refreshAccessToken`, `refreshStockAIAdvisoryComponent`, `refreshStockAIAdvisorySession`, `refreshWhaleAdvisory`, `regenerateStockAIExecutiveSummary`, `requestTokenRefresh`, `resetAdminVnstockConfig`, `restoreStockAIAdvisoryComponent`, `retryWhaleServiceJob`, `runAdminCrawlJob`, `runAdminVnstockBenchmark`, `runScreenerRule`, `seedSecurities`, `seedWatchlist`, `stopAdminCrawlJob`, `syncMarketGroups`, `syncPrices`, `syncSecuritiesPrices`, `syncStockProfile`, `syncWatchlistPrices`, `testAICommandCenterConnection`, `toggleStockAIAdvisoryComponentInclude`, `triggerWhaleServiceJob`, `updateAICommandCenterConfig`, `updateAdminPrefetchRuntimeSettings`, `updateAdminPrefetchTimePolicy`, `updateAdminSystemAiSettings`, `updateAdminVnstockConfig`, `updatePortfolio`, `updatePortfolioUserConfig`, `updatePriceAlert`, `updateScreenerRule`, `updateSubAccount`, `updateTrackedSymbol`, `updateTransaction`, `updateWatchlistGroup`, `warmTickerPrefetch`
 - Top-level variables:
-  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getSymbolInvestigation`, `getUserConfig`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `response`, `suffix`, `symbolList`, `token`, `updateUserConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
+  - `AUTH_PUBLIC_ENDPOINT_PATTERN`, `WATCHLIST_GROUPS_CACHE_TTL`, `access`, `aliasMap`, `apiBaseURL`, `apiClient`, `customBase`, `getAIConfig`, `getSymbolInvestigation`, `getUserConfig`, `getWhaleCampaigns`, `isDevFrontendPort`, `nextAccessToken`, `normalizedToken`, `now`, `originalRequest`, `params`, `protocol`, `publicApiClient`, `query`, `queryString`, `refresh`, `refreshRequestPromise`, `refreshToken`, `response`, `suffix`, `symbolList`, `testAIConnection`, `token`, `updateAIConfig`, `updateUserConfig`, `upperValue`, `value`, `watchlistGroupsCache`, `watchlistGroupsCacheTimestamp`
 
 ### `frontend/src/api/client.test.js`
 
@@ -2845,9 +2848,9 @@ Generated at: `2026-04-26 22:15:05`
 ### `frontend/src/hooks/useAIAdvisor.js`
 
 - Functions:
-  - `totalValue`
+  - `loadAiConfig`, `totalValue`
 - Top-level variables:
-  - `DEFAULT_AI_CONFIG`, `action`, `aiConfig`, `allSymbolsSet`, `h`, `holdingMap`, `indicators`, `logics`, `ma20Dist`, `reasons`, `recommendations`, `rsi`, `score`, `sourceCfg`, `stored`, `strategyParams`, `symbol`, `tech`, `techs`, `weight`, `whaleAlertCounts`, `whaleCount`
+  - `DEFAULT_AI_CONFIG`, `action`, `allSymbolsSet`, `cancelled`, `h`, `holdingMap`, `indicators`, `logics`, `ma20Dist`, `promptConfig`, `reasons`, `recommendations`, `response`, `rsi`, `score`, `sourceCfg`, `strategyParams`, `symbol`, `tech`, `techs`, `weight`, `whaleAlertCounts`, `whaleCount`
 
 ### `frontend/src/hooks/useOrderBubbleCoordinates.js`
 
@@ -2959,9 +2962,9 @@ Generated at: `2026-04-26 22:15:05`
 ### `frontend/src/pages/AICommandCenter.jsx`
 
 - Functions:
-  - `AICommandCenter`, `classNames`, `fetchConfig`, `handleSave`, `testConnection`
+  - `AICommandCenter`, `applyPromptPreset`, `buildPromptConfigPreset`, `changePromptSourceLookback`, `clampInt`, `classNames`, `createDefaultPromptConfig`, `createDefaultSourceConfig`, `extractPromptSourceBucket`, `fetchConfig`, `getSourceDefinition`, `handleSave`, `loadAuditLogs`, `normalizePromptConfig`, `savePromptConfig`, `testConnection`, `togglePromptSource`, `toggleTechnicalIndicator`, `updatePromptConfigSource`
 - Top-level variables:
-  - `DEFAULT_AI_CONFIG`, `apiKey`, `currentConfig`, `currentSources`, `isEnabled`, `newPromptConfig`, `nextConfig`, `payload`, `resp`, `responseData`, `sources`, `stockAdvisory`
+  - `AUDIT_PAGE_SIZE`, `DEFAULT_AI_CONFIG`, `PROMPT_SOURCE_DEFINITIONS`, `TECHNICAL_INDICATOR_OPTIONS`, `activeSourceCount`, `afterSnapshot`, `apiKey`, `baseConfig`, `beforeSnapshot`, `currentConfig`, `currentPromptConfig`, `currentSource`, `definition`, `enabled`, `indicators`, `isSelected`, `legacyStockAdvisory`, `legacyTasks`, `limit`, `nextConfig`, `nextIndicators`, `nextPromptConfig`, `nextSource`, `normalized`, `normalizedPromptConfig`, `offset`, `parsed`, `payload`, `rawIndicators`, `rawSource`, `resp`, `responseData`, `selectedIndicators`, `sourceBucket`, `sourceConfig`, `stockAdvisory`, `totalAuditPages`
 
 ### `frontend/src/pages/Dashboard.jsx`
 
@@ -3012,9 +3015,9 @@ Generated at: `2026-04-26 22:15:05`
 ### `frontend/src/pages/StockDetail.jsx`
 
 - Functions:
-  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `OrderFlowPanel`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_loadAdvisoryPromptConfigFromStorage`, `_saveAdvisoryPromptConfigToStorage`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `createIndicatorWithTracking`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `findIndicatorPaneIds`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `forgetIndicatorPane`, `formatChartAxis`, `formatCompactNumber`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleScreenshot`, `handleTimeframe`, `handleToggleComponentInclude`, `handleToggleFullscreen`, `handleToggleIndicator`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `onFullscreenChange`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `rememberIndicatorPane`, `removeIndicatorFromAnySubPane`, `run`, `runRefresh`, `showWorkspaceMessage`
+  - `BreadthMiniPanel`, `FinancialMetricsPanel`, `IntradayMatchedPanel`, `KLineChartComponent`, `MetricRow`, `OrderFlowPanel`, `PriceDepthPanel`, `_getDefaultPromptConfig`, `_normalizeAdvisoryPromptConfig`, `advisoryActionLabel`, `advisoryGovernanceEndpointLabel`, `advisoryGovernanceReasonLabel`, `advisoryPromptSourceLabel`, `advisoryRetryOutcomeBadgeClass`, `advisoryRetryOutcomeLabel`, `advisoryRiskLabel`, `advisoryStatusLabel`, `advisorySynthesisPreferenceLabel`, `biasMeta`, `createIndicatorWithTracking`, `emitAdvisoryInvalidation`, `fetchChart`, `fetchOverview`, `fetchTickerSnapshot`, `fetchWatchlistGroups`, `findIndicatorPaneIds`, `finiteNumberOrNull`, `fmtPrice`, `fmtVol`, `forgetIndicatorPane`, `formatChartAxis`, `formatCompactNumber`, `formatPercent`, `formatPercentDelta`, `governanceDeltaSeverity`, `governanceDeltaSeverityClass`, `governanceDeltaSeverityLabel`, `handleAddToWatchlist`, `handleClearDeletedAdvisoryComponents`, `handleCreateAlert`, `handleDeleteAdvisoryComponent`, `handleDeleteExecutiveSummary`, `handleGenerateAdvisoryComponents`, `handleRefreshActiveAdvisoryComponent`, `handleRegenerateExecutiveSummary`, `handleRemoveFromWatchlist`, `handleRestoreAdvisoryComponent`, `handleScreenshot`, `handleTimeframe`, `handleToggleComponentInclude`, `handleToggleFullscreen`, `handleToggleIndicator`, `handleToggleTracked`, `isRealtimeQuoteScaleCompatible`, `loadPromptConfig`, `onFullscreenChange`, `persistPromptConfig`, `pickRealtimeQuoteCandidate`, `refreshWorkspace`, `rememberIndicatorPane`, `removeIndicatorFromAnySubPane`, `run`, `runRefresh`, `showWorkspaceMessage`
 - Top-level variables:
-  - `ADVISORY_INVALIDATION_EVENT`, `AVAILABLE_INDICATORS`, `MAIN_PANE_INDICATORS`, `STALE_RESYNC_RETRY_MS`, `SUB_PANE_CANDIDATES`, `TIMEFRAMES`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryRetryTelemetrySyncKeyRef`, `allIndicators`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chart`, `chartData`, `chartPerformance`, `chartRef`, `chartWindowHint`, `close`, `conflictState`, `containerRef`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `cvdSeries`, `darkFlow`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `dynamicPaneIds`, `emitVisibleRangeFromChart`, `events`, `fallbackFrom`, `fallbackFromTs`, `fallbackTo`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `floorPrice`, `fromIndex`, `fromIndexRaw`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `globalStored`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `image`, `inFlightRef`, `incomingTrades`, `indicatorPaneMapRef`, `interval`, `intervalId`, `isNextEnabled`, `isTransientEmpty`, `isUpstreamUnavailable`, `kLineData`, `key`, `lastClose`, `lastVisibleRangeRef`, `latest`, `latestDeltaVsBaseline`, `latestSignal`, `latestVol`, `link`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveSignal`, `liveStrength`, `liveVolume`, `map`, `match`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `min`, `n`, `newState`, `next`, `nextComponents`, `nextDeletedComponents`, `nextFrom`, `nextSummaries`, `nextTo`, `nextWarnings`, `normalizedPoints`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `paneId`, `paneIds`, `paneIdsToTry`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `rememberedPaneId`, `removed`, `resolvedRealtimeQuote`, `resp`, `response`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `ro`, `row`, `rows`, `seen`, `sellCount`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `signals`, `sizeDistribution`, `smallOrderRatio`, `sortedTrades`, `source`, `sourceGroupId`, `stored`, `storedConfig`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickRate`, `tickerData`, `timer`, `toIndex`, `toIndexRaw`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `visibleRange`, `vol`, `warning`, `warningSuffix`, `width`, `withinRange`, `x`, `y`, `years`
+  - `ADVISORY_INVALIDATION_EVENT`, `AVAILABLE_INDICATORS`, `MAIN_PANE_INDICATORS`, `STALE_RESYNC_RETRY_MS`, `SUB_PANE_CANDIDATES`, `TIMEFRAMES`, `ability`, `activeAdvisoryComponent`, `activeIds`, `advisory`, `advisoryConflictRetryCountRef`, `advisoryConflictRetryTimeoutRef`, `advisoryInvalidationKeyRef`, `advisoryKey`, `advisoryPromptConfigLastSavedRef`, `advisoryPromptConfigLoadedRef`, `advisoryRetryTelemetrySyncKeyRef`, `allIndicators`, `asks`, `attempt`, `availableWatchlistGroups`, `averagePrice`, `avgVol`, `backoffUntilRef`, `baseline`, `baselinePrice`, `baselineY`, `bids`, `buildChartContextPayload`, `buyCount`, `canAutoRetry`, `canViewAdvancedTab`, `cancelled`, `candidatePrice`, `ceilingPrice`, `cfg`, `cfgResp`, `changeClass`, `changePct`, `changeValue`, `chart`, `chartData`, `chartPerformance`, `chartRef`, `chartWindowHint`, `close`, `conflictState`, `containerRef`, `contextUsage`, `cooldown`, `critical`, `currentComponents`, `currentPrice`, `currentSession`, `cvdSeries`, `darkFlow`, `debounceRef`, `deletedComponent`, `deletedCount`, `deltaSeverity`, `denyTotal`, `depth`, `display`, `downCount`, `dynamicPaneIds`, `emitVisibleRangeFromChart`, `events`, `fallback`, `fallbackFrom`, `fallbackFromTs`, `fallbackTo`, `fallbackToTs`, `fetchAdvisoryObservability`, `fetchAdvisorySession`, `fetchData`, `fetchOrderFlow`, `fetchTrades`, `filteredPersistedRetryEvents`, `firstClose`, `flatCount`, `floorPrice`, `fromIndex`, `fromIndexRaw`, `fromTs`, `generatedPayload`, `generatedResp`, `generationSource`, `governanceEndpointBreakdown`, `governanceEndpointOptions`, `governanceReasonBreakdown`, `governanceReasonOptions`, `governanceSparkline`, `governanceTrendRows`, `height`, `id`, `image`, `inFlightRef`, `incomingTrades`, `indicatorPaneMapRef`, `interval`, `intervalId`, `isNextEnabled`, `isTransientEmpty`, `isUpstreamUnavailable`, `kLineData`, `key`, `lastClose`, `lastVisibleRangeRef`, `latest`, `latestDeltaVsBaseline`, `latestSignal`, `latestVol`, `link`, `liveAveragePrice`, `liveCeilingPrice`, `liveChangeValue`, `liveCurrentPrice`, `liveFloorPrice`, `liveHighPrice`, `liveLowPrice`, `liveQuote`, `liveReferencePrice`, `liveSignal`, `liveStrength`, `liveVolume`, `map`, `match`, `max`, `maxDeny`, `maxPoint`, `maxRetryAttempts`, `maxValue`, `min`, `n`, `newState`, `next`, `nextComponents`, `nextDeletedComponents`, `nextFrom`, `nextSummaries`, `nextTo`, `nextWarnings`, `normalizedConfig`, `normalizedPoints`, `normalizedSources`, `normalizedSymbol`, `now`, `numericValue`, `overviewChangeValue`, `overviewClosePrice`, `overviewCurrentPrice`, `paneId`, `paneIds`, `paneIdsToTry`, `params`, `parsed`, `payload`, `peers`, `pointItems`, `points`, `polylinePoints`, `prevDarkFlowRef`, `prevVolumeRef`, `prevWhaleRef`, `previous`, `promptConfig`, `ratio`, `ref`, `referencePrice`, `refreshWhaleFeed`, `refreshed`, `rememberedPaneId`, `removed`, `resolvedRealtimeQuote`, `resp`, `response`, `responseConfig`, `restored`, `retryAttemptsUsed`, `retryDelayMs`, `retryEventReasonOptions`, `retrySeconds`, `ro`, `row`, `rows`, `seen`, `sellCount`, `serializedConfig`, `sessionAdvisory`, `sessionPayload`, `sessionResp`, `signals`, `sizeDistribution`, `smallOrderRatio`, `sortedTrades`, `source`, `sourceGroupId`, `summary`, `symbolAlerts`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `syncKey`, `targetPrice`, `technicalBias`, `technicalBiasFallback`, `thresholds`, `tickRate`, `tickerData`, `timer`, `toIndex`, `toIndexRaw`, `toTs`, `topCohort`, `topEndpoint`, `topReason`, `total`, `totalVol`, `tradesCountRef`, `ts`, `unique`, `upCount`, `updated`, `values`, `visibleChartPoints`, `visibleRange`, `vol`, `warning`, `warningSuffix`, `width`, `withinRange`, `x`, `y`, `years`
 
 ### `frontend/src/pages/stockDetailAdvisoryUtils.js`
 
@@ -3059,16 +3062,16 @@ Generated at: `2026-04-26 22:15:05`
 ### `frontend/src/pages/UserConfig.jsx`
 
 - Functions:
-  - `buildFallbackModelCatalog`, `checkAiConnection`, `loadData`, `onField`, `saveAiSettings`, `saveGeneralSettings`
+  - `loadData`, `onField`, `saveGeneralSettings`
 - Top-level variables:
-  - `FALLBACK_MODELS`, `aiCfg`, `capabilities`, `entries`, `filtered`, `modelCatalog`, `modelOptions`, `mounted`, `payload`, `provider`, `providers`, `resp`, `userCfg`
+  - `mounted`, `userCfg`, `userResp`
 
 ### `frontend/src/pages/UserConfig.test.jsx`
 
 - Functions:
-  - `getLanguageSelect`, `mockT`
+  - `getLanguageSelect`, `mockT`, `renderUserConfig`
 - Top-level variables:
-  - `checkboxes`, `eventBasedToggle`, `languageSelect`, `mockAIConfig`, `mockAIOptions`, `mockI18nContext`, `mockUserConfig`, `providerSelects`, `saveButton`, `thresholdInput`, `translations`
+  - `languageSelect`, `mockI18nContext`, `mockUserConfig`, `saveButton`, `thresholdInput`, `translations`
 
 ### `frontend/src/pages/VerifyEmail.jsx`
 

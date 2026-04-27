@@ -6,13 +6,284 @@ import {
   BeakerIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Tab } from '@headlessui/react';
-import { getAIConfig, testAIConnection, updateAIConfig } from '../api/client';
+import {
+  getAICommandCenterAuditLogs,
+  getAICommandCenterConfig,
+  testAICommandCenterConnection,
+  updateAICommandCenterConfig,
+} from '../api/client';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
+}
+
+const AUDIT_PAGE_SIZE = 1;
+
+const TECHNICAL_INDICATOR_OPTIONS = [
+  { id: 'vols', label: 'Khối lượng', description: 'Thanh khoản, volume spike, dòng tiền vào/ra.' },
+  { id: 'prices', label: 'Giá', description: 'Xu hướng giá, breakout, hỗ trợ và kháng cự.' },
+  { id: 'cdms', label: 'Dòng tiền', description: 'CVD, tích lũy, phân phối và áp lực lệnh.' },
+  { id: 'ma20', label: 'MA 20', description: 'Xu hướng ngắn hạn và nhịp hồi.' },
+  { id: 'ma50', label: 'MA 50', description: 'Xu hướng trung hạn và cấu trúc giá.' },
+  { id: 'rsi', label: 'RSI', description: 'Động lượng và trạng thái quá mua/quá bán.' },
+  { id: 'bollinger', label: 'Bollinger', description: 'Biến động và biên độ dao động.' },
+  { id: 'snapshot', label: 'Snapshot', description: 'Bối cảnh tổng quan trong một mắt nhìn.' },
+];
+
+const PROMPT_SOURCE_DEFINITIONS = [
+  {
+    id: 'whale',
+    label: 'Whale / dòng tiền lớn',
+    description: 'Dữ liệu giao dịch lớn, tín hiệu tích lũy và phân phối.',
+    enabledByDefault: true,
+    defaultLookback: 180,
+    lookbackUnit: 'ngày',
+    lookbackOptions: [30, 60, 90, 120, 180, 365],
+  },
+  {
+    id: 'dark_flow',
+    label: 'Dark flow / order flow',
+    description: 'Dòng lệnh ẩn, chuyển động của lệnh và áp lực khối lượng.',
+    enabledByDefault: true,
+    defaultLookback: 90,
+    lookbackUnit: 'ngày',
+    lookbackOptions: [14, 30, 60, 90, 180],
+  },
+  {
+    id: 'technical',
+    label: 'Phân tích kỹ thuật',
+    description: 'Chỉ báo xu hướng, động lượng và biến động giá.',
+    enabledByDefault: true,
+    defaultLookback: 30,
+    lookbackUnit: 'phiên',
+    lookbackOptions: [10, 20, 30, 45, 60, 90, 120, 180],
+  },
+  {
+    id: 'news',
+    label: 'Tin tức / sự kiện',
+    description: 'Tin nóng, công bố doanh nghiệp và bối cảnh thị trường.',
+    enabledByDefault: true,
+    defaultLookback: 14,
+    lookbackUnit: 'ngày',
+    lookbackOptions: [3, 5, 7, 14, 21, 30],
+  },
+  {
+    id: 'market',
+    label: 'Bối cảnh thị trường',
+    description: 'VNINDEX, độ rộng thị trường và tâm lý chung.',
+    enabledByDefault: true,
+    defaultLookback: 7,
+    lookbackUnit: 'ngày',
+    lookbackOptions: [3, 5, 7, 14, 21, 30],
+  },
+  {
+    id: 'fundamental',
+    label: 'Nền tảng cơ bản',
+    description: 'KQKD, định giá, tăng trưởng và chất lượng doanh nghiệp.',
+    enabledByDefault: false,
+    defaultLookback: 1,
+    lookbackUnit: 'quý',
+    lookbackOptions: [1, 2, 4, 8],
+  },
+  {
+    id: 'ownership',
+    label: 'Sở hữu / nội bộ',
+    description: 'Giao dịch nội bộ, thay đổi sở hữu và hành vi cổ đông lớn.',
+    enabledByDefault: false,
+    defaultLookback: 365,
+    lookbackUnit: 'ngày',
+    lookbackOptions: [90, 180, 365],
+  },
+  {
+    id: 'sector',
+    label: 'Ngành / peer group',
+    description: 'So sánh cùng ngành, benchmark và tương quan nhóm cổ phiếu.',
+    enabledByDefault: false,
+    defaultLookback: 60,
+    lookbackUnit: 'phiên',
+    lookbackOptions: [20, 40, 60, 90, 120, 180],
+  },
+];
+
+function getSourceDefinition(sourceId) {
+  return PROMPT_SOURCE_DEFINITIONS.find((item) => item.id === sourceId) || PROMPT_SOURCE_DEFINITIONS[0];
+}
+
+function createDefaultSourceConfig(sourceDefinition) {
+  const baseConfig = {
+    enabled: Boolean(sourceDefinition.enabledByDefault),
+    lookback: sourceDefinition.defaultLookback,
+    lookback_unit: sourceDefinition.lookbackUnit,
+  };
+
+  if (sourceDefinition.id === 'technical') {
+    baseConfig.indicators = TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id);
+  }
+
+  return baseConfig;
+}
+
+function createDefaultPromptConfig() {
+  return Object.fromEntries(
+    PROMPT_SOURCE_DEFINITIONS.map((definition) => [definition.id, createDefaultSourceConfig(definition)]),
+  );
+}
+
+function clampInt(value, min, max, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return fallback;
+  }
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function extractPromptSourceBucket(rawConfig) {
+  if (!rawConfig || typeof rawConfig !== 'object') {
+    return {};
+  }
+
+  if (rawConfig.sources && typeof rawConfig.sources === 'object') {
+    return rawConfig.sources;
+  }
+
+  const legacyTasks = rawConfig.tasks;
+  if (legacyTasks && typeof legacyTasks === 'object') {
+    const stockAdvisory = legacyTasks.stock_advisory;
+    if (stockAdvisory && typeof stockAdvisory === 'object' && stockAdvisory.sources && typeof stockAdvisory.sources === 'object') {
+      return stockAdvisory.sources;
+    }
+  }
+
+  const legacyStockAdvisory = rawConfig.stock_advisory;
+  if (legacyStockAdvisory && typeof legacyStockAdvisory === 'object' && legacyStockAdvisory.sources && typeof legacyStockAdvisory.sources === 'object') {
+    return legacyStockAdvisory.sources;
+  }
+
+  return rawConfig;
+}
+
+function normalizePromptConfig(rawConfig) {
+  const sourceBucket = extractPromptSourceBucket(rawConfig);
+  const normalized = createDefaultPromptConfig();
+
+  if (Array.isArray(sourceBucket)) {
+    sourceBucket.forEach((sourceId) => {
+      if (normalized[sourceId]) {
+        normalized[sourceId] = { ...normalized[sourceId], enabled: true };
+      }
+    });
+    return normalized;
+  }
+
+  PROMPT_SOURCE_DEFINITIONS.forEach((definition) => {
+    const rawSource = sourceBucket?.[definition.id];
+    if (rawSource === undefined || rawSource === null) {
+      return;
+    }
+
+    if (typeof rawSource === 'boolean') {
+      normalized[definition.id] = { ...normalized[definition.id], enabled: rawSource };
+      return;
+    }
+
+    if (Array.isArray(rawSource)) {
+      if (definition.id === 'technical') {
+        const indicators = rawSource.filter((indicator) => TECHNICAL_INDICATOR_OPTIONS.some((option) => option.id === indicator));
+        normalized[definition.id] = {
+          ...normalized[definition.id],
+          enabled: true,
+          indicators: indicators.length > 0 ? indicators : TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id),
+        };
+      } else {
+        normalized[definition.id] = { ...normalized[definition.id], enabled: rawSource.length > 0 };
+      }
+      return;
+    }
+
+    if (typeof rawSource !== 'object') {
+      return;
+    }
+
+    const nextSource = { ...normalized[definition.id] };
+    if (Object.prototype.hasOwnProperty.call(rawSource, 'enabled')) {
+      nextSource.enabled = Boolean(rawSource.enabled);
+    }
+    if (Object.prototype.hasOwnProperty.call(rawSource, 'lookback')) {
+      nextSource.lookback = clampInt(rawSource.lookback, 1, 365, nextSource.lookback);
+    }
+    if (typeof rawSource.lookback_unit === 'string' && rawSource.lookback_unit.trim()) {
+      nextSource.lookback_unit = rawSource.lookback_unit.trim().toLowerCase();
+    }
+    if (definition.id === 'technical') {
+      const rawIndicators = Array.isArray(rawSource.indicators) ? rawSource.indicators : [];
+      const indicators = rawIndicators.filter((indicator) => TECHNICAL_INDICATOR_OPTIONS.some((option) => option.id === indicator));
+      nextSource.indicators = indicators.length > 0 ? indicators : TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id);
+    }
+    normalized[definition.id] = nextSource;
+  });
+
+  return normalized;
+}
+
+function updatePromptConfigSource(promptConfig, sourceId, updater) {
+  const normalized = normalizePromptConfig(promptConfig);
+  const definition = getSourceDefinition(sourceId);
+  const currentSource = normalized[sourceId] || createDefaultSourceConfig(definition);
+
+  return {
+    ...normalized,
+    [sourceId]: updater({ ...currentSource }),
+  };
+}
+
+function buildPromptConfigPreset(presetId) {
+  const nextConfig = createDefaultPromptConfig();
+
+  if (presetId === 'flow_first') {
+    nextConfig.whale.lookback = 180;
+    nextConfig.dark_flow.lookback = 120;
+    nextConfig.technical.lookback = 45;
+    nextConfig.technical.indicators = ['vols', 'prices', 'cdms', 'rsi', 'bollinger', 'snapshot'];
+    nextConfig.news.enabled = true;
+    nextConfig.market.enabled = true;
+    nextConfig.fundamental.enabled = false;
+    nextConfig.ownership.enabled = false;
+    nextConfig.sector.enabled = false;
+  }
+
+  if (presetId === 'deep_dive') {
+    nextConfig.whale.lookback = 365;
+    nextConfig.dark_flow.lookback = 180;
+    nextConfig.technical.lookback = 120;
+    nextConfig.technical.indicators = TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id);
+    nextConfig.news.lookback = 30;
+    nextConfig.market.lookback = 21;
+    nextConfig.fundamental.enabled = true;
+    nextConfig.fundamental.lookback = 8;
+    nextConfig.ownership.enabled = true;
+    nextConfig.ownership.lookback = 365;
+    nextConfig.sector.enabled = true;
+    nextConfig.sector.lookback = 120;
+  }
+
+  if (presetId === 'cost_control') {
+    nextConfig.whale.lookback = 90;
+    nextConfig.dark_flow.lookback = 60;
+    nextConfig.technical.lookback = 20;
+    nextConfig.technical.indicators = ['vols', 'prices', 'rsi', 'snapshot'];
+    nextConfig.news.lookback = 7;
+    nextConfig.market.lookback = 5;
+    nextConfig.fundamental.enabled = false;
+    nextConfig.ownership.enabled = false;
+    nextConfig.sector.enabled = false;
+  }
+
+  return nextConfig;
 }
 
 const DEFAULT_AI_CONFIG = {
@@ -22,7 +293,7 @@ const DEFAULT_AI_CONFIG = {
   ai_api_key_configured: false,
   ai_ready: false,
   effective_ai_source: 'Unknown',
-  ai_prompt_config: {},
+  ai_prompt_config: createDefaultPromptConfig(),
   advisory_refresh_interval_hours: 24,
   advisory_max_auto_refreshes_per_day: 24,
   advisory_max_tokens_per_day: 5000,
@@ -34,20 +305,29 @@ const AICommandCenter = () => {
   const [config, setConfig] = useState(null);
   const [testStatus, setTestStatus] = useState(null); // 'testing', 'success', 'error'
   const [testResult, setTestResult] = useState('');
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
   const currentConfig = config || DEFAULT_AI_CONFIG;
+  const currentPromptConfig = normalizePromptConfig(currentConfig.ai_prompt_config);
+  const totalAuditPages = Math.max(1, Math.ceil((auditTotal || 0) / AUDIT_PAGE_SIZE));
+  const activeSourceCount = PROMPT_SOURCE_DEFINITIONS.filter((definition) => currentPromptConfig?.[definition.id]?.enabled).length;
 
   useEffect(() => {
     fetchConfig();
+    loadAuditLogs(1);
   }, []);
 
   const fetchConfig = async () => {
     setLoading(true);
     try {
-      const resp = await getAIConfig();
+      const resp = await getAICommandCenterConfig();
       setConfig({
         ...DEFAULT_AI_CONFIG,
         ...(resp?.data || {}),
-        ai_prompt_config: resp?.data?.ai_prompt_config || {},
+        ai_prompt_config: normalizePromptConfig(resp?.data?.ai_prompt_config || {}),
       });
     } catch (err) {
       console.error('Failed to fetch AI config:', err);
@@ -56,22 +336,42 @@ const AICommandCenter = () => {
     }
   };
 
+  const loadAuditLogs = async (page = 1) => {
+    setAuditLoading(true);
+    setAuditError('');
+    try {
+      const limit = AUDIT_PAGE_SIZE;
+      const offset = Math.max(0, (page - 1) * limit);
+      const resp = await getAICommandCenterAuditLogs({ limit, offset, order: 'desc' });
+      setAuditPage(page);
+      setAuditTotal(Number(resp?.data?.total || 0));
+      setAuditLogs(Array.isArray(resp?.data?.results) ? resp.data.results : []);
+    } catch (err) {
+      setAuditError(err?.response?.data?.message || 'Không tải được lịch sử audit.');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   const handleSave = async (updatedFields) => {
     setSaving(true);
     try {
-      const resp = await updateAIConfig(updatedFields);
+      const resp = await updateAICommandCenterConfig(updatedFields);
       const responseData = resp?.data || {};
       setConfig((prev) => {
+        const nextPromptConfig = normalizePromptConfig(
+          responseData.ai_prompt_config ||
+          updatedFields?.ai_prompt_config ||
+          prev?.ai_prompt_config ||
+          currentPromptConfig,
+        );
+
         const nextConfig = {
           ...DEFAULT_AI_CONFIG,
           ...(prev || {}),
           ...(updatedFields || {}),
           ...responseData,
-          ai_prompt_config:
-            responseData.ai_prompt_config ||
-            updatedFields?.ai_prompt_config ||
-            prev?.ai_prompt_config ||
-            {},
+          ai_prompt_config: nextPromptConfig,
         };
 
         if (Object.prototype.hasOwnProperty.call(updatedFields || {}, 'ai_api_key')) {
@@ -83,6 +383,7 @@ const AICommandCenter = () => {
 
         return nextConfig;
       });
+      await loadAuditLogs(1);
     } catch (err) {
       console.error('Failed to save AI config:', err);
     } finally {
@@ -101,15 +402,70 @@ const AICommandCenter = () => {
       if (apiKey) {
         payload.ai_api_key = apiKey;
       }
-      const resp = await testAIConnection(payload);
+      const resp = await testAICommandCenterConnection(payload);
       setTestStatus('success');
       setTestResult(resp.data.message || 'Connection successful!');
       // After testing connection, we might want to refresh config to see if ai_ready changed
       fetchConfig();
+      await loadAuditLogs(1);
     } catch (err) {
       setTestStatus('error');
       setTestResult(err.response?.data?.message || 'Connection failed.');
     }
+  };
+
+  const savePromptConfig = async (nextPromptConfig) => {
+    const normalizedPromptConfig = normalizePromptConfig(nextPromptConfig);
+    setConfig((prev) => ({
+      ...prev,
+      ai_prompt_config: normalizedPromptConfig,
+    }));
+    await handleSave({ ai_prompt_config: normalizedPromptConfig });
+  };
+
+  const togglePromptSource = async (sourceId) => {
+    await savePromptConfig(
+      updatePromptConfigSource(currentPromptConfig, sourceId, (sourceConfig) => ({
+        ...sourceConfig,
+        enabled: !Boolean(sourceConfig.enabled),
+      })),
+    );
+  };
+
+  const changePromptSourceLookback = async (sourceId, lookbackValue) => {
+    const definition = getSourceDefinition(sourceId);
+    await savePromptConfig(
+      updatePromptConfigSource(currentPromptConfig, sourceId, (sourceConfig) => ({
+        ...sourceConfig,
+        lookback: clampInt(lookbackValue, 1, 365, definition.defaultLookback),
+      })),
+    );
+  };
+
+  const toggleTechnicalIndicator = async (indicatorId) => {
+    await savePromptConfig(
+      updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => {
+        const selectedIndicators = Array.isArray(sourceConfig.indicators)
+          ? [...sourceConfig.indicators]
+          : TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id);
+
+        const nextIndicators = selectedIndicators.includes(indicatorId)
+          ? selectedIndicators.filter((item) => item !== indicatorId)
+          : [...selectedIndicators, indicatorId];
+
+        return {
+          ...sourceConfig,
+          enabled: true,
+          indicators: nextIndicators.length > 0
+            ? nextIndicators
+            : TECHNICAL_INDICATOR_OPTIONS.map((option) => option.id),
+        };
+      }),
+    );
+  };
+
+  const applyPromptPreset = async (presetId) => {
+    await savePromptConfig(buildPromptConfigPreset(presetId));
   };
 
   if (loading && !config) {
@@ -174,7 +530,7 @@ const AICommandCenter = () => {
                 : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
             )}>
               <BeakerIcon className="w-5 h-5" />
-              <span>Audit & Logs</span>
+                <span>Audit & Logs</span>
             </Tab>
           </Tab.List>
 
@@ -216,6 +572,7 @@ const AICommandCenter = () => {
                       <option value="openai">OpenAI (ChatGPT)</option>
                       <option value="gemini">Google Gemini</option>
                       <option value="claude">Anthropic (Claude)</option>
+                      <option value="copilot">GitHub Copilot</option>
                       <option value="openclaw">OpenClaw (System Default)</option>
                     </select>
                   </div>
@@ -315,142 +672,403 @@ const AICommandCenter = () => {
 
             {/* Panel 2: Task Tuning */}
             <Tab.Panel className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-xl">
-                <div className="flex items-center gap-4 mb-8">
+              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-xl space-y-8">
+                <div className="flex items-center gap-4">
                   <div className="p-3 bg-indigo-500/10 rounded-2xl">
                     <AdjustmentsHorizontalIcon className="w-6 h-6 text-indigo-400" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">Task Tuning</h2>
-                    <p className="text-slate-400 text-sm">Tinh chỉnh nguồn dữ liệu và tham số cho từng tác vụ.</p>
+                    <h2 className="text-xl font-bold text-white">Tinh chỉnh nguồn dữ liệu</h2>
+                    <p className="text-slate-400 text-sm">Chọn nguồn, khoảng nhìn lại và chỉ báo cho từng tác vụ.</p>
                   </div>
                 </div>
 
-                <div className="space-y-12">
-                  {/* Stock Advisory Tuning */}
-                  <div className="space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
-                      <h3 className="text-lg font-bold text-white">Stock Advisory Synthesis</h3>
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Mẫu cấu hình nhanh</div>
+                      <p className="mt-1 text-sm text-slate-400">Dùng preset làm điểm xuất phát, rồi chỉnh từng nguồn theo nhu cầu thực tế.</p>
                     </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {['technical', 'whale', 'fundamental', 'sentiment', 'news', 'dark_flow', 'market', 'ownership', 'sector'].map((sourceId) => {
-                        const stockAdvisory = currentConfig.ai_prompt_config?.tasks?.stock_advisory || currentConfig.ai_prompt_config?.stock_advisory || {};
-                        const sources = stockAdvisory.sources || {};
-                        
-                        // Support both string list and object dict
-                        const isEnabled = Array.isArray(sources) 
-                          ? sources.includes(sourceId)
-                          : sources[sourceId]?.enabled;
-                        
-                        return (
-                          <div key={sourceId} className={classNames(
-                            "p-4 rounded-2xl border transition-all duration-300 cursor-pointer",
-                            isEnabled ? "bg-indigo-500/5 border-indigo-500/20" : "bg-slate-800/20 border-slate-800/50 opacity-60"
-                          )} onClick={() => {
-                            const newPromptConfig = { ...(currentConfig.ai_prompt_config || {}) };
-                            if (!newPromptConfig.tasks) newPromptConfig.tasks = {};
-                            if (!newPromptConfig.tasks.stock_advisory) newPromptConfig.tasks.stock_advisory = { sources: {} };
-                            
-                            const currentSources = { ...(newPromptConfig.tasks.stock_advisory.sources || {}) };
-                            if (isEnabled) {
-                              if (Array.isArray(currentSources)) {
-                                newPromptConfig.tasks.stock_advisory.sources = currentSources.filter(s => s !== sourceId);
-                              } else {
-                                delete currentSources[sourceId];
-                                newPromptConfig.tasks.stock_advisory.sources = currentSources;
-                              }
-                            } else {
-                              if (Array.isArray(currentSources)) {
-                                newPromptConfig.tasks.stock_advisory.sources = [...currentSources, sourceId];
-                              } else {
-                                currentSources[sourceId] = { enabled: true, lookback: 30 };
-                                newPromptConfig.tasks.stock_advisory.sources = currentSources;
-                              }
-                            }
-                            handleSave({ ai_prompt_config: newPromptConfig });
-                          }}>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-bold text-slate-200 capitalize">{sourceId.replace('_', ' ')}</span>
-                              <div className={classNames(
-                                "w-5 h-5 rounded-md border flex items-center justify-center transition-all",
-                                isEnabled ? "bg-indigo-600 border-indigo-500" : "bg-slate-800 border-slate-700"
-                              )}>
-                                {isEnabled && <CheckCircleIcon className="w-4 h-4 text-white" />}
-                              </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                              {sourceId === 'technical' && 'SMA, RSI, Bollinger Bands, Volume indicators'}
-                              {sourceId === 'whale' && 'Institutional flow, Dark money, Order flow intensity'}
-                              {sourceId === 'fundamental' && 'P/E, EPS, Revenue, Debt/Equity, Growth metrics'}
-                              {sourceId === 'sentiment' && 'Social media, News sentiment, Fear & Greed'}
-                              {sourceId === 'news' && 'Recent headlines, Corporate announcements'}
-                            </p>
-                          </div>
-                        );
-                      })}
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'balanced', label: 'Cân bằng' },
+                        { id: 'flow_first', label: 'Ưu tiên dòng tiền' },
+                        { id: 'deep_dive', label: 'Chuyên sâu' },
+                        { id: 'cost_control', label: 'Tiết kiệm token' },
+                      ].map((preset) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => void applyPromptPreset(preset.id)}
+                          className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
+                </div>
 
-                  {/* Advisory Global Constraints */}
-                  <div className="pt-8 border-t border-slate-800 space-y-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
-                      <h3 className="text-lg font-bold text-white">Global Advisory Constraints</h3>
-                    </div>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Nguồn đang bật</div>
+                    <div className="mt-2 text-3xl font-black text-white">{activeSourceCount}</div>
+                    <div className="mt-1 text-xs text-slate-400">trên {PROMPT_SOURCE_DEFINITIONS.length} nguồn có thể chọn</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Chỉ báo kỹ thuật</div>
+                    <div className="mt-2 text-3xl font-black text-white">{currentPromptConfig.technical?.indicators?.length || 0}</div>
+                    <div className="mt-1 text-xs text-slate-400">chỉ báo đang được nạp vào prompt</div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Whale lookback</div>
+                    <div className="mt-2 text-3xl font-black text-white">{currentPromptConfig.whale?.lookback || 0}</div>
+                    <div className="mt-1 text-xs text-slate-400">{getSourceDefinition('whale').lookbackUnit}</div>
+                  </div>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Refresh Interval</label>
-                        <div className="flex items-center gap-3">
-                          <input 
-                            type="number"
-                            value={currentConfig.advisory_refresh_interval_hours || 0}
-                            onChange={(e) => setConfig({ ...currentConfig, advisory_refresh_interval_hours: parseInt(e.target.value) || 0 })}
-                            onBlur={(e) => handleSave({ advisory_refresh_interval_hours: parseInt(e.target.value) || 0 })}
-                            className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
-                          />
-                          <span className="text-xs text-slate-500">hrs</span>
+                <div className="grid gap-4 xl:grid-cols-2">
+                  {PROMPT_SOURCE_DEFINITIONS.map((definition) => {
+                    const sourceConfig = currentPromptConfig?.[definition.id] || createDefaultSourceConfig(definition);
+                    const enabled = Boolean(sourceConfig.enabled);
+
+                    return (
+                      <article
+                        key={definition.id}
+                        className={classNames(
+                          'rounded-3xl border p-5 transition-all duration-300',
+                          enabled
+                            ? 'border-indigo-500/20 bg-indigo-500/5'
+                            : 'border-slate-800/70 bg-slate-950/35 opacity-80',
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-200">
+                                {definition.label}
+                              </span>
+                              <span className="text-[10px] uppercase tracking-widest text-slate-500">
+                                {definition.lookbackUnit}
+                              </span>
+                            </div>
+                            <p className="mt-2 text-sm text-slate-400">{definition.description}</p>
+                          </div>
+                          <label className="flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200">
+                            <input
+                              type="checkbox"
+                              checked={enabled}
+                              onChange={() => void togglePromptSource(definition.id)}
+                            />
+                            <span>{enabled ? 'Bật' : 'Tắt'}</span>
+                          </label>
                         </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Max Auto Refresh/Day</label>
-                        <input 
+
+                        <div className="mt-5 grid gap-4 md:grid-cols-2">
+                          <label className="text-xs font-medium text-slate-400">
+                            Khoảng nhìn lại
+                            <select
+                              value={sourceConfig.lookback}
+                              onChange={(e) => void changePromptSourceLookback(definition.id, e.target.value)}
+                              className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-indigo-500"
+                            >
+                              {definition.lookbackOptions.map((option) => (
+                                <option key={option} value={option}>
+                                  {option} {definition.lookbackUnit}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <div className="rounded-2xl border border-slate-800 bg-slate-950/60 p-3 text-xs text-slate-400">
+                            <div className="font-semibold text-slate-200">Mô tả nhanh</div>
+                            <p className="mt-1 leading-5">
+                              {definition.id === 'technical' && 'Tùy chỉnh thêm bộ chỉ báo, ưu tiên động lượng, xu hướng hoặc biến động.'}
+                              {definition.id === 'whale' && 'Phù hợp khi cần theo dõi dòng tiền lớn trong nhiều phiên.'}
+                              {definition.id === 'dark_flow' && 'Giữ nguồn này bật để nhìn rõ áp lực đặt lệnh và tín hiệu ẩn.'}
+                              {definition.id === 'news' && 'Hữu ích cho các tác vụ cần bám sát tin tức gần đây.'}
+                              {definition.id === 'market' && 'Giúp AI đặt kết quả vào bối cảnh thị trường tổng thể.'}
+                              {definition.id === 'fundamental' && 'Dùng khi cần phân tích dài hơi và bền vững hơn.'}
+                              {definition.id === 'ownership' && 'Quan trọng khi muốn kiểm tra thay đổi sở hữu nội bộ.'}
+                              {definition.id === 'sector' && 'Hữu ích khi muốn so sánh tương quan với nhóm ngành.'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {definition.id === 'technical' ? (
+                          <div className="mt-5 space-y-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-xs font-bold uppercase tracking-widest text-slate-500">Chỉ báo kỹ thuật</div>
+                                <p className="mt-1 text-xs text-slate-400">Bấm để chọn nhiều chỉ báo cùng lúc.</p>
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {sourceConfig.indicators?.length || 0} / {TECHNICAL_INDICATOR_OPTIONS.length}
+                              </div>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                              {TECHNICAL_INDICATOR_OPTIONS.map((indicator) => {
+                                const isSelected = Array.isArray(sourceConfig.indicators) && sourceConfig.indicators.includes(indicator.id);
+                                return (
+                                  <button
+                                    key={indicator.id}
+                                    type="button"
+                                    onClick={() => void toggleTechnicalIndicator(indicator.id)}
+                                    className={classNames(
+                                      'rounded-2xl border p-3 text-left transition-all',
+                                      isSelected
+                                        ? 'border-cyan-500/30 bg-cyan-500/10 text-cyan-100'
+                                        : 'border-slate-800 bg-slate-900/60 text-slate-300 hover:border-slate-700',
+                                    )}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-sm font-semibold">{indicator.label}</span>
+                                      <span className={classNames(
+                                        'h-2.5 w-2.5 rounded-full',
+                                        isSelected ? 'bg-cyan-400' : 'bg-slate-600',
+                                      )} />
+                                    </div>
+                                    <p className="mt-2 text-[11px] leading-5 text-slate-400">{indicator.description}</p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => void savePromptConfig(updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => ({
+                                  ...sourceConfig,
+                                  enabled: true,
+                                  indicators: TECHNICAL_INDICATOR_OPTIONS.map((indicator) => indicator.id),
+                                }))) }
+                                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
+                              >
+                                Bật toàn bộ
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void savePromptConfig(updatePromptConfigSource(currentPromptConfig, 'technical', (sourceConfig) => ({
+                                  ...sourceConfig,
+                                  enabled: true,
+                                  indicators: ['vols', 'prices', 'rsi', 'snapshot'],
+                                }))) }
+                                className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:border-cyan-500/40 hover:bg-cyan-500/10"
+                              >
+                                Bộ gọn nhẹ
+                              </button>
+                            </div>
+                          </div>
+                        ) : null}
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-4 border-t border-slate-800 space-y-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
+                    <h3 className="text-lg font-bold text-white">Chính sách AI advisory</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Khoảng cách làm mới (giờ)</label>
+                      <div className="flex items-center gap-3">
+                        <input
                           type="number"
-                          value={currentConfig.advisory_max_auto_refreshes_per_day || 0}
-                          onChange={(e) => setConfig({ ...currentConfig, advisory_max_auto_refreshes_per_day: parseInt(e.target.value) || 0 })}
-                          onBlur={(e) => handleSave({ advisory_max_auto_refreshes_per_day: parseInt(e.target.value) || 0 })}
-                          className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
+                          min="1"
+                          value={currentConfig.advisory_refresh_interval_hours || 0}
+                          onChange={(e) => setConfig({ ...currentConfig, advisory_refresh_interval_hours: parseInt(e.target.value, 10) || 0 })}
+                          onBlur={(e) => handleSave({ advisory_refresh_interval_hours: parseInt(e.target.value, 10) || 0 })}
+                          className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-indigo-500"
                         />
+                        <span className="text-xs text-slate-500">giờ</span>
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Daily Token Budget</label>
-                        <input 
-                          type="number"
-                          value={currentConfig.advisory_max_tokens_per_day || 0}
-                          onChange={(e) => setConfig({ ...currentConfig, advisory_max_tokens_per_day: parseInt(e.target.value) || 0 })}
-                          onBlur={(e) => handleSave({ advisory_max_tokens_per_day: parseInt(e.target.value) || 0 })}
-                          className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white w-full outline-none focus:ring-1 focus:ring-indigo-500"
-                        />
-                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Số lần auto refresh tối đa/ngày</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={currentConfig.advisory_max_auto_refreshes_per_day || 0}
+                        onChange={(e) => setConfig({ ...currentConfig, advisory_max_auto_refreshes_per_day: parseInt(e.target.value, 10) || 0 })}
+                        onBlur={(e) => handleSave({ advisory_max_auto_refreshes_per_day: parseInt(e.target.value, 10) || 0 })}
+                        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Ngân sách token tối đa/ngày</label>
+                      <input
+                        type="number"
+                        min="100"
+                        step="100"
+                        value={currentConfig.advisory_max_tokens_per_day || 0}
+                        onChange={(e) => setConfig({ ...currentConfig, advisory_max_tokens_per_day: parseInt(e.target.value, 10) || 0 })}
+                        onBlur={(e) => handleSave({ advisory_max_tokens_per_day: parseInt(e.target.value, 10) || 0 })}
+                        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </Tab.Panel>
 
-            {/* Panel 3: Audit (Placeholder) */}
+            {/* Panel 3: Audit */}
             <Tab.Panel className="animate-in slide-in-from-right-4 duration-500">
-              <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 shadow-xl min-h-[400px] flex flex-col items-center justify-center text-center">
-                <BeakerIcon className="w-16 h-16 text-slate-700 mb-4" />
-                <h2 className="text-xl font-bold text-slate-300">AI Usage Audit</h2>
-                <p className="text-slate-500 mt-2 max-w-md">
-                  Theo dõi lịch sử gọi API, token đã dùng và các phản hồi từ AI.
-                </p>
-                <div className="mt-8 text-xs text-slate-600 font-mono">
-                  Module: backend/portfolio/views_ai_runtime_stats.py
+              <div className="space-y-6 rounded-3xl border border-slate-800 bg-slate-900/50 p-8 shadow-xl backdrop-blur-xl">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h2 className="text-xl font-bold text-white">Nhật ký audit Command Center</h2>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Mỗi trang chỉ hiển thị một bản ghi để bạn tập trung vào một cấu hình tại một thời điểm.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadAuditLogs(1)}
+                      className="rounded-xl border border-slate-700 px-4 py-2 text-sm text-slate-200 transition hover:bg-slate-800"
+                    >
+                      Làm mới
+                    </button>
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-2 text-sm text-slate-300">
+                      Trang {auditPage} / {totalAuditPages}
+                    </div>
+                  </div>
                 </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3">
+                  <div className="text-xs text-slate-400">
+                    {auditTotal > 0
+                      ? `Đang xem bản ghi ${Math.min(auditTotal, (auditPage - 1) * AUDIT_PAGE_SIZE + 1)} / ${auditTotal}`
+                      : 'Chưa có bản ghi nào.'}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadAuditLogs(Math.max(1, auditPage - 1))}
+                      disabled={auditPage <= 1 || auditLoading}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-800"
+                    >
+                      <ChevronLeftIcon className="h-4 w-4" />
+                      Trước
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void loadAuditLogs(Math.min(totalAuditPages, auditPage + 1))}
+                      disabled={auditPage >= totalAuditPages || auditLoading}
+                      className="inline-flex items-center gap-2 rounded-xl border border-slate-700 px-3 py-2 text-sm text-slate-200 transition disabled:cursor-not-allowed disabled:opacity-40 hover:bg-slate-800"
+                    >
+                      Sau
+                      <ChevronRightIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {auditLoading ? (
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                    Đang tải audit logs...
+                  </div>
+                ) : auditError ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                    {auditError}
+                  </div>
+                ) : auditLogs.length === 0 ? (
+                  <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-6 text-sm text-slate-400">
+                    Chưa có bản ghi audit nào.
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {auditLogs.map((log) => {
+                      const beforeSnapshot = log.before_json || {};
+                      const afterSnapshot = log.after_json || {};
+
+                      return (
+                        <article key={log.id} className="rounded-2xl border border-slate-800 bg-slate-950/50 p-5">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                            <div className="space-y-2">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="rounded-full bg-indigo-500/15 px-3 py-1 text-xs font-semibold text-indigo-300">
+                                  {log.action}
+                                </span>
+                                <span className="text-sm text-slate-200">{log.reason || 'Không có lý do chi tiết.'}</span>
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {log.actor ? `Bởi ${log.actor}` : 'Bởi hệ thống'} · {log.created_at || 'N/A'}
+                              </div>
+                            </div>
+                            <div className="text-xs text-slate-500 md:text-right">
+                              Cấu hình #{log.command_center_config_id}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Trước</div>
+                              <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Provider</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{beforeSnapshot.ai_provider || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Model</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{beforeSnapshot.ai_model || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Nguồn hiệu lực</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{beforeSnapshot.effective_ai_source || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Sẵn sàng</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{beforeSnapshot.ai_ready ? 'Có' : 'Không'}</div>
+                                </div>
+                              </div>
+                              <details className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-widest text-slate-400">
+                                  Xem JSON snapshot trước
+                                </summary>
+                                <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-slate-900 p-3 text-[11px] text-slate-300">
+                                  {JSON.stringify(beforeSnapshot, null, 2)}
+                                </pre>
+                              </details>
+                            </div>
+
+                            <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Sau</div>
+                              <div className="mt-3 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Provider</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{afterSnapshot.ai_provider || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Model</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{afterSnapshot.ai_model || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Nguồn hiệu lực</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{afterSnapshot.effective_ai_source || 'N/A'}</div>
+                                </div>
+                                <div className="rounded-xl bg-slate-950/70 p-3">
+                                  <div className="text-[10px] uppercase tracking-widest text-slate-500">Sẵn sàng</div>
+                                  <div className="mt-1 font-semibold text-slate-100">{afterSnapshot.ai_ready ? 'Có' : 'Không'}</div>
+                                </div>
+                              </div>
+                              <details className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-widest text-slate-400">
+                                  Xem JSON snapshot sau
+                                </summary>
+                                <pre className="mt-3 max-h-80 overflow-auto rounded-xl bg-slate-900 p-3 text-[11px] text-slate-300">
+                                  {JSON.stringify(afterSnapshot, null, 2)}
+                                </pre>
+                              </details>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </Tab.Panel>
 

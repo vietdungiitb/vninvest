@@ -1,4 +1,5 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { getUserConfig } from '../api/client';
 
 // Default config similar to StockDetail's _getDefaultPromptConfig
 const DEFAULT_AI_CONFIG = {
@@ -16,14 +17,32 @@ const DEFAULT_AI_CONFIG = {
  * respects Global AI Source Config as SSOT.
  */
 export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, strategy = 'conservative', enabled = true }) {
-  
-  const aiConfig = useMemo(() => {
-    try {
-      const stored = localStorage.getItem('ai_global_prompt_config');
-      return stored ? JSON.parse(stored) : DEFAULT_AI_CONFIG;
-    } catch {
-      return DEFAULT_AI_CONFIG;
+  const [aiConfig, setAiConfig] = useState(DEFAULT_AI_CONFIG);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAiConfig() {
+      try {
+        const response = await getUserConfig();
+        if (cancelled) return;
+        const promptConfig = response?.data?.ai_prompt_config || response?.data?.prompt_config || {};
+        setAiConfig({
+          ...DEFAULT_AI_CONFIG,
+          ...(promptConfig || {}),
+        });
+      } catch {
+        if (!cancelled) {
+          setAiConfig(DEFAULT_AI_CONFIG);
+        }
+      }
     }
+
+    loadAiConfig();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const strategyParams = useMemo(() => {

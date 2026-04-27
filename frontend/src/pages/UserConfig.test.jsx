@@ -2,12 +2,17 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import UserConfig from './UserConfig';
 import { useI18n } from '../context/LangContext';
+import { usePortfolio } from '../context/PortfolioContext';
+import { useInterface } from '../context/InterfaceContext';
 import * as client from '../api/client';
 
 // Mock dependencies
 jest.mock('../context/LangContext');
+jest.mock('../context/PortfolioContext');
+jest.mock('../context/InterfaceContext');
 jest.mock('../api/client');
 
 const mockT = (key) => {
@@ -19,10 +24,10 @@ const mockT = (key) => {
     'common.language': 'Language',
     'common.theme': 'Theme',
     'settings.whaleThreshold': 'Whale alert threshold',
-    'settings.advisoryPolicy': 'AI advisory policy',
-    'settings.periodicAuto': 'Enable periodic auto-generation',
-    'settings.eventBasedAuto': 'Enable event-based advisory',
-    'settings.manualRefresh': 'Allow manual refresh',
+    'settings.movedTitle': 'AI settings moved to AI Command Center',
+    'settings.movedDescription': 'Provider, model, API key, and prompt config are now managed centrally in AI Command Center.',
+    'settings.openAiCommandCenter': 'Mở AI Command Center',
+    'settings.generalOnlyNotice': 'This page now only keeps general user preferences such as language, theme, and alert thresholds.',
   };
   return translations[key] || key;
 };
@@ -36,60 +41,32 @@ const mockUserConfig = {
   language: 'vi',
   theme: 'dark',
   whale_alert_threshold: 500,
-  advisory_auto_generation_enabled: true,
-  advisory_whale_signal_enabled: true,
-  advisory_manual_refresh_enabled: true,
-  advisory_refresh_interval_hours: 24,
-  advisory_max_auto_refreshes_per_day: 24,
-  advisory_max_tokens_per_day: 5000,
-  ai_provider: 'openclaw',
-  ai_model: '',
-  ai_api_key: '',
-};
-
-const mockAIConfig = {
-  ai_provider: 'openclaw',
-  ai_model: '',
-  ai_api_key_configured: false,
-  ai_ready: false,
-};
-
-const mockAIOptions = {
-  providers: {
-    openai: ['gpt-4o', 'gpt-4-turbo'],
-    openclaw: ['default'],
-  },
-  model_catalog: {
-    openai: [
-      { id: 'gpt-4o', label: 'GPT-4 Omni', capabilities: ['text_advisory'], validated_for_runtime: true },
-    ],
-    openclaw: [
-      { id: 'default', label: 'OpenClaw', capabilities: ['text_advisory'], validated_for_runtime: true },
-    ],
-  },
 };
 
 describe('UserConfig', () => {
   const getLanguageSelect = () => screen.getByLabelText('Language');
+  const renderUserConfig = () => render(
+    <MemoryRouter>
+      <UserConfig />
+    </MemoryRouter>,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
     useI18n.mockReturnValue(mockI18nContext);
-    
-    client.getAIOptions.mockResolvedValue({ data: mockAIOptions });
-    client.getUserConfig.mockResolvedValue({ data: mockAIConfig });
+    usePortfolio.mockReturnValue({ isAuthenticated: true });
+    useInterface.mockReturnValue({ uiMode: 'modern', setUiMode: jest.fn() });
     client.getPortfolioUserConfig.mockResolvedValue({ data: mockUserConfig });
     client.updatePortfolioUserConfig.mockResolvedValue({ data: mockUserConfig });
-    client.updateUserConfig.mockResolvedValue({ data: mockAIConfig });
   });
 
   it('renders loading state initially', () => {
-    render(<UserConfig />);
+    renderUserConfig();
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
 
   it('loads and displays all config fields', async () => {
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(getLanguageSelect()).toHaveValue('vi');
@@ -100,17 +77,8 @@ describe('UserConfig', () => {
     expect(screen.getByLabelText('settings.theme')).toHaveValue('dark'); // theme
   });
 
-  it('loads advisory policy toggles', async () => {
-    render(<UserConfig />);
-
-    await waitFor(() => {
-      const checkboxes = screen.getAllByRole('checkbox');
-      expect(checkboxes.length).toBeGreaterThanOrEqual(2); // periodic + manual
-    });
-  });
-
   it('persists language setting after save', async () => {
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(getLanguageSelect()).toHaveValue('vi');
@@ -137,7 +105,7 @@ describe('UserConfig', () => {
   });
 
   it('persists whale alert threshold setting', async () => {
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('500')).toBeInTheDocument();
@@ -159,26 +127,6 @@ describe('UserConfig', () => {
     });
   });
 
-  it('persists advisory policy toggles', async () => {
-    render(<UserConfig />);
-
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('500')).toBeInTheDocument();
-    });
-
-    const checkboxes = screen.getAllByRole('checkbox');
-    const eventBasedToggle = checkboxes[1]; // event-based is typically second
-
-    fireEvent.click(eventBasedToggle);
-
-    const saveButton = screen.getAllByText('Save')[0];
-    fireEvent.click(saveButton);
-
-    await waitFor(() => {
-      expect(client.updatePortfolioUserConfig).toHaveBeenCalled();
-    });
-  });
-
   it('displays error message on save failure', async () => {
     client.updatePortfolioUserConfig.mockRejectedValue({
       response: {
@@ -188,7 +136,7 @@ describe('UserConfig', () => {
       },
     });
 
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('500')).toBeInTheDocument();
@@ -206,20 +154,32 @@ describe('UserConfig', () => {
     });
   });
 
-  it('shows AI configuration section', async () => {
-    render(<UserConfig />);
+  it('shows AI Command Center handoff link', async () => {
+    renderUserConfig();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('500')).toBeInTheDocument();
     });
 
-    // AI config section should render provider/model selects
-    const providerSelects = screen.getAllByDisplayValue('openclaw');
-    expect(providerSelects.length).toBeGreaterThan(0);
+    expect(screen.getByRole('link', { name: 'Mở AI Command Center' })).toHaveAttribute(
+      'href',
+      '/settings/ai',
+    );
+  });
+
+  it('does not render advisory policy editor anymore', async () => {
+    renderUserConfig();
+
+    await waitFor(() => {
+      expect(getLanguageSelect()).toHaveValue('vi');
+    });
+
+    expect(screen.queryByText('AI advisory policy')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Enable periodic auto-generation')).not.toBeInTheDocument();
   });
 
   it('handles data reload after page refresh simulation', async () => {
-    const { unmount } = render(<UserConfig />);
+    const { unmount } = renderUserConfig();
 
     await waitFor(() => {
       expect(getLanguageSelect()).toHaveValue('vi');
@@ -227,12 +187,10 @@ describe('UserConfig', () => {
 
     // Simulate page reload by unmounting and mounting again
     jest.clearAllMocks();
-    client.getAIOptions.mockResolvedValue({ data: mockAIOptions });
-    client.getUserConfig.mockResolvedValue({ data: mockAIConfig });
     client.getPortfolioUserConfig.mockResolvedValue({ data: mockUserConfig });
 
     unmount();
-    render(<UserConfig />);
+    renderUserConfig();
 
     // Data should reload on mount
     await waitFor(() => {
@@ -242,7 +200,7 @@ describe('UserConfig', () => {
   });
 
   it('validates minimum whale threshold', async () => {
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('500')).toBeInTheDocument();
@@ -265,7 +223,7 @@ describe('UserConfig', () => {
   });
 
   it('shows success message after save', async () => {
-    render(<UserConfig />);
+    renderUserConfig();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('500')).toBeInTheDocument();

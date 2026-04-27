@@ -52,7 +52,8 @@ const en = {
     },
   },
   settings: {
-    pageDescription: 'Centralized account preferences and AI advisory policy controls.',
+    title: 'Account settings',
+    pageDescription: 'Centralized account preferences. AI settings now live in AI Command Center.',
     general: 'General preferences',
     theme: 'Theme',
     whaleThreshold: 'Whale alert threshold (million VND)',
@@ -66,8 +67,10 @@ const en = {
     refreshIntervalHours: 'Refresh interval (hours)',
     maxAutoPerDay: 'Max auto refreshes/day',
     maxTokensPerDay: 'Max token budget/day',
-    movedTitle: 'Settings moved to UserConfig',
-    movedDescription: 'AI model configuration, advisory policy, and event-based auto advisory are now managed in UserConfig.',
+    movedTitle: 'AI settings moved to AI Command Center',
+    movedDescription: 'Provider, model, API key, and prompt config are now managed centrally in AI Command Center.',
+    openAiCommandCenter: 'Open AI Command Center',
+    generalOnlyNotice: 'This page now only keeps general user preferences such as language, theme, and alert thresholds.',
   },
   auth: {
     brandName: 'VNInvest',

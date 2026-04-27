@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-04-27ab)
+- backend/portfolio/ai_advisory_helpers.py (MODIFIED - chuan hoa canonical prompt config va legacy nested layout)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho canonical/legacy prompt config)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - task tuning control thuc, preset, audit pager)
+- frontend/src/pages/UserConfig.jsx (MODIFIED - loai bo advisory editor cu)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cap nhat test theo SSOT moi)
+- module_tree_full.md (MODIFIED - regenerate sau code changes)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 15/15 PASS.
+- PASSED: `npm test -- --watch=false --runInBand src/pages/UserConfig.test.jsx` => 10/10 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi UI/SSOT.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: React Router future-flag warnings va act warnings trong test UserConfig con xuat hien, nhung khong lam fail suite.
+
 # 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-24cm)

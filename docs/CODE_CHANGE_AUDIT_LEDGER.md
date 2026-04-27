@@ -1,3 +1,29 @@
+# Code Change Audit Ledger
+
+## Entry 2026-04-27ab - Polish AI Command Center SSOT task tuning and audit pagination
+
+Muc tieu:
+- Chuyen advisory policy khoi UserConfig vao AI Command Center theo canonical SSOT.
+- Sua luong prompt config de luu duoc source canonical va legacy nested layout, khong con mat selection khi user chon source/indicator.
+- Nang cap Task Tuning thanh cac control chon that (checkbox/select/preset) va rut gon audit log thanh tung trang mot ban ghi.
+
+Danh sach tep cap nhat:
+- backend/portfolio/ai_advisory_helpers.py (MODIFIED - chuan hoa canonical prompt config, nhan legacy nested layout va giu `lookback_unit`)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho canonical va legacy prompt config layouts)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - thay click-cards task tuning bang control thuc, preset, indicator chips va audit pager)
+- frontend/src/pages/UserConfig.jsx (MODIFIED - bo advisory editor cu, giu lai chi cai dat chung)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - cap nhat test theo SSOT moi)
+- module_tree_full.md (MODIFIED - regenerate sau khi code thay doi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 15/15 PASS.
+- PASSED: `npm test -- --watch=false --runInBand src/pages/UserConfig.test.jsx` => 10/10 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi UI/SSOT.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: React Router future-flag warnings va act warnings trong test UserConfig con xuat hien, nhung khong lam fail suite.
+
 # Entry 2026-04-24cm - Remove redundant lines from Whale Analytics info panel
 
 Mục tiêu:
@@ -13,7 +39,42 @@ Validation:
 - PASSED: diagnostics sạch trên `frontend/src/components/WhaleBubbleChart.jsx`.
 - PASSED: `docker compose -f c:/Mujoco Projects/vninvest/docker-compose.dev.yml up -d --build frontend` => frontend dev container đã rebuild/restart thành công.
 - NOTE: Info panel tóm tắt giờ chỉ còn các dòng tổng hợp cần thiết, không còn lặp lại thông tin legend phía dưới.
-# Code Change Audit Ledger
+## Entry 2026-04-27aa - Migrate AI Command Center SSOT to backend
+
+Muc tieu:
+- Chuyen toan bo AI runtime, prompt config va audit log ve AI Command Center lam SSOT backend.
+- Loai bo AI editor khoi UserConfig, dong bo frontend sang route Command Center va thay localStorage prompt config bang backend.
+- Ghi lai tung file thay doi de audit co the doi chieu nhanh.
+
+Danh sach tep cap nhat:
+- backend/portfolio/models.py (MODIFIED - them AICommandCenterConfig va AICommandCenterAuditLog)
+- backend/portfolio/serializers.py (MODIFIED - tach AI runtime fields khoi UserConfigSerializer, them AICommandCenterConfigSerializer)
+- backend/portfolio/ai_runtime_config.py (MODIFIED - uu tien AICommandCenterConfig, giu legacy UserConfig lam compatibility fallback)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - them route/luong doc ghi AI Command Center va audit logs)
+- backend/portfolio/views.py (MODIFIED - re-export ai_command_center_audit_logs_api)
+- backend/portfolio/urls.py (MODIFIED - them route ai-command-center, test-connection va audit-logs)
+- backend/portfolio/migrations/0059_aicommandcenterconfig_aicommandcenterauditlog.py (NEW - tao hai model moi)
+- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - rebaseline API tests sang Command Center SSOT)
+- backend/portfolio/tests/test_ai_runtime_config.py (MODIFIED - them test uu tien Command Center)
+- frontend/src/api/client.js (MODIFIED - them helper AI Command Center va doi alias AI legacy sang route moi)
+- frontend/src/pages/AICommandCenter.jsx (MODIFIED - dung backend SSOT moi va hien thi audit logs thuc)
+- frontend/src/pages/UserConfig.jsx (MODIFIED - go bo inline AI editor, thay bang handoff sang AI Command Center)
+- frontend/src/pages/UserConfig.test.jsx (MODIFIED - update test harness va assert handoff link)
+- frontend/src/components/AIAdvisoryPromptConfigDrawer.jsx (MODIFIED - bo localStorage persistence, chi con pure editor)
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - load prompt config tu backend thay localStorage)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - load/save prompt config qua backend Command Center SSOT)
+- frontend/src/i18n/vi.js (MODIFIED - doi copy UserConfig/AI handoff sang AI Command Center)
+- frontend/src/i18n/en.js (MODIFIED - doi copy UserConfig/AI handoff sang AI Command Center)
+- module_tree_full.md (MODIFIED - regenerate module tree sau khi them/sua symbol)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 14/14 PASS.
+- PASSED: `npm test -- --watch=false --runInBand src/pages/UserConfig.test.jsx` => 11/11 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi UI/SSOT.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: `UserConfig` khong con la noi chinh sua AI; prompt config va audit log da chuyen sang Command Center backend.
 
 ## Entry 2026-04-24cl - Restore line-reference panel cues and horizontal chevron for Whale Analytics
 

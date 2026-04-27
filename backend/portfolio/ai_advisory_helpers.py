@@ -743,17 +743,59 @@ VALID_TECHNICAL_INDICATORS: frozenset = frozenset({
 })
 
 
+def _extract_prompt_sources(raw_config: dict | None):
+    if not isinstance(raw_config, dict):
+        return {}
+
+    raw_sources = raw_config.get('sources')
+    if isinstance(raw_sources, (dict, list)):
+        return raw_sources
+
+    legacy_tasks = raw_config.get('tasks')
+    if isinstance(legacy_tasks, dict):
+        legacy_stock_advisory = legacy_tasks.get('stock_advisory')
+        if isinstance(legacy_stock_advisory, dict):
+            nested_sources = legacy_stock_advisory.get('sources')
+            if isinstance(nested_sources, (dict, list)):
+                return nested_sources
+            if any(source_id in legacy_stock_advisory for source_id in _PROMPT_CONFIG_DEFAULTS['sources'].keys()):
+                return legacy_stock_advisory
+
+    legacy_stock_advisory = raw_config.get('stock_advisory')
+    if isinstance(legacy_stock_advisory, dict):
+        nested_sources = legacy_stock_advisory.get('sources')
+        if isinstance(nested_sources, (dict, list)):
+            return nested_sources
+        if any(source_id in legacy_stock_advisory for source_id in _PROMPT_CONFIG_DEFAULTS['sources'].keys()):
+            return legacy_stock_advisory
+
+    if any(source_id in raw_config for source_id in _PROMPT_CONFIG_DEFAULTS['sources'].keys()):
+        return raw_config
+
+    return {}
+
+
 def _parse_prompt_config(raw_config: dict | None) -> dict:
     """Parse và normalize prompt_config, fallback về canonical defaults khi thiếu/lỗi."""
     defaults = _PROMPT_CONFIG_DEFAULTS['sources']
     if not isinstance(raw_config, dict):
         return {src: dict(cfg) for src, cfg in defaults.items()}
 
-    raw_sources = raw_config.get('sources') or {}
+    raw_sources = _extract_prompt_sources(raw_config)
+    if isinstance(raw_sources, list):
+        raw_sources = {source_id: {'enabled': True} for source_id in raw_sources if isinstance(source_id, str)}
+
     resolved: dict = {}
     for source_id, default_cfg in defaults.items():
         raw_src = raw_sources.get(source_id) if isinstance(raw_sources, dict) else {}
-        if not isinstance(raw_src, dict):
+        raw_indicator_list = None
+        if isinstance(raw_src, bool):
+            raw_src = {'enabled': raw_src}
+        elif isinstance(raw_src, list):
+            if source_id == 'technical':
+                raw_indicator_list = [ind for ind in raw_src if isinstance(ind, str)]
+            raw_src = {'enabled': bool(raw_src)}
+        elif not isinstance(raw_src, dict):
             raw_src = {}
 
         enabled = bool(raw_src.get('enabled', default_cfg['enabled']))
@@ -763,10 +805,14 @@ def _parse_prompt_config(raw_config: dict | None) -> dict:
         except (TypeError, ValueError):
             lookback = default_cfg['lookback']
 
-        entry: dict = {'enabled': enabled, 'lookback': lookback}
+        lookback_unit = str(raw_src.get('lookback_unit', default_cfg.get('lookback_unit', 'day')) or '').strip().lower()
+        if not lookback_unit:
+            lookback_unit = str(default_cfg.get('lookback_unit', 'day') or 'day').strip().lower()
+
+        entry: dict = {'enabled': enabled, 'lookback': lookback, 'lookback_unit': lookback_unit}
 
         if source_id == 'technical':
-            raw_indicators = raw_src.get('indicators', default_cfg.get('indicators', []))
+            raw_indicators = raw_indicator_list if raw_indicator_list is not None else raw_src.get('indicators', default_cfg.get('indicators', []))
             if isinstance(raw_indicators, list):
                 valid = [ind for ind in raw_indicators if ind in VALID_TECHNICAL_INDICATORS]
                 entry['indicators'] = valid if valid else list(VALID_TECHNICAL_INDICATORS)

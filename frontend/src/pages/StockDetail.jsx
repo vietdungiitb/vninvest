@@ -40,6 +40,7 @@ import {
   refreshStockAIAdvisoryComponent,
   toggleStockAIAdvisoryComponentInclude,
   getStockNews,
+  updateUserConfig,
 } from '../api/client';
 import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
@@ -1498,35 +1499,8 @@ function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, w
 }
 
 // ============================================================================
-// AI Advisory prompt_config helpers (localStorage persistence)
+// AI Advisory prompt_config helpers (backend SSOT)
 // ============================================================================
-
-function _loadAdvisoryPromptConfigFromStorage(symbol) {
-  try {
-    const stored = localStorage.getItem(`ai_advisory_prompt_config:${symbol}`);
-    if (stored) return JSON.parse(stored);
-    
-    const globalStored = localStorage.getItem('ai_global_prompt_config');
-    if (globalStored) return JSON.parse(globalStored);
-    
-    return null;
-  } catch (err) {
-    console.warn('Failed to load prompt_config from localStorage:', err);
-    return null;
-  }
-}
-
-function _saveAdvisoryPromptConfigToStorage(symbol, promptConfig) {
-  try {
-    if (!promptConfig) {
-      localStorage.removeItem(`ai_advisory_prompt_config:${symbol}`);
-    } else {
-      localStorage.setItem(`ai_advisory_prompt_config:${symbol}`, JSON.stringify(promptConfig));
-    }
-  } catch (err) {
-    console.warn('Failed to save prompt_config to localStorage:', err);
-  }
-}
 
 function _getDefaultPromptConfig() {
   return {
@@ -1541,6 +1515,27 @@ function _getDefaultPromptConfig() {
       ownership:   { enabled: false, lookback: 365 },
       sector:      { enabled: false, lookback: 60 },
     },
+  };
+}
+
+function _normalizeAdvisoryPromptConfig(promptConfig) {
+  const fallback = _getDefaultPromptConfig();
+  if (!promptConfig || typeof promptConfig !== 'object') {
+    return fallback;
+  }
+
+  const normalizedSources = { ...fallback.sources };
+  Object.entries(promptConfig.sources || {}).forEach(([sourceId, sourceConfig]) => {
+    normalizedSources[sourceId] = {
+      ...(fallback.sources[sourceId] || {}),
+      ...(sourceConfig || {}),
+    };
+  });
+
+  return {
+    ...fallback,
+    ...promptConfig,
+    sources: normalizedSources,
   };
 }
 
@@ -1619,6 +1614,8 @@ export default function StockDetail() {
   const advisoryConflictRetryCountRef = useRef(0);
   const advisoryRetryTelemetrySyncKeyRef = useRef('');
   const advisoryInvalidationKeyRef = useRef('');
+  const advisoryPromptConfigLoadedRef = useRef(false);
+  const advisoryPromptConfigLastSavedRef = useRef('');
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1955,16 +1952,70 @@ export default function StockDetail() {
       lastOutcome: 'idle',
       lastEventAt: null,
     });
-    
-    // Load prompt_config from localStorage for this symbol, or use defaults
-    const storedConfig = _loadAdvisoryPromptConfigFromStorage(normalizedSymbol);
-    setAdvisoryPromptConfig(storedConfig || _getDefaultPromptConfig());
+
+    advisoryPromptConfigLoadedRef.current = false;
+    advisoryPromptConfigLastSavedRef.current = '';
+
+    let cancelled = false;
+
+    async function loadPromptConfig() {
+      try {
+        const cfgResp = await getUserConfig();
+        if (cancelled) return;
+        const cfg = cfgResp?.data || {};
+        const promptConfig = _normalizeAdvisoryPromptConfig(cfg.ai_prompt_config || cfg.prompt_config || {});
+        setAdvisoryPromptConfig(promptConfig);
+        advisoryPromptConfigLastSavedRef.current = JSON.stringify(promptConfig);
+      } catch (err) {
+        if (cancelled) return;
+        const fallback = _normalizeAdvisoryPromptConfig(_getDefaultPromptConfig());
+        setAdvisoryPromptConfig(fallback);
+        advisoryPromptConfigLastSavedRef.current = JSON.stringify(fallback);
+        console.warn('Failed to load AI prompt config from backend:', err);
+      } finally {
+        if (!cancelled) {
+          advisoryPromptConfigLoadedRef.current = true;
+        }
+      }
+    }
+
+    loadPromptConfig();
+
+    return () => {
+      cancelled = true;
+    };
   }, [normalizedSymbol]);
 
-  // Save prompt_config to localStorage when it changes
   useEffect(() => {
-    if (!normalizedSymbol || !advisoryPromptConfig) return;
-    _saveAdvisoryPromptConfigToStorage(normalizedSymbol, advisoryPromptConfig);
+    if (!normalizedSymbol || !advisoryPromptConfig || !advisoryPromptConfigLoadedRef.current) return;
+
+    const serializedConfig = JSON.stringify(advisoryPromptConfig);
+    if (serializedConfig === advisoryPromptConfigLastSavedRef.current) return;
+
+    let cancelled = false;
+
+    async function persistPromptConfig() {
+      try {
+        const response = await updateUserConfig({ ai_prompt_config: advisoryPromptConfig });
+        if (cancelled) return;
+        const responseConfig = response?.data?.ai_prompt_config || response?.data?.prompt_config || advisoryPromptConfig;
+        const normalizedConfig = _normalizeAdvisoryPromptConfig(responseConfig);
+        advisoryPromptConfigLastSavedRef.current = JSON.stringify(normalizedConfig);
+        if (JSON.stringify(normalizedConfig) !== serializedConfig) {
+          setAdvisoryPromptConfig(normalizedConfig);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.warn('Failed to save AI prompt config to backend:', err);
+        }
+      }
+    }
+
+    persistPromptConfig();
+
+    return () => {
+      cancelled = true;
+    };
   }, [advisoryPromptConfig, normalizedSymbol]);
 
   useEffect(() => {

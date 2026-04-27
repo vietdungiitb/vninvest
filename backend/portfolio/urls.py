@@ -37,6 +37,11 @@ urlpatterns = [
     # --- User Config ---
     path('userconfig/', views.UserConfigView.as_view(), name='user-config'),
 
+    # --- AI Command Center ---
+    path('ai-command-center/', views.ai_config_api, name='ai-command-center'),
+    path('ai-command-center/test-connection/', views.ai_test_connection_api, name='ai-command-center-test-connection'),
+    path('ai-command-center/audit-logs/', views.ai_command_center_audit_logs_api, name='ai-command-center-audit-logs'),
+
 
     # --- SubAccounts ---
     path('subaccounts/', _toggle_trading_view('SubAccountListCreateView'), name='subaccount-list'),

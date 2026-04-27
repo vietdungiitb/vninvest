@@ -231,6 +231,7 @@ from .views_admin_vnstock_benchmark import (
 from .views_ai_runtime_stats import (
     _get_ai_runtime_config_status,
     ai_config_api,
+    ai_command_center_audit_logs_api,
     ai_options_api,
     ai_test_connection_api,
 )
