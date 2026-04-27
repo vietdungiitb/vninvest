@@ -452,9 +452,6 @@ export const getAICommandCenterAuditLogs = (params = {}) => {
 export const getAIConfig = getAICommandCenterConfig;
 export const updateAIConfig = updateAICommandCenterConfig;
 export const getAIOptions = () => apiClient.get('/ai-options/');
-export const getUserConfig = getAIConfig;
-export const updateUserConfig = updateAIConfig;
-export const testAIConnection = testAICommandCenterConnection;
 export const getRVOL = (symbol) =>
   apiClient.get(`/realtime/rvol/${encodeURIComponent(symbol)}/`);
 export const getDepthChart = (symbol) =>

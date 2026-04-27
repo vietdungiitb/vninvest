@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getUserConfig } from '../api/client';
+import { getAIConfig } from '../api/client';
 
 const SCORING_POLICY_VERSION = 'ai-advisor-scoring-v1';
 
@@ -58,7 +58,7 @@ export default function useAIAdvisor({ holdings, watchlist, technicals, alerts, 
 
     async function loadAiConfig() {
       try {
-        const response = await getUserConfig();
+        const response = await getAIConfig();
         if (cancelled) return;
         const promptConfig = response?.data?.ai_prompt_config || response?.data?.prompt_config || {};
         setAiConfig({

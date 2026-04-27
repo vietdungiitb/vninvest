@@ -17,7 +17,7 @@ import {
   deleteTrackedSymbol,
   deleteWatchlistItem,
   getDepthChart,
-  getUserConfig,
+  getAIConfig,
   getIntradayMatched,
   getRealtimeTickers,
   getSectorBreadth,
@@ -40,7 +40,7 @@ import {
   refreshStockAIAdvisoryComponent,
   toggleStockAIAdvisoryComponentInclude,
   getStockNews,
-  updateUserConfig,
+  updateAIConfig,
 } from '../api/client';
 import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
@@ -1960,7 +1960,7 @@ export default function StockDetail() {
 
     async function loadPromptConfig() {
       try {
-        const cfgResp = await getUserConfig();
+        const cfgResp = await getAIConfig();
         if (cancelled) return;
         const cfg = cfgResp?.data || {};
         const promptConfig = _normalizeAdvisoryPromptConfig(cfg.ai_prompt_config || cfg.prompt_config || {});
@@ -1996,7 +1996,7 @@ export default function StockDetail() {
 
     async function persistPromptConfig() {
       try {
-        const response = await updateUserConfig({ ai_prompt_config: advisoryPromptConfig });
+        const response = await updateAIConfig({ ai_prompt_config: advisoryPromptConfig });
         if (cancelled) return;
         const responseConfig = response?.data?.ai_prompt_config || response?.data?.prompt_config || advisoryPromptConfig;
         const normalizedConfig = _normalizeAdvisoryPromptConfig(responseConfig);
@@ -2571,7 +2571,7 @@ export default function StockDetail() {
   const handleRefreshActiveAdvisoryComponent = async (componentId) => {
     if (!componentId) return;
     try {
-      const cfgResp = await getUserConfig();
+      const cfgResp = await getAIConfig();
       const cfg = cfgResp?.data || {};
       if (!cfg.ai_ready) {
         setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');
@@ -2647,7 +2647,7 @@ export default function StockDetail() {
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
     try {
-      const cfgResp = await getUserConfig();
+      const cfgResp = await getAIConfig();
       const cfg = cfgResp?.data || {};
       if (!cfg.ai_ready) {
         setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');
@@ -2798,7 +2798,7 @@ export default function StockDetail() {
   const handleRegenerateExecutiveSummary = async () => {
     if (!normalizedSymbol) return;
     try {
-      const cfgResp = await getUserConfig();
+      const cfgResp = await getAIConfig();
       const cfg = cfgResp?.data || {};
       if (!cfg.ai_ready) {
         setAdvisoryMessage(cfg.ai_config_message || 'Vui lòng cấu hình AI model và API key trước khi dùng AI advisory.');

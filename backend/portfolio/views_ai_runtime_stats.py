@@ -8,15 +8,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from .ai_advisory_helpers import _parse_prompt_config
 from .permissions import IsProPlan
 from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .serializers import AICommandCenterConfigSerializer
-
-
-def _legacy_views_module():
-    from . import views as legacy_views
-
-    return legacy_views
 
 
 def _get_or_create_ai_command_center_config(user):
@@ -31,15 +26,9 @@ def _get_or_create_ai_command_center_config(user):
     return command_center_cfg
 
 
-def _ai_command_center_prompt_config(raw_config):
-    from .ai_advisory_helpers import _parse_prompt_config
-
-    return _parse_prompt_config(raw_config)
-
-
 def _ai_command_center_snapshot(command_center_cfg, runtime_cfg=None):
     runtime_cfg = runtime_cfg or {}
-    prompt_config = _ai_command_center_prompt_config(getattr(command_center_cfg, 'ai_prompt_config', {}))
+    prompt_config = _parse_prompt_config(getattr(command_center_cfg, 'ai_prompt_config', {}))
     return {
         'id': command_center_cfg.id,
         'user_id': command_center_cfg.user_id,
@@ -265,7 +254,7 @@ def ai_config_api(request):
     ai_status = _get_ai_runtime_config_status(command_center_cfg)
 
     if request.method == 'GET':
-        prompt_config = _ai_command_center_prompt_config(command_center_cfg.ai_prompt_config)
+        prompt_config = _parse_prompt_config(command_center_cfg.ai_prompt_config)
         return Response(
             {
                 'id': command_center_cfg.id,
@@ -320,8 +309,8 @@ def ai_config_api(request):
             'effective_ai_provider': updated_status['provider'],
             'effective_ai_model': updated_status['model'],
             'effective_ai_source': updated_status.get('source'),
-            'ai_prompt_config': _ai_command_center_prompt_config(updated_cfg.ai_prompt_config),
-            'prompt_config': _ai_command_center_prompt_config(updated_cfg.ai_prompt_config),
+            'ai_prompt_config': _parse_prompt_config(updated_cfg.ai_prompt_config),
+            'prompt_config': _parse_prompt_config(updated_cfg.ai_prompt_config),
             'updated_at': updated_cfg.updated_at.isoformat() if updated_cfg.updated_at else None,
         },
         status=status.HTTP_200_OK,
@@ -424,7 +413,7 @@ def whale_advisory_symbol_stats_api(request):
     """
     from django.db.models import ExpressionWrapper, F, FloatField, Sum
 
-    legacy_views = _legacy_views_module()
+    from . import views as legacy_views
     symbols_param = str(request.query_params.get('symbols') or '').strip()
     window = str(request.query_params.get('window') or 'session').strip().lower() or 'session'
 

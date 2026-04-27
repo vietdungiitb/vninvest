@@ -1,5 +1,28 @@
 # Code Change Audit Ledger
 
+## Entry 2026-04-27ad - Remove redundant AI API aliases and wrapper indirection
+
+Muc tieu:
+- Loai bo alias AI cu trong `frontend/src/api/client.js` de `getUserConfig/updateUserConfig/testAIConnection` khong con che lanh voi userconfig thuc.
+- Doi cac call site AI sang `getAIConfig/updateAIConfig` de tach ro voi `auth.js` user config.
+- Rut gon `backend/portfolio/views_ai_runtime_stats.py` bang cach dung parser canonical truc tiep va bo wrapper thua.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - bo wrapper thua va dung parser canonical truc tiep)
+- frontend/src/api/client.js (MODIFIED - xoa alias AI cu)
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - dung getAIConfig)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - doi cac call site AI sang getAIConfig/updateAIConfig)
+- module_tree_full.md (MODIFIED - regenerate sau cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe backend/manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 16/16 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi AI API names.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
+- NOTE: bundle size warning va fs.F_OK deprecation warning van con, nhung khong lam fail build.
+
 ## Entry 2026-04-27ac - Harden AI Command Center SSOT, audit filters, and scoring policy
 
 Muc tieu:

@@ -1,21 +1,18 @@
-# ✅ AUDIT FILE LIST (2026-04-27ac)
-- backend/portfolio/ai_runtime_config.py (MODIFIED - bo legacy UserConfig fallback, chi giu AI Command Center va system)
-- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - filter audit logs theo action/actor/date, them diff summary)
-- backend/portfolio/admin.py (MODIFIED - dang ky AICommandCenterAuditLog trong Django admin)
-- backend/portfolio/migrations/0060_backfill_aicommandcenterconfig_from_legacy_userconfig.py (NEW - backfill command center tu legacy UserConfig)
-- backend/portfolio/tests/test_ai_config_api.py (MODIFIED - them regression test cho audit filters/diff summary)
-- backend/portfolio/tests/test_ai_runtime_config.py (MODIFIED - cap nhat expectation sau khi bo legacy fallback)
-- frontend/src/hooks/useAIAdvisor.js (MODIFIED - version hoa scoring policy)
-- frontend/src/pages/AICommandCenter.jsx (MODIFIED - audit filter controls va diff summary)
-- module_tree_full.md (MODIFIED - regenerate sau code changes)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ac)
+# ✅ AUDIT FILE LIST (2026-04-27ad)
+- backend/portfolio/views_ai_runtime_stats.py (MODIFIED - bo wrapper thua va dung parser canonical truc tiep)
+- frontend/src/api/client.js (MODIFIED - xoa alias AI cu)
+- frontend/src/hooks/useAIAdvisor.js (MODIFIED - dung getAIConfig)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - doi cac call site AI sang getAIConfig/updateAIConfig)
+- module_tree_full.md (MODIFIED - regenerate sau cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ad)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe backend/manage.py test portfolio.tests.test_ai_config_api portfolio.tests.test_ai_runtime_config` => 16/16 PASS.
-- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi audit UI va scoring policy.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi AI API names.
 - PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
-- NOTE: Frontend build chi con canh bao chung ve bundle size/dep deprecation, khong lam fail build.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend frontend` => backend healthy, frontend rebuild/restart thanh cong.
+- NOTE: bundle size warning va fs.F_OK deprecation warning van con, nhung khong lam fail build.
 
 # 2026-04-24cm: Remove redundant lines from Whale Analytics info panel
 - frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - loại bỏ 3 dòng khỏi info panel tóm tắt)
