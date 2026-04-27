@@ -46,6 +46,7 @@ import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import { BubbleOrderChart } from '../components/BubbleOrderChart';
 import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
+import { OrderFlowRadarPanel } from '../components/OrderFlowRadarPanel';
 import AIAdvisoryPromptConfigDrawer from '../components/AIAdvisoryPromptConfigDrawer';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
@@ -273,7 +274,29 @@ function governanceDeltaSeverityClass(level) {
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
 
-function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange }) {
+function normalizeTradeDate(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const rawValue = String(value).trim();
+  if (!rawValue) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(rawValue)) {
+    return rawValue.slice(0, 10);
+  }
+
+  const parsed = new Date(rawValue);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
@@ -484,6 +507,50 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
     }
   }, [onVisibleRangeChange]);
 
+  const emitSessionFromChart = useCallback((kLineData = []) => {
+    if (!onSessionChange || !kLineData.length) {
+      return;
+    }
+
+    const latestData = kLineData[kLineData.length - 1];
+    const tradeDate = normalizeTradeDate(latestData?.tradeDate ?? latestData?.date ?? latestData?.timestamp);
+    if (!tradeDate) {
+      return;
+    }
+
+    onSessionChange({
+      tradeDate,
+      timestamp: latestData?.timestamp ?? null,
+      dataIndex: kLineData.length - 1,
+      kLineData: latestData,
+    });
+  }, [onSessionChange]);
+
+  const handleCandleBarClick = useCallback((action) => {
+    const chart = chartRef.current;
+    if (!chart || !onSessionChange) {
+      return;
+    }
+
+    const chartDataList = chart.getDataList?.() || [];
+    const clickedData = action?.kLineData || chartDataList?.[action?.dataIndex] || null;
+    if (!clickedData) {
+      return;
+    }
+
+    const tradeDate = normalizeTradeDate(clickedData.tradeDate ?? clickedData.date ?? action?.timestamp ?? clickedData.timestamp);
+    if (!tradeDate) {
+      return;
+    }
+
+    onSessionChange({
+      tradeDate,
+      timestamp: clickedData.timestamp ?? action?.timestamp ?? null,
+      dataIndex: Number.isFinite(action?.dataIndex) ? action.dataIndex : null,
+      kLineData: clickedData,
+    });
+  }, [onSessionChange]);
+
   const handleScreenshot = () => {
     if (chartRef.current) {
       const image = chartRef.current.getImage({
@@ -611,6 +678,10 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
 
     chartRef.current = chart;
 
+    if (typeof chart.subscribeAction === 'function') {
+      chart.subscribeAction('onCandleBarClick', handleCandleBarClick);
+    }
+
     const ro = new ResizeObserver(() => {
       chartRef.current?.resize();
     });
@@ -618,6 +689,9 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
 
     return () => {
       ro.disconnect();
+      if (typeof chart.unsubscribeAction === 'function') {
+        chart.unsubscribeAction('onCandleBarClick', handleCandleBarClick);
+      }
       if (containerRef.current) {
         klineChartDispose(containerRef.current);
       }
@@ -651,12 +725,18 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
 
   // Cập nhật dữ liệu khi prop thay đổi
   useEffect(() => {
-    if (!chartRef.current || !data?.length) return;
+    if (!chartRef.current) return;
+
+    if (!data?.length) {
+      onSessionChange?.(null);
+      return;
+    }
 
     const kLineData = data
       .filter((d) => d.date && d.close != null)
       .map((d) => ({
         timestamp: new Date(d.date).getTime(),
+        tradeDate: d.date,
         open: d.open != null ? Number(d.open) : Number(d.close),
         high: d.high != null ? Number(d.high) : Number(d.close),
         low: d.low != null ? Number(d.low) : Number(d.close),
@@ -667,7 +747,8 @@ function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimefr
 
     chartRef.current.applyNewData(kLineData);
     emitVisibleRangeFromChart(kLineData);
-  }, [data, emitVisibleRangeFromChart]);
+    emitSessionFromChart(kLineData);
+  }, [data, emitSessionFromChart, emitVisibleRangeFromChart, onSessionChange]);
 
   useEffect(() => {
     if (!chartRef.current || !data?.length || !onVisibleRangeChange) return;
@@ -1357,147 +1438,6 @@ function FinancialMetricsPanel({ financials, loading, selectedYear, onYearChange
   );
 }
 
-function OrderFlowPanel({ symbol, loading, orderFlowData, latestRealtimeAlert, window: selectedWindow, onWindowChange }) {
-  const { t, formatDateTime } = useI18n();
-  const cvdSeries = orderFlowData?.cvd_series || [];
-  const darkFlow = orderFlowData?.dark_flow || {};
-  const latestSignal = orderFlowData?.latest_signal || null;
-  const signals = orderFlowData?.signals || [];
-  const tickRate = orderFlowData?.tick_rate || {};
-  const sizeDistribution = orderFlowData?.size_distribution || {};
-
-  const chartData = cvdSeries.map((item) => ({
-    ...item,
-    label: item.bucket_ts ? new Date(item.bucket_ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : '—',
-    cumulative_cvd: Number(item.cumulative_cvd || 0),
-  }));
-
-  const liveSignal = latestRealtimeAlert || latestSignal;
-  const liveStrength = Number(liveSignal?.strength || darkFlow?.strength || 0);
-  const smallOrderRatio = Number(
-    liveSignal?.small_order_ratio ?? tickRate?.small_order_ratio ?? sizeDistribution?.small_ratio ?? 0
-  );
-
-  if (loading) {
-    return <section className="card-section p-4"><div className="h-80 animate-pulse rounded-2xl bg-slate-900" /></section>;
-  }
-
-  return (
-    <section className="card-section p-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div>
-          <p className="text-label">{t('stockDetail.orderFlowRadar')}</p>
-          <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('stockDetail.darkMoneyFor', { symbol })}</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Window selector */}
-          <div className="flex rounded-lg border border-slate-700 overflow-hidden text-[10px]">
-            {['5m', '15m', '30m', '1h'].map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => onWindowChange?.(w)}
-                className={`px-2.5 py-1 transition-colors ${
-                  selectedWindow === w
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800'
-                }`}
-              >
-                {w}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-slate-400">
-            <span className="rounded-full border border-slate-700 bg-slate-900/70 px-2 py-0.5 uppercase tracking-widest">
-              {String(darkFlow?.confidence || liveSignal?.confidence || 'low')}
-            </span>
-            <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-cyan-300">
-              {String(darkFlow?.signal_type || liveSignal?.signal_type || 'none')}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">{t('stockDetail.strength')}</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{liveStrength.toFixed(1)}</p>
-          <div className="mt-3 h-2 rounded-full bg-slate-800">
-            <div
-              className="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400"
-              style={{ width: `${Math.max(4, Math.min(100, liveStrength))}%` }}
-            />
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">{t('stockDetail.tickRatePerMin')}</p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{Number(tickRate?.tick_rate_per_min || 0).toFixed(1)}</p>
-          <p className="mt-2 text-xs text-slate-400">{t('stockDetail.smallOrders')}: {(smallOrderRatio * 100).toFixed(1)}%</p>
-        </div>
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-label">{t('stockDetail.realtimeEvent')}</p>
-          <p className="mt-2 text-sm font-medium text-slate-100">{liveSignal?.description || darkFlow?.components?.absorption?.description || t('stockDetail.noRealtimeEvent')}</p>
-          <p className="mt-2 text-[11px] text-slate-500">{liveSignal?.ts ? new Date(liveSignal.ts).toLocaleString(undefined) : '—'}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.6fr_1fr]">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-200">{t('stockDetail.cvd30m')}</p>
-            <span className="text-[11px] text-slate-500">{t('stockDetail.bucketsCount', { count: chartData.length })}</span>
-          </div>
-          <div className="h-56">
-            {chartData.length === 0 ? (
-              <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-slate-800 text-sm text-slate-500">
-                {t('stockDetail.noIntradayForCvd')}
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="orderFlowCvd" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#22d3ee" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.04} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
-                  <XAxis dataKey="label" tick={{ fill: '#94a3b8', fontSize: 11 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={formatCompactNumber} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(value) => [formatCompactNumber(value), t('stockDetail.cvdSeries')]}
-                    labelStyle={{ color: '#cbd5e1' }}
-                    contentStyle={{ background: '#020617', border: '1px solid #1e293b', borderRadius: 12 }}
-                  />
-                  <Area type="monotone" dataKey="cumulative_cvd" stroke="#22d3ee" fill="url(#orderFlowCvd)" strokeWidth={2} />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/40 p-3">
-          <p className="text-sm font-semibold text-slate-200">{t('stockDetail.recentSignals')}</p>
-          <div className="panel-scrollbar mt-3 max-h-[240px] space-y-2 overflow-y-auto pr-1" style={{ scrollbarGutter: 'stable' }}>
-            {signals.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('stockDetail.noSavedSignals')}</p>
-            ) : signals.map((item) => (
-              <div key={item.id || `${item.symbol}-${item.created_at}`} className="rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-cyan-300">{item.signal_type}</p>
-                  <p className="text-[11px] text-slate-500">{item.created_at ? formatDateTime(item.created_at, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}</p>
-                </div>
-                <p className="mt-1 text-sm text-slate-200">{t('stockDetail.signalStrength')} {Number(item.strength || 0).toFixed(1)} • {item.confidence || 'low'}</p>
-                <p className="mt-1 text-[11px] text-slate-400">{t('stockDetail.signalTickRate')} {Number(item.tick_rate || 0).toFixed(1)} • {t('stockDetail.signalSmall')} {formatPercentDelta(Number(item.small_order_ratio || 0) * 100)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 // ============================================================================
 // AI Advisory prompt_config helpers (backend SSOT)
 // ============================================================================
@@ -1606,6 +1546,7 @@ export default function StockDetail() {
   const [advisoryPromptConfigShowSettings, setAdvisoryPromptConfigShowSettings] = useState(false);
   const [advisoryChartContextState, setAdvisoryChartContextState] = useState({ used: null, warnings: [] });
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
+  const [selectedKlineSession, setSelectedKlineSession] = useState(null);
   const [chartActiveIndicators, setChartActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
   const [orderFlowData, setOrderFlowData] = useState(null);
   const [orderFlowLoading, setOrderFlowLoading] = useState(true);
@@ -1616,6 +1557,7 @@ export default function StockDetail() {
   const advisoryInvalidationKeyRef = useRef('');
   const advisoryPromptConfigLoadedRef = useRef(false);
   const advisoryPromptConfigLastSavedRef = useRef('');
+  const selectedTradeDate = selectedKlineSession?.tradeDate ?? null;
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1625,6 +1567,10 @@ export default function StockDetail() {
   const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
   const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
   const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
+
+  useEffect(() => {
+    setSelectedKlineSession(null);
+  }, [normalizedSymbol]);
 
   const filteredPersistedRetryEvents = useMemo(() => {
     return Array.isArray(advisoryObservability?.retry_events) ? advisoryObservability.retry_events : [];
@@ -1759,7 +1705,11 @@ export default function StockDetail() {
     }
     try {
       const retryAttemptsUsed = advisoryConflictRetryCountRef.current;
-      const response = await getStockAIAdvisorySession(normalizedSymbol, { contract: 'v2', include_benchmarks: 1 });
+      const advisoryParams = { contract: 'v2', include_benchmarks: 1 };
+      if (selectedTradeDate) {
+        advisoryParams.trade_date = selectedTradeDate;
+      }
+      const response = await getStockAIAdvisorySession(normalizedSymbol, advisoryParams);
       const payload = response?.data || {};
       if (payload && payload.ok === false) {
         const conflictState = resolveAdvisoryConflictState(payload, t);
@@ -1920,7 +1870,7 @@ export default function StockDetail() {
         setAdvisoryLoading(false);
       }
     }
-  }, [normalizedSymbol, t]);
+  }, [normalizedSymbol, selectedTradeDate, t]);
 
   useEffect(() => () => {
     if (advisoryConflictRetryTimeoutRef.current) {
@@ -2475,6 +2425,7 @@ export default function StockDetail() {
   }, [availableWatchlistGroups, selectedWatchlistGroupId]);
 
   const refreshWorkspace = async () => {
+    setSelectedKlineSession(null);
     const [overviewResponse, chartResponse] = await Promise.all([
       getStockWorkspaceOverview(normalizedSymbol),
       getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe),
@@ -2628,6 +2579,12 @@ export default function StockDetail() {
     return {
       symbol: normalizedSymbol,
       chart_timeframe: orderFlowWindow || '30m',
+      selected_session: selectedKlineSession ? {
+        trade_date: selectedTradeDate,
+        timestamp: selectedKlineSession.timestamp ?? null,
+        data_index: selectedKlineSession.dataIndex ?? null,
+      } : null,
+      selected_trade_date: selectedTradeDate,
       visible_range: {
         from_ts: fromTs,
         to_ts: toTs,
@@ -2642,7 +2599,7 @@ export default function StockDetail() {
       },
       client_generated_at: new Date().toISOString(),
     };
-  }, [chartActiveIndicators, chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, technical?.atr, technical?.volatility_20]);
+  }, [chartActiveIndicators, chartData, chartPerformance, chartVisibleRange?.from_ts, chartVisibleRange?.to_ts, normalizedSymbol, orderFlowWindow, selectedKlineSession, selectedTradeDate, technical?.atr, technical?.volatility_20]);
 
   const handleGenerateAdvisoryComponents = async () => {
     if (!normalizedSymbol) return;
@@ -3115,7 +3072,7 @@ export default function StockDetail() {
 
       {/* Main content: chart + panels — 3-column weighted grid like Whale Dashboard */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
-        {/* 2 cột trái: Chart + Whale Alerts + BubbleOrderChart */}
+        {/* 2 cột trái: Kline chart + order flow radar + insights */}
         <div className="xl:col-span-2 flex flex-col gap-4">
           <section className="card-section p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
@@ -3140,6 +3097,7 @@ export default function StockDetail() {
                   activeTimeframe={activeTimeframe}
                   onPeriodChange={setActivePeriod}
                   onTimeframeChange={({ timeframe, days }) => {
+                    setSelectedKlineSession(null);
                     setActiveTimeframe(timeframe);
                     if (Number.isFinite(days)) {
                       setActivePeriod(days);
@@ -3147,10 +3105,20 @@ export default function StockDetail() {
                   }}
                   onVisibleRangeChange={setChartVisibleRange}
                   onActiveIndicatorsChange={setChartActiveIndicators}
+                  onSessionChange={setSelectedKlineSession}
                 />
               )}
             </div>
           </section>
+
+          <OrderFlowRadarPanel
+            symbol={normalizedSymbol}
+            loading={orderFlowLoading}
+            orderFlowData={orderFlowData}
+            latestRealtimeAlert={symbolDarkFlowAlert}
+            window={orderFlowWindow}
+            onWindowChange={setOrderFlowWindow}
+          />
 
           <section className="card-section p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">

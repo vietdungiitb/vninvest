@@ -18,9 +18,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { getDepthChart, getRVOL, getStockOrderFlow, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
-import DarkMoneyMasterChart from '../components/DarkMoneyMasterChart';
+import { getDepthChart, getRVOL, getStockPriceChart, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
+import KLineChartPanel from '../components/KLineChartPanel';
+import WhaleBubbleChart from '../components/WhaleBubbleChart';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
+import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import { useI18n } from '../context/LangContext';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -127,10 +129,17 @@ function getFeedSourceMeta(source, t) {
 
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
-import { BubbleOrderChart } from '../components/BubbleOrderChart';
 import { RVOLChartPanel } from '../components/RVOLChartPanel';
 import { DepthChartPanel } from '../components/DepthChartPanel';
-import { OrderFlowRadarPanel } from '../components/OrderFlowRadarPanel';
+
+const BUBBLE_TIMEFRAME_OPTIONS = [
+  { value: '15m', label: '15 phút' },
+  { value: '30m', label: '30 phút' },
+  { value: '1h', label: '1 giờ' },
+  { value: 'morning', label: 'Phiên sáng' },
+  { value: 'afternoon', label: 'Phiên chiều' },
+  { value: 'session', label: 'Cả phiên' },
+];
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
@@ -138,10 +147,23 @@ export default function WhaleAlertsDashboard() {
   const { t, formatDateTime } = useI18n();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
+  const [chartData, setChartData] = useState([]);
+  const [loadingChart, setLoadingChart] = useState(true);
+  const [activePeriod, setActivePeriod] = useState(180);
+  const [activeTimeframe, setActiveTimeframe] = useState('1H');
+  const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
+  const [bubbleTimeframe, setBubbleTimeframe] = useState('session');
+  const [selectedTradeDate, setSelectedTradeDate] = useState(null);
 
   const { alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
   });
+
+  const {
+    data: whaleAnalyticsData,
+    loading: whaleAnalyticsLoading,
+    error: whaleAnalyticsError,
+  } = useWhaleAnalyticsData(normalizedSymbol, bubbleTimeframe, selectedTradeDate);
 
   const normalizeSymbol = (value) => String(value || '').trim().toUpperCase();
 
@@ -177,9 +199,6 @@ export default function WhaleAlertsDashboard() {
   const [feedData, setFeedData] = useState(null);
   const [feedLoading, setFeedLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
-  const [orderFlowData, setOrderFlowData] = useState(null);
-  const [orderFlowLoading, setOrderFlowLoading] = useState(true);
-  const [orderFlowWindow, setOrderFlowWindow] = useState('30m');
 
   const fetchFeed = useCallback(async () => {
     setFeedLoading(true);
@@ -201,6 +220,49 @@ export default function WhaleAlertsDashboard() {
 
   useEffect(() => { setFeedData(null); fetchFeed(); }, [fetchFeed]);
 
+  useEffect(() => {
+    setSelectedTradeDate(null);
+  }, [normalizedSymbol]);
+
+  useEffect(() => {
+    if (!normalizedSymbol) {
+      setChartData([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const fetchChart = async () => {
+      setLoadingChart(true);
+      try {
+        const response = await getStockPriceChart(normalizedSymbol, activePeriod, activeTimeframe);
+        if (!cancelled) {
+          const nextChartData = response?.data?.points || [];
+          setChartData(nextChartData);
+          if (!nextChartData.length) {
+            setSelectedTradeDate(null);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error('getStockPriceChart:', err);
+          setChartData([]);
+          setSelectedTradeDate(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingChart(false);
+        }
+      }
+    };
+
+    fetchChart();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedSymbol, activePeriod, activeTimeframe]);
+
   // Re-fetch khi có WS whale alert
   const prevWhaleRef = useRef(null);
   useEffect(() => {
@@ -215,47 +277,6 @@ export default function WhaleAlertsDashboard() {
     const id = setInterval(fetchFeed, 60_000);
     return () => clearInterval(id);
   }, [fetchFeed]);
-
-  const fetchOrderFlow = useCallback(async ({ silent = false } = {}) => {
-    if (!normalizedSymbol) return;
-    if (!silent) setOrderFlowLoading(true);
-    try {
-      const response = await getStockOrderFlow(normalizedSymbol, orderFlowWindow);
-      setOrderFlowData(response?.data || null);
-    } catch (_) {
-      setOrderFlowData(null);
-    } finally {
-      if (!silent) setOrderFlowLoading(false);
-    }
-  }, [normalizedSymbol, orderFlowWindow]);
-
-  useEffect(() => {
-    if (!normalizedSymbol) return;
-    let cancelled = false;
-
-    const run = async (silent = false) => {
-      if (cancelled) return;
-      await fetchOrderFlow({ silent });
-    };
-
-    run(false);
-    const interval = setInterval(() => {
-      run(true);
-    }, 30000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [fetchOrderFlow, normalizedSymbol]);
-
-  const prevDarkFlowRef = useRef(null);
-  useEffect(() => {
-    if (symbolDarkFlowAlert && symbolDarkFlowAlert?.ts !== prevDarkFlowRef.current) {
-      prevDarkFlowRef.current = symbolDarkFlowAlert.ts;
-      fetchOrderFlow({ silent: true });
-    }
-  }, [symbolDarkFlowAlert, fetchOrderFlow]);
 
   return (
     <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
@@ -305,19 +326,112 @@ export default function WhaleAlertsDashboard() {
         </div>
       </section>
 
-      {/* Main grid: left 2 cols (chart + radar) | right col (Feed + RVOL + Donut + Depth) */}
+      {/* Main grid: left 2 cols (Kline + Bubble) | right col (Feed + RVOL + Donut + Depth) */}
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
         {/* Left 2 columns — stacked vertically */}
-        <div className="xl:col-span-2 space-y-4">
-          <DarkMoneyMasterChart symbol={normalizedSymbol} />
-          <OrderFlowRadarPanel
-            symbol={normalizedSymbol}
-            loading={orderFlowLoading}
-            orderFlowData={orderFlowData}
-            latestRealtimeAlert={symbolDarkFlowAlert}
-            window={orderFlowWindow}
-            onWindowChange={setOrderFlowWindow}
-          />
+        <div className="xl:col-span-2 flex flex-col gap-4">
+          <section className="card-section p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">{t('stockDetail.klineWorkspace')}</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">
+                  {t('stockDetail.candlestickFor', { symbol: normalizedSymbol })}
+                </h2>
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {chartVisibleRange.from_ts && chartVisibleRange.to_ts ? (
+                  <span>
+                    {t('whaleAlertsDashboard.viewingRange', { defaultValue: 'Phạm vi đang xem' })}: {' '}
+                    {formatDateTime(chartVisibleRange.from_ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {' → '}
+                    {formatDateTime(chartVisibleRange.to_ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                ) : (
+                  <span>{t('whaleAlertsDashboard.viewingRange', { defaultValue: 'Phạm vi đang xem' })}: --</span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-3 h-[520px]">
+              {loadingChart ? (
+                <div className="h-full animate-pulse rounded-2xl bg-slate-900" />
+              ) : chartData.length === 0 ? (
+                <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-slate-800 text-sm text-slate-500">
+                  {t('stockDetail.noChartData')}
+                </div>
+              ) : (
+                <KLineChartPanel
+                  data={chartData}
+                  activePeriod={activePeriod}
+                  activeTimeframe={activeTimeframe}
+                  onPeriodChange={setActivePeriod}
+                  onTimeframeChange={({ timeframe, days }) => {
+                    setSelectedTradeDate(null);
+                    setActiveTimeframe(timeframe);
+                    if (Number.isFinite(days)) {
+                      setActivePeriod(days);
+                    }
+                  }}
+                  onVisibleRangeChange={setChartVisibleRange}
+                  flowData={whaleAnalyticsData?.flow || null}
+                  onSessionChange={({ tradeDate }) => {
+                    setSelectedTradeDate(tradeDate || null);
+                  }}
+                />
+              )}
+            </div>
+          </section>
+
+          <section className="card-section p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">{t('whaleAlertsDashboard.priceVolumeBubble')}</h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                      {t('whaleChart.timeframe') || 'Khoảng thời gian'}
+                    </label>
+                    <select
+                      value={bubbleTimeframe}
+                      onChange={(e) => setBubbleTimeframe(e.target.value)}
+                      className="bg-slate-800 border border-slate-700 rounded px-3 py-1.5 text-xs font-bold text-emerald-400 outline-none focus:border-emerald-500 transition-all"
+                    >
+                      {BUBBLE_TIMEFRAME_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    {t('whaleAlertsDashboard.selectedSession', { defaultValue: 'Phiên đang xem' })}: {' '}
+                    <span className="text-slate-300">
+                      {selectedTradeDate
+                        ? formatDateTime(`${selectedTradeDate}T12:00:00`, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                        : '--'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3">
+              <WhaleBubbleChart
+                isControlled
+                externalSymbol={normalizedSymbol}
+                externalTimeframe={bubbleTimeframe}
+                externalData={whaleAnalyticsData?.bubbles || null}
+                externalFlowData={whaleAnalyticsData?.flow || null}
+                externalLoading={whaleAnalyticsLoading}
+                externalError={whaleAnalyticsError}
+                onTimeframeChange={setBubbleTimeframe}
+                onSymbolChange={() => {}}
+                isEmbedded={true}
+                syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
+              />
+            </div>
+          </section>
         </div>
 
         {/* Right column — widget stack */}

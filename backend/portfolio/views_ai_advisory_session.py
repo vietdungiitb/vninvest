@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pandas as pd
 from django.conf import settings
@@ -342,6 +342,13 @@ def stock_ai_advisory_session_api(request, symbol: str):
     contract_raw = str(request.query_params.get('contract') or '').strip().lower()
     include_benchmarks_raw = str(request.query_params.get('include_benchmarks') or '').strip().lower()
     include_benchmarks = include_benchmarks_raw in {'1', 'true', 'yes', 'on'}
+    trade_date_raw = str(request.query_params.get('trade_date') or '').strip()
+    selected_trade_date = None
+    if trade_date_raw:
+        try:
+            selected_trade_date = date.fromisoformat(trade_date_raw[:10])
+        except ValueError:
+            selected_trade_date = None
     if contract_raw and contract_raw not in {'v1', 'v2'}:
         return Response({'ok': False, 'message': 'contract khong hop le. Ho tro: v1, v2.'}, status=status.HTTP_400_BAD_REQUEST)
     if contract_raw == 'v2' and not holistic_v1_enabled:
@@ -381,6 +388,8 @@ def stock_ai_advisory_session_api(request, symbol: str):
 
     def _build_session_payload(latest_advisory):
         payload = legacy_views._sprint17_serialize_stock_advisory_session(request.user, normalized_symbol, latest_advisory)
+        if selected_trade_date is not None:
+            payload['selected_trade_date'] = selected_trade_date.isoformat()
         advisory_data = payload.get('advisory')
         if advisory_data and legacy_views._get_plan(request.user) not in ('premium', 'admin'):
             advisory_data['ai_detail'] = ''
@@ -421,7 +430,12 @@ def stock_ai_advisory_session_api(request, symbol: str):
         legacy_views._track_opencore_stock_endpoint_usage(request, 'stock_ai_advisory_session_api', response_status)
         return Response(payload, status=response_status)
 
-    latest = legacy_views.WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user).order_by('-created_at').first()
+    advisory_queryset = legacy_views.WhaleAdvisory.objects.filter(symbol=normalized_symbol, user=request.user)
+    latest = advisory_queryset.order_by('-created_at').first()
+    if selected_trade_date is not None:
+        latest_for_trade_date = advisory_queryset.filter(created_at__date__lte=selected_trade_date).order_by('-created_at').first()
+        if latest_for_trade_date is not None:
+            latest = latest_for_trade_date
     ai_status = legacy_views._get_ai_runtime_config_status(user_cfg)
 
     if request.method == 'GET':

@@ -53,6 +53,7 @@ const TREEMAP_LEVELS = [
       borderWidth: 0,
       gapWidth: 5,
     },
+    upperLabel: { show: false },
   },
   {
     itemStyle: {
@@ -60,6 +61,7 @@ const TREEMAP_LEVELS = [
       borderWidth: 1.5,
       gapWidth: 1.5,
     },
+    upperLabel: { show: false },
   },
 ];
 
@@ -439,12 +441,12 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
     const ratio = sizeValue / maxLeafSize;
 
     if (ratio < 0.3) {
-      return `{symbol|${leaf.name}}`;
+      return leaf.name;
     }
     if (ratio < 0.42) {
-      return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}`;
+      return `${leaf.name}\n${cp > 0 ? '+' : ''}${cp.toFixed(2)}%`;
     }
-    return `{symbol|${leaf.name}}\n{pct|${cp > 0 ? '+' : ''}${cp.toFixed(2)}%}\n{price|${price > 0 ? price.toFixed(2) : '\u2014'} VND}`;
+    return `${leaf.name}\n${cp > 0 ? '+' : ''}${cp.toFixed(2)}%\n${price > 0 ? price.toFixed(2) : '\u2014'} VND`;
   }, [maxLeafSize]);
 
   // Build inline SVG sparkline for tooltip chart
@@ -685,37 +687,16 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
           },
           label: {
             show: true,
-            position: ['50%', '50%'],
+            position: 'inside',
             align: 'center',
             verticalAlign: 'middle',
-            padding: 0,
             formatter: buildLeafLabel,
-            overflow: 'truncate',
-            rich: {
-              symbol: {
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: 14,
-                lineHeight: 16,
-                textShadowBlur: 3,
-                textShadowColor: 'rgba(0, 0, 0, 0.7)',
-                align: 'center',
-              },
-              pct: {
-                color: 'rgba(255,255,255,0.9)',
-                fontWeight: 700,
-                fontSize: 11,
-                lineHeight: 12,
-                align: 'center',
-              },
-              price: {
-                color: 'rgba(226,232,240,0.95)',
-                fontWeight: 600,
-                fontSize: 9,
-                lineHeight: 10,
-                align: 'center',
-              },
-            },
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: 10.5,
+            lineHeight: 14,
+            textShadowBlur: 3,
+            textShadowColor: 'rgba(0, 0, 0, 0.7)',
           },
           upperLabel: { show: false },
         },
@@ -741,7 +722,7 @@ export default function PortfolioHeatmap({ holdings, title, compact }) {
       <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-teal-500/5 rounded-full blur-[96px] pointer-events-none group-hover:bg-teal-500/10 transition-colors duration-700" />
 
       {/* Header */}
-      <div className="px-5 py-4 border-b border-slate-700/55 bg-slate-950/62 flex flex-col gap-4 z-10">
+      <div className="px-5 py-4 border-b border-slate-700/55 bg-red-900/80 flex flex-col gap-4 z-10">
         {/* Row 1: Title */}
         <div className="flex items-center justify-between">
           <div className="flex flex-col">

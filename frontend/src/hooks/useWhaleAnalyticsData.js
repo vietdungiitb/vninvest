@@ -9,7 +9,7 @@ import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshot
  * Single source of truth for fetching Whale Bubbles and Dark Money Flow data.
  * Ensures synchronized parallel loading for both sub-charts.
  */
-export default function useWhaleAnalyticsData(symbol, timeframe) {
+export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState({
@@ -33,7 +33,12 @@ export default function useWhaleAnalyticsData(symbol, timeframe) {
     }
 
     try {
-      const snapshotRes = await getWhaleAnalyticsSnapshot(symbol, { timeframe, compact: 1 });
+      const normalizedTradeDate = tradeDate ? String(tradeDate).slice(0, 10) : null;
+      const snapshotRes = await getWhaleAnalyticsSnapshot(symbol, {
+        timeframe,
+        compact: 1,
+        tradeDate: normalizedTradeDate,
+      });
       const snapshot = snapshotRes?.data;
 
       if (requestId !== requestIdRef.current) {
@@ -55,7 +60,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe) {
         setLoading(false);
       }
     }
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, tradeDate]);
 
   useEffect(() => {
     fetchData({ silent: false });

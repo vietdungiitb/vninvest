@@ -1,4 +1,137 @@
+# Entry 2026-04-27al - Compact whale-alerts Kline toolbar and deep flow pane toggles
+
+Muc tieu:
+- Thay day nut timeframe tren KLineChartPanel bang combobox gon hon de giam do dai toolbar.
+- Them nut an/hien cho cac pane CVD, strength va whale buy/sell ngay tren cung toolbar.
+- Thread `flowData` tu whale-alerts route vao KLine panel de cac custom pane doc duoc snapshot flow thuc te.
+
+Danh sach tep cap nhat:
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - timeframe combobox, custom CVD/strength/whale buy-sell panes va toggle controls)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - pass `flowData` vao KLine panel)
+- module_tree_full.md (MODIFIED - regenerate sau UI/runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx` va `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi doi toolbar va custom pane controls.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: runtime UI da build-validate thanh cong; neu auditor can minh chung anh/clip browser thi can mot buoc mo trang/ghi hinh rieng.
+
+# Entry 2026-04-27ak - Thread selected Kline session into Stock Detail advisory
+
+Muc tieu:
+- Cho Stock Detail gui `trade_date` cua candle dang chon vao `stock_ai_advisory_session_api`.
+- Cho route advisory chon advisory moi nhat on or before selected session date va echo `selected_trade_date` de audit.
+- Giu KLineChartComponent noi tuyen emit session object theo cung shape voi shared KLine panel de khong lech contract.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx (MODIFIED - track selectedKlineSession, emit session object from Kline, thread trade_date into advisory fetch va chart context)
+- backend/portfolio/views_ai_advisory_session.py (MODIFIED - accept `trade_date`, select latest advisory at or before the requested date, echo selected date)
+- backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py (MODIFIED - add regression cho trade_date selection)
+- module_tree_full.md (MODIFIED - regenerate sau runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `frontend/src/pages/StockDetail.jsx`, `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`, `backend/portfolio/views_ai_advisory_session.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session.ApiRouteStockAiAdvisorySessionTests.test_stock_ai_advisory_session_get_filters_by_trade_date --keepdb` => 1/1 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao Stock Detail advisory.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: hai legacy smoke tests trong `test_api_routes_stock_ai_advisory_session.py` van fail khi chay file/toan bo file run (`creates_sync_when_missing`, `returns_503_when_queue_unavailable`); hien tuong nay co ve fixture-sensitive/pre-existing va khong lien quan truc tiep den slice selected session.
+
+## Entry 2026-04-27aj - Bind whale analytics bubble to selected Kline session
 # Code Change Audit Ledger
+
+## Entry 2026-04-27aj - Bind whale analytics bubble to selected Kline session
+
+Muc tieu:
+- Cho whale-alerts/:symbol luon neo bubble analytics vao session dang chon tren Kline thong qua candle click.
+- Thread selected candle `trade_date` vao `useWhaleAnalyticsData` de snapshot bubble fetch dung phien nguoi dung dang xem.
+- Hien thi ro phien dang xem tren header route, trong khi advisory session van giu contract symbol-scoped hien tai do backend chua expose selector phien.
+
+Danh sach tep cap nhat:
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - subscribe candle click, emit selected trade_date va default session tu data moi)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - nhan `tradeDate` va forward vao snapshot API)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - luu selectedTradeDate, reset khi doi symbol/timeframe, va hien thi nhan phien dang xem)
+- module_tree_full.md (MODIFIED - regenerate sau khi thread session selection vao route)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27aj)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx`, `frontend/src/hooks/useWhaleAnalyticsData.js`, `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi thread selected session vao bubble route.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: bubble da bam theo selected Kline session; advisory modal hien tai van symbol-scoped vi `stock_ai_advisory_session_api` chua co `trade_date` selector contract.
+
+## Entry 2026-04-27ai - Add Kline + bubble stack to whale-alerts/symbol
+
+Muc tieu:
+- Dua whale-alerts/:symbol sang surface trung tam KlineChart dung contract chart cua Stock Detail.
+- Giu bubble chart cua modern dashboard theo mo hinh copy/use-only cho whale route, khong sua source modern dashboard.
+- Cho whale route co visible-range sync tren Kline va bubble timeframe control rieng de chuan bi cho slice selected-session tiep theo.
+
+Danh sach tep cap nhat:
+- frontend/src/components/KLineChartPanel.jsx (NEW - extract shared Kline panel tu Stock Detail de route khac co the dung lai)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - thay DarkMoneyMasterChart bang KlineChartPanel + WhaleBubbleChart controlled, fetch chart data va sync visible range)
+- module_tree_full.md (MODIFIED - regenerate sau khi them shared Kline panel va route wiring moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ai)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren `frontend/src/components/KLineChartPanel.jsx` va `frontend/src/pages/WhaleAlertsDashboard.jsx` => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi mount Kline + bubble stack.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend dev stack rebuild/restart thanh cong.
+- NOTE: whale-alerts/:symbol nay co Kline + bubble stack roi; selected-session sync chua hoan tat, nhung bubble da duoc neo theo visible Kline range va route da dung source modern dashboard theo dung contract copy/use-only.
+
+## Entry 2026-04-27ah - Move Order Flow Radar from whale-alerts to below Kline in Stock Detail
+
+Muc tieu:
+- Chuyen module `Order Flow Radar` khoi route `whale-alerts/:symbol` va dat ngay ben duoi `KlineChart` o `StockDetail`.
+- Tai su dung module radar chung thay vi giu implementation noi tuyen du thua trong `StockDetail`.
+- Loai bo wiring fetch/render order flow khong con can thiet o `WhaleAlertsDashboard` de tranh chay song song sai vi tri.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/StockDetail.jsx (MODIFIED - mount `OrderFlowRadarPanel` ngay duoi KlineChart, bo implementation `OrderFlowPanel` noi tuyen khong con duoc dung)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - go mount `OrderFlowRadarPanel` va wiring fetch order-flow cua whale route)
+- module_tree_full.md (MODIFIED - regenerate sau khi doi layout/runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ah)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run build` trong `frontend/` sau khi doi vi tri radar => compile thanh cong.
+- PASSED: `npm run build` trong `frontend/` sau khi cleanup implementation radar du thua => compile thanh cong.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend dev container da rebuild/restart thanh cong; backend/redis/db van healthy.
+- NOTE: route `whale-alerts/:symbol` khong con hien thi radar, va `StockDetail` nay la noi so huu duy nhat cua module radar trong UI flow hien tai.
+
+## Entry 2026-04-27ag - Create whale-alerts/symbol handoff and quality playbook pack
+
+Muc tieu:
+- Tao bo tai lieu ban giao day du cho dot nang cap `whale-alerts/:symbol` theo mo hinh KlineChart + bubble theo phien.
+- Khoa hard constraints cho doi code, doi QA va AI sessions, dac biet la quy tac copy-only voi bubble source cua modern dashboard.
+- Bo sung self-audit/test protocol, traceability, evidence template va quality bootstrap de moi slice deu co the tu kiem va de lai bang chung cho final auditor.
+
+Danh sach tep cap nhat:
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_PLAN_20260427.md (NEW - execution plan chi tiet theo phase/slice cho whale-alerts/symbol)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_TASKBOARD_20260427.md (NEW - taskboard giao viec, gates va evidence theo tung slice)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_TRACEABILITY_MATRIX_20260427.md (NEW - matrix truy vet requirement -> task -> evidence)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_HANDOFF_MASTER_20260427.md (NEW - handoff master cho doi code va auditor)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_SELF_AUDIT_AND_TEST_PROTOCOL_20260427.md (NEW - protocol tu audit noi bo, validation va evidence)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_EVIDENCE_TEMPLATE_20260427.md (NEW - template bang chung theo slice)
+- quality/QUALITY.md (NEW - quality constitution cho feature pack)
+- quality/RUN_CODE_REVIEW.md (NEW - huong dan code review theo risk/regression)
+- quality/RUN_INTEGRATION_TESTS.md (NEW - huong dan integration test va GO/NO-GO)
+- quality/RUN_SPEC_AUDIT.md (NEW - Council of Three spec audit workflow)
+- AGENTS.md (NEW - bootstrap file cho AI sessions lam viec voi feature pack)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ag)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` tren toan bo docs moi + `quality/*.md` + `AGENTS.md` => no errors found.
+- PASSED: goi tai lieu da cover day du plan, taskboard, traceability, self-audit, evidence template va quality bootstrap cho doi code/auditor.
+- NOTE: day la slice tai lieu/governance; khong co code runtime moi nen khong can rebuild dev stack va khong can regenerate `module_tree_full.md`.
 
 ## Entry 2026-04-27af - Tighten AI Command Center header spacing and panel alignment
 

@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from unittest.mock import patch
 
 from django.core.cache import cache
+from django.utils import timezone
 from django.test.utils import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -134,6 +135,58 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
         self.assertIn('deleted_components', response.data)
         self.assertIn('executive_summary', response.data)
         self.assertIn('executive_summaries', response.data)
+
+    @override_settings(STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True)
+    def test_stock_ai_advisory_session_get_filters_by_trade_date(self):
+        self.authenticate()
+        older_snapshot = AdvisoryAggregateSnapshot.objects.create(
+            user=self.user,
+            symbol='BCM',
+            snapshot_seq=11,
+            state_json={'seq': 11, 'quality': {'actionability': 0.71}},
+        )
+        older_advisory = WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=6_500_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Older advisory summary',
+            ai_detail='Older advisory detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+            aggregate_snapshot=older_snapshot,
+            created_at=timezone.make_aware(datetime(2026, 4, 10, 9, 30)),
+        )
+        AdvisoryAggregateAuditLog.objects.create(
+            user=self.user,
+            symbol='BCM',
+            before_state_json={'advisory_id': older_advisory.id - 1, 'snapshot_id': older_snapshot.id - 1},
+            after_state_json={'advisory_id': older_advisory.id, 'snapshot_id': older_snapshot.id},
+            reason=AdvisoryAggregateAuditLog.ReasonChoices.NEW_WHALE_EVENT,
+            actor=AdvisoryAggregateAuditLog.ActorChoices.SYSTEM,
+            actor_id='route-smoke-system',
+            metadata_json={'advisory_id': older_advisory.id, 'snapshot_id': older_snapshot.id},
+        )
+        WhaleAdvisory.objects.create(
+            user=self.user,
+            symbol='BCM',
+            matched_value=7_200_000_000,
+            side='BUY',
+            threshold=5_000_000_000,
+            ai_summary='Newer advisory summary',
+            ai_detail='Newer advisory detail',
+            ai_provider='copilot',
+            ai_model='openai/gpt-4o',
+            created_at=timezone.make_aware(datetime(2026, 4, 20, 9, 30)),
+        )
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&trade_date=2026-04-15')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['contract_version'], 'v2')
+        self.assertEqual(response.data['selected_trade_date'], '2026-04-15')
+        self.assertEqual(response.data['aggregate']['advisory_id'], older_advisory.id)
 
     @override_settings(STOCK_AI_ADVISORY_SESSION_V2_ENABLED=True)
     def test_stock_ai_advisory_session_get_returns_v2_contract_when_enabled(self):
