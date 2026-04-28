@@ -494,6 +494,29 @@ class WhaleAdvisoryTaskTests(TestCase):
         self.assertEqual(second_kwargs['source'], WhaleAdvisory.SourceChoices.PERIODIC_JOB)
 
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_auto_generate_task_filters_to_matched_symbols(self, mock_apply_async):
+        cache.delete('advisory:auto-generation:job-lock')
+        staff_user = self._create_user_config('staff-auto-filter')
+        config = UserConfig.objects.get(user=staff_user)
+        config.advisory_refresh_interval_hours = 24
+        config.advisory_max_tokens_per_day = 5000
+        config.advisory_max_auto_refreshes_per_day = 5
+        config.save(update_fields=['advisory_refresh_interval_hours', 'advisory_max_tokens_per_day', 'advisory_max_auto_refreshes_per_day'])
+        TrackedSymbol.objects.create(user=staff_user, symbol='AAA')
+        TrackedSymbol.objects.create(user=staff_user, symbol='BBB')
+        cache.delete(f'advisory:auto-generation:queue:{staff_user.id}:AAA')
+        cache.delete(f'advisory:auto-generation:queue:{staff_user.id}:BBB')
+
+        result = auto_generate_advisories_for_all_tracked(batch_size=10, matched_symbols=['AAA'])
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['matched_symbol_count'], 1)
+        self.assertEqual(result['generated_count'], 1)
+        mock_apply_async.assert_called_once()
+        queued_kwargs = mock_apply_async.call_args.kwargs['kwargs']
+        self.assertEqual(queued_kwargs['symbol'], 'AAA')
+
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
     def test_auto_generate_task_respects_daily_auto_refresh_limit(self, mock_apply_async):
         cache.delete('advisory:auto-generation:job-lock')
         staff_user = self._create_user_config('staff-auto-limit')

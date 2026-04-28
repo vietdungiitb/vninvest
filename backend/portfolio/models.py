@@ -31,6 +31,12 @@ try:
 except ImportError:
     pass  # These will be imported when needed
 
+try:
+    from .models_screener_admin import GlobalScreenerRule, ScreenerScheduleConfig
+    from .models_alert_history import UserAlertHistory
+except ImportError:
+    pass
+
 # ---------------------------------------------------------------------------
 # ScreenerRule: Bộ lọc động do user tự định nghĩa
 # ---------------------------------------------------------------------------

@@ -80,3 +80,48 @@ AI tạo sinh (GenAI): Làm nhiệm vụ "người phiên dịch", biến các k
 Mô hình này giúp Dashboard của bạn vừa có Trí tuệ (Intelligence) của AI, vừa có Tốc độ (Speed) của máy tính cơ học.
 ---
 *Tài liệu này được cập nhật vào ngày 22/04/2026.*
+
+---
+
+## 6. Addendum: Global Screener Admin UI Supplementary Plan
+
+Tôi đã đọc tài liệu bổ sung tại [GLOBAL_SCREENER_ADMIN_UI_SUPPLEMENTARY_PLAN_20260428.md](GLOBAL_SCREENER_ADMIN_UI_SUPPLEMENTARY_PLAN_20260428.md) và có thể đưa nó vào kế hoạch slice UI admin như một nhánh triển khai độc lập, không xung đột với phần AI Advisor hiện có.
+
+### Kế hoạch triển khai đề xuất
+- Slice 1: Hotfix SSOT ở `backend/portfolio/services_global_screener.py` để snapshot global screener có whale/dark money flow.
+- Slice 2: Tạo `backend/portfolio/views_screener_admin.py` với các API bảo vệ bằng `IsAdminUser`.
+- Slice 3: Bổ sung client Axios cho các API admin screener.
+- Slice 4: Tạo tab `Global Screener` trong `AdminOps.jsx` và component quản trị tương ứng.
+
+### Điểm cần chốt nhẹ trước khi code
+- Chỉ cần thống nhất một chuẩn route duy nhất cho admin screener, vì tài liệu audit đang dùng `/api/v1/admin/screener/config/` còn phần execution plan ghi dạng route backend tương đối `admin/screener/config/`.
+- Ngoài điểm route prefix này, tôi chưa thấy yêu cầu nào khác cần làm rõ trước khi đội code bắt tay vào thực thi.
+
+### Kết luận
+- Sẵn sàng triển khai.
+- Tôi sẽ coi supplementary plan này là baseline cho slice UI admin Global Screener.
+
+### Ghi chú route backend
+- Backend route tương đối được chốt là `admin/screener/config/`.
+- Nếu cần API path đầy đủ, tầng `urls.py`/router sẽ ghép prefix chung của dự án vào phía trước.
+
+---
+
+## 7. Final Audit: Global Screener Admin UI
+
+### Kết quả kiểm toán
+- **Trạng thái:** PASS (Đạt)
+- **API route:** `frontend/src/api/client.js` đã trỏ `getAdminScreenerConfig` về đúng endpoint `/portfolio/admin/screener/config/`.
+- **Banner persistence:** Trong `GlobalScreenerAdminPanel.jsx`, các luồng `loadRules` và `handleResetRuleForm` đã được thêm tùy chọn `{ preserveMessage: true }`, nên banner trạng thái không bị reset ngay sau Save/Delete.
+- **Validation:** Bộ test backend `portfolio.tests.test_admin_screener_admin` đã pass 8/8.
+
+### Kiểm tra UI qua trình duyệt
+- Đã thực hiện kiểm tra trên `http://localhost:3000/admin-ops`.
+- **Save Configuration:** Banner `Đã lưu cấu hình Global Screener.` hiển thị và duy trì sau khi tải lại dữ liệu.
+- **Save Rule:** Banner `Đã tạo luật Global Screener.` hiển thị và được giữ nguyên sau khi danh sách được refresh.
+- **Delete Rule:** Banner `Đã xóa luật Global Screener.` hiển thị và giữ nguyên đúng yêu cầu sau khi xác nhận xóa.
+
+### Kết luận nghiệm thu
+- Slice này đã hoàn tất.
+- Lỗi UI persistence và lệch endpoint đã được xử lý triệt để.
+- Có thể đóng và nghiệm thu phần Global Screener Admin UI.

@@ -1,11 +1,68 @@
+from django.core.cache import cache
+from django.core.exceptions import PermissionDenied
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DailyPrice, ScreenerRule
-from .screener_helpers import _apply_screener_condition, _screener_build_technical, _validate_screener_rules
+from .models import ScreenerRule
+from .models_screener_admin import ScreenerScheduleConfig
+from .screener_helpers import _apply_screener_condition, _validate_screener_rules
 from .serializers import ScreenerRuleSerializer
+from .services_global_screener import GlobalScreenerService
+
+
+def _extract_master_snapshot_rows(snapshot):
+    if snapshot is None:
+        return []
+
+    if isinstance(snapshot, list):
+        rows = snapshot
+    elif isinstance(snapshot, dict):
+        rows = snapshot.get('rows') or snapshot.get('data') or snapshot.get('symbols') or []
+    else:
+        rows = []
+
+    if not isinstance(rows, list):
+        return []
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _build_cached_match_payload(row, conditions):
+    if not all(_apply_screener_condition(row.get(cond['field']), cond['op'], cond['value']) for cond in conditions):
+        return None
+
+    symbol = str(row.get('symbol') or '').strip().upper()
+    if not symbol:
+        return None
+
+    payload = dict(row)
+    payload['symbol'] = symbol
+    if 'date' not in payload and row.get('trade_date') is not None:
+        payload['date'] = str(row.get('trade_date'))
+    elif 'date' in payload and payload['date'] is not None:
+        payload['date'] = str(payload['date'])
+    return payload
+
+
+def _build_response_from_cached_snapshot(snapshot_rows, conditions, rule):
+    matched = []
+    for row in snapshot_rows:
+        payload = _build_cached_match_payload(row, conditions)
+        if payload is not None:
+            matched.append(payload)
+
+    matched.sort(key=lambda item: item.get('close') or item.get('close_price') or 0, reverse=True)
+
+    return Response(
+        {
+            'rule_id': rule.id,
+            'rule_name': rule.name,
+            'total_scanned': len(snapshot_rows),
+            'matched_count': len(matched),
+            'matched': matched,
+        }
+    )
 
 
 class ScreenerRuleListCreateView(APIView):
@@ -58,81 +115,16 @@ class ScreenerRuleRunView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, rule_id):
-        from .market_data_service import MarketDataService
+        schedule_config = ScreenerScheduleConfig.objects.first()
+        if schedule_config is not None and not schedule_config.is_user_custom_screener_enabled:
+            raise PermissionDenied('Screener người dùng đang tạm tắt để bảo trì.')
+
         rule = generics.get_object_or_404(ScreenerRule, pk=rule_id, user=request.user)
         conditions = rule.rules_json
 
-        # 1. Lấy toàn bộ symbols có dữ liệu (SSOT)
-        all_symbols = MarketDataService.get_universe_symbols()
+        cached_snapshot = cache.get(GlobalScreenerService.CACHE_KEY)
+        if cached_snapshot is None:
+            cached_snapshot = GlobalScreenerService.precompute_market_snapshot()
 
-        if not all_symbols:
-            return Response({'matched': [], 'total_scanned': 0, 'rule_id': rule.id})
-
-        # 2. Fetch snapshot (Latest Price)
-        # MarketDataService handles chunking and caching internally if optimized, 
-        # or we just use it as the unified access point.
-        latest_rows_map = MarketDataService.get_latest_snapshot(all_symbols)
-
-        required_fields = {cond['field'] for cond in conditions}
-        needs_history = required_fields & {
-            'rsi_14', 'sma20', 'sma50', 'momentum_20d_pct', 
-            'price_vs_sma20_pct', 'price_vs_sma50_pct', 'range_position_pct',
-            'avg_volume_20', 'macd_hist', 'volume_rvol', 'sma20_vs_sma50_pct',
-        }
-
-        # 3. Fetch history if needed
-        history_map = {}
-        if needs_history:
-            # Screener typically needs ~50-70 rows for MA/RSI
-            history_map = MarketDataService.get_historical_indicators(
-                all_symbols,
-                lookback_days=70,
-                include_fields=['date', 'close_price', 'volume', 'high_price', 'low_price']
-            )
-
-        matched = []
-        rows_to_scan = latest_rows_map.values()
-        total_scanned = len(rows_to_scan)
-        
-        for row in rows_to_scan:
-            sym = row.get('symbol') or next((s for s, r in latest_rows_map.items() if r == row), None)
-            if not sym: continue
-            
-            # Adapting snapshot format
-            adapter_row = {**row, 'symbol': sym}
-            tech = _screener_build_technical(sym, adapter_row, history_map)
-            
-            if all(_apply_screener_condition(tech.get(c['field']), c['op'], c['value']) for c in conditions):
-                matched.append(
-                    {
-                        'symbol': sym,
-                        'date': str(row['date']),
-                        **tech,
-                    }
-                )
-
-        matched = []
-        total_scanned = len(rows)
-        for row in rows:
-            sym = row['symbol']
-            tech = _screener_build_technical(sym, row, history_map)
-            if all(_apply_screener_condition(tech.get(c['field']), c['op'], c['value']) for c in conditions):
-                matched.append(
-                    {
-                        'symbol': sym,
-                        'date': str(row['date']),
-                        **tech,
-                    }
-                )
-
-        matched.sort(key=lambda x: x.get('close') or 0, reverse=True)
-
-        return Response(
-            {
-                'rule_id': rule.id,
-                'rule_name': rule.name,
-                'total_scanned': total_scanned,
-                'matched_count': len(matched),
-                'matched': matched,
-            }
-        )
+        cached_rows = _extract_master_snapshot_rows(cached_snapshot)
+        return _build_response_from_cached_snapshot(cached_rows, conditions, rule)

@@ -5,6 +5,7 @@ from django.test import SimpleTestCase
 
 from portfolio.tasks_whale_preflight import (
     _build_whale_generation_context_dict,
+    _prepare_whale_generation_context,
     _return_with_preflight_profile,
     _unwrap_or_return_skip,
 )
@@ -179,7 +180,7 @@ class WhalePreflightContextAssemblyTests(SimpleTestCase):
     def test_build_whale_generation_context_dict_keeps_legacy_aliases(self):
         ctx = _build_whale_generation_context_dict(
             cooldown=900,
-            cache_key='whale_advisory_lock:1:VCB',
+            cache_key='whale_advisory_lock:VCB',
             source_key='periodic_job',
             latest_existing_advisory=None,
             target_user=None,
@@ -212,3 +213,36 @@ class WhalePreflightContextAssemblyTests(SimpleTestCase):
 
         self.assertIn('skip_response', result)
         self.assertTrue(mock_log.called)
+
+    @patch('portfolio.tasks_whale_preflight._check_preflight_cache_skips', return_value=None)
+    @patch('portfolio.tasks_whale_preflight._check_provider_rate_limit', return_value=None)
+    @patch('portfolio.tasks_whale_preflight._extract_ai_config_values', return_value=('openai', 'gpt-4o-mini', 'masked'))
+    @patch('portfolio.tasks_whale_preflight._check_ai_runtime_config', return_value=({'source': 'env'}, None))
+    @patch('portfolio.tasks_whale_preflight._resolve_advisory_output_config', return_value={'output_language': 'vi', 'resolved_model': 'gpt-4o-mini', 'use_concise': True})
+    @patch('portfolio.tasks_whale_preflight._check_user_cfg_guards', return_value=(None, 900))
+    @patch('portfolio.tasks_whale_preflight.UserConfig.objects.filter')
+    @patch('portfolio.tasks_whale_preflight.WhaleAdvisory.objects.filter')
+    def test_prepare_whale_generation_context_uses_symbol_only_lock_key(
+        self,
+        mock_whale_filter,
+        mock_user_filter,
+        _mock_user_cfg_guards,
+        _mock_resolve_output_config,
+        _mock_ai_runtime_config,
+        _mock_extract_ai_config,
+        _mock_rate_limit,
+        _mock_cache_skips,
+    ):
+        user_cfg = type('UserCfg', (), {'advisory_max_tokens_per_day': 1200, 'user': object()})()
+        mock_user_filter.return_value.select_related.return_value.first.return_value = user_cfg
+        mock_whale_filter.return_value.filter.return_value.order_by.return_value.first.return_value = None
+
+        context = _prepare_whale_generation_context(
+            symbol='VCB',
+            user_id=7,
+            source='PERIODIC_JOB',
+            force_refresh=False,
+        )
+
+        self.assertEqual(context['cache_key'], 'whale_advisory_lock:VCB')
+        self.assertIsNone(context['latest_existing_advisory'])

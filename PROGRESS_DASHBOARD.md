@@ -1,3 +1,169 @@
+# ✅ AUDIT FILE LIST (2026-04-28g)
+- backend/portfolio/views_screener_admin.py (NEW - admin screener config/rule/manual APIs with IsAdminUser)
+- backend/portfolio/urls.py (MODIFIED - wire admin screener routes)
+- backend/portfolio/tests/test_admin_screener_admin.py (NEW - permission/config/rules/manual-run regression)
+- frontend/src/api/client.js (MODIFIED - admin screener Axios helpers)
+- frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx (NEW - admin panel for config, manual run, and rules)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add Global Screener tab)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese admin screener text)
+- frontend/src/i18n/en.js (MODIFIED - English admin screener text)
+- docs/GLOBAL_SCREENER_ADMIN_UI_SUPPLEMENTARY_PLAN_20260428.md (MODIFIED - mark taskboard complete and correct audit route)
+- module_tree_full.md (MODIFIED - regenerate after adding admin screener module)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_admin_screener_admin --keepdb` => 8/8 PASS.
+- PASSED: `npm run build` trong `frontend/` => compile thanh cong sau khi them admin screener panel.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- PASSED: `get_errors` tren cac file touched backend/frontend => no errors found.
+- NOTE: screenshot/video va payload snapshot khong duoc capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
+
+# ✅ AUDIT FILE LIST (2026-04-28f)
+- backend/portfolio/services_global_screener.py (MODIFIED - enrich snapshot rows with whale and dark-flow summaries)
+- backend/portfolio/screener_helpers.py (MODIFIED - whitelist flow-based screener fields)
+- backend/portfolio/tests/test_global_screener_service.py (MODIFIED - assert flow enrichment in snapshot and matching)
+- backend/portfolio/tests/test_screener_api.py (MODIFIED - allow flow-based rule creation and cache-match regression)
+- backend/portfolio/tests/test_screener_cache_snapshot_api.py (MODIFIED - preserve cache-first contract with snapshot rows)
+- backend/portfolio/tests/test_whale_broadcast.py (NEW/UPDATED - screener matched broadcast regression)
+- module_tree_full.md (MODIFIED - regenerate after flow-enrichment slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_global_screener_service.GlobalScreenerServiceTests.test_precompute_market_snapshot_and_match_active_rules portfolio.tests.test_screener_api.ScreenerCRUDTests.test_create_whale_intensity_rule portfolio.tests.test_screener_api.ScreenerRunTests.test_run_with_flow_matching_data --keepdb` => 3/3 PASS.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat` => dev runtime rebuilt/restarted successfully.
+- PASSED: `get_errors` on touched backend files => no errors found.
+
+# ✅ AUDIT FILE LIST (2026-04-28e)
+- docs/GLOBAL_SCREENER_AI_ALERTS_REFACTOR_AUDIT_REPORT_20260428.md (NEW - formal independent audit report)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `docs/GLOBAL_SCREENER_AI_ALERTS_REFACTOR_AUDIT_REPORT_20260428.md` da ton tai voi noi dung bao cao day du.
+- PASSED: `get_changed_files` xac nhan file bao cao dang la thay doi moi trong working tree.
+- NOTE: day la thay doi doc-only; khong can rebuild runtime hay regen module tree.
+
+# ✅ AUDIT FILE LIST (2026-04-28d)
+- backend/portfolio/views_stock_workspace_admin.py (MODIFIED - remove legacy chart fallback branch)
+- module_tree_full.md (MODIFIED - regenerate after chart fallback cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_chart_endpoint_uses_refactored_market_view_when_flag_enabled portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_chart_endpoint_rejects_invalid_days portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_stock_workspace_chart_normalizes_history_points_to_quote_unit --keepdb` => 3/3 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/views_stock_workspace_admin.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build backend celery_worker celery_beat` => dev runtime rebuilt/restarted successfully.
+
+# ✅ AUDIT FILE LIST (2026-04-28c)
+- backend/portfolio/views_screener.py (MODIFIED - use `GlobalScreenerService.CACHE_KEY` instead of local duplicate constant)
+- backend/portfolio/tests/test_screener_api.py (MODIFIED - use service cache key and clean up evaluator docstring)
+- backend/portfolio/tests/test_screener_cache_snapshot_api.py (MODIFIED - use service cache key)
+- module_tree_full.md (MODIFIED - regenerate after cache-key dedup cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_screener_api portfolio.tests.test_screener_cache_snapshot_api --keepdb` => 17/17 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/views_screener.py`, `backend/portfolio/tests/test_screener_api.py`, `backend/portfolio/tests/test_screener_cache_snapshot_api.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: slice nay chi dedup SSOT cache key; runtime refresh van phai chay de container dung code moi.
+
+# ✅ AUDIT FILE LIST (2026-04-28b)
+- backend/portfolio/views_screener.py (MODIFIED - remove legacy MarketDataService path, use cache snapshot + global screener service only)
+- backend/portfolio/tests/test_screener_api.py (MODIFIED - seed cache snapshot for run tests, remove DailyPrice dependency)
+- module_tree_full.md (MODIFIED - regenerate after screener cleanup slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_screener_api portfolio.tests.test_screener_cache_snapshot_api --keepdb` => 17/17 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/views_screener.py`, `backend/portfolio/tests/test_screener_api.py`, `backend/portfolio/tests/test_screener_cache_snapshot_api.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: slice nay da loai bo code fallback cu; runtime stack can duoc refresh lai de auditor test dung code moi.
+
+# ✅ AUDIT FILE LIST (2026-04-28a)
+- backend/portfolio/tasks_whale_broadcast.py (MODIFIED - add screener matched broadcast helper and user alert history write-back)
+- backend/portfolio/tasks_global_screener.py (MODIFIED - fan out screener matches and enqueue matched-symbol auto-generation)
+- backend/portfolio/tasks_whale_auto_generation.py (MODIFIED - accept optional `matched_symbols` filter)
+- backend/portfolio/consumers.py (MODIFIED - add `screener_matched` websocket handler)
+- backend/portfolio/tests/test_whale_broadcast.py (NEW - broadcast helper regression)
+- backend/portfolio/tests/test_global_screener_service.py (MODIFIED - assert screener broadcast and auto-generation queue)
+- backend/portfolio/tests/test_whale_advisory_task.py (MODIFIED - add matched-symbol filter regression)
+- module_tree_full.md (MODIFIED - regenerate after backend slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_global_screener_service.GlobalScreenerServiceTests.test_scheduled_task_broadcasts_each_matched_symbol portfolio.tests.test_whale_advisory_task.WhaleAdvisoryTaskTests.test_auto_generate_task_filters_to_matched_symbols --keepdb` => 2/2 PASS.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_broadcast portfolio.tests.test_realtime_gateway --keepdb` => 11/11 PASS.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: broadcast/history fan-out va matched-symbol auto-generation da duoc noi tiep; backend runtime refresh van can chay truoc khi final audit.
+
+# ✅ AUDIT FILE LIST (2026-04-27ap)
+- backend/portfolio/services_global_screener.py (NEW - precompute snapshot, cache master rows, match active rules)
+- backend/portfolio/tasks_global_screener.py (NEW - scheduled/manual task wrapper cho global screener)
+- backend/portfolio/tests/test_global_screener_service.py (NEW - snapshot precompute, rule matching va disabled-task test)
+- module_tree_full.md (MODIFIED - regenerate sau global screener service slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_global_screener_service --keepdb` => 2/2 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/services_global_screener.py`, `backend/portfolio/tasks_global_screener.py`, `backend/portfolio/tests/test_global_screener_service.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: slice nay tao producer cho cache-first screener flow; khong can rebuild dev stack.
+
+# ✅ AUDIT FILE LIST (2026-04-27ao)
+- backend/portfolio/views_screener.py (MODIFIED - đọc cache `global_screener_master_snapshot` trước và giữ fallback legacy path khi cache miss)
+- backend/portfolio/tests/test_screener_cache_snapshot_api.py (NEW - cache-first run test và feature-flag 403 test)
+- module_tree_full.md (MODIFIED - regenerate sau screener runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27ao)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_screener_api --keepdb` => 15/15 PASS.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_screener_cache_snapshot_api --keepdb` => 2/2 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/views_screener.py` va `backend/portfolio/tests/test_screener_cache_snapshot_api.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: slice nay la backend API refactor; khong can rebuild dev stack.
+
+# ✅ AUDIT FILE LIST (2026-04-27an)
+- backend/portfolio/tasks_whale_preflight.py (MODIFIED - đổi cache key sang `whale_advisory_lock:{symbol}`)
+- backend/portfolio/tests/test_whale_preflight_refactor.py (MODIFIED - cập nhật cache key assertions va thêm regression test lock symbol-only)
+- module_tree_full.md (MODIFIED - regenerate sau preflight dedup slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27an)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_whale_preflight_refactor --keepdb` => 17/17 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/tasks_whale_preflight.py` va `backend/portfolio/tests/test_whale_preflight_refactor.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: slice nay la backend dedup-contract change; khong can rebuild dev stack.
+
+# ✅ AUDIT FILE LIST (2026-04-27am)
+- backend/portfolio/models_screener_admin.py (NEW - define `GlobalScreenerRule` va `ScreenerScheduleConfig`)
+- backend/portfolio/models_alert_history.py (NEW - define `UserAlertHistory` va alert type choices)
+- backend/portfolio/models.py (MODIFIED - re-export new model modules for app discovery)
+- backend/portfolio/admin.py (MODIFIED - register `GlobalScreenerRule`, `ScreenerScheduleConfig`, `UserAlertHistory`)
+- backend/portfolio/tests/test_global_screener_models.py (NEW - test defaults, string repr va admin registration)
+- backend/portfolio/migrations/0061_globalscreenerrule_screenerscheduleconfig_and_more.py (NEW - schema migration)
+- module_tree_full.md (MODIFIED - regenerate sau schema/admin slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-27am)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py makemigrations portfolio` => tao migration 0061.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py migrate` => apply migration thanh cong.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe manage.py test portfolio.tests.test_global_screener_models --keepdb` => 3/3 PASS.
+- PASSED: `get_errors` tren `backend/portfolio/models.py`, `backend/portfolio/models_screener_admin.py`, `backend/portfolio/models_alert_history.py`, `backend/portfolio/admin.py`, `backend/portfolio/tests/test_global_screener_models.py` => no errors found.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong.
+- NOTE: chua rebuild dev stack vi slice nay la backend schema/admin scaffold, khong phai runtime/UI change.
+
 # ✅ AUDIT FILE LIST (2026-04-27al)
 - frontend/src/components/KLineChartPanel.jsx (MODIFIED - timeframe combobox, custom CVD/strength/whale buy-sell panes va toggle controls)
 - frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - pass `flowData` vao KLine panel)

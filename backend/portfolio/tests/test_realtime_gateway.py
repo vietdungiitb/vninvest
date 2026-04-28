@@ -156,6 +156,42 @@ class RealtimeGatewayTests(TransactionTestCase):
 
         asyncio.run(run_test())
 
+    def test_websocket_forwards_screener_matched_event(self):
+        async def run_test():
+            token = str(AccessToken.for_user(self.user))
+            communicator = WebsocketCommunicator(application, f"/ws/realtime/?token={token}")
+            connected, _ = await communicator.connect()
+            self.assertTrue(connected)
+
+            await communicator.receive_json_from()
+
+            channel_layer = get_channel_layer()
+            await channel_layer.group_send(
+                f'user_{self.user.id}_alerts',
+                {
+                    'type': 'screener_matched',
+                    'payload': {
+                        'event_type': 'screener_matched',
+                        'symbol': 'VCB',
+                        'message': 'Mã VCB vừa khớp bộ lọc screener toàn cục.',
+                        'matched_at': '2026-04-28T09:00:00+07:00',
+                        'ts': '2026-04-28T09:00:00+07:00',
+                        'history_id': 101,
+                        'source': 'global_screener',
+                    },
+                },
+            )
+
+            event = await communicator.receive_json_from()
+            self.assertEqual(event['event_type'], 'screener_matched')
+            self.assertEqual(event['symbol'], 'VCB')
+            self.assertEqual(event['message'], 'Mã VCB vừa khớp bộ lọc screener toàn cục.')
+            self.assertEqual(event['history_id'], 101)
+
+            await communicator.disconnect()
+
+        asyncio.run(run_test())
+
 
     def test_stream_broadcaster_delivers_ticker_payload_shape(self):
         mock_sender = MagicMock()

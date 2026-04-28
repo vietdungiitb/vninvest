@@ -125,6 +125,11 @@ class RealtimeConsumer(AsyncJsonWebsocketConsumer):
             payload.pop('ai_detail', None)
         await self.send_json(payload)
 
+    async def screener_matched(self, event):
+        payload = dict(event.get('payload') or {})
+        payload['event_type'] = 'screener_matched'
+        await self.send_json(payload)
+
     async def dark_flow_alert(self, event):
         payload = dict(event.get('data') or event.get('payload') or {})
         payload['event_type'] = 'dark_flow_alert'

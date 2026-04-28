@@ -15,6 +15,13 @@ _SCREENER_ALLOWED_FIELDS = {
     'close', 'volume', 'rsi_14', 'sma20', 'sma50',
     'momentum_20d_pct', 'price_vs_sma20_pct', 'price_vs_sma50_pct',
     'range_position_pct', 'avg_volume_20',
+    'whale_buy_value', 'whale_sell_value', 'whale_unknown_value',
+    'whale_total_value', 'whale_net_value', 'whale_buy_pct',
+    'whale_sell_pct', 'whale_unknown_pct', 'whale_trade_count',
+    'whale_whale_value', 'whale_shark_value', 'whale_small_value',
+    'whale_intensity',
+    'dark_flow_strength', 'dark_flow_avg_strength', 'dark_flow_max_strength',
+    'dark_flow_signal_count', 'dark_flow_cvd',
 }
 _SCREENER_ALLOWED_OPS = {'lt', 'lte', 'gt', 'gte', 'eq'}
 

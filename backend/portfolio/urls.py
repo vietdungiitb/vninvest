@@ -6,6 +6,12 @@ from . import trading_views, views
 from .views_whale_orders import whale_orders_by_symbol_api
 from .views_whale_analytics import whale_analytics_snapshot_api
 from .views_stock_order_flow import market_discovery_hub_api
+from .views_screener_admin import (
+    AdminGlobalScreenerRuleDetailView,
+    AdminGlobalScreenerRuleListView,
+    AdminGlobalScreenerRunManualView,
+    AdminScreenerConfigView,
+)
 from .opencore_api import (
     DPILicenseViewSet, DPIUsageViewSet, DPIPremiumIndicatorsViewSet,
     DPIBillingViewSet
@@ -74,6 +80,10 @@ urlpatterns = [
     path('screener/rules/', views.ScreenerRuleListCreateView.as_view(), name='screener-rule-list'),
     path('screener/rules/<int:rule_id>/', views.ScreenerRuleDetailView.as_view(), name='screener-rule-detail'),
     path('screener/rules/<int:rule_id>/run/', views.ScreenerRuleRunView.as_view(), name='screener-rule-run'),
+    path('admin/screener/config/', AdminScreenerConfigView.as_view(), name='admin-screener-config'),
+    path('admin/screener/rules/', AdminGlobalScreenerRuleListView.as_view(), name='admin-global-screener-rule-list'),
+    path('admin/screener/rules/<int:rule_id>/', AdminGlobalScreenerRuleDetailView.as_view(), name='admin-global-screener-rule-detail'),
+    path('admin/screener/run-manual/', AdminGlobalScreenerRunManualView.as_view(), name='admin-global-screener-run-manual'),
 
     # --- Whale Advisory (AI — Pro+) ---
     path('whale-advisory/', views.WhaleAdvisoryListView.as_view(), name='whale-advisory-list'),

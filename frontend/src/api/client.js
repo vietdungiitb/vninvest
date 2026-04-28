@@ -576,6 +576,13 @@ export const createScreenerRule = (data) => apiClient.post('/portfolio/screener/
 export const updateScreenerRule = (id, data) => apiClient.put(`/portfolio/screener/rules/${id}/`, data);
 export const deleteScreenerRule = (id) => apiClient.delete(`/portfolio/screener/rules/${id}/`);
 export const runScreenerRule = (id) => apiClient.post(`/portfolio/screener/rules/${id}/run/`);
+export const getAdminScreenerConfig = () => apiClient.get('/portfolio/admin/screener/config/');
+export const updateAdminScreenerConfig = (payload) => apiClient.put('/portfolio/admin/screener/config/', payload);
+export const getAdminGlobalScreenerRules = () => apiClient.get('/portfolio/admin/screener/rules/');
+export const createAdminGlobalScreenerRule = (payload) => apiClient.post('/portfolio/admin/screener/rules/', payload);
+export const updateAdminGlobalScreenerRule = (id, payload) => apiClient.put(`/portfolio/admin/screener/rules/${id}/`, payload);
+export const deleteAdminGlobalScreenerRule = (id) => apiClient.delete(`/portfolio/admin/screener/rules/${id}/`);
+export const runAdminGlobalScreenerManual = () => apiClient.post('/portfolio/admin/screener/run-manual/');
 
 // --- Crawling Control API ---
 export const getAdminCrawlJobs = () => apiClient.get('/v1/admin/crawl/jobs/');

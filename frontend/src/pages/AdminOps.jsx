@@ -36,6 +36,7 @@ import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
 import WhaleServiceOpsPanel from '../components/adminops/WhaleServiceOpsPanel';
+import GlobalScreenerAdminPanel from '../components/adminops/GlobalScreenerAdminPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -1196,6 +1197,9 @@ export default function AdminOps() {
       <div className="flex flex-wrap gap-2">
         <button className={pageBtnClass('overview')} onClick={() => setActivePage('overview')}>Tong quan</button>
         <button className={pageBtnClass('whale')} onClick={() => setActivePage('whale')}>Whale Ops</button>
+        <button className={pageBtnClass('global_screener')} onClick={() => setActivePage('global_screener')}>
+          {t('adminOps.globalScreenerTab', { defaultValue: 'Global Screener' })}
+        </button>
         <button className={pageBtnClass('governance')} onClick={() => setActivePage('governance')}>Governance</button>
         <button className={pageBtnClass('prefetch')} onClick={() => setActivePage('prefetch')}>Prefetch</button>
         <button className={pageBtnClass('vnstock')} onClick={() => setActivePage('vnstock')}>Vnstock Config</button>
@@ -1466,6 +1470,12 @@ export default function AdminOps() {
         </div>
 
         <WhaleServiceOpsPanel />
+      </section>
+      ) : null}
+
+      {activePage === 'global_screener' ? (
+      <section>
+        <GlobalScreenerAdminPanel />
       </section>
       ) : null}
 

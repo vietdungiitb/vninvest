@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(bind=True, name='portfolio.tasks.auto_generate_advisories_for_all_tracked', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
-def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None) -> dict:
+def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None, matched_symbols: list[str] | None = None) -> dict:
     """Auto-generate advisories for tracked symbols with enabled users."""
     batch_size = batch_size or int(os.getenv('ADVISORY_AUTO_GENERATE_BATCH_SIZE', '20'))
 
@@ -25,10 +25,30 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
     from portfolio import tasks as tasks_facade
 
     start_time = timezone.now()
+    normalized_matched_symbols = {
+        str(symbol).strip().upper()
+        for symbol in matched_symbols or []
+        if str(symbol).strip()
+    }
+
+    if matched_symbols is not None and not normalized_matched_symbols:
+        return {
+            'status': 'ok',
+            'generated_count': 0,
+            'skipped_count': 0,
+            'failed_count': 0,
+            'elapsed_seconds': 0.0,
+            'batch_size': batch_size,
+            'matched_symbol_count': 0,
+        }
+
     tracked_symbols = TrackedSymbol.objects.filter(
         user__user_config__advisory_auto_generation_enabled=True,
         is_active=True,
-    ).select_related('user', 'user__user_config').distinct()[:batch_size]
+    )
+    if normalized_matched_symbols:
+        tracked_symbols = tracked_symbols.filter(symbol__in=normalized_matched_symbols)
+    tracked_symbols = tracked_symbols.select_related('user', 'user__user_config').order_by('symbol', 'user_id', 'id').distinct()[:batch_size]
 
     generated_count = 0
     skipped_count = 0
@@ -72,4 +92,5 @@ def auto_generate_advisories_for_all_tracked(self, batch_size: int | None = None
         'failed_count': failed_count,
         'elapsed_seconds': elapsed,
         'batch_size': batch_size,
+        'matched_symbol_count': len(normalized_matched_symbols),
     }

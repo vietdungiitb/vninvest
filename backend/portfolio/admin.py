@@ -22,12 +22,14 @@ from .models import (
     AccountSnapshot,
     AICommandCenterAuditLog,
     DailyPrice,
+    GlobalScreenerRule,
     IntradayTick,
     MarketGroupSyncLog,
     Portfolio,
     PriceAlertRule,
     PlanAssignmentLog,
     ScreenerRule,
+    ScreenerScheduleConfig,
     SecuritiesGroup,
     SecuritiesItem,
     OnboardingPlanPolicy,
@@ -41,6 +43,7 @@ from .models import (
     TrackedSymbol,
     Transaction,
     UserConfig,
+    UserAlertHistory,
     WatchlistGroup,
     WatchlistItem,
     WhaleAdvisory,
@@ -2094,6 +2097,39 @@ class ScreenerRuleAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'user')
     search_fields = ('name', 'user__username')
     ordering = ('-created_at',)
+
+
+@admin.register(GlobalScreenerRule)
+class GlobalScreenerRuleAdmin(admin.ModelAdmin):
+    list_display = ('name', 'is_active', 'created_at', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name',)
+    ordering = ('-updated_at', '-created_at')
+
+
+@admin.register(ScreenerScheduleConfig)
+class ScreenerScheduleConfigAdmin(admin.ModelAdmin):
+    list_display = ('cron_expression', 'is_user_custom_screener_enabled', 'updated_at', 'created_at')
+    list_filter = ('is_user_custom_screener_enabled',)
+    ordering = ('-updated_at', '-created_at')
+
+
+@admin.register(UserAlertHistory)
+class UserAlertHistoryAdmin(admin.ModelAdmin):
+    list_display = ('matched_at', 'user', 'symbol', 'alert_type')
+    list_filter = ('alert_type', 'symbol')
+    search_fields = ('user__username', 'symbol', 'message')
+    ordering = ('-matched_at', '-id')
+    readonly_fields = ('user', 'symbol', 'alert_type', 'message', 'matched_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(MarketGroupSyncLog)

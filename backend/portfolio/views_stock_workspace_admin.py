@@ -216,60 +216,7 @@ class StockWorkspaceChartView(APIView):
             return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
             legacy_views.logger.warning('StockWorkspaceChartView legacy bridge lỗi %s: %s', normalized_symbol, exc)
-
-            # Safe fallback: build chart payload directly from DailyPrice
-            # so UI still receives a deterministic response shape.
-            try:
-                try:
-                    days = int(request.query_params.get('days', 180))
-                except (TypeError, ValueError):
-                    days = 180
-                days = min(max(days, 7), 1825)
-
-                from .market_data_service import MarketDataService
-                rows_asc = MarketDataService.get_historical_indicators(
-                    [normalized_symbol], 
-                    lookback_days=days,
-                    include_fields=['date', 'open_price', 'high_price', 'low_price', 'close_price', 'volume']
-                ).get(normalized_symbol, [])
-                
-                if not rows_asc:
-                    return Response({'detail': 'Không thể tải dữ liệu biểu đồ.'}, status=status.HTTP_502_BAD_GATEWAY)
-
-                rows = rows_asc
-
-                points = [
-                    {
-                        'date': row['date'].isoformat() if row.get('date') else None,
-                        'open': float(row['open_price']) if row.get('open_price') is not None else None,
-                        'high': float(row['high_price']) if row.get('high_price') is not None else None,
-                        'low': float(row['low_price']) if row.get('low_price') is not None else None,
-                        'close': float(row['close_price']) if row.get('close_price') is not None else None,
-                        'volume': float(row['volume']) if row.get('volume') is not None else None,
-                    }
-                    for row in rows
-                ]
-
-                technical = legacy_views._compute_stock_workspace_technical(
-                    rows,
-                    {
-                        'week52_low': min(float(r['low_price']) for r in rows if r.get('low_price') is not None),
-                        'week52_high': max(float(r['high_price']) for r in rows if r.get('high_price') is not None),
-                    },
-                )
-
-                return Response(
-                    {
-                        'symbol': normalized_symbol,
-                        'days': days,
-                        'points': points,
-                        'technical': technical,
-                    },
-                    status=status.HTTP_200_OK,
-                )
-            except Exception as fallback_exc:
-                legacy_views.logger.warning('StockWorkspaceChartView fallback lỗi %s: %s', normalized_symbol, fallback_exc)
-                return Response({'detail': 'Không thể tải dữ liệu biểu đồ.'}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({'detail': 'Không thể tải dữ liệu biểu đồ.'}, status=status.HTTP_502_BAD_GATEWAY)
 
         return Response(payload)
 

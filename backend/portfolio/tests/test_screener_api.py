@@ -1,5 +1,5 @@
 """
-Tests cho Screener CRUD API và evaluator.
+Tests cho Screener CRUD API và cache snapshot evaluator.
 
 Coverage:
   1.  GET /screener/rules/ - unauthenticated → 401
@@ -14,17 +14,18 @@ Coverage:
   10. PUT /screener/rules/{id}/ - cập nhật rule → 200
   11. DELETE /screener/rules/{id}/ - xóa rule → 204
   12. DELETE /screener/rules/{id}/ - xóa rule của user khác → 404
-  13. POST /screener/rules/{id}/run/ - không có DailyPrice → matched=[], total_scanned=0
-  14. POST /screener/rules/{id}/run/ - có DailyPrice, điều kiện khớp → matched có data
-  15. POST /screener/rules/{id}/run/ - có DailyPrice, điều kiện không khớp → matched=[]
+    13. POST /screener/rules/{id}/run/ - cache snapshot rỗng → matched=[], total_scanned=0
+    14. POST /screener/rules/{id}/run/ - cache snapshot có row khớp → matched có data
+    15. POST /screener/rules/{id}/run/ - cache snapshot có row không khớp → matched=[]
 """
 
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from portfolio.models import DailyPrice, ScreenerRule, UserConfig
-from datetime import date
+from portfolio.models import ScreenerRule, UserConfig
+from portfolio.services_global_screener import GlobalScreenerService
 
 LIST_URL = '/api/portfolio/screener/rules/'
 DETAIL_URL = lambda pk: f'/api/portfolio/screener/rules/{pk}/'
@@ -80,6 +81,15 @@ class ScreenerCRUDTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
         self.assertEqual(resp.data['name'], 'Test rule')
         self.assertEqual(len(resp.data['rules_json']), 1)
+
+    # --- 3b. Field dòng tiền mới hợp lệ ---
+    def test_create_whale_intensity_rule(self):
+        resp = self.client.post(LIST_URL, {
+            'name': 'Flow',
+            'rules_json': [{'field': 'whale_intensity', 'op': 'gte', 'value': 80}],
+        }, format='json')
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.data['rules_json'][0]['field'], 'whale_intensity')
 
     # --- 4. rules_json rỗng ---
     def test_create_empty_rules_json(self):
@@ -169,27 +179,39 @@ class ScreenerRunTests(APITestCase):
         self.user = User.objects.create_user(username='u4', password='Test@123456')
         token = get_token(self.client, 'u4')
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+        cache.clear()
+
+    def tearDown(self):
+        cache.clear()
 
     def _make_rule(self, rules_json):
         return ScreenerRule.objects.create(
             user=self.user, name='RunTest', rules_json=rules_json
         )
 
-    # --- 13. Không có DailyPrice ---
+    def _seed_snapshot(self, rows):
+        cache.set(GlobalScreenerService.CACHE_KEY, {'rows': rows})
+
+    # --- 13. Cache snapshot rỗng ---
     def test_run_no_data(self):
         rule = self._make_rule([{'field': 'rsi_14', 'op': 'lt', 'value': 30}])
+        self._seed_snapshot([])
         resp = self.client.post(RUN_URL(rule.id))
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data['matched'], [])
         self.assertEqual(resp.data['total_scanned'], 0)
 
-    # --- 14. Có DailyPrice, điều kiện khớp ---
+    # --- 14. Cache snapshot có row khớp ---
     def test_run_with_matching_data(self):
-        DailyPrice.objects.create(
-            symbol='VNM', date=date(2026, 3, 31),
-            open_price=80000, high_price=82000, low_price=79000, close_price=80000,
-            volume=1_000_000
-        )
+        self._seed_snapshot([
+            {
+                'symbol': 'VNM',
+                'date': '2026-03-31',
+                'close': 80000,
+                'close_price': 80000,
+                'volume': 1_000_000,
+            }
+        ])
         # Giá đóng cửa > 50000 → nên khớp
         rule = self._make_rule([{'field': 'close', 'op': 'gt', 'value': 50000}])
         resp = self.client.post(RUN_URL(rule.id))
@@ -198,13 +220,37 @@ class ScreenerRunTests(APITestCase):
         self.assertEqual(resp.data['matched_count'], 1)
         self.assertEqual(resp.data['matched'][0]['symbol'], 'VNM')
 
-    # --- 15. Có DailyPrice, không khớp ---
+    # --- 14b. Cache snapshot có row khớp theo field dòng tiền ---
+    def test_run_with_flow_matching_data(self):
+        self._seed_snapshot([
+            {
+                'symbol': 'VCB',
+                'date': '2026-03-31',
+                'close': 120000,
+                'close_price': 120000,
+                'volume': 1_000_000,
+                'whale_intensity': 88,
+                'dark_flow_strength': 82,
+            }
+        ])
+        rule = self._make_rule([{'field': 'whale_intensity', 'op': 'gte', 'value': 80}])
+        resp = self.client.post(RUN_URL(rule.id))
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data['total_scanned'], 1)
+        self.assertEqual(resp.data['matched_count'], 1)
+        self.assertEqual(resp.data['matched'][0]['symbol'], 'VCB')
+
+    # --- 15. Cache snapshot có row không khớp ---
     def test_run_with_no_match(self):
-        DailyPrice.objects.create(
-            symbol='VNM', date=date(2026, 3, 31),
-            open_price=80000, high_price=82000, low_price=79000, close_price=80000,
-            volume=1_000_000
-        )
+        self._seed_snapshot([
+            {
+                'symbol': 'VNM',
+                'date': '2026-03-31',
+                'close': 80000,
+                'close_price': 80000,
+                'volume': 1_000_000,
+            }
+        ])
         # close > 200000 → không khớp
         rule = self._make_rule([{'field': 'close', 'op': 'gt', 'value': 200000}])
         resp = self.client.post(RUN_URL(rule.id))

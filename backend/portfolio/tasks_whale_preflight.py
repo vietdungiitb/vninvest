@@ -98,7 +98,7 @@ def _prepare_whale_generation_context(
 ) -> dict:
     started_at = time.perf_counter()
     cooldown = getattr(settings, 'WHALE_ADVISORY_COOLDOWN_SECONDS', 900)
-    cache_key = f'whale_advisory_lock:{user_id}:{symbol}' if user_id is not None else f'whale_advisory_lock:{symbol}'
+    cache_key = f'whale_advisory_lock:{symbol}'
     source_key = _normalize_advisory_source(source)
 
     advisory_qs = WhaleAdvisory.objects.filter(symbol=symbol)
