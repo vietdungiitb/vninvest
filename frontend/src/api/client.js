@@ -604,15 +604,5 @@ export const getAdminCrawlAuditLogs = (params = {}) => {
   return apiClient.get(`/v1/admin/crawl/audit-logs/${query ? `?${query}` : ''}`);
 };
 
-// --- Whale Service Orchestration (Phase 4/5) ---
-export const triggerWhaleServiceJob = (serviceType, params = {}) =>
-  apiClient.post('/portfolio/whale-service/trigger/', { service_type: serviceType, params });
-export const getWhaleServiceJobs = (params = {}) => {
-  const query = new URLSearchParams(params).toString();
-  return apiClient.get(`/portfolio/whale-service/jobs/${query ? `?${query}` : ''}`);
-};
-export const getWhaleServiceJobStatus = (jobId) => apiClient.get(`/portfolio/whale-service/jobs/${jobId}/`);
-export const retryWhaleServiceJob = (jobId) => apiClient.post(`/portfolio/whale-service/jobs/${jobId}/retry/`);
-
 export default apiClient;
 

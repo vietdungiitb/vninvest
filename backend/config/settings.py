@@ -436,10 +436,18 @@ if ORDER_FLOW_DETECTION_ENABLED:
 
 REVERSAL_DETECTION_ENABLED = os.getenv("REVERSAL_DETECTION_ENABLED", "True").lower() == "true"
 REVERSAL_DETECTION_INTERVAL_SECONDS = _env_int("REVERSAL_DETECTION_INTERVAL_SECONDS", 30)
-if REVERSAL_DETECTION_ENABLED:
-    CELERY_BEAT_SCHEDULE["detect-whale-reversal"] = {
-        "task": "portfolio.tasks.detect_whale_reversal",
-        "schedule": timedelta(seconds=max(REVERSAL_DETECTION_INTERVAL_SECONDS, 30)),
+WHALE_ALERT_DETECTION_ENABLED = os.getenv(
+    "WHALE_ALERT_DETECTION_ENABLED",
+    os.getenv("REVERSAL_DETECTION_ENABLED", "True"),
+).lower() == "true"
+WHALE_ALERT_DETECTION_INTERVAL_SECONDS = _env_int(
+    "WHALE_ALERT_DETECTION_INTERVAL_SECONDS",
+    REVERSAL_DETECTION_INTERVAL_SECONDS,
+)
+if WHALE_ALERT_DETECTION_ENABLED:
+    CELERY_BEAT_SCHEDULE["detect-global-whale-alerts"] = {
+        "task": "portfolio.tasks.detect_and_store_global_whale_alerts",
+        "schedule": timedelta(seconds=max(WHALE_ALERT_DETECTION_INTERVAL_SECONDS, 30)),
     }
 
 MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED = os.getenv("MISSION_CONTROL_SCHEDULED_ROLLOUTS_ENABLED", "True").lower() == "true"

@@ -139,7 +139,6 @@ from portfolio.tasks_watchlist_indicators import (
 from portfolio.tasks_whale_service import (
     distribute_whale_alert_event,
     detect_and_store_global_whale_alerts,
-    whale_service_job_task,
 )
 from portfolio.tasks_sync import (
     sync_user_watch_assets,

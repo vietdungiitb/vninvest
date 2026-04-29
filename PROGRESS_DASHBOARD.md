@@ -1677,6 +1677,69 @@ Validation:
 
 ---
 
+## ✅ AUDIT FILE LIST (2026-04-29ab)
+- backend/portfolio/models.py (MODIFIED - xoa model legacy `WhaleServiceJob` khoi runtime)
+- backend/portfolio/tasks.py (MODIFIED - dung export `whale_service_job_task`)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - xoa stub task `portfolio.tasks.whale_service_job_task`)
+- backend/portfolio/migrations/0064_delete_whaleservicejob.py (NEW - migration drop bang `WhaleServiceJob`)
+- module_tree_full.md (MODIFIED - regenerate sau cleanup model/task)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-29ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Queue scan key `celery` xac nhan `legacy_whale_task_messages = 0` tren backlog `2443` message truoc khi go stub task.
+- PASSED: `manage.py check` clean va `get_errors` tren 4 file backend vua sua deu khong co loi.
+- PASSED: Backend focused suites `test_whale_analytics_snapshot_api`, `test_whale_orders_ssot_parity`, `test_order_flow` -> 66 tests OK.
+- PASSED: `manage.py makemigrations --check --dry-run portfolio` bao `No changes detected in app 'portfolio'`.
+- PASSED: `python scripts/ops/generate_module_tree.py` regenerate module tree thanh cong (508 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat` rebuild/restart thanh cong; redis/db healthy.
+- PASSED: `showmigrations portfolio` trong container backend bao `[X] 0064_delete_whaleservicejob`; check schema tra `False` cho table `portfolio_whaleservicejob`.
+- PASSED: `celery inspect registered` tren worker chi con `portfolio.tasks.detect_and_store_global_whale_alerts`; task legacy khong con dang ky.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/` tra `200` sau refresh runtime.
+
+Residual risk:
+- Migration lich su `0053` va `0057` van nhac `WhaleServiceJob` theo dung lich su schema Django; runtime code, task registry va bang DB song da duoc xoa hoan toan.
+
+---
+
+## ✅ AUDIT FILE LIST (2026-04-29aa)
+- backend/config/settings.py (MODIFIED - beat whale chuyen sang canonical `detect_and_store_global_whale_alerts`)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - xoa tab Whale Ops legacy, giu Signals la surface whale duy nhat)
+- frontend/src/api/client.js (MODIFIED - xoa helper API whale-service legacy)
+- frontend/src/i18n/vi.js (MODIFIED - xoa key Whale Ops legacy)
+- frontend/src/i18n/en.js (MODIFIED - xoa key Whale Ops legacy)
+- frontend/src/components/adminops/WhaleServiceOpsPanel.jsx (DELETED - panel whale-service legacy)
+- backend/portfolio/urls.py (MODIFIED - xoa route `/whale-service/*`)
+- backend/portfolio/serializers.py (MODIFIED - xoa `WhaleServiceJobSerializer` legacy)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - orchestration whale legacy thanh stub no-op de absorb stale queue messages)
+- backend/portfolio/views_whale_orchestration.py (DELETED - API whale-service legacy)
+- backend/portfolio/whale_service_manager.py (DELETED - manager whale-service legacy)
+- backend/portfolio/services_whale_compute.py (DELETED - backfill/compute whale legacy)
+- backend/portfolio/tests/test_whale_service_orchestration.py (DELETED - test whale-service legacy)
+- backend/portfolio/verify_phase1.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase2.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase3.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase4.py (DELETED - script verify whale-service legacy)
+- module_tree_full.md (MODIFIED - regenerated sau cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-29aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Python settings check xac nhan beat whale moi la `detect-global-whale-alerts`; key `detect-whale-reversal` khong con.
+- PASSED: Backend focused suites `test_whale_analytics_snapshot_api`, `test_whale_orders_ssot_parity`, `test_order_flow` -> 66 tests OK.
+- PASSED: Frontend `npm run build` compile thanh cong.
+- PASSED: Django import smoke xac nhan khong con route `whale-service-*`, canonical whale task van dang ky, va stub legacy task van ton tai de xu ly stale messages.
+- PASSED: `python scripts/ops/generate_module_tree.py` regenerate module tree thanh cong (508 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` rebuild/restart thanh cong; backend healthy, frontend da start voi bundle moi.
+- PASSED: `Invoke-WebRequest http://127.0.0.1/admin-ops` tra 200 sau refresh stack.
+- PASSED: Screenshot integrated browser tren `/admin-ops` xac nhan khong con tab Whale Ops.
+
+Residual risk:
+- `WhaleServiceJob` model/table va migrations van con de tranh mo mot migration schema trong slice nay; runtime khong con duong vao nao su dung.
+- Stub task `portfolio.tasks.whale_service_job_task` con duoc giu lai de absorb stale queue messages ten cu; co the xoa han trong mot migration cleanup sau khi xac nhan queue da sach.
+
+---
+
 ## ✅ AUDIT FILE LIST (2026-04-23ar)
 - backend/portfolio/views_whale_orchestration.py (MODIFIED - jobs list filter + retry FAILED/PARTIAL)
 - backend/portfolio/urls.py (MODIFIED - route retry whale service job)

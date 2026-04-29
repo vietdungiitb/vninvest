@@ -1,3 +1,34 @@
+# Entry 2026-04-29ab - Remove the final WhaleServiceJob compatibility residue after broker safety validation
+
+Mục tiêu:
+- Xóa nốt phần tương thích còn sót lại sau SSOT cutover của Whale Alerts: model/table `WhaleServiceJob` và stub task `portfolio.tasks.whale_service_job_task`.
+- Chứng minh việc xóa stub là an toàn bằng broker evidence thay vì giả định: quét queue mặc định `celery`, xác nhận không còn legacy message trước khi gỡ task name.
+- Đồng bộ ngay runtime backend/Celery và schema thật để auditor mở dev stack hiện tại đã chạy code mới và không còn table/task legacy.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/models.py (MODIFIED - xóa model legacy `WhaleServiceJob` khỏi runtime model graph)
+- backend/portfolio/tasks.py (MODIFIED - dừng re-export `whale_service_job_task` khỏi Celery surface công khai)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - xóa hẳn stub task `portfolio.tasks.whale_service_job_task` và cleanup import logger không còn dùng)
+- backend/portfolio/migrations/0064_delete_whaleservicejob.py (NEW - drop bảng `WhaleServiceJob` khỏi schema)
+- module_tree_full.md (MODIFIED - regenerate sau khi xóa model/task legacy)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry `2026-04-29ab`)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Redis queue scan trực tiếp trên key `celery` bằng `.venv/Scripts/python.exe` => `{'queue': 'celery', 'length': 2443, 'legacy_whale_task_messages': 0, 'canonical_whale_task_messages': 0, 'legacy_sample': None}`; đủ bằng chứng để gỡ stub task mà không tạo unregistered-task runtime fault.
+- PASSED: `get_errors` trên `backend/portfolio/models.py`, `backend/portfolio/tasks.py`, `backend/portfolio/tasks_whale_service.py`, `backend/portfolio/migrations/0064_delete_whaleservicejob.py` => no errors found.
+- PASSED: `Push-Location ./backend; & "../.venv/Scripts/python.exe" manage.py check; Pop-Location` => `System check identified no issues (0 silenced).`
+- PASSED: `Push-Location ./backend; & "../.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_order_flow --keepdb; Pop-Location` => `66/66` PASS.
+- PASSED: `Push-Location ./backend; & "../.venv/Scripts/python.exe" manage.py makemigrations --check --dry-run portfolio; Pop-Location` => `No changes detected in app 'portfolio'`.
+- PASSED: `Push-Location ./; & ".venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerate `module_tree_full.md` thành công, `Modules: 508`.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat` => runtime backend/Celery rebuilt và restarted successfully; `redis` và `db` healthy.
+- PASSED: `docker compose -f ./docker-compose.dev.yml exec -T backend python manage.py showmigrations portfolio | Select-String -Pattern '0064_delete_whaleservicejob'` => `[X] 0064_delete_whaleservicejob`.
+- PASSED: `docker compose -f ./docker-compose.dev.yml exec -T backend python manage.py shell -c "from django.db import connection; print('portfolio_whaleservicejob' in connection.introspection.table_names())"` => `False`, xác nhận bảng legacy đã bị drop khỏi runtime DB.
+- PASSED: `docker compose -f ./docker-compose.dev.yml exec -T celery_worker celery -A config inspect registered | Select-String -Pattern 'portfolio.tasks.whale_service_job_task|portfolio.tasks.detect_and_store_global_whale_alerts'` => chỉ còn `portfolio.tasks.detect_and_store_global_whale_alerts`; task legacy không còn được worker đăng ký.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/ | Select-Object -ExpandProperty StatusCode` => `200`.
+- NOTE: `docker compose ... exec -T backend python manage.py migrate portfolio` trả `No migrations to apply` vì backend entrypoint đã apply migration mới ngay lúc container khởi động lại.
+- RESIDUAL RISK: migration lịch sử `0053` và `0057` vẫn còn nhắc tới `WhaleServiceJob` như một phần lịch sử schema của Django; đây là trạng thái đúng và không còn tạo runtime path hay DB table sống nào.
+
 # Entry 2026-04-29b - Retire legacy whale chart path and close KLine intelligence cleanup batch
 
 Mục tiêu:
@@ -2471,6 +2502,49 @@ Validation:
 - PASSED: `celery -A config inspect registered` co `portfolio.tasks.whale_service_job_task` va `portfolio.compute_watchlist_indicators`.
 - PASSED: Worker khong con unregistered error cho `portfolio.compute_watchlist_indicators`; task da duoc receive/succeed.
 - PASSED: Kich hoat lai USER_REFRESH cung scope ACB: job stale #12 duoc auto-mark FAILED, job moi #15 duoc tao va COMPLETED.
+
+## Entry 2026-04-29aa - Whale alerts SSOT cutover and legacy orchestration retirement
+
+Muc tieu:
+- Chuyen Celery beat whale tu legacy `detect_whale_reversal` sang canonical `detect_and_store_global_whale_alerts` de summary whale trong Signal Control Center phan anh dung pipeline SSOT.
+- Xoa Whale Ops legacy tren AdminOps va xoa cac API `/api/portfolio/whale-service/*` de chi con mot surface van hanh whale duy nhat la `Signals`.
+- Thu hoi code orchestration whale cu khong con caller runtime, dong thoi giu mot stub task ten cu de hap thu stale queue message ma khong tai kich hoat legacy whale path.
+
+Danh sach tep cap nhat:
+- backend/config/settings.py (MODIFIED - doi beat whale sang `detect-global-whale-alerts`, them env fallback `WHALE_ALERT_DETECTION_*`)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - xoa tab Whale Ops legacy, giu lai AdminOps overview + Signals la surface whale duy nhat)
+- frontend/src/api/client.js (MODIFIED - xoa helper API whale-service legacy)
+- frontend/src/i18n/vi.js (MODIFIED - xoa key Whale Ops legacy khong con caller)
+- frontend/src/i18n/en.js (MODIFIED - xoa key Whale Ops legacy khong con caller)
+- frontend/src/components/adminops/WhaleServiceOpsPanel.jsx (DELETED - panel quan tri whale-service legacy)
+- backend/portfolio/urls.py (MODIFIED - xoa route `/whale-service/*` legacy)
+- backend/portfolio/serializers.py (MODIFIED - xoa `WhaleServiceJobSerializer` khong con dung)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - xoa orchestration whale legacy; giu `portfolio.tasks.whale_service_job_task` dang stub no-op de absorb stale queue messages)
+- backend/portfolio/views_whale_orchestration.py (DELETED - API orchestration whale-service legacy)
+- backend/portfolio/whale_service_manager.py (DELETED - lock/idempotency manager chi phuc vu whale-service legacy)
+- backend/portfolio/services_whale_compute.py (DELETED - backfill/compute engine chi phuc vu whale-service legacy)
+- backend/portfolio/tests/test_whale_service_orchestration.py (DELETED - test cho API whale-service legacy)
+- backend/portfolio/verify_phase1.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase2.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase3.py (DELETED - script verify whale-service legacy)
+- backend/portfolio/verify_phase4.py (DELETED - script verify whale-service legacy)
+- module_tree_full.md (MODIFIED - regenerate module tree sau cleanup)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-29aa)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Python snippet import `backend/config/settings.py` xac nhan `detect-global-whale-alerts` ton tai, task la `portfolio.tasks.detect_and_store_global_whale_alerts`, va key beat `detect-whale-reversal` da bien mat.
+- PASSED: `..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_order_flow --keepdb` -> 66 tests OK.
+- PASSED: `npm run build` trong `frontend/` compile thanh cong sau khi xoa Whale Ops legacy.
+- PASSED: Python snippet import `portfolio.urls` va `portfolio.tasks` xac nhan khong con route `whale-service-*`, canonical task whale van duoc dang ky, va stub task cu van ton tai de xu ly stale messages.
+- PASSED: `python scripts/ops/generate_module_tree.py` regenerate `module_tree_full.md` thanh cong (508 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` rebuild/restart thanh cong; `vninvest-dev-backend` healthy va `vninvest-dev-frontend` da start voi bundle moi `main.286d5421.js`.
+- PASSED: `Invoke-WebRequest http://127.0.0.1/admin-ops -UseBasicParsing` tra `StatusCode = 200` sau refresh stack.
+- PASSED: Smoke UI tren integrated browser xac nhan AdminOps chi con cac tab `Tong quan`, `Signals`, `Global Screener`, `Governance`, `Prefetch`, `Vnstock Config`, `Runtime KPI`, `Data Ops`; khong con tab `Whale Ops`.
+
+Residual risk:
+- `WhaleServiceJob` model va migration DB van duoc giu lai trong codebase/DB de tranh tao migration pha huong trong slice nay; runtime hien tai khong con route/UI nao su dung model nay.
+- Stub `portfolio.tasks.whale_service_job_task` duoc giu lai co chu dich de absorb stale queue messages ten cu. Sau khi xac nhan queue da sach, co the xoa han task name va model/table legacy trong mot migration cleanup rieng.
 
 ## Entry 2026-04-23ar - Whale service update button relocation + admin orchestration UI
 

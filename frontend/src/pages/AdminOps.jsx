@@ -36,7 +36,6 @@ import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
 import SignalControlCenter from '../components/adminops/SignalControlCenter';
-import WhaleServiceOpsPanel from '../components/adminops/WhaleServiceOpsPanel';
 import GlobalScreenerAdminPanel from '../components/adminops/GlobalScreenerAdminPanel';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -1200,9 +1199,6 @@ export default function AdminOps() {
         <button className={pageBtnClass('signals')} onClick={() => setActivePage('signals')}>
           {t('adminOps.signalCenterTab', { defaultValue: 'Signals' })}
         </button>
-        <button className={pageBtnClass('whale')} onClick={() => setActivePage('whale')}>
-          {t('adminOps.signalCenterLegacyWhaleTab', { defaultValue: 'Whale Ops (Legacy)' })}
-        </button>
         <button className={pageBtnClass('global_screener')} onClick={() => setActivePage('global_screener')}>
           {t('adminOps.globalScreenerTab', { defaultValue: 'Global Screener' })}
         </button>
@@ -1313,184 +1309,6 @@ export default function AdminOps() {
         </Link>
       </section>
       </>) : null}
-
-      {activePage === 'whale' ? (
-      <section className="space-y-4">
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p>{t('adminOps.signalCenterLegacyWhaleNotice', { defaultValue: 'Whale Ops hiện được giữ ở chế độ legacy. Surface điều hành chính cho whale và dark flow đã chuyển sang tab Signals.' })}</p>
-            <button
-              type="button"
-              onClick={() => setActivePage('signals')}
-              className="rounded-full border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
-            >
-              {t('adminOps.signalCenterOpenPrimarySurface', { defaultValue: 'Mở Signals' })}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t('adminOps.missionControl')}</h2>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {t('adminOps.missionControlDescription')}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href="/admin/portfolio/whaleconfigversion/"
-              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              {t('adminOps.openVersions')}
-            </a>
-            <a
-              href="/admin/portfolio/whaleconfigrollout/"
-              className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              {t('adminOps.openRollouts')}
-            </a>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label={t('adminOps.activeVersion')}
-            value={dashboard.active_version?.version_code || '—'}
-            sub={dashboard.active_version?.activated_at ? t('adminOps.activatedAt', { time: fmtDateTime(dashboard.active_version.activated_at) }) : t('adminOps.noActiveVersion')}
-          />
-          <StatCard
-            label={t('adminOps.pendingRollout')}
-            value={dashboard.pending_rollout?.version_code || '—'}
-            sub={dashboard.pending_rollout?.effective_from ? t('adminOps.etaAt', { time: fmtDateTime(dashboard.pending_rollout.effective_from) }) : t('adminOps.noPendingRollout')}
-          />
-          <StatCard
-            label={t('adminOps.propagation')}
-            value={propagation?.summary || t('adminOps.noRollout')}
-            sub={propagation?.version_code ? t('adminOps.versionLabel', { version: propagation.version_code }) : t('adminOps.noActiveRollout')}
-          />
-          <StatCard
-            label={t('adminOps.autoRevertGuard')}
-            value={anomaly ? (anomaly.healthy ? t('adminOps.healthyState') : t('adminOps.alertState')) : '—'}
-            sub={anomaly?.summary || t('adminOps.noAnomalySnapshot')}
-          />
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">{t('adminOps.rolloutPostCheck')}</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('adminOps.rolloutPostCheckDescription')}</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <RolloutStatusBadge status={dashboard.active_rollout?.status || dashboard.pending_rollout?.status} t={t} />
-                <SignalBadge signal={propagation?.signal} t={t} />
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MiniMetric
-                label={t('adminOps.alerts5m')}
-                value={fmtNumber(alerts.last_5m_count)}
-                hint={t('adminOps.symbolsCount', { count: fmtNumber(alerts.unique_symbols_last_5m) })}
-              />
-              <MiniMetric
-                label={t('adminOps.alerts10m')}
-                value={fmtNumber(alerts.last_10m_count)}
-                hint={t('adminOps.symbolsCount', { count: fmtNumber(alerts.unique_symbols_last_10m) })}
-              />
-              <MiniMetric
-                label={t('adminOps.ackWorkers')}
-                value={`${fmtNumber(workerSummary.acknowledged_count || 0)}/${fmtNumber(workerSummary.ack_expected_count || 0)}`}
-                hint={t('adminOps.staleCount', { count: fmtNumber(workerSummary.stale_ack_count || 0) })}
-              />
-              <MiniMetric
-                label={t('adminOps.workersLive')}
-                value={fmtNumber(workerSummary.live_count)}
-                hint={workerSummary.source || '—'}
-              />
-            </div>
-
-            <div className="mt-5 grid gap-4 lg:grid-cols-2">
-              <div className="rounded-xl border border-gray-100 p-4 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('adminOps.versionsAndRollout')}</h4>
-                <div className="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
-                  <KeyValueRow label={t('adminOps.activeVersionRow')} value={dashboard.active_version?.version_code || '—'} />
-                  <KeyValueRow label={t('adminOps.pendingRolloutRow')} value={dashboard.pending_rollout?.version_code || '—'} />
-                  <KeyValueRow label={t('adminOps.rolloutMode')} value={dashboard.active_rollout?.mode || dashboard.pending_rollout?.mode || '—'} />
-                  <KeyValueRow label={t('adminOps.propagation')} value={propagation?.summary || t('adminOps.none')} />
-                  <KeyValueRow label={t('adminOps.anomalyReason')} value={anomaly?.reason_codes?.join(', ') || t('adminOps.none')} />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-gray-100 p-4 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{t('adminOps.anomalySnapshot')}</h4>
-                <div className="mt-3 divide-y divide-gray-100 dark:divide-gray-700">
-                  <KeyValueRow label={t('adminOps.observed')} value={fmtDateTime(anomaly?.observed_at)} />
-                  <KeyValueRow label={t('adminOps.currentAdvisoryRate')} value={anomaly ? `${fmtNumber(anomaly.current_advisory_rate, 2)}/m` : '—'} />
-                  <KeyValueRow label={t('adminOps.advisoryRatio')} value={anomaly?.advisory_rate_ratio ?? '—'} />
-                  <KeyValueRow label={t('adminOps.tickRatio')} value={anomaly?.tick_rate_ratio ?? '—'} />
-                  <KeyValueRow label={t('adminOps.autoRevert')} value={anomaly ? (anomaly.should_auto_revert ? t('adminOps.readyToTrigger') : t('adminOps.notTriggered')) : '—'} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">{t('adminOps.workerSummary')}</h3>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('adminOps.workerSummaryDescription')}</p>
-              </div>
-              <Pill tone={workerSummary.ok ? 'green' : 'red'}>{workerSummary.detail || t('adminOps.noWorkers')}</Pill>
-            </div>
-
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <MiniMetric label={t('adminOps.cpuTotal')} value={workerSummary.total_cpu_seconds != null ? `${fmtNumber(workerSummary.total_cpu_seconds, 2)}s` : '—'} />
-              <MiniMetric label={t('adminOps.ramTotal')} value={workerSummary.total_maxrss_mb != null ? `${fmtNumber(workerSummary.total_maxrss_mb, 1)} MB` : '—'} />
-              <MiniMetric label={t('adminOps.poolProc')} value={fmtNumber(workerSummary.pool_process_count || 0)} />
-              <MiniMetric label={t('adminOps.statsReady')} value={fmtNumber(workerSummary.reporting_stats_count || 0)} />
-            </div>
-
-            <div className="mt-4 space-y-3">
-              {workerRows.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-gray-200 px-4 py-5 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                  {t('adminOps.noWorkerReport')}
-                </div>
-              ) : workerRows.map((worker) => (
-                <div key={worker.worker_name} className="rounded-xl border border-gray-100 px-4 py-3 dark:border-gray-700">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{worker.worker_name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{worker.worker_version || t('adminOps.noVersionReported')}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Pill tone={worker.live ? 'green' : 'red'}>{worker.live ? t('adminOps.live') : t('adminOps.offline')}</Pill>
-                      <Pill tone={worker.ack_state === 'acked' ? 'green' : worker.ack_state === 'pending' ? 'amber' : worker.ack_state === 'stale' ? 'red' : 'slate'}>
-                        {worker.ack_state}
-                      </Pill>
-                    </div>
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-gray-500 dark:text-gray-400">
-                    <span>CPU {worker.cpu_user_seconds != null ? `${fmtNumber(worker.cpu_user_seconds, 2)}s` : '—'}</span>
-                    <span>SYS {worker.cpu_system_seconds != null ? `${fmtNumber(worker.cpu_system_seconds, 2)}s` : '—'}</span>
-                    <span>RAM {worker.maxrss_mb != null ? `${fmtNumber(worker.maxrss_mb, 1)} MB` : '—'}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {alerts.latest_advisory ? (
-              <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-200">
-                {t('adminOps.latestAdvisory')}: {alerts.latest_advisory.symbol} · {alerts.latest_advisory.side} · {fmtDateTime(alerts.latest_advisory.created_at)}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <WhaleServiceOpsPanel />
-      </section>
-      ) : null}
 
       {activePage === 'signals' ? (
       <section>
