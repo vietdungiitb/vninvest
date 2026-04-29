@@ -109,6 +109,7 @@ from portfolio.tasks_prefetch import (
 )
 from portfolio.tasks_order_flow import (
     detect_and_store_order_flow,
+    distribute_order_flow_signal,
     detect_whale_reversal,
     ORDER_FLOW_COOLDOWN_SECONDS,
     ORDER_FLOW_MAX_SYMBOLS,
@@ -136,6 +137,8 @@ from portfolio.tasks_watchlist_indicators import (
     compute_watchlist_indicators,
 )
 from portfolio.tasks_whale_service import (
+    distribute_whale_alert_event,
+    detect_and_store_global_whale_alerts,
     whale_service_job_task,
 )
 from portfolio.tasks_sync import (

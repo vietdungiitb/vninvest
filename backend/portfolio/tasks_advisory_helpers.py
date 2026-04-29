@@ -152,6 +152,7 @@ def _accumulate_user_advisory_event(
 def _normalize_advisory_source(source: str | None) -> str:
     source_key = str(source or WhaleAdvisory.SourceChoices.WHALE_SIGNAL).strip().lower()
     allowed = {
+        'dark_flow',
         WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
         WhaleAdvisory.SourceChoices.PERIODIC_JOB,
         WhaleAdvisory.SourceChoices.USER_REFRESH,

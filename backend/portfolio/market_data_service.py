@@ -53,6 +53,7 @@ from .models import (
     UserConfig,
     WatchlistGroup,
     WatchlistItem,
+    WhaleAlertEvent,
 )
 from .observability import (
     record_intraday_freshness_observation,
@@ -1435,6 +1436,39 @@ class MarketDataService:
                 window=window,
                 limit=limit,
                 source='intraday_tick_db',
+            )
+
+        canonical_records = self._build_canonical_whale_event_records(
+            symbols=symbols,
+            threshold_resolver=_resolve_threshold_for_symbol,
+            window=window,
+            now=request_now,
+        )
+        if canonical_records:
+            normalized_records, ok = self._normalize_aggregate_event_records(
+                canonical_records,
+                sort=sort,
+                cursor_payload=cursor_payload,
+            )
+            if not ok:
+                raise MarketDataValidationException('cursor không hợp lệ.')
+            self._record_source_observability('whale-feed-aggregate', 'canonical_event_store', primary_source='canonical_event_store')
+            return self._build_aggregate_record_response(
+                normalized_records=normalized_records,
+                source='canonical_event_store',
+                threshold_vnd=threshold_vnd,
+                threshold_resolver=_resolve_threshold_for_symbol,
+                entitlements=entitlements,
+                weights_version=score_config['version'],
+                scope=scope,
+                scope_source=scope_source,
+                symbols=symbols,
+                watchlist_group_ids=watchlist_group_ids,
+                sort=sort,
+                window=window,
+                limit=limit,
+                score_config=score_config,
+                now=request_now,
             )
 
         stream_records = self._build_stream_aggregate_records(symbols, min_threshold_vnd)
@@ -3493,6 +3527,41 @@ class MarketDataService:
                 synthetic_id += 1
         return records
 
+    def _build_canonical_whale_event_records(self, *, symbols: list[str], threshold_resolver, window: str, now=None) -> list[dict]:
+        resolved_now = now or timezone.now()
+        queryset = WhaleAlertEvent.objects.filter(symbol__in=symbols, occurred_at__lte=resolved_now).order_by('-occurred_at', '-id')
+
+        start_dt = self._window_start_datetime(window, now=resolved_now)
+        if start_dt is not None:
+            queryset = queryset.filter(occurred_at__gte=start_dt)
+
+        records = []
+        for event in queryset[:1000]:
+            threshold_vnd = float(threshold_resolver(event.symbol))
+            matched_value = float(event.matched_value_vnd or 0)
+            if matched_value < threshold_vnd:
+                continue
+
+            payload = dict(event.payload_json or {})
+            records.append({
+                'id': event.id,
+                'event_id': payload.get('event_id') or event.event_id,
+                'symbol': event.symbol,
+                'side': payload.get('side') or event.side,
+                'matched_value': float(payload.get('matched_value') or matched_value),
+                'volume': int(payload.get('volume') or 0),
+                'ts': payload.get('ts') or event.occurred_at.isoformat(),
+                'size_class': payload.get('size_class') or self._classify_signal_size(matched_value),
+                'source': payload.get('source') or event.source,
+                'threshold_source': payload.get('threshold_source') or 'discovery_global',
+                'event_score': payload.get('event_score') or event.event_score,
+                'display_score': payload.get('display_score'),
+                'severity': payload.get('severity') or event.severity,
+                'alert_first_seen_at': payload.get('alert_first_seen_at') or event.created_at.isoformat(),
+                'alert_age_seconds': payload.get('alert_age_seconds') or max((resolved_now - event.occurred_at).total_seconds(), 0.0),
+            })
+        return records
+
     def _build_vnstock_aggregate_records(self, symbols: list[str], threshold_vnd: float) -> list[dict]:
         records = []
         synthetic_id = 1
@@ -4412,4 +4481,4 @@ class MarketDataService:
         )
 
 
-market_data_service = MarketDataService()
+market_data_service = MarketDataService()

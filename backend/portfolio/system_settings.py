@@ -9,6 +9,7 @@ Cách dùng:
 """
 from __future__ import annotations
 
+import json
 import logging
 import zoneinfo
 
@@ -81,11 +82,35 @@ def ensure_defaults() -> None:
     Đảm bảo các SystemSetting mặc định tồn tại trong DB.
     Gọi trong AppConfig.ready() hoặc một management command.
     """
+    from .global_signal_policy_helpers import (
+        GLOBAL_SIGNAL_RETENTION_POLICY_KEY,
+        GLOBAL_SIGNAL_SERVICES_CONFIG_KEY,
+        GLOBAL_SIGNAL_UNIVERSE_POLICY_KEY,
+        default_global_signal_retention_policy,
+        default_global_signal_services_config,
+        default_global_signal_universe_policy,
+    )
+
     defaults = [
         (
             'system_timezone',
             DEFAULT_TIMEZONE,
             'Múi giờ hiển thị toàn hệ thống. Nhập IANA timezone name, ví dụ: Asia/Ho_Chi_Minh, UTC, Asia/Singapore.',
+        ),
+        (
+            GLOBAL_SIGNAL_SERVICES_CONFIG_KEY,
+            json.dumps(default_global_signal_services_config(), ensure_ascii=True, separators=(',', ':')),
+            'Cấu hình runtime toàn cục cho whale service, dark-flow service và distribution.',
+        ),
+        (
+            GLOBAL_SIGNAL_UNIVERSE_POLICY_KEY,
+            json.dumps(default_global_signal_universe_policy(), ensure_ascii=True, separators=(',', ':')),
+            'Policy xác định effective universe toàn cục cho các signal services.',
+        ),
+        (
+            GLOBAL_SIGNAL_RETENTION_POLICY_KEY,
+            json.dumps(default_global_signal_retention_policy(), ensure_ascii=True, separators=(',', ':')),
+            'Policy retention cho raw intraday, canonical signal events và summary caches.',
         ),
     ]
     from portfolio.models import SystemSetting

@@ -35,6 +35,7 @@ import {
 import { useI18n } from '../context/LangContext';
 import RuntimeKPIPanel from '../components/RuntimeKPIPanel';
 import VnstockBenchmarkPanel from '../components/adminops/VnstockBenchmarkPanel';
+import SignalControlCenter from '../components/adminops/SignalControlCenter';
 import WhaleServiceOpsPanel from '../components/adminops/WhaleServiceOpsPanel';
 import GlobalScreenerAdminPanel from '../components/adminops/GlobalScreenerAdminPanel';
 
@@ -1196,7 +1197,12 @@ export default function AdminOps() {
 
       <div className="flex flex-wrap gap-2">
         <button className={pageBtnClass('overview')} onClick={() => setActivePage('overview')}>Tong quan</button>
-        <button className={pageBtnClass('whale')} onClick={() => setActivePage('whale')}>Whale Ops</button>
+        <button className={pageBtnClass('signals')} onClick={() => setActivePage('signals')}>
+          {t('adminOps.signalCenterTab', { defaultValue: 'Signals' })}
+        </button>
+        <button className={pageBtnClass('whale')} onClick={() => setActivePage('whale')}>
+          {t('adminOps.signalCenterLegacyWhaleTab', { defaultValue: 'Whale Ops (Legacy)' })}
+        </button>
         <button className={pageBtnClass('global_screener')} onClick={() => setActivePage('global_screener')}>
           {t('adminOps.globalScreenerTab', { defaultValue: 'Global Screener' })}
         </button>
@@ -1310,6 +1316,19 @@ export default function AdminOps() {
 
       {activePage === 'whale' ? (
       <section className="space-y-4">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p>{t('adminOps.signalCenterLegacyWhaleNotice', { defaultValue: 'Whale Ops hiện được giữ ở chế độ legacy. Surface điều hành chính cho whale và dark flow đã chuyển sang tab Signals.' })}</p>
+            <button
+              type="button"
+              onClick={() => setActivePage('signals')}
+              className="rounded-full border border-amber-300 px-3 py-1 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 dark:border-amber-700 dark:text-amber-100 dark:hover:bg-amber-900/50"
+            >
+              {t('adminOps.signalCenterOpenPrimarySurface', { defaultValue: 'Mở Signals' })}
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t('adminOps.missionControl')}</h2>
@@ -1470,6 +1489,12 @@ export default function AdminOps() {
         </div>
 
         <WhaleServiceOpsPanel />
+      </section>
+      ) : null}
+
+      {activePage === 'signals' ? (
+      <section>
+        <SignalControlCenter />
       </section>
       ) : null}
 

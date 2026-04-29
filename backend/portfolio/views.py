@@ -228,6 +228,18 @@ from .views_admin_vnstock_benchmark import (
     admin_vnstock_price_board_benchmark_latest_api,
     admin_vnstock_price_board_benchmark_run_api,
 )
+from .views_signal_admin import (
+    signal_admin_config_api,
+    signal_admin_config_preview_api,
+    signal_admin_job_retry_api,
+    signal_admin_jobs_api,
+    signal_admin_jobs_run_api,
+    signal_admin_recent_events_api,
+    signal_admin_retention_preview_api,
+    signal_admin_summary_api,
+    signal_admin_universe_apply_api,
+    signal_admin_universe_preview_api,
+)
 from .views_ai_runtime_stats import (
     _get_ai_runtime_config_status,
     ai_config_api,

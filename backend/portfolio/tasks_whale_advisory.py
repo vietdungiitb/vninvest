@@ -24,6 +24,7 @@ from portfolio.observability import record_advisory_merge_observation
 
 from portfolio.tasks_advisory_helpers import (
     _advisory_event_merge_cache_key,
+    _normalize_advisory_source,
     _safe_float,
     _normalize_symbol,
     _resolve_side_by_dynamic_score,
@@ -39,6 +40,33 @@ logger = logging.getLogger(__name__)
 # Core constants for advisory event management
 ADVISORY_AUTO_GENERATION_JOB_LOCK_KEY = 'advisory:auto-generation:job-lock'
 ADVISORY_EVENT_MERGE_CACHE_KEY_PREFIX = 'advisory:event-merge'
+
+
+def _resolve_flush_advisory_sources(*, sources: list[str], source_scores: dict, dark_flow_strength) -> tuple[str, str]:
+    normalized_sources = [str(item).strip().lower() for item in (sources or []) if str(item).strip()]
+
+    if dark_flow_strength is not None and 'dark_flow' in normalized_sources:
+        advisory_source = 'dark_flow'
+    else:
+        advisory_source = WhaleAdvisory.SourceChoices.WHALE_SIGNAL
+
+    primary_source = ''
+    if isinstance(source_scores, dict) and source_scores:
+        ranked_sources = sorted(
+            (
+                (str(name or '').strip().lower(), abs(_safe_float(score, 0.0)))
+                for name, score in source_scores.items()
+                if str(name or '').strip()
+            ),
+            key=lambda item: (-item[1], item[0]),
+        )
+        if ranked_sources:
+            primary_source = str(ranked_sources[0][0] or '')
+
+    if not primary_source and normalized_sources:
+        primary_source = normalized_sources[0]
+
+    return advisory_source, primary_source
 
 @shared_task(bind=True, name='portfolio.tasks.flush_merged_advisory_event', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={'max_retries': 1})
 def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
@@ -59,10 +87,14 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
     side = _resolve_side_by_dynamic_score(score_sum)
     sources = state.get('sources') or []
     source_scores = state.get('source_scores') or {}
-    primary_source = sources[0] if sources else 'unknown'
     threshold_source = state.get('threshold_source', 'user_default')
     dark_flow_strength = state.get('dark_flow_strength')
     dark_flow_confidence = state.get('dark_flow_confidence')
+    advisory_source, primary_source = _resolve_flush_advisory_sources(
+        sources=sources,
+        source_scores=source_scores,
+        dark_flow_strength=dark_flow_strength,
+    )
 
     record_advisory_merge_observation('flushed')
 
@@ -73,7 +105,7 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
             'side': side,
             'threshold': float(threshold_vnd),
             'user_id': int(user_id),
-            'source': WhaleAdvisory.SourceChoices.WHALE_SIGNAL,
+            'source': advisory_source,
             'merged_sources': sources,
             'primary_source': primary_source,
             'threshold_source': threshold_source,
@@ -83,11 +115,14 @@ def flush_merged_advisory_event(self, user_id: int, symbol: str) -> dict:
         countdown=random.randint(2, 8),
     )
     return {
-        'status': 'ok',
+        'status': 'queued',
         'symbol': normalized_symbol,
         'side': side,
+        'resolved_side': side,
         'matched_value': float(matched_value),
         'threshold': float(threshold_vnd),
         'sources': sources,
+        'primary_source': primary_source,
+        'threshold_source': threshold_source,
         'user_id': user_id,
     }

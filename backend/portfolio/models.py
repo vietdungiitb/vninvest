@@ -1511,6 +1511,52 @@ class SystemEmailAccount(models.Model):
 
 
 # ---------------------------------------------------------------------------
+# WhaleAlertEvent: Canonical global whale event-store
+# ---------------------------------------------------------------------------
+class WhaleAlertEvent(models.Model):
+    class SideChoices(models.TextChoices):
+        BUY = 'BUY', 'Mua'
+        SELL = 'SELL', 'Bán'
+        UNKNOWN = 'UNKNOWN', 'Không xác định'
+
+    class SeverityChoices(models.TextChoices):
+        URGENT = 'urgent', 'Khẩn cấp'
+        WARNING = 'warning', 'Cảnh báo'
+        INFO = 'info', 'Thông tin'
+
+    event_id = models.TextField(unique=True, db_index=True, verbose_name='Event ID (deterministic)')
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
+    side = models.CharField(max_length=10, choices=SideChoices.choices, default=SideChoices.UNKNOWN, verbose_name='Chiều lệnh')
+    matched_value_vnd = models.BigIntegerField(verbose_name='Giá trị khớp lệnh (VNĐ)')
+    threshold_vnd = models.BigIntegerField(default=0, verbose_name='Ngưỡng toàn cục (VNĐ)')
+    threshold_policy_version = models.CharField(max_length=32, default='threshold-v1', verbose_name='Phiên bản policy ngưỡng')
+    severity = models.CharField(max_length=10, choices=SeverityChoices.choices, default=SeverityChoices.INFO, db_index=True, verbose_name='Mức độ nghiêm trọng')
+    event_score = models.FloatField(default=0.0, verbose_name='Điểm sự kiện')
+    confidence = models.CharField(max_length=16, default='medium', verbose_name='Độ tin cậy')
+    source = models.CharField(max_length=32, default='unknown', verbose_name='Nguồn phát hiện')
+    source_layer = models.CharField(max_length=20, default='batch', db_index=True, verbose_name='Lớp nguồn')
+    trade_date = models.DateField(db_index=True, verbose_name='Phiên giao dịch')
+    occurred_at = models.DateTimeField(db_index=True, verbose_name='Thời điểm xảy ra')
+    market_wide = models.BooleanField(default=False, db_index=True, verbose_name='Sự kiện toàn thị trường')
+    is_market_discovery = models.BooleanField(default=False, db_index=True, verbose_name='Discovery thị trường')
+    payload_json = models.JSONField(default=dict, blank=True, verbose_name='Payload canonical')
+    created_at = models.DateTimeField(default=timezone.now, db_index=True, verbose_name='Thời điểm persist')
+
+    class Meta:
+        verbose_name = 'Sự kiện whale canonical'
+        verbose_name_plural = 'Sự kiện whale canonical'
+        ordering = ['-occurred_at', '-id']
+        indexes = [
+            models.Index(fields=['symbol', 'occurred_at'], name='idx_whale_evt_symbol_ts'),
+            models.Index(fields=['trade_date', 'occurred_at'], name='idx_whale_evt_trade_ts'),
+            models.Index(fields=['market_wide', 'occurred_at'], name='idx_whale_evt_market_ts'),
+        ]
+
+    def __str__(self):
+        return f'{self.symbol}:{self.side}:{self.matched_value_vnd}:{self.occurred_at.isoformat()}'
+
+
+# ---------------------------------------------------------------------------
 # WhaleAdvisory: Tư vấn AI từ OpenClaw về tín hiệu cá mập
 # ---------------------------------------------------------------------------
 class WhaleAdvisory(models.Model):
@@ -2691,3 +2737,75 @@ class WhaleServiceJob(models.Model):
 
     def __str__(self):
         return f"{self.service_type} - {self.status} ({self.id})"
+
+
+class SignalServiceRun(models.Model):
+    class ServiceDomain(models.TextChoices):
+        WHALE = 'whale', 'Whale Alerts'
+        DARK_FLOW = 'dark_flow', 'Dark Flow'
+
+    class RunType(models.TextChoices):
+        SCHEDULED = 'scheduled', 'Scheduled'
+        MANUAL = 'manual', 'Manual'
+        BACKFILL = 'backfill', 'Backfill'
+        RECOMPUTE = 'recompute', 'Recompute'
+        RETENTION_PREVIEW = 'retention_preview', 'Retention Preview'
+
+    class StatusChoices(models.TextChoices):
+        QUEUED = 'QUEUED', 'Đang chờ'
+        RUNNING = 'RUNNING', 'Đang chạy'
+        COMPLETED = 'COMPLETED', 'Hoàn thành'
+        FAILED = 'FAILED', 'Thất bại'
+        PARTIAL = 'PARTIAL', 'Hoàn thành một phần'
+
+    service_domain = models.CharField(
+        max_length=20,
+        choices=ServiceDomain.choices,
+        db_index=True,
+        verbose_name='Miền dịch vụ',
+    )
+    run_type = models.CharField(
+        max_length=32,
+        choices=RunType.choices,
+        default=RunType.SCHEDULED,
+        db_index=True,
+        verbose_name='Loại chạy',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StatusChoices.choices,
+        default=StatusChoices.QUEUED,
+        db_index=True,
+        verbose_name='Trạng thái',
+    )
+    params_json = models.JSONField(default=dict, blank=True, verbose_name='Tham số chạy')
+    task_id = models.CharField(max_length=255, blank=True, default='', verbose_name='Celery Task ID')
+    progress_pct = models.FloatField(default=0.0, verbose_name='Tiến độ (%)')
+    processed_items = models.PositiveIntegerField(default=0, verbose_name='Đã xử lý')
+    stored_items = models.PositiveIntegerField(default=0, verbose_name='Đã persist')
+    failed_items = models.PositiveIntegerField(default=0, verbose_name='Bị lỗi')
+    log = models.TextField(blank=True, verbose_name='Nhật ký')
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='signal_service_runs',
+        verbose_name='Người tạo',
+    )
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name='Bắt đầu')
+    finished_at = models.DateTimeField(null=True, blank=True, verbose_name='Kết thúc')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật cuối')
+
+    class Meta:
+        verbose_name = 'Signal Service Run'
+        verbose_name_plural = 'Signal Service Runs'
+        ordering = ['-created_at', '-id']
+        indexes = [
+            models.Index(fields=['service_domain', 'status', 'created_at'], name='idx_signal_run_domain_status'),
+            models.Index(fields=['service_domain', 'run_type', 'created_at'], name='idx_signal_run_domain_type'),
+        ]
+
+    def __str__(self):
+        return f"{self.service_domain}:{self.run_type}:{self.status} ({self.id})"

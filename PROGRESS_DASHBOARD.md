@@ -1,3 +1,246 @@
+# ✅ AUDIT FILE LIST (2026-04-28w)
+- backend/portfolio/market_data_service.py (MODIFIED - prefer canonical `WhaleAlertEvent` records on aggregate whale read-path)
+- backend/portfolio/services_global_signal_distribution.py (MODIFIED - shared audience resolver and whale canonical-event fan-out to websocket + `UserAlertHistory`)
+- backend/portfolio/services_global_whale_alerts.py (MODIFIED - return `created_event_ids` to downstream distribution enqueue)
+- backend/portfolio/services_signal_run_registry.py (NEW - unified `SignalServiceRun` lifecycle helpers)
+- backend/portfolio/tasks_whale_service.py (MODIFIED - enqueue whale distribution tasks and update run-registry lifecycle)
+- backend/portfolio/tasks_order_flow.py (MODIFIED - integrate run-registry lifecycle for dark-flow detector)
+- backend/portfolio/tasks.py (MODIFIED - re-export whale distribution task)
+- backend/portfolio/models.py (MODIFIED - add `SignalServiceRun` model)
+- backend/portfolio/migrations/0063_signalservicerun.py (NEW - schema migration for unified signal run registry)
+- backend/portfolio/serializers.py (MODIFIED - add `SignalServiceRunSerializer`)
+- backend/portfolio/views_signal_admin.py (NEW - unified admin APIs for summary/config/universe/jobs/events/retention)
+- backend/portfolio/views.py (MODIFIED - export signal admin views)
+- backend/config/urls.py (MODIFIED - wire `/api/admin-ops/signals/*` routes)
+- backend/portfolio/tests/test_api_routes_stock_workspace_realtime_bulk.py (MODIFIED - canonical aggregate whale read-path regression)
+- backend/portfolio/tests/test_global_signal_distribution_service.py (MODIFIED - whale distribution regression)
+- backend/portfolio/tests/test_global_whale_alerts_service.py (MODIFIED - whale detector/distribution regressions)
+- backend/portfolio/tests/test_signal_service_run_registry.py (NEW - registry integration regressions)
+- backend/portfolio/tests/test_signal_admin_api.py (NEW - signal admin API contract tests)
+- frontend/src/api/client.js (MODIFIED - signal admin Axios helpers)
+- frontend/src/components/adminops/SignalControlCenter.jsx (NEW - unified signal control center in AdminOps)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (NEW - focused render/load + config-preview regression)
+- frontend/src/pages/AdminOps.jsx (MODIFIED - add `signals` tab and demote Whale Ops to legacy)
+- frontend/src/i18n/vi.js (MODIFIED - Vietnamese signal control center text)
+- frontend/src/i18n/en.js (MODIFIED - English signal control center text)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - sync backend/frontend slice status and evidence)
+- module_tree_full.md (MODIFIED - regenerate after signal control-plane landing)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements portfolio.tests.test_api_routes_stock_workspace_realtime_bulk.ApiRouteStockWorkspaceRealtimeBulkTests.test_whale_feed_aggregate_prefers_canonical_whale_event_store_when_available --keepdb; Pop-Location` => 2/2 PASS.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_global_signal_distribution_service portfolio.tests.test_global_whale_alerts_service portfolio.tests.test_celery_task_names --keepdb; Pop-Location` => rerun 10/10 PASS sau khi sửa fixture `trade_date`.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_order_flow.TestOrderFlowSignalTask portfolio.tests.test_signal_service_run_registry portfolio.tests.test_global_whale_alerts_service portfolio.tests.test_celery_task_names --keepdb; Pop-Location` => 18/18 PASS.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 7/7 PASS.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 2/2 PASS.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => compiled successfully, including rerun after legacy Whale Ops demotion.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (518 modules).
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat` => frontend/backend/celery runtime refreshed; backend healthy; frontend and celery services started.
+- NOTE: browser route smoke hit live app but redirected to `/login` because terminal browser session had no staff auth context; authenticated screenshot/video chưa được capture trong entry này.
+- RESIDUAL RISK: single-symbol whale feed path vẫn chưa canonicalized hoàn toàn; jobs/events UI hiện cap 10 rows nên chưa cần `PaginationBar`; Whale Ops cũ vẫn tồn tại ở chế độ legacy để transition.
+
+# ✅ AUDIT FILE LIST (2026-04-28v)
+- backend/portfolio/tasks_order_flow.py (MODIFIED - refactor dark-flow detector to use effective universe snapshot, canonical persistence, latest-signal cache, and downstream distribution queue)
+- backend/portfolio/tasks.py (MODIFIED - re-export `distribute_order_flow_signal`)
+- backend/portfolio/tests/test_order_flow.py (MODIFIED - focused regressions for queueing, effective-universe symbol resolution, cache seeding, and dark-flow severity persistence)
+- backend/portfolio/tests/test_celery_task_names.py (MODIFIED - add stable task-name regression for `distribute_order_flow_signal`)
+- backend/portfolio/tasks_advisory_helpers.py (MODIFIED - preserve `dark_flow` in advisory source normalization)
+- backend/portfolio/tasks_whale_advisory.py (MODIFIED - fix merged flush source propagation and queued status contract)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - mark `BE-2.1` completed with evidence and residual note)
+- module_tree_full.md (MODIFIED - regenerate after dark-flow detector and advisory propagation slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` trên `backend/portfolio/tasks_order_flow.py`, `backend/portfolio/tasks.py`, `backend/portfolio/tests/test_order_flow.py`, `backend/portfolio/tests/test_celery_task_names.py`, `backend/portfolio/tasks_advisory_helpers.py`, `backend/portfolio/tasks_whale_advisory.py` => no errors found.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_order_flow.TestOrderFlowSignalTask portfolio.tests.test_pr1_dark_flow_severity_semantics portfolio.tests.test_whale_advisory_task.WhaleAdvisoryTaskTests.test_flush_merged_event_passes_primary_and_sources portfolio.tests.test_celery_task_names --keepdb; Pop-Location` => 15/15 PASS.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thành công (508 modules).
+- NOTE: detector giờ chỉ enqueue downstream distribution task; union audience tracked/watchlist và user-history persistence chuẩn hóa vẫn chưa implement ở slice này.
+- NOTE: wider legacy suites ngoài code path đã sửa vẫn có drift cũ; final gate của slice này dùng bundle hẹp bám đúng detector/distribution/advisory-flush path vừa thay đổi.
+
+# ✅ AUDIT FILE LIST (2026-04-28u)
+- backend/portfolio/global_signal_policy_helpers.py (MODIFIED - add realtime universe cache invalidation helper and invalidate on universe-policy writes)
+- backend/portfolio/signals.py (MODIFIED - invalidate global signal universe caches on save/delete of tracked/watchlist/alert/holding/admin-curated sources)
+- backend/portfolio/tests/test_global_signal_policy_helpers.py (MODIFIED - cache key matrix and signal wiring regression coverage)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - mark `BE-1.3` completed and clear `BE-1.2` residual)
+- module_tree_full.md (MODIFIED - regenerate after invalidation helper and signal wiring slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` trên `backend/portfolio/global_signal_policy_helpers.py`, `backend/portfolio/signals.py`, `backend/portfolio/tests/test_global_signal_policy_helpers.py` => no errors found.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_global_signal_policy_helpers portfolio.tests.test_global_signal_universe portfolio.tests.test_ticker_prefetch_task --keepdb; Pop-Location` => 29/29 PASS.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thành công (508 modules).
+- NOTE: invalidation hiện xóa đúng snapshot/tier/shard/shard-last-enqueue caches của realtime universe khi admin đổi universe policy hoặc khi demand sources thay đổi.
+- NOTE: invalidation cho read-model/cache của whale hoặc dark-flow service tương lai chưa được tạo vì các read-model đó chưa tồn tại ở phase hiện tại.
+
+# ✅ AUDIT FILE LIST (2026-04-28t)
+- backend/portfolio/global_signal_policy_helpers.py (NEW - canonical default/coerce/get/set helpers for `global_signal_services_config`, `global_signal_universe_policy`, and `global_signal_retention_policy`)
+- backend/portfolio/services_global_signal_universe.py (MODIFIED - consume normalized universe policy helper and preserve backward-compatible `SYSTEM_POLICY_KEY` alias)
+- backend/portfolio/system_settings.py (MODIFIED - seed default JSON payloads for the three global signal config keys)
+- backend/portfolio/tests/test_global_signal_policy_helpers.py (NEW - focused config validation and persistence regression tests)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - mark `BE-1.2` completed with evidence and residual note)
+- module_tree_full.md (MODIFIED - regenerate after adding global signal policy helper module)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` trên `backend/portfolio/global_signal_policy_helpers.py`, `backend/portfolio/services_global_signal_universe.py`, `backend/portfolio/system_settings.py`, `backend/portfolio/tests/test_global_signal_policy_helpers.py` => no errors found.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_global_signal_policy_helpers portfolio.tests.test_global_signal_universe portfolio.tests.test_ticker_prefetch_task --keepdb; Pop-Location` => 25/25 PASS.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thành công (508 modules).
+- NOTE: test run đầu tiên lộ một regression cục bộ ở hằng `SYSTEM_POLICY_KEY`; alias backward-compatible đã được khôi phục và cùng bundle test đã PASS khi rerun.
+- NOTE: slice này hoàn tất schema foundation cho ba key config global signal; preview/apply APIs và cache invalidation dedicated flow còn ở `BE-5.2` / `BE-1.3`.
+
+# ✅ AUDIT FILE LIST (2026-04-28s)
+- backend/portfolio/services_global_signal_universe.py (NEW - shared resolver cho effective universe snapshot, merge policy từ `SystemSetting(global_signal_universe_policy)` và config override cục bộ)
+- backend/portfolio/tasks_prefetch.py (MODIFIED - delegate realtime universe collection sang `GlobalSignalUniverseResolver`)
+- backend/portfolio/tests/test_global_signal_universe.py (NEW - focused tests cho hybrid universe contract và DB-backed policy)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - mark `BE-1.1` completed with evidence and residual note)
+- module_tree_full.md (MODIFIED - regenerate after adding global signal universe service)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` trên `backend/portfolio/services_global_signal_universe.py`, `backend/portfolio/tasks_prefetch.py`, `backend/portfolio/tests/test_global_signal_universe.py` => no errors found.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_global_signal_universe portfolio.tests.test_ticker_prefetch_task --keepdb; Pop-Location` => 17/17 PASS.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thành công (506 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat` => backend/celery runtime refresh hoàn tất; db và redis healthy.
+- NOTE: slice này hoàn tất foundation cho `effective universe snapshot` dùng chung; preview/apply APIs và invalidation policy còn ở `BE-1.2` / `BE-1.3`.
+
+# ✅ AUDIT FILE LIST (2026-04-28r)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_HANDOFF_MASTER_20260428.md (NEW - master handoff cho hai global services và unified admin control center)
+- docs/IMPLEMENTATION_PLAN_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - implementation plan chi tiết có owner, skill matrix và rollout phases)
+- docs/TECH_SPEC_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - tech spec khóa SSOT, canonical stores, universe resolver, admin APIs và control center IA)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - taskboard theo slice với owner, required AI skill, test gate và evidence)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_TRACEABILITY_MATRIX_20260428.md (NEW - map yêu cầu -> quyết định -> task -> evidence)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md (NEW - protocol self-audit/test cho từng loại slice)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_EXECUTION_EVIDENCE_TEMPLATE_20260428.md (NEW - evidence template cho từng slice)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_CODE_QUALITY_CONSTITUTION_20260428.md (NEW - quality constitution chuyên biệt cho global signal services)
+- docs/RUN_CODE_REVIEW_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - code review protocol riêng cho pack này)
+- docs/RUN_INTEGRATION_TESTS_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - integration matrix riêng cho pack này)
+- docs/RUN_SPEC_AUDIT_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (NEW - Council of Three audit protocol riêng cho pack này)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_HANDOFF_AUDIT_REPORT_20260428.md (NEW - audit report bắt buộc cho đợt docs change)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `file_search` xác nhận đầy đủ các file mới `*GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER*20260428.md` và `RUN_*GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md` đã tồn tại trong `docs/`.
+- PASSED: `grep_search` xác nhận pack mới có explicit consent gate, role/skill matrix, traceability, self-audit/test protocol và evidence template.
+- PASSED: doc-only governance review => bộ docs mới đủ triad bắt buộc, quality constitution, review/integration/spec-audit protocols, handoff audit report và sync ledger/progress.
+- NOTE: đây là thay đổi documentation-only; không thay đổi source code, không cần rebuild runtime hay regenerate `module_tree_full.md`.
+
+# ✅ AUDIT FILE LIST (2026-04-28q)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - add toolbar heatmap mode selector, visible quality badge, and missing-heatmap notice on shared KLine surface)
+- module_tree_full.md (MODIFIED - regenerate after shared KLine heatmap audit-polish slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/components/KLineChartPanel.jsx` => no errors found.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => compiled successfully.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (504 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => dev runtime refresh hoan tat; `vninvest-dev-backend` healthy, `vninvest-dev-frontend` started, command exit code 0.
+- NOTE: toolbar nay duoc share cho ca Whale Alerts va Stock Detail; `READY/DEGRADED` badge va thong bao thieu heatmap cho phep auditor nhin thay chat luong snapshot ngay tren chart.
+
+# ✅ AUDIT FILE LIST (2026-04-28p)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md (NEW - master handoff cho chuong trinh KLine intelligence)
+- docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - implementation plan chi tiet)
+- docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - tech spec khoa semantics va architecture)
+- docs/TASKBOARD_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - taskboard theo slice voi owner, test gate va evidence)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md (NEW - map yeu cau -> slice -> evidence)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md (NEW - protocol test va self-audit cho tung slice)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_EXECUTION_EVIDENCE_TEMPLATE_20260428.md (NEW - evidence template cho tung slice)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_AUDIT_REPORT_20260428.md (NEW - audit report bat buoc cho dot docs change)
+- quality/QUALITY.md (MODIFIED - nang cap quality constitution cho Flow View Model, Flow Compare pane, heatmap va whale marker)
+- quality/RUN_CODE_REVIEW.md (MODIFIED - doi bootstrap/focus areas sang pack moi)
+- quality/RUN_INTEGRATION_TESTS.md (MODIFIED - them test matrix cho heatmap va Flow Compare semantics)
+- quality/RUN_SPEC_AUDIT.md (MODIFIED - doi council-of-three bootstrap va scrutiny areas sang pack moi)
+- AGENTS.md (MODIFIED - tro read-first docs va hard constraints sang chuong trinh KLine intelligence moi)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` xac nhan `AGENTS.md` va cac quality docs da tro sang pack `WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE`.
+- PASSED: `file_search` xac nhan cac file docs moi `*KLINE_INTELLIGENCE_UPGRADE*20260428.md` da ton tai trong `docs/`.
+- PASSED: doc-only governance review => triad bat buoc, handoff master, traceability, self-audit, evidence template va audit report deu da duoc luu thanh file vat ly trong `docs/`.
+- NOTE: day la thay doi documentation/governance-only; khong can rebuild runtime hay regenerate `module_tree_full.md`.
+
+# ✅ AUDIT FILE LIST (2026-04-28o)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - disable default MACD pane, register custom indicators before create/override, align template names with `CVD`/`STRENGTH` ids)
+- module_tree_full.md (MODIFIED - regenerate after frontend indicator slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/components/KLineChartPanel.jsx` => no errors found.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => compiled successfully.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: CVD/Strength chi mount khi `flowData` cho timeframe hien tai da co du lieu; slice nay sua root cause register/toggle, khong thay doi contract data availability.
+
+# ✅ AUDIT FILE LIST (2026-04-28n)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - set explicit KLine right offset distance to `20` during chart initialization)
+- module_tree_full.md (MODIFIED - regenerate after frontend chart viewport slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/components/KLineChartPanel.jsx` => no errors found.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => compiled successfully.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: raw CVD/Strength van duoc giu o sub panes de bao toan semantics; slice nay chi giam right buffer cua main KLine viewport.
+
+# ✅ AUDIT FILE LIST (2026-04-28m)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - add cached percentile baseline helper and optional `include_baseline` skip path)
+- backend/portfolio/views_whale_analytics.py (MODIFIED - parse/pass `include_baseline` and include it in snapshot cache key)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - add regression for `include_baseline=0`)
+- frontend/src/api/client.js (MODIFIED - forward optional `include_baseline` query param)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - accept hook options and forward `includeBaseline`)
+- frontend/src/hooks/useWhaleAnalyticsData.test.js (MODIFIED - align compact expectation and add chart-mode includeBaseline regression)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - request chart analytics without baseline percentile work)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - request Kline analytics without baseline percentile work)
+- module_tree_full.md (MODIFIED - regenerate after backend/frontend snapshot runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb; Pop-Location` => 15/15 PASS.
+- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; ...` => 4/4 PASS.
+- PASSED: direct Django snippet `build_whale_analytics_snapshot(... include_baseline=False)` sau `cache.clear()` => ~3.53s cold path cho `ACB 1h`.
+- PASSED: `get_errors` tren touched backend/frontend files => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: chart snapshot `1H` da duoc tach khoi baseline percentile workload; bubble/session baseline van duoc cache de giam cold-start chi phi o cac request sau.
+
+# ✅ AUDIT FILE LIST (2026-04-28l)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - split chart analytics vs bubble analytics, source shark markers from snapshot orders, scope selected session by symbol)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - guard selected Kline session by symbol and persist symbol on session updates)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - skip live polling when a fixed trade_date is selected)
+- module_tree_full.md (MODIFIED - regenerate after Whale Alerts/Stock Detail session-state slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/pages/WhaleAlertsDashboard.jsx`, `frontend/src/pages/StockDetail.jsx`, and `frontend/src/hooks/useWhaleAnalyticsData.js` => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
+
+# ✅ AUDIT FILE LIST (2026-04-28k)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - change getWhaleAnalyticsSnapshot to compact: 0 to ensure flow data exists)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - remove flaky OnCandleBarClick and implement robust DOM click listener with getCrosshair)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on frontend touched files.
+- PASSED: code review manual. Note: `npm run build` thieu bo nho tren Node.js v24.14 host nhung dev stack container v20 chay binh thuong.
+- NOTE: Khong the capture screenshot/video browser tu dong vi loi cascade browser agent, nhung thay doi la ro rang tren code path va runtime da rebuild.
+
 # ✅ AUDIT FILE LIST (2026-04-28g)
 - backend/portfolio/views_screener_admin.py (NEW - admin screener config/rule/manual APIs with IsAdminUser)
 - backend/portfolio/urls.py (MODIFIED - wire admin screener routes)
@@ -19,6 +262,48 @@ Validation:
 - PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
 - PASSED: `get_errors` tren cac file touched backend/frontend => no errors found.
 - NOTE: screenshot/video va payload snapshot khong duoc capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
+
+# ✅ AUDIT FILE LIST (2026-04-28j)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - wrap shared KLineChartPanel, fetch whale analytics snapshot, and pass flowData/whaleSignals)
+- backend/portfolio/consumers.py (MODIFIED - remove unnecessary websocket `connected` payload during connect)
+- module_tree_full.md (MODIFIED - regenerate after Stock Detail runtime/UI slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `frontend/src/pages/StockDetail.jsx` and `backend/portfolio/consumers.py` => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
+
+# ✅ AUDIT FILE LIST (2026-04-28i)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - show seconds in tooltip timestamp)
+- frontend/src/utils/whaleTimeAdapter.js (MODIFIED - parse numeric string epochs before Date normalization)
+- module_tree_full.md (MODIFIED - regenerate after frontend utility/chart timestamp slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28i)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on touched frontend files => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- NOTE: day la slice code-only; screenshot/video khong capture trong terminal session nay.
+
+# ✅ AUDIT FILE LIST (2026-04-28h)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - add selected-session advisory panel, CompactDarkMoneyFlow, and whaleSignals wiring)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - custom tooltip, flow-pane gating, visible-range shark overlays, and trade-date normalization fix)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - hide dead delete action when no handler is supplied)
+- module_tree_full.md (MODIFIED - regenerate after whale alerts UI/runtime slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-28h)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on touched frontend files => no errors found.
+- PASSED: `npm run build` trong `frontend/` => compiled successfully.
+- PASSED: `c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thanh cong (502 modules).
+- PASSED: `docker compose -f docker-compose.dev.yml up -d --build frontend backend` => frontend/backend dev runtime rebuilt/restarted successfully.
+- NOTE: screenshot/video va payload snapshot khong capture trong slice terminal-only nay; runtime dev stack da duoc refresh de auditor co the mo UI va test tiep.
 
 # ✅ AUDIT FILE LIST (2026-04-28f)
 - backend/portfolio/services_global_screener.py (MODIFIED - enrich snapshot rows with whale and dark-flow summaries)

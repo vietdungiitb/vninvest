@@ -22,6 +22,7 @@ from portfolio.market_calendar import (
     resolve_market_local_now,
     resolve_market_phase,
 )
+from portfolio.services_global_signal_universe import GlobalSignalUniverseResolver
 from portfolio.models import (
     DailyPrice,
     PriceAlertRule,
@@ -197,116 +198,11 @@ def _estimate_upstream_calls_per_minute(tier_symbols: int, interval_seconds: int
 
 
 def _collect_realtime_symbol_universe(topology: dict, runtime_settings: dict) -> tuple[list[dict], dict]:
-    tracked_users = _build_symbol_count_map(
-        TrackedSymbol.objects.values('symbol').annotate(user_count=Count('user', distinct=True)),
-        'symbol',
-        'user_count',
+    snapshot = GlobalSignalUniverseResolver.build_snapshot(
+        config=GlobalSignalUniverseResolver.from_prefetch_runtime_settings(runtime_settings),
+        topology=topology,
     )
-    watchlist_users = _build_symbol_count_map(
-        WatchlistItem.objects.values('symbol').annotate(user_count=Count('group__user', distinct=True)),
-        'symbol',
-        'user_count',
-    )
-    alert_users = _build_symbol_count_map(
-        PriceAlertRule.objects.filter(is_active=True).values('symbol').annotate(user_count=Count('user', distinct=True)),
-        'symbol',
-        'user_count',
-    )
-    holding_users = _build_symbol_count_map(
-        Transaction.objects.values('symbol').annotate(user_count=Count('sub_account__portfolio__user', distinct=True)),
-        'symbol',
-        'user_count',
-    )
-    include_group_symbols = bool(runtime_settings.get('include_group_symbols', False))
-    raw_selected_group_ids = runtime_settings.get('intraday_universe_group_ids', [])
-    selected_group_ids = []
-    if isinstance(raw_selected_group_ids, (list, tuple)):
-        for raw_group_id in raw_selected_group_ids:
-            try:
-                parsed_id = int(raw_group_id)
-            except (TypeError, ValueError):
-                continue
-            if parsed_id >= 1 and parsed_id not in selected_group_ids:
-                selected_group_ids.append(parsed_id)
-
-    all_group_symbols = set()
-    if include_group_symbols:
-        all_group_symbols = _normalized_symbol_set(
-            SecuritiesItem.objects.values_list('symbol', flat=True).distinct()
-        )
-
-    selected_group_symbols = set()
-    if selected_group_ids:
-        selected_group_symbols = _normalized_symbol_set(
-            SecuritiesItem.objects.filter(group_id__in=selected_group_ids).values_list('symbol', flat=True).distinct()
-        )
-
-    system_symbols = set(all_group_symbols) | set(selected_group_symbols)
-
-    all_symbols = set(tracked_users) | set(watchlist_users) | set(alert_users) | set(holding_users) | set(system_symbols)
-
-    universe_rows = []
-    for symbol in all_symbols:
-        watchlist_count = int(watchlist_users.get(symbol, 0))
-        alert_count = int(alert_users.get(symbol, 0))
-        holding_count = int(holding_users.get(symbol, 0))
-        tracked_count = int(tracked_users.get(symbol, 0))
-        is_system_symbol = symbol in system_symbols
-        is_intraday_universe_symbol = symbol in selected_group_symbols
-
-        heat_score = _compute_heat_score(
-            watchlist_users=watchlist_count,
-            alert_users=alert_count,
-            holding_users=holding_count,
-            is_system_symbol=is_system_symbol,
-        )
-        universe_rows.append(
-            {
-                'symbol': symbol,
-                'subscriber_count': max(watchlist_count, tracked_count),
-                'tracked_by_watchlist_users': watchlist_count,
-                'tracked_by_alert_rules': alert_count,
-                'tracked_by_portfolio_holders': holding_count,
-                'is_system_symbol': is_system_symbol,
-                'is_intraday_universe_symbol': is_intraday_universe_symbol,
-                'heat_score': heat_score,
-            }
-        )
-
-    universe_rows.sort(key=lambda item: (-int(item.get('heat_score', 0)), item.get('symbol', '')))
-    symbol_limit = max(int(topology.get('universe_symbol_limit', 1800)), 0)
-    if symbol_limit:
-        universe_rows = universe_rows[:symbol_limit]
-
-    hot_limit = max(int(topology.get('hot_limit', 200)), 0)
-    warm_limit = max(int(topology.get('warm_limit', 600)), 0)
-    force_warm_for_intraday_universe = bool(runtime_settings.get('intraday_universe_force_warm_tier', True))
-    for idx, row in enumerate(universe_rows):
-        if idx < hot_limit:
-            tier = 'hot'
-        elif idx < hot_limit + warm_limit:
-            tier = 'warm'
-        else:
-            tier = 'cold'
-
-        if force_warm_for_intraday_universe and bool(row.get('is_intraday_universe_symbol')) and tier == 'cold':
-            tier = 'warm'
-
-        shard_id = _stable_shard_id(row.get('symbol'), _tier_shards(topology, tier))
-        row['tier'] = tier
-        row['shard_id'] = shard_id
-        row['computed_at'] = timezone.now().isoformat()
-
-    source_counts = {
-        'tracked_symbols': len(tracked_users),
-        'watchlist_items': len(watchlist_users),
-        'price_alerts': len(alert_users),
-        'portfolio_transactions': len(holding_users),
-        'market_group_items': len(all_group_symbols),
-        'intraday_universe_group_ids': len(selected_group_ids),
-        'intraday_universe_group_items': len(selected_group_symbols),
-    }
-    return universe_rows, source_counts
+    return list(snapshot.get('rows') or []), dict(snapshot.get('source_counts') or {})
 
 
 def _group_universe_by_tier(rows: list[dict]) -> dict[str, list[dict]]:

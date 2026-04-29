@@ -286,12 +286,13 @@ export const getWhaleOrdersBySymbol = (symbol, { timeframe = 'session' } = {}) =
   apiClient.get(`/portfolio/whale/orders/${encodeURIComponent(symbol)}/`, {
     params: { timeframe },
   });
-export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate } = {}) =>
+export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
   apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
     params: {
       timeframe,
       compact,
       ...(tradeDate ? { trade_date: tradeDate } : {}),
+      ...(includeBaseline === undefined ? {} : { include_baseline: includeBaseline ? 1 : 0 }),
     },
   });
 export const getAggregateWhaleFeed = ({ symbols, watchlistGroupIds, sort = 'ts', window = 'session', limit = 12, cursor, signal } = {}) => {
@@ -569,6 +570,17 @@ export const adminIntradaySideBackfillStatus = (taskId) =>
   apiClient.get(`/admin-ops/intraday-side-backfill/status/${encodeURIComponent(taskId)}/`);
 export const adminIntradayUniverseWarmNow = () =>
   apiClient.post('/admin-ops/intraday-universe/warm-now/');
+export const getAdminSignalsSummary = () => apiClient.get('/admin-ops/signals/summary/');
+export const getAdminSignalsConfig = () => apiClient.get('/admin-ops/signals/config/');
+export const previewAdminSignalsConfig = (payload) => apiClient.post('/admin-ops/signals/config/preview/', payload);
+export const updateAdminSignalsConfig = (payload) => apiClient.put('/admin-ops/signals/config/', payload);
+export const previewAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/preview/', payload);
+export const applyAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/apply/', payload);
+export const getAdminSignalJobs = (params = {}) => apiClient.get('/admin-ops/signals/jobs/', { params });
+export const runAdminSignalJob = (payload) => apiClient.post('/admin-ops/signals/jobs/run/', payload);
+export const retryAdminSignalJob = (runId) => apiClient.post(`/admin-ops/signals/jobs/${encodeURIComponent(runId)}/retry/`);
+export const getAdminSignalRecentEvents = (params = {}) => apiClient.get('/admin-ops/signals/events/recent/', { params });
+export const previewAdminSignalRetention = (payload = {}) => apiClient.post('/admin-ops/signals/retention/preview/', payload);
 
 // --- Screener ---
 export const getScreenerRules = () => apiClient.get('/portfolio/screener/rules/');

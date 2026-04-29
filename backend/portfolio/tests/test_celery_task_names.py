@@ -5,9 +5,12 @@ from portfolio.tasks import (
     activate_due_whale_config_rollouts,
     auto_generate_advisories_for_all_tracked,
     cleanup_old_intraday_ticks,
+    distribute_whale_alert_event,
+    detect_and_store_global_whale_alerts,
     collect_and_publish_realtime,
     detect_and_store_order_flow,
     detect_whale_reversal,
+    distribute_order_flow_signal,
     flush_merged_advisory_event,
     generate_all_portfolio_news_digests_task,
     generate_whale_advisory_task,
@@ -27,6 +30,9 @@ class CeleryTaskNameStabilityTests(SimpleTestCase):
     def test_public_task_names_remain_stable(self):
         expected_names = {
             detect_and_store_order_flow: 'portfolio.tasks.detect_and_store_order_flow',
+            detect_and_store_global_whale_alerts: 'portfolio.tasks.detect_and_store_global_whale_alerts',
+            distribute_whale_alert_event: 'portfolio.tasks.distribute_whale_alert_event',
+            distribute_order_flow_signal: 'portfolio.tasks.distribute_order_flow_signal',
             detect_whale_reversal: 'portfolio.tasks.detect_whale_reversal',
             activate_due_whale_config_rollouts: 'portfolio.tasks.activate_due_whale_config_rollouts',
             monitor_whale_config_anomalies: 'portfolio.tasks.monitor_whale_config_anomalies',

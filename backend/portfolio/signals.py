@@ -1,7 +1,8 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
-from .models import RuntimeVnstockConfig, Transaction
+from .global_signal_policy_helpers import invalidate_global_signal_universe_cache
+from .models import PriceAlertRule, RuntimeVnstockConfig, SecuritiesItem, TrackedSymbol, Transaction, WatchlistItem
 from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
 
 
@@ -12,6 +13,7 @@ def invalidate_runtime_vnstock_cache_on_save(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Transaction)
+@receiver(post_delete, sender=Transaction)
 def invalidate_holdings_cache_on_transaction(sender, instance, **kwargs):
     """
     Khi có Transaction mới/cập nhật → xoá cache holdings của portfolio đó.
@@ -22,10 +24,25 @@ def invalidate_holdings_cache_on_transaction(sender, instance, **kwargs):
     try:
         portfolio_id = instance.sub_account.portfolio_id
     except Exception:
-        return
-    today = date.today().isoformat()
-    for period in ('1D', '5D', '1M', 'YTD'):
-        cache.delete(f'holdings:{portfolio_id}:{period}:{today}')
+        portfolio_id = None
+    if portfolio_id:
+        today = date.today().isoformat()
+        for period in ('1D', '5D', '1M', 'YTD'):
+            cache.delete(f'holdings:{portfolio_id}:{period}:{today}')
+    invalidate_global_signal_universe_cache()
+
+
+@receiver(post_save, sender=TrackedSymbol)
+@receiver(post_delete, sender=TrackedSymbol)
+@receiver(post_save, sender=WatchlistItem)
+@receiver(post_delete, sender=WatchlistItem)
+@receiver(post_save, sender=PriceAlertRule)
+@receiver(post_delete, sender=PriceAlertRule)
+@receiver(post_save, sender=SecuritiesItem)
+@receiver(post_delete, sender=SecuritiesItem)
+def invalidate_global_signal_universe_on_source_change(sender, instance, **kwargs):
+    del sender, instance, kwargs
+    invalidate_global_signal_universe_cache()
 
 
 

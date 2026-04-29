@@ -545,8 +545,9 @@ class TestOrderFlowSignalTask(TestCase):
     def tearDown(self):
         cache.clear()
 
+    @patch("portfolio.tasks_order_flow.distribute_order_flow_signal.delay")
     @patch("portfolio.order_flow.detect_dark_flow")
-    def test_task_stores_signal_when_strength_above_20(self, mock_detect):
+    def test_task_stores_signal_when_strength_above_20(self, mock_detect, mock_distribution_delay):
         from django.contrib.auth import get_user_model
         from portfolio.models import OrderFlowSignal, TrackedSymbol
         from portfolio.tasks import detect_and_store_order_flow
@@ -568,14 +569,18 @@ class TestOrderFlowSignalTask(TestCase):
 
         result = detect_and_store_order_flow.run(symbol="VNM")
         self.assertEqual(result["stored"], 1)
+        self.assertEqual(result["distribution_queued"], 1)
         self.assertEqual(OrderFlowSignal.objects.filter(symbol="VNM").count(), 1)
 
         row = OrderFlowSignal.objects.get(symbol="VNM")
         self.assertEqual(row.event_id, "dark_flow:VNM:2026-04-04T06:00:00+00:00:iceberg")
         self.assertEqual(row.severity, "warning")
+        self.assertEqual(cache.get("order_flow:latest:VNM")["event_id"], row.event_id)
+        mock_distribution_delay.assert_called_once_with(signal_id=row.id, triggered_at="2026-04-04T06:00:00+00:00")
 
+    @patch("portfolio.tasks_order_flow.distribute_order_flow_signal.delay")
     @patch("portfolio.order_flow.detect_dark_flow")
-    def test_task_deduplicates_same_event_id(self, mock_detect):
+    def test_task_deduplicates_same_event_id(self, mock_detect, mock_distribution_delay):
         from django.contrib.auth import get_user_model
         from portfolio.models import OrderFlowSignal, TrackedSymbol
         from portfolio.tasks import detect_and_store_order_flow
@@ -601,7 +606,143 @@ class TestOrderFlowSignalTask(TestCase):
 
         self.assertEqual(first["stored"], 1)
         self.assertEqual(second["stored"], 0)
+        self.assertEqual(second["distribution_queued"], 0)
         self.assertEqual(OrderFlowSignal.objects.filter(symbol="VNM").count(), 1)
+        mock_distribution_delay.assert_called_once()
+
+    @patch("portfolio.tasks_order_flow.distribute_order_flow_signal.delay")
+    @patch("portfolio.order_flow.detect_dark_flow")
+    def test_task_reads_symbols_from_effective_universe_snapshot_when_symbol_not_given(self, mock_detect, mock_distribution_delay):
+        from portfolio.tasks import detect_and_store_order_flow
+
+        cache.set(
+            "realtime:universe:snapshot",
+            {
+                "rows": [
+                    {"symbol": "HPG", "tier": "hot"},
+                    {"symbol": "FPT", "tier": "warm"},
+                ]
+            },
+            timeout=300,
+        )
+        mock_detect.return_value = {
+            "signal_type": "none",
+            "strength": 0,
+            "confidence": "low",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 1.5},
+                "size_distribution": {"small_ratio": 0.4},
+                "absorption": {"cvd_change": 0},
+            },
+            "triggered_at": "2026-04-04T06:00:00+00:00",
+        }
+
+        result = detect_and_store_order_flow.run()
+
+        self.assertEqual(result["symbols"], 2)
+        self.assertEqual(result["processed"], 2)
+        self.assertEqual([call.args[0] for call in mock_detect.call_args_list], ["HPG", "FPT"])
+        mock_distribution_delay.assert_not_called()
+
+    @patch("portfolio.tasks_order_flow.distribute_order_flow_signal.delay")
+    @patch("portfolio.order_flow.detect_dark_flow")
+    def test_task_uses_dark_flow_severity_mapper_for_persisted_signal(self, mock_detect, mock_distribution_delay):
+        from django.contrib.auth import get_user_model
+        from portfolio.models import OrderFlowSignal, TrackedSymbol
+        from portfolio.tasks import detect_and_store_order_flow
+
+        user = get_user_model().objects.create_user(username="of_user_urgent", password="Test@123456")
+        TrackedSymbol.objects.create(user=user, symbol="VNM")
+        mock_detect.return_value = {
+            "signal_type": "iceberg",
+            "strength": 85.0,
+            "confidence": "high",
+            "components": {
+                "tick_rate": {"tick_rate_per_min": 14.0},
+                "size_distribution": {"small_ratio": 0.82},
+                "absorption": {"cvd_change": 250000000},
+                "iceberg": {"repeat_count": 9, "level": 78100},
+            },
+            "triggered_at": "2026-04-04T06:05:00+00:00",
+        }
+
+        result = detect_and_store_order_flow.run(symbol="VNM")
+
+        self.assertEqual(result["stored"], 1)
+        row = OrderFlowSignal.objects.get(symbol="VNM")
+        self.assertEqual(row.severity, "urgent")
+        mock_distribution_delay.assert_called_once_with(signal_id=row.id, triggered_at="2026-04-04T06:05:00+00:00")
+
+    @patch("portfolio.tasks_order_flow.cache.set")
+    def test_distribution_task_skips_below_threshold_signal(self, mock_cache_set):
+        from portfolio.models import OrderFlowSignal
+        from portfolio.tasks import distribute_order_flow_signal
+
+        signal = OrderFlowSignal.objects.create(
+            symbol="VNM",
+            signal_type="iceberg",
+            strength=45.0,
+            confidence="medium",
+            tick_rate=9.0,
+            small_order_ratio=0.7,
+            cvd_at_signal=1234,
+            price_at_signal=0,
+            window_seconds=300,
+            components_json={},
+            event_id="dark_flow:VNM:2026-04-04T06:00:00+00:00:iceberg:skip",
+            severity="warning",
+        )
+
+        result = distribute_order_flow_signal.run(signal_id=signal.id)
+
+        self.assertEqual(result["status"], "skipped")
+        self.assertEqual(result["reason"], "below_distribution_threshold")
+        mock_cache_set.assert_not_called()
+
+    @patch("portfolio.services_global_signal_distribution.async_to_sync")
+    @patch("portfolio.services_global_signal_distribution.get_channel_layer")
+    def test_distribution_task_fans_out_to_watchlist_only_user(self, mock_get_channel_layer, mock_async_to_sync):
+        from portfolio.models import OrderFlowSignal, UserAlertHistory, UserConfig, WatchlistGroup, WatchlistItem
+        from portfolio.tasks import distribute_order_flow_signal
+
+        user = get_user_model().objects.create_user(username="of_watch_only", password="Test@123456")
+        UserConfig.objects.create(user=user, advisory_whale_signal_enabled=True, whale_alert_threshold=650)
+        watchlist = WatchlistGroup.objects.create(user=user, name="Theo dõi dark flow")
+        WatchlistItem.objects.create(group=watchlist, symbol="VNM")
+
+        mock_sender = MagicMock()
+        mock_async_to_sync.return_value = mock_sender
+        mock_get_channel_layer.return_value = MagicMock()
+
+        signal = OrderFlowSignal.objects.create(
+            symbol="VNM",
+            signal_type="iceberg",
+            strength=64.0,
+            confidence="high",
+            tick_rate=9.0,
+            small_order_ratio=0.72,
+            cvd_at_signal=1500,
+            price_at_signal=0,
+            window_seconds=300,
+            components_json={"tick_rate": {"tick_rate_per_min": 9.0}, "size_distribution": {"small_ratio": 0.72}},
+            event_id="dark_flow:VNM:2026-04-04T06:00:00+00:00:iceberg:watch-only",
+            severity="warning",
+        )
+
+        result = distribute_order_flow_signal.run(signal_id=signal.id)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["audience_count"], 1)
+        self.assertEqual(result["user_history_count"], 1)
+        self.assertEqual(result["advisory_events"], 1)
+        history = UserAlertHistory.objects.get()
+        self.assertEqual(history.user, user)
+        self.assertEqual(history.symbol, "VNM")
+        self.assertEqual(history.alert_type, UserAlertHistory.AlertTypeChoices.DARK_MONEY)
+
+        group_names = [call.args[0] for call in mock_sender.call_args_list]
+        self.assertIn("whale_VNM", group_names)
+        self.assertIn(f"user_{user.id}_alerts", group_names)
 
     @patch("portfolio.order_flow.detect_dark_flow")
     def test_task_skips_when_disabled(self, mock_detect):

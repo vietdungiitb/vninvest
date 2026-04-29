@@ -6,7 +6,7 @@ from rest_framework import serializers
 from .models import Portfolio, Transaction, DailyPrice, SecuritiesGroup, SecuritiesItem, UserConfig, SubAccount, WatchlistGroup, WatchlistItem, PriceAlertRule, RuntimeVnstockConfig
 from .models import AICommandCenterAuditLog, AICommandCenterConfig
 from .models import StockProfile, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, LegalPage
-from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, WhaleServiceJob
+from .models import ScreenerRule, CrawlJob, CrawlSchedule, CrawlRun, CrawlAuditLog, SignalServiceRun, WhaleServiceJob
 from .ai_options import ADVISORY_CAPABILITY, get_default_model, is_model_allowed_for_capability, is_valid_model, is_valid_provider
 
 
@@ -771,3 +771,21 @@ class WhaleServiceJobSerializer(serializers.ModelSerializer):
             'started_at', 'finished_at', 'heartbeat_at',
             'created_at', 'updated_at'
         ]
+
+
+class SignalServiceRunSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.CharField(source='created_by.username', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    service_domain_display = serializers.CharField(source='get_service_domain_display', read_only=True)
+    run_type_display = serializers.CharField(source='get_run_type_display', read_only=True)
+
+    class Meta:
+        model = SignalServiceRun
+        fields = [
+            'id', 'service_domain', 'service_domain_display', 'run_type', 'run_type_display',
+            'status', 'status_display', 'params_json', 'task_id', 'progress_pct',
+            'processed_items', 'stored_items', 'failed_items', 'log',
+            'created_by', 'created_by_username', 'started_at', 'finished_at',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = fields

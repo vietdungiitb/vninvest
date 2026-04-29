@@ -11,7 +11,7 @@ from django.utils import timezone
 import pandas as pd
 from portfolio.exceptions import ExternalSystemException
 from portfolio import auth_views
-from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, OrderFlowSignal, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
+from portfolio.models import AdvisoryAggregateAuditLog, AdvisoryAggregateSnapshot, DailyPrice, IntradayTick, OnboardingPlanPolicy, OrderFlowSignal, PlanAssignmentLog, Portfolio, SecuritiesGroup, SecuritiesItem, StockProfile, SubAccount, TrackedSymbol, UserConfig, WatchlistGroup, WatchlistItem, WhaleAdvisory, WhaleAlertEvent, AIAdvisoryComponentRecord, AIAdvisoryExecutiveSummary, SystemAISettings
 from portfolio.starter_portfolio_service import STARTER_PORTFOLIO_TEMPLATES, STARTER_SUBACCOUNT_TEMPLATES
 from datetime import date, datetime, timedelta
 from rest_framework import status
@@ -1921,6 +1921,10 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertIn('sell', returned_sides)
 
     def test_whale_feed_aggregate_defaults_to_tracked_symbols_and_returns_entitlements(self):
+        current_local = timezone.localtime(timezone.now())
+        base_time = (current_local - timedelta(minutes=5)).time().replace(microsecond=0)
+        comparison_time = (current_local - timedelta(minutes=4)).time().replace(microsecond=0)
+
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
@@ -1929,7 +1933,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         IntradayTick.objects.create(
             symbol='FPT',
             trade_date=date.today(),
-            trade_time=datetime.strptime('09:15:00', '%H:%M:%S').time(),
+            trade_time=base_time,
             price=Decimal('100000'),
             volume=7000,
             side='BUY',
@@ -1938,7 +1942,7 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         IntradayTick.objects.create(
             symbol='HPG',
             trade_date=date.today(),
-            trade_time=datetime.strptime('09:16:00', '%H:%M:%S').time(),
+            trade_time=comparison_time,
             price=Decimal('100000'),
             volume=8000,
             side='SELL',
@@ -1965,6 +1969,52 @@ class ApiRouteStockWorkspaceRealtimeBulkTests(APITestCase):
         self.assertLessEqual(response.data['results'][0]['display_score'], response.data['results'][0]['event_score'])
         self.assertTrue(response.data['entitlements']['can_read_whale_advisory'])
         self.assertFalse(response.data['entitlements']['can_read_whale_advisory_detail'])
+
+    @patch('portfolio.market_data_service.fetch_intraday_dataframe')
+    @patch('portfolio.market_data_service.read_stream_intraday_ticks')
+    def test_whale_feed_aggregate_prefers_canonical_whale_event_store_when_available(self, mock_stream_reader, mock_vnstock):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'plan': 'pro', 'email_verified': True, 'whale_alert_threshold': 500},
+        )
+        TrackedSymbol.objects.create(user=self.user, symbol='FPT')
+        WhaleAlertEvent.objects.create(
+            event_id='whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream',
+            symbol='FPT',
+            side='BUY',
+            matched_value_vnd=700_000_000,
+            threshold_vnd=500_000_000,
+            threshold_policy_version='threshold-v1',
+            severity='urgent',
+            event_score=8.4,
+            confidence='high',
+            source='redis_stream',
+            source_layer='live',
+            trade_date=date.today(),
+            occurred_at=timezone.now() - timedelta(minutes=5),
+            payload_json={
+                'event_id': 'whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream',
+                'symbol': 'FPT',
+                'side': 'buy',
+                'matched_value': 700_000_000,
+                'volume': 10000,
+                'ts': (timezone.now() - timedelta(minutes=5)).isoformat(),
+                'size_class': 'whale',
+                'source': 'redis_stream',
+                'threshold_source': 'discovery_global',
+            },
+        )
+
+        self.authenticate()
+        response = self.client.get('/api/realtime/whale-feed/aggregate/?window=5d')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['source'], 'canonical_event_store')
+        self.assertEqual(len(response.data['results']), 1)
+        self.assertEqual(response.data['results'][0]['symbol'], 'FPT')
+        self.assertEqual(response.data['results'][0]['event_id'], 'whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream')
+        mock_stream_reader.assert_not_called()
+        mock_vnstock.assert_not_called()
 
     def test_whale_feed_aggregate_handles_mixed_intraday_price_units_without_1000x(self):
         UserConfig.objects.update_or_create(
