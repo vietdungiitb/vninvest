@@ -14,6 +14,5 @@ frontend/src/pages/WhaleAlertsHub.jsx
 frontend/src/components/DashboardRealtimePanel.jsx
 frontend/src/i18n/vi.js
 frontend/src/i18n/en.js
-frontend/src/components/DarkMoneyMasterChart.jsx
 backend/portfolio/tasks_prefetch.py
 backend/portfolio/ai_advisory_helpers.py

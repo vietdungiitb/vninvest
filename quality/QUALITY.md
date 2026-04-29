@@ -1,13 +1,14 @@
-# Quality Constitution - Whale Alerts Symbol Kline Refactor
+# Quality Constitution - Whale Alerts Symbol KLine Intelligence Upgrade
 
 ## 1. Purpose
 
 Chất lượng của feature pack này không được định nghĩa bằng việc “build pass” đơn thuần. Chất lượng ở đây nghĩa là:
 
 1. `whale-alerts/:symbol` phải cho người dùng một nguồn sự thật duy nhất theo phiên giao dịch.
-2. Hành vi bubble chart của modern dashboard phải được bảo toàn tuyệt đối vì đây là module nguồn bất biến.
-3. Mọi tín hiệu cá mập, CVD và strength phải đúng timestamp; đúng-looking nhưng sai bucket được xem là lỗi nghiêm trọng hơn empty state.
-4. Mọi AI/coder session đụng vào feature này phải để lại bằng chứng đủ để người khác audit lại mà không cần đoán.
+2. KLineChart phải là surface phân tích trung tâm; `heatmap`, `Flow Compare pane`, `whale marker`, `bubble` và `advisory` phải cùng bám vào truth đó.
+3. Hành vi bubble chart của modern dashboard phải được bảo toàn tuyệt đối vì đây là module nguồn bất biến.
+4. Mọi tín hiệu cá mập, heatmap, CVD và strength phải đúng timestamp; đúng-looking nhưng sai bucket được xem là lỗi nghiêm trọng hơn empty state.
+5. Mọi AI/coder session đụng vào feature này phải để lại bằng chứng đủ để người khác audit lại mà không cần đoán.
 
 Nguyên lý áp dụng:
 
@@ -19,12 +20,14 @@ Nguyên lý áp dụng:
 
 | Subsystem | Target | Why |
 |---|---:|---|
-| Whale Alerts route composition | 90% risk coverage | Đây là route đích của refactor; mọi regression ở layout, selected session hoặc cutover path đều lộ trực tiếp cho người dùng |
-| Kline technical pane + tooltip semantics | 95% risk coverage | Sai bucket hoặc sai metric theo nến sẽ tạo quyết định đầu tư sai dù UI trông vẫn hợp lý |
+| Whale Alerts route composition | 90% risk coverage | Đây là route đích; mọi regression ở layout, selected session hoặc cutover path đều lộ trực tiếp cho người dùng |
+| Flow View Model + bucket parity | 95% risk coverage | Tooltip, pane, heatmap và marker chỉ hữu ích nếu cùng bucket với candle |
+| Flow Compare pane semantics | 95% risk coverage | Gộp CVD và strength sai scale hoặc sai baseline sẽ tạo quyết định đầu tư sai |
+| Heatmap semantics | 95% risk coverage | Heatmap sai nghĩa sẽ khiến người dùng đọc nhầm vùng nóng/lạnh dòng tiền dù chart rất thuyết phục |
 | Shark icon viewport selection | 95% risk coverage | Nếu top 10% được tính sai theo toàn dataset thay vì viewport, người dùng sẽ bị dẫn hướng sai mật độ cá mập hiện tại |
 | Bubble copy-only adapter | 95% risk coverage | Rủi ro lớn nhất là vô tình sửa module nguồn và gây regression cho modern dashboard |
-| Stock Detail radar relocation | 85% risk coverage | Đây là regression lân cận có khả năng bị bỏ sót sau khi tách/copy chart logic |
-| Backend session selector / session metrics | 90% risk coverage | Sai selector phiên sẽ phá toàn bộ selected-session bubble và tooltip semantics |
+| Stock Detail parity | 85% risk coverage | Đây là regression lân cận có khả năng bị bỏ sót sau khi chia sẻ logic chart |
+| Backend session selector / quality flags | 90% risk coverage | Sai selector phiên hoặc thiếu degraded-state semantics sẽ phá selected-session truth và làm UI nói dối |
 
 ## 3. Coverage Theater Prevention
 
@@ -32,9 +35,10 @@ Những thứ sau không được tính là bằng chứng chất lượng:
 
 1. Chỉ chứng minh `npm run build` pass mà không có screenshot hoặc payload proof cho selected-session sync.
 2. Chỉ viết test presence như “component render thành công” nhưng không assert bubble đổi theo phiên click.
-3. Chỉ test source bubble module hiện hữu mà không test namespace copy dành riêng cho whale-alerts/symbol.
+3. Chỉ test heatmap có màu mà không assert đúng mode `Net/Buy/Sell` và đúng bucket.
 4. Chỉ ghi “không sửa modern dashboard” mà không có diff proof cho 3 immutable source files.
 5. Chỉ kiểm icon cá mập xuất hiện, nhưng không kiểm nó thay đổi theo zoom/pan/view window.
+6. Chỉ assert CVD line có dữ liệu mà không xác nhận `CVD raw` và `CVD normalized` giữ đúng semantics riêng.
 
 ## 4. Fitness-to-Purpose Scenarios
 
@@ -64,17 +68,44 @@ Where to inspect:
 How to verify:
 - Diff source immutable files phải sạch cho feature pack này.
 
-### Scenario F3 - Tooltip trộn metric từ bucket lân cận
+### Scenario F3 - Tooltip, pane hoặc heatmap trộn metric từ bucket lân cận
 
 What can go wrong:
-- Vì pane kỹ thuật và tooltip lấy dữ liệu từ map thời gian khác nhau, hover một nến nhưng tooltip hiển thị CVD/strength của bucket kế bên. Đây là lỗi “đúng-looking but wrong”.
+- Vì tooltip, pane, heatmap hoặc marker lấy dữ liệu từ các map thời gian khác nhau, hover một nến nhưng ít nhất một lớp hiển thị metric của bucket kế bên. Đây là lỗi “đúng-looking but wrong”.
 
 Where to inspect:
-- Kline technical pane mapping.
+- Flow View Model mapping.
 - Tooltip builder / selected data lookup.
+- Heatmap overlay mapping.
 
 How to verify:
-- Hover nhiều nến kế nhau, đối chiếu payload bucket time.
+- Hover nhiều nến kế nhau, đổi heatmap mode, đối chiếu payload bucket time.
+
+### Scenario F3b - CVD raw và CVD normalized bị nhập nhằng
+
+What can go wrong:
+- Đội code lấy `CVD raw` vẽ chung scale với strength hoặc dùng `CVD normalized` cho tooltip. Chart nhìn mượt nhưng mất tính trung thực dữ liệu, khiến người dùng không phân biệt đâu là cường độ tương đối, đâu là giá trị tích lũy thật.
+
+Where to inspect:
+- Flow Compare pane adapter.
+- Tooltip builder.
+- Backend payload fields `cvd_raw`, `cvd_normalized`.
+
+How to verify:
+- So payload thật với line values và tooltip values trên cùng bucket.
+
+### Scenario F3c - Heatmap đẹp nhưng sai nghĩa nghiệp vụ
+
+What can go wrong:
+- Heatmap dùng màu rất thuyết phục nhưng thực tế chỉ phản ánh volume hoặc matched value thô, không phải net flow/buy heat/sell heat như label đang nói. Đây là lỗi dễ lọt nhất vì chart trông rất “pro”.
+
+Where to inspect:
+- Heatmap series builder.
+- Payload `heatmap_series`.
+- Mode switch logic `Off/Net/Buy/Sell`.
+
+How to verify:
+- Chuyển từng mode, đối chiếu payload cùng bucket với màu đang render.
 
 ### Scenario F4 - Shark icon không recompute theo viewport
 
@@ -132,6 +163,7 @@ What can go wrong:
 Where to inspect:
 - Backend per-candle metrics contract.
 - Frontend adapter mapping.
+- Flow Compare pane normalization path.
 
 How to verify:
 - So payload thật với tooltip và panel labels; dùng snapshot API để kiểm field-level parity.
@@ -143,12 +175,14 @@ How to verify:
 3. Không được sửa source bubble module của modern dashboard để “làm nhanh”.
 4. Không đánh dấu slice complete nếu chưa có evidence template và ledger/progress sync.
 5. Nếu contract backend chưa rõ, dừng ở plan/adapter contract thay vì hard-code workaround trong UI.
+6. Không thêm heatmap hoặc marker layer trực tiếp vào chart khi chưa khóa `Flow View Model`.
 
 ## 6. The Human Gate
 
 Những điểm sau cần human/final auditor quyết định cuối:
 
 1. Advisory text có đủ ngắn và đủ sắc cho nhà đầu tư hay chưa.
-2. Compact cards W2+W4 và Dark Money đã đủ cô đọng hay còn dư chữ.
-3. Shark icon density có giúp đọc chart hay gây nhiễu ở viewport hẹp.
-4. Có cần giữ thêm bất kỳ card trust-context nào ở cột phải hay không sau khi chart mới hoàn tất.
+2. Heatmap density có giúp đọc chart hay đang làm chart bẩn.
+3. Whale marker density có giúp đọc chart hay gây nhiễu ở viewport hẹp.
+4. CVD normalized trên pane đã đủ trực quan mà vẫn không làm mất ý nghĩa của CVD raw.
+5. Có cần giữ thêm bất kỳ card trust-context nào ở cột phải hay không sau khi chart intelligence hoàn tất.

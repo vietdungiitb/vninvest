@@ -1,4 +1,5 @@
 import { resolveWhaleTimeframeWindow, toCanonicalMinute } from './whaleTimeAdapter';
+import { buildWhaleFlowViewModel } from './whaleFlowViewModel';
 
 function buildWindowFromSnapshot(snapshot, timeframe) {
   const startValue = snapshot?.axis?.window_start;
@@ -29,6 +30,11 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
     ? snapshot.flow_series.institutional_strength
     : [];
   const speedSeries = Array.isArray(snapshot?.flow_series?.speed) ? snapshot.flow_series.speed : [];
+  const flowCompareSeries = Array.isArray(snapshot?.flow_compare_series) ? snapshot.flow_compare_series : [];
+  const heatmapSeries = Array.isArray(snapshot?.heatmap_series) ? snapshot.heatmap_series : [];
+  const markerSeries = Array.isArray(snapshot?.marker_series) ? snapshot.marker_series : [];
+  const sessionContext = snapshot?.session_context || null;
+  const snapshotQualityFlags = snapshot?.quality_flags || {};
 
   const bubbleOrders = {
     buy: [],
@@ -64,6 +70,79 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
 
   const latestInstitutional = institutionalStrengthSeries[institutionalStrengthSeries.length - 1] || null;
   const staleReason = snapshot?.meta?.stale_reason || null;
+  const normalizedPriceSeries = priceSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    price: Number(item?.price ?? 0),
+    reference_price: Number(item?.reference_price ?? 0),
+    delta_pct: Number(item?.delta_pct ?? 0),
+  })).filter((item) => item.ts != null);
+  const normalizedCvdSeries = cvdSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    cvd: Number(item?.value ?? 0),
+    cumulative_cvd: Number(item?.value ?? 0),
+  })).filter((item) => item.ts != null);
+  const normalizedStrengthSeries = buyStrengthSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    strength: Number(item?.value ?? 0),
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedInstitutionalStrengthSeries = institutionalStrengthSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    strength: Number(item?.value ?? 0),
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedSpeedSeries = speedSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.bucket_ts),
+    bucket_ts: item?.bucket_ts,
+    speed: item?.value == null ? null : Number(item?.value),
+    unit: item?.unit || 'events_per_second',
+    confidence: item?.confidence || 'low',
+  })).filter((item) => item.ts != null);
+  const normalizedFlowCompareSeries = flowCompareSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    cvd_raw: Number(item?.cvd_raw ?? item?.cvd ?? 0),
+    cvd_normalized_0_100: Number(item?.cvd_normalized_0_100 ?? item?.cvd_normalized ?? 0),
+    buy_strength: Number(item?.buy_strength ?? 0),
+    institutional_strength: Number(item?.institutional_strength ?? 0),
+    baseline: Number(item?.baseline ?? 50),
+  })).filter((item) => item.ts != null);
+  const normalizedHeatmapSeries = heatmapSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    buy_heat: Number(item?.buy_heat ?? 0),
+    sell_heat: Number(item?.sell_heat ?? 0),
+    net_heat: Number(item?.net_heat ?? 0),
+    whale_score: Number(item?.whale_score ?? 0),
+    confidence: item?.confidence == null ? null : Number(item?.confidence),
+    confidence_label: item?.confidence_label || null,
+  })).filter((item) => item.ts != null);
+  const normalizedMarkerSeries = markerSeries.map((item) => ({
+    ts: toCanonicalMinute(item?.ts ?? item?.bucket_ts),
+    bucket_ts: item?.bucket_ts ?? item?.ts,
+    side: item?.side || null,
+    score: Number(item?.score ?? 0),
+    matched_value: Number(item?.matched_value ?? 0),
+    event_score: Number(item?.event_score ?? 0),
+    confidence: item?.confidence == null ? null : Number(item?.confidence),
+  })).filter((item) => item.ts != null);
+  const allBubbleOrders = [...bubbleOrders.buy, ...bubbleOrders.sell, ...bubbleOrders.internal];
+  const flowViewModel = buildWhaleFlowViewModel({
+    flowCompareSeries: normalizedFlowCompareSeries,
+    heatmapSeries: normalizedHeatmapSeries,
+    markerSeries: normalizedMarkerSeries,
+    cvdSeries: normalizedCvdSeries,
+    strengthSeries: normalizedStrengthSeries,
+    institutionalStrengthSeries: normalizedInstitutionalStrengthSeries,
+    bubbleOrders: allBubbleOrders,
+    sessionContext,
+    qualityFlags: snapshotQualityFlags,
+    tradeDate: snapshot?.trade_date || null,
+  });
 
   return {
     bubbles: {
@@ -73,13 +152,7 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       session_start: snapshot?.axis?.window_start,
       session_end: snapshot?.axis?.window_end,
       timeframe: snapshot?.timeframe || timeframe,
-      price_series: priceSeries.map((item) => ({
-        ts: toCanonicalMinute(item?.bucket_ts),
-        bucket_ts: item?.bucket_ts,
-        price: Number(item?.price ?? 0),
-        reference_price: Number(item?.reference_price ?? 0),
-        delta_pct: Number(item?.delta_pct ?? 0),
-      })).filter((item) => item.ts != null),
+      price_series: normalizedPriceSeries,
       orders: bubbleOrders,
       summary: {
         total_orders: Number(snapshot?.summary?.whale_order_count ?? 0),
@@ -101,6 +174,10 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
         missing_reference_price: staleReason === 'missing_reference_price',
         missing_intraday_ticks: staleReason === 'missing_intraday_ticks',
         missing_session_levels: staleReason === 'missing_session_levels',
+        has_flow_data: Boolean(snapshotQualityFlags?.has_flow_data),
+        has_heatmap_data: Boolean(snapshotQualityFlags?.has_heatmap_data),
+        contract_version: snapshotQualityFlags?.contract_version || null,
+        cache_key_version: snapshotQualityFlags?.cache_key_version || null,
       },
       stale_reason: staleReason,
       session_levels: {
@@ -114,27 +191,16 @@ export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
       meta: snapshot?.meta || null,
     },
     flow: {
-      cvd_series: cvdSeries.map((item) => ({
-        ts: toCanonicalMinute(item?.bucket_ts),
-        cvd: Number(item?.value ?? 0),
-        cumulative_cvd: Number(item?.value ?? 0),
-      })).filter((item) => item.ts != null),
-      strength_series: buyStrengthSeries.map((item) => ({
-        ts: toCanonicalMinute(item?.bucket_ts),
-        strength: Number(item?.value ?? 0),
-        confidence: item?.confidence || 'low',
-      })).filter((item) => item.ts != null),
-      institutional_strength_series: institutionalStrengthSeries.map((item) => ({
-        ts: toCanonicalMinute(item?.bucket_ts),
-        strength: Number(item?.value ?? 0),
-        confidence: item?.confidence || 'low',
-      })).filter((item) => item.ts != null),
-      speed_series: speedSeries.map((item) => ({
-        ts: toCanonicalMinute(item?.bucket_ts),
-        speed: item?.value == null ? null : Number(item?.value),
-        unit: item?.unit || 'events_per_second',
-        confidence: item?.confidence || 'low',
-      })).filter((item) => item.ts != null),
+      cvd_series: normalizedCvdSeries,
+      strength_series: normalizedStrengthSeries,
+      institutional_strength_series: normalizedInstitutionalStrengthSeries,
+      speed_series: normalizedSpeedSeries,
+      flow_compare_series: normalizedFlowCompareSeries,
+      heatmap_series: normalizedHeatmapSeries,
+      marker_series: normalizedMarkerSeries,
+      session_context: sessionContext,
+      quality_flags: snapshotQualityFlags,
+      view_model: flowViewModel,
       dark_flow: {
         strength: Number(latestInstitutional?.value ?? 0),
         confidence: latestInstitutional?.confidence || 'low',

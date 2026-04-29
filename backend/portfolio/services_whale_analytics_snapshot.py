@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
+from django.core.cache import cache
 from django.db.models import Max
 from django.utils import timezone
 
@@ -34,6 +35,10 @@ WINDOW_MINUTES = {
     '30m': 30,
     '1h': 60,
 }
+KLINE_INTELLIGENCE_CONTRACT_VERSION = 'kline-intelligence-v1'
+SNAPSHOT_CACHE_KEY_VERSION = 'v4'
+PERCENTILE_BASELINE_CACHE_TIMEOUT_SECONDS = 900
+PERCENTILE_BASELINE_LOCK_TIMEOUT_SECONDS = 20
 
 
 def _combine_dt(trade_date: date, value: time) -> datetime:
@@ -175,6 +180,14 @@ def _matched_value_from_price_volume(price_value: float, volume_value: float) ->
     return float(price_value or 0) * float(volume_value or 0) * multiplier
 
 
+def _empty_percentile_baseline_samples() -> dict:
+    return {
+        'matched_values': [],
+        'event_scores': [],
+        'sample_size': 0,
+    }
+
+
 def _percentile_rank(sample: list[float], current: float) -> float:
     if not sample:
         return 0.5
@@ -196,6 +209,46 @@ def _confidence_label(strength_value: float, percentile_value: float) -> str:
     if strength_value >= 45 or percentile_value >= 0.75:
         return 'medium'
     return 'low'
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, float(value)))
+
+
+def _confidence_score(label: str | None) -> float:
+    normalized = str(label or '').strip().lower()
+    if normalized == 'high':
+        return 85.0
+    if normalized == 'medium':
+        return 60.0
+    return 35.0
+
+
+def _percentile_value(sample: list[float], quantile: float) -> float:
+    numeric_values = []
+    for item in sample:
+        try:
+            numeric_value = float(item)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(numeric_value):
+            numeric_values.append(numeric_value)
+    numeric_values.sort()
+    if not numeric_values:
+        return 0.0
+    safe_quantile = _clamp(quantile, 0.0, 1.0)
+    target_index = int(math.ceil(safe_quantile * len(numeric_values))) - 1
+    target_index = max(0, min(len(numeric_values) - 1, target_index))
+    return float(numeric_values[target_index])
+
+
+def _index_series_by_bucket(series: list[dict]) -> dict[str, dict]:
+    indexed = {}
+    for item in series:
+        bucket_ts = str(item.get('bucket_ts') or '').strip()
+        if bucket_ts:
+            indexed[bucket_ts] = item
+    return indexed
 
 
 def _build_flow_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str, float], bucket_window: int) -> dict:
@@ -280,6 +333,154 @@ def _build_flow_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str,
     }
 
 
+def _build_flow_compare_series(flow_series: dict) -> list[dict]:
+    cvd_points = list(flow_series.get('cvd') or [])
+    cvd_by_bucket = _index_series_by_bucket(cvd_points)
+    strength_by_bucket = _index_series_by_bucket(list(flow_series.get('buy_strength') or []))
+    institutional_by_bucket = _index_series_by_bucket(list(flow_series.get('institutional_strength') or []))
+
+    bucket_keys = [str(item.get('bucket_ts') or '').strip() for item in cvd_points if str(item.get('bucket_ts') or '').strip()]
+    bucket_keys.extend(key for key in strength_by_bucket.keys() if key not in bucket_keys)
+    bucket_keys.extend(key for key in institutional_by_bucket.keys() if key not in bucket_keys)
+
+    cvd_abs_values = [abs(float(item.get('value') or 0.0)) for item in cvd_points]
+    cvd_scale = max(_percentile_value(cvd_abs_values, 0.95), 1.0)
+
+    flow_compare_series = []
+    for bucket_key in bucket_keys:
+        cvd_raw = float((cvd_by_bucket.get(bucket_key) or {}).get('value') or 0.0)
+        buy_strength = float((strength_by_bucket.get(bucket_key) or {}).get('value') or 0.0)
+        institutional_strength = float((institutional_by_bucket.get(bucket_key) or {}).get('value') or 0.0)
+        cvd_normalized = _clamp(50.0 + 50.0 * (cvd_raw / cvd_scale), 0.0, 100.0)
+        flow_compare_series.append({
+            'ts': bucket_key,
+            'bucket_ts': bucket_key,
+            'cvd_raw': round(cvd_raw, 2),
+            'cvd_normalized_0_100': round(cvd_normalized, 2),
+            'buy_strength': round(buy_strength, 2),
+            'institutional_strength': round(institutional_strength, 2),
+            'baseline': 50.0,
+        })
+
+    return flow_compare_series
+
+
+def _build_heatmap_series(bucket_rows: list[dict], whale_value_by_bucket: dict[str, float], bucket_window: int) -> list[dict]:
+    heatmap_series = []
+    total_value_history = []
+
+    for row in bucket_rows:
+        bucket_key = row['bucket_ts'].isoformat()
+        buy_value = float(row.get('buy_value') or 0.0)
+        sell_value = float(row.get('sell_value') or 0.0)
+        total_value = max(float(row.get('total_value') or 0.0), 0.0)
+        recent_values = total_value_history[-bucket_window:] if total_value_history else []
+        baseline_value = statistics.median(recent_values) if recent_values else max(total_value, 1.0)
+        activity_multiple = total_value / max(baseline_value, 1.0)
+        intensity = _clamp((math.log1p(activity_multiple) / math.log(3.0)) * 100.0, 0.0, 100.0)
+        buy_share = buy_value / total_value if total_value > 0 else 0.0
+        sell_share = sell_value / total_value if total_value > 0 else 0.0
+        imbalance = buy_share - sell_share
+        buy_heat = _clamp(intensity * buy_share * 1.35, 0.0, 100.0)
+        sell_heat = _clamp(intensity * sell_share * 1.35, 0.0, 100.0)
+        net_heat = _clamp(intensity * imbalance * 1.75, -100.0, 100.0)
+
+        whale_bucket_value = float(whale_value_by_bucket.get(bucket_key, 0.0))
+        whale_ratio = whale_bucket_value / max(total_value, 1.0)
+        whale_intensity = _clamp((math.log1p(max(whale_bucket_value, 0.0) / max(baseline_value, 1.0)) / math.log(4.0)) * 100.0, 0.0, 100.0)
+        whale_score = _clamp(
+            (55.0 * _clamp(whale_ratio * 100.0, 0.0, 100.0) / 100.0)
+            + (45.0 * whale_intensity / 100.0) * 100.0,
+            0.0,
+            100.0,
+        )
+
+        event_count = int(row.get('event_count') or 0)
+        if event_count >= 3 and total_value >= baseline_value * 0.5:
+            confidence_label = 'high'
+        elif event_count >= 2 or total_value >= baseline_value * 0.25:
+            confidence_label = 'medium'
+        else:
+            confidence_label = 'low'
+
+        heatmap_series.append({
+            'ts': bucket_key,
+            'bucket_ts': bucket_key,
+            'buy_heat': round(buy_heat, 2),
+            'sell_heat': round(sell_heat, 2),
+            'net_heat': round(net_heat, 2),
+            'whale_score': round(whale_score, 2),
+            'confidence': round(_confidence_score(confidence_label), 2),
+            'confidence_label': confidence_label,
+        })
+        total_value_history.append(total_value)
+
+    return heatmap_series
+
+
+def _build_marker_series(bubble_series: list[dict], heatmap_series: list[dict], flow_compare_series: list[dict]) -> list[dict]:
+    if not bubble_series:
+        return []
+
+    bucket_groups = defaultdict(list)
+    for item in bubble_series:
+        bucket_key = str(item.get('bucket_ts') or '').strip()
+        if bucket_key:
+            bucket_groups[bucket_key].append(item)
+
+    heatmap_by_bucket = _index_series_by_bucket(heatmap_series)
+    flow_compare_by_bucket = _index_series_by_bucket(flow_compare_series)
+    bucket_totals = []
+    bucket_events = []
+
+    for items in bucket_groups.values():
+        bucket_totals.append(sum(float(item.get('matched_value') or 0.0) for item in items))
+        bucket_events.append(max(float(item.get('event_score') or 0.0) for item in items))
+
+    marker_series = []
+    for bucket_key, items in sorted(bucket_groups.items(), key=lambda pair: pair[0]):
+        buy_value = sum(float(item.get('matched_value') or 0.0) for item in items if str(item.get('side') or '').strip().upper() == 'BUY')
+        sell_value = sum(float(item.get('matched_value') or 0.0) for item in items if str(item.get('side') or '').strip().upper() == 'SELL')
+        matched_value = buy_value + sell_value
+        event_score = max(float(item.get('event_score') or 0.0) for item in items)
+        matched_percentile = _percentile_rank(bucket_totals, matched_value) * 100.0
+        event_percentile = _percentile_rank(bucket_events, event_score) * 100.0
+        heatmap_point = heatmap_by_bucket.get(bucket_key) or {}
+        flow_compare_point = flow_compare_by_bucket.get(bucket_key) or {}
+        confidence = float(heatmap_point.get('confidence') or _confidence_score('medium' if len(items) >= 2 else 'low'))
+        marker_score = _clamp(
+            (0.45 * matched_percentile)
+            + (0.20 * event_percentile)
+            + (0.15 * abs(float(heatmap_point.get('net_heat') or 0.0)))
+            + (0.10 * float(flow_compare_point.get('institutional_strength') or 0.0))
+            + (0.10 * confidence),
+            0.0,
+            100.0,
+        )
+        dominant_side = 'buy' if buy_value > sell_value else 'sell' if sell_value > buy_value else 'neutral'
+        marker_series.append({
+            'ts': bucket_key,
+            'bucket_ts': bucket_key,
+            'side': dominant_side,
+            'score': round(marker_score, 2),
+            'matched_value': round(matched_value, 2),
+            'event_score': round(event_score, 2),
+            'confidence': round(confidence, 2),
+        })
+
+    return marker_series
+
+
+def _resolve_quality_state(*, requested_trade_date: date | None, resolved_trade_date: date, degraded_mode: bool, flow_compare_series: list[dict], heatmap_series: list[dict]) -> str:
+    if requested_trade_date and requested_trade_date != resolved_trade_date:
+        return 'DEGRADED_SESSION_FALLBACK'
+    if not flow_compare_series:
+        return 'DEGRADED_FLOW_MISSING'
+    if degraded_mode and not heatmap_series:
+        return 'DEGRADED_HEATMAP_MISSING'
+    return 'READY'
+
+
 def _resolve_reference_price(symbol: str, trade_date: date) -> float | None:
     reference_price = _get_reference_price(symbol, trade_date)
     if reference_price is None:
@@ -296,7 +497,13 @@ def _calculate_whale_event_score(*, matched_value: float, threshold_vnd: float, 
     return float(score_result.get('event_score') or 0.0)
 
 
-def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, threshold_vnd: float, score_config: dict, session_limit: int = 10) -> dict:
+def _build_percentile_baseline_cache_key(*, symbol: str, trade_date: date, threshold_vnd: float, score_config: dict, session_limit: int) -> str:
+    threshold_key = int(round(float(threshold_vnd or 0.0)))
+    score_version = str(score_config.get('version') or 'weights-v1').strip() or 'weights-v1'
+    return f'whale:analytics:baseline:v1:{symbol}:{trade_date.isoformat()}:{session_limit}:{threshold_key}:{score_version}'
+
+
+def _compute_percentile_baseline_samples(*, symbol: str, trade_date: date, threshold_vnd: float, score_config: dict, session_limit: int = 10) -> dict:
     previous_trade_dates = list(
         IntradayTick.objects
         .filter(symbol=symbol, trade_date__lt=trade_date)
@@ -305,11 +512,7 @@ def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, thresho
         .order_by('-trade_date')[:session_limit]
     )
     if not previous_trade_dates:
-        return {
-            'matched_values': [],
-            'event_scores': [],
-            'sample_size': 0,
-        }
+        return _empty_percentile_baseline_samples()
 
     matched_values = []
     event_scores = []
@@ -317,6 +520,7 @@ def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, thresho
         IntradayTick.objects
         .filter(symbol=symbol, trade_date__in=previous_trade_dates)
         .values('price', 'volume', 'side')
+        .iterator(chunk_size=2000)
     )
     for row in baseline_rows:
         matched_value = _matched_value_from_price_volume(float(row.get('price') or 0), float(row.get('volume') or 0))
@@ -342,6 +546,56 @@ def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, thresho
         'event_scores': event_scores,
         'sample_size': len(matched_values),
     }
+
+
+def _build_percentile_baseline_samples(*, symbol: str, trade_date: date, threshold_vnd: float, score_config: dict, session_limit: int = 10) -> dict:
+    cache_key = _build_percentile_baseline_cache_key(
+        symbol=symbol,
+        trade_date=trade_date,
+        threshold_vnd=threshold_vnd,
+        score_config=score_config,
+        session_limit=session_limit,
+    )
+    try:
+        cached_payload = cache.get(cache_key)
+        if isinstance(cached_payload, dict):
+            return cached_payload
+    except Exception:
+        cached_payload = None
+
+    lock_key = f'{cache_key}:lock'
+    try:
+        has_lock = cache.add(lock_key, 1, timeout=PERCENTILE_BASELINE_LOCK_TIMEOUT_SECONDS)
+    except Exception:
+        has_lock = False
+
+    if has_lock:
+        try:
+            payload = _compute_percentile_baseline_samples(
+                symbol=symbol,
+                trade_date=trade_date,
+                threshold_vnd=threshold_vnd,
+                score_config=score_config,
+                session_limit=session_limit,
+            )
+            try:
+                cache.set(cache_key, payload, timeout=PERCENTILE_BASELINE_CACHE_TIMEOUT_SECONDS)
+            except Exception:
+                pass
+            return payload
+        finally:
+            try:
+                cache.delete(lock_key)
+            except Exception:
+                pass
+
+    return _compute_percentile_baseline_samples(
+        symbol=symbol,
+        trade_date=trade_date,
+        threshold_vnd=threshold_vnd,
+        score_config=score_config,
+        session_limit=session_limit,
+    )
 
 
 def _resolve_session_levels(*, user, symbol: str, trade_date: date, reference_price: float | None) -> tuple[dict, list[str]]:
@@ -398,7 +652,7 @@ def _resolve_degraded_state(*, reference_price: float | None, tick_rows: list[di
     return False, None, []
 
 
-def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'session', compact: bool = True, trade_date: date | None = None) -> dict:
+def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'session', compact: bool = True, trade_date: date | None = None, include_baseline: bool = True) -> dict:
     normalized_symbol = str(symbol or '').strip().upper()
     normalized_timeframe = str(timeframe or 'session').strip().lower()
     requested_trade_date = trade_date
@@ -530,11 +784,15 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
     whale_value_by_bucket = defaultdict(float)
     bubble_series = []
     threshold_value = float(threshold_vnd or 0)
-    percentile_baseline = _build_percentile_baseline_samples(
-        symbol=normalized_symbol,
-        trade_date=resolved_trade_date,
-        threshold_vnd=threshold_value,
-        score_config=score_config,
+    percentile_baseline = (
+        _build_percentile_baseline_samples(
+            symbol=normalized_symbol,
+            trade_date=resolved_trade_date,
+            threshold_vnd=threshold_value,
+            score_config=score_config,
+        )
+        if include_baseline else
+        _empty_percentile_baseline_samples()
     )
     threshold_tick_rows = [
         row for row in tick_rows
@@ -602,7 +860,11 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'baseline_sample_size': baseline_sample_size,
         })
 
-    flow_series = _build_flow_series(sorted_buckets, whale_value_by_bucket, bucket_window=30 if normalized_timeframe != 'session' else 60)
+    bucket_window = 30 if normalized_timeframe != 'session' else 60
+    flow_series = _build_flow_series(sorted_buckets, whale_value_by_bucket, bucket_window=bucket_window)
+    flow_compare_series = _build_flow_compare_series(flow_series)
+    heatmap_series = _build_heatmap_series(sorted_buckets, whale_value_by_bucket, bucket_window=bucket_window)
+    marker_series = _build_marker_series(bubble_series, heatmap_series, flow_compare_series)
     total_buy_value = round(sum(item['matched_value'] for item in bubble_series if item['side'] == 'BUY'), 2)
     total_sell_value = round(sum(item['matched_value'] for item in bubble_series if item['side'] == 'SELL'), 2)
     net_cvd = flow_series['cvd'][-1]['value'] if flow_series['cvd'] else 0.0
@@ -622,6 +884,13 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         reference_price=reference_price,
         tick_rows=tick_rows,
         missing_session_level_fields=missing_session_level_fields,
+    )
+    quality_state = _resolve_quality_state(
+        requested_trade_date=requested_trade_date,
+        resolved_trade_date=resolved_trade_date,
+        degraded_mode=degraded_mode,
+        flow_compare_series=flow_compare_series,
+        heatmap_series=heatmap_series,
     )
     payload = {
         'symbol': normalized_symbol,
@@ -645,7 +914,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'data_state': 'live' if is_live_session else 'snapshot',
             'stale_reason': stale_reason,
             'missing_fields': missing_fields,
-            'request_key': f'{normalized_symbol}:{resolved_trade_date.isoformat()}:{normalized_timeframe}:{1 if compact else 0}',
+            'request_key': f'{normalized_symbol}:{resolved_trade_date.isoformat()}:{normalized_timeframe}:{1 if compact else 0}:{1 if include_baseline else 0}',
             'threshold_vnd': float(threshold_vnd or 0),
             'threshold_source': threshold_source,
         },
@@ -660,6 +929,22 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         'price_series': price_series,
         'bubble_series': bubble_series,
         'flow_series': flow_series,
+        'flow_compare_series': flow_compare_series,
+        'heatmap_series': heatmap_series,
+        'marker_series': marker_series,
+        'session_context': {
+            'default_trade_date': resolved_trade_date.isoformat(),
+            'selected_trade_date': resolved_trade_date.isoformat(),
+            'latest_valid_trade_date': resolved_trade_date.isoformat(),
+            'quality_state': quality_state,
+        },
+        'quality_flags': {
+            'has_flow_data': bool(flow_compare_series),
+            'has_heatmap_data': bool(heatmap_series),
+            'degraded_reason': stale_reason,
+            'contract_version': KLINE_INTELLIGENCE_CONTRACT_VERSION,
+            'cache_key_version': SNAPSHOT_CACHE_KEY_VERSION,
+        },
         'summary': {
             'total_buy_value': total_buy_value,
             'total_sell_value': total_sell_value,

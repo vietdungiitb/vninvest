@@ -63,9 +63,31 @@ describe('useWhaleAnalyticsData', () => {
       expect(result.current.data).toEqual(normalized);
     });
 
-    expect(getWhaleAnalyticsSnapshot).toHaveBeenCalledWith('HPG', { timeframe: 'session', compact: 1 });
+    expect(getWhaleAnalyticsSnapshot).toHaveBeenCalledWith('HPG', { timeframe: 'session', compact: 0, tradeDate: null, includeBaseline: undefined });
     expect(normalizeWhaleAnalyticsSnapshot).toHaveBeenCalledWith(snapshot, 'session');
     expect(result.current.error).toBe(null);
+  });
+
+  it('forwards includeBaseline when chart mode disables percentile work', async () => {
+    const normalized = {
+      bubbles: { symbol: 'HPG' },
+      flow: { dark_flow: { strength: 14 } },
+      meta: { data_state: 'snapshot' },
+    };
+
+    getWhaleAnalyticsSnapshot.mockResolvedValue({ data: { symbol: 'HPG' } });
+    normalizeWhaleAnalyticsSnapshot.mockReturnValue(normalized);
+
+    renderHook(() => useWhaleAnalyticsData('HPG', '1H', null, { includeBaseline: false }));
+
+    await waitFor(() => {
+      expect(getWhaleAnalyticsSnapshot).toHaveBeenCalledWith('HPG', {
+        timeframe: '1H',
+        compact: 0,
+        tradeDate: null,
+        includeBaseline: false,
+      });
+    });
   });
 
   it('pauses background polling when hidden and refetches immediately when visible again', async () => {

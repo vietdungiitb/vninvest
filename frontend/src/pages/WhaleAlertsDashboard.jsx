@@ -1,29 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  CartesianGrid,
-  Cell,
-  ComposedChart,
-  Line,
-  Pie,
-  PieChart,
-  ReferenceLine,
-  ResponsiveContainer,
-  Scatter,
-  ScatterChart,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { getDepthChart, getRVOL, getStockPriceChart, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
+import { getStockAIAdvisorySession, getStockPriceChart, getStockWorkspaceOverview, getWhaleFeed } from '../api/client';
 import KLineChartPanel from '../components/KLineChartPanel';
 import WhaleBubbleChart from '../components/WhaleBubbleChart';
+import CompactDarkMoneyFlow from '../components/CompactDarkMoneyFlow';
+import { DepthChartPanel } from '../components/DepthChartPanel';
+import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
+import { RVOLChartPanel } from '../components/RVOLChartPanel';
+import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
+import WhaleAdvisoryCommandPanel from '../components/advisory/WhaleAdvisoryCommandPanel';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import { useI18n } from '../context/LangContext';
+import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,102 +24,6 @@ function fmtBil(v) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)}M`;
   return n.toLocaleString(undefined);
 }
-
-function fmtCompact(v) {
-  if (v == null) return '—';
-  const n = Number(v);
-  if (!Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
-  if (Math.abs(n) >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}B`;
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString(undefined);
-}
-
-function fmtVol(v) {
-  if (v == null) return '—';
-  const n = Number(v);
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString(undefined);
-}
-
-function fmtPrice(v) {
-  if (v == null) return '—';
-  return Number(v).toLocaleString(undefined);
-}
-
-function formatPercentDelta(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
-    return '—';
-  }
-  const numericValue = Number(value);
-  return `${numericValue > 0 ? '+' : ''}${numericValue.toFixed(2)}%`;
-}
-
-function sizeClassEmoji(cls) {
-  if (cls === 'shark') return '🦈';
-  if (cls === 'whale') return '🐋';
-  return '🐟';
-}
-
-function sideColor(side) {
-  if (side === 'buy') return '#22c55e';
-  if (side === 'sell') return '#f43f5e';
-  return '#94a3b8';
-}
-
-function severityTone(severity) {
-  if (severity === 'extreme') return 'bg-rose-500 text-white';
-  if (severity === 'high') return 'bg-amber-400 text-slate-950';
-  if (severity === 'medium') return 'bg-cyan-400 text-slate-950';
-  return 'bg-slate-800 text-slate-200';
-}
-
-function severityLabel(severity, t) {
-  const normalizedSeverity = String(severity || '').toLowerCase();
-  if (normalizedSeverity === 'extreme') return t('whaleHub.severityExtreme');
-  if (normalizedSeverity === 'high') return t('whaleHub.severityHigh');
-  if (normalizedSeverity === 'medium') return t('whaleHub.severityMedium');
-  return t('whaleHub.severityLow');
-}
-
-function formatFeedTime(value) {
-  if (!value) return '—';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? String(value) : parsed.toLocaleString(undefined);
-}
-
-function getFeedSourceMeta(source, t) {
-  const normalizedSource = String(source || '').toLowerCase();
-  if (normalizedSource === 'redis_stream') {
-    return {
-      label: t('whaleAlertsDashboard.sourceRedisStream'),
-      tone: 'border-emerald-800/60 bg-emerald-950/30 text-emerald-200',
-    };
-  }
-  if (normalizedSource === 'intraday_tick_db') {
-    return {
-      label: t('whaleAlertsDashboard.sourceIntradayDb'),
-      tone: 'border-cyan-900/60 bg-cyan-950/30 text-cyan-200',
-    };
-  }
-  if (normalizedSource === 'vnstock') {
-    return {
-      label: t('whaleAlertsDashboard.sourceVnstock'),
-      tone: 'border-amber-800/60 bg-amber-950/30 text-amber-200',
-    };
-  }
-  return {
-    label: t('whaleAlertsDashboard.sourceUnknown'),
-    tone: 'border-slate-700 bg-slate-950/70 text-slate-300',
-  };
-}
-
-import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
-import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
-import { RVOLChartPanel } from '../components/RVOLChartPanel';
-import { DepthChartPanel } from '../components/DepthChartPanel';
 
 const BUBBLE_TIMEFRAME_OPTIONS = [
   { value: '15m', label: '15 phút' },
@@ -153,14 +46,23 @@ export default function WhaleAlertsDashboard() {
   const [activeTimeframe, setActiveTimeframe] = useState('1H');
   const [chartVisibleRange, setChartVisibleRange] = useState({ from_ts: null, to_ts: null });
   const [bubbleTimeframe, setBubbleTimeframe] = useState('session');
-  const [selectedTradeDate, setSelectedTradeDate] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [advisorySession, setAdvisorySession] = useState(null);
+  const [advisoryLoading, setAdvisoryLoading] = useState(false);
+  const [advisoryRowMessage, setAdvisoryRowMessage] = useState('');
+  const advisoryRequestIdRef = useRef(0);
+  const selectedTradeDate = selectedSession?.symbol === normalizedSymbol ? selectedSession.tradeDate ?? null : null;
 
   const { alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
   });
 
   const {
-    data: whaleAnalyticsData,
+    data: chartAnalyticsData,
+  } = useWhaleAnalyticsData(normalizedSymbol, activeTimeframe, null, { includeBaseline: false });
+
+  const {
+    data: bubbleAnalyticsData,
     loading: whaleAnalyticsLoading,
     error: whaleAnalyticsError,
   } = useWhaleAnalyticsData(normalizedSymbol, bubbleTimeframe, selectedTradeDate);
@@ -200,6 +102,27 @@ export default function WhaleAlertsDashboard() {
   const [feedLoading, setFeedLoading] = useState(true);
   const [companyName, setCompanyName] = useState('');
 
+  const whaleSignalsForChart = useMemo(() => {
+    const snapshotOrders = chartAnalyticsData?.bubbles?.orders;
+    const flattenedSnapshotOrders = snapshotOrders
+      ? [
+        ...(Array.isArray(snapshotOrders.buy) ? snapshotOrders.buy : []),
+        ...(Array.isArray(snapshotOrders.sell) ? snapshotOrders.sell : []),
+        ...(Array.isArray(snapshotOrders.internal) ? snapshotOrders.internal : []),
+      ]
+      : [];
+
+    if (flattenedSnapshotOrders.length > 0) {
+      return flattenedSnapshotOrders;
+    }
+
+    if (Array.isArray(feedData?.whale_orders) && feedData.whale_orders.length > 0) {
+      return feedData.whale_orders;
+    }
+
+    return symbolAlerts;
+  }, [chartAnalyticsData, feedData, symbolAlerts]);
+
   const fetchFeed = useCallback(async () => {
     setFeedLoading(true);
     try {
@@ -220,8 +143,58 @@ export default function WhaleAlertsDashboard() {
 
   useEffect(() => { setFeedData(null); fetchFeed(); }, [fetchFeed]);
 
+  const fetchAdvisorySession = useCallback(async ({ silent = false } = {}) => {
+    if (!normalizedSymbol) {
+      setAdvisorySession(null);
+      setAdvisoryRowMessage('');
+      return;
+    }
+
+    const requestId = ++advisoryRequestIdRef.current;
+    if (!silent) {
+      setAdvisoryLoading(true);
+    }
+    setAdvisoryRowMessage('');
+
+    try {
+      const advisoryParams = { contract: 'v2', include_benchmarks: 1 };
+      if (selectedTradeDate) {
+        advisoryParams.trade_date = selectedTradeDate;
+      }
+
+      const response = await getStockAIAdvisorySession(normalizedSymbol, advisoryParams);
+      if (requestId !== advisoryRequestIdRef.current) {
+        return;
+      }
+
+      const payload = response?.data || {};
+      if (payload && payload.ok === false) {
+        const conflictState = resolveAdvisoryConflictState(payload, t);
+        setAdvisorySession(conflictState.advisory || conflictState.aggregate || null);
+        setAdvisoryRowMessage(conflictState.message || '');
+        return;
+      }
+
+      setAdvisorySession(payload.advisory || payload.aggregate || null);
+    } catch (error) {
+      if (requestId !== advisoryRequestIdRef.current) {
+        return;
+      }
+      setAdvisorySession(null);
+      setAdvisoryRowMessage(error?.response?.data?.message || t('whaleAnalytics.aiAdvisoryLoadFailed', { defaultValue: 'Không thể tải tư vấn AI cho phiên này.' }));
+    } finally {
+      if (requestId === advisoryRequestIdRef.current && !silent) {
+        setAdvisoryLoading(false);
+      }
+    }
+  }, [normalizedSymbol, selectedTradeDate, t]);
+
   useEffect(() => {
-    setSelectedTradeDate(null);
+    fetchAdvisorySession({ silent: false });
+  }, [fetchAdvisorySession]);
+
+  useEffect(() => {
+    setSelectedSession(null);
   }, [normalizedSymbol]);
 
   useEffect(() => {
@@ -240,14 +213,14 @@ export default function WhaleAlertsDashboard() {
           const nextChartData = response?.data?.points || [];
           setChartData(nextChartData);
           if (!nextChartData.length) {
-            setSelectedTradeDate(null);
+            setSelectedSession(null);
           }
         }
       } catch (err) {
         if (!cancelled) {
           console.error('getStockPriceChart:', err);
           setChartData([]);
-          setSelectedTradeDate(null);
+          setSelectedSession(null);
         }
       } finally {
         if (!cancelled) {
@@ -366,16 +339,17 @@ export default function WhaleAlertsDashboard() {
                   activeTimeframe={activeTimeframe}
                   onPeriodChange={setActivePeriod}
                   onTimeframeChange={({ timeframe, days }) => {
-                    setSelectedTradeDate(null);
+                    setSelectedSession(null);
                     setActiveTimeframe(timeframe);
                     if (Number.isFinite(days)) {
                       setActivePeriod(days);
                     }
                   }}
                   onVisibleRangeChange={setChartVisibleRange}
-                  flowData={whaleAnalyticsData?.flow || null}
+                  flowData={chartAnalyticsData?.flow || null}
+                  whaleSignals={whaleSignalsForChart}
                   onSessionChange={({ tradeDate }) => {
-                    setSelectedTradeDate(tradeDate || null);
+                    setSelectedSession(tradeDate ? { symbol: normalizedSymbol, tradeDate } : null);
                   }}
                 />
               )}
@@ -421,14 +395,46 @@ export default function WhaleAlertsDashboard() {
                 isControlled
                 externalSymbol={normalizedSymbol}
                 externalTimeframe={bubbleTimeframe}
-                externalData={whaleAnalyticsData?.bubbles || null}
-                externalFlowData={whaleAnalyticsData?.flow || null}
+                externalData={bubbleAnalyticsData?.bubbles || null}
+                externalFlowData={bubbleAnalyticsData?.flow || null}
                 externalLoading={whaleAnalyticsLoading}
                 externalError={whaleAnalyticsError}
                 onTimeframeChange={setBubbleTimeframe}
                 onSymbolChange={() => {}}
                 isEmbedded={true}
                 syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
+              />
+            </div>
+          </section>
+
+          <section className="card-section p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <p className="text-label">{t('whaleAlertsDashboard.aiAdvisoryLabel', { defaultValue: 'Tư vấn AI theo phiên' })}</p>
+                <h2 className="mt-1 text-lg font-semibold text-slate-100">
+                  {selectedTradeDate
+                    ? formatDateTime(`${selectedTradeDate}T12:00:00`, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : t('whaleAlertsDashboard.latestSessionLabel', { defaultValue: 'Phiên gần nhất có dữ liệu' })}
+                </h2>
+              </div>
+              <div className="text-[11px] text-slate-500">
+                {t('whaleAlertsDashboard.selectedSession', { defaultValue: 'Phiên đang xem' })}: {' '}
+                <span className="text-slate-300">
+                  {selectedTradeDate
+                    ? formatDateTime(`${selectedTradeDate}T12:00:00`, { day: '2-digit', month: '2-digit', year: 'numeric' })
+                    : '--'}
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-3 h-[760px]">
+              <WhaleAdvisoryCommandPanel
+                item={advisorySession}
+                activeSymbol={normalizedSymbol}
+                onRefresh={() => fetchAdvisorySession({ silent: false })}
+                refreshing={advisoryLoading}
+                deleting={false}
+                rowMessage={advisoryRowMessage}
               />
             </div>
           </section>
@@ -447,6 +453,12 @@ export default function WhaleAlertsDashboard() {
           <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
           <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
           <DepthChartPanel symbol={normalizedSymbol} compact />
+          <CompactDarkMoneyFlow
+            symbol={normalizedSymbol}
+            flowData={bubbleAnalyticsData?.flow || null}
+            height={260}
+            syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
+          />
         </div>
       </div>
     </div>

@@ -1,15 +1,6 @@
-function formatCompactNumber(value) {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
-  const n = Number(value);
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
-  return n.toLocaleString(undefined);
-}
-const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { init as klineChartInit, dispose as klineChartDispose } from 'klinecharts';
 import { Link, useParams } from 'react-router-dom';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import KLineChartPanel from '../components/KLineChartPanel';
 import {
   addTrackedSymbol,
   addWatchlistItem,
@@ -48,6 +39,7 @@ import { BubbleOrderChart } from '../components/BubbleOrderChart';
 import { MoneyFlowDonut } from '../components/MoneyFlowDonut';
 import { OrderFlowRadarPanel } from '../components/OrderFlowRadarPanel';
 import AIAdvisoryPromptConfigDrawer from '../components/AIAdvisoryPromptConfigDrawer';
+import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import { useI18n } from '../context/LangContext';
 import { usePortfolio } from '../context/PortfolioContext';
@@ -57,6 +49,8 @@ import {
   resolveAdvisoryConflictState,
   shouldAutoRetryAdvisoryConflict,
 } from './stockDetailAdvisoryUtils';
+
+const ADVISORY_INVALIDATION_EVENT = 'vninvest:advisory_updated';
 
 // Giá hiển thị theo chuẩn bảng giá: en-US, 2 chữ số thập phân, không kèm đơn vị trong từng ô.
 
@@ -274,562 +268,20 @@ function governanceDeltaSeverityClass(level) {
   return 'border-slate-700 bg-slate-900/60 text-slate-300';
 }
 
-function normalizeTradeDate(value) {
-  if (value === null || value === undefined) {
-    return null;
-  }
-
-  const rawValue = String(value).trim();
-  if (!rawValue) {
-    return null;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}/.test(rawValue)) {
-    return rawValue.slice(0, 10);
-  }
-
-  const parsed = new Date(rawValue);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
-}
-
-function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange }) {
-  const { t } = useI18n();
-  const containerRef = useRef(null);
-  const chartRef = useRef(null);
-  const indicatorPaneMapRef = useRef({});
-  const lastVisibleRangeRef = useRef({ from_ts: null, to_ts: null });
-  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true });
-  const [fullScreen, setFullScreen] = useState(false);
-
-  const MAIN_PANE_INDICATORS = new Set(['MA', 'EMA', 'BOLL', 'SAR']);
-  const SUB_PANE_CANDIDATES = ['volume_pane', 'indicator_pane'];
-
-  const AVAILABLE_INDICATORS = [
-    { id: 'VOL', name: 'Volume', default: true },
-    { id: 'MA', name: t('stockDetail.indicatorMovingAverage'), default: true },
-    { id: 'EMA', name: t('stockDetail.indicatorEma') },
-    { id: 'BOLL', name: t('stockDetail.indicatorBollingerBands') },
-    { id: 'MACD', name: t('stockDetail.indicatorMacd'), default: true },
-    { id: 'RSI', name: t('stockDetail.indicatorRsi') },
-    { id: 'KDJ', name: t('stockDetail.indicatorKdj') },
-    { id: 'STOCH', name: t('stockDetail.indicatorStochastic') },
-    { id: 'SAR', name: t('stockDetail.indicatorParabolicSar') },
-    { id: 'ATR', name: t('stockDetail.indicatorAtr') },
-    { id: 'OBV', name: t('stockDetail.indicatorObv') },
-  ];
-
-  const TIMEFRAMES = [
-    { id: '1m',  days: 5 },
-    { id: '5m',  days: 20 },
-    { id: '15m', days: 60 },
-    { id: '1H',  days: 180 },
-    { id: 'D',   days: 365 },
-    { id: 'W',   days: 1095 },
-    { id: 'M',   days: 1825 },
-    { id: 'Y',   days: 3650 },
-  ];
-  const [activeTimeframe, setActiveTimeframe] = useState(() => {
-    if (activeTimeframeProp && TIMEFRAMES.some((tf) => tf.id === activeTimeframeProp)) {
-      return activeTimeframeProp;
-    }
-    const match = TIMEFRAMES.find((tf) => tf.days === activePeriod);
-    return match ? match.id : '1H';
-  });
-
-  const rememberIndicatorPane = (indicatorId, paneId) => {
-    if (paneId) {
-      indicatorPaneMapRef.current[indicatorId] = paneId;
-    }
-  };
-
-  const forgetIndicatorPane = (indicatorId) => {
-    delete indicatorPaneMapRef.current[indicatorId];
-  };
-
-  const findIndicatorPaneIds = (chart, indicatorId) => {
-    const paneIds = [];
-    try {
-      const allIndicators = chart.getIndicatorByPaneId?.();
-      if (allIndicators instanceof Map) {
-        for (const [paneId, indicators] of allIndicators.entries()) {
-          if (indicators instanceof Map && indicators.has(indicatorId)) {
-            paneIds.push(paneId);
-          }
-        }
-      }
-    } catch (e) {
-      // fallback handled by static pane candidates below
-    }
-    return paneIds;
-  };
-
-  const removeIndicatorFromAnySubPane = (chart, indicatorId) => {
-    const dynamicPaneIds = findIndicatorPaneIds(chart, indicatorId);
-    const rememberedPaneId = indicatorPaneMapRef.current[indicatorId];
-    const paneIdsToTry = [
-      ...(rememberedPaneId ? [rememberedPaneId] : []),
-      ...dynamicPaneIds,
-      ...SUB_PANE_CANDIDATES,
-    ];
-
-    let removed = false;
-    const seen = new Set();
-    for (const paneId of paneIdsToTry) {
-      if (!paneId || seen.has(paneId)) {
-        continue;
-      }
-      seen.add(paneId);
-      try {
-        chart.removeIndicator(paneId, indicatorId);
-        removed = true;
-      } catch (e) {
-        // keep trying other pane ids for compatibility across klinecharts variants
-      }
-    }
-    if (!removed) {
-      throw new Error(`Failed to remove ${indicatorId} from sub panes`);
-    }
-    forgetIndicatorPane(indicatorId);
-  };
-
-  const createIndicatorWithTracking = (chart, indicatorId) => {
-    let paneId = null;
-    if (indicatorId === 'VOL') {
-      paneId = chart.createIndicator('VOL', false, { height: 80, minHeight: 40 });
-    } else if (MAIN_PANE_INDICATORS.has(indicatorId)) {
-      chart.createIndicator(indicatorId, false, { id: 'candle_pane' });
-      paneId = 'candle_pane';
-    } else {
-      paneId = chart.createIndicator(indicatorId, false);
-    }
-    rememberIndicatorPane(indicatorId, paneId || (MAIN_PANE_INDICATORS.has(indicatorId) ? 'candle_pane' : null));
-  };
-
-  const handleToggleIndicator = (indicatorId) => {
-    if (indicatorId === 'VOL') {
-      setActiveIndicators(prev => {
-        const isNextEnabled = !prev[indicatorId];
-        if (chartRef.current) {
-          try {
-            if (isNextEnabled) {
-              createIndicatorWithTracking(chartRef.current, 'VOL');
-            } else {
-              removeIndicatorFromAnySubPane(chartRef.current, 'VOL');
-            }
-          } catch (e) {
-            console.error(`Error toggling indicator ${indicatorId}:`, e);
-          }
-        }
-        return { ...prev, [indicatorId]: isNextEnabled };
-      });
-    } else {
-      setActiveIndicators(prev => {
-        const newState = { ...prev, [indicatorId]: !prev[indicatorId] };
-        if (chartRef.current) {
-          if (newState[indicatorId]) {
-            try {
-              createIndicatorWithTracking(chartRef.current, indicatorId);
-            } catch (e) {
-              console.error(`Error creating indicator ${indicatorId}:`, e);
-            }
-          } else {
-            try {
-              if (MAIN_PANE_INDICATORS.has(indicatorId)) {
-                chartRef.current.removeIndicator('candle_pane', indicatorId);
-                forgetIndicatorPane(indicatorId);
-              } else {
-                removeIndicatorFromAnySubPane(chartRef.current, indicatorId);
-              }
-            } catch (e) {
-              console.error(`Error removing indicator ${indicatorId}:`, e);
-            }
-          }
-        }
-        return newState;
-      });
-    }
-  };
-
-  const handleTimeframe = (tf) => {
-    setActiveTimeframe(tf.id);
-    onTimeframeChange?.({ timeframe: tf.id, days: tf.days });
-    onPeriodChange?.(tf.days);
-  };
-
-  const emitVisibleRangeFromChart = useCallback((kLineData = []) => {
-    const chart = chartRef.current;
-    if (!chart || !onVisibleRangeChange) return;
-
-    const fallbackFrom = kLineData[0]?.timestamp ?? null;
-    const fallbackTo = kLineData[kLineData.length - 1]?.timestamp ?? null;
-
-    let nextFrom = fallbackFrom;
-    let nextTo = fallbackTo;
-
-    try {
-      const visibleRange = chart.getVisibleRange?.();
-      if (visibleRange && kLineData.length) {
-        const fromIndexRaw = Number(
-          visibleRange.from
-          ?? visibleRange.realFrom
-          ?? visibleRange.left
-          ?? visibleRange.start
-        );
-        const toIndexRaw = Number(
-          visibleRange.to
-          ?? visibleRange.realTo
-          ?? visibleRange.right
-          ?? visibleRange.end
-        );
-
-        if (Number.isFinite(fromIndexRaw) && Number.isFinite(toIndexRaw)) {
-          const fromIndex = Math.max(0, Math.min(kLineData.length - 1, Math.floor(fromIndexRaw)));
-          const toIndex = Math.max(fromIndex, Math.min(kLineData.length - 1, Math.ceil(toIndexRaw)));
-          nextFrom = kLineData[fromIndex]?.timestamp ?? fallbackFrom;
-          nextTo = kLineData[toIndex]?.timestamp ?? fallbackTo;
-        }
-      }
-    } catch (_) {
-      nextFrom = fallbackFrom;
-      nextTo = fallbackTo;
-    }
-
-    if (
-      lastVisibleRangeRef.current.from_ts !== nextFrom
-      || lastVisibleRangeRef.current.to_ts !== nextTo
-    ) {
-      lastVisibleRangeRef.current = { from_ts: nextFrom, to_ts: nextTo };
-      onVisibleRangeChange({ from_ts: nextFrom, to_ts: nextTo });
-    }
-  }, [onVisibleRangeChange]);
-
-  const emitSessionFromChart = useCallback((kLineData = []) => {
-    if (!onSessionChange || !kLineData.length) {
-      return;
-    }
-
-    const latestData = kLineData[kLineData.length - 1];
-    const tradeDate = normalizeTradeDate(latestData?.tradeDate ?? latestData?.date ?? latestData?.timestamp);
-    if (!tradeDate) {
-      return;
-    }
-
-    onSessionChange({
-      tradeDate,
-      timestamp: latestData?.timestamp ?? null,
-      dataIndex: kLineData.length - 1,
-      kLineData: latestData,
-    });
-  }, [onSessionChange]);
-
-  const handleCandleBarClick = useCallback((action) => {
-    const chart = chartRef.current;
-    if (!chart || !onSessionChange) {
-      return;
-    }
-
-    const chartDataList = chart.getDataList?.() || [];
-    const clickedData = action?.kLineData || chartDataList?.[action?.dataIndex] || null;
-    if (!clickedData) {
-      return;
-    }
-
-    const tradeDate = normalizeTradeDate(clickedData.tradeDate ?? clickedData.date ?? action?.timestamp ?? clickedData.timestamp);
-    if (!tradeDate) {
-      return;
-    }
-
-    onSessionChange({
-      tradeDate,
-      timestamp: clickedData.timestamp ?? action?.timestamp ?? null,
-      dataIndex: Number.isFinite(action?.dataIndex) ? action.dataIndex : null,
-      kLineData: clickedData,
-    });
-  }, [onSessionChange]);
-
-  const handleScreenshot = () => {
-    if (chartRef.current) {
-      const image = chartRef.current.getImage({
-        type: 'png',
-        backgroundColor: '#131722'
-      });
-      if (image) {
-        const link = document.createElement('a');
-        link.href = image;
-        link.download = `chart-${new Date().getTime()}.png`;
-        link.click();
-      }
-    }
-  };
-
-  const handleToggleFullscreen = () => {
-    if (!fullScreen && containerRef.current) {
-      containerRef.current.requestFullscreen?.();
-      setFullScreen(true);
-    } else {
-      document.exitFullscreen?.();
-      setFullScreen(false);
-    }
-  };
-
-  // Khởi tạo chart một lần
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const chart = klineChartInit(containerRef.current, {
-      locale: 'en-US',
-      timezone: 'Asia/Ho_Chi_Minh',
-      styles: {
-        background: { color: '#131722' },
-        grid: {
-          horizontal: { show: true, size: 1, color: '#2a2e39', style: 'dashed' },
-          vertical: { show: true, size: 1, color: '#2a2e39', style: 'dashed' },
-        },
-        candle: {
-          type: 'candle_solid',
-          bar: {
-            upColor: '#26a69a',
-            downColor: '#ef5350',
-            noChangeColor: '#94a3b8',
-            upBorderColor: '#26a69a',
-            downBorderColor: '#ef5350',
-            noChangeBorderColor: '#94a3b8',
-            upWickColor: '#26a69a',
-            downWickColor: '#ef5350',
-            noChangeWickColor: '#94a3b8',
-          },
-          tooltip: {
-            showRule: 'follow_cross',
-            showType: 'rect',
-            labels: [
-              'Time',
-              'Open',
-              'High',
-              'Low',
-              'Close',
-              'Volume',
-            ],
-            values: null,
-            defaultValue: t('common.notAvailable'),
-            rect: {
-              position: 'fixed',
-              paddingLeft: 10,
-              paddingRight: 10,
-              paddingTop: 6,
-              paddingBottom: 6,
-              offsetLeft: 8,
-              offsetTop: 8,
-              offsetRight: 8,
-              borderRadius: 6,
-              borderSize: 1,
-              borderColor: '#2a2e39',
-              color: '#131722',
-            },
-            text: { size: 11, family: 'inherit', weight: 'normal', color: '#d1d4dc', marginLeft: 8 },
-          },
-        },
-        xAxis: {
-          show: true,
-          axisLine: { show: true, color: '#2a2e39', size: 1 },
-          tickLine: { show: true, size: 1, length: 3, color: '#2a2e39' },
-          tickText: { show: true, color: '#b2b5be', size: 11, family: 'inherit' },
-        },
-        yAxis: {
-          show: true,
-          type: 'normal',
-          position: 'right',
-          axisLine: { show: true, color: '#2a2e39', size: 1 },
-          tickLine: { show: true, size: 1, length: 3, color: '#2a2e39' },
-          tickText: { show: true, color: '#b2b5be', size: 11, family: 'inherit' },
-        },
-        crosshair: {
-          show: true,
-          horizontal: {
-            show: true,
-            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#758696' },
-            text: { show: true, style: 'fill', color: '#d1d4dc', size: 11, borderRadius: 2, borderColor: '#2a2e39', backgroundColor: '#131722' },
-          },
-          vertical: {
-            show: true,
-            line: { show: true, style: 'dashed', dashedValue: [4, 2], size: 1, color: '#758696' },
-            text: { show: true, style: 'fill', color: '#d1d4dc', size: 11, borderRadius: 2, borderColor: '#2a2e39', backgroundColor: '#131722' },
-          },
-        },
-        separator: {
-          size: 1,
-          color: '#2a2e39',
-          fill: true,
-          dragEnabled: true,
-          activeBackgroundColor: 'rgba(67, 70, 81, 0.45)',
-        },
-      },
-    });
-
-    // MA trên pane chính
-    createIndicatorWithTracking(chart, 'MA');
-    // Volume ở pane phụ (chiều cao 20%)
-    createIndicatorWithTracking(chart, 'VOL');
-    // MACD mặc định để gần hành vi preview hơn.
-    createIndicatorWithTracking(chart, 'MACD');
-
-    chartRef.current = chart;
-
-    if (typeof chart.subscribeAction === 'function') {
-      chart.subscribeAction('onCandleBarClick', handleCandleBarClick);
-    }
-
-    const ro = new ResizeObserver(() => {
-      chartRef.current?.resize();
-    });
-    ro.observe(containerRef.current);
-
-    return () => {
-      ro.disconnect();
-      if (typeof chart.unsubscribeAction === 'function') {
-        chart.unsubscribeAction('onCandleBarClick', handleCandleBarClick);
-      }
-      if (containerRef.current) {
-        klineChartDispose(containerRef.current);
-      }
-      indicatorPaneMapRef.current = {};
-      chartRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      setFullScreen(Boolean(document.fullscreenElement));
-    };
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, []);
-
-  useEffect(() => {
-    if (activeTimeframeProp && TIMEFRAMES.some((tf) => tf.id === activeTimeframeProp)) {
-      setActiveTimeframe(activeTimeframeProp);
-      return;
-    }
-    const match = TIMEFRAMES.find((tf) => tf.days === activePeriod);
-    if (match) {
-      setActiveTimeframe(match.id);
-    }
-  }, [activePeriod, activeTimeframeProp]);
-
-  useEffect(() => {
-    onActiveIndicatorsChange?.(activeIndicators);
-  }, [activeIndicators, onActiveIndicatorsChange]);
-
-  // Cập nhật dữ liệu khi prop thay đổi
-  useEffect(() => {
-    if (!chartRef.current) return;
-
-    if (!data?.length) {
-      onSessionChange?.(null);
-      return;
-    }
-
-    const kLineData = data
-      .filter((d) => d.date && d.close != null)
-      .map((d) => ({
-        timestamp: new Date(d.date).getTime(),
-        tradeDate: d.date,
-        open: d.open != null ? Number(d.open) : Number(d.close),
-        high: d.high != null ? Number(d.high) : Number(d.close),
-        low: d.low != null ? Number(d.low) : Number(d.close),
-        close: Number(d.close),
-        volume: d.volume != null ? Number(d.volume) : 0,
-      }))
-      .sort((a, b) => a.timestamp - b.timestamp);
-
-    chartRef.current.applyNewData(kLineData);
-    emitVisibleRangeFromChart(kLineData);
-    emitSessionFromChart(kLineData);
-  }, [data, emitSessionFromChart, emitVisibleRangeFromChart, onSessionChange]);
-
-  useEffect(() => {
-    if (!chartRef.current || !data?.length || !onVisibleRangeChange) return;
-    const timer = window.setInterval(() => {
-      const kLineData = data
-        .filter((d) => d.date && d.close != null)
-        .map((d) => ({ timestamp: new Date(d.date).getTime() }))
-        .filter((d) => Number.isFinite(d.timestamp));
-      emitVisibleRangeFromChart(kLineData);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [data, emitVisibleRangeFromChart, onVisibleRangeChange]);
-
+function KLineChartComponent({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null, whaleSignals = [] }) {
   return (
-    <div className="flex flex-col w-full h-full bg-[#131722] rounded-lg overflow-hidden border border-[#2a2e39]">
-      {/* Toolbar */}
-      <div className="bg-[#1e222d] border-b border-[#2a2e39] p-1.5 flex flex-wrap gap-1.5 items-center">
-        {/* Timeframes */}
-        <div className="flex gap-1 items-center">
-          {TIMEFRAMES.map((tf) => (
-            <button
-              key={tf.id}
-              onClick={() => handleTimeframe(tf)}
-              className={`h-7 min-w-[34px] px-2 py-1 text-[11px] font-medium rounded transition ${
-                activeTimeframe === tf.id
-                  ? 'bg-[#2962ff] text-white'
-                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
-              }`}
-            >
-              {tf.id}
-            </button>
-          ))}
-        </div>
-
-        {/* Indicators */}
-        <div className="flex gap-1 items-center border-l border-[#2a2e39] pl-2">
-          {AVAILABLE_INDICATORS.map(ind => (
-            <button
-              key={ind.id}
-              onClick={() => handleToggleIndicator(ind.id)}
-              className={`h-7 min-w-[38px] px-2 py-1 text-[11px] rounded transition ${
-                activeIndicators[ind.id]
-                  ? 'bg-[#2962ff] text-white'
-                  : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
-              }`}
-              title={ind.name}
-            >
-              {ind.id}
-            </button>
-          ))}
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-1 border-l border-[#2a2e39] pl-2">
-          <button
-            onClick={handleScreenshot}
-            className="h-7 px-2 py-1 text-[11px] bg-[#2a2e39] text-[#b2b5be] rounded hover:bg-[#363a45] transition"
-            title={t('stockDetail.takeScreenshot')}
-          >
-            Screenshot
-          </button>
-          <button
-            onClick={handleToggleFullscreen}
-            className={`h-7 px-2 py-1 text-[11px] rounded transition ${
-              fullScreen
-                ? 'bg-[#2962ff] text-white'
-                : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
-            }`}
-            title={t('stockDetail.fullscreen')}
-          >
-            Fullscreen
-          </button>
-        </div>
-      </div>
-
-      {/* Chart Container */}
-      <div
-        ref={containerRef}
-        style={{ width: '100%', flex: 1, background: '#131722', overflow: 'hidden' }}
-      />
-    </div>
+    <KLineChartPanel
+      data={data}
+      activePeriod={activePeriod}
+      activeTimeframe={activeTimeframeProp}
+      onPeriodChange={onPeriodChange}
+      onTimeframeChange={onTimeframeChange}
+      onVisibleRangeChange={onVisibleRangeChange}
+      onActiveIndicatorsChange={onActiveIndicatorsChange}
+      onSessionChange={onSessionChange}
+      flowData={flowData}
+      whaleSignals={whaleSignals}
+    />
   );
 }
 
@@ -1557,7 +1009,7 @@ export default function StockDetail() {
   const advisoryInvalidationKeyRef = useRef('');
   const advisoryPromptConfigLoadedRef = useRef(false);
   const advisoryPromptConfigLastSavedRef = useRef('');
-  const selectedTradeDate = selectedKlineSession?.tradeDate ?? null;
+  const selectedTradeDate = selectedKlineSession?.symbol === normalizedSymbol ? selectedKlineSession.tradeDate ?? null : null;
 
   const { quotesBySymbol, realtimeStatus, lastEventAt, alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -1567,6 +1019,29 @@ export default function StockDetail() {
   const symbolAlerts = alerts ? alerts.filter((a) => a.symbol === normalizedSymbol) : [];
   const symbolWhaleAlert = latestWhaleAlert && latestWhaleAlert.symbol === normalizedSymbol ? latestWhaleAlert : null;
   const symbolDarkFlowAlert = latestDarkFlowAlert && latestDarkFlowAlert.symbol === normalizedSymbol ? latestDarkFlowAlert : null;
+
+  const { data: whaleAnalyticsData } = useWhaleAnalyticsData(normalizedSymbol, activeTimeframe, selectedTradeDate, { includeBaseline: false });
+
+  const whaleSignalsForChart = useMemo(() => {
+    const snapshotOrders = whaleAnalyticsData?.bubbles?.orders;
+    const flattenedSnapshotOrders = snapshotOrders
+      ? [
+        ...(Array.isArray(snapshotOrders.buy) ? snapshotOrders.buy : []),
+        ...(Array.isArray(snapshotOrders.sell) ? snapshotOrders.sell : []),
+        ...(Array.isArray(snapshotOrders.internal) ? snapshotOrders.internal : []),
+      ]
+      : [];
+
+    if (flattenedSnapshotOrders.length > 0) {
+      return flattenedSnapshotOrders;
+    }
+
+    if (Array.isArray(whaleFeedData?.whale_orders) && whaleFeedData.whale_orders.length > 0) {
+      return whaleFeedData.whale_orders;
+    }
+
+    return symbolAlerts;
+  }, [symbolAlerts, whaleAnalyticsData, whaleFeedData]);
 
   useEffect(() => {
     setSelectedKlineSession(null);
@@ -3105,7 +2580,11 @@ export default function StockDetail() {
                   }}
                   onVisibleRangeChange={setChartVisibleRange}
                   onActiveIndicatorsChange={setChartActiveIndicators}
-                  onSessionChange={setSelectedKlineSession}
+                  onSessionChange={(session) => {
+                    setSelectedKlineSession(session ? { ...session, symbol: normalizedSymbol } : null);
+                  }}
+                  flowData={whaleAnalyticsData?.flow || null}
+                  whaleSignals={whaleSignalsForChart}
                 />
               )}
             </div>

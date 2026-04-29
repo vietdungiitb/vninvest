@@ -211,7 +211,7 @@ export default function WhaleAdvisoryCommandPanel({
           )}
         </div>
         
-        {hasAdvisory && (
+        {hasAdvisory && onDeleteCurrent && (
           <button
             type="button"
             onClick={() => onDeleteCurrent?.(resolvedSymbol)}

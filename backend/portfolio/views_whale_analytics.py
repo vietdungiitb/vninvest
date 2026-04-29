@@ -51,22 +51,23 @@ def _resolve_snapshot_cache_timeout(payload: dict) -> int:
     return 900
 
 
-def _build_snapshot_cache_key(*, user, symbol: str, timeframe: str, compact: bool, trade_date) -> str:
+def _build_snapshot_cache_key(*, user, symbol: str, timeframe: str, compact: bool, trade_date, include_baseline: bool = True) -> str:
     trade_date_key = trade_date.isoformat() if trade_date else 'auto'
-    return f'whale:analytics:v2:{user.id}:{symbol}:{trade_date_key}:{timeframe}:{1 if compact else 0}'
+    return f'whale:analytics:v4:{user.id}:{symbol}:{trade_date_key}:{timeframe}:{1 if compact else 0}:{1 if include_baseline else 0}'
 
 
 def _build_snapshot_lock_key(cache_key: str) -> str:
     return f'{cache_key}:lock'
 
 
-def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, compact: bool, trade_date):
+def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, compact: bool, trade_date, include_baseline: bool):
     cache_key = _build_snapshot_cache_key(
         user=request.user,
         symbol=symbol,
         timeframe=timeframe,
         compact=compact,
         trade_date=trade_date,
+        include_baseline=include_baseline,
     )
     payload = cache.get(cache_key)
     if payload is not None:
@@ -89,6 +90,7 @@ def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, comp
                 timeframe=timeframe,
                 compact=compact,
                 trade_date=trade_date,
+                include_baseline=include_baseline,
             )
             cache.set(cache_key, payload, timeout=_resolve_snapshot_cache_timeout(payload))
             return payload
@@ -110,6 +112,7 @@ def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, comp
         timeframe=timeframe,
         compact=compact,
         trade_date=trade_date,
+        include_baseline=include_baseline,
     )
     cache.set(cache_key, payload, timeout=_resolve_snapshot_cache_timeout(payload))
     return payload
@@ -124,6 +127,7 @@ def whale_analytics_snapshot_api(request, symbol: str):
 
     timeframe = str(request.query_params.get('timeframe', 'session')).strip().lower()
     compact = str(request.query_params.get('compact', '1')).strip() != '0'
+    include_baseline = str(request.query_params.get('include_baseline', '1')).strip() != '0'
     trade_date = _parse_trade_date(request.query_params.get('trade_date'))
     payload = _get_or_build_snapshot_payload(
         request=request,
@@ -131,6 +135,7 @@ def whale_analytics_snapshot_api(request, symbol: str):
         timeframe=timeframe,
         compact=compact,
         trade_date=trade_date,
+        include_baseline=include_baseline,
     )
     etag = build_snapshot_etag(payload)
     quoted_etag = f'"{etag}"'

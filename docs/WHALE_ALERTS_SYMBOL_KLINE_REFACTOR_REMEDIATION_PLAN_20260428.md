@@ -38,7 +38,20 @@ Bản kế hoạch này tổng hợp các lỗi phát hiện trong đợt kiểm
 **Giải pháp:**
 - Sửa hàm `normalizeTradeDate` để xử lý an toàn dữ liệu dạng timestamp số: `new Date(Number.isFinite(Number(value)) ? Number(value) : value)`.
 
+### 7. Vấn đề Tooltip hiển thị thời gian quá ngắn
+**Hiện trạng:** Format thời gian trong Tooltip của KLine chỉ hiện đến phút (HH:mm), khiến người dùng có cảm giác "thời gian quá ngắn" (thiếu chi tiết giây) hoặc format ngày tháng chưa đầy đủ.
+**Giải pháp:**
+- Sửa hàm `formatTooltipTimestamp` trong `KLineChartPanel.jsx`, bổ sung thêm tham số `second: '2-digit'` vào `toLocaleString` để hiển thị thời gian chi tiết hơn.
+
+### 8. Vấn đề CVD, Strength phiên gần nhất không hiển thị
+**Hiện trạng:** Dữ liệu CVD và Strength trả về cho các phiên gần nhất có thể chứa trường `ts` dưới dạng chuỗi (ví dụ `"1714262400"`). Hàm `toCanonicalMinute` trong `whaleTimeAdapter.js` đang gọi `new Date("1714262400")` khiến kết quả trả về `Invalid Date`, làm biểu đồ không có mốc thời gian khớp với KLine, dẫn đến Pane bị rỗng hoặc không vẽ.
+**Giải pháp:**
+- Cập nhật hàm `toCanonicalMinute` để ép kiểu dữ liệu chuỗi số thành dạng Number trước khi đưa vào hàm `Date`: `const numTs = Number(ts); if (typeof ts === 'string' && ts.trim() !== '' && Number.isFinite(numTs)) { date = new Date(numTs < 1e11 ? numTs * 1000 : numTs); }`.
+
 ## Kế hoạch Triển khai (Proposed Changes)
+
+### [MODIFY] frontend/src/utils/whaleTimeAdapter.js
+- Sửa logic trong `toCanonicalMinute` để parse an toàn các chuỗi epoch số thành Date object.
 
 ### [MODIFY] frontend/src/components/KLineChartPanel.jsx
 - Sửa lỗi parse timestamp của hàm `normalizeTradeDate` để xử lý đúng event click nến.

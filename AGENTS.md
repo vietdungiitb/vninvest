@@ -6,11 +6,12 @@ VNInvest là workspace đầu tư chứng khoán Việt Nam với frontend React
 
 Feature pack hiện tại cần mọi AI session đọc trước khi làm việc là gói:
 
-1. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_HANDOFF_MASTER_20260427.md`
-2. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_PLAN_20260427.md`
-3. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_TASKBOARD_20260427.md`
-4. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_TRACEABILITY_MATRIX_20260427.md`
-5. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_SELF_AUDIT_AND_TEST_PROTOCOL_20260427.md`
+1. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md`
+2. `docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+3. `docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+4. `docs/TASKBOARD_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+5. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md`
+6. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md`
 6. `quality/QUALITY.md`
 
 ## 2. Read-first quality docs
@@ -18,21 +19,24 @@ Feature pack hiện tại cần mọi AI session đọc trước khi làm việc
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
 
 1. `quality/QUALITY.md`
-2. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_HANDOFF_MASTER_20260427.md`
-3. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_PLAN_20260427.md`
-4. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_TRACEABILITY_MATRIX_20260427.md`
+2. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md`
+3. `docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+4. `docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+5. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md`
 5. `quality/RUN_CODE_REVIEW.md`
 6. `quality/RUN_INTEGRATION_TESTS.md`
 7. `quality/RUN_SPEC_AUDIT.md`
 
 ## 3. Hard constraints for this feature pack
 
-1. `whale-alerts/:symbol` phải dùng KlineChart làm surface trung tâm.
-2. Bubble chart của modern dashboard là source bất biến; chỉ copy sang whale route, không sửa trực tiếp.
-3. Icon cá mập phải áp dụng cho top 10% nến đang hiển thị trong viewport, không phải toàn dataset.
-4. Bubble/advisory phải bám selected session từ KlineChart.
-5. `OrderFlowRadarPanel` phải được chuyển xuống dưới KlineChart ở Stock Detail.
-6. Các text mới trên UI phải qua i18n tiếng Việt đầy đủ dấu.
+1. `whale-alerts/:symbol` phải dùng KLineChart làm surface trung tâm.
+2. `Flow Compare pane` là pane đích cho CVD và strength; không tiếp tục mở rộng theo nhiều pane rời.
+3. Heatmap giai đoạn này chỉ theo `time bucket`, chưa làm footprint theo giá x thời gian.
+4. Bubble chart của modern dashboard là source bất biến; chỉ copy sang whale route, không sửa trực tiếp.
+5. Icon cá mập phải áp dụng cho top 10% nến đang hiển thị trong viewport, không phải toàn dataset.
+6. Bubble/advisory phải bám selected session từ KLineChart.
+7. `OrderFlowRadarPanel` phải được chuyển xuống dưới KLineChart ở Stock Detail.
+8. Các text mới trên UI phải qua i18n tiếng Việt đầy đủ dấu.
 
 ## 4. Current anchor files
 
@@ -40,6 +44,7 @@ Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
 
 - `frontend/src/pages/WhaleAlertsDashboard.jsx`
 - `frontend/src/pages/StockDetail.jsx`
+- `frontend/src/components/KLineChartPanel.jsx`
 - `frontend/src/components/OrderFlowRadarPanel.jsx`
 - `frontend/src/components/WhaleBubbleChart.jsx` (immutable source)
 - `frontend/src/components/WhaleAnalyticsTab.jsx` (immutable source)
@@ -86,7 +91,7 @@ docker compose -f ./docker-compose.dev.yml up -d --build frontend backend
 2. Sau edit thực chất đầu tiên phải chạy focused validation ngay.
 3. Không đánh dấu xong nếu chưa cập nhật `docs/CODE_CHANGE_AUDIT_LEDGER.md` và `PROGRESS_DASHBOARD.md`.
 4. Với slice runtime/UI phải rebuild hoặc restart stack bị ảnh hưởng để final auditor kiểm tra được ngay.
-5. Không dùng workaround làm sai ngữ cảnh selected session hoặc tooltip bucket.
+5. Không dùng workaround làm sai ngữ cảnh selected session, tooltip bucket, heatmap semantics hoặc whale marker viewport rule.
 
 ## 7. Evidence obligations
 
@@ -100,4 +105,4 @@ Mỗi slice phải có:
 
 Template chuẩn nằm tại:
 
-- `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_EVIDENCE_TEMPLATE_20260427.md`
+- `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_EXECUTION_EVIDENCE_TEMPLATE_20260428.md`

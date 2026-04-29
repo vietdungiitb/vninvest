@@ -9,7 +9,7 @@ import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshot
  * Single source of truth for fetching Whale Bubbles and Dark Money Flow data.
  * Ensures synchronized parallel loading for both sub-charts.
  */
-export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
+export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, options = {}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState({
@@ -18,6 +18,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
     meta: null,
   });
   const requestIdRef = useRef(0);
+  const includeBaseline = options?.includeBaseline;
 
   const fetchData = useCallback(async ({ silent = false } = {}) => {
     if (!symbol) {
@@ -36,8 +37,9 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
       const normalizedTradeDate = tradeDate ? String(tradeDate).slice(0, 10) : null;
       const snapshotRes = await getWhaleAnalyticsSnapshot(symbol, {
         timeframe,
-        compact: 1,
+        compact: 0,
         tradeDate: normalizedTradeDate,
+        includeBaseline,
       });
       const snapshot = snapshotRes?.data;
 
@@ -60,7 +62,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
         setLoading(false);
       }
     }
-  }, [symbol, timeframe, tradeDate]);
+  }, [includeBaseline, symbol, timeframe, tradeDate]);
 
   useEffect(() => {
     fetchData({ silent: false });
@@ -68,7 +70,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
 
   useEffect(() => {
     const timeframeWindow = resolveWhaleTimeframeWindow(timeframe);
-    if (!timeframeWindow.isLive) {
+    if (!timeframeWindow.isLive || tradeDate) {
       return undefined;
     }
 
@@ -98,7 +100,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [fetchData, timeframe]);
+  }, [fetchData, timeframe, tradeDate]);
 
   return { 
     loading, 

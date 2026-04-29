@@ -1,11 +1,12 @@
-# RUN CODE REVIEW - Whale Alerts Symbol Kline Refactor
+# RUN CODE REVIEW - Whale Alerts Symbol KLine Intelligence Upgrade
 
 ## 1. Bootstrap files phải đọc trước khi review
 
-1. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_HANDOFF_MASTER_20260427.md`
-2. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_EXECUTION_PLAN_20260427.md`
-3. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_TRACEABILITY_MATRIX_20260427.md`
-4. `docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_SELF_AUDIT_AND_TEST_PROTOCOL_20260427.md`
+1. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md`
+2. `docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+3. `docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md`
+4. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md`
+5. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md`
 5. `quality/QUALITY.md`
 6. `AGENTS.md`
 
@@ -14,24 +15,35 @@
 ### A. Route composition correctness
 
 - `frontend/src/pages/WhaleAlertsDashboard.jsx`
-- Route có thực sự dùng Kline + selected-session bubble hay chỉ chồng thêm UI lên chart cũ?
+- Route có thực sự dùng KLine intelligence workspace hay chỉ chồng thêm UI lên chart cũ?
 
-### B. Immutable source protection
+### B. Flow View Model parity
+
+- `frontend/src/components/KLineChartPanel.jsx`
+- namespace mới `frontend/src/features/whale-alerts/kline/`
+- Tooltip, pane, heatmap và marker có thực sự cùng bucket hay không?
+
+### C. Immutable source protection
 
 - `frontend/src/components/WhaleBubbleChart.jsx`
 - `frontend/src/components/WhaleAnalyticsTab.jsx`
 - `frontend/src/components/modern/ModularPositionDeck.jsx`
 - Các file này phải được kiểm diff đầu tiên.
 
-### C. Selected-session truth
+### D. Selected-session truth
 
 - Kiểm luồng state từ Kline click -> selected session -> bubble request -> advisory context.
 
-### D. Viewport-dependent shark icons
+### E. Heatmap semantics
+
+- Kiểm mode `Off`, `Net`, `Buy`, `Sell`.
+- Kiểm màu và intensity có phản ánh đúng field payload hay không.
+
+### F. Viewport-dependent shark icons
 
 - Kiểm logic visible range listener, top 10% calculation và cleanup khi pan/zoom/timeframe.
 
-### E. Stock Detail regression
+### G. Stock Detail regression
 
 - Kiểm move Radar xuống dưới KlineChart có phá layout hoặc advisory flow hay không.
 
@@ -56,18 +68,29 @@
 - [ ] Click nến đổi bubble đúng phiên.
 - [ ] Advisory dùng selected session, không dùng toàn symbol fallback.
 
-### Checklist R3 - Tooltip semantics
+### Checklist R3 - Flow parity semantics
+
+- [ ] Tooltip, pane, heatmap và marker cùng bucket.
+- [ ] `CVD raw` và `CVD normalized` không bị nhập nhằng.
+
+### Checklist R4 - Heatmap semantics
+
+- [ ] Heatmap mode đúng với payload `Net/Buy/Sell`.
+- [ ] Heatmap không che mất candle readability.
+- [ ] Degraded-state hiển thị đúng khi confidence thấp.
+
+### Checklist R5 - Tooltip semantics
 
 - [ ] Tooltip lấy đúng bucket của nến hover.
 - [ ] Toggle ẩn/hiện hoạt động.
 
-### Checklist R4 - Shark icon viewport rule
+### Checklist R6 - Shark icon viewport rule
 
 - [ ] Top 10% tính theo viewport hiện tại.
 - [ ] Logic recompute khi zoom/pan.
 - [ ] Không có memory leak hoặc interval thừa.
 
-### Checklist R5 - Cleanup and retirement
+### Checklist R7 - Cleanup and retirement
 
 - [ ] Route whale-alerts/symbol không còn dual path chart cũ.
 - [ ] Fetch/realtime subscriptions cũ được cleanup.
@@ -76,11 +99,13 @@
 
 Nếu review nêu BUG findings, phải viết hoặc yêu cầu viết regression tests tương ứng theo nhóm sau:
 
-1. Kline selected-session sync test.
-2. Shark icon viewport recompute test.
-3. Immutable source protection check trong code review evidence.
-4. Stock Detail radar relocation regression test.
-5. Backend session selector / payload contract test nếu có diff BE.
+1. Flow View Model bucket parity test.
+2. Heatmap mode semantics test.
+3. Kline selected-session sync test.
+4. Shark icon viewport recompute test.
+5. Immutable source protection check trong code review evidence.
+6. Stock Detail parity regression test.
+7. Backend session selector / payload contract test nếu có diff BE.
 
 ## 6. Output format bắt buộc
 

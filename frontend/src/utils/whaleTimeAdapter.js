@@ -191,6 +191,16 @@ export function toCanonicalMinute(ts) {
   } else if (typeof ts === 'number') {
     // Assume seconds if < 1e11, else milliseconds
     date = new Date(ts < 1e11 ? ts * 1000 : ts);
+  } else if (typeof ts === 'string') {
+    const trimmed = ts.trim();
+    const numericTs = Number(trimmed);
+
+    if (trimmed !== '' && Number.isFinite(numericTs)) {
+      // Accept both epoch seconds and epoch milliseconds represented as strings.
+      date = new Date(numericTs < 1e11 ? numericTs * 1000 : numericTs);
+    } else {
+      date = new Date(trimmed);
+    }
   } else {
     date = new Date(ts);
   }

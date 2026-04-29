@@ -1,4 +1,4 @@
-# RUN INTEGRATION TESTS - Whale Alerts Symbol Kline Refactor
+# RUN INTEGRATION TESTS - Whale Alerts Symbol KLine Intelligence Upgrade
 
 ## Working Directory
 
@@ -9,6 +9,7 @@ Toàn bộ command trong tài liệu này chạy từ thư mục gốc project b
 Xác nhận end-to-end rằng:
 
 1. `whale-alerts/:symbol` dùng KlineChart mới và bubble chart theo phiên.
+2. `Flow Compare pane`, `heatmap`, `whale marker` và tooltip cùng đúng semantics bucket.
 2. Bubble source của modern dashboard không bị regress.
 3. `StockDetail` vẫn ổn sau khi di chuyển Radar.
 4. Evidence đủ mạnh để final auditor ra kết luận GO / NO-GO.
@@ -58,10 +59,11 @@ Trước khi chạy, người thực thi phải công bố plan dạng bảng:
 | Step | Scope | Expected result |
 |---|---|---|
 | 1 | Build + backend focused suites | Green baseline |
-| 2 | Whale Alerts route smoke | Kline + latest session bubble |
-| 3 | Session click smoke | Bubble/advisory đổi đúng phiên |
-| 4 | Modern dashboard regression smoke | Source route không đổi hành vi |
-| 5 | Stock Detail regression smoke | Radar ở vị trí mới, advisory ổn |
+| 2 | Whale Alerts route smoke | KLine + Flow Compare pane + latest session bubble |
+| 3 | Heatmap and marker smoke | Mode switch + viewport recompute đúng |
+| 4 | Session click smoke | Bubble/advisory đổi đúng phiên |
+| 5 | Modern dashboard regression smoke | Source route không đổi hành vi |
+| 6 | Stock Detail regression smoke | Radar ở vị trí mới, advisory ổn |
 
 Trong lúc chạy phải báo tiến độ một dòng mỗi bước:
 
@@ -87,7 +89,22 @@ Evidence:
 - screenshot toàn trang,
 - payload snapshot của bubble first load.
 
-## T2. Session click sync
+## T2. Heatmap and Flow Compare semantics
+
+Mục tiêu:
+- Heatmap và Flow Compare pane phản ánh đúng payload cùng bucket.
+
+Pass criteria:
+- Chuyển được 4 mode `Off/Net/Buy/Sell`.
+- Heatmap không che candle quá mức.
+- Flow Compare pane hiển thị đúng `CVD normalized`, `Buy Strength`, `Institutional Strength`.
+
+Evidence:
+- screenshot cho từng mode,
+- payload snapshot cùng bucket,
+- tooltip proof cho `CVD raw`.
+
+## T3. Session click sync
 
 Mục tiêu:
 - Click 2 nến khác nhau phải đổi bubble và advisory theo phiên tương ứng.
@@ -100,7 +117,7 @@ Evidence:
 - video hoặc chuỗi screenshot,
 - request/response có session selector rõ.
 
-## T3. Tooltip + shark icon viewport
+## T4. Tooltip + shark icon viewport
 
 Mục tiêu:
 - Tooltip đúng bucket và icon cá mập recompute theo viewport.
@@ -113,7 +130,7 @@ Evidence:
 - video zoom/pan,
 - note đối chiếu top 10% visible candles.
 
-## T4. Modern dashboard regression smoke
+## T5. Modern dashboard regression smoke
 
 Mục tiêu:
 - Whale analytics trên modern dashboard vẫn hoạt động như trước.
@@ -126,7 +143,7 @@ Evidence:
 - screenshot modern dashboard bubble,
 - source immutability diff proof.
 
-## T5. Stock Detail regression smoke
+## T6. Stock Detail regression smoke
 
 Mục tiêu:
 - Radar nằm dưới KlineChart và advisory session không regress.
@@ -148,6 +165,7 @@ Evidence:
 | T3 | PASS / FAIL | ____ | ____ |
 | T4 | PASS / FAIL | ____ | ____ |
 | T5 | PASS / FAIL | ____ | ____ |
+| T6 | PASS / FAIL | ____ | ____ |
 
 ## 7. GO / NO-GO rules
 
@@ -155,14 +173,15 @@ Evidence:
 
 1. Frontend build pass.
 2. Backend focused suites pass.
-3. T1-T5 pass hoặc tối đa `PASS WITH NOTES` cho một mục không ảnh hưởng semantics cốt lõi.
+3. T1-T6 pass hoặc tối đa `PASS WITH NOTES` cho một mục không ảnh hưởng semantics cốt lõi.
 4. Immutable source files sạch.
 5. Ledger + progress dashboard + evidence template đã cập nhật.
 
 ### NO-GO nếu xảy ra một trong các lỗi sau
 
-1. Bubble không đổi theo selected session.
-2. Tooltip sai bucket.
-3. Shark icon không recompute theo viewport.
-4. Modern dashboard source bị regress hoặc bị sửa trực tiếp.
-5. Stock Detail advisory/radar regress.
+2. Bubble không đổi theo selected session.
+3. Heatmap sai semantics hoặc che mất candle nghiêm trọng.
+4. Tooltip sai bucket.
+5. Shark icon không recompute theo viewport.
+6. Modern dashboard source bị regress hoặc bị sửa trực tiếp.
+7. Stock Detail advisory/radar regress.

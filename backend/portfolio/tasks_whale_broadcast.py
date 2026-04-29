@@ -5,6 +5,7 @@ from channels.layers import get_channel_layer
 from django.utils import timezone
 
 from portfolio.models import TrackedSymbol, UserAlertHistory, WatchlistItem
+from portfolio.services_global_signal_distribution import resolve_signal_audience
 
 
 def _broadcast_whale_advisory(
@@ -62,15 +63,10 @@ def _broadcast_screener_matched(
     matched_at_iso = matched_at.isoformat()
 
     audience_user_ids = {
-        int(user_id)
-        for user_id in TrackedSymbol.objects.filter(symbol=normalized_symbol, is_active=True).values_list('user_id', flat=True)
-        if user_id
+        int(audience_row['user_id'])
+        for audience_row in resolve_signal_audience(normalized_symbol)
+        if audience_row.get('user_id')
     }
-    audience_user_ids.update(
-        int(user_id)
-        for user_id in WatchlistItem.objects.filter(symbol=normalized_symbol).values_list('group__user_id', flat=True)
-        if user_id
-    )
 
     if not audience_user_ids:
         return {

@@ -771,10 +771,52 @@ class TestOrderFlowApi(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = get_user_model().objects.create_user(username="orderflow-api", password="Test@123456")
+        from portfolio.opencore_dpi import DPILicense, DPIPlan
+
+        pro_plan, _ = DPIPlan.objects.update_or_create(
+            name='pro',
+            defaults={
+                'description': 'pro test plan',
+                'display_name': 'Professional',
+                'annual_price_usd': 99,
+                'monthly_price_usd': 9.99,
+                'max_watchlist_items': 50,
+                'max_portfolio_accounts': 5,
+                'max_alerts': 100,
+                'max_api_calls_per_month': 100000,
+                'features': {
+                    'sma': True,
+                    'rsi': True,
+                    'volume_profile': True,
+                    'whale_momentum': True,
+                    'dark_pool_flow': True,
+                    'correlation_matrix': True,
+                    'volatility_surface': True,
+                    'sentiment_score': True,
+                    'predictive_ml': True,
+                    'cross_market_alpha': True,
+                    'fund_flow_analysis': True,
+                    'hedging_strategy': True,
+                },
+                'is_active': True,
+            },
+        )
+        DPILicense.objects.update_or_create(
+            user=self.user,
+            defaults={
+                'plan': pro_plan,
+                'status': 'active',
+                'billing_cycle': 'annual',
+                'start_date': django_timezone.now(),
+                'expiry_date': django_timezone.now() + timedelta(days=30),
+                'grace_until': None,
+            },
+        )
+        self.user = get_user_model().objects.get(pk=self.user.pk)
         self.client.force_authenticate(user=self.user)
 
-    @patch("portfolio.order_flow.detect_dark_flow")
-    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.views_stock_order_flow.detect_dark_flow")
+    @patch("portfolio.views_stock_order_flow.compute_cvd_series")
     def test_order_flow_endpoint_returns_payload(self, mock_cvd, mock_detect):
         from portfolio.models import OrderFlowSignal
 
@@ -811,8 +853,8 @@ class TestOrderFlowApi(TestCase):
         self.assertIn("pagination", response.data)
         self.assertIn("has_more", response.data["pagination"])
 
-    @patch("portfolio.order_flow.detect_dark_flow")
-    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.views_stock_order_flow.detect_dark_flow")
+    @patch("portfolio.views_stock_order_flow.compute_cvd_series")
     def test_order_flow_endpoint_supports_cursor_pagination(self, mock_cvd, mock_detect):
         from portfolio.models import OrderFlowSignal
 
@@ -856,8 +898,8 @@ class TestOrderFlowApi(TestCase):
         self.assertEqual(len(second.data["signals"]), 5)
         self.assertFalse(second.data["pagination"]["has_more"])
 
-    @patch("portfolio.order_flow.detect_dark_flow")
-    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.views_stock_order_flow.detect_dark_flow")
+    @patch("portfolio.views_stock_order_flow.compute_cvd_series")
     def test_order_flow_endpoint_five_page_traversal_no_duplicate_missing(self, mock_cvd, mock_detect):
         from portfolio.models import OrderFlowSignal
 
@@ -911,8 +953,8 @@ class TestOrderFlowApi(TestCase):
         self.assertEqual(len(seen_ids), total_rows)
         self.assertEqual(len(seen_ids), len(set(seen_ids)))
 
-    @patch("portfolio.order_flow.detect_dark_flow")
-    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.views_stock_order_flow.detect_dark_flow")
+    @patch("portfolio.views_stock_order_flow.compute_cvd_series")
     def test_order_flow_endpoint_cursor_replay_consistent(self, mock_cvd, mock_detect):
         from portfolio.models import OrderFlowSignal
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { init as klineChartInit, dispose as klineChartDispose, IndicatorSeries, LineType } from 'klinecharts';
+import { init as klineChartInit, dispose as klineChartDispose, ActionType, IndicatorSeries, LineType, OverlayMode, PolygonType, TooltipShowRule, registerIndicator, registerOverlay } from 'klinecharts';
 import { useI18n } from '../context/LangContext';
 import { toCanonicalMinute } from '../utils/whaleTimeAdapter';
 
@@ -8,16 +8,8 @@ function normalizeTradeDate(value) {
     return null;
   }
 
-  const rawValue = String(value).trim();
-  if (!rawValue) {
-    return null;
-  }
-
-  if (/^\d{4}-\d{2}-\d{2}/.test(rawValue)) {
-    return rawValue.slice(0, 10);
-  }
-
-  const parsed = new Date(rawValue);
+  const numericValue = Number(value);
+  const parsed = new Date(Number.isFinite(numericValue) ? numericValue : value);
   if (Number.isNaN(parsed.getTime())) {
     return null;
   }
@@ -25,49 +17,361 @@ function normalizeTradeDate(value) {
   return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
-function buildMinuteLookup(series = [], valueResolver = (item) => item?.value) {
+function buildFlowBucketLookup(viewModel) {
   const lookup = new Map();
 
-  (Array.isArray(series) ? series : []).forEach((item) => {
-    if (!item) {
-      return;
-    }
-
-    const minuteKey = toCanonicalMinute(item?.ts ?? item?.bucket_ts ?? item?.timestamp ?? item?.time ?? item?.date);
+  (Array.isArray(viewModel?.buckets) ? viewModel.buckets : []).forEach((bucket) => {
+    const minuteKey = toCanonicalMinute(bucket?.ts ?? bucket?.bucket_ts ?? bucket?.timestamp ?? bucket?.time ?? bucket?.date);
     if (minuteKey == null) {
       return;
     }
-
-    const rawValue = valueResolver(item);
-    const numericValue = Number(rawValue);
-    if (rawValue == null || !Number.isFinite(numericValue)) {
-      return;
-    }
-
-    lookup.set(String(minuteKey), numericValue);
+    lookup.set(String(minuteKey), bucket);
   });
 
   return lookup;
 }
 
-export default function KLineChartPanel({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null }) {
+function formatTooltipValue(value, maximumFractionDigits = 2) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '--';
+  }
+
+  return Number(value).toLocaleString('vi-VN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+}
+
+function formatTooltipTimestamp(timestamp) {
+  if (timestamp === null || timestamp === undefined || Number.isNaN(Number(timestamp))) {
+    return '--';
+  }
+
+  return new Date(Number(timestamp)).toLocaleString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
+function normalizeWhaleSignalSide(signal) {
+  const rawSide = String(signal?.side ?? signal?.signal_type ?? signal?.direction ?? '').trim().toLowerCase();
+  if (rawSide.includes('buy')) {
+    return 'buy';
+  }
+  if (rawSide.includes('sell')) {
+    return 'sell';
+  }
+  return 'neutral';
+}
+
+function clamp(value, lower, upper) {
+  return Math.max(lower, Math.min(upper, Number(value)));
+}
+
+function resolveHeatmapMetric(bucket, mode = 'net') {
+  const normalizedMode = String(mode || 'net').trim().toLowerCase();
+  if (normalizedMode === 'off') {
+    return null;
+  }
+
+  if (normalizedMode === 'buy') {
+    const buyHeat = Number(bucket?.buyHeat);
+    if (!Number.isFinite(buyHeat) || buyHeat <= 0) {
+      return null;
+    }
+    return {
+      kind: 'buy',
+      intensity: buyHeat,
+      signedValue: buyHeat,
+    };
+  }
+
+  if (normalizedMode === 'sell') {
+    const sellHeat = Number(bucket?.sellHeat);
+    if (!Number.isFinite(sellHeat) || sellHeat <= 0) {
+      return null;
+    }
+    return {
+      kind: 'sell',
+      intensity: sellHeat,
+      signedValue: -sellHeat,
+    };
+  }
+
+  const netHeat = Number(bucket?.netHeat);
+  const whaleScore = Number(bucket?.whaleScore);
+  const intensity = Math.max(
+    Number.isFinite(netHeat) ? Math.abs(netHeat) : 0,
+    Number.isFinite(whaleScore) ? whaleScore : 0,
+  );
+  if (intensity <= 0) {
+    return null;
+  }
+
+  return {
+    kind: Math.abs(netHeat) < 12 && whaleScore >= 45 ? 'whale' : netHeat >= 0 ? 'buy' : 'sell',
+    intensity,
+    signedValue: Number.isFinite(netHeat) ? netHeat : 0,
+  };
+}
+
+function buildHeatmapBandColor(bucket, mode = 'net') {
+  const metric = resolveHeatmapMetric(bucket, mode);
+  if (!metric) {
+    return null;
+  }
+
+  const magnitude = clamp(metric.intensity, 0, 100) / 100;
+  const alpha = (0.08 + magnitude * 0.26).toFixed(3);
+
+  if (metric.kind === 'whale') {
+    return `rgba(245, 158, 11, ${alpha})`;
+  }
+  if (metric.kind === 'buy') {
+    return `rgba(34, 197, 94, ${alpha})`;
+  }
+  return `rgba(244, 63, 94, ${alpha})`;
+}
+
+function resolveQualityBadgeTone(qualityState) {
+  const normalizedState = String(qualityState || '').trim().toUpperCase();
+  if (normalizedState === 'READY') {
+    return 'bg-[#052e2b] text-[#5eead4] border border-[#115e59]';
+  }
+  if (normalizedState.startsWith('DEGRADED')) {
+    return 'bg-[#3f1d0f] text-[#fdba74] border border-[#9a3412]';
+  }
+  return 'bg-[#1f2937] text-[#cbd5e1] border border-[#334155]';
+}
+
+function buildVisibleWhaleSharkMarkers({ candles = [], signals = [], visibleRange = null }) {
+  if (!Array.isArray(candles) || !candles.length || !Array.isArray(signals) || !signals.length) {
+    return [];
+  }
+
+  const candleByMinute = new Map();
+  candles.forEach((candle) => {
+    const minuteKey = toCanonicalMinute(candle?.timestamp ?? candle?.date ?? candle?.tradeDate);
+    const candleTimestamp = Number(candle?.timestamp);
+    if (minuteKey == null || !Number.isFinite(candleTimestamp)) {
+      return;
+    }
+    candleByMinute.set(String(minuteKey), candle);
+  });
+
+  const visibleFrom = Number(visibleRange?.from_ts);
+  const visibleTo = Number(visibleRange?.to_ts);
+  const hasVisibleRange = Number.isFinite(visibleFrom) && Number.isFinite(visibleTo);
+  const minVisibleTs = hasVisibleRange ? Math.min(visibleFrom, visibleTo) : null;
+  const maxVisibleTs = hasVisibleRange ? Math.max(visibleFrom, visibleTo) : null;
+
+  const bestSignalByMinute = new Map();
+  signals.forEach((signal) => {
+    const minuteKey = toCanonicalMinute(signal?.ts ?? signal?.bucket_ts ?? signal?.timestamp ?? signal?.time ?? signal?.date);
+    if (minuteKey == null) {
+      return;
+    }
+
+    const candle = candleByMinute.get(String(minuteKey));
+    if (!candle) {
+      return;
+    }
+
+    const candleTimestamp = Number(candle?.timestamp);
+    if (!Number.isFinite(candleTimestamp)) {
+      return;
+    }
+
+    if (minVisibleTs != null && candleTimestamp < minVisibleTs) {
+      return;
+    }
+
+    if (maxVisibleTs != null && candleTimestamp > maxVisibleTs) {
+      return;
+    }
+
+    const rawStrength = Number(signal?.matched_value ?? signal?.value ?? signal?.strength ?? 0);
+    const strength = Number.isFinite(rawStrength) ? Math.abs(rawStrength) : 0;
+    if (!strength) {
+      return;
+    }
+
+    const side = normalizeWhaleSignalSide(signal);
+    const bestExisting = bestSignalByMinute.get(String(minuteKey));
+    if (!bestExisting || strength > bestExisting.strength) {
+      bestSignalByMinute.set(String(minuteKey), {
+        minuteKey: String(minuteKey),
+        candle,
+        candleTimestamp,
+        strength,
+        side,
+      });
+    }
+  });
+
+  const rankedSignals = Array.from(bestSignalByMinute.values());
+  if (!rankedSignals.length) {
+    return [];
+  }
+
+  const targetCount = Math.max(1, Math.ceil(rankedSignals.length * 0.1));
+  return rankedSignals
+    .sort((left, right) => right.strength - left.strength || left.candleTimestamp - right.candleTimestamp)
+    .slice(0, targetCount)
+    .sort((left, right) => left.candleTimestamp - right.candleTimestamp)
+    .map((signal) => {
+      const isBuy = signal.side === 'buy';
+      const referencePrice = Number(isBuy ? signal.candle?.low : signal.candle?.high);
+      const fallbackPrice = Number(signal.candle?.close ?? signal.candle?.open ?? 0);
+      const adjustedPrice = Number.isFinite(referencePrice)
+        ? referencePrice * (isBuy ? 0.998 : 1.002)
+        : fallbackPrice;
+
+      return {
+        id: `shark_${signal.minuteKey}_${signal.side}_${signal.candleTimestamp}`,
+        timestamp: signal.candleTimestamp,
+        value: Number.isFinite(adjustedPrice) ? adjustedPrice : fallbackPrice,
+        label: isBuy ? '🟢🦈' : '🔴🦈',
+      };
+    });
+}
+
+function buildVisibleHeatmapBands({ candles = [], flowBucketLookup, visibleRange = null, heatmapMode = 'net' }) {
+  if (!Array.isArray(candles) || !candles.length || !(flowBucketLookup instanceof Map) || !flowBucketLookup.size) {
+    return [];
+  }
+
+  if (String(heatmapMode || 'net').trim().toLowerCase() === 'off') {
+    return [];
+  }
+
+  const visibleFrom = Number(visibleRange?.from_ts);
+  const visibleTo = Number(visibleRange?.to_ts);
+  const hasVisibleRange = Number.isFinite(visibleFrom) && Number.isFinite(visibleTo);
+  const minVisibleTs = hasVisibleRange ? Math.min(visibleFrom, visibleTo) : null;
+  const maxVisibleTs = hasVisibleRange ? Math.max(visibleFrom, visibleTo) : null;
+
+  return candles.flatMap((candle, index) => {
+    const candleTimestamp = Number(candle?.timestamp);
+    if (!Number.isFinite(candleTimestamp)) {
+      return [];
+    }
+    if (minVisibleTs != null && candleTimestamp < minVisibleTs) {
+      return [];
+    }
+    if (maxVisibleTs != null && candleTimestamp > maxVisibleTs) {
+      return [];
+    }
+
+    const minuteKey = toCanonicalMinute(candleTimestamp);
+    const bucket = minuteKey == null ? null : flowBucketLookup.get(String(minuteKey));
+    if (!bucket) {
+      return [];
+    }
+
+    const color = buildHeatmapBandColor(bucket, heatmapMode);
+    if (!color) {
+      return [];
+    }
+
+    const previousTimestamp = Number(candles[index - 1]?.timestamp);
+    const nextTimestamp = Number(candles[index + 1]?.timestamp);
+    const leftSpacing = Number.isFinite(previousTimestamp)
+      ? Math.max((candleTimestamp - previousTimestamp) / 2, 1000)
+      : Number.isFinite(nextTimestamp)
+        ? Math.max((nextTimestamp - candleTimestamp) / 2, 1000)
+        : 30000;
+    const rightSpacing = Number.isFinite(nextTimestamp)
+      ? Math.max((nextTimestamp - candleTimestamp) / 2, 1000)
+      : Number.isFinite(previousTimestamp)
+        ? Math.max((candleTimestamp - previousTimestamp) / 2, 1000)
+        : 30000;
+    const anchorValue = Number(candle?.close ?? candle?.open ?? candle?.high ?? candle?.low ?? 0);
+
+    return [{
+      id: `heat_${minuteKey}`,
+      startTimestamp: candleTimestamp - leftSpacing,
+      endTimestamp: candleTimestamp + rightSpacing,
+      anchorValue,
+      color,
+    }];
+  });
+}
+
+const HEATMAP_OVERLAY_NAME = 'whaleHeatmapBand';
+let heatmapOverlayRegistered = false;
+
+function ensureHeatmapOverlayRegistered() {
+  if (heatmapOverlayRegistered) {
+    return;
+  }
+
+  registerOverlay({
+    name: HEATMAP_OVERLAY_NAME,
+    totalStep: 2,
+    needDefaultPointFigure: false,
+    needDefaultXAxisFigure: false,
+    needDefaultYAxisFigure: false,
+    createPointFigures: ({ overlay, coordinates, bounding }) => {
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return [];
+      }
+
+      const leftX = Math.min(coordinates[0].x, coordinates[1].x);
+      const rightX = Math.max(coordinates[0].x, coordinates[1].x);
+      const color = overlay?.extendData?.color || 'rgba(15, 23, 42, 0.14)';
+
+      return [{
+        type: 'rect',
+        attrs: { x: leftX, y: 0, width: Math.max(2, rightX - leftX), height: bounding.height },
+        styles: {
+          style: PolygonType.Fill,
+          color,
+          borderColor: color,
+          borderSize: 0,
+          borderStyle: LineType.Solid,
+          borderDashedValue: [0, 0],
+          borderRadius: 0,
+        },
+        ignoreEvent: true,
+      }];
+    },
+  });
+
+  heatmapOverlayRegistered = true;
+}
+
+const CHART_RIGHT_OFFSET_DISTANCE = 20;
+
+export default function KLineChartPanel({ data, activePeriod, activeTimeframe: activeTimeframeProp, onPeriodChange, onTimeframeChange, onVisibleRangeChange, onActiveIndicatorsChange, onSessionChange, flowData = null, whaleSignals = [] }) {
   const { t } = useI18n();
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const indicatorPaneMapRef = useRef({});
+  const heatmapOverlayIdsRef = useRef([]);
+  const heatmapOverlaySignatureRef = useRef('');
+  const sharkOverlayIdsRef = useRef([]);
+  const sharkMarkerSignatureRef = useRef('');
   const lastVisibleRangeRef = useRef({ from_ts: null, to_ts: null });
-  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: true, CVD: true, STRENGTH: true, WHALE_FLOW: false });
+  const [activeIndicators, setActiveIndicators] = useState({ MA: true, VOL: true, MACD: false, FLOW_COMPARE: true });
+  const [heatmapMode, setHeatmapMode] = useState('net');
   const [fullScreen, setFullScreen] = useState(false);
+  const [isTooltipVisible, setIsTooltipVisible] = useState(true);
 
   const MAIN_PANE_INDICATORS = new Set(['MA', 'EMA', 'BOLL', 'SAR']);
-  const SUB_PANE_CANDIDATES = ['volume_pane', 'indicator_pane', 'whale_cvd_pane', 'whale_strength_pane', 'whale_flow_pane'];
+  const SUB_PANE_CANDIDATES = ['volume_pane', 'indicator_pane', 'whale_flow_compare_pane'];
 
   const AVAILABLE_INDICATORS = [
     { id: 'VOL', name: 'Volume', default: true },
     { id: 'MA', name: t('stockDetail.indicatorMovingAverage'), default: true },
     { id: 'EMA', name: t('stockDetail.indicatorEma') },
     { id: 'BOLL', name: t('stockDetail.indicatorBollingerBands') },
-    { id: 'MACD', name: t('stockDetail.indicatorMacd'), default: true },
+    { id: 'MACD', name: t('stockDetail.indicatorMacd') },
     { id: 'RSI', name: t('stockDetail.indicatorRsi') },
     { id: 'KDJ', name: t('stockDetail.indicatorKdj') },
     { id: 'STOCH', name: t('stockDetail.indicatorStochastic') },
@@ -97,128 +401,299 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
 
   const deepFlowPaneControls = [
     {
-      id: 'CVD',
-      labelOn: t('whaleAlertsDashboard.hideCvdPane', { defaultValue: 'Ẩn CVD' }),
-      labelOff: t('whaleAlertsDashboard.showCvdPane', { defaultValue: 'Hiện CVD' }),
-      title: t('whaleAlertsDashboard.cvdPaneTitle', { defaultValue: 'Pane CVD' }),
-    },
-    {
-      id: 'STRENGTH',
-      labelOn: t('whaleAlertsDashboard.hideStrengthPane', { defaultValue: 'Ẩn sức mạnh' }),
-      labelOff: t('whaleAlertsDashboard.showStrengthPane', { defaultValue: 'Hiện sức mạnh' }),
-      title: t('whaleAlertsDashboard.strengthPaneTitle', { defaultValue: 'Pane sức mạnh' }),
-    },
-    {
-      id: 'WHALE_FLOW',
-      labelOn: t('whaleAlertsDashboard.hideWhaleBuySellPane', { defaultValue: 'Ẩn mua/bán cá mập' }),
-      labelOff: t('whaleAlertsDashboard.showWhaleBuySellPane', { defaultValue: 'Hiện mua/bán cá mập' }),
-      title: t('whaleAlertsDashboard.whaleBuySellPaneTitle', { defaultValue: 'Pane mua/bán cá mập' }),
+      id: 'FLOW_COMPARE',
+      labelOn: t('whaleAlertsDashboard.hideFlowComparePane', { defaultValue: 'Ẩn Flow Compare' }),
+      labelOff: t('whaleAlertsDashboard.showFlowComparePane', { defaultValue: 'Hiện Flow Compare' }),
+      title: t('whaleAlertsDashboard.flowComparePaneTitle', { defaultValue: 'Pane Flow Compare' }),
     },
   ];
 
+  const flowViewModel = flowData?.view_model || null;
+  const flowBucketLookup = useMemo(() => buildFlowBucketLookup(flowViewModel), [flowViewModel]);
+  const qualityState = flowViewModel?.sessionContext?.qualityState || flowData?.session_context?.quality_state || 'UNKNOWN';
+  const hasHeatmapData = Boolean(flowViewModel?.qualityFlags?.hasHeatmapData);
+  const heatmapModes = useMemo(() => ([
+    { id: 'off', label: t('whaleAlertsDashboard.heatmapModeOff', { defaultValue: 'Tắt' }) },
+    { id: 'net', label: t('whaleAlertsDashboard.heatmapModeNet', { defaultValue: 'Net' }) },
+    { id: 'buy', label: t('whaleAlertsDashboard.heatmapModeBuy', { defaultValue: 'Buy' }) },
+    { id: 'sell', label: t('whaleAlertsDashboard.heatmapModeSell', { defaultValue: 'Sell' }) },
+  ]), [t]);
+
+  const whaleMarkerSignals = useMemo(() => {
+    if (Array.isArray(flowViewModel?.buckets) && flowViewModel.buckets.some((bucket) => bucket?.hasMarker)) {
+      return flowViewModel.buckets
+        .filter((bucket) => bucket?.markerSide && Number.isFinite(Number(bucket?.markerScore ?? bucket?.markerMatchedValue)))
+        .map((bucket) => ({
+          ts: bucket?.bucket_ts ?? bucket?.ts,
+          bucket_ts: bucket?.bucket_ts ?? null,
+          matched_value: Number(bucket?.markerMatchedValue ?? bucket?.markerScore ?? 0),
+          score: Number(bucket?.markerScore ?? 0),
+          side: bucket?.markerSide,
+        }));
+    }
+
+    if (!Array.isArray(whaleSignals) || !whaleSignals.length) {
+      return [];
+    }
+
+    return whaleSignals
+      .map((signal) => {
+        const minuteKey = toCanonicalMinute(signal?.ts ?? signal?.bucket_ts ?? signal?.timestamp ?? signal?.time ?? signal?.date);
+        const matchedValue = Number(signal?.matched_value ?? signal?.value ?? signal?.strength ?? 0);
+        if (minuteKey == null || !Number.isFinite(matchedValue)) {
+          return null;
+        }
+
+        return {
+          ...signal,
+          minuteKey: String(minuteKey),
+          matchedValue,
+          side: normalizeWhaleSignalSide(signal),
+        };
+      })
+      .filter(Boolean);
+  }, [flowViewModel, whaleSignals]);
+
+  const candleTooltipCustom = useCallback(({ current }) => {
+    if (!current) {
+      return [];
+    }
+
+    const minuteKey = toCanonicalMinute(current?.timestamp ?? current?.date ?? current?.tradeDate);
+    const lookupKey = minuteKey == null ? null : String(minuteKey);
+    const flowBucket = lookupKey == null ? null : flowBucketLookup.get(lookupKey);
+
+    return [
+      { title: t('whaleAlertsDashboard.tooltipTime', { defaultValue: 'Thời gian' }), value: formatTooltipTimestamp(current.timestamp ?? current.date) },
+      { title: t('whaleAlertsDashboard.tooltipOpen', { defaultValue: 'Mở' }), value: formatTooltipValue(current.open, 2) },
+      { title: t('whaleAlertsDashboard.tooltipHigh', { defaultValue: 'Cao' }), value: formatTooltipValue(current.high, 2) },
+      { title: t('whaleAlertsDashboard.tooltipLow', { defaultValue: 'Thấp' }), value: formatTooltipValue(current.low, 2) },
+      { title: t('whaleAlertsDashboard.tooltipClose', { defaultValue: 'Đóng' }), value: formatTooltipValue(current.close, 2) },
+      { title: t('whaleAlertsDashboard.tooltipVolume', { defaultValue: 'Khối lượng' }), value: formatTooltipValue(current.volume, 0) },
+      { title: t('whaleAlertsDashboard.tooltipCvd', { defaultValue: 'CVD' }), value: formatTooltipValue(flowBucket?.cvdRaw, 0) },
+      { title: t('whaleAlertsDashboard.tooltipCvdNormalized', { defaultValue: 'CVD chuẩn hóa' }), value: formatTooltipValue(flowBucket?.cvdNormalized, 1) },
+      { title: t('whaleAlertsDashboard.tooltipStrength', { defaultValue: 'Sức mạnh' }), value: formatTooltipValue(flowBucket?.buyStrength, 0) },
+      { title: t('whaleAlertsDashboard.tooltipInstitutionalStrength', { defaultValue: 'Sức mạnh tổ chức' }), value: formatTooltipValue(flowBucket?.institutionalStrength, 0) },
+      { title: t('whaleAlertsDashboard.tooltipNetHeat', { defaultValue: 'Nhiệt ròng' }), value: formatTooltipValue(flowBucket?.netHeat, 1) },
+      { title: t('whaleAlertsDashboard.tooltipWhaleScore', { defaultValue: 'Điểm cá mập' }), value: formatTooltipValue(flowBucket?.whaleScore, 1) },
+    ];
+  }, [flowBucketLookup, t]);
+
+  const candleTooltipStyles = useMemo(() => ({
+    showRule: isTooltipVisible ? TooltipShowRule.FollowCross : TooltipShowRule.None,
+    showType: 'rect',
+    labels: [
+      t('whaleAlertsDashboard.tooltipTime', { defaultValue: 'Thời gian' }),
+      t('whaleAlertsDashboard.tooltipOpen', { defaultValue: 'Mở' }),
+      t('whaleAlertsDashboard.tooltipHigh', { defaultValue: 'Cao' }),
+      t('whaleAlertsDashboard.tooltipLow', { defaultValue: 'Thấp' }),
+      t('whaleAlertsDashboard.tooltipClose', { defaultValue: 'Đóng' }),
+      t('whaleAlertsDashboard.tooltipVolume', { defaultValue: 'Khối lượng' }),
+      t('whaleAlertsDashboard.tooltipCvd', { defaultValue: 'CVD' }),
+      t('whaleAlertsDashboard.tooltipCvdNormalized', { defaultValue: 'CVD chuẩn hóa' }),
+      t('whaleAlertsDashboard.tooltipStrength', { defaultValue: 'Sức mạnh' }),
+      t('whaleAlertsDashboard.tooltipInstitutionalStrength', { defaultValue: 'Sức mạnh tổ chức' }),
+      t('whaleAlertsDashboard.tooltipNetHeat', { defaultValue: 'Nhiệt ròng' }),
+      t('whaleAlertsDashboard.tooltipWhaleScore', { defaultValue: 'Điểm cá mập' }),
+    ],
+    values: null,
+    custom: candleTooltipCustom,
+    defaultValue: t('common.notAvailable'),
+    rect: {
+      position: 'fixed',
+      paddingLeft: 10,
+      paddingRight: 10,
+      paddingTop: 6,
+      paddingBottom: 6,
+      offsetLeft: 8,
+      offsetTop: 8,
+      offsetRight: 8,
+      borderRadius: 6,
+      borderSize: 1,
+      borderColor: '#2a2e39',
+      color: '#131722',
+    },
+    text: { size: 11, family: 'inherit', weight: 'normal', color: '#d1d4dc', marginLeft: 8 },
+  }), [candleTooltipCustom, isTooltipVisible, t]);
+
+  const clearSharkMarkers = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart || !sharkOverlayIdsRef.current.length) {
+      sharkOverlayIdsRef.current = [];
+      sharkMarkerSignatureRef.current = '';
+      return;
+    }
+
+    sharkOverlayIdsRef.current.forEach((overlayId) => {
+      try {
+        chart.removeOverlay(overlayId);
+      } catch (error) {
+        // Ignore stale overlay removals during rapid viewport changes.
+      }
+    });
+    sharkOverlayIdsRef.current = [];
+    sharkMarkerSignatureRef.current = '';
+  }, []);
+
+  const clearHeatmapOverlays = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart || !heatmapOverlayIdsRef.current.length) {
+      heatmapOverlayIdsRef.current = [];
+      heatmapOverlaySignatureRef.current = '';
+      return;
+    }
+
+    heatmapOverlayIdsRef.current.forEach((overlayId) => {
+      try {
+        chart.removeOverlay(overlayId);
+      } catch (error) {
+        // Ignore stale overlay removals during rapid viewport changes.
+      }
+    });
+    heatmapOverlayIdsRef.current = [];
+    heatmapOverlaySignatureRef.current = '';
+  }, []);
+
+  const syncHeatmapOverlays = useCallback((visibleRange = null) => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    const overlays = buildVisibleHeatmapBands({
+      candles: chart.getDataList?.() || [],
+      flowBucketLookup,
+      visibleRange: visibleRange || lastVisibleRangeRef.current,
+      heatmapMode,
+    });
+    const nextSignature = overlays.map((overlay) => `${overlay.id}:${overlay.color}`).join('|');
+    if (nextSignature === heatmapOverlaySignatureRef.current) {
+      return;
+    }
+
+    clearHeatmapOverlays();
+
+    overlays.forEach((overlay) => {
+      try {
+        chart.createOverlay({
+          id: overlay.id,
+          name: HEATMAP_OVERLAY_NAME,
+          mode: OverlayMode.Normal,
+          lock: true,
+          visible: true,
+          zLevel: 1,
+          extendData: { color: overlay.color },
+          points: [
+            { timestamp: overlay.startTimestamp, value: overlay.anchorValue },
+            { timestamp: overlay.endTimestamp, value: overlay.anchorValue },
+          ],
+        }, 'candle_pane');
+        heatmapOverlayIdsRef.current.push(overlay.id);
+      } catch (error) {
+        console.error('Error creating heatmap overlay:', error);
+      }
+    });
+
+    heatmapOverlaySignatureRef.current = nextSignature;
+  }, [clearHeatmapOverlays, flowBucketLookup, heatmapMode]);
+
+  const syncSharkMarkers = useCallback((visibleRange = null) => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    const markers = buildVisibleWhaleSharkMarkers({
+      candles: chart.getDataList?.() || [],
+      signals: whaleMarkerSignals,
+      visibleRange: visibleRange || lastVisibleRangeRef.current,
+    });
+
+    const nextSignature = markers.map((marker) => marker.id).join('|');
+    if (nextSignature === sharkMarkerSignatureRef.current) {
+      return;
+    }
+
+    clearSharkMarkers();
+
+    if (!markers.length) {
+      return;
+    }
+
+    markers.forEach((marker) => {
+      try {
+        chart.createOverlay({
+          id: marker.id,
+          name: 'simpleAnnotation',
+          mode: OverlayMode.Normal,
+          lock: true,
+          visible: true,
+          zLevel: 20,
+          extendData: marker.label,
+          points: [
+            { timestamp: marker.timestamp, value: marker.value },
+            { timestamp: marker.timestamp, value: marker.value },
+          ],
+        }, 'candle_pane');
+        sharkOverlayIdsRef.current.push(marker.id);
+      } catch (error) {
+        console.error('Error creating shark marker overlay:', error);
+      }
+    });
+
+    sharkMarkerSignatureRef.current = nextSignature;
+  }, [clearSharkMarkers, whaleMarkerSignals]);
+
+  const syncSharkMarkersRef = useRef(syncSharkMarkers);
+  useEffect(() => {
+    syncSharkMarkersRef.current = syncSharkMarkers;
+  }, [syncSharkMarkers]);
+
+  const syncHeatmapOverlaysRef = useRef(syncHeatmapOverlays);
+  useEffect(() => {
+    syncHeatmapOverlaysRef.current = syncHeatmapOverlays;
+  }, [syncHeatmapOverlays]);
+
   const customIndicatorDefs = useMemo(() => {
-    const cvdLookup = buildMinuteLookup(flowData?.cvd_series, (item) => item?.cvd ?? item?.cumulative_cvd ?? item?.value);
-    const strengthLookup = buildMinuteLookup(flowData?.strength_series, (item) => item?.strength ?? item?.value);
-    const institutionalStrengthLookup = buildMinuteLookup(flowData?.institutional_strength_series, (item) => item?.strength ?? item?.value);
+    const hasFlowCompareData = flowBucketLookup.size > 0;
 
-    const hasCvdData = cvdLookup.size > 0;
-    const hasStrengthData = strengthLookup.size > 0 || institutionalStrengthLookup.size > 0;
-    const hasWhaleFlowData = cvdLookup.size > 0 && strengthLookup.size > 0;
-
-    const cvdTemplate = hasCvdData ? {
-      name: 'WHALE_CVD',
-      shortName: t('whaleAlertsDashboard.cvdPaneTitle', { defaultValue: 'CVD' }),
+    const flowCompareTemplate = hasFlowCompareData ? {
+      name: 'FLOW_COMPARE',
+      shortName: t('whaleAlertsDashboard.flowComparePaneTitle', { defaultValue: 'Flow Compare' }),
       calcParams: [],
       shouldOhlc: false,
-      precision: 0,
+      precision: 1,
       series: IndicatorSeries.Normal,
       figures: [
-        { key: 'cvd', title: t('whaleAlertsDashboard.cvdPaneTitle', { defaultValue: 'CVD' }), type: 'line' },
-        { key: 'baseline', title: '0', type: 'line' },
+        { key: 'cvdNormalized', title: t('whaleAlertsDashboard.cvdNormalizedPaneTitle', { defaultValue: 'CVD chuẩn hóa' }), type: 'line' },
+        { key: 'buyStrength', title: t('whaleAlertsDashboard.strengthPaneTitle', { defaultValue: 'Sức mạnh' }), type: 'line' },
+        { key: 'institutionalStrength', title: t('whaleAlertsDashboard.institutionalStrengthPaneTitle', { defaultValue: 'Sức mạnh tổ chức' }), type: 'line' },
+        { key: 'baseline', title: '50', type: 'line' },
       ],
       calc: (kLineDataList = []) => kLineDataList.map((item) => {
         const minuteKey = toCanonicalMinute(item?.timestamp ?? item?.date ?? item?.tradeDate);
-        const lookupValue = minuteKey == null ? null : cvdLookup.get(String(minuteKey));
+        const flowBucket = minuteKey == null ? null : flowBucketLookup.get(String(minuteKey));
         return {
-          cvd: Number.isFinite(lookupValue) ? lookupValue : null,
-          baseline: 0,
+          cvdNormalized: Number.isFinite(Number(flowBucket?.cvdNormalized)) ? Number(flowBucket.cvdNormalized) : null,
+          buyStrength: Number.isFinite(Number(flowBucket?.buyStrength)) ? Number(flowBucket.buyStrength) : null,
+          institutionalStrength: Number.isFinite(Number(flowBucket?.institutionalStrength)) ? Number(flowBucket.institutionalStrength) : null,
+          baseline: 50,
         };
       }),
       styles: {
         lines: [
           { color: '#22d3ee', size: 2, style: LineType.Solid, smooth: true },
+          { color: '#34d399', size: 2, style: LineType.Solid, smooth: true },
+          { color: '#f59e0b', size: 2, style: LineType.Solid, smooth: true },
           { color: '#64748b', size: 1, style: LineType.Dashed, dashedValue: [4, 2], smooth: false },
         ],
       },
     } : null;
 
-    const strengthTemplate = hasStrengthData ? {
-      name: 'WHALE_STRENGTH',
-      shortName: t('whaleAlertsDashboard.strengthPaneTitle', { defaultValue: 'Sức mạnh' }),
-      calcParams: [],
-      shouldOhlc: false,
-      precision: 1,
-      series: IndicatorSeries.Normal,
-      figures: [
-        { key: 'strength', title: t('whaleAlertsDashboard.strengthPaneTitle', { defaultValue: 'Sức mạnh' }), type: 'line' },
-        { key: 'institutionalStrength', title: t('whaleAlertsDashboard.institutionalStrengthPaneTitle', { defaultValue: 'Sức mạnh tổ chức' }), type: 'line' },
-      ],
-      calc: (kLineDataList = []) => kLineDataList.map((item) => {
-        const minuteKey = toCanonicalMinute(item?.timestamp ?? item?.date ?? item?.tradeDate);
-        const lookupValue = minuteKey == null ? null : strengthLookup.get(String(minuteKey));
-        const institutionalLookupValue = minuteKey == null ? null : institutionalStrengthLookup.get(String(minuteKey));
-        return {
-          strength: Number.isFinite(lookupValue) ? lookupValue : null,
-          institutionalStrength: Number.isFinite(institutionalLookupValue) ? institutionalLookupValue : null,
-        };
-      }),
-      styles: {
-        lines: [
-          { color: '#34d399', size: 2, style: LineType.Solid, smooth: true },
-          { color: '#f59e0b', size: 2, style: LineType.Solid, smooth: true },
-        ],
-      },
-    } : null;
-
-    const whaleFlowTemplate = hasWhaleFlowData ? {
-      name: 'WHALE_FLOW',
-      shortName: t('whaleAlertsDashboard.whaleBuySellPaneTitle', { defaultValue: 'Mua/bán cá mập' }),
-      calcParams: [],
-      shouldOhlc: false,
-      precision: 1,
-      series: IndicatorSeries.Normal,
-      figures: [
-        { key: 'buy', title: t('whaleAlertsDashboard.whaleBuyLabel', { defaultValue: 'Whale Buy' }), type: 'line' },
-        { key: 'sell', title: t('whaleAlertsDashboard.whaleSellLabel', { defaultValue: 'Whale Sell' }), type: 'line' },
-      ],
-      calc: (kLineDataList = []) => kLineDataList.map((item) => {
-        const minuteKey = toCanonicalMinute(item?.timestamp ?? item?.date ?? item?.tradeDate);
-        const lookupKey = minuteKey == null ? null : String(minuteKey);
-        const cvdValue = lookupKey == null ? null : cvdLookup.get(lookupKey);
-        const strengthValue = lookupKey == null ? null : strengthLookup.get(lookupKey);
-
-        if (!Number.isFinite(cvdValue) || !Number.isFinite(strengthValue)) {
-          return { buy: null, sell: null };
-        }
-
-        return cvdValue >= 0
-          ? { buy: strengthValue, sell: null }
-          : { buy: null, sell: strengthValue };
-      }),
-      styles: {
-        lines: [
-          { color: '#a3e635', size: 2, style: LineType.Solid, smooth: true },
-          { color: '#fb7185', size: 2, style: LineType.Solid, smooth: true },
-        ],
-      },
-    } : null;
-
     return {
-      CVD: cvdTemplate ? { template: cvdTemplate, paneOptions: { id: 'whale_cvd_pane', height: 96, minHeight: 72 } } : null,
-      STRENGTH: strengthTemplate ? { template: strengthTemplate, paneOptions: { id: 'whale_strength_pane', height: 96, minHeight: 72 } } : null,
-      WHALE_FLOW: whaleFlowTemplate ? { template: whaleFlowTemplate, paneOptions: { id: 'whale_flow_pane', height: 100, minHeight: 76 } } : null,
+      FLOW_COMPARE: flowCompareTemplate ? { template: flowCompareTemplate, paneOptions: { id: 'whale_flow_compare_pane', height: 112, minHeight: 84 } } : null,
     };
-  }, [flowData, t]);
+  }, [flowBucketLookup, t]);
 
   const rememberIndicatorPane = (indicatorId, paneId) => {
     if (paneId) {
@@ -282,16 +757,21 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
   };
 
   const createIndicatorWithTracking = (chart, indicatorId) => {
+    if (indicatorId === 'FLOW_COMPARE' && !customIndicatorDefs[indicatorId]?.template) {
+      return;
+    }
+
     let paneId = null;
     const customIndicatorDef = customIndicatorDefs[indicatorId];
     if (customIndicatorDef) {
       try {
+        registerIndicator(customIndicatorDef.template);
         const existingPaneId = indicatorPaneMapRef.current[indicatorId];
         if (existingPaneId) {
           chart.overrideIndicator(customIndicatorDef.template, existingPaneId);
           paneId = existingPaneId;
         } else {
-          paneId = chart.createIndicator(customIndicatorDef.template, false, customIndicatorDef.paneOptions);
+          paneId = chart.createIndicator(customIndicatorDef.template.name, false, customIndicatorDef.paneOptions);
         }
       } catch (error) {
         console.error(`Error creating custom indicator ${indicatorId}:`, error);
@@ -309,6 +789,10 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
   };
 
   const handleToggleIndicator = (indicatorId) => {
+    if (indicatorId === 'FLOW_COMPARE' && !customIndicatorDefs[indicatorId]?.template) {
+      return;
+    }
+
     if (indicatorId === 'VOL') {
       setActiveIndicators((prev) => {
         const isNextEnabled = !prev[indicatorId];
@@ -359,6 +843,10 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
     onPeriodChange?.(tf.days);
   };
 
+  const handleToggleTooltip = () => {
+    setIsTooltipVisible((prev) => !prev);
+  };
+
   const emitVisibleRangeFromChart = useCallback((kLineData = []) => {
     const chart = chartRef.current;
     if (!chart || !onVisibleRangeChange) return;
@@ -404,7 +892,18 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
       lastVisibleRangeRef.current = { from_ts: nextFrom, to_ts: nextTo };
       onVisibleRangeChange({ from_ts: nextFrom, to_ts: nextTo });
     }
+    syncHeatmapOverlaysRef.current?.({ from_ts: nextFrom, to_ts: nextTo });
+    syncSharkMarkersRef.current?.({ from_ts: nextFrom, to_ts: nextTo });
   }, [onVisibleRangeChange]);
+
+  const handleVisibleRangeAction = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    emitVisibleRangeFromChart(chart.getDataList?.() || []);
+  }, [emitVisibleRangeFromChart]);
 
   const emitSessionFromChart = useCallback((kLineData = []) => {
     if (!onSessionChange || !kLineData.length) {
@@ -425,30 +924,35 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
     });
   }, [onSessionChange]);
 
-  const handleCandleBarClick = useCallback((action) => {
+  const onSessionChangeRef = useRef(onSessionChange);
+  useEffect(() => {
+    onSessionChangeRef.current = onSessionChange;
+  }, [onSessionChange]);
+
+  const handleChartClick = useCallback(() => {
     const chart = chartRef.current;
-    if (!chart || !onSessionChange) {
+    if (!chart || !onSessionChangeRef.current) {
       return;
     }
 
-    const chartDataList = chart.getDataList?.() || [];
-    const clickedData = action?.kLineData || chartDataList?.[action?.dataIndex] || null;
+    const crosshair = chart.getCrosshair?.();
+    const clickedData = crosshair?.kLineData;
     if (!clickedData) {
       return;
     }
 
-    const tradeDate = normalizeTradeDate(clickedData.tradeDate ?? clickedData.date ?? action?.timestamp ?? clickedData.timestamp);
+    const tradeDate = normalizeTradeDate(clickedData.tradeDate ?? clickedData.date ?? clickedData.timestamp);
     if (!tradeDate) {
       return;
     }
 
-    onSessionChange({
+    onSessionChangeRef.current({
       tradeDate,
-      timestamp: clickedData.timestamp ?? action?.timestamp ?? null,
-      dataIndex: Number.isFinite(action?.dataIndex) ? action.dataIndex : null,
+      timestamp: clickedData.timestamp ?? null,
+      dataIndex: Number.isFinite(crosshair?.dataIndex) ? crosshair.dataIndex : null,
       kLineData: clickedData,
     });
-  }, [onSessionChange]);
+  }, []);
 
   const handleScreenshot = () => {
     if (chartRef.current) {
@@ -567,15 +1071,27 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
       },
     });
 
+    chartRef.current = chart;
+    ensureHeatmapOverlayRegistered();
+    chart.setOffsetRightDistance(CHART_RIGHT_OFFSET_DISTANCE);
+
     createIndicatorWithTracking(chart, 'MA');
     createIndicatorWithTracking(chart, 'VOL');
-    createIndicatorWithTracking(chart, 'MACD');
-
-    if (typeof chart.subscribeAction === 'function') {
-      chart.subscribeAction('onCandleBarClick', handleCandleBarClick);
+    if (activeIndicators.MACD) {
+      createIndicatorWithTracking(chart, 'MACD');
+    }
+    if (activeIndicators.FLOW_COMPARE) {
+      createIndicatorWithTracking(chart, 'FLOW_COMPARE');
     }
 
-    chartRef.current = chart;
+    if (typeof chart.subscribeAction === 'function') {
+      chart.subscribeAction(ActionType.OnVisibleRangeChange, handleVisibleRangeAction);
+    }
+
+    const domClickListener = () => {
+      handleChartClick();
+    };
+    containerRef.current.addEventListener('click', domClickListener);
 
     const ro = new ResizeObserver(() => {
       chartRef.current?.resize();
@@ -585,12 +1101,15 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
     return () => {
       ro.disconnect();
       if (typeof chart.unsubscribeAction === 'function') {
-        chart.unsubscribeAction('onCandleBarClick', handleCandleBarClick);
+        chart.unsubscribeAction(ActionType.OnVisibleRangeChange, handleVisibleRangeAction);
       }
       if (containerRef.current) {
+        containerRef.current.removeEventListener('click', domClickListener);
         klineChartDispose(containerRef.current);
       }
       indicatorPaneMapRef.current = {};
+      heatmapOverlayIdsRef.current = [];
+      heatmapOverlaySignatureRef.current = '';
       chartRef.current = null;
     };
   }, []);
@@ -617,6 +1136,19 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
   useEffect(() => {
     onActiveIndicatorsChange?.(activeIndicators);
   }, [activeIndicators, onActiveIndicatorsChange]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) {
+      return;
+    }
+
+    chart.setStyles({
+      candle: {
+        tooltip: candleTooltipStyles,
+      },
+    });
+  }, [candleTooltipStyles]);
 
   useEffect(() => {
     if (!chartRef.current || !data?.length) return;
@@ -646,7 +1178,7 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
       return;
     }
 
-    ['CVD', 'STRENGTH', 'WHALE_FLOW'].forEach((indicatorId) => {
+    ['FLOW_COMPARE'].forEach((indicatorId) => {
       const config = customIndicatorDefs[indicatorId];
       const isVisible = Boolean(activeIndicators[indicatorId]);
       const paneId = indicatorPaneMapRef.current[indicatorId];
@@ -664,29 +1196,23 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
       }
 
       try {
+        registerIndicator(config.template);
         if (paneId) {
           chart.overrideIndicator(config.template, paneId);
         } else {
-          const createdPaneId = chart.createIndicator(config.template, false, config.paneOptions);
+          const createdPaneId = chart.createIndicator(config.template.name, false, config.paneOptions);
           rememberIndicatorPane(indicatorId, createdPaneId || config.paneOptions.id);
         }
       } catch (error) {
         console.error(`Error syncing custom indicator ${indicatorId}:`, error);
       }
     });
-  }, [activeIndicators.CVD, activeIndicators.STRENGTH, activeIndicators.WHALE_FLOW, customIndicatorDefs]);
+  }, [activeIndicators.FLOW_COMPARE, customIndicatorDefs]);
 
   useEffect(() => {
-    if (!chartRef.current || !data?.length || !onVisibleRangeChange) return;
-    const timer = window.setInterval(() => {
-      const kLineData = data
-        .filter((d) => d.date && d.close != null)
-        .map((d) => ({ timestamp: new Date(d.date).getTime() }))
-        .filter((d) => Number.isFinite(d.timestamp));
-      emitVisibleRangeFromChart(kLineData);
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [data, emitVisibleRangeFromChart, onVisibleRangeChange]);
+    syncHeatmapOverlaysRef.current?.();
+    syncSharkMarkersRef.current?.();
+  }, [flowBucketLookup, heatmapMode, whaleMarkerSignals]);
 
   return (
     <div className="flex flex-col w-full h-full bg-[#131722] rounded-lg overflow-hidden border border-[#2a2e39]">
@@ -714,6 +1240,50 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
         </div>
 
         <div className="flex gap-1 items-center border-r border-[#2a2e39] pr-2">
+          <button
+            onClick={handleToggleTooltip}
+            className={`h-7 px-2 py-1 text-[11px] font-medium rounded transition whitespace-nowrap ${
+              isTooltipVisible
+                ? 'bg-[#2962ff] text-white'
+                : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
+            }`}
+            title={isTooltipVisible
+              ? t('whaleAlertsDashboard.hideTooltip', { defaultValue: 'Ẩn tooltip' })
+              : t('whaleAlertsDashboard.showTooltip', { defaultValue: 'Hiện tooltip' })}
+            aria-pressed={isTooltipVisible}
+          >
+            {isTooltipVisible
+              ? t('whaleAlertsDashboard.hideTooltip', { defaultValue: 'Ẩn tooltip' })
+              : t('whaleAlertsDashboard.showTooltip', { defaultValue: 'Hiện tooltip' })}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 border-r border-[#2a2e39] pr-2">
+          <label className="text-[10px] font-bold text-[#8b93a7] uppercase tracking-widest">
+            {t('whaleAlertsDashboard.heatmapModeLabel', { defaultValue: 'Heatmap' })}
+          </label>
+          <select
+            value={heatmapMode}
+            onChange={(event) => setHeatmapMode(event.target.value)}
+            className="h-7 min-w-[82px] rounded border border-[#2a2e39] bg-[#0f172a] px-2 py-1 text-[11px] font-medium text-[#d1d4dc] outline-none transition hover:border-[#14b8a6] focus:border-[#14b8a6]"
+          >
+            {heatmapModes.map((mode) => (
+              <option key={mode.id} value={mode.id}>
+                {mode.label}
+              </option>
+            ))}
+          </select>
+          <span className={`inline-flex h-7 items-center rounded px-2 text-[10px] font-semibold uppercase tracking-wide ${resolveQualityBadgeTone(qualityState)}`}>
+            {qualityState}
+          </span>
+          {!hasHeatmapData && heatmapMode !== 'off' ? (
+            <span className="text-[10px] font-medium text-[#fca5a5]">
+              {t('whaleAlertsDashboard.heatmapDataMissing', { defaultValue: 'Thiếu dữ liệu heatmap' })}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex gap-1 items-center border-r border-[#2a2e39] pr-2">
           {AVAILABLE_INDICATORS.map((ind) => (
             <button
               key={ind.id}
@@ -732,17 +1302,19 @@ export default function KLineChartPanel({ data, activePeriod, activeTimeframe: a
 
         <div className="flex flex-wrap gap-1 items-center border-r border-[#2a2e39] pr-2">
           {deepFlowPaneControls.map((control) => {
-            const isActive = Boolean(activeIndicators[control.id]);
+            const isReady = Boolean(customIndicatorDefs[control.id]?.template);
+            const isActive = isReady && Boolean(activeIndicators[control.id]);
             return (
               <button
                 key={control.id}
                 onClick={() => handleToggleIndicator(control.id)}
+                disabled={!isReady}
                 className={`h-7 px-2 py-1 text-[11px] font-medium rounded transition whitespace-nowrap ${
                   isActive
                     ? 'bg-[#0f766e] text-white'
                     : 'bg-[#2a2e39] text-[#b2b5be] hover:bg-[#363a45]'
-                }`}
-                title={control.title}
+                } ${!isReady ? 'opacity-45 cursor-not-allowed' : ''}`}
+                title={isReady ? control.title : t('whaleAlertsDashboard.flowDataPending', { defaultValue: 'Đang chờ dữ liệu dòng tiền' })}
                 aria-pressed={isActive}
               >
                 {isActive ? control.labelOn : control.labelOff}

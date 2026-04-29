@@ -458,11 +458,6 @@ export const getRVOL = (symbol) =>
 export const getDepthChart = (symbol) =>
   apiClient.get(`/realtime/depth-chart/${encodeURIComponent(symbol)}/`);
 
-export const getDarkMoneyHistory = (symbol, { period = '3M', interval = '1D' } = {}) =>
-  apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/dark-money-history/`, {
-    params: { period, interval },
-  });
-
 export const getStockFinancials = (symbol) =>
   apiClient.get(`/stock-management/stocks/${encodeURIComponent(symbol)}/financials/`);
 

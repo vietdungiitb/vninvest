@@ -1,3 +1,54 @@
+# ✅ AUDIT FILE LIST (2026-04-29b)
+- AGENTS.md (MODIFIED - point read-first governance to the KLine intelligence upgrade pack and tighten shared chart constraints)
+- backend/portfolio/consumers.py (MODIFIED - stop sending redundant websocket `connected` payload on connect)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - expand snapshot contract with cached percentile baseline control, flow-compare, heatmap, marker, session-context, and quality-flag sections)
+- backend/portfolio/tasks_whale_broadcast.py (MODIFIED - route screener broadcast audience resolution through shared signal-audience service)
+- backend/portfolio/tests/test_order_flow.py (MODIFIED - align API harness with current OpenCore DPI licensing behavior and endpoint-local mocks)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - assert additive KLine intelligence payload sections, degraded-state semantics, and `include_baseline=0` behavior)
+- backend/portfolio/tests/test_whale_analytics_snapshot_flow_series.py (MODIFIED - add focused regressions for flow-compare normalization, heatmap semantics, and marker scoring bounds)
+- backend/portfolio/views_whale_analytics.py (MODIFIED - pass `include_baseline` through snapshot cache/build path and version cache key to `v4`)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_REFACTOR_REMEDIATION_PLAN_20260428.md (MODIFIED - document tooltip timestamp and numeric-epoch remediation tied to the new KLine intelligence surface)
+- frontend/src/api/client.js (MODIFIED - remove dead `getDarkMoneyHistory` frontend API helper)
+- frontend/src/components/DarkMoneyMasterChart.jsx (DELETED - retire legacy lightweight-charts dark-money surface after proving zero frontend runtime imports/usages)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - land shared Flow Compare pane, heatmap overlays, viewport whale markers, richer tooltip semantics, and quality badge controls)
+- frontend/src/components/advisory/WhaleAdvisoryCommandPanel.jsx (MODIFIED - only render delete action when a delete handler is actually supplied)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - switch snapshot fetches to `compact: 0`, add `includeBaseline` option, and suppress live polling when a fixed trade-date is selected)
+- frontend/src/hooks/useWhaleAnalyticsData.test.js (MODIFIED - cover `includeBaseline` forwarding and updated snapshot request contract)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - delete unreachable local KLine implementation, delegate fully to shared `KLineChartPanel`, and reset selected session per symbol)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - split chart vs bubble snapshot loading, bind advisory/bubble to selected session, and consume shared KLine intelligence path)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.js (MODIFIED - normalize additive flow/heatmap/marker/session/quality sections into shared frontend structures)
+- frontend/src/utils/whaleTimeAdapter.js (MODIFIED - accept numeric epoch strings in canonical-minute conversion)
+- frontend/src/utils/whaleAnalyticsSnapshotAdapter.test.js (NEW - adapter regressions for additive KLine intelligence sections and fallback view-model derivation)
+- frontend/src/utils/whaleFlowViewModel.js (NEW - shared frontend flow view-model builder for tooltip/pane/heatmap/marker parity)
+- quality/QUALITY.md (MODIFIED - upgrade quality constitution toward Flow View Model, Flow Compare, heatmap, and whale-marker semantics)
+- quality/RUN_CODE_REVIEW.md (MODIFIED - retarget review bootstrap and checklist to the KLine intelligence feature pack)
+- quality/RUN_INTEGRATION_TESTS.md (MODIFIED - expand integration matrix for heatmap, Flow Compare, and selected-session semantics)
+- quality/RUN_SPEC_AUDIT.md (MODIFIED - retarget council-of-three audit protocol to the KLine intelligence pack)
+- scripts/quality/large_file_allowlist.txt (MODIFIED - remove stale allowlist reference to deleted legacy chart file)
+- docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - implementation plan for the KLine intelligence feature pack)
+- docs/TASKBOARD_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - execution taskboard for the KLine intelligence feature pack)
+- docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (NEW - technical spec locking semantics and architecture)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_EXECUTION_EVIDENCE_TEMPLATE_20260428.md (NEW - execution evidence template)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_AUDIT_REPORT_20260428.md (NEW - handoff audit report for the KLine intelligence docs pack)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md (NEW - master handoff for the KLine intelligence program)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md (NEW - self-audit and test protocol for the KLine intelligence program)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md (NEW - traceability matrix from requirements to evidence)
+- docs/evidence_whale_kline_cleanup_20260429b.png (NEW - full-page runtime screenshot of `/whale-alerts/HPG` on the refreshed dev stack)
+- module_tree_full.md (MODIFIED - regenerate after KLine intelligence and cleanup batch; current tree reports 517 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry `2026-04-29b`)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` for `DarkMoneyMasterChart|getDarkMoneyHistory` within `frontend/src/**` => no matches found.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully after legacy cleanup and KLine intelligence changes.
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false --runInBand --runTestsByPath src\hooks\useWhaleAnalyticsData.test.js src\utils\whaleAnalyticsSnapshotAdapter.test.js; Pop-Location` => 2 suites / 6 tests PASS.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api portfolio.tests.test_whale_analytics_snapshot_flow_series portfolio.tests.test_whale_orders_ssot_parity portfolio.tests.test_order_flow --keepdb; Pop-Location` => 71/71 PASS sau khi căn lại harness với hành vi OpenCore DPI hiện tại và patch endpoint-local mocks.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (517 modules).
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => refreshed `frontend` và `backend`; backend healthy; frontend started trên runtime mới.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/ | Select-Object -ExpandProperty StatusCode` => `200`.
+- PASSED: browser runtime smoke on `http://127.0.0.1/whale-alerts/HPG` => route render thật `Whale Alerts` / `Biểu đồ nến HPG` với shared KLine workspace, heatmap selector, quality badge và không có legacy-chart fallback; screenshot lưu tại `docs/evidence_whale_kline_cleanup_20260429b.png`.
+- RESIDUAL RISK: backend `dark-money-history` contract vẫn được giữ ở server/debug surface vì còn giá trị backward-compatible và forensic; slice này chỉ retire consumer/frontend path đã chết và chart legacy không còn usage.
+
 # ✅ AUDIT FILE LIST (2026-04-29a)
 - backend/portfolio/views_signal_admin.py (MODIFIED - add additive `page/page_size` pagination for signal jobs and recent canonical events, with total `count` and correct merged offset slicing)
 - backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add regressions for paged job registry and merged recent-events page 2 ordering)

@@ -105,9 +105,21 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
         self.assertIn('price_series', response.data)
         self.assertIn('bubble_series', response.data)
         self.assertIn('flow_series', response.data)
+        self.assertIn('flow_compare_series', response.data)
+        self.assertIn('heatmap_series', response.data)
+        self.assertIn('marker_series', response.data)
+        self.assertIn('session_context', response.data)
+        self.assertIn('quality_flags', response.data)
         self.assertIn('speed', response.data['flow_series'])
         self.assertEqual(response.data['flow_series']['speed'][0]['unit'], 'events_per_second')
         self.assertGreater(response.data['flow_series']['speed'][0]['value'], 0)
+        self.assertEqual(response.data['flow_compare_series'][0]['baseline'], 50.0)
+        self.assertIn('cvd_normalized_0_100', response.data['flow_compare_series'][0])
+        self.assertIn('buy_heat', response.data['heatmap_series'][0])
+        self.assertIn('score', response.data['marker_series'][0])
+        self.assertEqual(response.data['session_context']['quality_state'], 'READY')
+        self.assertEqual(response.data['quality_flags']['contract_version'], 'kline-intelligence-v1')
+        self.assertEqual(response.data['quality_flags']['cache_key_version'], 'v4')
         self.assertIsNone(response.data['bubble_series'][0]['matched_value_percentile_10d'])
         self.assertIsNone(response.data['bubble_series'][0]['event_score_percentile_10d'])
         self.assertIsNone(response.data['bubble_series'][0]['baseline_sample_size'])
@@ -284,6 +296,8 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['trade_date'], friday_trade_date.isoformat())
         self.assertEqual(response.data['session']['resolved_from'], 'latest_completed_session')
+        self.assertEqual(response.data['session_context']['quality_state'], 'DEGRADED_SESSION_FALLBACK')
+        self.assertEqual(response.data['session_context']['latest_valid_trade_date'], friday_trade_date.isoformat())
         self.assertEqual(response.data['bubble_series'][0]['bucket_ts'][:10], friday_trade_date.isoformat())
         self.assertEqual(response['Cache-Control'], 'private, max-age=900, stale-while-revalidate=3600')
 
@@ -392,6 +406,9 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
         self.assertEqual(response.data['meta']['stale_reason'], 'missing_intraday_ticks')
         self.assertEqual(response.data['price_series'], [])
         self.assertEqual(response.data['flow_series']['cvd'], [])
+        self.assertEqual(response.data['session_context']['quality_state'], 'DEGRADED_FLOW_MISSING')
+        self.assertFalse(response.data['quality_flags']['has_flow_data'])
+        self.assertFalse(response.data['quality_flags']['has_heatmap_data'])
 
     @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
     @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
@@ -458,6 +475,34 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
         self.assertEqual(second_response.status_code, 200)
         self.assertEqual(first_response.data['symbol'], second_response.data['symbol'])
         self.assertEqual(mock_get_whale_feed.call_count, 1)
+
+    @patch('portfolio.services_whale_analytics_snapshot._build_percentile_baseline_samples')
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_skips_percentile_baseline_when_disabled(
+        self,
+        mock_get_whale_feed,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+        mock_build_percentile_baseline_samples,
+    ):
+        mock_resolve_reference_price.return_value = 25.0
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.return_value = {
+            'fetched_at': f'{self.trade_date.isoformat()}T09:15:00+07:00',
+            'whale_orders': [],
+        }
+
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=0&include_baseline=0')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data['bubble_series'][0]['matched_value_percentile_10d'])
+        self.assertIsNone(response.data['bubble_series'][0]['event_score_percentile_10d'])
+        self.assertIsNone(response.data['bubble_series'][0]['baseline_sample_size'])
+        mock_build_percentile_baseline_samples.assert_not_called()
 
     @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
     @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
@@ -569,6 +614,11 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
             'price_series': [],
             'bubble_series': [],
             'flow_series': {'cvd': [], 'buy_strength': [], 'institutional_strength': []},
+            'flow_compare_series': [],
+            'heatmap_series': [],
+            'marker_series': [],
+            'session_context': {'quality_state': 'DEGRADED_FLOW_MISSING'},
+            'quality_flags': {'has_flow_data': False, 'has_heatmap_data': False},
             'summary': {},
         }
         mock_cache_add.return_value = False
@@ -612,6 +662,11 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
             'price_series': [],
             'bubble_series': [],
             'flow_series': {'cvd': [], 'buy_strength': [], 'institutional_strength': []},
+            'flow_compare_series': [],
+            'heatmap_series': [],
+            'marker_series': [],
+            'session_context': {'quality_state': 'DEGRADED_FLOW_MISSING'},
+            'quality_flags': {'has_flow_data': False, 'has_heatmap_data': False},
             'summary': {},
         }
         mock_cache_add.return_value = False
