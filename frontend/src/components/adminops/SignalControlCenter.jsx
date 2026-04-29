@@ -13,6 +13,9 @@ import {
   updateAdminSignalsConfig,
 } from '../../api/client';
 import { useI18n } from '../../context/LangContext';
+import PaginationBar from '../shared/PaginationBar';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 function formatDateTimeValue(value) {
   if (!value) return '—';
@@ -24,6 +27,11 @@ function formatNumberValue(value) {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric)) return '0';
   return new Intl.NumberFormat('vi-VN').format(numeric);
+}
+
+function resolvePositiveInteger(value, fallback) {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function statusTone(status) {
@@ -90,7 +98,13 @@ export default function SignalControlCenter() {
   const { t } = useI18n();
   const [summary, setSummary] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [jobsPage, setJobsPage] = useState(1);
+  const [jobsPageSize, setJobsPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [jobsTotal, setJobsTotal] = useState(0);
   const [events, setEvents] = useState([]);
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsPageSize, setEventsPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [eventsTotal, setEventsTotal] = useState(0);
   const [retentionPreview, setRetentionPreview] = useState(null);
   const [configPreview, setConfigPreview] = useState(null);
   const [universePreview, setUniversePreview] = useState(null);
@@ -153,23 +167,52 @@ export default function SignalControlCenter() {
     });
   }, []);
 
-  const loadAll = useCallback(async ({ silent = false } = {}) => {
+  const loadStaticData = useCallback(async () => {
+    const [summaryRes, configRes, retentionRes] = await Promise.all([
+      getAdminSignalsSummary(),
+      getAdminSignalsConfig(),
+      previewAdminSignalRetention({}),
+    ]);
+    setSummary(summaryRes.data || null);
+    applyConfigToForm(configRes.data || null);
+    setRetentionPreview(retentionRes.data?.preview || null);
+  }, [applyConfigToForm]);
+
+  const loadJobsPage = useCallback(async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
+    const jobsRes = await getAdminSignalJobs({
+      page,
+      page_size: pageSize,
+    });
+    const results = Array.isArray(jobsRes.data?.results) ? jobsRes.data.results : [];
+    setJobs(results);
+    setJobsTotal(resolvePositiveInteger(jobsRes.data?.count, results.length));
+    setJobsPage(resolvePositiveInteger(jobsRes.data?.page, page));
+    setJobsPageSize(resolvePositiveInteger(jobsRes.data?.page_size, pageSize));
+  }, []);
+
+  const loadEventsPage = useCallback(async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
+    const eventsRes = await getAdminSignalRecentEvents({
+      domain: 'all',
+      page,
+      page_size: pageSize,
+    });
+    const results = Array.isArray(eventsRes.data?.results) ? eventsRes.data.results : [];
+    setEvents(results);
+    setEventsTotal(resolvePositiveInteger(eventsRes.data?.count, results.length));
+    setEventsPage(resolvePositiveInteger(eventsRes.data?.page, page));
+    setEventsPageSize(resolvePositiveInteger(eventsRes.data?.page_size, pageSize));
+  }, []);
+
+  const refreshControlCenter = useCallback(async ({ silent = false } = {}) => {
     if (!silent) {
       setLoading(true);
     }
     try {
-      const [summaryRes, configRes, jobsRes, eventsRes, retentionRes] = await Promise.all([
-        getAdminSignalsSummary(),
-        getAdminSignalsConfig(),
-        getAdminSignalJobs({ limit: 10 }),
-        getAdminSignalRecentEvents({ domain: 'all', limit: 10 }),
-        previewAdminSignalRetention({}),
+      await Promise.all([
+        loadStaticData(),
+        loadJobsPage(jobsPage, jobsPageSize),
+        loadEventsPage(eventsPage, eventsPageSize),
       ]);
-      setSummary(summaryRes.data || null);
-      applyConfigToForm(configRes.data || null);
-      setJobs(Array.isArray(jobsRes.data?.results) ? jobsRes.data.results : []);
-      setEvents(Array.isArray(eventsRes.data?.results) ? eventsRes.data.results : []);
-      setRetentionPreview(retentionRes.data?.preview || null);
     } catch (error) {
       setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
     } finally {
@@ -177,11 +220,26 @@ export default function SignalControlCenter() {
         setLoading(false);
       }
     }
-  }, [applyConfigToForm, t]);
+  }, [eventsPage, eventsPageSize, jobsPage, jobsPageSize, loadEventsPage, loadJobsPage, loadStaticData, t]);
 
   useEffect(() => {
-    loadAll();
-  }, [loadAll]);
+    const loadInitialState = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadStaticData(),
+          loadJobsPage(1, DEFAULT_PAGE_SIZE),
+          loadEventsPage(1, DEFAULT_PAGE_SIZE),
+        ]);
+      } catch (error) {
+        setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadInitialState();
+  }, [loadEventsPage, loadJobsPage, loadStaticData, t]);
 
   const updateField = useCallback((field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -251,13 +309,13 @@ export default function SignalControlCenter() {
         retention_policy: buildRetentionPayload(),
       });
       setMessage(t('adminOps.signalCenterConfigApplied', { defaultValue: 'Đã áp dụng cấu hình services và retention.' }));
-      await loadAll({ silent: true });
+      await refreshControlCenter({ silent: true });
     } catch (error) {
       setMessage(error?.response?.data?.message || t('adminOps.signalCenterApplyFailed', { defaultValue: 'Không áp dụng được cấu hình signals.' }));
     } finally {
       setBusyAction('');
     }
-  }, [buildRetentionPayload, buildServicesPayload, loadAll, t]);
+  }, [buildRetentionPayload, buildServicesPayload, refreshControlCenter, t]);
 
   const handlePreviewUniverse = useCallback(async () => {
     setBusyAction('preview-universe');
@@ -283,13 +341,13 @@ export default function SignalControlCenter() {
       const response = await applyAdminSignalsUniverse({ confirm: true, policy: buildUniversePayload() });
       setUniversePreview(response.data || null);
       setMessage(t('adminOps.signalCenterUniverseApplied', { defaultValue: 'Đã áp dụng universe policy.' }));
-      await loadAll({ silent: true });
+      await refreshControlCenter({ silent: true });
     } catch (error) {
       setMessage(error?.response?.data?.message || t('adminOps.signalCenterUniverseApplyFailed', { defaultValue: 'Không áp dụng được universe policy.' }));
     } finally {
       setBusyAction('');
     }
-  }, [buildUniversePayload, loadAll, t]);
+  }, [buildUniversePayload, refreshControlCenter, t]);
 
   const handleRunJob = useCallback(async (serviceDomain) => {
     setBusyAction(`run-${serviceDomain}`);
@@ -300,13 +358,13 @@ export default function SignalControlCenter() {
         symbol: String(jobSymbol || '').trim().toUpperCase() || undefined,
       });
       setMessage(t('adminOps.signalCenterJobQueued', { defaultValue: 'Đã xếp hàng tác vụ signal.' }));
-      await loadAll({ silent: true });
+      await refreshControlCenter({ silent: true });
     } catch (error) {
       setMessage(error?.response?.data?.message || t('adminOps.signalCenterJobQueueFailed', { defaultValue: 'Không xếp được tác vụ signal.' }));
     } finally {
       setBusyAction('');
     }
-  }, [jobSymbol, loadAll, t]);
+  }, [jobSymbol, refreshControlCenter, t]);
 
   const handleRetryRun = useCallback(async (runId) => {
     setBusyAction(`retry-${runId}`);
@@ -314,13 +372,49 @@ export default function SignalControlCenter() {
     try {
       await retryAdminSignalJob(runId);
       setMessage(t('adminOps.signalCenterRetryQueued', { defaultValue: 'Đã xếp hàng retry signal run.' }));
-      await loadAll({ silent: true });
+      await refreshControlCenter({ silent: true });
     } catch (error) {
       setMessage(error?.response?.data?.message || t('adminOps.signalCenterRetryFailed', { defaultValue: 'Không retry được signal run.' }));
     } finally {
       setBusyAction('');
     }
-  }, [loadAll, t]);
+  }, [refreshControlCenter, t]);
+
+  const handleJobsPageChange = useCallback(async (nextPage) => {
+    setMessage('');
+    try {
+      await loadJobsPage(nextPage, jobsPageSize);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [jobsPageSize, loadJobsPage, t]);
+
+  const handleJobsPageSizeChange = useCallback(async (nextPageSize) => {
+    setMessage('');
+    try {
+      await loadJobsPage(1, nextPageSize);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [loadJobsPage, t]);
+
+  const handleEventsPageChange = useCallback(async (nextPage) => {
+    setMessage('');
+    try {
+      await loadEventsPage(nextPage, eventsPageSize);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [eventsPageSize, loadEventsPage, t]);
+
+  const handleEventsPageSizeChange = useCallback(async (nextPageSize) => {
+    setMessage('');
+    try {
+      await loadEventsPage(1, nextPageSize);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [loadEventsPage, t]);
 
   if (loading) {
     return (
@@ -340,7 +434,7 @@ export default function SignalControlCenter() {
         </div>
         <button
           type="button"
-          onClick={() => loadAll()}
+          onClick={() => refreshControlCenter()}
           className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:border-slate-500 hover:bg-slate-800"
         >
           {t('adminOps.refresh', { defaultValue: 'Làm mới' })}
@@ -514,7 +608,7 @@ export default function SignalControlCenter() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterJobsTitle', { defaultValue: 'Manual runs và job registry' })}</h3>
             <div className="flex flex-wrap gap-2">
@@ -563,6 +657,14 @@ export default function SignalControlCenter() {
               </tbody>
             </table>
           </div>
+          <PaginationBar
+            mode="offset"
+            total={jobsTotal}
+            page={jobsPage}
+            size={jobsPageSize}
+            onPageChange={handleJobsPageChange}
+            onSizeChange={handleJobsPageSizeChange}
+          />
         </div>
 
         <div className="space-y-4">
@@ -580,7 +682,7 @@ export default function SignalControlCenter() {
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterRecentEventsTitle', { defaultValue: 'Recent canonical events' })}</h3>
           <div className="mt-4 space-y-3">
             {events.length === 0 ? (
@@ -598,12 +700,20 @@ export default function SignalControlCenter() {
               </div>
             ))}
           </div>
+          <PaginationBar
+            mode="offset"
+            total={eventsTotal}
+            page={eventsPage}
+            size={eventsPageSize}
+            onPageChange={handleEventsPageChange}
+            onSizeChange={handleEventsPageSizeChange}
+          />
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <div className="flex items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterRetentionTitle', { defaultValue: 'Retention preview' })}</h3>
-            <button type="button" onClick={() => loadAll({ silent: true })} className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-100">{t('adminOps.refresh', { defaultValue: 'Làm mới' })}</button>
+            <button type="button" onClick={() => refreshControlCenter({ silent: true })} className="rounded-full border border-slate-700 px-3 py-1 text-xs font-semibold text-slate-100">{t('adminOps.refresh', { defaultValue: 'Làm mới' })}</button>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">

@@ -1,3 +1,34 @@
+# Entry 2026-04-29a - Land server-backed pagination for Signal Control Center jobs and recent canonical events
+
+Mục tiêu:
+- Hoàn tất follow-up UX slice còn lại của `Signal Control Center`: bỏ cap 10 rows cho `Manual runs và job registry` và `Recent canonical events`, thay bằng server-backed pagination chuẩn dùng shared `PaginationBar` với page size `5/10/15/20`.
+- Giữ scope hẹp và additive: backend admin APIs tiếp tục chấp nhận contract cũ theo `limit`, nhưng mở thêm `page/page_size`, trả `count` tổng và slice đúng offset; frontend chỉ thêm paging state và không đổi control-plane semantics khác.
+- Chốt evidence/runtime cho final audit: rebuild dev stack, health smoke `200`, browser-authenticated smoke trên `/admin-ops` -> `Signals`, và screenshot evidence của control center đang chạy thật.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/views_signal_admin.py (MODIFIED - add additive `page/page_size` parsing for jobs/recent-events APIs, return total `count`, `page`, `page_size`, and fix merged recent-events offset slicing across whale + dark-flow domains)
+- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add regressions for paged job registry and merged recent-events pagination ordering)
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - wire shared `PaginationBar` into jobs and recent-events panels, split page/page-size state, and refresh paged fetches via `page/page_size`)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - update API expectations to `page/page_size` and add pagination interaction regression)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - close pagination residual notes for `FE-6.4` and `QA-7.2`)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_EXECUTION_EVIDENCE_20260428w.md (MODIFIED - replace screenshot/runtime pagination notes with authenticated browser evidence)
+- docs/evidence_signal_control_center_pagination_20260429a.png (NEW - authenticated runtime screenshot of AdminOps `Signals` after pagination landed)
+- module_tree_full.md (MODIFIED - regenerate after pagination slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry `2026-04-29a`)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized and runtime refresh status closed)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 9/9 PASS.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully after shared `PaginationBar` wiring.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (518 modules).
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat` => refreshed runtime services; backend healthy; frontend and Celery restarted on latest code.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/` => `200`, payload `{"status": "ok", "service": "vninvest-backend"}`.
+- PASSED: browser-authenticated smoke on `/admin-ops` -> `Signals` tab => `Signal Control Center` rendered; shared page-size selectors exposed `[5, 10, 15, 20]`; live runtime check changed jobs range to `1–5 / 239` and recent-events range to `1–15 / 3750`; screenshot captured at `docs/evidence_signal_control_center_pagination_20260429a.png`.
+- NOTE: totals in runtime smoke (`239` jobs, `3750` events) advanced beyond test fixtures because background scheduled dark-flow runs continued while the page was open; this confirms the paged APIs are serving live data rather than frozen fixtures.
+- RESIDUAL RISK: `get_whale_feed(...)` single-symbol path vẫn chưa canonicalized hoàn toàn trên whale consumer side.
+- RESIDUAL RISK: tab `Whale Ops` cũ vẫn tồn tại ở chế độ legacy để forensic/backoffice transition; pagination slice không thay đổi retirement plan này.
+
 # Entry 2026-04-28w - Complete signal admin control-plane sync and land AdminOps Signal Control Center
 
 Mục tiêu:

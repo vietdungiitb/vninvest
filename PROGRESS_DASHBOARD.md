@@ -1,3 +1,25 @@
+# ✅ AUDIT FILE LIST (2026-04-29a)
+- backend/portfolio/views_signal_admin.py (MODIFIED - add additive `page/page_size` pagination for signal jobs and recent canonical events, with total `count` and correct merged offset slicing)
+- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add regressions for paged job registry and merged recent-events page 2 ordering)
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - wire shared `PaginationBar` into jobs registry and recent canonical events with independent page/page-size state)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - add pagination regression coverage for shared page sizes and next-page API calls)
+- docs/TASKBOARD_GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_20260428.md (MODIFIED - close pagination residual notes for FE-6.4 and QA-7.2)
+- docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_EXECUTION_EVIDENCE_20260428w.md (MODIFIED - update runtime/evidence verdict after landing server-backed pagination)
+- docs/evidence_signal_control_center_pagination_20260429a.png (NEW - authenticated runtime screenshot of AdminOps Signals with live pagination controls on refreshed dev stack)
+- module_tree_full.md (MODIFIED - regenerate after signal control center pagination slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-29a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --runInBand --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 9/9 PASS.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => compiled successfully after landing shared PaginationBar wiring.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (518 modules).
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat` => refreshed `frontend`, `backend`, `celery_worker`, `celery_beat`; backend reported healthy and frontend restarted successfully.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/` => `200` with payload `{"status": "ok", "service": "vninvest-backend"}`.
+- PASSED: browser runtime smoke on `/admin-ops` -> `Signals` tab rendered `Signal Control Center`; detected shared page-size selectors `[5, 10, 15, 20]`; live range changed to `1–5 / 239` for jobs and `1–15 / 3750` for recent events; screenshot saved at `docs/evidence_signal_control_center_pagination_20260429a.png`.
+- RESIDUAL RISK: single-symbol whale feed path vẫn chưa canonicalized hoàn toàn; tab `Whale Ops` cũ vẫn tồn tại ở chế độ legacy để transition.
+
 # ✅ AUDIT FILE LIST (2026-04-28w)
 - backend/portfolio/market_data_service.py (MODIFIED - prefer canonical `WhaleAlertEvent` records on aggregate whale read-path)
 - backend/portfolio/services_global_signal_distribution.py (MODIFIED - shared audience resolver and whale canonical-event fan-out to websocket + `UserAlertHistory`)
@@ -38,7 +60,7 @@ Validation:
 - PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (518 modules).
 - PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat` => frontend/backend/celery runtime refreshed; backend healthy; frontend and celery services started.
 - NOTE: browser route smoke hit live app but redirected to `/login` because terminal browser session had no staff auth context; authenticated screenshot/video chưa được capture trong entry này.
-- RESIDUAL RISK: single-symbol whale feed path vẫn chưa canonicalized hoàn toàn; jobs/events UI hiện cap 10 rows nên chưa cần `PaginationBar`; Whale Ops cũ vẫn tồn tại ở chế độ legacy để transition.
+- RESIDUAL RISK: single-symbol whale feed path vẫn chưa canonicalized hoàn toàn; jobs/events UI pagination đã được follow-up trong entry `2026-04-29a`; Whale Ops cũ vẫn tồn tại ở chế độ legacy để transition.
 
 # ✅ AUDIT FILE LIST (2026-04-28v)
 - backend/portfolio/tasks_order_flow.py (MODIFIED - refactor dark-flow detector to use effective universe snapshot, canonical persistence, latest-signal cache, and downstream distribution queue)

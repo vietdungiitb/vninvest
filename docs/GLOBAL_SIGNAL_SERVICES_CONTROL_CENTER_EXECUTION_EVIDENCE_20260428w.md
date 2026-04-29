@@ -83,11 +83,12 @@
 
 ## F. UI / Runtime evidence
 
-- Screenshot path: N/A - browser session trong terminal không có staff auth sẵn, route `/admin-ops` redirect về `/login`
+- Screenshot path: `docs/evidence_signal_control_center_pagination_20260429a.png`
 - Video path: N/A
 - Dev stack rebuild command: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat`
 - Runtime smoke result: PASS
-- PaginationBar used where needed: N/A - jobs/events operator view đang cap 10 rows, chưa mở server pagination
+- Browser runtime smoke: PASS - `/admin-ops` -> `Signals` tab render `Signal Control Center`; shared page-size selectors expose `5/10/15/20`; live checks changed jobs range to `1–5 / 239` and recent-events range to `1–15 / 3750`
+- PaginationBar used where needed: PASS - jobs/events operator view hiện dùng shared `PaginationBar` với page size `5/10/15/20` và backend paged contract `page/page_size`
 - i18n text verified: PASS
 
 ## G. Retention / Performance evidence
@@ -121,22 +122,16 @@
 - Verdict: PASS WITH NOTES
 - Rationale:
   - Backend global-signal control plane, frontend control center, runtime refresh và governance sync đều đã có executable evidence.
-  - Còn ba residual notes không nên che giấu: single-symbol whale feed chưa canonicalized hoàn toàn, jobs/events UI mới đang cap 10 rows thay vì server pagination, và screenshot authenticated UI chưa capture được do thiếu staff session trong browser agent.
+  - Còn một residual note không nên che giấu: single-symbol whale feed chưa canonicalized hoàn toàn.
 
 ## K. Residual risks and follow-up
 
 1. Risk: `get_whale_feed(...)` single-symbol path vẫn đọc raw source, chưa tận dụng hoàn toàn `WhaleAlertEvent`.
    - Owner: Backend Lead
    - ETA: follow-up nếu product muốn canonical hóa mọi whale consumer path
-2. Risk: jobs/events operator lists chưa dùng server pagination + `PaginationBar` vì page size đang cap 10 rows.
-   - Owner: Frontend Lead
-   - ETA: mở khi backend hỗ trợ paged contracts hoặc operator cần page size lớn hơn
-3. Risk: authenticated screenshot/video của AdminOps `Signals` chưa được capture trong terminal session này.
-   - Owner: Final auditor / session with staff credentials
-   - ETA: during final audit walkthrough
 
 ## L. Sign-off
 
-- Slice owner: GitHub Copilot (GPT-5.4)  Date/Time: 2026-04-28
+- Slice owner: GitHub Copilot (GPT-5.4)  Date/Time: 2026-04-29
 - Internal reviewer: pending  Date/Time: ____
 - QA reviewer: pending  Date/Time: ____

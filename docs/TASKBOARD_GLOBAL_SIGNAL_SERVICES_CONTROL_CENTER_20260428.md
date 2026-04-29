@@ -246,7 +246,7 @@ Dependency: FE-6.3, BE-4.2, BE-4.3, BE-5.3
 DoD: operator xem được audience logic, retention preview, jobs registry và audit-oriented recent events trên cùng surface.  
 Test gate: PASSED - `Push-Location ./frontend; npm run build; Pop-Location`; PASSED - `Push-Location ./frontend; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location`.  
 Evidence: `frontend/src/components/adminops/SignalControlCenter.jsx`, `frontend/src/components/adminops/SignalControlCenter.test.jsx`, jobs/recent-events/retention UI proof.  
-Residual note: danh sách jobs/events hiện intentionally cap ở 10 rows cho operator snapshot nên chưa cần `PaginationBar`; nếu product mở rộng page size hoặc server pagination, `FE-6.5+` phải chuyển sang shared pagination component.
+Residual note: follow-up pagination đã hoàn tất ở `2026-04-29a`; jobs registry và recent canonical events hiện dùng shared `PaginationBar` với page size `5/10/15/20` và backend paged contract `page/page_size`.
 
 - [x] `FE-6.5` Deprecate panel whale cũ và tránh phân mảnh UI mới  
 Owner: Frontend Lead  
@@ -279,7 +279,7 @@ Dependency: FE-6.5
 DoD: shell, preview/apply, dangerous action guards, pagination, i18n tests pass.  
 Test gate: PASSED - `Push-Location ./frontend; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location`; PASSED - `Push-Location ./frontend; npm run build; Pop-Location`.  
 Evidence: `frontend/src/components/adminops/SignalControlCenter.test.jsx`, build log, `docs/GLOBAL_SIGNAL_SERVICES_CONTROL_CENTER_EXECUTION_EVIDENCE_20260428w.md`.  
-Residual note: pagination currently N/A because operator lists are intentionally capped at 10 rows.
+Residual note: pagination regression đã được bổ sung cho jobs registry và recent canonical events; không còn cap cứng 10 rows ở operator lists.
 
 - [x] `QA-7.3` Integration matrix + evidence template cho từng slice  
 Owner: QA Lead  

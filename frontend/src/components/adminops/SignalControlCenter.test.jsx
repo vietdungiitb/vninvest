@@ -114,6 +114,9 @@ describe('SignalControlCenter', () => {
     getAdminSignalJobs.mockResolvedValue({
       data: {
         ok: true,
+        count: 12,
+        page: 1,
+        page_size: 10,
         results: [
           {
             id: 7,
@@ -132,6 +135,9 @@ describe('SignalControlCenter', () => {
     getAdminSignalRecentEvents.mockResolvedValue({
       data: {
         ok: true,
+        count: 12,
+        page: 1,
+        page_size: 10,
         results: [
           {
             domain: 'whale',
@@ -179,8 +185,8 @@ describe('SignalControlCenter', () => {
     expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
     expect(getAdminSignalsSummary).toHaveBeenCalledTimes(1);
     expect(getAdminSignalsConfig).toHaveBeenCalledTimes(1);
-    expect(getAdminSignalJobs).toHaveBeenCalledWith({ limit: 10 });
-    expect(getAdminSignalRecentEvents).toHaveBeenCalledWith({ domain: 'all', limit: 10 });
+    expect(getAdminSignalJobs).toHaveBeenCalledWith({ page: 1, page_size: 10 });
+    expect(getAdminSignalRecentEvents).toHaveBeenCalledWith({ domain: 'all', page: 1, page_size: 10 });
 
     fireEvent.click(screen.getByRole('button', { name: 'Xem trước config' }));
 
@@ -222,5 +228,24 @@ describe('SignalControlCenter', () => {
 
     expect(window.confirm).toHaveBeenCalledTimes(1);
     expect(applyAdminSignalsUniverse).not.toHaveBeenCalled();
+  });
+
+  it('requests paginated jobs and recent events with shared page sizes', async () => {
+    render(<SignalControlCenter />);
+
+    expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
+
+    const [jobsPageSizeSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(jobsPageSizeSelect, { target: { value: '5' } });
+
+    await waitFor(() => {
+      expect(getAdminSignalJobs).toHaveBeenLastCalledWith({ page: 1, page_size: 5 });
+    });
+
+    fireEvent.click(screen.getAllByTitle('dashboardRealtime.paginationNext')[1]);
+
+    await waitFor(() => {
+      expect(getAdminSignalRecentEvents).toHaveBeenLastCalledWith({ domain: 'all', page: 2, page_size: 10 });
+    });
   });
 });

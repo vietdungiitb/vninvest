@@ -33,6 +33,14 @@ def _truthy(value) -> bool:
     return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
 
 
+def _parse_bounded_positive_int(value, default: int, *, minimum: int = 1, maximum: int = 100) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(parsed, maximum))
+
+
 def _build_config_changes(before: dict, after: dict) -> dict:
     changes = {}
     for key, before_value in before.items():
@@ -139,15 +147,18 @@ def _build_retention_preview(policy: dict) -> dict:
     }
 
 
-def _normalize_recent_events(domain: str, symbol: str | None, limit: int) -> list[dict]:
+def _normalize_recent_events(domain: str, symbol: str | None, limit: int, *, offset: int = 0) -> tuple[list[dict], int]:
     normalized_symbol = str(symbol or '').strip().upper()
+    fetch_limit = max(limit + max(offset, 0), limit)
     events = []
+    total_count = 0
 
     if domain in {'all', 'whale'}:
         whale_qs = WhaleAlertEvent.objects.order_by('-occurred_at', '-id')
         if normalized_symbol:
             whale_qs = whale_qs.filter(symbol=normalized_symbol)
-        for event in whale_qs[:limit]:
+        total_count += whale_qs.count()
+        for event in whale_qs[:fetch_limit]:
             events.append(
                 {
                     'domain': 'whale',
@@ -164,7 +175,8 @@ def _normalize_recent_events(domain: str, symbol: str | None, limit: int) -> lis
         dark_flow_qs = OrderFlowSignal.objects.order_by('-created_at', '-id')
         if normalized_symbol:
             dark_flow_qs = dark_flow_qs.filter(symbol=normalized_symbol)
-        for signal in dark_flow_qs[:limit]:
+        total_count += dark_flow_qs.count()
+        for signal in dark_flow_qs[:fetch_limit]:
             events.append(
                 {
                     'domain': 'dark_flow',
@@ -178,7 +190,7 @@ def _normalize_recent_events(domain: str, symbol: str | None, limit: int) -> lis
             )
 
     events.sort(key=lambda item: str(item.get('ts') or ''), reverse=True)
-    return events[:limit]
+    return events[offset:offset + limit], total_count
 
 
 @api_view(['GET'])
@@ -334,17 +346,25 @@ def signal_admin_universe_apply_api(request):
 @api_view(['GET'])
 @permission_classes([IsAdminUser])
 def signal_admin_jobs_api(request):
-    limit = max(1, min(int(request.query_params.get('limit', 20)), 100))
+    page = _parse_bounded_positive_int(request.query_params.get('page'), 1, maximum=100000)
+    page_size = _parse_bounded_positive_int(
+        request.query_params.get('page_size', request.query_params.get('limit')),
+        20,
+    )
     service_domain = str(request.query_params.get('service_domain') or '').strip().lower()
     queryset = SignalServiceRun.objects.all().order_by('-created_at', '-id')
     if service_domain in {SignalServiceRun.ServiceDomain.WHALE, SignalServiceRun.ServiceDomain.DARK_FLOW}:
         queryset = queryset.filter(service_domain=service_domain)
 
-    rows = list(queryset[:limit])
+    total_count = queryset.count()
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset:offset + page_size])
     return Response(
         {
             'ok': True,
-            'count': len(rows),
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
             'results': SignalServiceRunSerializer(rows, many=True).data,
         },
         status=status.HTTP_200_OK,
@@ -429,9 +449,23 @@ def signal_admin_recent_events_api(request):
         return Response({'ok': False, 'message': 'domain chỉ hỗ trợ all, whale, dark_flow.'}, status=status.HTTP_400_BAD_REQUEST)
 
     symbol = request.query_params.get('symbol')
-    limit = max(1, min(int(request.query_params.get('limit', 20)), 100))
-    results = _normalize_recent_events(domain, symbol, limit)
-    return Response({'ok': True, 'count': len(results), 'results': results}, status=status.HTTP_200_OK)
+    page = _parse_bounded_positive_int(request.query_params.get('page'), 1, maximum=100000)
+    page_size = _parse_bounded_positive_int(
+        request.query_params.get('page_size', request.query_params.get('limit')),
+        20,
+    )
+    offset = (page - 1) * page_size
+    results, total_count = _normalize_recent_events(domain, symbol, page_size, offset=offset)
+    return Response(
+        {
+            'ok': True,
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'results': results,
+        },
+        status=status.HTTP_200_OK,
+    )
 
 
 @api_view(['POST'])

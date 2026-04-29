@@ -187,6 +187,26 @@ class SignalAdminApiTests(TestCase):
         self.assertEqual(retry_run.status, SignalServiceRun.StatusChoices.QUEUED)
         self.assertEqual(retry_run.task_id, 'task-dark-2')
 
+    def test_jobs_list_supports_page_and_page_size(self):
+        self._auth_staff()
+        runs = []
+        for index in range(5):
+            runs.append(
+                SignalServiceRun.objects.create(
+                    service_domain=SignalServiceRun.ServiceDomain.WHALE if index % 2 == 0 else SignalServiceRun.ServiceDomain.DARK_FLOW,
+                    run_type=SignalServiceRun.RunType.MANUAL,
+                    status=SignalServiceRun.StatusChoices.COMPLETED,
+                )
+            )
+
+        response = self.client.get('/api/admin-ops/signals/jobs/?page=2&page_size=2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 5)
+        self.assertEqual(response.data['page'], 2)
+        self.assertEqual(response.data['page_size'], 2)
+        self.assertEqual([row['id'] for row in response.data['results']], [runs[2].id, runs[1].id])
+
     def test_recent_events_and_retention_preview_return_expected_shapes(self):
         self._auth_staff()
         now = datetime.now(datetime_timezone.utc)
@@ -227,6 +247,118 @@ class SignalAdminApiTests(TestCase):
 
         self.assertEqual(events_response.status_code, status.HTTP_200_OK)
         self.assertEqual(events_response.data['count'], 2)
+        self.assertEqual(events_response.data['page'], 1)
+        self.assertEqual(events_response.data['page_size'], 5)
         self.assertEqual(retention_response.status_code, status.HTTP_200_OK)
         self.assertIn('policy', retention_response.data['preview'])
         self.assertIn('raw_intraday', retention_response.data['preview'])
+
+    def test_recent_events_support_page_and_page_size_across_merged_domains(self):
+        self._auth_staff()
+        now = datetime.now(datetime_timezone.utc)
+
+        WhaleAlertEvent.objects.create(
+            event_id='whale:FPT:1',
+            symbol='FPT',
+            side='BUY',
+            matched_value_vnd=700_000_000,
+            threshold_vnd=500_000_000,
+            threshold_policy_version='threshold-v1',
+            severity='urgent',
+            event_score=8.4,
+            confidence='high',
+            source='redis_stream',
+            source_layer='live',
+            trade_date=date.today(),
+            occurred_at=now,
+            payload_json={'symbol': 'FPT', 'ts': now.isoformat()},
+        )
+        WhaleAlertEvent.objects.create(
+            event_id='whale:FPT:2',
+            symbol='FPT',
+            side='BUY',
+            matched_value_vnd=650_000_000,
+            threshold_vnd=500_000_000,
+            threshold_policy_version='threshold-v1',
+            severity='warning',
+            event_score=7.1,
+            confidence='high',
+            source='redis_stream',
+            source_layer='live',
+            trade_date=date.today(),
+            occurred_at=now - timedelta(minutes=2),
+            payload_json={'symbol': 'FPT', 'ts': (now - timedelta(minutes=2)).isoformat()},
+        )
+        WhaleAlertEvent.objects.create(
+            event_id='whale:FPT:3',
+            symbol='FPT',
+            side='BUY',
+            matched_value_vnd=600_000_000,
+            threshold_vnd=500_000_000,
+            threshold_policy_version='threshold-v1',
+            severity='warning',
+            event_score=6.5,
+            confidence='medium',
+            source='redis_stream',
+            source_layer='live',
+            trade_date=date.today(),
+            occurred_at=now - timedelta(minutes=4),
+            payload_json={'symbol': 'FPT', 'ts': (now - timedelta(minutes=4)).isoformat()},
+        )
+
+        dark_flow_one = OrderFlowSignal.objects.create(
+            symbol='VCB',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=74.0,
+            confidence='high',
+            tick_rate=3.0,
+            small_order_ratio=0.3,
+            cvd_at_signal=125.0,
+            price_at_signal=100000,
+            window_seconds=300,
+            components_json={},
+            event_id='dark_flow:VCB:1',
+            severity=OrderFlowSignal.SeverityChoices.WARNING,
+            trade_date=date.today(),
+        )
+        dark_flow_two = OrderFlowSignal.objects.create(
+            symbol='VCB',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=68.0,
+            confidence='high',
+            tick_rate=2.7,
+            small_order_ratio=0.25,
+            cvd_at_signal=118.0,
+            price_at_signal=99900,
+            window_seconds=300,
+            components_json={},
+            event_id='dark_flow:VCB:2',
+            severity=OrderFlowSignal.SeverityChoices.WARNING,
+            trade_date=date.today(),
+        )
+        dark_flow_three = OrderFlowSignal.objects.create(
+            symbol='VCB',
+            signal_type=OrderFlowSignal.SignalType.ICEBERG,
+            strength=64.0,
+            confidence='medium',
+            tick_rate=2.3,
+            small_order_ratio=0.22,
+            cvd_at_signal=112.0,
+            price_at_signal=99800,
+            window_seconds=300,
+            components_json={},
+            event_id='dark_flow:VCB:3',
+            severity=OrderFlowSignal.SeverityChoices.WARNING,
+            trade_date=date.today(),
+        )
+        OrderFlowSignal.objects.filter(id=dark_flow_one.id).update(created_at=now - timedelta(minutes=1))
+        OrderFlowSignal.objects.filter(id=dark_flow_two.id).update(created_at=now - timedelta(minutes=3))
+        OrderFlowSignal.objects.filter(id=dark_flow_three.id).update(created_at=now - timedelta(minutes=5))
+
+        response = self.client.get('/api/admin-ops/signals/events/recent/?domain=all&page=2&page_size=2')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 6)
+        self.assertEqual(response.data['page'], 2)
+        self.assertEqual(response.data['page_size'], 2)
+        self.assertEqual([row['event_id'] for row in response.data['results']], ['whale:FPT:2', 'dark_flow:VCB:2'])
