@@ -115,7 +115,6 @@ def default_global_signal_universe_policy() -> dict:
 
 def default_global_signal_retention_policy() -> dict:
     return {
-        'raw_intraday_keep_days': max(int(getattr(settings, 'INTRADAY_TICK_KEEP_DAYS', 7) or 7), 1),
         'whale_event_keep_days': 90,
         'dark_flow_keep_days': 90,
         'summary_cache_ttl_seconds': 900,
@@ -235,12 +234,6 @@ def coerce_global_signal_retention_policy(raw_payload, fallback=None) -> dict:
     base = fallback or default_global_signal_retention_policy()
 
     return {
-        'raw_intraday_keep_days': _coerce_int(
-            payload.get('raw_intraday_keep_days'),
-            field_name='raw_intraday_keep_days',
-            default=base['raw_intraday_keep_days'],
-            minimum=1,
-        ),
         'whale_event_keep_days': _coerce_int(
             payload.get('whale_event_keep_days'),
             field_name='whale_event_keep_days',
@@ -386,3 +379,60 @@ def set_global_signal_retention_policy(raw_payload) -> dict:
         normalized,
         description='Policy retention cho raw intraday, canonical signal events và summary caches.',
     )
+
+
+def build_global_signal_control_center_ownership() -> dict:
+    return {
+        'version': '2026-05-01',
+        'domains': {
+            'services_config': {
+                'owner': 'portfolio.global_signal_policy_helpers',
+                'status': 'canonical',
+                'fields': [
+                    'enabled',
+                    'whale_service',
+                    'dark_flow_service',
+                    'distribution',
+                ],
+                'notes': 'Các knob vận hành whale và dark-flow hiện vẫn đi qua control plane này.',
+            },
+            'universe_policy': {
+                'owner': 'portfolio.global_signal_policy_helpers',
+                'status': 'canonical',
+                'fields': [
+                    'include_tracked_symbols',
+                    'include_watchlist_symbols',
+                    'include_alert_symbols',
+                    'include_portfolio_symbols',
+                    'include_group_symbols',
+                    'selected_group_ids',
+                    'admin_symbols',
+                    'force_selected_groups_to_warm_tier',
+                ],
+                'notes': 'Universe detection là SSOT cho global signal scope.',
+            },
+            'retention_policy': {
+                'owner': 'portfolio.global_signal_policy_helpers',
+                'status': 'canonical',
+                'fields': [
+                    'whale_event_keep_days',
+                    'dark_flow_keep_days',
+                    'summary_cache_ttl_seconds',
+                    'require_preview_before_purge',
+                ],
+                'notes': 'Retention canonical cho canonical signal events và summary caches.',
+            },
+        },
+        'compatibility': {
+            'raw_intraday_keep_days': {
+                'owner': 'portfolio.runtime_policy_helpers',
+                'status': 'deprecated-alias',
+                'canonical_field': 'INTRADAY_TICK_KEEP_DAYS',
+                'compatibility_field': 'global_signal_retention_policy.raw_intraday_keep_days',
+                'notes': 'Giá trị raw_intraday_keep_days trong signal retention chỉ là lớp tương thích; runtime policy là nguồn canonical.',
+            },
+        },
+        'deprecation_notes': [
+            'Giá trị raw_intraday_keep_days trong signal retention chỉ là lớp tương thích; runtime policy là nguồn canonical.',
+        ],
+    }

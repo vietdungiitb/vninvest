@@ -192,7 +192,7 @@ class GlobalSignalPolicyHelpersTests(TestCase):
             }
         )
 
-        self.assertEqual(normalized['raw_intraday_keep_days'], 14)
+        self.assertNotIn('raw_intraday_keep_days', normalized)
         self.assertEqual(normalized['summary_cache_ttl_seconds'], 1800)
         self.assertFalse(normalized['require_preview_before_purge'])
         self.assertEqual(get_global_signal_retention_policy(), normalized)

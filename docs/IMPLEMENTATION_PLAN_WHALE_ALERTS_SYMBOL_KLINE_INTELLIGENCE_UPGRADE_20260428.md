@@ -22,7 +22,7 @@ Route `whale-alerts/:symbol` đã được refactor về KLine làm surface trun
 ### Mục tiêu nghiệp vụ
 
 1. Xây dựng một `KLine intelligence workspace` đủ dùng cho nhà đầu tư thực chiến.
-2. Hợp nhất các tín hiệu dòng tiền vào một trải nghiệm đọc chart thống nhất: `heatmap + Flow Compare pane + whale marker + tooltip rich context`.
+2. Hợp nhất các tín hiệu dòng tiền vào một trải nghiệm đọc chart thống nhất: `heatmap + pane CVD + pane strength + whale marker + tooltip rich context`.
 3. Giữ selected-session truth cho bubble chart và AI advisory.
 4. Giữ immutable bubble source của modern dashboard.
 5. Chuyển logic từ trạng thái “fix-by-fix” sang kiến trúc bền vững có test gates và evidence pack rõ ràng.
@@ -31,7 +31,7 @@ Route `whale-alerts/:symbol` đã được refactor về KLine làm surface trun
 
 | Chỉ số | Baseline | Mục tiêu |
 |---|---:|---:|
-| Số pane flow rời rạc | 2-3 | 1 `Flow Compare pane` |
+| Số pane flow đích | 2-3 | 2 pane kỹ thuật đồng bộ (`CVD` + `Strength`) |
 | Tỷ lệ drift bucket giữa candle / tooltip / pane / marker | Có rủi ro | 0 |
 | Heatmap semantics consistency giữa timeframe | Chưa có | 100% cùng quy tắc màu |
 | Tỷ lệ whale marker recompute sai viewport | Có rủi ro | 0 |
@@ -45,7 +45,7 @@ Route `whale-alerts/:symbol` đã được refactor về KLine làm surface trun
 ### In-scope
 
 1. Thiết kế và triển khai `Flow View Model` dùng chung cho KLine intelligence.
-2. Hợp nhất `CVD`, `Buy Strength`, `Institutional Strength` thành `Flow Compare pane`.
+2. Tách `CVD normalized` khỏi `Buy Strength` và `Institutional Strength` thành 2 pane kỹ thuật dùng chung trục X.
 3. Thêm heatmap dòng tiền theo bucket thời gian ngay trên KLine surface.
 4. Chuẩn hóa whale marker scoring và viewport recompute.
 5. Nâng cấp tooltip KLine với ngữ cảnh flow đầy đủ.
@@ -110,11 +110,10 @@ KLine intelligence workspace được chia thành 4 lớp hiển thị bám cùn
    - score và dominance rõ,
    - recompute theo viewport.
 
-4. `Flow Compare pane`
-   - `CVD normalized 0-100`,
-   - `Buy Strength`,
-   - `Institutional Strength`,
-   - baseline trung tính,
+4. `Flow technical panes`
+   - pane `CVD normalized 0-100` với baseline trung tính,
+   - pane `Buy Strength` + `Institutional Strength`,
+   - cùng trục X,
    - line toggle và last-value badges.
 
 ### 4.2 Canonical rule set
@@ -122,7 +121,7 @@ KLine intelligence workspace được chia thành 4 lớp hiển thị bám cùn
 1. Mọi layer đều bám cùng `canonical minute key`.
 2. Tooltip, pane, marker, heatmap phải đồng bộ theo cùng candle bucket.
 3. `CVD raw` chỉ dùng cho tooltip/info panel và debug proof.
-4. `CVD normalized` dùng cho so sánh trực quan trong `Flow Compare pane`.
+4. `CVD normalized` chỉ dùng cho pane CVD; `Buy Strength` và `Institutional Strength` giữ ở pane strength.
 5. Heatmap là context layer, không thay thế pane phân tích.
 6. Whale marker là extreme-event layer, không thay heatmap và không thay pane.
 
@@ -193,7 +192,7 @@ Mục tiêu:
 
 ### FE-3.1
 Mục tiêu:
-- Thay pane rời bằng `Flow Compare pane`.
+- Thay pane flow gộp bằng 2 pane kỹ thuật: `CVD` và `Strength`.
 
 ### FE-3.2
 Mục tiêu:
@@ -368,7 +367,7 @@ docker compose -f ./docker-compose.dev.yml up -d --build frontend backend
 ### 8.3 Manual / integration gates
 
 1. Heatmap đổi mode đúng.
-2. Flow Compare pane không lệch bucket.
+2. Pane CVD và pane strength không lệch bucket.
 3. Whale marker recompute theo viewport.
 4. Bubble/advisory đổi đúng session click.
 5. Bubble source vẫn bất biến.
@@ -415,7 +414,7 @@ docker compose -f ./docker-compose.dev.yml up -d --build frontend backend
 ### 11.1 Rollout
 
 1. Dev: bật toàn bộ flags.
-2. Staging: bật `Flow Compare pane` trước, sau đó bật `heatmap`, cuối cùng bật degraded-state UX.
+2. Staging: bật `pane CVD` và `pane strength` trước, sau đó bật `heatmap`, cuối cùng bật degraded-state UX.
 3. Production hoặc final auditor smoke: chỉ sau khi integration matrix pass.
 
 ### 11.2 Backout plan

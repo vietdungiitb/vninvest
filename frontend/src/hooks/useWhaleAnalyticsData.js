@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getWhaleAnalyticsSnapshot } from '../api/client';
 import { resolveWhaleTimeframeWindow } from '../utils/whaleTimeAdapter';
-import { normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
+import { mergeWhaleAnalyticsSnapshots, normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
 
 /**
  * useWhaleAnalyticsData Hook
@@ -19,6 +19,13 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
   });
   const requestIdRef = useRef(0);
   const includeBaseline = options?.includeBaseline;
+  const selectedTradeDate = options?.selectedTradeDate ? String(options.selectedTradeDate).slice(0, 10) : null;
+  const requestedTradeDates = useMemo(() => Array.from(new Set(
+    (Array.isArray(options?.tradeDates) ? options.tradeDates : [])
+      .map((value) => (value ? String(value).slice(0, 10) : null))
+      .filter(Boolean),
+  )), [options?.tradeDates]);
+  const requestedTradeDatesKey = requestedTradeDates.join('|');
 
   const fetchData = useCallback(async ({ silent = false } = {}) => {
     if (!symbol) {
@@ -35,6 +42,33 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
 
     try {
       const normalizedTradeDate = tradeDate ? String(tradeDate).slice(0, 10) : null;
+      if (requestedTradeDates.length > 0) {
+        const snapshotResults = await Promise.allSettled(
+          requestedTradeDates.map((requestedDate) => getWhaleAnalyticsSnapshot(symbol, {
+            timeframe,
+            compact: 0,
+            tradeDate: requestedDate,
+            includeBaseline,
+          })),
+        );
+
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        const normalizedSnapshots = snapshotResults
+          .filter((result) => result.status === 'fulfilled' && result.value?.data?.symbol)
+          .map((result) => normalizeWhaleAnalyticsSnapshot(result.value.data, timeframe));
+
+        if (!normalizedSnapshots.length) {
+          const firstRejected = snapshotResults.find((result) => result.status === 'rejected');
+          throw firstRejected?.reason || new Error('Failed to fetch valid analytics snapshots');
+        }
+
+        setData(mergeWhaleAnalyticsSnapshots(normalizedSnapshots, timeframe, selectedTradeDate || normalizedTradeDate));
+        return;
+      }
+
       const snapshotRes = await getWhaleAnalyticsSnapshot(symbol, {
         timeframe,
         compact: 0,
@@ -62,7 +96,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
         setLoading(false);
       }
     }
-  }, [includeBaseline, symbol, timeframe, tradeDate]);
+  }, [includeBaseline, requestedTradeDatesKey, selectedTradeDate, symbol, timeframe, tradeDate]);
 
   useEffect(() => {
     fetchData({ silent: false });
@@ -70,7 +104,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
 
   useEffect(() => {
     const timeframeWindow = resolveWhaleTimeframeWindow(timeframe);
-    if (!timeframeWindow.isLive || tradeDate) {
+    if (!timeframeWindow.isLive || tradeDate || requestedTradeDates.length > 0) {
       return undefined;
     }
 
@@ -100,7 +134,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
-  }, [fetchData, timeframe, tradeDate]);
+  }, [fetchData, requestedTradeDatesKey, timeframe, tradeDate]);
 
   return { 
     loading, 

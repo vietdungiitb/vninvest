@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 
 from portfolio.global_signal_policy_helpers import (
+    build_global_signal_control_center_ownership,
     coerce_global_signal_retention_policy,
     coerce_global_signal_services_config,
     coerce_global_signal_universe_policy,
@@ -22,9 +23,16 @@ from portfolio.global_signal_policy_helpers import (
 )
 from portfolio.models import IntradayTick, OrderFlowSignal, SignalServiceRun, WhaleAlertEvent
 from portfolio.serializers import SignalServiceRunSerializer
+from portfolio.services import (
+    get_active_runtime_rollout_for_symbol,
+    get_active_whale_config_version,
+    get_latest_whale_config_anomaly_overview,
+    get_whale_config_propagation_overview,
+)
 from portfolio.services_global_signal_universe import GlobalSignalUniverseResolver
 from portfolio.services_global_whale_alerts import GLOBAL_WHALE_LATEST_EVENT_CACHE_PREFIX
 from portfolio.tasks import detect_and_store_global_whale_alerts, detect_and_store_order_flow
+from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
 from portfolio.tasks_order_flow import ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX
 from portfolio.views_admin_runtime import _is_celery_worker_available
 
@@ -51,6 +59,50 @@ def _build_config_changes(before: dict, after: dict) -> dict:
                 'after': after_value,
             }
     return changes
+
+
+def _serialize_whale_governance_version(version) -> dict | None:
+    if version is None:
+        return None
+
+    return {
+        'id': version.id,
+        'version_code': version.version_code,
+        'status': version.status,
+        'created_at': version.created_at.isoformat() if version.created_at else None,
+        'approved_at': version.approved_at.isoformat() if version.approved_at else None,
+        'activated_at': version.activated_at.isoformat() if version.activated_at else None,
+    }
+
+
+def _serialize_whale_governance_rollout(rollout) -> dict | None:
+    if rollout is None:
+        return None
+
+    return {
+        'rollout_id': rollout.id,
+        'version_id': rollout.version_id,
+        'version_code': rollout.version.version_code,
+        'mode': rollout.mode,
+        'status': rollout.status,
+        'effective_from': rollout.effective_from.isoformat() if rollout.effective_from else None,
+        'started_at': rollout.started_at.isoformat() if rollout.started_at else None,
+        'finished_at': rollout.finished_at.isoformat() if rollout.finished_at else None,
+        'note': rollout.note,
+    }
+
+
+def _build_whale_governance_snapshot() -> dict:
+    active_version = get_active_whale_config_version()
+    active_rollout = get_active_runtime_rollout_for_symbol()
+
+    return {
+        'generated_at': timezone.now().isoformat(),
+        'active_version': _serialize_whale_governance_version(active_version),
+        'active_rollout': _serialize_whale_governance_rollout(active_rollout),
+        'propagation': get_whale_config_propagation_overview(),
+        'anomaly': get_latest_whale_config_anomaly_overview(),
+    }
 
 
 def _serialize_run(run: SignalServiceRun | None) -> dict | None:
@@ -123,7 +175,9 @@ def _build_summary_domain_payload(service_domain: str) -> dict:
 
 def _build_retention_preview(policy: dict) -> dict:
     now = timezone.now()
-    raw_cutoff = (now - timedelta(days=int(policy.get('raw_intraday_keep_days', 7) or 7))).isoformat()
+    runtime_settings = _get_runtime_prefetch_settings()
+    raw_keep_days = max(int(runtime_settings.get('intraday_tick_keep_days', 7) or 7), 1)
+    raw_cutoff = (now - timedelta(days=raw_keep_days)).isoformat()
     whale_cutoff = (now - timedelta(days=int(policy.get('whale_event_keep_days', 90) or 90))).isoformat()
     dark_flow_cutoff = (now - timedelta(days=int(policy.get('dark_flow_keep_days', 90) or 90))).isoformat()
 
@@ -132,6 +186,7 @@ def _build_retention_preview(policy: dict) -> dict:
         'raw_intraday': {
             'rows_total': IntradayTick.objects.count(),
             'earliest_trade_date': IntradayTick.objects.order_by('trade_date', 'trade_time').values_list('trade_date', flat=True).first(),
+            'keep_days': raw_keep_days,
             'purge_before': raw_cutoff,
         },
         'whale_events': {
@@ -222,6 +277,8 @@ def signal_admin_summary_api(request):
                 'sources': universe_snapshot.get('sources') or {},
             },
             'retention': _build_retention_preview(retention_policy),
+            'ownership': build_global_signal_control_center_ownership(),
+            'whale_governance': _build_whale_governance_snapshot(),
             'celery': {
                 'alive': _is_celery_worker_available(),
             },
@@ -240,6 +297,7 @@ def signal_admin_config_api(request):
                 'services_config': get_global_signal_services_config(),
                 'universe_policy': get_global_signal_universe_policy(),
                 'retention_policy': get_global_signal_retention_policy(),
+                'ownership': build_global_signal_control_center_ownership(),
             },
             status=status.HTTP_200_OK,
         )
@@ -266,6 +324,7 @@ def signal_admin_config_api(request):
             'services_config': normalized_services,
             'universe_policy': normalized_universe,
             'retention_policy': normalized_retention,
+            'ownership': build_global_signal_control_center_ownership(),
             'changes': {
                 'services_config': _build_config_changes(current_services, normalized_services),
                 'universe_policy': _build_config_changes(current_universe, normalized_universe),
@@ -295,6 +354,7 @@ def signal_admin_config_preview_api(request):
                 'universe_policy': normalized_universe,
                 'retention_policy': normalized_retention,
             },
+            'ownership': build_global_signal_control_center_ownership(),
             'changes': {
                 'services_config': _build_config_changes(current_services, normalized_services),
                 'universe_policy': _build_config_changes(current_universe, normalized_universe),

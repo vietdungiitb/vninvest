@@ -38,6 +38,8 @@ jest.mock('../../context/LangContext', () => ({
 function buildSummaryPayload() {
   return {
     ok: true,
+    ownership: buildOwnershipPayload(),
+    whale_governance: buildWhaleGovernancePayload(),
     services: {
       enabled: true,
       whale: {
@@ -64,9 +66,78 @@ function buildSummaryPayload() {
   };
 }
 
+function buildOwnershipPayload() {
+  return {
+    version: '2026-05-01',
+    domains: {
+      services_config: {
+        owner: 'portfolio.global_signal_policy_helpers',
+        status: 'canonical',
+      },
+      universe_policy: {
+        owner: 'portfolio.global_signal_policy_helpers',
+        status: 'canonical',
+      },
+      retention_policy: {
+        owner: 'portfolio.global_signal_policy_helpers',
+        status: 'canonical',
+      },
+    },
+    compatibility: {
+      raw_intraday_keep_days: {
+        owner: 'portfolio.runtime_policy_helpers',
+        status: 'deprecated-alias',
+      },
+    },
+    deprecation_notes: [
+      'Giá trị raw_intraday_keep_days trong signal retention chỉ là lớp tương thích; runtime policy là nguồn canonical.',
+    ],
+  };
+}
+
+function buildWhaleGovernancePayload() {
+  return {
+    generated_at: '2026-04-28T10:07:00Z',
+    active_version: {
+      id: 11,
+      version_code: 'WHALE-2026-05-01',
+      status: 'active',
+      created_at: '2026-04-28T09:00:00Z',
+      approved_at: '2026-04-28T09:30:00Z',
+      activated_at: '2026-04-28T09:45:00Z',
+    },
+    active_rollout: {
+      rollout_id: 21,
+      version_id: 11,
+      version_code: 'WHALE-2026-05-01',
+      mode: 'now',
+      status: 'running',
+      effective_from: null,
+      started_at: '2026-04-28T09:46:00Z',
+      finished_at: null,
+      note: 'created_from_admin_apply',
+    },
+    propagation: {
+      healthy: false,
+      signal: 'red',
+      expected_count: 0,
+      acked_count: 0,
+      missing_count: 0,
+      stale_count: 0,
+      expected_workers: [],
+      acked_workers: [],
+      missing_workers: [],
+      stale_workers: [],
+      summary: '0/0 worker ACK',
+    },
+    anomaly: null,
+  };
+}
+
 function buildConfigPayload() {
   return {
     ok: true,
+    ownership: buildOwnershipPayload(),
     services_config: {
       enabled: true,
       whale_service: {
@@ -96,7 +167,6 @@ function buildConfigPayload() {
       admin_symbols: ['FPT'],
     },
     retention_policy: {
-      raw_intraday_keep_days: 7,
       whale_event_keep_days: 90,
       dark_flow_keep_days: 90,
     },
@@ -154,7 +224,7 @@ describe('SignalControlCenter', () => {
       data: {
         ok: true,
         preview: {
-          raw_intraday: { rows_total: 10, purge_before: '2026-04-21T00:00:00Z' },
+          raw_intraday: { rows_total: 10, keep_days: 7, purge_before: '2026-04-21T00:00:00Z' },
           whale_events: { rows_total: 5, purge_before: '2026-01-28T00:00:00Z' },
           dark_flow_events: { rows_total: 6, purge_before: '2026-01-28T00:00:00Z' },
         },
@@ -163,6 +233,7 @@ describe('SignalControlCenter', () => {
     previewAdminSignalsConfig.mockResolvedValue({
       data: {
         ok: true,
+        ownership: buildOwnershipPayload(),
         changes: {
           services_config: {},
         },
@@ -183,10 +254,17 @@ describe('SignalControlCenter', () => {
     render(<SignalControlCenter />);
 
     expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
+    expect(await screen.findByText('Quản trị whale hiện hành')).toBeInTheDocument();
+    expect(await screen.findByText(/WHALE-2026-05-01/)).toBeInTheDocument();
+    expect(await screen.findByText('Chủ sở hữu hiệu lực')).toBeInTheDocument();
+    expect(screen.getByText('Cảnh báo chủ sở hữu và ngưng dùng')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('7')).toHaveAttribute('readonly');
     expect(getAdminSignalsSummary).toHaveBeenCalledTimes(1);
     expect(getAdminSignalsConfig).toHaveBeenCalledTimes(1);
-    expect(getAdminSignalJobs).toHaveBeenCalledWith({ page: 1, page_size: 10 });
-    expect(getAdminSignalRecentEvents).toHaveBeenCalledWith({ domain: 'all', page: 1, page_size: 10 });
+    expect(getAdminSignalJobs).not.toHaveBeenCalled();
+    expect(getAdminSignalRecentEvents).not.toHaveBeenCalled();
+    expect(screen.getByText('Nhấn để tải lịch sử chạy.')).toBeInTheDocument();
+    expect(screen.getByText('Nhấn để tải sự kiện gần đây.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Xem trước config' }));
 
@@ -214,7 +292,12 @@ describe('SignalControlCenter', () => {
           fanout_batch_size: 200,
         },
       },
+      retention_policy: {
+        whale_event_keep_days: 90,
+        dark_flow_keep_days: 90,
+      },
     });
+    expect(previewAdminSignalsConfig.mock.calls[0][0].retention_policy).not.toHaveProperty('raw_intraday_keep_days');
   });
 
   it('does not apply universe policy when confirmation is rejected', async () => {
@@ -235,11 +318,23 @@ describe('SignalControlCenter', () => {
 
     expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
 
-    const [jobsPageSizeSelect] = screen.getAllByRole('combobox');
+    fireEvent.click(screen.getByRole('button', { name: 'Tải lịch sử chạy' }));
+
+    await waitFor(() => {
+      expect(getAdminSignalJobs).toHaveBeenCalledWith({ page: 1, page_size: 10 });
+    });
+
+    const jobsPageSizeSelect = await screen.findByRole('combobox');
     fireEvent.change(jobsPageSizeSelect, { target: { value: '5' } });
 
     await waitFor(() => {
       expect(getAdminSignalJobs).toHaveBeenLastCalledWith({ page: 1, page_size: 5 });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Tải sự kiện gần đây' }));
+
+    await waitFor(() => {
+      expect(getAdminSignalRecentEvents).toHaveBeenCalledWith({ domain: 'all', page: 1, page_size: 10 });
     });
 
     fireEvent.click(screen.getAllByTitle('dashboardRealtime.paginationNext')[1]);

@@ -19,6 +19,165 @@ function buildWindowFromSnapshot(snapshot, timeframe) {
   };
 }
 
+function sortSeriesByTime(series) {
+  return [...series].sort((left, right) => {
+    const leftTs = toCanonicalMinute(left?.ts ?? left?.bucket_ts ?? left?.time ?? left?.date) ?? 0;
+    const rightTs = toCanonicalMinute(right?.ts ?? right?.bucket_ts ?? right?.time ?? right?.date) ?? 0;
+    return leftTs - rightTs;
+  });
+}
+
+function mergeSeriesByKey(seriesList, keyResolver) {
+  const lookup = new Map();
+  (Array.isArray(seriesList) ? seriesList : []).flat().forEach((item) => {
+    const key = keyResolver(item);
+    if (!key) {
+      return;
+    }
+    lookup.set(key, item);
+  });
+  return sortSeriesByTime(Array.from(lookup.values()));
+}
+
+function mergeBubbleOrders(ordersList) {
+  const resolveOrderKey = (item) => [
+    item?.ts ?? item?.bucket_ts ?? '',
+    item?.side ?? '',
+    item?.price ?? '',
+    item?.volume ?? '',
+    item?.matched_value ?? '',
+  ].join('|');
+
+  return {
+    buy: mergeSeriesByKey((ordersList || []).map((orders) => orders?.buy || []), resolveOrderKey),
+    sell: mergeSeriesByKey((ordersList || []).map((orders) => orders?.sell || []), resolveOrderKey),
+    internal: mergeSeriesByKey((ordersList || []).map((orders) => orders?.internal || []), resolveOrderKey),
+  };
+}
+
+function mergeTimeframeWindows(windows, timeframe) {
+  const validWindows = (Array.isArray(windows) ? windows : []).filter(Boolean);
+  if (!validWindows.length) {
+    return resolveWhaleTimeframeWindow(timeframe);
+  }
+
+  const startEpochSec = Math.min(...validWindows.map((window) => Number(window?.startEpochSec)).filter(Number.isFinite));
+  const endEpochSec = Math.max(...validWindows.map((window) => Number(window?.endEpochSec)).filter(Number.isFinite));
+  const startMs = Math.min(...validWindows.map((window) => Number(window?.startMs)).filter(Number.isFinite));
+  const endMs = Math.max(...validWindows.map((window) => Number(window?.endMs)).filter(Number.isFinite));
+  const latestWindow = validWindows[validWindows.length - 1];
+
+  return {
+    ...latestWindow,
+    timeframe: latestWindow?.timeframe || timeframe,
+    startEpochSec: Number.isFinite(startEpochSec) ? startEpochSec : latestWindow?.startEpochSec,
+    endEpochSec: Number.isFinite(endEpochSec) ? endEpochSec : latestWindow?.endEpochSec,
+    startMs: Number.isFinite(startMs) ? startMs : latestWindow?.startMs,
+    endMs: Number.isFinite(endMs) ? endMs : latestWindow?.endMs,
+    isLive: validWindows.some((window) => Boolean(window?.isLive)),
+  };
+}
+
+export function mergeWhaleAnalyticsSnapshots(normalizedSnapshots, timeframe, selectedTradeDate = null) {
+  const snapshots = (Array.isArray(normalizedSnapshots) ? normalizedSnapshots : [])
+    .filter(Boolean)
+    .sort((left, right) => {
+      const leftTradeDate = left?.flow?.view_model?.sessionContext?.selectedTradeDate || left?.flow?.view_model?.sessionContext?.defaultTradeDate || '';
+      const rightTradeDate = right?.flow?.view_model?.sessionContext?.selectedTradeDate || right?.flow?.view_model?.sessionContext?.defaultTradeDate || '';
+      return String(leftTradeDate).localeCompare(String(rightTradeDate));
+    });
+
+  if (!snapshots.length) {
+    return {
+      bubbles: null,
+      flow: null,
+      meta: null,
+    };
+  }
+
+  const latestSnapshot = snapshots[snapshots.length - 1];
+  const latestTradeDate = latestSnapshot?.flow?.view_model?.sessionContext?.selectedTradeDate
+    || latestSnapshot?.flow?.view_model?.sessionContext?.defaultTradeDate
+    || null;
+  const mergedOrders = mergeBubbleOrders(snapshots.map((snapshot) => snapshot?.bubbles?.orders || {}));
+  const flattenedBubbleOrders = [
+    ...mergedOrders.buy,
+    ...mergedOrders.sell,
+    ...mergedOrders.internal,
+  ];
+  const mergedPriceSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.bubbles?.price_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedCvdSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.cvd_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedStrengthSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.strength_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedInstitutionalStrengthSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.institutional_strength_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedSpeedSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.speed_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedFlowCompareSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.flow_compare_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedHeatmapSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.heatmap_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const mergedMarkerSeries = mergeSeriesByKey(snapshots.map((snapshot) => snapshot?.flow?.marker_series || []), (item) => item?.bucket_ts ?? item?.ts);
+  const aggregatedQualityFlags = {
+    has_flow_data: snapshots.some((snapshot) => Boolean(snapshot?.flow?.quality_flags?.has_flow_data) || (snapshot?.flow?.flow_compare_series || []).length > 0),
+    has_heatmap_data: snapshots.some((snapshot) => Boolean(snapshot?.flow?.quality_flags?.has_heatmap_data) || (snapshot?.flow?.heatmap_series || []).length > 0),
+    degraded_reason: latestSnapshot?.flow?.quality_flags?.degraded_reason || null,
+    contract_version: latestSnapshot?.flow?.quality_flags?.contract_version || latestSnapshot?.bubbles?.quality_flags?.contract_version || null,
+    cache_key_version: latestSnapshot?.flow?.quality_flags?.cache_key_version || latestSnapshot?.bubbles?.quality_flags?.cache_key_version || null,
+  };
+  const mergedSessionContext = {
+    default_trade_date: latestTradeDate,
+    selected_trade_date: selectedTradeDate || latestTradeDate,
+    latest_valid_trade_date: latestTradeDate,
+    quality_state: aggregatedQualityFlags.has_flow_data ? 'READY' : 'DEGRADED_FLOW_MISSING',
+  };
+  const mergedFlowViewModel = buildWhaleFlowViewModel({
+    flowCompareSeries: mergedFlowCompareSeries,
+    heatmapSeries: mergedHeatmapSeries,
+    markerSeries: mergedMarkerSeries,
+    cvdSeries: mergedCvdSeries,
+    strengthSeries: mergedStrengthSeries,
+    institutionalStrengthSeries: mergedInstitutionalStrengthSeries,
+    bubbleOrders: flattenedBubbleOrders,
+    sessionContext: mergedSessionContext,
+    qualityFlags: aggregatedQualityFlags,
+    tradeDate: latestTradeDate,
+  });
+  const bubbleWindow = mergeTimeframeWindows(snapshots.map((snapshot) => snapshot?.bubbles?.timeframe_window), timeframe);
+  const flowWindow = mergeTimeframeWindows(snapshots.map((snapshot) => snapshot?.flow?.timeframe_window), timeframe);
+
+  return {
+    bubbles: {
+      ...(latestSnapshot?.bubbles || {}),
+      orders: mergedOrders,
+      price_series: mergedPriceSeries,
+      summary: {
+        ...(latestSnapshot?.bubbles?.summary || {}),
+        total_orders: flattenedBubbleOrders.length,
+        buy_orders: mergedOrders.buy.length,
+        sell_orders: mergedOrders.sell.length,
+        internal_orders: mergedOrders.internal.length,
+      },
+      timeframe_window: bubbleWindow,
+    },
+    flow: {
+      ...(latestSnapshot?.flow || {}),
+      cvd_series: mergedCvdSeries,
+      strength_series: mergedStrengthSeries,
+      institutional_strength_series: mergedInstitutionalStrengthSeries,
+      speed_series: mergedSpeedSeries,
+      flow_compare_series: mergedFlowCompareSeries,
+      heatmap_series: mergedHeatmapSeries,
+      marker_series: mergedMarkerSeries,
+      session_context: mergedSessionContext,
+      quality_flags: aggregatedQualityFlags,
+      view_model: mergedFlowViewModel,
+      timeframe_window: flowWindow,
+    },
+    meta: {
+      ...(latestSnapshot?.meta || {}),
+      merged_trade_dates: snapshots
+        .map((snapshot) => snapshot?.flow?.view_model?.sessionContext?.defaultTradeDate || null)
+        .filter(Boolean),
+    },
+  };
+}
+
 export function normalizeWhaleAnalyticsSnapshot(snapshot, timeframe) {
   const timeframeWindow = buildWindowFromSnapshot(snapshot, timeframe);
   const bubbleSeries = Array.isArray(snapshot?.bubble_series) ? snapshot.bubble_series : [];

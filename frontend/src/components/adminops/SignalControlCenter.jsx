@@ -98,10 +98,14 @@ export default function SignalControlCenter() {
   const { t } = useI18n();
   const [summary, setSummary] = useState(null);
   const [jobs, setJobs] = useState([]);
+  const [jobsLoaded, setJobsLoaded] = useState(false);
+  const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsPage, setJobsPage] = useState(1);
   const [jobsPageSize, setJobsPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [jobsTotal, setJobsTotal] = useState(0);
   const [events, setEvents] = useState([]);
+  const [eventsLoaded, setEventsLoaded] = useState(false);
+  const [eventsLoading, setEventsLoading] = useState(false);
   const [eventsPage, setEventsPage] = useState(1);
   const [eventsPageSize, setEventsPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [eventsTotal, setEventsTotal] = useState(0);
@@ -124,7 +128,7 @@ export default function SignalControlCenter() {
     websocketEnabled: true,
     historyEnabled: true,
     fanoutBatchSize: '200',
-    rawIntradayKeepDays: '7',
+    intradayTickKeepDays: '7',
     whaleEventKeepDays: '90',
     darkFlowKeepDays: '90',
     includeTrackedSymbols: true,
@@ -134,13 +138,17 @@ export default function SignalControlCenter() {
     includeGroupSymbols: false,
     adminSymbols: '',
   });
+  const ownershipSnapshot = configPreview?.ownership || summary?.ownership || null;
+  const whaleGovernanceSnapshot = summary?.whale_governance || null;
+  const rawIntradayKeepDays = retentionPreview?.raw_intraday?.keep_days ?? null;
 
-  const applyConfigToForm = useCallback((payload) => {
+  const applyConfigToForm = useCallback((payload, retentionPreviewPayload = null) => {
     const servicesConfig = payload?.services_config || {};
     const whaleService = servicesConfig?.whale_service || {};
     const darkFlowService = servicesConfig?.dark_flow_service || {};
     const distribution = servicesConfig?.distribution || {};
     const retentionPolicy = payload?.retention_policy || {};
+    const runtimeKeepDays = retentionPreviewPayload?.raw_intraday?.keep_days ?? retentionPolicy.raw_intraday_keep_days ?? 7;
     const universePolicy = payload?.universe_policy || {};
 
     setForm({
@@ -155,7 +163,7 @@ export default function SignalControlCenter() {
       websocketEnabled: Boolean(distribution.websocket_enabled ?? true),
       historyEnabled: Boolean(distribution.history_enabled ?? true),
       fanoutBatchSize: String(distribution.fanout_batch_size ?? 200),
-      rawIntradayKeepDays: String(retentionPolicy.raw_intraday_keep_days ?? 7),
+      intradayTickKeepDays: String(runtimeKeepDays),
       whaleEventKeepDays: String(retentionPolicy.whale_event_keep_days ?? 90),
       darkFlowKeepDays: String(retentionPolicy.dark_flow_keep_days ?? 90),
       includeTrackedSymbols: Boolean(universePolicy.include_tracked_symbols ?? true),
@@ -174,33 +182,45 @@ export default function SignalControlCenter() {
       previewAdminSignalRetention({}),
     ]);
     setSummary(summaryRes.data || null);
-    applyConfigToForm(configRes.data || null);
+    applyConfigToForm(configRes.data || null, retentionRes.data?.preview || null);
     setRetentionPreview(retentionRes.data?.preview || null);
   }, [applyConfigToForm]);
 
   const loadJobsPage = useCallback(async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const jobsRes = await getAdminSignalJobs({
-      page,
-      page_size: pageSize,
-    });
-    const results = Array.isArray(jobsRes.data?.results) ? jobsRes.data.results : [];
-    setJobs(results);
-    setJobsTotal(resolvePositiveInteger(jobsRes.data?.count, results.length));
-    setJobsPage(resolvePositiveInteger(jobsRes.data?.page, page));
-    setJobsPageSize(resolvePositiveInteger(jobsRes.data?.page_size, pageSize));
+    setJobsLoading(true);
+    try {
+      const jobsRes = await getAdminSignalJobs({
+        page,
+        page_size: pageSize,
+      });
+      const results = Array.isArray(jobsRes.data?.results) ? jobsRes.data.results : [];
+      setJobs(results);
+      setJobsTotal(resolvePositiveInteger(jobsRes.data?.count, results.length));
+      setJobsPage(resolvePositiveInteger(jobsRes.data?.page, page));
+      setJobsPageSize(resolvePositiveInteger(jobsRes.data?.page_size, pageSize));
+      setJobsLoaded(true);
+    } finally {
+      setJobsLoading(false);
+    }
   }, []);
 
   const loadEventsPage = useCallback(async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
-    const eventsRes = await getAdminSignalRecentEvents({
-      domain: 'all',
-      page,
-      page_size: pageSize,
-    });
-    const results = Array.isArray(eventsRes.data?.results) ? eventsRes.data.results : [];
-    setEvents(results);
-    setEventsTotal(resolvePositiveInteger(eventsRes.data?.count, results.length));
-    setEventsPage(resolvePositiveInteger(eventsRes.data?.page, page));
-    setEventsPageSize(resolvePositiveInteger(eventsRes.data?.page_size, pageSize));
+    setEventsLoading(true);
+    try {
+      const eventsRes = await getAdminSignalRecentEvents({
+        domain: 'all',
+        page,
+        page_size: pageSize,
+      });
+      const results = Array.isArray(eventsRes.data?.results) ? eventsRes.data.results : [];
+      setEvents(results);
+      setEventsTotal(resolvePositiveInteger(eventsRes.data?.count, results.length));
+      setEventsPage(resolvePositiveInteger(eventsRes.data?.page, page));
+      setEventsPageSize(resolvePositiveInteger(eventsRes.data?.page_size, pageSize));
+      setEventsLoaded(true);
+    } finally {
+      setEventsLoading(false);
+    }
   }, []);
 
   const refreshControlCenter = useCallback(async ({ silent = false } = {}) => {
@@ -208,11 +228,7 @@ export default function SignalControlCenter() {
       setLoading(true);
     }
     try {
-      await Promise.all([
-        loadStaticData(),
-        loadJobsPage(jobsPage, jobsPageSize),
-        loadEventsPage(eventsPage, eventsPageSize),
-      ]);
+      await loadStaticData();
     } catch (error) {
       setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
     } finally {
@@ -220,17 +236,13 @@ export default function SignalControlCenter() {
         setLoading(false);
       }
     }
-  }, [eventsPage, eventsPageSize, jobsPage, jobsPageSize, loadEventsPage, loadJobsPage, loadStaticData, t]);
+  }, [loadStaticData, t]);
 
   useEffect(() => {
     const loadInitialState = async () => {
       setLoading(true);
       try {
-        await Promise.all([
-          loadStaticData(),
-          loadJobsPage(1, DEFAULT_PAGE_SIZE),
-          loadEventsPage(1, DEFAULT_PAGE_SIZE),
-        ]);
+        await loadStaticData();
       } catch (error) {
         setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
       } finally {
@@ -239,7 +251,25 @@ export default function SignalControlCenter() {
     };
 
     void loadInitialState();
-  }, [loadEventsPage, loadJobsPage, loadStaticData, t]);
+  }, [loadStaticData, t]);
+
+  const handleLoadJobs = useCallback(async () => {
+    setMessage('');
+    try {
+      await loadJobsPage(1, DEFAULT_PAGE_SIZE);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [loadJobsPage, t]);
+
+  const handleLoadEvents = useCallback(async () => {
+    setMessage('');
+    try {
+      await loadEventsPage(1, DEFAULT_PAGE_SIZE);
+    } catch (error) {
+      setMessage(error?.response?.data?.message || error?.response?.data?.detail || t('adminOps.unknownError'));
+    }
+  }, [loadEventsPage, t]);
 
   const updateField = useCallback((field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -266,7 +296,6 @@ export default function SignalControlCenter() {
   }), [form]);
 
   const buildRetentionPayload = useCallback(() => ({
-    raw_intraday_keep_days: Number(form.rawIntradayKeepDays || 0),
     whale_event_keep_days: Number(form.whaleEventKeepDays || 0),
     dark_flow_keep_days: Number(form.darkFlowKeepDays || 0),
   }), [form]);
@@ -499,7 +528,17 @@ export default function SignalControlCenter() {
 
       <div className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
-          <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterConfigTitle', { defaultValue: 'Services và retention policy' })}</h3>
+          <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterConfigTitle', { defaultValue: 'Services, retention và ownership' })}</h3>
+          {ownershipSnapshot?.deprecation_notes?.length ? (
+            <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs leading-6 text-amber-100">
+              <p className="font-semibold uppercase tracking-[0.16em] text-amber-200">{t('adminOps.signalCenterOwnershipWarningTitle', { defaultValue: 'Cảnh báo chủ sở hữu và ngưng dùng' })}</p>
+              <ul className="mt-2 space-y-1">
+                {ownershipSnapshot.deprecation_notes.map((note) => (
+                  <li key={note}>• {note}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div className="space-y-3">
               <label className="flex items-center justify-between gap-3 text-sm text-slate-300">
@@ -553,8 +592,9 @@ export default function SignalControlCenter() {
               </label>
               <div className="grid gap-3 sm:grid-cols-3">
                 <label className="block text-sm text-slate-300">
-                  <span>{t('adminOps.signalCenterRawKeepDays', { defaultValue: 'Raw keep days' })}</span>
-                  <input value={form.rawIntradayKeepDays} onChange={(event) => updateField('rawIntradayKeepDays', event.target.value)} className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100" />
+                  <span>{t('adminOps.signalCenterRawKeepDays', { defaultValue: 'Giữ IntradayTick (ngày)' })}</span>
+                  <input value={form.intradayTickKeepDays} readOnly className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-sm text-slate-300 outline-none" />
+                  <p className="mt-1 text-xs text-amber-300">{t('adminOps.signalCenterRawKeepDaysHint', { defaultValue: 'Chỉ đọc từ runtime policy; Signal Control Center không ghi giá trị này.' })}</p>
                 </label>
                 <label className="block text-sm text-slate-300">
                   <span>{t('adminOps.signalCenterWhaleKeepDays', { defaultValue: 'Whale keep days' })}</span>
@@ -617,57 +657,83 @@ export default function SignalControlCenter() {
               <button type="button" onClick={() => handleRunJob('dark_flow')} disabled={busyAction !== ''} className="rounded-full bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{t('adminOps.signalCenterRunDarkFlow', { defaultValue: 'Chạy dark flow' })}</button>
             </div>
           </div>
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-left text-xs text-slate-300">
-              <thead>
-                <tr className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500">
-                  <th className="px-2 py-2">ID</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterServiceColumn', { defaultValue: 'Service' })}</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterRunTypeColumn', { defaultValue: 'Run type' })}</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterStatusColumn', { defaultValue: 'Status' })}</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterStoredColumn', { defaultValue: 'Stored' })}</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterCreatedAtColumn', { defaultValue: 'Created' })}</th>
-                  <th className="px-2 py-2">{t('adminOps.signalCenterActionColumn', { defaultValue: 'Action' })}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.length === 0 ? (
-                  <tr>
-                    <td className="px-2 py-4 text-center text-slate-500" colSpan={7}>{t('adminOps.noData', { defaultValue: 'Chưa có dữ liệu' })}</td>
-                  </tr>
-                ) : jobs.map((job) => {
-                  const retryBusy = busyAction === `retry-${job.id}`;
-                  const canRetry = !['QUEUED', 'RUNNING'].includes(String(job.status || '').toUpperCase());
-                  return (
-                    <tr key={job.id} className="border-b border-slate-900/80">
-                      <td className="px-2 py-3 font-semibold text-slate-100">#{job.id}</td>
-                      <td className="px-2 py-3">{job.service_domain_display || job.service_domain}</td>
-                      <td className="px-2 py-3">{job.run_type_display || job.run_type}</td>
-                      <td className="px-2 py-3"><span className={`rounded-full border px-2 py-1 ${statusTone(job.status)}`}>{job.status_display || job.status}</span></td>
-                      <td className="px-2 py-3">{formatNumberValue(job.stored_items)}</td>
-                      <td className="px-2 py-3">{formatDateTimeValue(job.created_at)}</td>
-                      <td className="px-2 py-3">
-                        <button type="button" disabled={!canRetry || retryBusy} onClick={() => handleRetryRun(job.id)} className="rounded-full border border-slate-700 px-3 py-1 font-semibold text-slate-100 disabled:opacity-40">
-                          {retryBusy ? t('adminOps.signalCenterRetrying', { defaultValue: 'Đang retry...' }) : t('adminOps.retry', { defaultValue: 'Retry' })}
-                        </button>
-                      </td>
+          {jobsLoaded ? (
+            <>
+              <div className="mt-4 overflow-x-auto">
+                <table className="min-w-full text-left text-xs text-slate-300">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-[11px] uppercase tracking-[0.16em] text-slate-500">
+                      <th className="px-2 py-2">ID</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterServiceColumn', { defaultValue: 'Service' })}</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterRunTypeColumn', { defaultValue: 'Run type' })}</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterStatusColumn', { defaultValue: 'Status' })}</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterStoredColumn', { defaultValue: 'Stored' })}</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterCreatedAtColumn', { defaultValue: 'Created' })}</th>
+                      <th className="px-2 py-2">{t('adminOps.signalCenterActionColumn', { defaultValue: 'Action' })}</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <PaginationBar
-            mode="offset"
-            total={jobsTotal}
-            page={jobsPage}
-            size={jobsPageSize}
-            onPageChange={handleJobsPageChange}
-            onSizeChange={handleJobsPageSizeChange}
-          />
+                  </thead>
+                  <tbody>
+                    {jobs.length === 0 ? (
+                      <tr>
+                        <td className="px-2 py-4 text-center text-slate-500" colSpan={7}>{t('adminOps.noData', { defaultValue: 'Chưa có dữ liệu' })}</td>
+                      </tr>
+                    ) : jobs.map((job) => {
+                      const retryBusy = busyAction === `retry-${job.id}`;
+                      const canRetry = !['QUEUED', 'RUNNING'].includes(String(job.status || '').toUpperCase());
+                      return (
+                        <tr key={job.id} className="border-b border-slate-900/80">
+                          <td className="px-2 py-3 font-semibold text-slate-100">#{job.id}</td>
+                          <td className="px-2 py-3">{job.service_domain_display || job.service_domain}</td>
+                          <td className="px-2 py-3">{job.run_type_display || job.run_type}</td>
+                          <td className="px-2 py-3"><span className={`rounded-full border px-2 py-1 ${statusTone(job.status)}`}>{job.status_display || job.status}</span></td>
+                          <td className="px-2 py-3">{formatNumberValue(job.stored_items)}</td>
+                          <td className="px-2 py-3">{formatDateTimeValue(job.created_at)}</td>
+                          <td className="px-2 py-3">
+                            <button type="button" disabled={!canRetry || retryBusy} onClick={() => handleRetryRun(job.id)} className="rounded-full border border-slate-700 px-3 py-1 font-semibold text-slate-100 disabled:opacity-40">
+                              {retryBusy ? t('adminOps.signalCenterRetrying', { defaultValue: 'Đang retry...' }) : t('adminOps.retry', { defaultValue: 'Retry' })}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <PaginationBar
+                mode="offset"
+                total={jobsTotal}
+                page={jobsPage}
+                size={jobsPageSize}
+                onPageChange={handleJobsPageChange}
+                onSizeChange={handleJobsPageSizeChange}
+              />
+            </>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-5">
+              <p className="text-sm text-slate-300">{t('adminOps.signalCenterJobsLazyHint', { defaultValue: 'Nhấn để tải lịch sử chạy.' })}</p>
+              <button
+                type="button"
+                onClick={handleLoadJobs}
+                disabled={jobsLoading}
+                className="mt-3 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50"
+              >
+                {jobsLoading ? t('adminOps.loading', { defaultValue: 'Đang tải...' }) : t('adminOps.signalCenterLoadJobs', { defaultValue: 'Tải lịch sử chạy' })}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="space-y-4">
+          <JsonPreview
+            title={t('adminOps.signalCenterWhaleGovernanceTitle', { defaultValue: 'Quản trị whale hiện hành' })}
+            payload={whaleGovernanceSnapshot}
+            emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+          />
+          <JsonPreview
+            title={t('adminOps.signalCenterOwnershipTitle', { defaultValue: 'Chủ sở hữu hiệu lực' })}
+            payload={ownershipSnapshot}
+            emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+          />
           <JsonPreview
             title={t('adminOps.signalCenterConfigPreviewTitle', { defaultValue: 'Preview config' })}
             payload={configPreview?.changes || configPreview?.preview}
@@ -684,30 +750,46 @@ export default function SignalControlCenter() {
       <div className="grid gap-4 xl:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterRecentEventsTitle', { defaultValue: 'Recent canonical events' })}</h3>
-          <div className="mt-4 space-y-3">
-            {events.length === 0 ? (
-              <p className="text-sm text-slate-500">{t('adminOps.noData', { defaultValue: 'Chưa có dữ liệu' })}</p>
-            ) : events.map((event) => (
-              <div key={`${event.domain}-${event.event_id}`} className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">{event.symbol} · {event.domain}</p>
-                    <p className="mt-1 text-xs text-slate-400">{formatDateTimeValue(event.ts)}</p>
+          {eventsLoaded ? (
+            <>
+              <div className="mt-4 space-y-3">
+                {events.length === 0 ? (
+                  <p className="text-sm text-slate-500">{t('adminOps.noData', { defaultValue: 'Chưa có dữ liệu' })}</p>
+                ) : events.map((event) => (
+                  <div key={`${event.domain}-${event.event_id}`} className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-100">{event.symbol} · {event.domain}</p>
+                        <p className="mt-1 text-xs text-slate-400">{formatDateTimeValue(event.ts)}</p>
+                      </div>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${statusTone(event.severity)}`}>{event.severity}</span>
+                    </div>
+                    <p className="mt-2 text-sm text-slate-300">{t('adminOps.signalCenterSummaryValue', { defaultValue: 'Giá trị tóm tắt' })}: {formatNumberValue(event.summary_value)}</p>
                   </div>
-                  <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${statusTone(event.severity)}`}>{event.severity}</span>
-                </div>
-                <p className="mt-2 text-sm text-slate-300">{t('adminOps.signalCenterSummaryValue', { defaultValue: 'Giá trị tóm tắt' })}: {formatNumberValue(event.summary_value)}</p>
+                ))}
               </div>
-            ))}
-          </div>
-          <PaginationBar
-            mode="offset"
-            total={eventsTotal}
-            page={eventsPage}
-            size={eventsPageSize}
-            onPageChange={handleEventsPageChange}
-            onSizeChange={handleEventsPageSizeChange}
-          />
+              <PaginationBar
+                mode="offset"
+                total={eventsTotal}
+                page={eventsPage}
+                size={eventsPageSize}
+                onPageChange={handleEventsPageChange}
+                onSizeChange={handleEventsPageSizeChange}
+              />
+            </>
+          ) : (
+            <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-5">
+              <p className="text-sm text-slate-300">{t('adminOps.signalCenterEventsLazyHint', { defaultValue: 'Nhấn để tải sự kiện gần đây.' })}</p>
+              <button
+                type="button"
+                onClick={handleLoadEvents}
+                disabled={eventsLoading}
+                className="mt-3 rounded-full border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-100 disabled:opacity-50"
+              >
+                {eventsLoading ? t('adminOps.loading', { defaultValue: 'Đang tải...' }) : t('adminOps.signalCenterLoadEvents', { defaultValue: 'Tải sự kiện gần đây' })}
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -717,9 +799,10 @@ export default function SignalControlCenter() {
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('adminOps.signalCenterRawIntraday', { defaultValue: 'Raw intraday' })}</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('adminOps.signalCenterRawIntraday', { defaultValue: 'IntradayTick (runtime canonical)' })}</p>
               <p className="mt-2 text-2xl font-semibold text-slate-100">{formatNumberValue(retentionPreview?.raw_intraday?.rows_total)}</p>
               <p className="mt-1 text-xs text-slate-400">{formatDateTimeValue(retentionPreview?.raw_intraday?.purge_before)}</p>
+              <p className="mt-1 text-xs text-amber-300">{rawIntradayKeepDays != null ? t('adminOps.signalCenterRawKeepDaysValue', { defaultValue: `Giữ ${formatNumberValue(rawIntradayKeepDays)} ngày` }) : t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}</p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
               <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{t('adminOps.signalCenterWhaleEvents', { defaultValue: 'Whale events' })}</p>

@@ -15,7 +15,7 @@ Chương trình này không mở rộng bừa bãi sang toàn bộ Whale workspa
 Sau khi hoàn thành, hệ thống phải đồng thời đạt đủ các nhóm kết quả sau:
 
 1. KLineChart là surface phân tích trung tâm duy nhất cho route `whale-alerts/:symbol`.
-2. `Flow Compare pane` hợp nhất phải thay thế tư duy mỗi metric một pane rời.
+2. Cụm 2 pane kỹ thuật `CVD` và `Strength` phải thay thế cách nhồi `CVD normalized`, `Buy Strength`, `Institutional Strength` vào cùng một pane.
 3. Heatmap dòng tiền phải bám đúng candle bucket, không được là lớp tô màu mang tính trang trí.
 4. Whale marker phải tính theo viewport hiện tại, không theo toàn dataset.
 5. Bubble chart và AI advisory vẫn bám `selected session` từ KLine, không bị regress.
@@ -68,10 +68,11 @@ Khi có xung đột diễn giải, dùng thứ tự sau:
 
 ### 5.2 Flow intelligence target design
 
-1. `CVD`, `Buy Strength`, `Institutional Strength` phải được quy về một `Flow Compare pane` hợp nhất.
-2. `CVD raw` không được vẽ chung scale trực tiếp với `Strength raw` nếu chưa chuẩn hóa.
-3. `CVD raw` vẫn phải hiện trong tooltip hoặc info panel để giữ tính trung thực dữ liệu.
-4. Heatmap giai đoạn này chỉ làm theo `time bucket`, chưa làm footprint theo giá x thời gian.
+1. `CVD normalized` phải đi ở pane CVD riêng.
+2. `Buy Strength` và `Institutional Strength` phải đi ở pane strength riêng nhưng cùng trục X với pane CVD.
+3. `CVD raw` không được vẽ chung scale trực tiếp với `Strength raw` nếu chưa chuẩn hóa.
+4. `CVD raw` vẫn phải hiện trong tooltip hoặc info panel để giữ tính trung thực dữ liệu.
+5. Heatmap giai đoạn này chỉ làm theo `time bucket`, chưa làm footprint theo giá x thời gian.
 
 ### 5.3 Whale marker rule
 
@@ -133,7 +134,7 @@ Không được sửa trực tiếp các file sau:
 1. Audit theo traceability matrix trước, không audit cảm tính.
 2. Kiểm đầu tiên luôn là immutable source protection.
 3. Với heatmap và marker, phải audit bằng zoom/pan/timeframe change, không chỉ screenshot tĩnh.
-4. Với Flow Compare pane, phải đối chiếu đúng bucket giữa candle, tooltip, pane và selected session.
+4. Với pane CVD và pane strength, phải đối chiếu đúng bucket giữa candle, tooltip, pane và selected session.
 5. Slice nào thiếu payload proof hoặc residual risk note thì chưa được PASS.
 
 ## 9. Checklist nghiệm thu tối thiểu
@@ -141,7 +142,7 @@ Không được sửa trực tiếp các file sau:
 ### 9.1 Visual / UX
 
 1. KLineChart là surface trung tâm duy nhất.
-2. Có `Flow Compare pane` hợp nhất.
+2. Có pane `CVD` và pane `Strength` độc lập nhưng cùng trục X.
 3. Có heatmap overlay bật/tắt được.
 4. Có whale marker theo viewport.
 5. Tooltip có toggle và có đủ ngữ cảnh flow.

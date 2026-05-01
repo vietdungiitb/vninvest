@@ -8,7 +8,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from portfolio.global_signal_policy_helpers import get_global_signal_universe_policy
-from portfolio.models import IntradayTick, OrderFlowSignal, SignalServiceRun, WhaleAlertEvent
+from portfolio.models import IntradayTick, OrderFlowSignal, SignalServiceRun, WhaleAlertEvent, WhaleConfigRollout, WhaleConfigVersion
 from portfolio.services_global_whale_alerts import GLOBAL_WHALE_LATEST_EVENT_CACHE_PREFIX
 from portfolio.tasks_order_flow import ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX
 
@@ -34,6 +34,21 @@ class SignalAdminApiTests(TestCase):
     def test_summary_returns_whale_dark_flow_and_retention_structure(self):
         self._auth_staff()
         now = datetime.now(datetime_timezone.utc)
+
+        whale_version = WhaleConfigVersion.objects.create(
+            version_code='WHALE-2026-05-01',
+            config_json={'whale_threshold': 800},
+            status=WhaleConfigVersion.StatusChoices.ACTIVE,
+            approved_at=now - timedelta(minutes=15),
+            activated_at=now - timedelta(minutes=10),
+        )
+        WhaleConfigRollout.objects.create(
+            version=whale_version,
+            mode=WhaleConfigRollout.ModeChoices.NOW,
+            status=WhaleConfigRollout.StatusChoices.RUNNING,
+            started_at=now - timedelta(minutes=9),
+            note='created_from_admin_apply',
+        )
 
         WhaleAlertEvent.objects.create(
             event_id='whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream',
@@ -101,8 +116,13 @@ class SignalAdminApiTests(TestCase):
         self.assertTrue(response.data['ok'])
         self.assertEqual(response.data['services']['whale']['recent_event_count_24h'], 1)
         self.assertEqual(response.data['services']['dark_flow']['total_event_count'], 1)
+        self.assertEqual(response.data['whale_governance']['active_version']['version_code'], 'WHALE-2026-05-01')
+        self.assertEqual(response.data['whale_governance']['active_rollout']['status'], 'running')
+        self.assertEqual(response.data['whale_governance']['propagation']['signal'], 'red')
         self.assertIn('counts', response.data['universe'])
         self.assertIn('raw_intraday', response.data['retention'])
+        self.assertIn('ownership', response.data)
+        self.assertIn('raw_intraday_keep_days', response.data['ownership']['compatibility'])
 
     def test_config_preview_normalizes_without_persisting(self):
         self._auth_staff()
@@ -116,6 +136,10 @@ class SignalAdminApiTests(TestCase):
                         'urgent_strength': 80,
                     },
                 },
+                'retention_policy': {
+                    'raw_intraday_keep_days': 12,
+                    'whale_event_keep_days': 110,
+                },
                 'universe_policy': {
                     'admin_symbols': ['fpt'],
                 },
@@ -126,6 +150,10 @@ class SignalAdminApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['preview']['services_config']['dark_flow_service']['warning_strength'], 55)
         self.assertEqual(response.data['preview']['universe_policy']['admin_symbols'], ['FPT'])
+        self.assertNotIn('raw_intraday_keep_days', response.data['preview']['retention_policy'])
+        self.assertEqual(response.data['preview']['retention_policy']['whale_event_keep_days'], 110)
+        self.assertIn('ownership', response.data)
+        self.assertEqual(response.data['ownership']['compatibility']['raw_intraday_keep_days']['status'], 'deprecated-alias')
         self.assertEqual(get_global_signal_universe_policy().get('admin_symbols'), [])
 
     def test_universe_apply_requires_confirm_and_persists_policy(self):
@@ -207,8 +235,10 @@ class SignalAdminApiTests(TestCase):
         self.assertEqual(response.data['page_size'], 2)
         self.assertEqual([row['id'] for row in response.data['results']], [runs[2].id, runs[1].id])
 
-    def test_recent_events_and_retention_preview_return_expected_shapes(self):
+    @patch('portfolio.views_signal_admin._get_runtime_prefetch_settings')
+    def test_recent_events_and_retention_preview_return_expected_shapes(self, mock_runtime_settings):
         self._auth_staff()
+        mock_runtime_settings.return_value = {'intraday_tick_keep_days': 11}
         now = datetime.now(datetime_timezone.utc)
         WhaleAlertEvent.objects.create(
             event_id='whale:FPT:2026-04-28T09:15:00+00:00:BUY:700000000:redis_stream',
@@ -252,6 +282,7 @@ class SignalAdminApiTests(TestCase):
         self.assertEqual(retention_response.status_code, status.HTTP_200_OK)
         self.assertIn('policy', retention_response.data['preview'])
         self.assertIn('raw_intraday', retention_response.data['preview'])
+        self.assertEqual(retention_response.data['preview']['raw_intraday']['keep_days'], 11)
 
     def test_recent_events_support_page_and_page_size_across_merged_domains(self):
         self._auth_staff()

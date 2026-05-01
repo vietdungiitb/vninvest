@@ -1,3 +1,193 @@
+# ✅ AUDIT FILE LIST (2026-05-01f)
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - load initial state/refresh chỉ còn static data; jobs/events chuyển sang lazy-load với placeholder + nút tải)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - rebaseline tests theo lazy-load flow và pagination sau thao tác tải thủ công)
+- module_tree_full.md (MODIFIED - regenerate sau frontend slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` cho `frontend/src/components/adminops/SignalControlCenter.jsx` và `frontend/src/components/adminops/SignalControlCenter.test.jsx` => no errors found.
+- PASSED: `Push-Location ./frontend; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => frontend build compiled successfully.
+- PASSED: `& ".venv/Scripts/python.exe" ./scripts/ops/generate_module_tree.py` => regenerate `module_tree_full.md` thành công (510 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => frontend/backend rebuilt and restarted successfully; backend healthy.
+- RESIDUAL RISK: jobs/events không tự refresh theo tab-level refresh nữa; operator cần bấm tải section tương ứng khi cần snapshot mới.
+
+# ✅ AUDIT FILE LIST (2026-05-01e)
+- backend/portfolio/global_signal_policy_helpers.py (MODIFIED - add control-center ownership/deprecation snapshot helper)
+- backend/portfolio/views_signal_admin.py (MODIFIED - attach ownership snapshot to summary/config/preview responses)
+- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - assert ownership metadata in admin signal API contracts)
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - render ownership banner and JSON preview)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - assert ownership preview and deprecation warning)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after backend/frontend slice)
+
+Validation:
+- PASSED: `manage.py test portfolio.tests.test_signal_admin_api --keepdb` => OK after fixing one local indentation issue in the touched test file.
+- PASSED: `npm test -- --runInBand --watch=false SignalControlCenter.test.jsx` => OK; component render test passed with the new ownership preview assertion.
+- PASSED: `get_errors` for `SignalControlCenter.jsx` and `SignalControlCenter.test.jsx` => no errors.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => dev stack rebuilt and restarted successfully; backend healthy, frontend started.
+- PASSED: live browser smoke on `admin-ops -> Signals` => ownership/deprecation block is visible in the refreshed UI.
+- RESIDUAL RISK: the new metadata is observability-only; the actual raw retention cutover to runtime policy is not yet enforced in this slice.
+
+# ✅ AUDIT FILE LIST (2026-05-01d)
+- AGENTS.md (MODIFIED - add the new quality/audit docs to the Money Flow Control Center read-first pack)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501.md (NEW - quality constitution for ownership, facts-first route, retention safety and operator UX)
+- docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - code review protocol for implementation slices)
+- docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - integration/self-audit execution matrix before final audit)
+- docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - Council of Three spec-audit protocol)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md (MODIFIED - wire the new quality/audit docs into the official bundle manifest and priority order)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_AUDIT_REPORT_20260501.md (MODIFIED - update the pack file list and implementation-handoff verdict)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `file_search` với `docs/*MONEY_FLOW_CONTROL_CENTER*20260501*.md` => pack hiện có đủ 13 tài liệu lõi/quality/audit theo pattern handoff hoàn chỉnh.
+- PASSED: `grep_search` với `MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501|RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501|RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501|RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501` => các playbook mới đã cross-reference đúng trong pack.
+- PASSED: `get_errors` cho 4 tài liệu quality/audit mới => không có lỗi.
+- NOTE: đây là docs-only slice; không có runtime refresh và không có module tree regen.
+- RESIDUAL RISK: owner approval cuối cho các compatibility decisions vẫn là human gate trước khi coding.
+
+# ✅ AUDIT FILE LIST (2026-05-01c)
+- AGENTS.md (MODIFIED - add ownership matrix to the read-first Money Flow Control Center pack)
+- docs/MONEY_FLOW_CONTROL_CENTER_CONFIG_OWNERSHIP_MATRIX_20260501.md (NEW - field-level canonical writer matrix for overlapping knobs)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_AUDIT_REPORT_20260501.md (NEW - internal audit report for the Money Flow Control Center docs pack)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md (MODIFIED - cross-link ownership matrix and audit report in the official pack manifest)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` trên `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md` với `MONEY_FLOW_CONTROL_CENTER_CONFIG_OWNERSHIP_MATRIX_20260501|MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_AUDIT_REPORT_20260501` => pack manifest và priority order đã cross-link đúng.
+- PASSED: `grep_search` trên `docs/MONEY_FLOW_CONTROL_CENTER_CONFIG_OWNERSHIP_MATRIX_20260501.md` với `raw_intraday_keep_days|default_threshold_vnd|global_signal_universe_policy|intraday_tick_keep_days` => matrix đã chốt rõ owner cho các field chồng chéo nhất.
+- PASSED: `get_errors` cho 3 file docs mới/chỉnh sửa của delta này => không có lỗi.
+- NOTE: đây là docs-only delta; không có runtime refresh và không có module tree regen.
+- RESIDUAL RISK: whale compatibility fields vẫn cần owner quyết định cuối ở implementation-phase.
+
+# ✅ AUDIT FILE LIST (2026-05-01b)
+- AGENTS.md (MODIFIED - add read-first pack và hard constraints cho Money Flow Control Center / data lifecycle work)
+- docs/IMPLEMENTATION_PLAN_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - implementation plan cho operator center hợp nhất và lifecycle dữ liệu money-flow nhiều tầng)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_EXECUTION_EVIDENCE_TEMPLATE_20260501.md (NEW - execution evidence template cho future implementation slices)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md (NEW - master handoff khóa scope, ownership và non-negotiables)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_SELF_AUDIT_AND_TEST_PROTOCOL_20260501.md (NEW - self-audit/test protocol cho future slices)
+- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_TRACEABILITY_MATRIX_20260501.md (NEW - traceability matrix từ yêu cầu sang task/evidence)
+- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - slice taskboard với owner, gate và evidence)
+- docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (NEW - tech spec khóa writer ownership, lifecycle tiers và facts-first path)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `grep_search` trên `docs/**/*.md` với khóa `MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE` => pack docs mới được tạo đủ và cross-link nhất quán từ handoff master.
+- PASSED: `grep_search` trên `docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md` với `intraday_tick_keep_days|global_signal_universe_policy` => raw retention owner và detection-universe SSOT đã được khóa rõ.
+- PASSED: `grep_search` trên `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md` với `Money Flow Control Center|selected-session truth|facts-first|forensic` => handoff đã chốt operator IA, selected-session truth và lifecycle strategy.
+- NOTE: không có module tree regen và không rebuild runtime vì đây là docs-only slice; không có source/runtime behavior thay đổi.
+- RESIDUAL RISK: pack hiện mới chốt hướng kiến trúc và owner matrix; baseline latency/cardinality thực tế vẫn cần được thu ở slice performance trước khi chuyển sang coding cutover.
+
+# ✅ AUDIT FILE LIST (2026-05-01a)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - thêm `dashedValue` vào toàn bộ custom line styles của `FLOW_CVD` và `FLOW_STRENGTH` để khớp draw contract của `klinecharts` và khôi phục line render)
+- module_tree_full.md (MODIFIED - regenerate sau slice sửa render pane; current tree reports 510 modules, 1944 functions, 3417 top-level variables)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => frontend production build compiled successfully sau patch render.
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false src/utils/whaleKlineAlignment.test.js src/hooks/useWhaleAnalyticsData.test.js; Pop-Location` => 2 suites / 17 tests PASS.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend runtime rebuilt/restarted với bundle `main.4a2e7201.js`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (`Modules: 510`, `Functions: 1944`, `Top-level variables: 3417`).
+- PASSED: browser smoke trên `/whale-alerts/MBB` sau reload => page error `undefined[0]` biến mất; screenshot xác nhận line đã hiện lại trên pane `CVD` và pane `Strength`.
+- ROOT CAUSE CONFIRMED: custom `solid` line styles của flow panes thiếu `dashedValue`, khiến `klinecharts` crash trong draw path và làm 2 pane trông như bị ẩn.
+- RESIDUAL RISK: chưa có automated UI test chuyên bắt runtime contract của custom klinecharts indicators.
+
+# ✅ AUDIT FILE LIST (2026-04-30d)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - đổi flow-pane value resolution từ exact-minute lookup sang projection theo window của candle, để chart `1H` và khung lớn hơn vẫn nhận đúng bucket session flow)
+- frontend/src/utils/whaleKlineAlignment.js (MODIFIED - thêm helper `resolveChartTimeframeMinutes` và `resolveFlowBucketForCandle` để map bucket flow 15 phút vào candle lớn hơn theo khoảng thời gian của candle)
+- frontend/src/utils/whaleKlineAlignment.test.js (MODIFIED - bổ sung regression cho `1H -> latest bucket in candle window` và `5m -> containing flow bucket`)
+- module_tree_full.md (MODIFIED - regenerate sau slice sửa bucket projection; current tree reports 510 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-30d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false src/utils/whaleKlineAlignment.test.js; Pop-Location` => 10/10 tests PASS sau khi thêm projection rules cho chart timeframe lớn hơn bucket flow.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => frontend production build compiled successfully.
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend runtime rebuilt/restarted; compose kết thúc với `frontend Started`, `backend Healthy`.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (`Modules: 510`, `Functions: 1937`, `Top-level variables: 3362`).
+- PASSED: browser smoke trên `/whale-alerts/MBB` sau reload bundle mới => pane CVD live hiển thị `CVD chuẩn hóa 33.9`; pane strength live hiển thị `Sức mạnh 62.2` và `Sức mạnh tổ chức 61.2`, không còn `n/a`/rỗng trên route thật.
+- ROOT CAUSE CONFIRMED: với chart `1H`, selected session ngày `2026-04-29` có 5 candle nhưng logic cũ chỉ match được 2 bucket flow vì dùng exact-minute expansion của bucket 15 phút; projection mới map bucket theo window của candle nên pane không còn rỗng.
+- RESIDUAL RISK: semantics hiện vẫn lấy bucket cuối cùng nằm trong candle lớn (`1H`, `D`, ...) làm representative value cho pane; nếu sau này muốn multi-bucket aggregation trong một candle lớn thì cần đặc tả rule mới riêng.
+
+# ✅ AUDIT FILE LIST (2026-04-30c)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - tự động focus chart về selected session khi pane CVD/strength đang bật, khóa scale 0-100 cho 2 pane, và giữ flow panes không còn trông như rỗng trên chart nhiều ngày)
+- frontend/src/utils/whaleKlineAlignment.js (MODIFIED - thêm helper chuẩn hóa trade date, resolve index range theo phiên và tính zoom steps cho session auto-focus)
+- frontend/src/utils/whaleKlineAlignment.test.js (MODIFIED - bổ sung regression cho trade-date normalization, trade-date range resolution và auto-focus zoom steps)
+- module_tree_full.md (MODIFIED - regenerate sau slice fix pane-rỗng; current tree reports 510 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-30c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false src/utils/whaleKlineAlignment.test.js; Pop-Location` => 7/7 tests PASS cho helper alignment/focus mới.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => frontend production build compiled successfully.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (`Modules: 510`).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend runtime được rebuild/restart với bundle mới.
+- PASSED: browser smoke trên `/whale-alerts/MBB` sau reload => toolbar đã hiện `Ẩn pane CVD` và `Ẩn pane sức mạnh`; visible range dịch vào cụm phiên mới (`23-04 -> 29-04`) thay vì nằm ở tháng 3 như trước.
+- RESIDUAL RISK: auto-focus hiện tối ưu cho chart intraday / hourly; ở timeframe ngày-tuần-tháng, flow pane vẫn chỉ phản ánh session-scoped truth chứ không biến thành multi-session flow history.
+
+# ✅ AUDIT FILE LIST (2026-04-30b)
+- AGENTS.md (MODIFIED - đổi hard constraint của whale KLine từ 1 Flow Compare pane sang 2 pane kỹ thuật đồng bộ theo selected-session truth)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - tách flow layer thành pane CVD chuẩn hóa và pane strength riêng, vẫn dùng cùng bucket lookup, cùng trục X và giữ nguyên heatmap/marker/session path)
+- frontend/src/i18n/vi.js (MODIFIED - bổ sung nhãn tiếng Việt cho pane CVD và pane strength)
+- quality/QUALITY.md (MODIFIED - cập nhật constitution sang mô hình 2 flow technical panes)
+- quality/RUN_INTEGRATION_TESTS.md (MODIFIED - cập nhật integration matrix và pass criteria cho pane CVD + pane strength)
+- docs/IMPLEMENTATION_PLAN_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (MODIFIED - đổi target architecture và KPI từ 1 pane sang 2 pane kỹ thuật)
+- docs/TASKBOARD_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (MODIFIED - đổi FE-3.1 và Gate-2 sang 2 flow technical panes)
+- docs/TECH_SPEC_WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_20260428.md (MODIFIED - đặc tả lại pane CVD, pane strength, baseline và controls)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_HANDOFF_MASTER_20260428.md (MODIFIED - đồng bộ handoff master sang mô hình 2 pane)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md (MODIFIED - đổi audit matrix cho pane CVD và pane strength)
+- docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_TRACEABILITY_MATRIX_20260428.md (MODIFIED - đổi KIU-03 sang yêu cầu 2 pane kỹ thuật cùng trục X)
+- module_tree_full.md (MODIFIED - regenerate sau slice tách pane; current tree reports 510 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-30b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => frontend build pass ngay sau edit chính của `KLineChartPanel`.
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => build pass lại sau follow-up fix ổn định hóa custom-pane sync effect.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (`Modules: 510`).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend; Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/ | Select-Object -ExpandProperty StatusCode` => runtime frontend/backend refreshed thành công và health endpoint trả `200`.
+- PASSED: browser smoke trên session authenticated hiện có cho `/whale-alerts/MBB` sau refresh runtime; route mở được trên stack mới.
+- RESIDUAL RISK: slice này chưa có regression test UI tự động riêng cho thứ tự/chiều cao 2 pane trong `KLineChartPanel`; evidence hiện dựa trên compile/runtime smoke và route check sau refresh stack.
+
+# ✅ AUDIT FILE LIST (2026-04-30a)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - switch whale KLine flow to session-scoped truth, align the compact right-side flow panel to the same source, and stop the right column from stretching)
+- frontend/src/utils/whaleKlineAlignment.js (MODIFIED - map chart timeframes onto selected-session whale analytics truth instead of rolling windows)
+- frontend/src/utils/whaleKlineAlignment.test.js (MODIFIED - update timeframe mapping regression coverage)
+- module_tree_full.md (MODIFIED - regenerate after whale route flow/layout slice; current tree reports 510 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-30a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false src/utils/whaleKlineAlignment.test.js src/hooks/useWhaleAnalyticsData.test.js; npm run build; Pop-Location` => 2 suites / 9 tests PASS và frontend build xanh.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (510 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => refreshed `frontend` và `backend`; backend healthy; frontend started trên runtime mới.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/ | Select-Object -ExpandProperty StatusCode` => `200`.
+- RESIDUAL RISK: pane Flow Compare hiện ưu tiên selected-session truth hơn multi-session flow history; đây là chủ ý để triệt trạng thái `n/a` người dùng đang gặp.
+
+# ✅ AUDIT FILE LIST (2026-04-29ac)
+- frontend/src/components/KLineChartPanel.jsx (MODIFIED - project flow buckets across supported intraday candle ranges and resolve whale markers to representative candles inside each analytics bucket)
+- frontend/src/hooks/useWhaleAnalyticsData.test.js (MODIFIED - add regression for selected trade-date forwarding into chart analytics requests)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - bind chart analytics to selected session truth and map KLine timeframes onto supported whale snapshot windows)
+- frontend/src/utils/whaleKlineAlignment.js (NEW - canonical chart-timeframe mapping and bucket alias helpers for whale KLine alignment)
+- frontend/src/utils/whaleKlineAlignment.test.js (NEW - focused regressions for timeframe mapping, bucket alias expansion, and representative candle resolution)
+- module_tree_full.md (MODIFIED - regenerate after whale KLine alignment slice; current tree reports 510 modules)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-04-29ac)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm test -- --watchAll=false src/utils/whaleKlineAlignment.test.js src/hooks/useWhaleAnalyticsData.test.js; npm run build; Pop-Location` => 2 suites / 9 tests PASS và frontend build xanh.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py` => regenerate `module_tree_full.md` thành công (510 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend backend` => refreshed `frontend` và `backend`; backend healthy; frontend started trên runtime mới.
+- PASSED: `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:8000/api/health/ | Select-Object -ExpandProperty StatusCode` => `200`.
+- NOTE: browser smoke mở `http://127.0.0.1/whale-alerts/HPG` bị redirect về `/login` vì session browser không có auth context; screenshot authenticated runtime chưa capture ở slice này.
+- RESIDUAL RISK: `CompactDarkMoneyFlow` ở cột phải vẫn dùng snapshot riêng theo `bubbleTimeframe`, nên granularity có thể khác `Flow Compare pane` dù session truth hiện đã đồng bộ.
+
 # ✅ AUDIT FILE LIST (2026-04-29b)
 - AGENTS.md (MODIFIED - point read-first governance to the KLine intelligence upgrade pack and tighten shared chart constraints)
 - backend/portfolio/consumers.py (MODIFIED - stop sending redundant websocket `connected` payload on connect)

@@ -9,7 +9,7 @@ Toàn bộ command trong tài liệu này chạy từ thư mục gốc project b
 Xác nhận end-to-end rằng:
 
 1. `whale-alerts/:symbol` dùng KlineChart mới và bubble chart theo phiên.
-2. `Flow Compare pane`, `heatmap`, `whale marker` và tooltip cùng đúng semantics bucket.
+2. `pane CVD`, `pane strength`, `heatmap`, `whale marker` và tooltip cùng đúng semantics bucket.
 2. Bubble source của modern dashboard không bị regress.
 3. `StockDetail` vẫn ổn sau khi di chuyển Radar.
 4. Evidence đủ mạnh để final auditor ra kết luận GO / NO-GO.
@@ -59,7 +59,7 @@ Trước khi chạy, người thực thi phải công bố plan dạng bảng:
 | Step | Scope | Expected result |
 |---|---|---|
 | 1 | Build + backend focused suites | Green baseline |
-| 2 | Whale Alerts route smoke | KLine + Flow Compare pane + latest session bubble |
+| 2 | Whale Alerts route smoke | KLine + pane CVD + pane strength + latest session bubble |
 | 3 | Heatmap and marker smoke | Mode switch + viewport recompute đúng |
 | 4 | Session click smoke | Bubble/advisory đổi đúng phiên |
 | 5 | Modern dashboard regression smoke | Source route không đổi hành vi |
@@ -89,15 +89,16 @@ Evidence:
 - screenshot toàn trang,
 - payload snapshot của bubble first load.
 
-## T2. Heatmap and Flow Compare semantics
+## T2. Heatmap and flow-pane semantics
 
 Mục tiêu:
-- Heatmap và Flow Compare pane phản ánh đúng payload cùng bucket.
+- Heatmap, pane CVD và pane strength phản ánh đúng payload cùng bucket.
 
 Pass criteria:
 - Chuyển được 4 mode `Off/Net/Buy/Sell`.
 - Heatmap không che candle quá mức.
-- Flow Compare pane hiển thị đúng `CVD normalized`, `Buy Strength`, `Institutional Strength`.
+- Pane CVD hiển thị đúng `CVD normalized` và baseline `50`.
+- Pane strength hiển thị đúng `Buy Strength` và `Institutional Strength`.
 
 Evidence:
 - screenshot cho từng mode,

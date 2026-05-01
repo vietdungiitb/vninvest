@@ -39,7 +39,7 @@ Các module mới nên được tạo dưới namespace riêng, ví dụ:
 1. `Candle layer`
 2. `Heatmap overlay layer`
 3. `Whale marker overlay layer`
-4. `Flow Compare pane`
+4. `Flow technical panes`
 5. `Tooltip / hover / badges`
 
 Thứ tự này là bắt buộc để tránh marker bị heatmap che, hoặc heatmap phá readability của candle.
@@ -96,18 +96,17 @@ Nó giải quyết 4 lỗi kiến trúc phổ biến:
 2. Từ đó trở đi tooltip, pane, heatmap, marker chỉ đọc `minuteKey` đã canonical.
 3. Không được gọi `new Date(...)` rải rác ở nhiều lớp render để tự map lại bucket.
 
-## 4. Flow Compare pane
+## 4. Flow technical panes
 
 ### 4.1 Vai trò
 
-Đây là pane phân tích chính cho dòng tiền, thay cho mô hình nhiều pane rời.
+Đây là cụm 2 pane phân tích chính cho dòng tiền, thay cho mô hình nhồi mọi metric vào một pane duy nhất.
 
 ### 4.2 Các line bắt buộc
 
-1. `CVD normalized`.
-2. `Buy Strength`.
-3. `Institutional Strength`.
-4. `Baseline` trung tính.
+1. Pane `CVD`: `CVD normalized` và `Baseline` trung tính.
+2. Pane `Strength`: `Buy Strength` và `Institutional Strength`.
+3. Hai pane phải dùng cùng trục X và cùng bucket mapping.
 
 ### 4.3 Chuẩn hóa CVD
 
@@ -129,21 +128,20 @@ cvdNormalized = clamp(50 + 50 * (cvdRaw / scale), 0, 100)
 
 ### 4.4 Baseline
 
-`Baseline` trong pane này là `50`, không phải `0`, vì pane dùng scale chuẩn hóa 0-100.
+`Baseline` trong pane CVD là `50`, không phải `0`, vì pane này dùng scale chuẩn hóa 0-100.
 
 ### 4.5 Inline controls
 
-Trên pane hoặc mép pane phải có toggle line:
+Trên toolbar hoặc mép cụm pane phải có toggle hiển thị:
 
-1. `CVD`
-2. `Mua`
-3. `Tổ chức`
+1. `Pane CVD`
+2. `Pane Strength`
 
-Mục tiêu là so sánh trực tiếp, không bắt người dùng quay lại toolbar chung.
+Mục tiêu là bật/tắt nhanh đúng pane kỹ thuật theo loại chỉ số, không ép người dùng xem mọi line trong cùng một khung hẹp.
 
 ### 4.6 Last-value badges
 
-Mép phải pane phải có 3 badge:
+Mép phải cụm flow panes phải có 3 badge:
 
 1. `CVD normalized`
 2. `Buy Strength`

@@ -92,13 +92,13 @@ Evidence: response timing log + cache key note.
 
 ## D. KLine Intelligence Surface
 
-- [ ] `FE-3.1` Dựng `Flow Compare pane` hợp nhất  
+- [ ] `FE-3.1` Dựng 2 flow technical panes  
 Owner: Frontend Lead  
 Estimate: 6h  
 Dependency: FE-1.2, BE-2.1  
-DoD: CVD normalized, Buy Strength, Institutional Strength và baseline cùng hoạt động trong một pane.  
-Test gate: pane rendering tests + build pass.  
-Evidence: screenshot pane + payload parity proof.
+DoD: pane CVD hiển thị `CVD normalized` + baseline; pane strength hiển thị `Buy Strength` + `Institutional Strength`; cả hai cùng trục X và không lệch bucket.  
+Test gate: flow-pane rendering tests + build pass.  
+Evidence: screenshot 2 pane + payload parity proof.
 
 - [ ] `FE-3.2` Tooltip v2 và last-value badges  
 Owner: Frontend Dev  
@@ -221,7 +221,7 @@ Evidence: file paths + ledger sync.
 ## H. Delivery gates
 
 - [ ] Gate-1: Tech Spec semantics đã được khóa.
-- [ ] Gate-2: Flow Compare pane hoạt động và không lệch bucket.
+- [ ] Gate-2: Pane CVD và pane strength hoạt động và không lệch bucket.
 - [ ] Gate-3: Heatmap semantics đúng cho 4 mode.
 - [ ] Gate-4: Whale marker recompute đúng theo viewport.
 - [ ] Gate-5: Bubble/advisory selected session không regress.

@@ -13,6 +13,7 @@ import useRealtimeFeed from '../hooks/useRealtimeFeed';
 import useWhaleAnalyticsData from '../hooks/useWhaleAnalyticsData';
 import { useI18n } from '../context/LangContext';
 import { resolveAdvisoryConflictState } from './stockDetailAdvisoryUtils';
+import { mapChartTimeframeToWhaleAnalyticsTimeframe, resolveChartHistoryTradeDates } from '../utils/whaleKlineAlignment';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -34,6 +35,8 @@ const BUBBLE_TIMEFRAME_OPTIONS = [
   { value: 'session', label: 'Cả phiên' },
 ];
 
+const MAX_CHART_FLOW_TRADE_DATES = 8;
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function WhaleAlertsDashboard() {
@@ -52,6 +55,18 @@ export default function WhaleAlertsDashboard() {
   const [advisoryRowMessage, setAdvisoryRowMessage] = useState('');
   const advisoryRequestIdRef = useRef(0);
   const selectedTradeDate = selectedSession?.symbol === normalizedSymbol ? selectedSession.tradeDate ?? null : null;
+  const chartAnalyticsTimeframe = useMemo(
+    () => mapChartTimeframeToWhaleAnalyticsTimeframe(activeTimeframe),
+    [activeTimeframe],
+  );
+  const chartHistoryTradeDates = useMemo(() => {
+    const historyTradeDates = resolveChartHistoryTradeDates(chartData, chartVisibleRange, 2, MAX_CHART_FLOW_TRADE_DATES);
+    if (!selectedTradeDate) {
+      return historyTradeDates;
+    }
+
+    return Array.from(new Set([...historyTradeDates, selectedTradeDate])).slice(-MAX_CHART_FLOW_TRADE_DATES);
+  }, [chartData, chartVisibleRange, selectedTradeDate]);
 
   const { alerts, darkFlowAlerts, latestWhaleAlert, latestDarkFlowAlert, realtimeStatus, lastEventAt } = useRealtimeFeed({
     symbols: normalizedSymbol ? [normalizedSymbol] : [],
@@ -59,7 +74,11 @@ export default function WhaleAlertsDashboard() {
 
   const {
     data: chartAnalyticsData,
-  } = useWhaleAnalyticsData(normalizedSymbol, activeTimeframe, null, { includeBaseline: false });
+  } = useWhaleAnalyticsData(normalizedSymbol, chartAnalyticsTimeframe, null, {
+    includeBaseline: false,
+    tradeDates: chartHistoryTradeDates,
+    selectedTradeDate,
+  });
 
   const {
     data: bubbleAnalyticsData,
@@ -300,7 +319,7 @@ export default function WhaleAlertsDashboard() {
       </section>
 
       {/* Main grid: left 2 cols (Kline + Bubble) | right col (Feed + RVOL + Donut + Depth) */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
+      <div className="grid grid-cols-1 gap-4 xl:items-start xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
         {/* Left 2 columns — stacked vertically */}
         <div className="xl:col-span-2 flex flex-col gap-4">
           <section className="card-section p-4">
@@ -441,7 +460,7 @@ export default function WhaleAlertsDashboard() {
         </div>
 
         {/* Right column — widget stack */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 xl:self-start">
           <WhaleFeedPanel
             symbol={normalizedSymbol}
             realtimeAlerts={liveBoardAlerts}
@@ -453,12 +472,22 @@ export default function WhaleAlertsDashboard() {
           <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
           <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
           <DepthChartPanel symbol={normalizedSymbol} compact />
-          <CompactDarkMoneyFlow
-            symbol={normalizedSymbol}
-            flowData={bubbleAnalyticsData?.flow || null}
-            height={260}
-            syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
-          />
+          <section className="card-section p-4">
+            <div className="border-b border-slate-800 pb-3">
+              <p className="text-label">{t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })}</p>
+              <h3 className="mt-0.5 text-sm font-semibold text-white">
+                {t('whaleAnalytics.instStrengthShort', { defaultValue: 'Sức mạnh tổ chức' })}
+              </h3>
+            </div>
+            <div className="mt-3 h-[320px]">
+              <CompactDarkMoneyFlow
+                symbol={normalizedSymbol}
+                flowData={chartAnalyticsData?.flow || null}
+                height={320}
+                syncTimestamp={chartVisibleRange.to_ts ? Math.floor(Number(chartVisibleRange.to_ts) / 1000) : null}
+              />
+            </div>
+          </section>
         </div>
       </div>
     </div>

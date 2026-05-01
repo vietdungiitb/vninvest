@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-04-29 11:32:01`
+Generated at: `2026-05-01 14:50:22`
 
 ## Summary
 
-- Total modules: 508
+- Total modules: 510
 - Python modules: 328
-- JS/TS modules: 180
+- JS/TS modules: 182
 - Total classes: 560
-- Total functions: 1928
-- Total top-level variables: 3317
+- Total functions: 1950
+- Total top-level variables: 3424
 
 ## Python Modules
 
@@ -290,7 +290,7 @@ Generated at: `2026-04-29 11:32:01`
 ### `backend/portfolio/global_signal_policy_helpers.py`
 
 - Functions:
-  - `_coerce_bool`, `_coerce_int`, `_coerce_positive_id_list`, `_coerce_symbol_list`, `_read_json_setting`, `_write_json_setting`, `coerce_global_signal_retention_policy`, `coerce_global_signal_services_config`, `coerce_global_signal_universe_policy`, `default_global_signal_retention_policy`, `default_global_signal_services_config`, `default_global_signal_universe_policy`, `get_global_signal_retention_policy`, `get_global_signal_services_config`, `get_global_signal_universe_policy`, `invalidate_global_signal_universe_cache`, `set_global_signal_retention_policy`, `set_global_signal_services_config`, `set_global_signal_universe_policy`
+  - `_coerce_bool`, `_coerce_int`, `_coerce_positive_id_list`, `_coerce_symbol_list`, `_read_json_setting`, `_write_json_setting`, `build_global_signal_control_center_ownership`, `coerce_global_signal_retention_policy`, `coerce_global_signal_services_config`, `coerce_global_signal_universe_policy`, `default_global_signal_retention_policy`, `default_global_signal_services_config`, `default_global_signal_universe_policy`, `get_global_signal_retention_policy`, `get_global_signal_services_config`, `get_global_signal_universe_policy`, `invalidate_global_signal_universe_cache`, `set_global_signal_retention_policy`, `set_global_signal_services_config`, `set_global_signal_universe_policy`
 - Top-level variables:
   - `GLOBAL_SIGNAL_RETENTION_POLICY_KEY`, `GLOBAL_SIGNAL_SERVICES_CONFIG_KEY`, `GLOBAL_SIGNAL_UNIVERSE_POLICY_KEY`, `logger`
 
@@ -2057,7 +2057,7 @@ Generated at: `2026-04-29 11:32:01`
 ### `backend/portfolio/views_signal_admin.py`
 
 - Functions:
-  - `_build_config_changes`, `_build_retention_preview`, `_build_summary_domain_payload`, `_latest_dark_flow_cache_payload`, `_latest_run`, `_latest_whale_cache_payload`, `_normalize_recent_events`, `_parse_bounded_positive_int`, `_serialize_run`, `_truthy`, `signal_admin_config_api`, `signal_admin_config_preview_api`, `signal_admin_job_retry_api`, `signal_admin_jobs_api`, `signal_admin_jobs_run_api`, `signal_admin_recent_events_api`, `signal_admin_retention_preview_api`, `signal_admin_summary_api`, `signal_admin_universe_apply_api`, `signal_admin_universe_preview_api`
+  - `_build_config_changes`, `_build_retention_preview`, `_build_summary_domain_payload`, `_build_whale_governance_snapshot`, `_latest_dark_flow_cache_payload`, `_latest_run`, `_latest_whale_cache_payload`, `_normalize_recent_events`, `_parse_bounded_positive_int`, `_serialize_run`, `_serialize_whale_governance_rollout`, `_serialize_whale_governance_version`, `_truthy`, `signal_admin_config_api`, `signal_admin_config_preview_api`, `signal_admin_job_retry_api`, `signal_admin_jobs_api`, `signal_admin_jobs_run_api`, `signal_admin_recent_events_api`, `signal_admin_retention_preview_api`, `signal_admin_summary_api`, `signal_admin_universe_apply_api`, `signal_admin_universe_preview_api`
 
 ### `backend/portfolio/views_stock_catalog.py`
 
@@ -2426,12 +2426,14 @@ Generated at: `2026-04-29 11:32:01`
 - Functions:
   - `JsonPreview`, `ServiceSummaryCard`, `formatDateTimeValue`, `formatNumberValue`, `loadInitialState`, `resolvePositiveInteger`, `statusTone`
 - Top-level variables:
-  - `DEFAULT_PAGE_SIZE`, `applyConfigToForm`, `buildRetentionPayload`, `buildServicesPayload`, `buildUniversePayload`, `canRetry`, `darkFlowService`, `distribution`, `eventsRes`, `handleApplyConfig`, `handleApplyUniverse`, `handleEventsPageChange`, `handleEventsPageSizeChange`, `handleJobsPageChange`, `handleJobsPageSizeChange`, `handlePreviewConfig`, `handlePreviewUniverse`, `handleRetryRun`, `handleRunJob`, `jobsRes`, `loadEventsPage`, `loadJobsPage`, `loadStaticData`, `normalized`, `numeric`, `parsed`, `refreshControlCenter`, `response`, `results`, `retentionPolicy`, `retryBusy`, `servicesConfig`, `universePolicy`, `updateField`, `whaleService`
+  - `DEFAULT_PAGE_SIZE`, `applyConfigToForm`, `buildRetentionPayload`, `buildServicesPayload`, `buildUniversePayload`, `canRetry`, `darkFlowService`, `distribution`, `eventsRes`, `handleApplyConfig`, `handleApplyUniverse`, `handleEventsPageChange`, `handleEventsPageSizeChange`, `handleJobsPageChange`, `handleJobsPageSizeChange`, `handleLoadEvents`, `handleLoadJobs`, `handlePreviewConfig`, `handlePreviewUniverse`, `handleRetryRun`, `handleRunJob`, `jobsRes`, `loadEventsPage`, `loadJobsPage`, `loadStaticData`, `normalized`, `numeric`, `ownershipSnapshot`, `parsed`, `rawIntradayKeepDays`, `refreshControlCenter`, `response`, `results`, `retentionPolicy`, `retryBusy`, `runtimeKeepDays`, `servicesConfig`, `universePolicy`, `updateField`, `whaleGovernanceSnapshot`, `whaleService`
 
 ### `frontend/src/components/adminops/SignalControlCenter.test.jsx`
 
 - Functions:
-  - `buildConfigPayload`, `buildSummaryPayload`
+  - `buildConfigPayload`, `buildOwnershipPayload`, `buildSummaryPayload`, `buildWhaleGovernancePayload`
+- Top-level variables:
+  - `jobsPageSizeSelect`
 
 ### `frontend/src/components/adminops/VnstockBenchmarkPanel.jsx`
 
@@ -2596,9 +2598,9 @@ Generated at: `2026-04-29 11:32:01`
 ### `frontend/src/components/KLineChartPanel.jsx`
 
 - Functions:
-  - `buildFlowBucketLookup`, `buildHeatmapBandColor`, `buildVisibleHeatmapBands`, `buildVisibleWhaleSharkMarkers`, `clamp`, `createIndicatorWithTracking`, `domClickListener`, `ensureHeatmapOverlayRegistered`, `findIndicatorPaneIds`, `forgetIndicatorPane`, `formatTooltipTimestamp`, `formatTooltipValue`, `handleScreenshot`, `handleTimeframe`, `handleToggleFullscreen`, `handleToggleIndicator`, `handleToggleTooltip`, `normalizeTradeDate`, `normalizeWhaleSignalSide`, `onFullscreenChange`, `rememberIndicatorPane`, `removeIndicatorFromAnySubPane`, `resolveHeatmapMetric`, `resolveQualityBadgeTone`
+  - `buildFlowBucketLookup`, `buildHeatmapBandColor`, `buildVisibleHeatmapBands`, `buildVisibleWhaleSharkMarkers`, `clamp`, `createIndicatorWithTracking`, `domClickListener`, `ensureHeatmapOverlayRegistered`, `findIndicatorPaneIds`, `forgetIndicatorPane`, `formatTooltipTimestamp`, `formatTooltipValue`, `handleScreenshot`, `handleTimeframe`, `handleToggleFullscreen`, `handleToggleIndicator`, `handleToggleTooltip`, `normalizeWhaleSignalSide`, `onFullscreenChange`, `rememberIndicatorPane`, `removeIndicatorFromAnySubPane`, `resolveFlowValues`, `resolveHeatmapMetric`, `resolveQualityBadgeTone`
 - Top-level variables:
-  - `AVAILABLE_INDICATORS`, `CHART_RIGHT_OFFSET_DISTANCE`, `HEATMAP_OVERLAY_NAME`, `MAIN_PANE_INDICATORS`, `SUB_PANE_CANDIDATES`, `TIMEFRAMES`, `adjustedPrice`, `allIndicators`, `alpha`, `anchorValue`, `bestExisting`, `bestSignalByMinute`, `bucket`, `buyHeat`, `candle`, `candleByMinute`, `candleTimestamp`, `candleTooltipCustom`, `candleTooltipStyles`, `chart`, `chartRef`, `clearHeatmapOverlays`, `clearSharkMarkers`, `clickedData`, `color`, `config`, `containerRef`, `createdPaneId`, `crosshair`, `customIndicatorDef`, `customIndicatorDefs`, `deepFlowPaneControls`, `dynamicPaneIds`, `emitSessionFromChart`, `emitVisibleRangeFromChart`, `existingPaneId`, `fallbackFrom`, `fallbackPrice`, `fallbackTo`, `flowBucket`, `flowBucketLookup`, `flowCompareTemplate`, `flowViewModel`, `fromIndex`, `fromIndexRaw`, `handleChartClick`, `handleVisibleRangeAction`, `hasFlowCompareData`, `hasHeatmapData`, `hasVisibleRange`, `heatmapModes`, `heatmapOverlayIdsRef`, `heatmapOverlayRegistered`, `heatmapOverlaySignatureRef`, `image`, `indicatorPaneMapRef`, `intensity`, `isActive`, `isBuy`, `isNextEnabled`, `isReady`, `isVisible`, `kLineData`, `lastVisibleRangeRef`, `latestData`, `leftSpacing`, `leftX`, `link`, `lookup`, `lookupKey`, `magnitude`, `markers`, `match`, `matchedValue`, `maxVisibleTs`, `metric`, `minVisibleTs`, `minuteKey`, `netHeat`, `newState`, `nextFrom`, `nextSignature`, `nextTimestamp`, `nextTo`, `normalizedMode`, `normalizedState`, `numericValue`, `onSessionChangeRef`, `overlays`, `paneId`, `paneIds`, `paneIdsToTry`, `parsed`, `previousTimestamp`, `qualityState`, `rankedSignals`, `rawSide`, `rawStrength`, `referencePrice`, `rememberedPaneId`, `removed`, `rightSpacing`, `rightX`, `ro`, `seen`, `selectedTimeframe`, `sellHeat`, `sharkMarkerSignatureRef`, `sharkOverlayIdsRef`, `side`, `strength`, `syncHeatmapOverlays`, `syncHeatmapOverlaysRef`, `syncSharkMarkers`, `syncSharkMarkersRef`, `targetCount`, `toIndex`, `toIndexRaw`, `tradeDate`, `visibleFrom`, `visibleRange`, `visibleTo`, `whaleMarkerSignals`, `whaleScore`
+  - `AVAILABLE_INDICATORS`, `CHART_RIGHT_OFFSET_DISTANCE`, `FLOW_CUSTOM_INDICATOR_IDS`, `HEATMAP_OVERLAY_NAME`, `MAIN_PANE_INDICATORS`, `SUB_PANE_CANDIDATES`, `TIMEFRAMES`, `adjustedPrice`, `allIndicators`, `alpha`, `anchorValue`, `bestExisting`, `bestSignalByMinute`, `bucket`, `buyHeat`, `candle`, `candleByMinute`, `candleMinuteKeys`, `candleTimestamp`, `candleTooltipCustom`, `candleTooltipStyles`, `chart`, `chartRef`, `clearHeatmapOverlays`, `clearSharkMarkers`, `clickedData`, `color`, `config`, `containerRef`, `createdPaneId`, `crosshair`, `currentVisibleBarCount`, `customIndicatorDef`, `customIndicatorDefs`, `deepFlowPaneControls`, `dynamicPaneIds`, `emitSessionFromChart`, `emitVisibleRangeFromChart`, `existingPaneId`, `fallbackFrom`, `fallbackPrice`, `fallbackTo`, `flowBucket`, `flowBucketLookup`, `flowBuckets`, `flowCvdTemplate`, `flowSessionTradeDate`, `flowStrengthTemplate`, `flowTimeframe`, `flowValues`, `flowViewModel`, `focusChartOnTradeDate`, `focusSignature`, `fromIndex`, `fromIndexRaw`, `handleChartClick`, `handleVisibleRangeAction`, `hasActiveFlowPane`, `hasFlowCompareData`, `hasHeatmapData`, `hasVisibleRange`, `heatmapModes`, `heatmapOverlayIdsRef`, `heatmapOverlayRegistered`, `heatmapOverlaySignatureRef`, `image`, `indicatorPaneMapRef`, `intensity`, `isActive`, `isBuy`, `isNextEnabled`, `isReady`, `isVisible`, `kLineData`, `lastAutoFocusedTradeDateRef`, `lastVisibleRangeRef`, `latestData`, `leftSpacing`, `leftX`, `link`, `lookup`, `lookupKey`, `magnitude`, `markers`, `match`, `matchedMinuteKey`, `matchedValue`, `maxVisibleTs`, `metric`, `minVisibleTs`, `minuteKey`, `netHeat`, `newState`, `nextFrom`, `nextSignature`, `nextTimestamp`, `nextTo`, `normalizedFlowTradeDate`, `normalizedMinuteKey`, `normalizedMode`, `normalizedState`, `onSessionChangeRef`, `overlays`, `paneId`, `paneIds`, `paneIdsToTry`, `previousTimestamp`, `qualityState`, `rankedSignals`, `rawSide`, `rawStrength`, `referencePrice`, `rememberedPaneId`, `removed`, `rightSpacing`, `rightX`, `ro`, `seen`, `selectedTimeframe`, `sellHeat`, `sharkMarkerSignatureRef`, `sharkOverlayIdsRef`, `side`, `strength`, `syncHeatmapOverlays`, `syncHeatmapOverlaysRef`, `syncSharkMarkers`, `syncSharkMarkersRef`, `targetCount`, `targetRange`, `targetVisibleBarCount`, `toIndex`, `toIndexRaw`, `tradeDate`, `visibleFrom`, `visibleRange`, `visibleTo`, `whaleMarkerSignals`, `whaleScore`
 
 ### `frontend/src/components/Layout.jsx`
 
@@ -3019,14 +3021,14 @@ Generated at: `2026-04-29 11:32:01`
 - Functions:
   - `handleVisibilityChange`, `handleWindowFocus`
 - Top-level variables:
-  - `fetchData`, `includeBaseline`, `intervalId`, `normalizedTradeDate`, `requestId`, `requestIdRef`, `snapshot`, `snapshotRes`, `timeframeWindow`
+  - `fetchData`, `firstRejected`, `includeBaseline`, `intervalId`, `normalizedSnapshots`, `normalizedTradeDate`, `requestId`, `requestIdRef`, `requestedTradeDates`, `requestedTradeDatesKey`, `selectedTradeDate`, `snapshot`, `snapshotRes`, `snapshotResults`, `timeframeWindow`
 
 ### `frontend/src/hooks/useWhaleAnalyticsData.test.js`
 
 - Functions:
   - `createDeferred`
 - Top-level variables:
-  - `consoleErrorSpy`, `firstRequest`, `normalized`, `normalizedFirst`, `normalizedSecond`, `promise`, `reject`, `resolve`, `secondRequest`, `snapshot`
+  - `consoleErrorSpy`, `firstRequest`, `merged`, `normalized`, `normalizedFirst`, `normalizedSecond`, `promise`, `reject`, `resolve`, `secondRequest`, `snapshot`
 
 ### `frontend/src/i18n/en.js`
 
@@ -3202,7 +3204,7 @@ Generated at: `2026-04-29 11:32:01`
 - Functions:
   - `fetchChart`, `fmtBil`, `normalizeSymbol`, `symbolAlerts`, `symbolDarkFlowAlerts`
 - Top-level variables:
-  - `BUBBLE_TIMEFRAME_OPTIONS`, `advisoryParams`, `advisoryRequestIdRef`, `cancelled`, `conflictState`, `darkFlowItems`, `fetchAdvisorySession`, `fetchFeed`, `flattenedSnapshotOrders`, `id`, `liveBoardAlerts`, `lt`, `n`, `nextChartData`, `normalizedSymbol`, `payload`, `prevWhaleRef`, `requestId`, `response`, `rt`, `selectedTradeDate`, `snapshotOrders`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `whaleItems`, `whaleSignalsForChart`
+  - `BUBBLE_TIMEFRAME_OPTIONS`, `MAX_CHART_FLOW_TRADE_DATES`, `advisoryParams`, `advisoryRequestIdRef`, `cancelled`, `chartAnalyticsTimeframe`, `chartHistoryTradeDates`, `conflictState`, `darkFlowItems`, `fetchAdvisorySession`, `fetchFeed`, `flattenedSnapshotOrders`, `historyTradeDates`, `id`, `liveBoardAlerts`, `lt`, `n`, `nextChartData`, `normalizedSymbol`, `payload`, `prevWhaleRef`, `requestId`, `response`, `rt`, `selectedTradeDate`, `snapshotOrders`, `symbolDarkFlowAlert`, `symbolWhaleAlert`, `whaleItems`, `whaleSignalsForChart`
 
 ### `frontend/src/pages/WhaleAlertsHub.jsx`
 
@@ -3270,9 +3272,9 @@ Generated at: `2026-04-29 11:32:01`
 ### `frontend/src/utils/whaleAnalyticsSnapshotAdapter.js`
 
 - Functions:
-  - `buildWindowFromSnapshot`, `normalizeWhaleAnalyticsSnapshot`
+  - `buildWindowFromSnapshot`, `mergeBubbleOrders`, `mergeSeriesByKey`, `mergeTimeframeWindows`, `mergeWhaleAnalyticsSnapshots`, `normalizeWhaleAnalyticsSnapshot`, `resolveOrderKey`, `sortSeriesByTime`
 - Top-level variables:
-  - `allBubbleOrders`, `allValues`, `bubbleOrders`, `bubbleSeries`, `buyStrengthSeries`, `cvdSeries`, `endDate`, `endValue`, `fallback`, `flowCompareSeries`, `flowViewModel`, `heatmapSeries`, `institutionalStrengthSeries`, `latestInstitutional`, `markerSeries`, `normalizedCvdSeries`, `normalizedFlowCompareSeries`, `normalizedHeatmapSeries`, `normalizedInstitutionalStrengthSeries`, `normalizedMarkerSeries`, `normalizedPriceSeries`, `normalizedSide`, `normalizedSpeedSeries`, `normalizedStrengthSeries`, `order`, `priceSeries`, `sessionContext`, `sessionLevels`, `snapshotQualityFlags`, `speedSeries`, `staleReason`, `startDate`, `startValue`, `timeframeWindow`
+  - `aggregatedQualityFlags`, `allBubbleOrders`, `allValues`, `bubbleOrders`, `bubbleSeries`, `bubbleWindow`, `buyStrengthSeries`, `cvdSeries`, `endDate`, `endEpochSec`, `endMs`, `endValue`, `fallback`, `flattenedBubbleOrders`, `flowCompareSeries`, `flowViewModel`, `flowWindow`, `heatmapSeries`, `institutionalStrengthSeries`, `key`, `latestInstitutional`, `latestSnapshot`, `latestTradeDate`, `latestWindow`, `leftTradeDate`, `leftTs`, `lookup`, `markerSeries`, `mergedCvdSeries`, `mergedFlowCompareSeries`, `mergedFlowViewModel`, `mergedHeatmapSeries`, `mergedInstitutionalStrengthSeries`, `mergedMarkerSeries`, `mergedOrders`, `mergedPriceSeries`, `mergedSessionContext`, `mergedSpeedSeries`, `mergedStrengthSeries`, `normalizedCvdSeries`, `normalizedFlowCompareSeries`, `normalizedHeatmapSeries`, `normalizedInstitutionalStrengthSeries`, `normalizedMarkerSeries`, `normalizedPriceSeries`, `normalizedSide`, `normalizedSpeedSeries`, `normalizedStrengthSeries`, `order`, `priceSeries`, `rightTradeDate`, `rightTs`, `sessionContext`, `sessionLevels`, `snapshotQualityFlags`, `snapshots`, `speedSeries`, `staleReason`, `startDate`, `startEpochSec`, `startMs`, `startValue`, `timeframeWindow`, `validWindows`
 
 ### `frontend/src/utils/whaleAnalyticsSnapshotAdapter.test.js`
 
@@ -3285,6 +3287,18 @@ Generated at: `2026-04-29 11:32:01`
   - `buildFallbackFlowCompareSeries`, `buildFallbackMarkerSeries`, `buildLookup`, `buildWhaleFlowViewModel`, `clamp`, `percentileRank`, `percentileValue`, `resolveBucketTimestamp`, `resolveMinuteKey`, `toFiniteNumber`
 - Top-level variables:
   - `bucketKeys`, `bucketLookup`, `buckets`, `compareLookup`, `comparePoint`, `current`, `cvdLookup`, `cvdPoint`, `cvdRaw`, `cvdScale`, `effectiveFlowCompareSeries`, `effectiveMarkerSeries`, `eventScores`, `groupedOrders`, `hasFlowData`, `hasHeatmapData`, `heatmapLookup`, `heatmapPoint`, `index`, `institutionalLookup`, `lastIndex`, `lookup`, `markerLookup`, `markerPoint`, `matchedValue`, `minute`, `minuteKey`, `numericTarget`, `numericValue`, `numericValues`, `resolvedTradeDate`, `safeQuantile`, `side`, `strengthLookup`, `totals`
+
+### `frontend/src/utils/whaleKlineAlignment.js`
+
+- Functions:
+  - `buildAutoFocusZoomScales`, `buildWhaleAnalyticsBucketMinuteKeys`, `mapChartTimeframeToWhaleAnalyticsTimeframe`, `normalizeTradeDateKey`, `resolveChartHistoryTradeDates`, `resolveChartTimeframeMinutes`, `resolveFlowBucketForCandle`, `resolveMatchingWhaleCandleMinuteKey`, `resolveTradeDateIndexRange`, `resolveWhaleAnalyticsBucketMinutes`
+- Top-level variables:
+  - `ANALYTICS_TIMEFRAME_BY_CHART_TIMEFRAME`, `CHART_TIMEFRAME_MINUTES`, `allTradeDates`, `bucketMinuteKey`, `bucketMinutes`, `candidateKeys`, `candleEndExclusive`, `candleMinuteKey`, `candleTradeDate`, `chartMinutes`, `count`, `effectiveVisibleTradeDates`, `estimatedVisibleBarCount`, `firstIndex`, `flowBucketMinutes`, `hasVisibleRange`, `lastIndex`, `matchedBucket`, `matchedBucketMinuteKey`, `maxVisibleTs`, `mergedTradeDates`, `minVisibleTs`, `nextScale`, `normalized`, `normalizedMaximum`, `normalizedMinimum`, `normalizedTargetVisibleBarCount`, `normalizedTradeDate`, `normalizedVisibleBarCount`, `numericValue`, `parsed`, `pointTimestamp`, `pointTradeDate`, `recentTradeDates`, `scales`, `startMinute`, `step`, `visibleFrom`, `visibleTo`, `visibleTradeDates`
+
+### `frontend/src/utils/whaleKlineAlignment.test.js`
+
+- Top-level variables:
+  - `buckets`, `candleMinuteKeys`, `candles`, `chartData`
 
 ### `frontend/src/utils/whaleTimeAdapter.js`
 

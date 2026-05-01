@@ -10,7 +10,7 @@ Ma trận này dùng để truy vết trực tiếp từ yêu cầu tối ưu KL
 |---|---|---|---|---|---|
 | KIU-01 | KLine phải là surface trung tâm duy nhất cho route `whale-alerts/:symbol` | Không thay candle engine; không quay lại chart chắp vá | Implementation Plan mục 4, Handoff Master mục 5.1 | FE-3.1, FE-5.3 | Route screenshot + code-path cleanup proof |
 | KIU-02 | Tooltip, pane, heatmap, marker phải cùng bucket thời gian với candle | Mọi lớp dùng chung `Flow View Model` và `canonical minute key` | Tech Spec mục 3, 7 | FE-1.1, FE-1.2, FE-3.2, FE-4.3 | Tooltip parity test + payload proof |
-| KIU-03 | CVD và Strength phải gộp thành một pane so sánh duy nhất | `Flow Compare pane` thay cho multiple panes | Implementation Plan mục 4, Tech Spec mục 4 | FE-3.1 | Screenshot pane + regression tests |
+| KIU-03 | CVD và Strength phải tách thành hai pane kỹ thuật cùng trục X | `Pane CVD` + `Pane Strength`, dùng chung bucket truth và selected-session truth | Implementation Plan mục 4, Tech Spec mục 4 | FE-3.1 | Screenshot 2 pane + regression tests |
 | KIU-04 | Heatmap dòng tiền phải tích hợp trên KLine và có thể dùng để đọc nóng/lạnh theo bucket | Heatmap chỉ theo time bucket ở giai đoạn này; không làm footprint giá | Implementation Plan mục 4, Tech Spec mục 5 | FE-4.1 | 4 screenshot mode + payload heatmap |
 | KIU-05 | Whale marker phải phản ánh top 10% visible candles, không theo toàn dataset | `max(1, ceil(visible*10%))`, score theo whale data thật | Handoff Master mục 5.3, Tech Spec mục 6 | FE-4.2, FE-4.3 | Zoom/pan video + viewport test |
 | KIU-06 | Tooltip phải đủ ngữ cảnh thực chiến và có toggle | Tooltip v2 gồm OHLCV + flow + heat + confidence | Tech Spec mục 7 | FE-3.2 | Hover screenshot + tooltip test |

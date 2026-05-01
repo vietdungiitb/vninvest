@@ -5,7 +5,7 @@
 Chất lượng của feature pack này không được định nghĩa bằng việc “build pass” đơn thuần. Chất lượng ở đây nghĩa là:
 
 1. `whale-alerts/:symbol` phải cho người dùng một nguồn sự thật duy nhất theo phiên giao dịch.
-2. KLineChart phải là surface phân tích trung tâm; `heatmap`, `Flow Compare pane`, `whale marker`, `bubble` và `advisory` phải cùng bám vào truth đó.
+2. KLineChart phải là surface phân tích trung tâm; `heatmap`, `pane CVD`, `pane strength`, `whale marker`, `bubble` và `advisory` phải cùng bám vào truth đó.
 3. Hành vi bubble chart của modern dashboard phải được bảo toàn tuyệt đối vì đây là module nguồn bất biến.
 4. Mọi tín hiệu cá mập, heatmap, CVD và strength phải đúng timestamp; đúng-looking nhưng sai bucket được xem là lỗi nghiêm trọng hơn empty state.
 5. Mọi AI/coder session đụng vào feature này phải để lại bằng chứng đủ để người khác audit lại mà không cần đoán.
@@ -22,7 +22,7 @@ Nguyên lý áp dụng:
 |---|---:|---|
 | Whale Alerts route composition | 90% risk coverage | Đây là route đích; mọi regression ở layout, selected session hoặc cutover path đều lộ trực tiếp cho người dùng |
 | Flow View Model + bucket parity | 95% risk coverage | Tooltip, pane, heatmap và marker chỉ hữu ích nếu cùng bucket với candle |
-| Flow Compare pane semantics | 95% risk coverage | Gộp CVD và strength sai scale hoặc sai baseline sẽ tạo quyết định đầu tư sai |
+| Flow technical panes semantics | 95% risk coverage | Trộn CVD chuẩn hóa với strength sai pane, sai bucket hoặc sai baseline sẽ tạo quyết định đầu tư sai |
 | Heatmap semantics | 95% risk coverage | Heatmap sai nghĩa sẽ khiến người dùng đọc nhầm vùng nóng/lạnh dòng tiền dù chart rất thuyết phục |
 | Shark icon viewport selection | 95% risk coverage | Nếu top 10% được tính sai theo toàn dataset thay vì viewport, người dùng sẽ bị dẫn hướng sai mật độ cá mập hiện tại |
 | Bubble copy-only adapter | 95% risk coverage | Rủi ro lớn nhất là vô tình sửa module nguồn và gây regression cho modern dashboard |
@@ -87,7 +87,8 @@ What can go wrong:
 - Đội code lấy `CVD raw` vẽ chung scale với strength hoặc dùng `CVD normalized` cho tooltip. Chart nhìn mượt nhưng mất tính trung thực dữ liệu, khiến người dùng không phân biệt đâu là cường độ tương đối, đâu là giá trị tích lũy thật.
 
 Where to inspect:
-- Flow Compare pane adapter.
+- CVD pane adapter.
+- Strength pane adapter.
 - Tooltip builder.
 - Backend payload fields `cvd_raw`, `cvd_normalized`.
 
@@ -163,7 +164,8 @@ What can go wrong:
 Where to inspect:
 - Backend per-candle metrics contract.
 - Frontend adapter mapping.
-- Flow Compare pane normalization path.
+- CVD pane normalization path.
+- Strength pane mapping path.
 
 How to verify:
 - So payload thật với tooltip và panel labels; dùng snapshot API để kiểm field-level parity.

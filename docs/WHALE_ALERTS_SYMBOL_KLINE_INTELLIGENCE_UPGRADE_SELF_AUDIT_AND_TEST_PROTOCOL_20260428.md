@@ -121,16 +121,16 @@ PASS khi cùng một candle bucket cho ra cùng timestamp ở:
 
 PASS khi selected session cũ không bị carry sang symbol mới hoặc timeframe không còn hợp lệ.
 
-## B. Flow Compare pane
+## B. Flow technical panes
 
 ### B1. Pane semantics
 
 PASS khi pane hiển thị đủ:
 
-1. CVD normalized,
-2. Buy Strength,
-3. Institutional Strength,
-4. Baseline 50.
+1. pane CVD có `CVD normalized`,
+2. pane CVD có `Baseline 50`,
+3. pane strength có `Buy Strength`,
+4. pane strength có `Institutional Strength`.
 
 ### B2. Line toggle
 
@@ -210,7 +210,7 @@ PASS khi Stock Detail vẫn đúng chart semantics, radar placement và advisory
 
 ```powershell
 Push-Location ./frontend
-npm test -- --watchAll=false src/components/KLineChartPanel.flow-compare.test.jsx
+npm test -- --watchAll=false src/components/KLineChartPanel.flow-panes.test.jsx
 npm test -- --watchAll=false src/components/KLineChartPanel.heatmap.test.jsx
 npm test -- --watchAll=false src/components/KLineChartPanel.whale-marker-viewport.test.jsx
 npm test -- --watchAll=false src/components/KLineChartPanel.tooltip-v2.test.jsx

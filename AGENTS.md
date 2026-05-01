@@ -14,6 +14,21 @@ Feature pack hiện tại cần mọi AI session đọc trước khi làm việc
 6. `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_SELF_AUDIT_AND_TEST_PROTOCOL_20260428.md`
 6. `quality/QUALITY.md`
 
+Với task liên quan `Money Flow Control Center`, `Signal Control Center`, `Data Ops`, lifecycle lưu trữ whale/dark-flow, materialization/backfill/retention hoặc tối ưu cold path `whale-alerts/:symbol`, đọc thêm gói:
+
+1. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md`
+2. `docs/IMPLEMENTATION_PLAN_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+3. `docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+4. `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+5. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_TRACEABILITY_MATRIX_20260501.md`
+6. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_SELF_AUDIT_AND_TEST_PROTOCOL_20260501.md`
+7. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_EXECUTION_EVIDENCE_TEMPLATE_20260501.md`
+8. `docs/MONEY_FLOW_CONTROL_CENTER_CONFIG_OWNERSHIP_MATRIX_20260501.md`
+9. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501.md`
+10. `docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+11. `docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+12. `docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+
 ## 2. Read-first quality docs
 
 Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
@@ -27,16 +42,34 @@ Trước mọi thay đổi có liên quan feature này, đọc theo thứ tự:
 6. `quality/RUN_INTEGRATION_TESTS.md`
 7. `quality/RUN_SPEC_AUDIT.md`
 
+Trước mọi thay đổi liên quan `Money Flow Control Center` hoặc lifecycle lưu trữ whale/dark-flow, đọc theo thứ tự:
+
+1. `quality/QUALITY.md`
+2. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md`
+3. `docs/IMPLEMENTATION_PLAN_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+4. `docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+5. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_TRACEABILITY_MATRIX_20260501.md`
+6. `docs/MONEY_FLOW_CONTROL_CENTER_CONFIG_OWNERSHIP_MATRIX_20260501.md`
+7. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501.md`
+8. `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_SELF_AUDIT_AND_TEST_PROTOCOL_20260501.md`
+9. `docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+10. `docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+11. `docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`
+
 ## 3. Hard constraints for this feature pack
 
 1. `whale-alerts/:symbol` phải dùng KLineChart làm surface trung tâm.
-2. `Flow Compare pane` là pane đích cho CVD và strength; không tiếp tục mở rộng theo nhiều pane rời.
+2. `CVD chuẩn hóa` phải nằm ở pane CVD riêng; `Buy Strength` và `Institutional Strength` phải nằm ở pane strength riêng, vẫn cùng trục X và cùng selected-session truth.
 3. Heatmap giai đoạn này chỉ theo `time bucket`, chưa làm footprint theo giá x thời gian.
 4. Bubble chart của modern dashboard là source bất biến; chỉ copy sang whale route, không sửa trực tiếp.
 5. Icon cá mập phải áp dụng cho top 10% nến đang hiển thị trong viewport, không phải toàn dataset.
 6. Bubble/advisory phải bám selected session từ KLineChart.
 7. `OrderFlowRadarPanel` phải được chuyển xuống dưới KLineChart ở Stock Detail.
 8. Các text mới trên UI phải qua i18n tiếng Việt đầy đủ dấu.
+9. `Money Flow Control Center` là operator surface thống nhất; không tạo parallel writer ngoài `global_signal_policy_helpers.py`, `runtime_policy_helpers.py` và whale mission-control SSOT.
+10. `global_signal_universe_policy` là SSOT cho detection universe; runtime `intraday_universe_group_ids` chỉ là ingest/warm-tier hint.
+11. `IntradayTick` là short-lived staging/recovery input; long-term storage ưu tiên canonical events, bucket facts, session summaries và selective forensic windows.
+12. Sau lifecycle upgrade, `whale-alerts/:symbol` phải ưu tiên facts-first selected-session path, không full-scan raw ticks trên primary path.
 
 ## 4. Current anchor files
 
@@ -106,3 +139,4 @@ Mỗi slice phải có:
 Template chuẩn nằm tại:
 
 - `docs/WHALE_ALERTS_SYMBOL_KLINE_INTELLIGENCE_UPGRADE_EXECUTION_EVIDENCE_TEMPLATE_20260428.md`
+- `docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_EXECUTION_EVIDENCE_TEMPLATE_20260501.md`
