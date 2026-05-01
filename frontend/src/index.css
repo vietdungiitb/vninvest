@@ -5,6 +5,47 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
+  --layout-sidebar-width: 320px;
+  --layout-topnav-height: 72px;
+  --layout-content-max-width: 1800px;
+  --layout-content-pad-x: 24px;
+  --layout-content-pad-y: 16px;
+
+  --radius-xs: 8px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  --bg-app: #020b23;
+  --bg-panel: #081734;
+  --bg-panel-soft: rgba(8, 23, 52, 0.72);
+  --bg-panel-strong: rgba(8, 23, 52, 0.9);
+
+  --text-primary: #e6f3ff;
+  --text-secondary: #9cb2d1;
+  --text-muted: #6d86a8;
+
+  --accent-cyan: #12c7e8;
+  --accent-cyan-soft: rgba(18, 199, 232, 0.22);
+  --accent-emerald: #16d7a0;
+  --accent-rose: #ff5e7e;
+  --accent-amber: #ffbf4d;
+
+  --border-default: rgba(80, 120, 168, 0.28);
+  --border-strong: rgba(18, 199, 232, 0.38);
+
+  --shadow-panel: 0 8px 30px rgba(0, 0, 0, 0.28);
+  --shadow-focus: 0 0 0 2px rgba(18, 199, 232, 0.35);
+
   --terminal-bg: #0f172a;
   --terminal-panel: #1e293b;
   --terminal-panel-alt: #334155;
@@ -19,6 +60,21 @@
   --v2-shell-bg: rgba(15, 23, 42, 0.72);
   --v2-shell-bg-strong: rgba(15, 23, 42, 0.9);
   --v2-focus-ring: rgba(56, 189, 248, 0.35);
+
+  --terminal-bg: var(--bg-app);
+  --terminal-panel: var(--bg-panel);
+  --terminal-panel-alt: rgba(8, 23, 52, 0.6);
+  --terminal-grid: rgba(80, 120, 168, 0.22);
+  --terminal-text: var(--text-primary);
+  --terminal-muted: var(--text-secondary);
+  --terminal-cyan: var(--accent-cyan);
+  --terminal-rise: var(--accent-emerald);
+  --terminal-fall: var(--accent-rose);
+  --terminal-warn: var(--accent-amber);
+  --v2-shell-border: var(--border-default);
+  --v2-shell-bg: var(--bg-panel-soft);
+  --v2-shell-bg-strong: var(--bg-panel-strong);
+  --v2-focus-ring: var(--shadow-focus);
 }
 
 html {
@@ -74,23 +130,25 @@ textarea {
 
 /* Typography hierarchy for trading terminal */
 .text-label {
-  @apply text-[11px] uppercase tracking-[0.18em] text-slate-500;
+  @apply text-[11px] uppercase tracking-[0.18em];
+  color: var(--text-muted);
 }
 
 .text-value {
-  @apply font-semibold text-slate-100;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .text-positive {
-  @apply text-emerald-300;
+  color: var(--accent-emerald);
 }
 
 .text-negative {
-  @apply text-rose-300;
+  color: var(--accent-rose);
 }
 
 .text-neutral {
-  @apply text-slate-300;
+  color: var(--text-secondary);
 }
 
 /* Button component styles */
@@ -121,12 +179,194 @@ textarea {
 }
 
 /* Card and section styles */
+.app-page-shell {
+  max-width: var(--layout-content-max-width);
+  margin: 0 auto;
+  padding: var(--layout-content-pad-y) var(--layout-content-pad-x) var(--space-6);
+  width: 100%;
+  min-width: 0;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.page-header__left,
+.page-header__right {
+  min-width: 0;
+}
+
+.page-header__right {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.page-kicker {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.page-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 48px;
+  letter-spacing: -0.03em;
+}
+
+.page-description {
+  margin: var(--space-2) 0 0;
+  max-width: 72ch;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.page-body-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 22%) minmax(420px, 48%) minmax(420px, 30%);
+  gap: var(--space-4);
+  min-height: calc(100vh - var(--layout-topnav-height) - 220px);
+}
+
+.page-body-grid > * {
+  min-width: 0;
+}
+
+.page-body-grid--auto-height {
+  min-height: auto;
+}
+
+.page-body-grid__main {
+  grid-column: 1 / span 2;
+  min-width: 0;
+}
+
+.page-body-grid__side {
+  min-width: 0;
+}
+
+.page-panel,
 .card-section {
-  @apply rounded-[24px] border border-slate-800 bg-slate-900/85;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  background: var(--bg-panel-soft);
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
+}
+
+.page-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.page-panel__head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg-panel-strong);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.page-panel__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.page-state-bar {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-default);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pill);
+  background: var(--bg-panel-soft);
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .card-compact {
-  @apply rounded-xl border border-slate-800 bg-slate-950/75 px-3 py-2.5;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-panel);
+  padding: 10px 12px;
+}
+
+@media (max-width: 1439px) {
+  .page-body-grid {
+    grid-template-columns: 300px 1fr 1fr;
+  }
+
+  .page-body-grid__main {
+    grid-column: 1 / span 2;
+  }
+
+  .page-title {
+    font-size: 32px;
+    line-height: 40px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .app-page-shell {
+    padding-inline: 16px;
+  }
+
+  .page-body-grid {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .page-body-grid__main,
+  .page-body-grid__side {
+    grid-column: auto;
+  }
+
+  .page-title {
+    font-size: 26px;
+    line-height: 34px;
+  }
+}
+
+@media (max-width: 767px) {
+  .app-page-shell {
+    padding-inline: 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .page-header__right {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /* Breadth heatmap status colors */

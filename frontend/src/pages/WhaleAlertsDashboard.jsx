@@ -43,6 +43,8 @@ export default function WhaleAlertsDashboard() {
   const { t, formatDateTime } = useI18n();
   const { symbol } = useParams();
   const normalizedSymbol = (symbol || '').toUpperCase();
+  const feedRequestIdRef = useRef(0);
+  const overviewRequestIdRef = useRef(0);
   const [chartData, setChartData] = useState([]);
   const [loadingChart, setLoadingChart] = useState(true);
   const [activePeriod, setActivePeriod] = useState(180);
@@ -84,7 +86,9 @@ export default function WhaleAlertsDashboard() {
     data: bubbleAnalyticsData,
     loading: whaleAnalyticsLoading,
     error: whaleAnalyticsError,
-  } = useWhaleAnalyticsData(normalizedSymbol, bubbleTimeframe, selectedTradeDate);
+  } = useWhaleAnalyticsData(normalizedSymbol, bubbleTimeframe, selectedTradeDate, {
+    includeBaseline: false,
+  });
 
   const normalizeSymbol = (value) => String(value || '').trim().toUpperCase();
 
@@ -142,25 +146,60 @@ export default function WhaleAlertsDashboard() {
     return symbolAlerts;
   }, [chartAnalyticsData, feedData, symbolAlerts]);
 
-  const fetchFeed = useCallback(async () => {
-    setFeedLoading(true);
-    try {
-      const [feedResp, overviewResp] = await Promise.allSettled([
-        getWhaleFeed(normalizedSymbol),
-        getStockWorkspaceOverview(normalizedSymbol),
-      ]);
+  const fetchFeed = useCallback(async ({ silent = false } = {}) => {
+    if (!normalizedSymbol) {
+      setFeedData(null);
+      setFeedLoading(false);
+      return;
+    }
 
-      if (feedResp.status === 'fulfilled') {
-        setFeedData(feedResp.value.data);
-      }
-      if (overviewResp.status === 'fulfilled') {
-        setCompanyName(overviewResp.value.data?.company_name || '');
+    const requestId = ++feedRequestIdRef.current;
+    if (!silent) {
+      setFeedLoading(true);
+    }
+
+    try {
+      const feedResp = await getWhaleFeed(normalizedSymbol);
+      if (requestId === feedRequestIdRef.current) {
+        setFeedData(feedResp?.data || null);
       }
     } catch (_) {}
-    finally { setFeedLoading(false); }
+    finally {
+      if (requestId === feedRequestIdRef.current && !silent) {
+        setFeedLoading(false);
+      }
+    }
   }, [normalizedSymbol]);
 
-  useEffect(() => { setFeedData(null); fetchFeed(); }, [fetchFeed]);
+  const fetchOverview = useCallback(async () => {
+    if (!normalizedSymbol) {
+      setCompanyName('');
+      return;
+    }
+
+    const requestId = ++overviewRequestIdRef.current;
+    try {
+      const overviewResp = await getStockWorkspaceOverview(normalizedSymbol);
+      if (requestId === overviewRequestIdRef.current) {
+        setCompanyName(overviewResp?.data?.company_name || '');
+      }
+    } catch (_) {
+      if (requestId === overviewRequestIdRef.current) {
+        setCompanyName('');
+      }
+    }
+  }, [normalizedSymbol]);
+
+  useEffect(() => {
+    setFeedData(null);
+    setFeedLoading(true);
+    fetchFeed({ silent: false });
+  }, [fetchFeed]);
+
+  useEffect(() => {
+    setCompanyName('');
+    fetchOverview();
+  }, [fetchOverview]);
 
   const fetchAdvisorySession = useCallback(async ({ silent = false } = {}) => {
     if (!normalizedSymbol) {
@@ -260,21 +299,23 @@ export default function WhaleAlertsDashboard() {
   useEffect(() => {
     if (symbolWhaleAlert && symbolWhaleAlert?.ts !== prevWhaleRef.current) {
       prevWhaleRef.current = symbolWhaleAlert.ts;
-      fetchFeed();
+      fetchFeed({ silent: true });
     }
   }, [symbolWhaleAlert, fetchFeed]);
 
   // Auto-refresh mỗi 60s
   useEffect(() => {
-    const id = setInterval(fetchFeed, 60_000);
+    const id = setInterval(() => {
+      fetchFeed({ silent: true });
+    }, 60_000);
     return () => clearInterval(id);
   }, [fetchFeed]);
 
   return (
-    <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+    <div className="app-page-shell">
       {/* Header */}
-      <section className="card-section px-4 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <header className="page-header card-section p-4">
+        <div className="page-header__left">
           <div className="flex flex-wrap items-center gap-3">
             <Link to="/watchlist" className="text-label hover:text-slate-300 transition-colors">
               {t('layout.nav.watchlist')}
@@ -285,44 +326,44 @@ export default function WhaleAlertsDashboard() {
             </Link>
             <span className="text-slate-700">/</span>
             <span className="text-slate-200 text-sm font-semibold">🦈 {t('layout.nav.whaleAlerts')}</span>
-
-            <div className="w-full mt-1 text-xs text-slate-400">
-              <span className="text-slate-500">{t('whaleAlertsDashboard.stockSymbol')}:</span> <span className="font-semibold text-slate-200">{normalizedSymbol}</span>
-              <span className="mx-2 text-slate-700">|</span>
-              <span className="text-slate-500">{t('whaleAlertsDashboard.companyName')}:</span>{' '}
-              <span className="font-semibold text-slate-200">{companyName || t('whaleAlertsDashboard.updating')}</span>
-            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* WS whale alert badge */}
-            {symbolWhaleAlert && (
-              <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold animate-pulse ${
-                (symbolWhaleAlert.side || '').toLowerCase() === 'buy'
-                  ? 'border-emerald-600/60 bg-emerald-950/40 text-emerald-300'
-                  : 'border-rose-600/60 bg-rose-950/40 text-rose-300'
-              }`}>
-                🚨 {(symbolWhaleAlert.side || '').toUpperCase()} · {fmtBil(symbolWhaleAlert.matched_value)}
-              </div>
-            )}
-            <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
-              {realtimeStatus === 'live' ? t('whaleAlertsDashboard.statusLive') : realtimeStatus === 'polling' ? t('whaleAlertsDashboard.statusPolling') : t('whaleAlertsDashboard.statusConnecting')}
-              {lastEventAt ? ` · ${formatDateTime(lastEventAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
-            </div>
-            <Link
-              to={`/stocks/${normalizedSymbol}`}
-              className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              ← {t('whaleAlertsDashboard.stockWorkspace')}
-            </Link>
+
+          <div className="mt-1 text-xs text-slate-400">
+            <span className="text-slate-500">{t('whaleAlertsDashboard.stockSymbol')}:</span> <span className="font-semibold text-slate-200">{normalizedSymbol}</span>
+            <span className="mx-2 text-slate-700">|</span>
+            <span className="text-slate-500">{t('whaleAlertsDashboard.companyName')}:</span>{' '}
+            <span className="font-semibold text-slate-200">{companyName || t('whaleAlertsDashboard.updating')}</span>
           </div>
         </div>
-      </section>
+
+        <div className="page-header__right">
+          {symbolWhaleAlert && (
+            <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold animate-pulse ${
+              (symbolWhaleAlert.side || '').toLowerCase() === 'buy'
+                ? 'border-emerald-600/60 bg-emerald-950/40 text-emerald-300'
+                : 'border-rose-600/60 bg-rose-950/40 text-rose-300'
+            }`}>
+              🚨 {(symbolWhaleAlert.side || '').toUpperCase()} · {fmtBil(symbolWhaleAlert.matched_value)}
+            </div>
+          )}
+          <div className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400">
+            {realtimeStatus === 'live' ? t('whaleAlertsDashboard.statusLive') : realtimeStatus === 'polling' ? t('whaleAlertsDashboard.statusPolling') : t('whaleAlertsDashboard.statusConnecting')}
+            {lastEventAt ? ` · ${formatDateTime(lastEventAt, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+          </div>
+          <Link
+            to={`/stocks/${normalizedSymbol}`}
+            className="rounded-full border border-slate-700 bg-slate-950/80 px-3 py-1.5 text-[11px] text-slate-400 hover:text-slate-200 transition-colors"
+          >
+            ← {t('whaleAlertsDashboard.stockWorkspace')}
+          </Link>
+        </div>
+      </header>
 
       {/* Main grid: left 2 cols (Kline + Bubble) | right col (Feed + RVOL + Donut + Depth) */}
-      <div className="grid grid-cols-1 gap-4 xl:items-start xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
+      <main className="page-body-grid">
         {/* Left 2 columns — stacked vertically */}
         <div className="xl:col-span-2 flex flex-col gap-4">
-          <section className="card-section p-4">
+          <section className="page-panel p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <p className="text-label">{t('stockDetail.klineWorkspace')}</p>
@@ -375,7 +416,7 @@ export default function WhaleAlertsDashboard() {
             </div>
           </section>
 
-          <section className="card-section p-4">
+          <section className="page-panel p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <p className="text-label">{t('whaleAlertsDashboard.largeOrderDistribution')}</p>
@@ -426,7 +467,7 @@ export default function WhaleAlertsDashboard() {
             </div>
           </section>
 
-          <section className="card-section p-4">
+          <section className="page-panel p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
                 <p className="text-label">{t('whaleAlertsDashboard.aiAdvisoryLabel', { defaultValue: 'Tư vấn AI theo phiên' })}</p>
@@ -466,13 +507,13 @@ export default function WhaleAlertsDashboard() {
             realtimeAlerts={liveBoardAlerts}
             feedData={feedData}
             loading={feedLoading}
-            onRefresh={fetchFeed}
+            onRefresh={() => fetchFeed({ silent: false })}
             feedHeightClass="h-[320px] sm:h-[360px]"
           />
           <RVOLChartPanel symbol={normalizedSymbol} loading={false} />
           <MoneyFlowDonut summary={feedData?.summary} loading={feedLoading} compact />
           <DepthChartPanel symbol={normalizedSymbol} compact />
-          <section className="card-section p-4">
+          <section className="page-panel p-4">
             <div className="border-b border-slate-800 pb-3">
               <p className="text-label">{t('whaleAnalytics.cvdLabel', { defaultValue: 'CVD' })}</p>
               <h3 className="mt-0.5 text-sm font-semibold text-white">
@@ -489,7 +530,7 @@ export default function WhaleAlertsDashboard() {
             </div>
           </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

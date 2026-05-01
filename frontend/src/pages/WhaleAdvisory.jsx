@@ -82,7 +82,7 @@ export default function WhaleAdvisory() {
   const refreshInfo = activeSymbol ? refreshInfoMap[activeSymbol] : null;
 
   return (
-    <div className="mx-auto max-w-[1800px] pt-6 pb-8 px-4 lg:px-8 space-y-4 min-h-screen bg-slate-950/20">
+    <div className="app-page-shell space-y-4 min-h-screen bg-slate-950/20">
       <WhaleAdvisoryBentoHeader userPlan={userPlan} statsLoading={statsLoading} onRefresh={fetchData} />
 
       {error ? (
@@ -93,9 +93,9 @@ export default function WhaleAdvisory() {
         </div>
       ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+            <div className="page-body-grid page-body-grid--auto-height items-stretch">
               {/* Left 2 columns: advisory command panel for long reading */}
-              <div className="xl:col-span-2 flex flex-col min-h-[560px]" key={`main-${activeSymbol}`}>
+              <div className="page-body-grid__main flex flex-col min-h-[560px]" key={`main-${activeSymbol}`}>
                 <WhaleAdvisoryCommandPanel
                   item={activeItem}
                   activeSymbol={activeSymbol}
@@ -108,7 +108,7 @@ export default function WhaleAdvisory() {
               </div>
 
               {/* Right column: symbol sidebar */}
-              <div className="xl:col-span-1 flex flex-col min-h-[560px]">
+              <div className="page-body-grid__side flex flex-col min-h-[560px]">
                 <WhaleSymbolSidebar
                   symbolStats={symbolStats}
                   symbolSearch={symbolSearch}
@@ -123,9 +123,9 @@ export default function WhaleAdvisory() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 items-stretch">
+            <div className="page-body-grid page-body-grid--auto-height items-stretch">
               {/* Bubble chart as primary supporting module */}
-              <div className="xl:col-span-2 min-h-[360px]">
+              <div className="page-body-grid__main min-h-[360px]">
                 <div className="h-full neon-glass-panel p-3">
                   {activeSymbol ? (
                     <WhaleBubbleChart selectedSymbol={activeSymbol} isEmbedded={true} />
@@ -139,7 +139,7 @@ export default function WhaleAdvisory() {
               </div>
 
               {/* Harmonized support modules */}
-              <div className="xl:col-span-1 min-h-[360px] neon-glass-panel overflow-hidden flex flex-col">
+              <div className="page-body-grid__side min-h-[360px] neon-glass-panel overflow-hidden flex flex-col">
                 <div className="p-2 border-b border-slate-800/60 bg-slate-900/50 grid grid-cols-3 gap-2">
                   <button
                     type="button"

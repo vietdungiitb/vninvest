@@ -577,7 +577,11 @@ export default function WhaleBubbleChart({
     setInternalError(null);
 
     try {
-      const response = await getWhaleAnalyticsSnapshot(symbol, { timeframe, compact: 1 });
+      const response = await getWhaleAnalyticsSnapshot(symbol, {
+        timeframe,
+        compact: 1,
+        includeBaseline: false,
+      });
       const snapshot = response?.data || {};
       const normalized = normalizeWhaleAnalyticsSnapshot(snapshot, timeframe);
       setInternalOrderData(normalized.bubbles);
@@ -599,10 +603,10 @@ export default function WhaleBubbleChart({
 
   // Convert order data to bubble coordinates
   const bubbles = useOrderBubbleCoordinates(
-    orderData ? [...(orderData.orders.buy || []), ...(orderData.orders.sell || []), ...(orderData.orders.internal || [])] : [],
+    orderData ? [...(orderData.orders?.buy || []), ...(orderData.orders?.sell || []), ...(orderData.orders?.internal || [])] : [],
     orderData?.ref_price,
     orderData?.session_start
-  );
+  ) || { buy: [], sell: [], internal: [] };
 
   const totalOrders = orderData?.summary?.total_orders || 0;
   const visibleBubbleGroups = useMemo(() => {

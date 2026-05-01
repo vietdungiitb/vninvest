@@ -64,7 +64,7 @@ describe('useWhaleAnalyticsData', () => {
       expect(result.current.data).toEqual(normalized);
     });
 
-    expect(getWhaleAnalyticsSnapshot).toHaveBeenCalledWith('HPG', { timeframe: 'session', compact: 0, tradeDate: null, includeBaseline: undefined });
+    expect(getWhaleAnalyticsSnapshot).toHaveBeenCalledWith('HPG', { timeframe: 'session', compact: 0, tradeDate: null, includeBaseline: false });
     expect(normalizeWhaleAnalyticsSnapshot).toHaveBeenCalledWith(snapshot, 'session');
     expect(result.current.error).toBe(null);
   });

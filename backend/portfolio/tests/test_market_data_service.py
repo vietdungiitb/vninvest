@@ -60,6 +60,10 @@ class MarketDataServiceParityTest(TestCase):
         dates = [row['date'] for row in result['VNM']]
         self.assertEqual(dates, sorted(dates))
 
+    def test_get_historical_indicators_missing_symbol_returns_empty_series(self):
+        result = MarketDataService.get_historical_indicators(['NOTEXIST'], lookback_days=10)
+        self.assertEqual(result, {'NOTEXIST': []})
+
     def test_local_context_cache(self):
         """Local cache được populated sau lần gọi đầu."""
         ctx = {}

@@ -219,6 +219,32 @@ describe('WhaleBubbleChart sync and race guards', () => {
     });
   });
 
+  it('uses baseline-disabled snapshot fetches for uncontrolled bubble loads', async () => {
+    const requests = createAbortableSnapshotQueue();
+
+    render(
+      <MemoryRouter future={routerFuture}>
+        <WhaleBubbleChart
+          isEmbedded={true}
+          selectedSymbol="HPG"
+          holdings={[{ symbol: 'HPG' }]}
+          symbolOptions={['HPG']}
+        />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+
+    expect(requests[0].symbol).toBe('HPG');
+    expect(requests[0].params).toMatchObject({
+      timeframe: 'session',
+      compact: 1,
+      includeBaseline: false,
+    });
+  });
+
   it('syncs a late embedded selectedSymbol prop before holdings are ready', async () => {
     const requests = createAbortableSnapshotQueue();
 

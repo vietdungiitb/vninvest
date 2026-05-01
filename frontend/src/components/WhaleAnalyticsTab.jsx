@@ -32,7 +32,9 @@ export default function WhaleAnalyticsTab({
   const [isAdvisoryModalOpen, setIsAdvisoryModalOpen] = useState(false);
 
   // Parallel data fetching (Bubbles + Flow)
-  const { data, loading, error } = useWhaleAnalyticsData(symbol, timeframe);
+  const { data, loading, error } = useWhaleAnalyticsData(symbol, timeframe, null, {
+    includeBaseline: false,
+  });
 
   // Available symbols calculation
   const availableSymbols = useMemo(() => {

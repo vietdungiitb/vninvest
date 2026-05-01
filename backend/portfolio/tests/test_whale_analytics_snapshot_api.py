@@ -320,6 +320,43 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
 
     @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
     @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
+    @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    def test_snapshot_endpoint_skips_live_whale_feed_for_historical_trade_date(
+        self,
+        mock_get_whale_feed,
+        mock_current_vn_now,
+        mock_resolve_reference_price,
+        mock_resolve_threshold_vnd,
+    ):
+        historical_trade_date = self.trade_date - timedelta(days=1)
+        IntradayTick.objects.create(
+            symbol='HPG',
+            trade_date=historical_trade_date,
+            trade_time=time(9, 15),
+            price=24.8,
+            volume=120_000,
+            side='BUY',
+        )
+        mock_current_vn_now.return_value = datetime.combine(self.trade_date, time(10, 0), tzinfo=VN_TZ)
+        mock_resolve_reference_price.return_value = 24.5
+        mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
+        mock_get_whale_feed.side_effect = AssertionError('historical snapshot should not call live whale feed')
+
+        request = self.factory.get(
+            f'/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1&trade_date={historical_trade_date.isoformat()}'
+        )
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['trade_date'], historical_trade_date.isoformat())
+        self.assertEqual(response.data['session']['resolved_from'], 'latest_completed_session')
+        self.assertEqual(len(response.data['bubble_series']), 1)
+        mock_get_whale_feed.assert_not_called()
+
+    @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
+    @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
     @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
     def test_snapshot_endpoint_falls_back_to_latest_daily_price_session_for_holiday_data_gap(
         self,
@@ -467,12 +504,15 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
     @patch('portfolio.services_whale_analytics_snapshot.WhaleSignalEngine.resolve_threshold_vnd')
     @patch('portfolio.services_whale_analytics_snapshot._resolve_reference_price')
     @patch('portfolio.services_whale_analytics_snapshot.market_data_service.get_whale_feed')
+    @patch('portfolio.services_whale_analytics_snapshot._current_vn_now')
     def test_snapshot_endpoint_reuses_cached_payload_for_identical_request(
         self,
+        mock_current_vn_now,
         mock_get_whale_feed,
         mock_resolve_reference_price,
         mock_resolve_threshold_vnd,
     ):
+        mock_current_vn_now.return_value = datetime.combine(self.trade_date, time(9, 20), tzinfo=VN_TZ)
         mock_resolve_reference_price.return_value = 25.0
         mock_resolve_threshold_vnd.return_value = (1_000_000_000, 'user_default')
         mock_get_whale_feed.return_value = {
@@ -620,115 +660,29 @@ class WhaleAnalyticsSnapshotApiTestCase(TestCase):
         _mock_sleep,
         _mock_cache_revision,
     ):
-        mock_cache_add.return_value = True
+        mock_cache_add.return_value = False
+        published_payload = {
+            'symbol': 'HPG',
+            'trade_date': self.trade_date.isoformat(),
+            'timeframe': 'session',
+            'meta': {
+                'generated_at': datetime.combine(self.trade_date, time(9, 20), tzinfo=VN_TZ).isoformat(),
+                'data_state': 'snapshot',
+            },
+        }
         mock_cache_get.side_effect = [
             None,
-            None,
-            {
-                'symbol': 'HPG',
-                'trade_date': self.trade_date.isoformat(),
-                'timeframe': 'session',
-                'bucket_minutes': 15,
-                'window_start': datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ).isoformat(),
-                'window_end': datetime.combine(self.trade_date, time(15, 0), tzinfo=VN_TZ).isoformat(),
-                'generated_at': datetime.combine(self.trade_date, time(9, 20), tzinfo=VN_TZ).isoformat(),
-                'tick_rows': [
-                    {
-                        'dt': datetime.combine(self.trade_date, time(9, 5), tzinfo=VN_TZ),
-                        'bucket_ts': datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ),
-                        'side': 'buy',
-                        'price': 25.0,
-                        'volume': 1000.0,
-                        'matched_value': 25_000_000.0,
-                    },
-                ],
-                'bucket_rows': [
-                    {
-                        'bucket_ts': datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ),
-                        'bucket_index': 0,
-                        'bucket_minutes': 15,
-                        'buy_value': 25_000_000.0,
-                        'sell_value': 0.0,
-                        'total_value': 25_000_000.0,
-                        'net_value': 25_000_000.0,
-                        'cvd_raw': 25_000_000.0,
-                        'event_count': 1,
-                        'event_density': 0.066667,
-                        'buy_share': 1.0,
-                        'sell_share': 0.0,
-                        'dominant_side': 'buy',
-                        'last_price': 25.0,
-                        'last_ts': datetime.combine(self.trade_date, time(9, 5), tzinfo=VN_TZ),
-                    },
-                ],
-                'bucket_facts': [
-                    {
-                        'bucket_ts': datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ),
-                        'bucket_index': 0,
-                        'bucket_minutes': 15,
-                        'buy_value': 25_000_000.0,
-                        'sell_value': 0.0,
-                        'total_value': 25_000_000.0,
-                        'net_value': 25_000_000.0,
-                        'cvd_raw': 25_000_000.0,
-                        'event_count': 1,
-                        'event_density': 0.066667,
-                        'buy_share': 1.0,
-                        'sell_share': 0.0,
-                        'dominant_side': 'buy',
-                        'last_price': 25.0,
-                        'last_ts': datetime.combine(self.trade_date, time(9, 5), tzinfo=VN_TZ),
-                    },
-                ],
-                'tick_count': 1,
-                'bucket_count': 1,
-                'bucket_fact_count': 1,
-            },
+            published_payload,
         ]
+        request = self.factory.get('/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1')
+        force_authenticate(request, user=self.user)
+        response = whale_analytics_snapshot_api(request, 'HPG')
 
-        mock_query = MagicMock()
-        mock_query.values.return_value = mock_query
-        mock_query.order_by.return_value = [
-            {
-                'trade_date': self.trade_date,
-                'trade_time': time(9, 5),
-                'price': 25.0,
-                'volume': 1000,
-                'side': 'BUY',
-            },
-        ]
-        mock_intraday_objects.filter.return_value = mock_query
-
-        first_payload = _get_or_build_bucket_facts(
-            symbol='HPG',
-            trade_date=self.trade_date,
-            timeframe='session',
-            window_start=datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ),
-            window_end=datetime.combine(self.trade_date, time(15, 0), tzinfo=VN_TZ),
-            bucket_minutes=15,
-            cache_revision='rev-test',
-        )
-        second_payload = _get_or_build_bucket_facts(
-            symbol='HPG',
-            trade_date=self.trade_date,
-            timeframe='session',
-            window_start=datetime.combine(self.trade_date, time(9, 0), tzinfo=VN_TZ),
-            window_end=datetime.combine(self.trade_date, time(15, 0), tzinfo=VN_TZ),
-            bucket_minutes=15,
-            cache_revision='rev-test',
-        )
-
-        self.assertEqual(first_payload['tick_count'], 1)
-        self.assertEqual(second_payload['bucket_count'], 1)
-        self.assertEqual(first_payload['bucket_fact_count'], 1)
-        self.assertEqual(first_payload['bucket_facts'][0]['net_value'], 25_000_000.0)
-        self.assertEqual(first_payload['bucket_facts'][0]['cvd_raw'], 25_000_000.0)
-        self.assertEqual(first_payload['bucket_facts'][0]['dominant_side'], 'buy')
-        self.assertEqual(mock_intraday_objects.filter.call_count, 1)
-        mock_cache_set.assert_called_once()
-        mock_cache_delete.assert_called_once_with(
-            f'whale:analytics:facts:v1:rev-test:HPG:{self.trade_date.isoformat()}:session:15:lock'
-        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['symbol'], 'HPG')
+        mock_build_snapshot.assert_not_called()
+        mock_cache_set.assert_not_called()
+        mock_cache_delete.assert_not_called()
 
     @patch('portfolio.services_whale_analytics_snapshot.time.sleep', return_value=None)
     @patch('portfolio.services_whale_analytics_snapshot.cache.delete')

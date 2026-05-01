@@ -979,7 +979,7 @@ export default function WatchlistPage() {
   };
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl mx-auto">
+    <div className="app-page-shell space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-gray-100">{t('watchlist.title')}</h1>

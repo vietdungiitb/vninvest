@@ -22,6 +22,7 @@ import {
 } from '../api/auth';
 import apiClient from '../api/client';
 import { AbilityContext, createAbilityFromRules } from './AbilityContext';
+import { isRequestCanceled } from '../utils/requestCancellation';
 
 const PortfolioContext = createContext(null);
 
@@ -165,6 +166,9 @@ export function PortfolioProvider({ children }) {
           setActivePortfolioId((prev) => prev || res.data[0].id);
         }
       } catch (err) {
+        if (isRequestCanceled(err)) {
+          return;
+        }
         if (err?.response?.status === 401) {
           logout();
           return;

@@ -139,7 +139,7 @@ export default function StandardPageTemplate() {
 ## 5) Template bo cuc 3 cot thong nhat
 
 1. **Desktop >= 1440px**
-- Grid: `minmax(320px, 22%) minmax(420px, 39%) minmax(420px, 39%)`.
+- Grid: `minmax(320px, 22%) minmax(420px, 48%) minmax(420px, 30%)`.
 - Chieu cao vung body: `calc(100vh - topnav - header - paddings)`.
 
 2. **Laptop 1024px - 1439px**
@@ -285,7 +285,7 @@ export default function StandardPageTemplate() {
 
 .page-body-grid {
   display: grid;
-  grid-template-columns: minmax(320px, 22%) minmax(420px, 39%) minmax(420px, 39%);
+  grid-template-columns: minmax(320px, 22%) minmax(420px, 48%) minmax(420px, 30%);
   gap: var(--space-4);
   min-height: calc(100vh - var(--layout-topnav-height) - 220px);
 }

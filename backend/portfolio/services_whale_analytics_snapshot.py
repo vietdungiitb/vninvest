@@ -708,7 +708,8 @@ def _build_bucket_facts_payload(*, symbol: str, trade_date: date, timeframe: str
         .order_by('trade_time')
     )
     seen_keys = set()
-    for item in tick_qs:
+    tick_iterable = tick_qs.iterator(chunk_size=5000) if hasattr(tick_qs, 'iterator') else tick_qs
+    for item in tick_iterable:
         trade_time_value = item.get('trade_time')
         if trade_time_value is None:
             continue
@@ -1032,68 +1033,28 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         trade_date=resolved_trade_date,
         reference_price=reference_price,
     )
-
-    tick_rows = []
-    tick_qs = (
-        IntradayTick.objects
-        .filter(symbol=normalized_symbol, trade_date=resolved_trade_date)
-        .values('trade_date', 'trade_time', 'price', 'volume', 'side')
-        .order_by('trade_time')
+    shared_bucket_facts = _get_or_build_bucket_facts(
+        symbol=normalized_symbol,
+        trade_date=resolved_trade_date,
+        timeframe=normalized_timeframe,
+        window_start=window_start,
+        window_end=window_end,
+        bucket_minutes=bucket_minutes,
+        cache_revision=cache_revision,
     )
-    seen_keys = set()
-    for item in tick_qs:
-        trade_time_value = item.get('trade_time')
-        if trade_time_value is None:
-            continue
-        dedupe_key = (
-            item.get('trade_date'),
-            trade_time_value,
-            item.get('side'),
-            item.get('price'),
-            item.get('volume'),
-        )
-        if dedupe_key in seen_keys:
-            continue
-        seen_keys.add(dedupe_key)
-        dt_value = datetime.combine(resolved_trade_date, trade_time_value, tzinfo=VN_TZ)
-        if not (window_start <= dt_value <= window_end):
-            continue
-        price_value = float(item.get('price') or 0)
-        volume_value = float(item.get('volume') or 0)
-        matched_value = _matched_value_from_price_volume(price_value, volume_value)
-        tick_rows.append({
-            'dt': dt_value,
-            'bucket_ts': _floor_bucket(dt_value, bucket_minutes),
-            'side': _normalize_tick_side(item.get('side')),
-            'price': price_value,
-            'volume': volume_value,
-            'matched_value': matched_value,
-        })
+    tick_rows = list(shared_bucket_facts.get('tick_rows') or [])
+    sorted_buckets = list(shared_bucket_facts.get('bucket_facts') or shared_bucket_facts.get('bucket_rows') or [])
+    shared_facts_generated_at = str(shared_bucket_facts.get('generated_at') or '').strip()
+    shared_facts_cache_age_ms = 0
+    if shared_facts_generated_at:
+        try:
+            shared_facts_generated_at_dt = datetime.fromisoformat(shared_facts_generated_at.replace('Z', '+00:00'))
+            if shared_facts_generated_at_dt.tzinfo is None:
+                shared_facts_generated_at_dt = shared_facts_generated_at_dt.replace(tzinfo=timezone.utc)
+            shared_facts_cache_age_ms = max(0, int((now_vn - shared_facts_generated_at_dt.astimezone(VN_TZ)).total_seconds() * 1000))
+        except ValueError:
+            shared_facts_cache_age_ms = 0
 
-    bucket_map = defaultdict(lambda: {
-        'bucket_ts': None,
-        'buy_value': 0.0,
-        'sell_value': 0.0,
-        'total_value': 0.0,
-        'event_count': 0,
-        'last_price': None,
-        'last_ts': None,
-    })
-    for row in tick_rows:
-        key = row['bucket_ts'].isoformat()
-        bucket_entry = bucket_map[key]
-        bucket_entry['bucket_ts'] = row['bucket_ts']
-        bucket_entry['total_value'] += row['matched_value']
-        bucket_entry['event_count'] += 1
-        if row['side'] == 'buy':
-            bucket_entry['buy_value'] += row['matched_value']
-        elif row['side'] == 'sell':
-            bucket_entry['sell_value'] += row['matched_value']
-        if bucket_entry['last_ts'] is None or row['dt'] >= bucket_entry['last_ts']:
-            bucket_entry['last_ts'] = row['dt']
-            bucket_entry['last_price'] = row['price']
-
-    sorted_buckets = sorted(bucket_map.values(), key=lambda item: item['bucket_ts'])
     price_series = []
     for bucket in sorted_buckets:
         price_value = float(bucket['last_price'] or 0)
@@ -1107,7 +1068,14 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
             'delta_pct': round(delta_pct, 4),
         })
 
-    whale_payload = market_data_service.get_whale_feed(user, normalized_symbol)
+    is_live_session = resolved_trade_date == now_vn.date() and _combine_dt(resolved_trade_date, MARKET_OPEN) <= now_vn <= _combine_dt(resolved_trade_date, MARKET_CLOSE)
+    whale_payload = {
+        'whale_orders': [],
+        'fetched_at': None,
+    }
+    if is_live_session:
+        whale_payload = market_data_service.get_whale_feed(user, normalized_symbol)
+
     whale_scores_by_key = {}
     whale_order_rows = []
     for order in whale_payload.get('whale_orders') or []:
@@ -1256,27 +1224,7 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         flow_compare_series=flow_compare_series,
         heatmap_series=heatmap_series,
     )
-    shared_bucket_facts = _get_or_build_bucket_facts(
-        symbol=normalized_symbol,
-        trade_date=resolved_trade_date,
-        timeframe=normalized_timeframe,
-        window_start=window_start,
-        window_end=window_end,
-        bucket_minutes=bucket_minutes,
-        cache_revision=cache_revision,
-    )
-    tick_rows = list(shared_bucket_facts.get('tick_rows') or [])
     bucket_facts = list(shared_bucket_facts.get('bucket_facts') or shared_bucket_facts.get('bucket_rows') or [])
-    shared_facts_generated_at = str(shared_bucket_facts.get('generated_at') or '').strip()
-    shared_facts_cache_age_ms = 0
-    if shared_facts_generated_at:
-        try:
-            shared_facts_generated_at_dt = datetime.fromisoformat(shared_facts_generated_at.replace('Z', '+00:00'))
-            if shared_facts_generated_at_dt.tzinfo is None:
-                shared_facts_generated_at_dt = shared_facts_generated_at_dt.replace(tzinfo=timezone.utc)
-            shared_facts_cache_age_ms = max(0, int((now_vn - shared_facts_generated_at_dt.astimezone(VN_TZ)).total_seconds() * 1000))
-        except ValueError:
-            shared_facts_cache_age_ms = 0
 
     session = {
         'timezone': 'Asia/Ho_Chi_Minh',

@@ -282,10 +282,6 @@ export const getSectorBreadth = (symbol) =>
   apiClient.get(`/realtime/breadth/${encodeURIComponent(symbol)}/`);
 export const getWhaleFeed = (symbol) =>
   apiClient.get(`/realtime/whale-feed/${encodeURIComponent(symbol)}/`);
-export const getWhaleOrdersBySymbol = (symbol, { timeframe = 'session' } = {}) =>
-  apiClient.get(`/portfolio/whale/orders/${encodeURIComponent(symbol)}/`, {
-    params: { timeframe },
-  });
 export const getWhaleAnalyticsSnapshot = (symbol, { timeframe = 'session', compact = 1, tradeDate, includeBaseline } = {}) =>
   apiClient.get(`/portfolio/whale/analytics/${encodeURIComponent(symbol)}/`, {
     params: {

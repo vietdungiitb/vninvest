@@ -4433,6 +4433,11 @@ class MarketDataService:
         )
         date_map = {row['symbol']: row['latest_date'] for row in latest_dates}
 
+        if not date_map:
+            for sym in redis_missing:
+                result[sym] = []
+            return result
+
         q = Q()
         for sym, latest in date_map.items():
             approx_start = latest - timedelta(days=int(lookback_days * 1.6))

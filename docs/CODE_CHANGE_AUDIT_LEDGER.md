@@ -1,3 +1,350 @@
+# Entry 2026-05-01zd - Roll out shared 30% third-column layout to remaining top-level pages
+
+Muc tieu:
+- Ap dung thong nhat contract 22/48/30 cho cac top-level 3-column pages con lai dang hard-code outer grid shell.
+- Dung utility chung de giu cung mot bo cuc cho Legacy Dashboard, Stock Detail, Whale Advisory va Modern Dashboard ma khong sua cac grid con ben trong module.
+- Cap nhat audit report de phan biet ro cac surface da remediation va cac drift con lai khong thuoc pham vi cot thu 3.
+
+Noi dung cap nhat chinh:
+- `frontend/src/index.css`:
+  - Them `page-body-grid--auto-height`, `page-body-grid__main` va `page-body-grid__side` de tai su dung contract 22/48/30 cho cac page co outer shell 2+1.
+- `frontend/src/pages/LegacyDashboard.jsx`:
+  - Chuyen outer layout sang shared grid utility thay cho `xl:grid-cols-3` hard-code.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Dong bo loading shell va main 3-column workspace sang shared grid utility.
+- `frontend/src/pages/WhaleAdvisory.jsx`:
+  - Dong bo ca hai outer 3-column rows sang shared grid utility.
+- `frontend/src/pages/modern/ModernDashboard.jsx`:
+  - Canh lai operator surface outer grid ve cung utility 22/48/30 trong khi van giu full-height workspace.
+- `docs/UI_LAYOUT_AUDIT_REPORT_20260501.md`:
+  - Sua noi dung audit cho dung contract 22/48/30 hien hanh va ghi ro cac page da duoc remediation trong slice nay.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01zd.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau frontend layout rollout.
+
+Danh sach tep cap nhat:
+- frontend/src/index.css
+- frontend/src/pages/LegacyDashboard.jsx
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/pages/WhaleAdvisory.jsx
+- frontend/src/pages/modern/ModernDashboard.jsx
+- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `get_errors` tren `frontend/src/index.css`, `frontend/src/pages/LegacyDashboard.jsx`, `frontend/src/pages/StockDetail.jsx`, `frontend/src/pages/WhaleAdvisory.jsx`, `frontend/src/pages/modern/ModernDashboard.jsx` => no errors found.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
+- EVIDENCE: screenshot captured on refreshed runtime at `http://localhost/whale-alerts/TCB` after rebuild; shared shell/header/grid rendered with the updated 22/48/30 contract.
+
+Residual risk:
+- Slice nay chuan hoa outer 3-column shell; cac drift con lai ve header contract, tokenization va hard-coded panel styling tren Watchlist/Support/AICommandCenter/WhaleAlertsHub van can mot dot cleanup rieng.
+- `WhaleAlertsDashboard.jsx` da dung contract 22/48/30 tu truoc, nen slice nay khong sua them page do.
+
+# Entry 2026-05-01zc - Decouple Whale Alerts feed refresh from workspace overview
+
+Muc tieu:
+- Cat lien ket giua `getWhaleFeed()` va `getStockWorkspaceOverview()` tren `whale-alerts/:symbol` de feed refresh khong bi block boi workspace overview.
+- Giu lai `feedData` cu trong silent refresh de user khong bi trang/trong panel khi websocket/timer tick.
+- Chot audit trail cho frontend performance slice da duoc build va runtime refresh truoc do trong cung session.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
+  - Tach `fetchFeed()` va `fetchOverview()` thanh hai request flow doc lap.
+  - Them request id refs de tranh stale response ghi de state moi.
+  - Silent feed refresh khong xoa du lieu dang hien thi va khong refetch overview moi lan co whale event/timer tick.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01zc.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/WhaleAlertsDashboard.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
+- NOTE: `getStockWorkspaceOverview()` khong con bi refetch trong moi lan whale feed refresh; page-level latency van phu thuoc request cham nhat trong cac endpoint song song con lai.
+
+# Entry 2026-05-01zb - Collapse duplicate whale snapshot scans and keep historical selected-session on facts-first path
+
+Muc tieu:
+- Cat bo phan scan `IntradayTick` bi lap lai trong `build_whale_analytics_snapshot()` de snapshot selected-session khong doc lai cung mot tap raw ticks hai lan trong mot request.
+- Chan historical/selected-session snapshot goi `market_data_service.get_whale_feed()` live/current-day, vi duong nay khong phai facts-first path va keo route `whale-alerts/:symbol` cham khong can thiet.
+- Bo sung regression test khoa hanh vi historical snapshot chi doc facts/cache/db cua session duoc chon.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/services_whale_analytics_snapshot.py`:
+  - Chuyen `build_whale_analytics_snapshot()` sang facts-first som hon: lay `shared_bucket_facts` ngay tu dau va tai su dung `tick_rows`/`bucket_facts` thay vi quet `IntradayTick` lan hai.
+  - Chi goi `market_data_service.get_whale_feed()` khi snapshot dang o live session trong ngay; historical/selected-session dung bubble source tu facts/ticks cua session da chon.
+  - Bo sung fallback iterator de helper facts van tuong thich voi test mocks tra ve `list` thay vi queryset that.
+- `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`:
+  - Them regression test dam bao historical snapshot khong goi live whale feed.
+  - Cap nhat test cache/view lock va same-request cache expectation cho dung hanh vi facts-first/live-only moi.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01zb.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau backend snapshot slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/services_whale_analytics_snapshot.py
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api; Pop-Location`
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build backend; Pop-Location`
+- MEASURED: `_get_or_build_bucket_facts('MBB', '2026-04-29')` cold `2.033s`, warm cache `0.005s`, `tick_count=1465`, `bucket_count=11`.
+- MEASURED: `build_whale_analytics_snapshot('MBB', trade_date='2026-04-29', include_baseline=False)` in-process `2.083s` sau khi bo scan lap va bo historical live-feed call.
+- MEASURED: `market_data_service.get_stock_workspace_overview('MBB')` van mat khoang `3.257s`, day la mot latency rieng cua page shell ngoai snapshot pane.
+
+Residual risk:
+- Page `whale-alerts/:symbol` van goi them `getWhaleFeed()`, `getStockWorkspaceOverview()`, advisory session va cac endpoint realtime khac song song; vi vay page-level perceived latency van bi chi phoi boi slowest request, khong chi rieng snapshot heatmap/CVD/strength.
+- Facts cache hien chi nhanh khi da duoc warm cho dung `symbol/trade_date/timeframe`; cold miss dau tien van phai bucketize raw ticks tu DB.
+
+# Entry 2026-05-01za - Retire dead legacy realtime paths
+
+Muc tieu:
+- Loai bo implementation realtime legacy khong con duoc wiring vao route nao de tranh bi import/goi nham trong cac slice sau.
+- Xoa helper API frontend cho whale-orders legacy khong con caller noi bo, de SSOT mac dinh giu o whale analytics snapshot.
+- Giam drift giua code dang song va code zombie trong nhom whale/rvol.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_realtime_advanced.py`:
+  - Delete toan bo module legacy khong con route/import tham chieu trong codebase hien tai.
+  - Module nay chua logic `WhaleFeedView`/`RVOLView` cu va giu thuoc vao cac symbol/ham khong con hop le, nen de lai co nguy co bi goi nham.
+- `frontend/src/api/client.js`:
+  - Remove `getWhaleOrdersBySymbol()` vi frontend hien tai khong con caller noi bo nao su dung path whale-orders legacy.
+  - Giu mot duong client SSOT ro rang hon cho whale analytics qua `getWhaleAnalyticsSnapshot()`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01za.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau cleanup slice.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_realtime_advanced.py
+- frontend/src/api/client.js
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location`
+- NOTE: backend `whale/orders/<symbol>` route chua bi cat bo trong slice nay de tranh vo backward compatibility ngoai repo; cleanup hien tai chi bo duong goi noi bo khong con duoc su dung.
+
+# Entry 2026-05-01z - Unblock bubble chart snapshot cold path
+
+Muc tieu:
+- Chan duong request whale analytics snapshot mac dinh van tinh percentile baseline o cac surface bubble/chart, vi day la nguon gay 504 cho bubble chart cold path.
+- Dam bao ca consumer qua hook va fetch noi bo cua `WhaleBubbleChart` deu di qua `include_baseline=0` truoc khi vao backend.
+- Gia co `WhaleBubbleChart` an toan hon o lan render dau khi bubble groups chua san sang day du.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useWhaleAnalyticsData.js`:
+  - Dat mac dinh `includeBaseline` thanh `false` cho snapshot consumer cua chart/bubble.
+- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
+  - Bubble selected-session snapshot truyen ro `includeBaseline: false`.
+- `frontend/src/components/WhaleAnalyticsTab.jsx`:
+  - Tab-level whale analytics snapshot truyen ro `includeBaseline: false`.
+- `frontend/src/components/WhaleBubbleChart.jsx`:
+  - Fetch noi bo o che do uncontrolled truyen `includeBaseline: false`.
+  - Them guard de khong vo render khi `orders` hoac bubble groups chua du shape.
+- `frontend/src/hooks/useWhaleAnalyticsData.test.js`:
+  - Khoa regression cho mac dinh baseline-disabled.
+- `frontend/src/components/WhaleBubbleChart.sync.test.jsx`:
+  - Them regression cho uncontrolled snapshot request params.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01z.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau frontend whale snapshot slice.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useWhaleAnalyticsData.js
+- frontend/src/pages/WhaleAlertsDashboard.jsx
+- frontend/src/components/WhaleAnalyticsTab.jsx
+- frontend/src/components/WhaleBubbleChart.jsx
+- frontend/src/hooks/useWhaleAnalyticsData.test.js
+- frontend/src/components/WhaleBubbleChart.sync.test.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; Pop-Location`
+- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/WhaleBubbleChart.sync.test.jsx --testNamePattern "uses baseline-disabled snapshot fetches for uncontrolled bubble loads"; Pop-Location`
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `get_errors` tren `frontend/src/hooks/useWhaleAnalyticsData.js`, `frontend/src/pages/WhaleAlertsDashboard.jsx`, `frontend/src/components/WhaleAnalyticsTab.jsx`, `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/hooks/useWhaleAnalyticsData.test.js`, `frontend/src/components/WhaleBubbleChart.sync.test.jsx` => no errors found.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (514 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => impacted dev frontend runtime rebuilt/restarted successfully.
+- NOTE: neu `ai-advisory-session` van 504 o mot so route, do la backend slice rieng; patch nay chi giai quyet cold path cua bubble/snapshot.
+
+# Entry 2026-05-01y - Stabilize ai-advisory-session benchmark bootstrap on whale routes
+
+Muc tieu:
+- Ngat duong sync-first-create gay 504/502 cho GET ai-advisory-session khi frontend request include_benchmarks=1.
+- Lam cho benchmark bootstrap cua session v2 di qua queue nhanh thay vi sync fallback khi symbol chua co advisory.
+- Chan scan rong trong get_historical_indicators khi khong co symbol co du lieu, de tranh query doc toan bang.
+
+Noi dung cap nhat chinh:
+- `backend/portfolio/views_ai_advisory_session.py`:
+  - GET bootstrap khong force sync fallback neu request co `include_benchmarks=1`.
+  - Queue path giu responsivity thay vi cho sync fallback tren route load ban dau.
+- `backend/portfolio/market_data_service.py`:
+  - Return empty series ngay khi khong co symbol nao co du lieu de tranh scan sai toan bang.
+- `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`:
+  - Add deterministic coverage for benchmark-request bootstrap queue path and sync/503 branches.
+- `backend/portfolio/tests/test_market_data_service.py`:
+  - Add regression test for missing-symbol historical indicator lookup.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01y.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate after backend slice and new utility module.
+
+Danh sach tep cap nhat:
+- backend/portfolio/views_ai_advisory_session.py
+- backend/portfolio/market_data_service.py
+- backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py
+- backend/portfolio/tests/test_market_data_service.py
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session portfolio.tests.test_market_data_service --keepdb; Pop-Location`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat`
+
+# Entry 2026-05-01x - Suppress expected aborted-request noise in whale polling paths
+
+Muc tieu:
+- Loai bo console noise do request bi cancel/abort hop le trong PortfolioContext, whale realtime polling va whale analytics fetch.
+- Giu lai cac loi that su, chi bo qua cac truong hop ERR_CANCELED / AbortError / Request aborted.
+- Dong bo helper xu ly cancel de StockDetail va Whale Alerts Hub cung dung cung mot quy tac.
+
+Noi dung cap nhat chinh:
+- `frontend/src/utils/requestCancellation.js`:
+  - Add shared `isRequestCanceled()` helper that recognizes axios/browser cancellation shapes and the literal `Request aborted` message.
+- `frontend/src/context/PortfolioContext.jsx`:
+  - Skip logging when `getPortfolios()` is canceled.
+- `frontend/src/hooks/useRealtimeFeedCore.js`:
+  - Skip polling error logging for canceled requests.
+- `frontend/src/hooks/useWhaleAnalyticsData.js`:
+  - Skip analytics error logging and error state updates for canceled requests.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Skip `getStockOrderFlow()` logging for canceled requests.
+- `frontend/src/pages/WhaleAlertsHub.jsx`:
+  - Reuse the shared cancellation helper instead of a local duplicate.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01x.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- frontend/src/utils/requestCancellation.js
+- frontend/src/context/PortfolioContext.jsx
+- frontend/src/hooks/useRealtimeFeedCore.js
+- frontend/src/hooks/useWhaleAnalyticsData.js
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/pages/WhaleAlertsHub.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- Pending: production build and module tree regeneration after this slice.
+
+# Entry 2026-05-01w - Adjust V1 grid contract to 30% third column
+
+Muc tieu:
+- Dieu chinh template grid V1 de cot thu 3 chiem 30% thay vi contract cu 39%.
+- Dong bo lai shared page-body-grid utility trong frontend/src/index.css voi template chuan.
+- Cap nhat audit trail va progress dashboard sau slice layout nay.
+
+Noi dung cap nhat chinh:
+- `docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md`:
+  - Update grid contract sang `22% / 48% / 30%` de cot 3 khong vuot 30%.
+- `frontend/src/index.css`:
+  - Sync shared `.page-body-grid` utility to the new 30% third-column contract.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01w.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md
+- frontend/src/index.css
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
+
+# Entry 2026-05-01v - Baseline V1 shell tokens and page wrapper normalization
+
+Muc tieu:
+- Thiet lap shared layout tokens/utility cho V1 va chuan hoa wrapper goc cua cac trang chinh sang app-page-shell.
+- Giam drift ve max-width, padding va header contract tren Whale Alerts, Stock Detail, Watchlist, Legacy Dashboard va Whale Advisory.
+- Cap nhat audit trail, progress dashboard, module tree va runtime refresh sau frontend slice.
+
+Noi dung cap nhat chinh:
+- `frontend/src/index.css`:
+  - Add V1 layout tokens and shared page-shell/page-panel/page-header/page-state-bar utilities.
+  - Tokenize semantic text/surface colors for future page migrations.
+- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
+  - Migrate root shell, header contract and primary content panels to the shared V1 page utilities.
+- `frontend/src/pages/StockDetail.jsx`:
+  - Normalize both loading and primary render shells to `app-page-shell`.
+- `frontend/src/pages/Watchlist.jsx`:
+  - Normalize the root wrapper to the shared shell contract.
+- `frontend/src/pages/LegacyDashboard.jsx`:
+  - Normalize the root wrapper to the shared shell contract.
+- `frontend/src/pages/WhaleAdvisory.jsx`:
+  - Normalize the root wrapper to the shared shell contract.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01v.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate after layout shell slice.
+
+Danh sach tep cap nhat:
+- frontend/src/index.css
+- frontend/src/pages/WhaleAlertsDashboard.jsx
+- frontend/src/pages/StockDetail.jsx
+- frontend/src/pages/Watchlist.jsx
+- frontend/src/pages/LegacyDashboard.jsx
+- frontend/src/pages/WhaleAdvisory.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => impacted dev stack rebuilt/restarted successfully.
+- Evidence: frontend shell utilities are now loaded in the refreshed dev runtime and the updated page wrappers compile cleanly.
+
 # Entry 2026-05-01u - UI/UX Audit for Layout Template V1 compliance
 
 Muc tieu:
@@ -20,7 +367,7 @@ Danh sach tep cap nhat:
 - PROGRESS_DASHBOARD.md
 
 Ket qua kiem tra:
-- PASSED: docs/UI_LAYOUT_AUDIT_REPORT_20260501.md dã du?c t?o thành công v?i n?i dung audit chi ti?t.
+- PASSED: docs/UI_LAYOUT_AUDIT_REPORT_20260501.md dï¿½ du?c t?o thï¿½nh cï¿½ng v?i n?i dung audit chi ti?t.
 - Evidence: Audit report highlights critical gaps in layout standardization across all main dashboard surfaces.
 
 # Entry 2026-05-01t - Normalize realtime alert text rendering across dashboard surfaces

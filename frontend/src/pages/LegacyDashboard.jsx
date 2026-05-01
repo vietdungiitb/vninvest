@@ -445,7 +445,7 @@ export default function LegacyDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-6 px-5 py-6 xl:px-6">
+    <div className="app-page-shell space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-gray-100">
@@ -543,8 +543,8 @@ export default function LegacyDashboard() {
         unreadCount={unreadUnifiedCount}
       />
 
-      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-3">
-        <div className="space-y-6 xl:col-span-2">
+      <div className="page-body-grid page-body-grid--auto-height items-start">
+        <div className="page-body-grid__main space-y-6">
           <UnifiedAlertCenter
             alerts={filteredUnifiedAlerts}
             readAlertIds={readAlertIds}
@@ -576,7 +576,7 @@ export default function LegacyDashboard() {
           </Suspense>
         </div>
 
-        <div className="flex flex-col gap-6 xl:col-span-1">
+        <div className="page-body-grid__side flex flex-col gap-6">
           <Suspense fallback={<DashboardPanelFallback />}>
             <AllocationPieChart portfolioId={activePortfolioId} />
           </Suspense>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getWhaleAnalyticsSnapshot } from '../api/client';
 import { resolveWhaleTimeframeWindow } from '../utils/whaleTimeAdapter';
 import { mergeWhaleAnalyticsSnapshots, normalizeWhaleAnalyticsSnapshot } from '../utils/whaleAnalyticsSnapshotAdapter';
+import { isRequestCanceled } from '../utils/requestCancellation';
 
 /**
  * useWhaleAnalyticsData Hook
@@ -18,7 +19,7 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
     meta: null,
   });
   const requestIdRef = useRef(0);
-  const includeBaseline = options?.includeBaseline;
+  const includeBaseline = options?.includeBaseline ?? false;
   const selectedTradeDate = options?.selectedTradeDate ? String(options.selectedTradeDate).slice(0, 10) : null;
   const requestedTradeDates = useMemo(() => Array.from(new Set(
     (Array.isArray(options?.tradeDates) ? options.tradeDates : [])
@@ -87,6 +88,9 @@ export default function useWhaleAnalyticsData(symbol, timeframe, tradeDate, opti
 
       setData(normalizeWhaleAnalyticsSnapshot(snapshot, timeframe));
     } catch (err) {
+      if (isRequestCanceled(err)) {
+        return;
+      }
       console.error('[useWhaleAnalyticsData] Error:', err);
       if (requestId === requestIdRef.current && !silent) {
         setError(err.response?.data?.error || err.message || 'Unknown error fetching analytics');
