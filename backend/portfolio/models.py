@@ -2667,13 +2667,16 @@ class SignalServiceRun(models.Model):
     class ServiceDomain(models.TextChoices):
         WHALE = 'whale', 'Whale Alerts'
         DARK_FLOW = 'dark_flow', 'Dark Flow'
+        LIFECYCLE = 'lifecycle', 'Shared Lifecycle'
 
     class RunType(models.TextChoices):
         SCHEDULED = 'scheduled', 'Scheduled'
         MANUAL = 'manual', 'Manual'
         BACKFILL = 'backfill', 'Backfill'
         RECOMPUTE = 'recompute', 'Recompute'
+        MATERIALIZATION = 'materialization', 'Materialization'
         RETENTION_PREVIEW = 'retention_preview', 'Retention Preview'
+        PURGE = 'purge', 'Purge'
 
     class StatusChoices(models.TextChoices):
         QUEUED = 'QUEUED', 'Đang chờ'
@@ -2733,3 +2736,46 @@ class SignalServiceRun(models.Model):
 
     def __str__(self):
         return f"{self.service_domain}:{self.run_type}:{self.status} ({self.id})"
+
+
+class MoneyFlowForensicWindow(models.Model):
+    class DomainChoices(models.TextChoices):
+        WHALE = 'whale', 'Whale Alerts'
+        DARK_FLOW = 'dark_flow', 'Dark Flow'
+
+    domain = models.CharField(
+        max_length=20,
+        choices=DomainChoices.choices,
+        db_index=True,
+        verbose_name='Miền dữ liệu',
+    )
+    source_model = models.CharField(max_length=64, db_index=True, verbose_name='Mô hình nguồn')
+    source_id = models.CharField(max_length=255, db_index=True, verbose_name='Source ID')
+    symbol = models.CharField(max_length=10, db_index=True, verbose_name='Mã CK')
+    severity = models.CharField(max_length=10, db_index=True, verbose_name='Mức độ nghiêm trọng')
+    source_timestamp = models.DateTimeField(db_index=True, verbose_name='Thời điểm nguồn')
+    window_start = models.DateTimeField(db_index=True, verbose_name='Bắt đầu cửa sổ')
+    window_end = models.DateTimeField(db_index=True, verbose_name='Kết thúc cửa sổ')
+    expires_at = models.DateTimeField(db_index=True, verbose_name='Hết hạn')
+    storage_mode = models.CharField(max_length=32, default='physical_carve_out', verbose_name='Chế độ lưu trữ')
+    target_tier = models.CharField(max_length=8, default='L5', verbose_name='Tầng lưu trữ')
+    reason = models.CharField(max_length=255, verbose_name='Lý do')
+    source_payload_json = models.JSONField(default=dict, blank=True, verbose_name='Payload nguồn')
+    window_payload_json = models.JSONField(default=dict, blank=True, verbose_name='Payload cửa sổ')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Cập nhật cuối')
+
+    class Meta:
+        verbose_name = 'Money Flow Forensic Window'
+        verbose_name_plural = 'Money Flow Forensic Windows'
+        ordering = ['-created_at', '-id']
+        constraints = [
+            models.UniqueConstraint(fields=['domain', 'source_model', 'source_id'], name='uniq_mff_source'),
+        ]
+        indexes = [
+            models.Index(fields=['domain', 'expires_at'], name='idx_mff_domain_exp'),
+            models.Index(fields=['symbol', 'created_at'], name='idx_mff_symbol_created'),
+        ]
+
+    def __str__(self):
+        return f'{self.domain}:{self.symbol}:{self.source_id} -> {self.target_tier}'

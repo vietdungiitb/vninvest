@@ -1,6 +1,12 @@
 from celery import shared_task
+
+from portfolio.global_signal_policy_helpers import get_global_signal_retention_policy
 from .models import SignalServiceRun, WhaleAlertEvent
 from .services_global_signal_distribution import deliver_whale_alert_event
+from .services_money_flow_retention import (
+    materialize_money_flow_forensic_window_from_whale_event,
+    should_materialize_money_flow_forensic_window,
+)
 from .services_signal_run_registry import (
     create_signal_service_run,
     finish_signal_service_run,
@@ -27,6 +33,16 @@ def detect_and_store_global_whale_alerts(self, symbol: str | None = None, run_id
     try:
         result = run_global_whale_alert_detection(symbol=symbol)
         created_event_ids = [int(event_id) for event_id in result.get('created_event_ids') or [] if event_id]
+        retention_policy = get_global_signal_retention_policy()
+        forensic_window_ids = []
+        if created_event_ids:
+            created_events = list(WhaleAlertEvent.objects.filter(id__in=created_event_ids))
+            for event in created_events:
+                if not should_materialize_money_flow_forensic_window(event.severity, retention_policy):
+                    continue
+                forensic_result = materialize_money_flow_forensic_window_from_whale_event(event, policy=retention_policy)
+                if forensic_result.get('created'):
+                    forensic_window_ids.append(int(forensic_result.get('window_id') or 0))
         for event_id in created_event_ids:
             distribute_whale_alert_event.delay(event_id)
 
@@ -51,6 +67,8 @@ def detect_and_store_global_whale_alerts(self, symbol: str | None = None, run_id
         return {
             **result,
             'distribution_enqueued': len(created_event_ids),
+            'forensic_window_count': len([window_id for window_id in forensic_window_ids if window_id]),
+            'forensic_window_ids': [window_id for window_id in forensic_window_ids if window_id],
             'run_id': run.id,
         }
     except Exception as exc:

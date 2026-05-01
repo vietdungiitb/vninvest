@@ -261,6 +261,14 @@ class AdminOpsStatsView(APIView):
 
         channel_layer_type = getattr(settings, 'REALTIME_CHANNEL_LAYER', 'redis')
         realtime_enabled = getattr(settings, 'REALTIME_ENABLED', False)
+        surface_permissions = {
+            'vnstock_config_write': bool(
+                request.user.is_superuser or request.user.has_perm('portfolio.change_runtimevnstockconfig')
+            ),
+            'intraday_side_backfill_apply': bool(
+                request.user.is_superuser or request.user.has_perm('portfolio.change_intradaytick')
+            ),
+        }
         redis_ok = None
         if channel_layer_type != 'inmemory':
             try:
@@ -282,6 +290,7 @@ class AdminOpsStatsView(APIView):
                 'channel_layer_type': channel_layer_type,
                 'realtime_enabled': realtime_enabled,
                 'redis_ok': redis_ok,
+                'surface_permissions': surface_permissions,
                 'ticker_prefetch': build_prefetch_health_snapshot(),
                 'whale_config_propagation': get_whale_config_propagation_overview(),
                 'whale_config_anomaly': get_latest_whale_config_anomaly_overview(),

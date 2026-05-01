@@ -7,6 +7,7 @@ và detect_dark_flow (gọi compute_tick_rate + query DB).
 """
 from __future__ import annotations
 
+from collections import defaultdict
 import math
 import statistics
 from datetime import date, datetime, time, timedelta, timezone
@@ -452,6 +453,210 @@ def detect_iceberg_clustering(
     }
 
 
+def _build_dark_flow_bucket_facts(*, ticks: list[dict], cvd_series: list[dict], bucket_seconds: int) -> list[dict]:
+    if not ticks:
+        return []
+
+    today = _today()
+    cvd_by_bucket_ts = {str(row.get("bucket_ts") or "").strip(): row for row in cvd_series or []}
+    bucket_rows: dict[int, dict] = defaultdict(lambda: {
+        "tick_count": 0,
+        "small_order_count": 0,
+        "buy_value": 0.0,
+        "sell_value": 0.0,
+        "total_value": 0.0,
+        "max_tick_value": 0.0,
+        "first_trade_time": None,
+        "last_trade_time": None,
+    })
+
+    for tick in ticks:
+        trade_time = tick.get("trade_time")
+        if not isinstance(trade_time, time):
+            continue
+
+        bucket_idx = _bucket_index(trade_time, bucket_seconds)
+        bucket_row = bucket_rows[bucket_idx]
+        value = float(tick.get("value") or 0.0)
+        side = str(tick.get("side") or "UNKNOWN").strip().upper()
+
+        bucket_row["tick_count"] += 1
+        bucket_row["total_value"] += value
+        bucket_row["max_tick_value"] = max(bucket_row["max_tick_value"], value)
+        if value < SMALL_ORDER_THRESHOLD:
+            bucket_row["small_order_count"] += 1
+
+        if side == "BUY":
+            bucket_row["buy_value"] += value
+        elif side == "SELL":
+            bucket_row["sell_value"] += value
+        else:
+            bucket_row["buy_value"] += value * 0.5
+            bucket_row["sell_value"] += value * 0.5
+
+        if bucket_row["first_trade_time"] is None or trade_time < bucket_row["first_trade_time"]:
+            bucket_row["first_trade_time"] = trade_time
+        if bucket_row["last_trade_time"] is None or trade_time > bucket_row["last_trade_time"]:
+            bucket_row["last_trade_time"] = trade_time
+
+    bucket_facts = []
+    running_cvd = 0.0
+    for bucket_idx in sorted(bucket_rows):
+        bucket_row = bucket_rows[bucket_idx]
+        bucket_ts = (
+            datetime.combine(today, time(0, 0))
+            + timedelta(seconds=bucket_idx * bucket_seconds)
+        ).isoformat()
+        cvd_row = cvd_by_bucket_ts.get(bucket_ts) or {}
+        buy_value = float(bucket_row["buy_value"] or 0.0)
+        sell_value = float(bucket_row["sell_value"] or 0.0)
+        total_value = float(bucket_row["total_value"] or 0.0)
+        net_value = buy_value - sell_value
+        cvd = float(cvd_row.get("cvd") if cvd_row else net_value)
+        running_cvd = float(cvd_row.get("cumulative_cvd") if cvd_row else (running_cvd + net_value))
+        tick_count = int(bucket_row["tick_count"] or 0)
+
+        bucket_facts.append({
+            "bucket_ts": bucket_ts,
+            "bucket_index": bucket_idx,
+            "bucket_seconds": bucket_seconds,
+            "bucket_minutes": round(bucket_seconds / 60.0, 2),
+            "tick_count": tick_count,
+            "small_order_count": int(bucket_row["small_order_count"] or 0),
+            "small_order_ratio": round((bucket_row["small_order_count"] or 0) / tick_count, 4) if tick_count else 0.0,
+            "buy_value": round(buy_value, 2),
+            "sell_value": round(sell_value, 2),
+            "total_value": round(total_value, 2),
+            "net_value": round(net_value, 2),
+            "cvd": round(cvd, 2),
+            "cumulative_cvd": round(running_cvd, 2),
+            "dominant_side": "buy" if buy_value > sell_value else "sell" if sell_value > buy_value else "neutral",
+            "max_tick_value": round(float(bucket_row["max_tick_value"] or 0.0), 2),
+            "first_trade_time": bucket_row["first_trade_time"].isoformat() if bucket_row["first_trade_time"] else None,
+            "last_trade_time": bucket_row["last_trade_time"].isoformat() if bucket_row["last_trade_time"] else None,
+        })
+
+    return bucket_facts
+
+
+def _build_dark_flow_anomaly_markers(
+    *,
+    signal_type: str,
+    strength: float,
+    confidence: str,
+    signals_active: list[str],
+    absorption: dict,
+    iceberg: dict,
+    tick_rate: dict,
+    size_dist: dict,
+) -> list[dict]:
+    markers = []
+
+    if absorption.get("detected"):
+        markers.append({
+            "kind": "absorption",
+            "label": "Hấp thụ",
+            "severity": "urgent" if float(absorption.get("strength") or 0) >= 70 else "warning",
+            "detected": True,
+            "strength": round(float(absorption.get("strength") or 0), 2),
+            "price_locked": bool(absorption.get("price_locked")),
+            "cvd_change": round(float(absorption.get("cvd_change") or 0), 2),
+        })
+
+    if iceberg.get("detected"):
+        markers.append({
+            "kind": "iceberg",
+            "label": "Iceberg",
+            "severity": "urgent" if int(iceberg.get("repeat_count") or 0) >= 10 else "warning",
+            "detected": True,
+            "strength": round(min(int(iceberg.get("repeat_count") or 0) * 5.0, 100.0), 2),
+            "repeat_count": int(iceberg.get("repeat_count") or 0),
+            "confidence": iceberg.get("confidence") or "none",
+            "level": round(float(iceberg.get("level") or 0), 2),
+            "value_per_occurrence_avg": round(float(iceberg.get("value_per_occurrence_avg") or 0), 2),
+        })
+
+    if "twap_bot" in set(signals_active or []):
+        markers.append({
+            "kind": "twap_bot",
+            "label": "TWAP bot",
+            "severity": "info",
+            "detected": True,
+            "strength": round(float(strength), 2),
+            "tick_rate_per_min": round(float(tick_rate.get("tick_rate_per_min") or 0.0), 2),
+            "small_order_ratio": round(float(size_dist.get("small_order_ratio") or 0.0), 4),
+        })
+
+    if not markers and signal_type not in {"none", ""}:
+        markers.append({
+            "kind": signal_type,
+            "label": signal_type.replace("_", " ").title(),
+            "severity": "info" if confidence == "low" else "warning" if confidence == "medium" else "urgent",
+            "detected": True,
+            "strength": round(float(strength), 2),
+        })
+
+    return markers
+
+
+def _build_dark_flow_session_summary(
+    *,
+    symbol: str,
+    window_minutes: int,
+    window_seconds: int,
+    bucket_facts: list[dict],
+    tick_count: int,
+    tick_rate: dict,
+    size_dist: dict,
+    signal_type: str,
+    strength: float,
+    confidence: str,
+    signals_active: list[str],
+    anomaly_markers: list[dict],
+) -> dict:
+    total_buy_value = sum(float(item.get("buy_value") or 0.0) for item in bucket_facts)
+    total_sell_value = sum(float(item.get("sell_value") or 0.0) for item in bucket_facts)
+    net_value = total_buy_value - total_sell_value
+    dominant_side = "buy" if total_buy_value > total_sell_value else "sell" if total_sell_value > total_buy_value else "neutral"
+    strongest_bucket = max(
+        bucket_facts,
+        key=lambda item: max(abs(float(item.get("net_value") or 0.0)), float(item.get("total_value") or 0.0)),
+        default=None,
+    )
+
+    peak_bucket = None
+    if strongest_bucket is not None:
+        peak_bucket = {
+            "bucket_ts": strongest_bucket.get("bucket_ts"),
+            "bucket_index": strongest_bucket.get("bucket_index"),
+            "tick_count": strongest_bucket.get("tick_count"),
+            "total_value": strongest_bucket.get("total_value"),
+            "net_value": strongest_bucket.get("net_value"),
+            "cumulative_cvd": strongest_bucket.get("cumulative_cvd"),
+            "dominant_side": strongest_bucket.get("dominant_side"),
+        }
+
+    return {
+        "symbol": symbol,
+        "window_minutes": int(window_minutes),
+        "window_seconds": int(window_seconds),
+        "bucket_fact_count": len(bucket_facts),
+        "tick_count": int(tick_count),
+        "total_buy_value": round(float(total_buy_value), 2),
+        "total_sell_value": round(float(total_sell_value), 2),
+        "net_value": round(float(net_value), 2),
+        "dominant_side": dominant_side,
+        "signal_type": signal_type,
+        "strength": round(float(strength), 2),
+        "confidence": confidence,
+        "tick_rate_per_min": round(float(tick_rate.get("tick_rate_per_min") or 0.0), 2),
+        "small_order_ratio": round(float(size_dist.get("small_order_ratio") or 0.0), 4),
+        "signals_active": list(signals_active or []),
+        "anomaly_count": len(anomaly_markers),
+        "peak_bucket": peak_bucket,
+    }
+
+
 # ---------------------------------------------------------------------------
 # S15-06 — Dark Flow Detector (aggregated)
 # ---------------------------------------------------------------------------
@@ -548,11 +753,42 @@ def detect_dark_flow(
     else:
         confidence = "low"
 
+    bucket_facts = _build_dark_flow_bucket_facts(
+        ticks=ticks,
+        cvd_series=cvd_series,
+        bucket_seconds=30,
+    )
+    anomaly_markers = _build_dark_flow_anomaly_markers(
+        signal_type=signal_type,
+        strength=strength,
+        confidence=confidence,
+        signals_active=signals_active,
+        absorption=absorption,
+        iceberg=iceberg,
+        tick_rate=tick_info,
+        size_dist=size_dist,
+    )
+    session_summary = _build_dark_flow_session_summary(
+        symbol=symbol,
+        window_minutes=resolved_window_minutes,
+        window_seconds=window_seconds,
+        bucket_facts=bucket_facts,
+        tick_count=int(tick_info.get("total_count") or len(ticks)),
+        tick_rate=tick_info,
+        size_dist=size_dist,
+        signal_type=signal_type,
+        strength=strength,
+        confidence=confidence,
+        signals_active=signals_active,
+        anomaly_markers=anomaly_markers,
+    )
+
     return {
         "signal_type": signal_type,
         "strength": round(strength, 2),
         "confidence": confidence,
         "window_minutes": resolved_window_minutes,
+        "window_seconds": window_seconds,
         "components": {
             "absorption": absorption,
             "iceberg": iceberg,
@@ -560,4 +796,16 @@ def detect_dark_flow(
             "size_distribution": size_dist,
         },
         "triggered_at": datetime.now(timezone.utc).isoformat(),
+        "bucket_facts": bucket_facts,
+        "session_summary": session_summary,
+        "anomaly_markers": anomaly_markers,
+        "materialization": {
+            "source": "dark_flow_detect",
+            "generated_at": django_timezone.now().isoformat(),
+            "freshness_state": "fresh" if bucket_facts else "empty",
+            "lag_seconds": 0.0,
+            "bucket_fact_count": len(bucket_facts),
+            "anomaly_count": len(anomaly_markers),
+            "session_summary_state": "complete" if bucket_facts else "empty",
+        },
     }

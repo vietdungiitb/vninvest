@@ -13,6 +13,7 @@ from .services_whale_analytics_snapshot import (
     build_snapshot_etag,
     build_whale_analytics_snapshot,
     _parse_trade_date,
+    _resolve_whale_analytics_cache_revision,
 )
 
 
@@ -51,9 +52,10 @@ def _resolve_snapshot_cache_timeout(payload: dict) -> int:
     return 900
 
 
-def _build_snapshot_cache_key(*, user, symbol: str, timeframe: str, compact: bool, trade_date, include_baseline: bool = True) -> str:
+def _build_snapshot_cache_key(*, user, symbol: str, timeframe: str, compact: bool, trade_date, include_baseline: bool = True, cache_revision: str | None = None) -> str:
     trade_date_key = trade_date.isoformat() if trade_date else 'auto'
-    return f'whale:analytics:v4:{user.id}:{symbol}:{trade_date_key}:{timeframe}:{1 if compact else 0}:{1 if include_baseline else 0}'
+    revision_key = _resolve_whale_analytics_cache_revision(symbol=symbol, cache_revision=cache_revision)
+    return f'whale:analytics:v5:{revision_key}:{user.id}:{symbol}:{trade_date_key}:{timeframe}:{1 if compact else 0}:{1 if include_baseline else 0}'
 
 
 def _build_snapshot_lock_key(cache_key: str) -> str:
@@ -61,6 +63,7 @@ def _build_snapshot_lock_key(cache_key: str) -> str:
 
 
 def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, compact: bool, trade_date, include_baseline: bool):
+    cache_revision = _resolve_whale_analytics_cache_revision(symbol=symbol)
     cache_key = _build_snapshot_cache_key(
         user=request.user,
         symbol=symbol,
@@ -68,6 +71,7 @@ def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, comp
         compact=compact,
         trade_date=trade_date,
         include_baseline=include_baseline,
+        cache_revision=cache_revision,
     )
     payload = cache.get(cache_key)
     if payload is not None:
@@ -91,6 +95,7 @@ def _get_or_build_snapshot_payload(*, request, symbol: str, timeframe: str, comp
                 compact=compact,
                 trade_date=trade_date,
                 include_baseline=include_baseline,
+                cache_revision=cache_revision,
             )
             cache.set(cache_key, payload, timeout=_resolve_snapshot_cache_timeout(payload))
             return payload

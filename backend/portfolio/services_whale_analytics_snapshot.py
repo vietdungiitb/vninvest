@@ -2,8 +2,10 @@ import hashlib
 import json
 import math
 import statistics
+import time
+import uuid
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time as dt_time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.cache import cache
@@ -18,10 +20,10 @@ from .whale_scoring import calculate_event_score, resolve_whale_score_config
 
 
 VN_TZ = ZoneInfo('Asia/Ho_Chi_Minh')
-MARKET_OPEN = time(9, 0)
-MORNING_END = time(11, 30)
-AFTERNOON_START = time(13, 0)
-MARKET_CLOSE = time(15, 0)
+MARKET_OPEN = dt_time(9, 0)
+MORNING_END = dt_time(11, 30)
+AFTERNOON_START = dt_time(13, 0)
+MARKET_CLOSE = dt_time(15, 0)
 BUCKET_MINUTES = {
     '15m': 15,
     '30m': 30,
@@ -36,17 +38,69 @@ WINDOW_MINUTES = {
     '1h': 60,
 }
 KLINE_INTELLIGENCE_CONTRACT_VERSION = 'kline-intelligence-v1'
-SNAPSHOT_CACHE_KEY_VERSION = 'v4'
+SNAPSHOT_CACHE_KEY_VERSION = 'v5'
+SHARED_BUCKET_FACTS_CACHE_KEY_VERSION = 'v1'
+WHALE_ANALYTICS_CACHE_REVISION_KEY_PREFIX = 'whale:analytics:revision:v1'
+WHALE_ANALYTICS_CACHE_REVISION_TTL_SECONDS = 30 * 24 * 60 * 60
+SHARED_BUCKET_FACTS_CACHE_TIMEOUT_SECONDS = 900
+SHARED_BUCKET_FACTS_LOCK_TIMEOUT_SECONDS = 20
 PERCENTILE_BASELINE_CACHE_TIMEOUT_SECONDS = 900
 PERCENTILE_BASELINE_LOCK_TIMEOUT_SECONDS = 20
 
 
-def _combine_dt(trade_date: date, value: time) -> datetime:
+def _combine_dt(trade_date: date, value: dt_time) -> datetime:
     return datetime.combine(trade_date, value, tzinfo=VN_TZ)
 
 
 def _current_vn_now() -> datetime:
     return timezone.now().astimezone(VN_TZ)
+
+
+def _build_whale_analytics_cache_revision_key(*, symbol: str) -> str:
+    normalized_symbol = str(symbol or '').strip().upper()
+    return f'{WHALE_ANALYTICS_CACHE_REVISION_KEY_PREFIX}:{normalized_symbol}'
+
+
+def _resolve_whale_analytics_cache_revision(*, symbol: str, cache_revision: str | None = None) -> str:
+    if cache_revision is not None:
+        normalized_revision = str(cache_revision).strip()
+        return normalized_revision or '0'
+
+    cache_key = _build_whale_analytics_cache_revision_key(symbol=symbol)
+    try:
+        cached_revision = cache.get(cache_key)
+    except Exception:
+        return '0'
+
+    if cached_revision is None:
+        return '0'
+    return str(cached_revision).strip() or '0'
+
+
+def _bump_whale_analytics_cache_revision(*, symbol: str) -> str:
+    cache_key = _build_whale_analytics_cache_revision_key(symbol=symbol)
+    revision = uuid.uuid4().hex
+    try:
+        cache.set(cache_key, revision, timeout=WHALE_ANALYTICS_CACHE_REVISION_TTL_SECONDS)
+    except Exception:
+        pass
+    return revision
+
+
+def invalidate_whale_analytics_snapshot_cache(symbols: list[str] | None = None) -> list[str]:
+    normalized_symbols: list[str] = []
+    seen_symbols: set[str] = set()
+    for symbol in symbols or []:
+        normalized_symbol = str(symbol or '').strip().upper()
+        if not normalized_symbol or normalized_symbol in seen_symbols:
+            continue
+        seen_symbols.add(normalized_symbol)
+        normalized_symbols.append(normalized_symbol)
+
+    for symbol in normalized_symbols:
+        _bump_whale_analytics_cache_revision(symbol=symbol)
+
+    return normalized_symbols
 
 
 def _to_iso(value: datetime | None) -> str | None:
@@ -481,6 +535,315 @@ def _resolve_quality_state(*, requested_trade_date: date | None, resolved_trade_
     return 'READY'
 
 
+def _build_session_summary(
+    *,
+    symbol: str,
+    trade_date: date,
+    timeframe: str,
+    session: dict,
+    session_context: dict,
+    materialization: dict,
+    bucket_facts: list[dict],
+    bubble_series: list[dict],
+    flow_compare_series: list[dict],
+    heatmap_series: list[dict],
+    summary: dict,
+    generated_at: str,
+) -> dict:
+    safe_bucket_facts = list(bucket_facts or [])
+    safe_bubble_series = list(bubble_series or [])
+    safe_materialization = materialization or {}
+    safe_session_context = session_context or {}
+    safe_summary = summary or {}
+
+    peak_bucket_fact = max(
+        safe_bucket_facts,
+        key=lambda item: max(
+            abs(float(item.get('total_value') or 0.0)),
+            abs(float(item.get('net_value') or 0.0)),
+        ),
+        default=None,
+    )
+
+    peak_bucket = None
+    if peak_bucket_fact is not None:
+        peak_bucket = {
+            'bucket_ts': _to_iso(peak_bucket_fact.get('bucket_ts')),
+            'bucket_index': int(peak_bucket_fact.get('bucket_index') or 0),
+            'bucket_minutes': int(peak_bucket_fact.get('bucket_minutes') or 0),
+            'total_value': round(float(peak_bucket_fact.get('total_value') or 0.0), 2),
+            'net_value': round(float(peak_bucket_fact.get('net_value') or 0.0), 2),
+            'dominant_side': str(peak_bucket_fact.get('dominant_side') or 'neutral'),
+            'event_count': int(peak_bucket_fact.get('event_count') or 0),
+        }
+
+    total_buy_value = round(float(safe_summary.get('total_buy_value') or 0.0), 2)
+    total_sell_value = round(float(safe_summary.get('total_sell_value') or 0.0), 2)
+    net_cvd = round(float(safe_summary.get('net_cvd') or 0.0), 2)
+    whale_order_count = int(safe_summary.get('whale_order_count') or len(safe_bubble_series))
+    extreme_order_count = int(safe_summary.get('extreme_order_count') or len([item for item in safe_bubble_series if item.get('is_extreme')]))
+    dominant_side = 'buy' if total_buy_value > total_sell_value else 'sell' if total_sell_value > total_buy_value else 'neutral'
+    bucket_count = int(safe_materialization.get('bucket_count') or len(safe_bucket_facts))
+    bucket_fact_count = int(safe_materialization.get('bucket_fact_count') or len(safe_bucket_facts))
+    tick_count = int(safe_materialization.get('tick_count') or 0)
+    freshness_state = str(safe_materialization.get('freshness_state') or 'unknown')
+    completeness_state = str(safe_materialization.get('completeness_state') or 'unknown')
+    cache_age_ms = int(safe_materialization.get('cache_age_ms') or 0)
+    selected_trade_date = str(safe_session_context.get('selected_trade_date') or trade_date.isoformat())
+    latest_valid_trade_date = str(safe_session_context.get('latest_valid_trade_date') or trade_date.isoformat())
+    quality_state = str(safe_session_context.get('quality_state') or 'READY')
+    bucket_interval = f"{int(safe_bucket_facts[0].get('bucket_minutes') or 15) if safe_bucket_facts else 15}m"
+
+    return {
+        'symbol': symbol,
+        'trade_date': trade_date.isoformat(),
+        'timeframe': timeframe,
+        'generated_at': generated_at,
+        'cache_revision': safe_materialization.get('cache_revision'),
+        'cache_age_ms': cache_age_ms,
+        'selected_trade_date': selected_trade_date,
+        'latest_valid_trade_date': latest_valid_trade_date,
+        'resolved_from': session.get('resolved_from'),
+        'quality_state': quality_state,
+        'freshness_state': freshness_state,
+        'completeness_state': completeness_state,
+        'bucket_count': bucket_count,
+        'bucket_fact_count': bucket_fact_count,
+        'tick_count': tick_count,
+        'whale_order_count': whale_order_count,
+        'extreme_order_count': extreme_order_count,
+        'total_buy_value': total_buy_value,
+        'total_sell_value': total_sell_value,
+        'net_cvd': net_cvd,
+        'dominant_side': dominant_side,
+        'peak_bucket': peak_bucket,
+        'overview': {
+            'symbol': symbol,
+            'trade_date': trade_date.isoformat(),
+            'timeframe': timeframe,
+            'selected_trade_date': selected_trade_date,
+            'latest_valid_trade_date': latest_valid_trade_date,
+            'resolved_from': session.get('resolved_from'),
+            'quality_state': quality_state,
+            'freshness_state': freshness_state,
+            'completeness_state': completeness_state,
+            'cache_age_ms': cache_age_ms,
+            'bucket_interval': bucket_interval,
+            'bucket_count': bucket_count,
+            'bucket_fact_count': bucket_fact_count,
+            'tick_count': tick_count,
+        },
+        'advisory_context': {
+            'selected_trade_date': selected_trade_date,
+            'latest_valid_trade_date': latest_valid_trade_date,
+            'resolved_from': session.get('resolved_from'),
+            'quality_state': quality_state,
+            'freshness_state': freshness_state,
+            'completeness_state': completeness_state,
+            'has_flow_data': bool(flow_compare_series),
+            'has_heatmap_data': bool(heatmap_series),
+            'dominant_side': dominant_side,
+            'peak_bucket_ts': peak_bucket['bucket_ts'] if peak_bucket else None,
+            'peak_bucket_value': peak_bucket['total_value'] if peak_bucket else 0.0,
+            'net_cvd': net_cvd,
+        },
+    }
+
+
+def _build_bucket_facts_cache_key(*, symbol: str, trade_date: date, timeframe: str, bucket_minutes: int, cache_revision: str | None = None) -> str:
+    revision_key = _resolve_whale_analytics_cache_revision(symbol=symbol, cache_revision=cache_revision)
+    return f'whale:analytics:facts:{SHARED_BUCKET_FACTS_CACHE_KEY_VERSION}:{revision_key}:{symbol}:{trade_date.isoformat()}:{timeframe}:{bucket_minutes}'
+
+
+def _resolve_bucket_facts_cache_timeout(*, trade_date: date, now_vn: datetime) -> int:
+    if trade_date == now_vn.date() and _combine_dt(trade_date, MARKET_OPEN) <= now_vn <= _combine_dt(trade_date, MARKET_CLOSE):
+        return 5
+    if trade_date == now_vn.date():
+        return 60
+    return SHARED_BUCKET_FACTS_CACHE_TIMEOUT_SECONDS
+
+
+def _build_bucket_fact_rows(*, bucket_rows: list[dict], bucket_minutes: int) -> list[dict]:
+    normalized_bucket_minutes = max(int(bucket_minutes or 0), 1)
+    bucket_facts = []
+    cumulative_cvd = 0.0
+
+    for bucket_index, row in enumerate(bucket_rows):
+        buy_value = float(row.get('buy_value') or 0.0)
+        sell_value = float(row.get('sell_value') or 0.0)
+        total_value = max(float(row.get('total_value') or 0.0), 0.0)
+        net_value = buy_value - sell_value
+        cumulative_cvd += net_value
+        event_count = int(row.get('event_count') or 0)
+        dominant_side = 'buy' if buy_value > sell_value else 'sell' if sell_value > buy_value else 'neutral'
+
+        bucket_facts.append({
+            'bucket_ts': row.get('bucket_ts'),
+            'bucket_index': bucket_index,
+            'bucket_minutes': normalized_bucket_minutes,
+            'buy_value': round(buy_value, 2),
+            'sell_value': round(sell_value, 2),
+            'total_value': round(total_value, 2),
+            'net_value': round(net_value, 2),
+            'cvd_raw': round(cumulative_cvd, 2),
+            'event_count': event_count,
+            'event_density': round(event_count / normalized_bucket_minutes, 6),
+            'buy_share': round(buy_value / total_value, 6) if total_value > 0 else 0.0,
+            'sell_share': round(sell_value / total_value, 6) if total_value > 0 else 0.0,
+            'dominant_side': dominant_side,
+            'last_price': row.get('last_price'),
+            'last_ts': row.get('last_ts'),
+        })
+
+    return bucket_facts
+
+
+def _build_bucket_facts_payload(*, symbol: str, trade_date: date, timeframe: str, window_start: datetime, window_end: datetime, bucket_minutes: int) -> dict:
+    now_vn = _current_vn_now()
+    tick_rows = []
+    tick_qs = (
+        IntradayTick.objects
+        .filter(symbol=symbol, trade_date=trade_date)
+        .values('trade_date', 'trade_time', 'price', 'volume', 'side')
+        .order_by('trade_time')
+    )
+    seen_keys = set()
+    for item in tick_qs:
+        trade_time_value = item.get('trade_time')
+        if trade_time_value is None:
+            continue
+        dedupe_key = (
+            item.get('trade_date'),
+            trade_time_value,
+            item.get('side'),
+            item.get('price'),
+            item.get('volume'),
+        )
+        if dedupe_key in seen_keys:
+            continue
+        seen_keys.add(dedupe_key)
+        dt_value = datetime.combine(trade_date, trade_time_value, tzinfo=VN_TZ)
+        if not (window_start <= dt_value <= window_end):
+            continue
+        price_value = float(item.get('price') or 0)
+        volume_value = float(item.get('volume') or 0)
+        matched_value = _matched_value_from_price_volume(price_value, volume_value)
+        tick_rows.append({
+            'dt': dt_value,
+            'bucket_ts': _floor_bucket(dt_value, bucket_minutes),
+            'side': _normalize_tick_side(item.get('side')),
+            'price': price_value,
+            'volume': volume_value,
+            'matched_value': matched_value,
+        })
+
+    bucket_map = defaultdict(lambda: {
+        'bucket_ts': None,
+        'buy_value': 0.0,
+        'sell_value': 0.0,
+        'total_value': 0.0,
+        'event_count': 0,
+        'last_price': None,
+        'last_ts': None,
+    })
+    for row in tick_rows:
+        key = row['bucket_ts'].isoformat()
+        bucket_entry = bucket_map[key]
+        bucket_entry['bucket_ts'] = row['bucket_ts']
+        bucket_entry['total_value'] += row['matched_value']
+        bucket_entry['event_count'] += 1
+        if row['side'] == 'buy':
+            bucket_entry['buy_value'] += row['matched_value']
+        elif row['side'] == 'sell':
+            bucket_entry['sell_value'] += row['matched_value']
+        if bucket_entry['last_ts'] is None or row['dt'] >= bucket_entry['last_ts']:
+            bucket_entry['last_ts'] = row['dt']
+            bucket_entry['last_price'] = row['price']
+
+    bucket_facts = _build_bucket_fact_rows(
+        bucket_rows=sorted(bucket_map.values(), key=lambda item: item['bucket_ts']),
+        bucket_minutes=bucket_minutes,
+    )
+
+    return {
+        'symbol': symbol,
+        'trade_date': trade_date.isoformat(),
+        'timeframe': timeframe,
+        'bucket_minutes': bucket_minutes,
+        'window_start': _to_iso(window_start),
+        'window_end': _to_iso(window_end),
+        'generated_at': now_vn.isoformat(),
+        'tick_rows': tick_rows,
+        'bucket_rows': bucket_facts,
+        'bucket_facts': bucket_facts,
+        'tick_count': len(tick_rows),
+        'bucket_count': len(bucket_map),
+        'bucket_fact_count': len(bucket_facts),
+    }
+
+
+def _get_or_build_bucket_facts(*, symbol: str, trade_date: date, timeframe: str, window_start: datetime, window_end: datetime, bucket_minutes: int, cache_revision: str | None = None) -> dict:
+    cache_key = _build_bucket_facts_cache_key(
+        symbol=symbol,
+        trade_date=trade_date,
+        timeframe=timeframe,
+        bucket_minutes=bucket_minutes,
+        cache_revision=cache_revision,
+    )
+
+    payload = cache.get(cache_key)
+    if payload is not None:
+        return payload
+
+    lock_key = f'{cache_key}:lock'
+    if cache.add(lock_key, 1, timeout=SHARED_BUCKET_FACTS_LOCK_TIMEOUT_SECONDS):
+        try:
+            payload = cache.get(cache_key)
+            if payload is not None:
+                return payload
+
+            payload = _build_bucket_facts_payload(
+                symbol=symbol,
+                trade_date=trade_date,
+                timeframe=timeframe,
+                window_start=window_start,
+                window_end=window_end,
+                bucket_minutes=bucket_minutes,
+            )
+            cache.set(
+                cache_key,
+                payload,
+                timeout=_resolve_bucket_facts_cache_timeout(trade_date=trade_date, now_vn=_current_vn_now()),
+            )
+            return payload
+        finally:
+            try:
+                cache.delete(lock_key)
+            except Exception:
+                pass
+
+    for _ in range(4):
+        time.sleep(0.05)
+        payload = cache.get(cache_key)
+        if payload is not None:
+            return payload
+
+    payload = _build_bucket_facts_payload(
+        symbol=symbol,
+        trade_date=trade_date,
+        timeframe=timeframe,
+        window_start=window_start,
+        window_end=window_end,
+        bucket_minutes=bucket_minutes,
+    )
+    cache.set(
+        cache_key,
+        payload,
+        timeout=_resolve_bucket_facts_cache_timeout(trade_date=trade_date, now_vn=_current_vn_now()),
+    )
+    return payload
+
+
 def _resolve_reference_price(symbol: str, trade_date: date) -> float | None:
     reference_price = _get_reference_price(symbol, trade_date)
     if reference_price is None:
@@ -652,12 +1015,13 @@ def _resolve_degraded_state(*, reference_price: float | None, tick_rows: list[di
     return False, None, []
 
 
-def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'session', compact: bool = True, trade_date: date | None = None, include_baseline: bool = True) -> dict:
+def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'session', compact: bool = True, trade_date: date | None = None, include_baseline: bool = True, cache_revision: str | None = None) -> dict:
     normalized_symbol = str(symbol or '').strip().upper()
     normalized_timeframe = str(timeframe or 'session').strip().lower()
     requested_trade_date = trade_date
     resolved_trade_date = _latest_trade_date(normalized_symbol, requested_trade_date)
     window_start, window_end, bucket_minutes = _resolve_window(resolved_trade_date, normalized_timeframe)
+    cache_revision = _resolve_whale_analytics_cache_revision(symbol=normalized_symbol, cache_revision=cache_revision)
     threshold_vnd, threshold_source = WhaleSignalEngine.resolve_threshold_vnd(user, normalized_symbol)
     reference_price = _resolve_reference_price(normalized_symbol, resolved_trade_date)
     now_vn = _current_vn_now()
@@ -892,20 +1256,86 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         flow_compare_series=flow_compare_series,
         heatmap_series=heatmap_series,
     )
+    shared_bucket_facts = _get_or_build_bucket_facts(
+        symbol=normalized_symbol,
+        trade_date=resolved_trade_date,
+        timeframe=normalized_timeframe,
+        window_start=window_start,
+        window_end=window_end,
+        bucket_minutes=bucket_minutes,
+        cache_revision=cache_revision,
+    )
+    tick_rows = list(shared_bucket_facts.get('tick_rows') or [])
+    bucket_facts = list(shared_bucket_facts.get('bucket_facts') or shared_bucket_facts.get('bucket_rows') or [])
+    shared_facts_generated_at = str(shared_bucket_facts.get('generated_at') or '').strip()
+    shared_facts_cache_age_ms = 0
+    if shared_facts_generated_at:
+        try:
+            shared_facts_generated_at_dt = datetime.fromisoformat(shared_facts_generated_at.replace('Z', '+00:00'))
+            if shared_facts_generated_at_dt.tzinfo is None:
+                shared_facts_generated_at_dt = shared_facts_generated_at_dt.replace(tzinfo=timezone.utc)
+            shared_facts_cache_age_ms = max(0, int((now_vn - shared_facts_generated_at_dt.astimezone(VN_TZ)).total_seconds() * 1000))
+        except ValueError:
+            shared_facts_cache_age_ms = 0
+
+    session = {
+        'timezone': 'Asia/Ho_Chi_Minh',
+        'market_open': '09:00',
+        'market_close': '15:00',
+        'resolved_from': 'live_session' if is_live_session else 'latest_completed_session',
+        'auction_policy': {
+            'ato': 'bucket_start',
+            'atc': 'bucket_start',
+        },
+    }
+    session_context = {
+        'default_trade_date': resolved_trade_date.isoformat(),
+        'selected_trade_date': resolved_trade_date.isoformat(),
+        'latest_valid_trade_date': resolved_trade_date.isoformat(),
+        'quality_state': quality_state,
+    }
+    summary = {
+        'total_buy_value': total_buy_value,
+        'total_sell_value': total_sell_value,
+        'net_cvd': round(net_cvd, 2),
+        'whale_order_count': len(bubble_series),
+        'extreme_order_count': len([item for item in bubble_series if item['is_extreme']]),
+    }
+    materialization = {
+        'source': 'shared_bucket_facts_cache',
+        'cache_key_version': SHARED_BUCKET_FACTS_CACHE_KEY_VERSION,
+        'cache_revision': cache_revision,
+        'generated_at': shared_facts_generated_at or generated_at,
+        'cache_age_ms': shared_facts_cache_age_ms,
+        'freshness_state': 'fresh' if shared_facts_cache_age_ms <= 60_000 else 'warm' if shared_facts_cache_age_ms <= 300_000 else 'stale',
+        'completeness_state': 'complete' if bucket_facts else 'empty',
+        'session_summary_state': 'complete' if bucket_facts else 'empty',
+        'read_path': 'facts_first' if bucket_facts else 'raw_fallback',
+        'raw_fallback_used': not bool(bucket_facts),
+        'tick_count': int(shared_bucket_facts.get('tick_count') or len(tick_rows)),
+        'bucket_count': int(shared_bucket_facts.get('bucket_count') or len(bucket_facts)),
+        'bucket_fact_count': int(shared_bucket_facts.get('bucket_fact_count') or len(bucket_facts)),
+    }
+    session_summary = _build_session_summary(
+        symbol=normalized_symbol,
+        trade_date=resolved_trade_date,
+        timeframe=normalized_timeframe,
+        session=session,
+        session_context=session_context,
+        materialization=materialization,
+        bucket_facts=bucket_facts,
+        bubble_series=bubble_series,
+        flow_compare_series=flow_compare_series,
+        heatmap_series=heatmap_series,
+        summary=summary,
+        generated_at=generated_at,
+    )
+
     payload = {
         'symbol': normalized_symbol,
         'trade_date': resolved_trade_date.isoformat(),
         'timeframe': normalized_timeframe,
-        'session': {
-            'timezone': 'Asia/Ho_Chi_Minh',
-            'market_open': '09:00',
-            'market_close': '15:00',
-            'resolved_from': 'live_session' if is_live_session else 'latest_completed_session',
-            'auction_policy': {
-                'ato': 'bucket_start',
-                'atc': 'bucket_start',
-            },
-        },
+        'session': session,
         'meta': {
             'generated_at': generated_at,
             'cache_age_ms': cache_age_ms,
@@ -932,26 +1362,20 @@ def build_whale_analytics_snapshot(*, user, symbol: str, timeframe: str = 'sessi
         'flow_compare_series': flow_compare_series,
         'heatmap_series': heatmap_series,
         'marker_series': marker_series,
-        'session_context': {
-            'default_trade_date': resolved_trade_date.isoformat(),
-            'selected_trade_date': resolved_trade_date.isoformat(),
-            'latest_valid_trade_date': resolved_trade_date.isoformat(),
-            'quality_state': quality_state,
-        },
+        'session_context': session_context,
         'quality_flags': {
             'has_flow_data': bool(flow_compare_series),
             'has_heatmap_data': bool(heatmap_series),
             'degraded_reason': stale_reason,
             'contract_version': KLINE_INTELLIGENCE_CONTRACT_VERSION,
             'cache_key_version': SNAPSHOT_CACHE_KEY_VERSION,
+            'has_materialized_facts': bool(bucket_facts),
+            'has_session_summary': bool(session_summary),
+            'facts_first_primary_path': bool(bucket_facts),
         },
-        'summary': {
-            'total_buy_value': total_buy_value,
-            'total_sell_value': total_sell_value,
-            'net_cvd': round(net_cvd, 2),
-            'whale_order_count': len(bubble_series),
-            'extreme_order_count': len([item for item in bubble_series if item['is_extreme']]),
-        },
+        'materialization': materialization,
+        'session_summary': session_summary,
+        'summary': summary,
     }
     return payload
 

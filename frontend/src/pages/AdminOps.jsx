@@ -173,6 +173,56 @@ function SyncRow({ label, log, t }) {
   );
 }
 
+function AccessNotice({ title, description, t }) {
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 shadow-sm dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-900 dark:text-amber-200">
+          {t('adminOps.surfaceReadOnlyBadge')}
+        </span>
+        <p className="font-semibold">{title}</p>
+      </div>
+      <p className="mt-1 text-sm leading-6">{description}</p>
+    </div>
+  );
+}
+
+function SurfaceRedirectCard({ badge, title, description, actionLabel, actionTo, actionDisabled = false, disabledHint, t }) {
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 shadow-sm transition-colors dark:border-blue-900 dark:bg-blue-950/40">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-500 dark:text-blue-300">{badge}</p>
+          <h3 className="mt-1 text-base font-semibold text-blue-700 dark:text-blue-200">{title}</h3>
+        </div>
+        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${actionDisabled ? 'bg-slate-200 text-slate-500 dark:bg-slate-800 dark:text-slate-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-200'}`}>
+          {actionDisabled ? t('adminOps.surfaceReadOnlyBadge') : t('adminOps.globalScreenerEnabled', { defaultValue: 'Mở' })}
+        </span>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-blue-600 dark:text-blue-100">{description}</p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        {actionDisabled ? (
+          <button
+            type="button"
+            disabled
+            className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-400 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-200"
+          >
+            {actionLabel}
+          </button>
+        ) : (
+          <Link
+            to={actionTo}
+            className="rounded-full border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-100 dark:hover:bg-blue-900/50"
+          >
+            {actionLabel}
+          </Link>
+        )}
+        {disabledHint ? <span className="text-xs text-blue-500 dark:text-blue-200">{disabledHint}</span> : null}
+      </div>
+    </div>
+  );
+}
+
 function withTimeout(promise, ms = 12000, label = 'request') {
   return Promise.race([
     promise,
@@ -1138,6 +1188,12 @@ export default function AdminOps() {
   const governanceRulebook = systemAiSettings?.governance_delta_rulebook || {};
   const prefetchRulebook = systemAiSettings?.prefetch_runtime_rulebook || {};
   const activePrefetchPolicy = prefetch?.prefetch?.policy || null;
+  const surfacePermissions = stats.surface_permissions || {};
+  const canWriteVnstockConfig = Boolean(surfacePermissions.vnstock_config_write);
+  const canApplyBackfill = Boolean(surfacePermissions.intraday_side_backfill_apply);
+  const canOpenLegacyCrawlControl = Boolean(canWriteVnstockConfig || canApplyBackfill);
+  const vnstockSurfaceName = t('adminOps.vnstockSurfaceName', { defaultValue: 'Runtime Vnstock Config' });
+  const dataOpsSurfaceName = t('adminOps.dataOpsSurfaceName', { defaultValue: 'Data Ops' });
 
   const syncBtn = (key, label, fn, ...args) => {
     const st = syncStates[key];
@@ -1197,7 +1253,7 @@ export default function AdminOps() {
       <div className="flex flex-wrap gap-2">
         <button className={pageBtnClass('overview')} onClick={() => setActivePage('overview')}>Tong quan</button>
         <button className={pageBtnClass('signals')} onClick={() => setActivePage('signals')}>
-          {t('adminOps.signalCenterTab', { defaultValue: 'Signals' })}
+          {t('adminOps.signalCenterTab', { defaultValue: 'Trung tâm dòng tiền' })}
         </button>
         <button className={pageBtnClass('global_screener')} onClick={() => setActivePage('global_screener')}>
           {t('adminOps.globalScreenerTab', { defaultValue: 'Global Screener' })}
@@ -1290,23 +1346,24 @@ export default function AdminOps() {
           {syncBtn('prefetchwarmAsync', t('adminOps.triggerPrefetchAsync'), warmTickerPrefetch, 'async')}
           {syncBtn('prefetchwarmSync', t('adminOps.triggerPrefetchSync'), warmTickerPrefetch, 'sync')}
         </div>
+        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+          {t('adminOps.legacyWriterSurfaceHint', { defaultValue: 'Các nút đồng bộ bên dưới là tác vụ cũ; ưu tiên mở surface chuyên trách ở trên.' })}
+        </p>
       </section>
 
       {/* Trung tâm Điều khiển Dịch vụ Nền */}
       <section>
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Dịch vụ nền</h2>
-        <Link
-          to="/admin-crawl-control"
-          className="flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950/40 dark:hover:bg-blue-900/50 transition-colors"
-        >
-          <div>
-            <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">Trung tâm Điều khiển Dịch vụ Nền</p>
-            <p className="mt-0.5 text-xs text-blue-500 dark:text-blue-400">Quản lý, chạy thủ công và dừng các crawl job — xem lịch sử chạy theo thời gian thực</p>
-          </div>
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">{t('adminOps.legacyWriterSurfaceSectionTitle', { defaultValue: 'Nguồn ghi cũ và điều hướng' })}</h2>
+        <SurfaceRedirectCard
+          t={t}
+          badge={t('adminOps.legacyWriterSurfaceBadge', { defaultValue: 'Nguồn ghi cũ' })}
+          title={t('adminOps.legacyWriterSurfaceTitle', { defaultValue: 'Trung tâm Điều khiển Dịch vụ Nền' })}
+          description={t('adminOps.legacyWriterSurfaceDescription', { defaultValue: 'Các thao tác đồng bộ stock profile, watchlist, market groups và job crawl đã được hạ xuống surface chuyên trách. Khi thiếu quyền upstream, nút mở sẽ bị khóa.' })}
+          actionLabel={t('adminOps.legacyWriterSurfaceAction', { defaultValue: 'Mở surface chuyên trách' })}
+          actionTo="/admin-crawl-control"
+          actionDisabled={!canOpenLegacyCrawlControl}
+          disabledHint={!canOpenLegacyCrawlControl ? t('adminOps.legacyWriterSurfaceDisabledHint', { defaultValue: 'Cần quyền upstream để mở surface này.' }) : null}
+        />
       </section>
       </>) : null}
 
@@ -1344,6 +1401,7 @@ export default function AdminOps() {
             </label>
             <label className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
               <span>{t('adminOps.thresholdCritical')}</span>
+
               <input
                 type="number"
                 min="0"
@@ -1771,134 +1829,147 @@ export default function AdminOps() {
           </p>
         </div>
 
-        <VnstockBenchmarkPanel onApplyRecommendation={handleApplyVnstockBenchmarkRecommendation} />
+        {!canWriteVnstockConfig ? (
+          <AccessNotice
+            t={t}
+            title={t('adminOps.surfaceWriteLockedTitle', { surface: vnstockSurfaceName })}
+            description={t('adminOps.surfaceWriteLockedDescription', { surface: vnstockSurfaceName })}
+          />
+        ) : null}
 
-        <form onSubmit={handleVnstockConfigSave} className="grid gap-4 md:grid-cols-3 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Max Concurrency
-            <input
-              type="number"
-              min="1"
-              max="50"
-              value={vnstockConfigForm.max_concurrency}
-              onChange={(event) => handleVnstockConfigInput('max_concurrency', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Retry Attempts
-            <input
-              type="number"
-              min="0"
-              max="5"
-              value={vnstockConfigForm.retry_attempts}
-              onChange={(event) => handleVnstockConfigInput('retry_attempts', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Retry Backoff (s)
-            <input
-              type="number"
-              min="0"
-              max="5"
-              step="0.05"
-              value={vnstockConfigForm.retry_backoff_seconds}
-              onChange={(event) => handleVnstockConfigInput('retry_backoff_seconds', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
+        <VnstockBenchmarkPanel
+          onApplyRecommendation={handleApplyVnstockBenchmarkRecommendation}
+          canApplyRecommendation={canWriteVnstockConfig}
+        />
 
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Rate Limit Cooldown (s)
-            <input
-              type="number"
-              min="5"
-              max="120"
-              value={vnstockConfigForm.rate_limit_cooldown_seconds}
-              onChange={(event) => handleVnstockConfigInput('rate_limit_cooldown_seconds', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Price Board Source
-            <input
-              type="text"
-              value={vnstockConfigForm.price_board_source}
-              onChange={(event) => handleVnstockConfigInput('price_board_source', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Fallback Sources (comma separated)
-            <input
-              type="text"
-              value={vnstockConfigForm.fallback_sources}
-              onChange={(event) => handleVnstockConfigInput('fallback_sources', event.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-            />
-          </label>
+        <form onSubmit={handleVnstockConfigSave}>
+          <fieldset disabled={!canWriteVnstockConfig} className="grid gap-4 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-opacity disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 md:grid-cols-3">
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Max Concurrency
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={vnstockConfigForm.max_concurrency}
+                onChange={(event) => handleVnstockConfigInput('max_concurrency', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Retry Attempts
+              <input
+                type="number"
+                min="0"
+                max="5"
+                value={vnstockConfigForm.retry_attempts}
+                onChange={(event) => handleVnstockConfigInput('retry_attempts', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Retry Backoff (s)
+              <input
+                type="number"
+                min="0"
+                max="5"
+                step="0.05"
+                value={vnstockConfigForm.retry_backoff_seconds}
+                onChange={(event) => handleVnstockConfigInput('retry_backoff_seconds', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
 
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout Price Board (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_price_board} onChange={(event) => handleVnstockConfigInput('timeout_price_board', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout Intraday (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_intraday} onChange={(event) => handleVnstockConfigInput('timeout_intraday', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout Financial Ratio (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_financial_ratio} onChange={(event) => handleVnstockConfigInput('timeout_financial_ratio', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout History (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_history} onChange={(event) => handleVnstockConfigInput('timeout_history', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout Listing (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_listing} onChange={(event) => handleVnstockConfigInput('timeout_listing', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
-          <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
-            Timeout General (s)
-            <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_general} onChange={(event) => handleVnstockConfigInput('timeout_general', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-          </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Rate Limit Cooldown (s)
+              <input
+                type="number"
+                min="5"
+                max="120"
+                value={vnstockConfigForm.rate_limit_cooldown_seconds}
+                onChange={(event) => handleVnstockConfigInput('rate_limit_cooldown_seconds', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Price Board Source
+              <input
+                type="text"
+                value={vnstockConfigForm.price_board_source}
+                onChange={(event) => handleVnstockConfigInput('price_board_source', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Fallback Sources (comma separated)
+              <input
+                type="text"
+                value={vnstockConfigForm.fallback_sources}
+                onChange={(event) => handleVnstockConfigInput('fallback_sources', event.target.value)}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm uppercase text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              />
+            </label>
 
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={vnstockConfigForm.enable_caching} onChange={(event) => handleVnstockConfigInput('enable_caching', event.target.checked)} />
-            Enable Caching
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={vnstockConfigForm.enable_rate_limit_detection} onChange={(event) => handleVnstockConfigInput('enable_rate_limit_detection', event.target.checked)} />
-            Enable Rate Limit Detection
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-            <input type="checkbox" checked={vnstockConfigForm.enable_concurrent_limit} onChange={(event) => handleVnstockConfigInput('enable_concurrent_limit', event.target.checked)} />
-            Enable Concurrent Limit
-          </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout Price Board (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_price_board} onChange={(event) => handleVnstockConfigInput('timeout_price_board', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout Intraday (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_intraday} onChange={(event) => handleVnstockConfigInput('timeout_intraday', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout Financial Ratio (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_financial_ratio} onChange={(event) => handleVnstockConfigInput('timeout_financial_ratio', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout History (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_history} onChange={(event) => handleVnstockConfigInput('timeout_history', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout Listing (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_listing} onChange={(event) => handleVnstockConfigInput('timeout_listing', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-gray-600 dark:text-gray-300">
+              Timeout General (s)
+              <input type="number" min="1" max="120" value={vnstockConfigForm.timeout_general} onChange={(event) => handleVnstockConfigInput('timeout_general', event.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+            </label>
 
-          <div className="md:col-span-3 flex flex-wrap items-center gap-3">
-            <button
-              type="submit"
-              disabled={vnstockConfigState === 'saving'}
-              className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${vnstockConfigState === 'saving' ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-            >
-              {vnstockConfigState === 'saving' ? 'Dang luu...' : 'Luu Runtime Config'}
-            </button>
-            <button
-              type="button"
-              disabled={vnstockConfigState === 'saving'}
-              onClick={handleVnstockConfigReset}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
-            >
-              Reset Defaults
-            </button>
-            {vnstockConfigMessage ? (
-              <span className={`text-sm ${vnstockConfigState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
-                {vnstockConfigMessage}
-              </span>
-            ) : null}
-          </div>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={vnstockConfigForm.enable_caching} onChange={(event) => handleVnstockConfigInput('enable_caching', event.target.checked)} />
+              Enable Caching
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={vnstockConfigForm.enable_rate_limit_detection} onChange={(event) => handleVnstockConfigInput('enable_rate_limit_detection', event.target.checked)} />
+              Enable Rate Limit Detection
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={vnstockConfigForm.enable_concurrent_limit} onChange={(event) => handleVnstockConfigInput('enable_concurrent_limit', event.target.checked)} />
+              Enable Concurrent Limit
+            </label>
+
+            <div className="md:col-span-3 flex flex-wrap items-center gap-3">
+              <button
+                type="submit"
+                disabled={vnstockConfigState === 'saving'}
+                className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${vnstockConfigState === 'saving' ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {vnstockConfigState === 'saving' ? 'Dang luu...' : 'Luu Runtime Config'}
+              </button>
+              <button
+                type="button"
+                disabled={vnstockConfigState === 'saving'}
+                onClick={handleVnstockConfigReset}
+                className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+              >
+                Reset Defaults
+              </button>
+              {vnstockConfigMessage ? (
+                <span className={`text-sm ${vnstockConfigState === 'error' ? 'text-red-500' : 'text-green-600 dark:text-green-400'}`}>
+                  {vnstockConfigMessage}
+                </span>
+              ) : null}
+            </div>
+          </fieldset>
         </form>
 
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -1933,6 +2004,14 @@ export default function AdminOps() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{t('adminOps.intradaySideBackfillTitle')}</h2>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{t('adminOps.intradaySideBackfillDesc')}</p>
         </div>
+
+        {!canApplyBackfill ? (
+          <AccessNotice
+            t={t}
+            title={t('adminOps.surfaceWriteLockedTitle', { surface: dataOpsSurfaceName })}
+            description={t('adminOps.surfaceWriteLockedDescription', { surface: dataOpsSurfaceName })}
+          />
+        ) : null}
 
         {/* Form filter */}
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800 space-y-4">
@@ -2026,8 +2105,9 @@ export default function AdminOps() {
             {backfillPreview && (
               <button
                 type="button"
-                disabled={backfillApplyState === 'loading'}
+                disabled={backfillApplyState === 'loading' || !canApplyBackfill}
                 onClick={async () => {
+                  if (!canApplyBackfill) return;
                   if (!window.confirm(t('adminOps.intradaySideBackfillApplyConfirm'))) return;
                   setBackfillApplyState('loading');
                   setBackfillMessage('');

@@ -5,6 +5,7 @@ import {
   getAdminSignalRecentEvents,
   getAdminSignalsConfig,
   getAdminSignalsSummary,
+  previewAdminSignalMaterialization,
   previewAdminSignalRetention,
   previewAdminSignalsConfig,
   previewAdminSignalsUniverse,
@@ -85,11 +86,44 @@ function ServiceSummaryCard({ title, summary, enabled, t }) {
 
 function JsonPreview({ title, payload, emptyText }) {
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
       <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
-      <pre className="mt-3 max-h-64 overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300">
+      <pre className="mt-3 max-h-64 overflow-auto rounded-xl border border-slate-800 bg-slate-950 p-3 text-xs text-slate-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
         {payload ? JSON.stringify(payload, null, 2) : emptyText}
       </pre>
+    </div>
+  );
+}
+
+function BoundaryPanel({ title, ownerLabel, modeLabel, statusLabel, items, payload, emptyText, note }) {
+  return (
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4 shadow-[0_16px_48px_rgba(2,6,23,0.22)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">{note}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+          <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1 text-cyan-200">{ownerLabel}</span>
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-violet-200">{modeLabel}</span>
+          <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-slate-300">{statusLabel}</span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        {items.map((item) => (
+          <div key={item.label} className="min-w-0 rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+            <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">{item.label}</p>
+            <p className="mt-2 break-words text-sm font-semibold text-slate-100">{item.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+        <pre className="max-h-64 overflow-auto p-3 text-xs text-slate-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          {payload ? JSON.stringify(payload, null, 2) : emptyText}
+        </pre>
+      </div>
     </div>
   );
 }
@@ -110,6 +144,7 @@ export default function SignalControlCenter() {
   const [eventsPageSize, setEventsPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [eventsTotal, setEventsTotal] = useState(0);
   const [retentionPreview, setRetentionPreview] = useState(null);
+  const [materializationPreview, setMaterializationPreview] = useState(null);
   const [configPreview, setConfigPreview] = useState(null);
   const [universePreview, setUniversePreview] = useState(null);
   const [message, setMessage] = useState('');
@@ -141,6 +176,81 @@ export default function SignalControlCenter() {
   const ownershipSnapshot = configPreview?.ownership || summary?.ownership || null;
   const whaleGovernanceSnapshot = summary?.whale_governance || null;
   const rawIntradayKeepDays = retentionPreview?.raw_intraday?.keep_days ?? null;
+  const lifecycle = summary?.lifecycle || {};
+  const sharedLifecyclePayload = summary ? {
+    effective_owner_matrix: lifecycle.effective_owner_matrix || null,
+    tiers: lifecycle.tiers || null,
+    materialization_lag: lifecycle.materialization_lag || null,
+    anomaly_backlog: lifecycle.anomaly_backlog || null,
+    deprecation_warnings: lifecycle.deprecation_warnings || [],
+  } : null;
+  const materializationPanelPayload = materializationPreview ? {
+    preview: materializationPreview.preview || null,
+    effective_owner: materializationPreview.effective_owner || null,
+    effective_values: materializationPreview.effective_values || null,
+    diff: materializationPreview.diff || null,
+    impacted_counts: materializationPreview.impacted_counts || null,
+    freshness: materializationPreview.freshness || null,
+    warnings: materializationPreview.effective_value_warnings || [],
+  } : null;
+  const storageRetentionPanelPayload = retentionPreview ? {
+    retention_preview: retentionPreview,
+    storage_tiers: lifecycle.tiers || null,
+    freshness: summary?.cache_freshness || null,
+  } : null;
+  const whaleGovernancePanel = whaleGovernanceSnapshot ? {
+    title: t('adminOps.signalCenterWhaleGovernancePanelTitle', { defaultValue: 'Phân ranh whale governance' }),
+    ownerLabel: t('adminOps.signalCenterWhaleGovernanceOwner', { defaultValue: 'Whale mission-control' }),
+    modeLabel: t('adminOps.signalCenterWhaleGovernanceMode', { defaultValue: 'Write-through bridge' }),
+    statusLabel: whaleGovernanceSnapshot?.active_rollout?.status || t('adminOps.none', { defaultValue: 'Chưa có' }),
+    note: t('adminOps.signalCenterWhaleGovernanceNote', { defaultValue: 'Whale policy đi qua pending/draft bridge và chỉ active publish sau approval từ mission-control.' }),
+    items: [
+      {
+        label: t('adminOps.signalCenterWhaleActiveVersion', { defaultValue: 'Phiên bản active' }),
+        value: whaleGovernanceSnapshot?.active_version?.version_code || '—',
+      },
+      {
+        label: t('adminOps.signalCenterWhaleRolloutStatus', { defaultValue: 'Trạng thái rollout' }),
+        value: whaleGovernanceSnapshot?.active_rollout?.status || '—',
+      },
+      {
+        label: t('adminOps.signalCenterWhalePropagationSignal', { defaultValue: 'Propagation' }),
+        value: whaleGovernanceSnapshot?.propagation?.signal || '—',
+      },
+    ],
+    payload: whaleGovernanceSnapshot,
+  } : null;
+  const darkFlowPolicyPanel = summary?.services?.dark_flow ? {
+    title: t('adminOps.signalCenterDarkFlowPolicyPanelTitle', { defaultValue: 'Phân ranh dark flow policy' }),
+    ownerLabel: t('adminOps.signalCenterDarkFlowOwner', { defaultValue: 'Signal Control Center' }),
+    modeLabel: t('adminOps.signalCenterDarkFlowMode', { defaultValue: 'Direct writer' }),
+    statusLabel: summary?.services?.dark_flow?.enabled ? t('adminOps.globalScreenerEnabled', { defaultValue: 'Bật' }) : t('adminOps.globalScreenerDisabled', { defaultValue: 'Tắt' }),
+    note: t('adminOps.signalCenterDarkFlowPolicyNote', { defaultValue: 'Dark-flow policy ghi trực tiếp qua control center, không đi qua whale bridge.' }),
+    items: [
+      {
+        label: t('adminOps.signalCenterDarkFlowPendingRuns', { defaultValue: 'Pending runs' }),
+        value: formatNumberValue(summary?.services?.dark_flow?.pending_run_count),
+      },
+      {
+        label: t('adminOps.signalCenterDarkFlowFreshness', { defaultValue: 'Freshness' }),
+        value: summary?.services?.dark_flow?.materialization?.freshness_state || '—',
+      },
+      {
+        label: t('adminOps.signalCenterDarkFlowAnomalies', { defaultValue: 'Anomaly backlog' }),
+        value: formatNumberValue(summary?.services?.dark_flow?.anomaly_markers?.length),
+      },
+    ],
+    payload: {
+      materialization: summary?.services?.dark_flow?.materialization || null,
+      session_summary: summary?.services?.dark_flow?.session_summary || null,
+      anomaly_markers: summary?.services?.dark_flow?.anomaly_markers || [],
+      pending_run_count: summary?.services?.dark_flow?.pending_run_count ?? 0,
+    },
+  } : null;
+  const auditWarnings = Array.from(new Set([
+    ...(sharedLifecyclePayload?.deprecation_warnings || []),
+    ...(materializationPanelPayload?.warnings || []),
+  ].filter(Boolean)));
 
   const applyConfigToForm = useCallback((payload, retentionPreviewPayload = null) => {
     const servicesConfig = payload?.services_config || {};
@@ -176,14 +286,16 @@ export default function SignalControlCenter() {
   }, []);
 
   const loadStaticData = useCallback(async () => {
-    const [summaryRes, configRes, retentionRes] = await Promise.all([
+    const [summaryRes, configRes, retentionRes, materializationRes] = await Promise.all([
       getAdminSignalsSummary(),
       getAdminSignalsConfig(),
       previewAdminSignalRetention({}),
+      previewAdminSignalMaterialization({}),
     ]);
     setSummary(summaryRes.data || null);
     applyConfigToForm(configRes.data || null, retentionRes.data?.preview || null);
     setRetentionPreview(retentionRes.data?.preview || null);
+    setMaterializationPreview(materializationRes.data || null);
   }, [applyConfigToForm]);
 
   const loadJobsPage = useCallback(async (page = 1, pageSize = DEFAULT_PAGE_SIZE) => {
@@ -457,9 +569,9 @@ export default function SignalControlCenter() {
     <section className="space-y-5 rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.12),_transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98))] p-5 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">{t('adminOps.signalCenterEyebrow', { defaultValue: 'Signal Control Center' })}</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-100">{t('adminOps.signalCenterTitle', { defaultValue: 'Điều phối global whale và dark flow' })}</h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-400">{t('adminOps.signalCenterDescription', { defaultValue: 'Một surface vận hành thống nhất cho summary, config preview/apply, manual run, recent events và retention preview của hai global detector.' })}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-emerald-300">{t('adminOps.signalCenterEyebrow', { defaultValue: 'Trung tâm dòng tiền' })}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-100">{t('adminOps.signalCenterTitle', { defaultValue: 'Vận hành whale, dark flow và lifecycle' })}</h2>
+          <p className="mt-2 max-w-3xl text-sm text-slate-400">{t('adminOps.signalCenterDescription', { defaultValue: 'Một surface vận hành thống nhất cho summary, preview/apply, manual run, recent events và retention/materialization của hai global detector.' })}</p>
         </div>
         <button
           type="button"
@@ -474,7 +586,7 @@ export default function SignalControlCenter() {
         <div className="rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-sm text-slate-200">{message}</div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
         <ServiceSummaryCard
           title={t('adminOps.signalCenterWhaleTitle', { defaultValue: 'Whale Alerts Global Service' })}
           summary={summary?.services?.whale}
@@ -487,6 +599,51 @@ export default function SignalControlCenter() {
           enabled={Boolean(summary?.services?.dark_flow?.enabled)}
           t={t}
         />
+      </div>
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-3">
+        <JsonPreview
+          title={t('adminOps.signalCenterSharedLifecycleTitle', { defaultValue: 'Vòng đời dùng chung' })}
+          payload={sharedLifecyclePayload}
+          emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+        />
+        <JsonPreview
+          title={t('adminOps.signalCenterMaterializationTitle', { defaultValue: 'Vật hoá dữ liệu' })}
+          payload={materializationPanelPayload}
+          emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+        />
+        <JsonPreview
+          title={t('adminOps.signalCenterStorageRetentionTitle', { defaultValue: 'Lưu trữ và lưu giữ' })}
+          payload={storageRetentionPanelPayload}
+          emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+        />
+      </div>
+
+      <div className="grid min-w-0 gap-4 xl:grid-cols-2">
+        {whaleGovernancePanel ? (
+          <BoundaryPanel
+            title={whaleGovernancePanel.title}
+            ownerLabel={whaleGovernancePanel.ownerLabel}
+            modeLabel={whaleGovernancePanel.modeLabel}
+            statusLabel={whaleGovernancePanel.statusLabel}
+            items={whaleGovernancePanel.items}
+            payload={whaleGovernancePanel.payload}
+            emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+            note={whaleGovernancePanel.note}
+          />
+        ) : null}
+        {darkFlowPolicyPanel ? (
+          <BoundaryPanel
+            title={darkFlowPolicyPanel.title}
+            ownerLabel={darkFlowPolicyPanel.ownerLabel}
+            modeLabel={darkFlowPolicyPanel.modeLabel}
+            statusLabel={darkFlowPolicyPanel.statusLabel}
+            items={darkFlowPolicyPanel.items}
+            payload={darkFlowPolicyPanel.payload}
+            emptyText={t('adminOps.signalCenterPreviewEmpty', { defaultValue: 'Chưa có preview.' })}
+            note={darkFlowPolicyPanel.note}
+          />
+        ) : null}
       </div>
 
       <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
@@ -526,7 +683,7 @@ export default function SignalControlCenter() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.35fr_0.95fr]">
+      <div className="grid min-w-0 gap-4 xl:grid-cols-[1.35fr_0.95fr]">
         <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterConfigTitle', { defaultValue: 'Services, retention và ownership' })}</h3>
           {ownershipSnapshot?.deprecation_notes?.length ? (
@@ -647,7 +804,34 @@ export default function SignalControlCenter() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterJobsAuditTitle', { defaultValue: 'Tác vụ và kiểm toán' })}</h3>
+            <p className="mt-1 max-w-3xl text-sm text-slate-400">{t('adminOps.signalCenterJobsAuditDescription', { defaultValue: 'Tác vụ chạy tay, sự kiện canonical gần đây, preview retention và cảnh báo ngưng dùng được gom trên cùng một surface để operator đọc nhanh trạng thái audit.' })}</p>
+          </div>
+          <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+            <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-slate-300">{t('adminOps.signalCenterJobsAuditJobsCount', { defaultValue: 'Jobs' })}: {formatNumberValue(jobsTotal)}</span>
+            <span className="rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-slate-300">{t('adminOps.signalCenterJobsAuditEventsCount', { defaultValue: 'Recent actions' })}: {formatNumberValue(eventsTotal)}</span>
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-amber-200">{t('adminOps.signalCenterJobsAuditWarningsCount', { defaultValue: 'Cảnh báo ngưng dùng' })}: {formatNumberValue(auditWarnings.length)}</span>
+          </div>
+        </div>
+        {auditWarnings.length ? (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs leading-6 text-amber-100">
+            <p className="font-semibold uppercase tracking-[0.16em] text-amber-200">{t('adminOps.signalCenterJobsAuditWarningsTitle', { defaultValue: 'Cảnh báo ngưng dùng' })}</p>
+            <ul className="mt-2 space-y-1">
+              {auditWarnings.map((warning) => (
+                <li key={warning}>• {warning}</li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-900/70 px-3 py-3 text-xs text-slate-400">
+            {t('adminOps.signalCenterJobsAuditWarningsEmpty', { defaultValue: 'Không có cảnh báo ngưng dùng.' })}
+          </div>
+        )}
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterJobsTitle', { defaultValue: 'Manual runs và job registry' })}</h3>
@@ -723,7 +907,7 @@ export default function SignalControlCenter() {
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <JsonPreview
             title={t('adminOps.signalCenterWhaleGovernanceTitle', { defaultValue: 'Quản trị whale hiện hành' })}
             payload={whaleGovernanceSnapshot}
@@ -747,7 +931,7 @@ export default function SignalControlCenter() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid gap-4 xl:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70 p-4">
           <h3 className="text-sm font-semibold text-slate-100">{t('adminOps.signalCenterRecentEventsTitle', { defaultValue: 'Recent canonical events' })}</h3>
           {eventsLoaded ? (
@@ -816,6 +1000,7 @@ export default function SignalControlCenter() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </section>
   );

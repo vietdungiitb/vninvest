@@ -571,6 +571,7 @@ export const previewAdminSignalsConfig = (payload) => apiClient.post('/admin-ops
 export const updateAdminSignalsConfig = (payload) => apiClient.put('/admin-ops/signals/config/', payload);
 export const previewAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/preview/', payload);
 export const applyAdminSignalsUniverse = (payload) => apiClient.post('/admin-ops/signals/universe/apply/', payload);
+export const previewAdminSignalMaterialization = (payload = {}) => apiClient.post('/admin-ops/signals/money-flow/materialization/preview/', payload);
 export const getAdminSignalJobs = (params = {}) => apiClient.get('/admin-ops/signals/jobs/', { params });
 export const runAdminSignalJob = (payload) => apiClient.post('/admin-ops/signals/jobs/run/', payload);
 export const retryAdminSignalJob = (runId) => apiClient.post(`/admin-ops/signals/jobs/${encodeURIComponent(runId)}/retry/`);

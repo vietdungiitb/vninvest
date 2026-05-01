@@ -231,9 +231,13 @@ from .views_admin_vnstock_benchmark import (
 from .views_signal_admin import (
     signal_admin_config_api,
     signal_admin_config_preview_api,
+    signal_admin_whale_governance_bridge_apply_api,
+    signal_admin_whale_governance_bridge_preview_api,
     signal_admin_job_retry_api,
     signal_admin_jobs_api,
     signal_admin_jobs_run_api,
+    signal_admin_money_flow_materialization_preview_api,
+    signal_admin_money_flow_materialization_run_api,
     signal_admin_recent_events_api,
     signal_admin_retention_preview_api,
     signal_admin_summary_api,

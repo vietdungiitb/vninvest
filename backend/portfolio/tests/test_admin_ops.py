@@ -19,7 +19,7 @@ Coverage:
 from datetime import timedelta
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -37,7 +37,7 @@ from portfolio.models import (
     WhaleConfigVersion,
     WhaleConfigWorkerAck,
 )
-from portfolio.tasks_maintenance import set_intraday_side_backfill_task_status
+from portfolio.tasks_maintenance import run_intraday_side_backfill_apply, set_intraday_side_backfill_task_status
 
 URL = '/api/admin-ops/stats/'
 WARM_URL = '/api/admin-ops/prefetch/warm/'
@@ -51,6 +51,11 @@ VNSTOCK_BENCHMARK_LATEST_URL = '/api/admin-ops/vnstock-config/benchmark-price-bo
 VNSTOCK_BENCHMARK_RUN_URL = '/api/admin-ops/vnstock-config/benchmark-price-board/run/'
 INTRADAY_BACKFILL_APPLY_URL = '/api/admin-ops/intraday-side-backfill/apply/'
 INTRADAY_BACKFILL_STATUS_URL = '/api/admin-ops/intraday-side-backfill/status/{task_id}/'
+
+
+def _grant_portfolio_permission(user, codename):
+    permission = Permission.objects.get(codename=codename, content_type__app_label='portfolio')
+    user.user_permissions.add(permission)
 
 
 class AdminOpsStatsPermissionTests(APITestCase):
@@ -144,12 +149,20 @@ class AdminOpsStatsDataTests(APITestCase):
         required_keys = [
             'user_count', 'portfolio_count', 'tracked_symbol_count',
             'watchlist_item_count', 'last_market_group_sync', 'last_stock_profile_sync',
-            'channel_layer_type', 'realtime_enabled', 'redis_ok',
+            'channel_layer_type', 'realtime_enabled', 'redis_ok', 'surface_permissions',
             'ticker_prefetch',
             'whale_config_propagation', 'whale_config_anomaly', 'whale_config_dashboard',
         ]
         for key in required_keys:
             self.assertIn(key, data, f"Missing key: {key}")
+
+    def test_surface_permissions_default_to_write_locked_for_staff(self):
+        data = self._get_stats()
+        permissions = data['surface_permissions']
+        self.assertIn('vnstock_config_write', permissions)
+        self.assertIn('intraday_side_backfill_apply', permissions)
+        self.assertFalse(permissions['vnstock_config_write'])
+        self.assertFalse(permissions['intraday_side_backfill_apply'])
 
     @patch('config.health.build_prefetch_health_snapshot')
     def test_ticker_prefetch_payload_present(self, mock_prefetch_snapshot):
@@ -474,14 +487,17 @@ class AdminOpsWarmPrefetchTests(APITestCase):
 
 class AdminOpsVnstockRuntimeConfigTests(APITestCase):
     def setUp(self):
-        self.staff = User.objects.create_user(username='vnstock_staff', password='Test@123456', is_staff=True)
+        self.locked_staff = User.objects.create_user(username='vnstock_locked_staff', password='Test@123456', is_staff=True)
+        self.writer_staff = User.objects.create_user(username='vnstock_staff', password='Test@123456', is_staff=True)
         self.user = User.objects.create_user(username='vnstock_user', password='Test@123456')
 
-        for account in (self.staff, self.user):
+        for account in (self.locked_staff, self.writer_staff, self.user):
             cfg, _ = UserConfig.objects.get_or_create(user=account)
             if not cfg.email_verified:
                 cfg.email_verified = True
                 cfg.save(update_fields=['email_verified', 'updated_at'])
+
+        _grant_portfolio_permission(self.writer_staff, 'change_runtimevnstockconfig')
 
     def _login(self, username, password='Test@123456'):
         resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
@@ -492,6 +508,15 @@ class AdminOpsVnstockRuntimeConfigTests(APITestCase):
         self._login('vnstock_user')
         resp = self.client.get(VNSTOCK_CURRENT_URL)
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_without_write_permission_cannot_update_or_reset(self):
+        self._login('vnstock_locked_staff')
+
+        update_resp = self.client.patch(VNSTOCK_UPDATE_URL, {'max_concurrency': 9}, format='json')
+        self.assertEqual(update_resp.status_code, status.HTTP_403_FORBIDDEN)
+
+        reset_resp = self.client.post(VNSTOCK_RESET_URL, {}, format='json')
+        self.assertEqual(reset_resp.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_can_get_update_and_read_changelog(self):
         self._login('vnstock_staff')
@@ -607,18 +632,27 @@ class AdminOpsVnstockBenchmarkTests(APITestCase):
 
 
 class AdminIntradaySideBackfillAsyncTests(APITestCase):
-    def setUp(self):
-        self.staff = User.objects.create_user(
-            username='backfill_staff', password='Test@123456', is_staff=True
-        )
-        cfg, _ = UserConfig.objects.get_or_create(user=self.staff)
-        if not cfg.email_verified:
-            cfg.email_verified = True
-            cfg.save(update_fields=['email_verified', 'updated_at'])
-
-        resp = self.client.post('/api/auth/token/', {'username': 'backfill_staff', 'password': 'Test@123456'}, format='json')
+    def _login(self, username, password='Test@123456'):
+        resp = self.client.post('/api/auth/token/', {'username': username, 'password': password}, format='json')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {resp.data['access']}")
+
+    def setUp(self):
+        self.locked_staff = User.objects.create_user(
+            username='backfill_locked_staff', password='Test@123456', is_staff=True
+        )
+        self.writer_staff = User.objects.create_user(
+            username='backfill_staff', password='Test@123456', is_staff=True
+        )
+        for account in (self.locked_staff, self.writer_staff):
+            cfg, _ = UserConfig.objects.get_or_create(user=account)
+            if not cfg.email_verified:
+                cfg.email_verified = True
+                cfg.save(update_fields=['email_verified', 'updated_at'])
+
+        _grant_portfolio_permission(self.writer_staff, 'change_intradaytick')
+
+        self._login('backfill_staff')
 
     @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=True)
     @patch('portfolio.tasks_maintenance.run_intraday_side_backfill_apply.apply_async')
@@ -645,6 +679,48 @@ class AdminIntradaySideBackfillAsyncTests(APITestCase):
         self.assertTrue(resp.data['ok'])
         self.assertEqual(resp.data['status'], 'queued')
         self.assertEqual(resp.data['task_id'], 'backfill-task-123')
+
+    @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=True)
+    def test_staff_without_intraday_permission_cannot_queue_apply(self, _mock_worker_available):
+        self._login('backfill_locked_staff')
+
+        resp = self.client.post(
+            INTRADAY_BACKFILL_APPLY_URL,
+            {
+                'confirm': True,
+                'symbols': ['VNM'],
+                'start_date': '2026-04-01',
+                'end_date': '2026-04-21',
+                'threshold': 0,
+                'batch_size': 2000,
+            },
+            format='json',
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('không có quyền', str(resp.data.get('detail') or '').lower())
+
+    @patch('portfolio.services_whale_analytics_snapshot.invalidate_whale_analytics_snapshot_cache')
+    @patch('portfolio.services_backfill.intraday_side_backfill_apply')
+    def test_backfill_task_invalidates_whale_snapshot_cache_for_touched_symbols(self, mock_apply, mock_invalidate):
+        mock_apply.return_value = {
+            'scope_rows': 12,
+            'updated': 3,
+            'duration_seconds': 1.2,
+            'symbols_touched': ['VNM', 'HPG'],
+            'transitions': {'SELL->BUY': 3},
+        }
+
+        result = run_intraday_side_backfill_apply.run(
+            symbols=['VNM'],
+            start_date='2026-04-01',
+            end_date='2026-04-21',
+            threshold=0,
+            batch_size=2000,
+        )
+
+        self.assertEqual(result['updated'], 3)
+        mock_invalidate.assert_called_once_with(['VNM', 'HPG'])
 
     @patch('portfolio.views_admin_runtime._is_celery_worker_available', return_value=False)
     def test_backfill_apply_returns_503_when_worker_unavailable(self, _mock_worker_available):

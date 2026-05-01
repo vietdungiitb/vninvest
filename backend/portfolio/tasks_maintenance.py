@@ -7,6 +7,11 @@ from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
 
+from portfolio.global_signal_policy_helpers import get_global_signal_retention_policy
+from portfolio.models import SignalServiceRun
+from portfolio.services_money_flow_retention import build_retention_safety_gate, purge_expired_money_flow_forensic_windows
+from portfolio.services_signal_run_registry import create_signal_service_run, finish_signal_service_run
+
 logger = logging.getLogger(__name__)
 
 
@@ -58,6 +63,18 @@ def run_intraday_side_backfill_apply(
 
     task_id = str(getattr(self.request, 'id', '') or '')
     started_at = timezone.now().isoformat()
+    run = create_signal_service_run(
+        service_domain=SignalServiceRun.ServiceDomain.LIFECYCLE,
+        run_type=SignalServiceRun.RunType.RECOMPUTE,
+        params_json={
+            'symbols': symbols or [],
+            'start_date': start_date,
+            'end_date': end_date,
+            'threshold': int(threshold or 0),
+            'batch_size': int(batch_size or 2000),
+        },
+        task_id=task_id,
+    )
     
     def progress_callback(phase, rows_processed, rows_total, current_symbol):
         """Update task status with progress metrics."""
@@ -137,8 +154,27 @@ def run_intraday_side_backfill_apply(
         }
         if task_id:
             set_intraday_side_backfill_task_status(task_id, failed_payload)
+        finish_signal_service_run(
+            run,
+            status=SignalServiceRun.StatusChoices.FAILED,
+            processed_items=0,
+            stored_items=0,
+            failed_items=1,
+            progress_pct=100.0,
+            log=f'backfill apply exception: {exc}',
+        )
         logger.exception('run_intraday_side_backfill_apply failed: %s', exc)
         raise
+
+    invalidated_symbols: list[str] = []
+    if int(result.get('updated') or 0) > 0:
+        target_symbols = result.get('symbols_touched') or symbols or []
+        try:
+            from portfolio.services_whale_analytics_snapshot import invalidate_whale_analytics_snapshot_cache
+
+            invalidated_symbols = invalidate_whale_analytics_snapshot_cache(target_symbols)
+        except Exception as exc:
+            logger.warning('run_intraday_side_backfill_apply cache invalidation failed: %s', exc, exc_info=True)
 
     success_payload = {
         **payload,
@@ -147,14 +183,32 @@ def run_intraday_side_backfill_apply(
         'completion_percentage': 100,
         'message': 'Backfill intraday side đã hoàn tất.',
         'result': result,
+        'cache_invalidated_symbols': invalidated_symbols,
     }
     if task_id:
         set_intraday_side_backfill_task_status(task_id, success_payload)
+    finish_signal_service_run(
+        run,
+        status=SignalServiceRun.StatusChoices.COMPLETED,
+        processed_items=int(result.get('scope_rows') or 0),
+        stored_items=int(result.get('updated') or 0),
+        failed_items=0,
+        progress_pct=100.0,
+        log=(
+            'backfill scope_rows={scope_rows} updated={updated} symbols_touched={symbols_touched} invalidated={invalidated}'
+        ).format(
+            scope_rows=int(result.get('scope_rows') or 0),
+            updated=int(result.get('updated') or 0),
+            symbols_touched=','.join(result.get('symbols_touched') or []),
+            invalidated=','.join(invalidated_symbols),
+        ),
+    )
     logger.info(
-        'run_intraday_side_backfill_apply completed: task_id=%s updated=%s scope_rows=%s',
+        'run_intraday_side_backfill_apply completed: task_id=%s updated=%s scope_rows=%s invalidated=%s',
         task_id,
         result.get('updated'),
         result.get('scope_rows'),
+        invalidated_symbols,
     )
     return result
 
@@ -210,25 +264,93 @@ def cleanup_old_intraday_ticks(self) -> dict:
     from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
 
     runtime = _get_runtime_prefetch_settings()
+    keep_days = max(int(runtime.get('intraday_tick_keep_days', 7)), 1)
+    cutoff = date.today() - timedelta(days=keep_days)
+    run = create_signal_service_run(
+        service_domain=SignalServiceRun.ServiceDomain.LIFECYCLE,
+        run_type=SignalServiceRun.RunType.PURGE,
+        params_json={
+            'keep_days': keep_days,
+            'cutoff': str(cutoff),
+            'enabled': bool(runtime.get('intraday_tick_auto_cleanup_enabled', True)),
+        },
+    )
+
     if not runtime.get('intraday_tick_auto_cleanup_enabled', True):
+        finish_signal_service_run(
+            run,
+            status=SignalServiceRun.StatusChoices.COMPLETED,
+            processed_items=0,
+            stored_items=0,
+            failed_items=0,
+            progress_pct=100.0,
+            log='intraday tick cleanup disabled via runtime settings',
+        )
         logger.info("EOD cleanup: disabled via runtime settings, skipping.")
         return {"status": "disabled"}
 
-    keep_days = max(int(runtime.get('intraday_tick_keep_days', 7)), 1)
-    cutoff = date.today() - timedelta(days=keep_days)
+    safety_gate = build_retention_safety_gate(get_global_signal_retention_policy())
+    if not safety_gate.get('purge_ready'):
+        blocked_reasons = safety_gate.get('blocked_reasons') or ['retention_safety_gate_blocked']
+        finish_signal_service_run(
+            run,
+            status=SignalServiceRun.StatusChoices.PARTIAL,
+            processed_items=0,
+            stored_items=0,
+            failed_items=0,
+            progress_pct=100.0,
+            log='intraday tick purge blocked: ' + ','.join(blocked_reasons),
+        )
+        logger.info("EOD cleanup: blocked by retention safety gate (%s)", ', '.join(blocked_reasons))
+        return {"status": "blocked", "deleted": 0, "cutoff": str(cutoff), "keep_days": keep_days, "safety_gate": safety_gate}
+
     total_deleted = 0
     chunk_size = 5000
-    while True:
-        ids = list(
-            IntradayTick.objects.filter(trade_date__lt=cutoff)
-            .values_list('id', flat=True)[:chunk_size]
+    try:
+        while True:
+            ids = list(
+                IntradayTick.objects.filter(trade_date__lt=cutoff)
+                .values_list('id', flat=True)[:chunk_size]
+            )
+            if not ids:
+                break
+            deleted, _ = IntradayTick.objects.filter(id__in=ids).delete()
+            total_deleted += deleted
+        forensic_cleanup = purge_expired_money_flow_forensic_windows()
+        logger.info("EOD cleanup: deleted %d IntradayTick records older than %s", total_deleted, cutoff)
+        finish_signal_service_run(
+            run,
+            status=SignalServiceRun.StatusChoices.COMPLETED,
+            processed_items=total_deleted,
+            stored_items=0,
+            failed_items=0,
+            progress_pct=100.0,
+            log=(
+                'intraday tick purge deleted={deleted} forensic_deleted={forensic_deleted} cutoff={cutoff}'
+            ).format(
+                deleted=total_deleted,
+                forensic_deleted=int(forensic_cleanup.get('deleted') or 0),
+                cutoff=cutoff,
+            ),
         )
-        if not ids:
-            break
-        deleted, _ = IntradayTick.objects.filter(id__in=ids).delete()
-        total_deleted += deleted
-    logger.info("EOD cleanup: deleted %d IntradayTick records older than %s", total_deleted, cutoff)
-    return {"status": "ok", "deleted": total_deleted, "cutoff": str(cutoff), "keep_days": keep_days}
+        return {
+            "status": "ok",
+            "deleted": total_deleted,
+            "forensic_windows_deleted": int(forensic_cleanup.get('deleted') or 0),
+            "cutoff": str(cutoff),
+            "keep_days": keep_days,
+        }
+    except Exception as exc:
+        finish_signal_service_run(
+            run,
+            status=SignalServiceRun.StatusChoices.FAILED,
+            processed_items=0,
+            stored_items=0,
+            failed_items=1,
+            progress_pct=100.0,
+            log=f'intraday tick purge exception: {exc}',
+        )
+        raise
 
 
 @shared_task(bind=True, name='portfolio.tasks.cleanup_old_signal_service_runs', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
@@ -244,6 +366,14 @@ def cleanup_old_signal_service_runs(self) -> dict:
 
     keep_days = max(min(int(getattr(settings, 'SIGNAL_SERVICE_RUN_KEEP_DAYS', 90) or 90), 90), 30)
     cutoff = timezone.now() - timedelta(days=keep_days)
+    run = create_signal_service_run(
+        service_domain=SignalServiceRun.ServiceDomain.LIFECYCLE,
+        run_type=SignalServiceRun.RunType.PURGE,
+        params_json={
+            'keep_days': keep_days,
+            'cutoff': cutoff.isoformat(),
+        },
+    )
     terminal_statuses = {
         SignalServiceRun.StatusChoices.COMPLETED,
         SignalServiceRun.StatusChoices.FAILED,
@@ -269,6 +399,15 @@ def cleanup_old_signal_service_runs(self) -> dict:
         total_deleted,
         cutoff.isoformat(),
         keep_days,
+    )
+    finish_signal_service_run(
+        run,
+        status=SignalServiceRun.StatusChoices.COMPLETED,
+        processed_items=total_deleted,
+        stored_items=0,
+        failed_items=0,
+        progress_pct=100.0,
+        log=f'signal service purge deleted={total_deleted} cutoff={cutoff.isoformat()}',
     )
     return {'status': 'ok', 'deleted': total_deleted, 'cutoff': cutoff.isoformat(), 'keep_days': keep_days}
 

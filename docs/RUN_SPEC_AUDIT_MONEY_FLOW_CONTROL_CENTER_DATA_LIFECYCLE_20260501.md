@@ -79,6 +79,10 @@ Các điểm phải soi kỹ:
 - forensic windows có bị biến thành raw retention trá hình không?
 - preview-before-apply và effective owner có hiện đủ trên UI/API không?
 - evidence package có đủ cho self-audit trước final audit không?
+- legacy writer surface có còn hard-block đúng backend-side hay chỉ bị ẩn UI không?
+- whale bridge có tạo pending/draft state và chờ approval/rollout trước khi active publish không?
+- link-out tới Data Ops/Vnstock có permission-gated hay vẫn render link chết cho người thiếu quyền không?
+- forensic carve-out là physical copy/move sang L5 hay chỉ tagging trên raw L0?
 
 Hãy trả kết quả theo thứ tự severity từ cao xuống thấp.
 ```
@@ -88,6 +92,7 @@ Hãy trả kết quả theo thứ tự severity từ cao xuống thấp.
 1. Một finding chỉ thành `CONFIRMED BUG` khi ít nhất 2 auditor đồng ý hoặc có regression test xác nhận.
 2. Finding chỉ có 1 auditor nêu nhưng chưa có test/evidence thì gắn `NEEDS INVESTIGATION`.
 3. Nếu cả 3 auditor đều bỏ qua một rủi ro đã ghi trong quality constitution hoặc ownership matrix, audit bị coi là chưa hoàn thành.
+4. Mọi finding về hidden write surface chỉ được nâng lên `CONFIRMED BUG` khi có bằng chứng backend hard-block, không chỉ UI demotion.
 
 ## 6. Expected artifacts
 

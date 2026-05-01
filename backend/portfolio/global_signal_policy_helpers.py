@@ -119,7 +119,19 @@ def default_global_signal_retention_policy() -> dict:
         'dark_flow_keep_days': 90,
         'summary_cache_ttl_seconds': 900,
         'require_preview_before_purge': True,
+        'forensic_window_keep_days': 90,
+        'forensic_window_before_minutes': 60,
+        'forensic_window_after_minutes': 60,
+        'forensic_max_windows_per_symbol': 3,
+        'forensic_min_severity': 'warning',
     }
+
+
+def _coerce_retention_severity(value, default: str) -> str:
+    normalized = str(default if value in (None, '') else value).strip().lower()
+    if normalized not in {'info', 'warning', 'urgent'}:
+        raise ValueError('forensic_min_severity phải là info, warning hoặc urgent.')
+    return normalized
 
 
 def coerce_global_signal_services_config(raw_payload, fallback=None) -> dict:
@@ -255,6 +267,34 @@ def coerce_global_signal_retention_policy(raw_payload, fallback=None) -> dict:
         'require_preview_before_purge': _coerce_bool(
             payload.get('require_preview_before_purge'),
             base['require_preview_before_purge'],
+        ),
+        'forensic_window_keep_days': _coerce_int(
+            payload.get('forensic_window_keep_days'),
+            field_name='forensic_window_keep_days',
+            default=base['forensic_window_keep_days'],
+            minimum=1,
+        ),
+        'forensic_window_before_minutes': _coerce_int(
+            payload.get('forensic_window_before_minutes'),
+            field_name='forensic_window_before_minutes',
+            default=base['forensic_window_before_minutes'],
+            minimum=1,
+        ),
+        'forensic_window_after_minutes': _coerce_int(
+            payload.get('forensic_window_after_minutes'),
+            field_name='forensic_window_after_minutes',
+            default=base['forensic_window_after_minutes'],
+            minimum=1,
+        ),
+        'forensic_max_windows_per_symbol': _coerce_int(
+            payload.get('forensic_max_windows_per_symbol'),
+            field_name='forensic_max_windows_per_symbol',
+            default=base['forensic_max_windows_per_symbol'],
+            minimum=1,
+        ),
+        'forensic_min_severity': _coerce_retention_severity(
+            payload.get('forensic_min_severity'),
+            base['forensic_min_severity'],
         ),
     }
 

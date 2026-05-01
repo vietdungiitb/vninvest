@@ -151,7 +151,7 @@ Mục tiêu:
 
 ### BE-1.2
 Mục tiêu:
-- Thêm deprecation semantics cho các duplicate knob hiện có thay vì để nhiều writer cùng sống.
+- Thêm deprecation semantics cho các duplicate knob hiện có thay vì để nhiều writer cùng sống, đồng thời hard-block các legacy write surfaces ở backend.
 
 ### BE-1.3
 Mục tiêu:
@@ -189,15 +189,15 @@ Mục tiêu:
 
 ### BE-4.1
 Mục tiêu:
-- Tạo retention preview với completeness/freshness safety gate.
+- Tạo retention preview với completeness/freshness safety gate và bounded override visibility khi completeness không thể phục hồi.
 
 ### BE-4.2
 Mục tiêu:
-- Tạo selective forensic window policy cho severe/anomalous events thay vì giữ raw toàn phần dài hạn.
+- Tạo selective forensic window policy cho severe/anomalous events thay vì giữ raw toàn phần dài hạn, dưới dạng physical carve-out sang L5 riêng.
 
 ### BE-4.3
 Mục tiêu:
-- Chuẩn hóa purge orchestration, recompute dependency checks và rollback notes.
+- Chuẩn hóa purge orchestration, recompute dependency checks, L4 cache invalidation và rollback notes.
 
 ## Phase 5 - Admin backend control plane
 
@@ -211,7 +211,7 @@ Mục tiêu:
 
 ### BE-5.3
 Mục tiêu:
-- Tạo bridge APIs để control center có thể thao tác whale governance theo write-through semantics thay vì duplicate writer.
+- Tạo bridge APIs để control center có thể thao tác whale governance theo write-through semantics thay vì duplicate writer; bridge phải trả pending/draft state và chờ approval trước khi active publish.
 
 ## Phase 6 - Admin frontend Money Flow Control Center
 
@@ -233,7 +233,7 @@ Mục tiêu:
 
 ### FE-6.5
 Mục tiêu:
-- Demote hoặc link-out các writer cũ có nguy cơ gây nhầm, đặc biệt ở Data Ops và whale legacy surfaces.
+- Demote hoặc link-out các writer cũ có nguy cơ gây nhầm, đặc biệt ở Data Ops và whale legacy surfaces, với permission-aware disabled state khi user thiếu quyền upstream.
 
 ## Phase 7 - QA, performance and rollout
 

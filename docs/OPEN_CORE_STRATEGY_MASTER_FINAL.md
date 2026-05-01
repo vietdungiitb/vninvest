@@ -2,6 +2,7 @@
 
 Tai lieu nay la executive summary duoc cap nhat de phan anh dung tinh hinh hien tai cua Open Core trong repo VNInvest.
 
+> **Link ky thuat:** Community lane duoc trien khai thong qua Build Variants (`REACT_APP_BUILD_TARGET=community`). Xem chi tiet tai [REPO_STRATEGY - Build Variants](file:///c:/Mujoco%20Projects/vninvest/docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md). Frontend Community, SaaS va VIP dung chung 1 source code, phan biet bang compile-time flags.
 Trang thai: Ready for decision review, chua duoc xem la final implementation order  
 Ngay lap: 2026-04-18  
 Tai lieu lien quan: OC-02, OC-05, OC-11, OC-12, OC-13, OC-15

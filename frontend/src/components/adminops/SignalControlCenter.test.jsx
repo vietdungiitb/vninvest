@@ -8,6 +8,7 @@ import {
   getAdminSignalRecentEvents,
   getAdminSignalsConfig,
   getAdminSignalsSummary,
+  previewAdminSignalMaterialization,
   previewAdminSignalRetention,
   previewAdminSignalsConfig,
   previewAdminSignalsUniverse,
@@ -23,6 +24,7 @@ jest.mock('../../api/client', () => ({
   getAdminSignalRecentEvents: jest.fn(),
   getAdminSignalsConfig: jest.fn(),
   getAdminSignalsSummary: jest.fn(),
+  previewAdminSignalMaterialization: jest.fn(),
   previewAdminSignalRetention: jest.fn(),
   previewAdminSignalsConfig: jest.fn(),
   previewAdminSignalsUniverse: jest.fn(),
@@ -39,6 +41,9 @@ function buildSummaryPayload() {
   return {
     ok: true,
     ownership: buildOwnershipPayload(),
+    lifecycle: {
+      deprecation_warnings: ['Giá trị raw keep days trong signal retention chỉ là lớp tương thích.'],
+    },
     whale_governance: buildWhaleGovernancePayload(),
     services: {
       enabled: true,
@@ -55,6 +60,17 @@ function buildSummaryPayload() {
         total_event_count: 5,
         latest_event: { symbol: 'VCB' },
         cache_freshness: { cached_at: '2026-04-28T10:01:00Z' },
+        materialization: {
+          freshness_state: 'fresh',
+          lag_seconds: 0,
+          session_summary_state: 'complete',
+        },
+        session_summary: {
+          bucket_fact_count: 2,
+          dominant_side: 'buy',
+        },
+        anomaly_markers: [{ kind: 'iceberg' }],
+        pending_run_count: 1,
       },
     },
     universe: {
@@ -181,6 +197,40 @@ describe('SignalControlCenter', () => {
     });
     getAdminSignalsSummary.mockResolvedValue({ data: buildSummaryPayload() });
     getAdminSignalsConfig.mockResolvedValue({ data: buildConfigPayload() });
+    previewAdminSignalMaterialization.mockResolvedValue({
+      data: {
+        ok: true,
+        preview: {
+          preview: {
+            scope_rows: 18,
+            changed_rows: 4,
+            sample_rows: 2,
+            transitions: 3,
+          },
+          effective_owner: {
+            domains: {
+              materialization: { owner: 'signal-admin' },
+            },
+          },
+          effective_values: {
+            symbols: ['FPT', 'VCB'],
+            threshold: 1200000000,
+          },
+          impacted_counts: {
+            scope_rows: 18,
+            changed_rows: 4,
+            sample_rows: 2,
+            transitions: 3,
+          },
+          freshness: {
+            state: 'recompute pending',
+            source: 'intraday_side_backfill_preview',
+            preview_rows_scanned: 18,
+          },
+          effective_value_warnings: [],
+        },
+      },
+    });
     getAdminSignalJobs.mockResolvedValue({
       data: {
         ok: true,
@@ -253,14 +303,23 @@ describe('SignalControlCenter', () => {
   it('loads operator data and previews config changes', async () => {
     render(<SignalControlCenter />);
 
-    expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
+    expect(await screen.findByText('Vận hành whale, dark flow và lifecycle')).toBeInTheDocument();
     expect(await screen.findByText('Quản trị whale hiện hành')).toBeInTheDocument();
-    expect(await screen.findByText(/WHALE-2026-05-01/)).toBeInTheDocument();
+    expect(await screen.findByText('Vòng đời dùng chung')).toBeInTheDocument();
+    expect(await screen.findByText('Vật hoá dữ liệu')).toBeInTheDocument();
+    expect(await screen.findByText('Lưu trữ và lưu giữ')).toBeInTheDocument();
+    expect(await screen.findByText('Phân ranh whale governance')).toBeInTheDocument();
+    expect(await screen.findByText('Phân ranh dark flow policy')).toBeInTheDocument();
+    expect(await screen.findByText('Tác vụ và kiểm toán')).toBeInTheDocument();
+    expect(screen.getByText('Cảnh báo ngưng dùng')).toBeInTheDocument();
+    expect((await screen.findAllByText(/Giá trị raw keep days trong signal retention chỉ là lớp tương thích\./)).length).toBeGreaterThanOrEqual(2);
+    expect((await screen.findAllByText(/WHALE-2026-05-01/)).length).toBeGreaterThan(0);
     expect(await screen.findByText('Chủ sở hữu hiệu lực')).toBeInTheDocument();
     expect(screen.getByText('Cảnh báo chủ sở hữu và ngưng dùng')).toBeInTheDocument();
     expect(screen.getByDisplayValue('7')).toHaveAttribute('readonly');
     expect(getAdminSignalsSummary).toHaveBeenCalledTimes(1);
     expect(getAdminSignalsConfig).toHaveBeenCalledTimes(1);
+    expect(previewAdminSignalMaterialization).toHaveBeenCalledTimes(1);
     expect(getAdminSignalJobs).not.toHaveBeenCalled();
     expect(getAdminSignalRecentEvents).not.toHaveBeenCalled();
     expect(screen.getByText('Nhấn để tải lịch sử chạy.')).toBeInTheDocument();
@@ -305,7 +364,7 @@ describe('SignalControlCenter', () => {
 
     render(<SignalControlCenter />);
 
-    expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
+    expect(await screen.findByText('Vận hành whale, dark flow và lifecycle')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Áp dụng universe' }));
 
@@ -316,7 +375,7 @@ describe('SignalControlCenter', () => {
   it('requests paginated jobs and recent events with shared page sizes', async () => {
     render(<SignalControlCenter />);
 
-    expect(await screen.findByText('Điều phối global whale và dark flow')).toBeInTheDocument();
+    expect(await screen.findByText('Vận hành whale, dark flow và lifecycle')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Tải lịch sử chạy' }));
 

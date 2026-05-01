@@ -19,6 +19,7 @@
 - có field nào đang được ghi từ hai surface khác nhau cho cùng business meaning không?
 - control center mới có thật sự chỉ write-through vào whale mission-control cho whale governance không?
 - raw retention owner có còn bị split giữa runtime policy và signal retention không?
+- legacy write surface nào vẫn có thể ghi state mới dù UI đã demote/hide không?
 
 ### B. Facts-first route correctness
 
@@ -33,11 +34,13 @@
 
 - jobs materialization/backfill có đi qua run registry không?
 - freshness/completeness flags có được cập nhật và tiêu thụ đúng không?
+- recompute/backfill có invalidate impacted L4 cache keys ngay sau materialization không?
 
 ### E. Retention and forensic safety
 
 - purge raw/facts có preview safety gate không?
 - forensic windows có expiry và scope rõ không, hay đang biến thành raw retention trá hình?
+- forensic carve-out có physical copy/move sang L5 riêng hay chỉ tag trên raw L0?
 
 ### F. Admin control center architecture
 
@@ -45,6 +48,7 @@
 - UI có tái sinh writer thứ hai qua form hoặc action button nào không?
 - list lớn có dùng `PaginationBar` không?
 - text mới có qua i18n tiếng Việt đầy đủ dấu không?
+- link-out tới Data Ops/Vnstock có permission-gated và có disabled state khi thiếu quyền không?
 
 ### G. Governance and evidence completeness
 
@@ -66,6 +70,7 @@
 
 - [ ] Mọi field có trong ownership matrix đều có canonical writer đúng như spec.
 - [ ] Không có UI panel render nút apply cho field thuộc domain khác mà không phải write-through bridge.
+- [ ] Deprecated writer surface phải hard-block ở backend, không chỉ ẩn ở UI.
 
 ### Checklist R2 - Facts-first route
 
@@ -75,16 +80,19 @@
 ### Checklist R3 - Selected-session truth
 
 - [ ] Facts materialization và route assembly không làm drift bubble/advisory/flow panes khỏi selected session.
+- [ ] Recompute/backfill không được làm stale lại selected-session facts qua L4 cache.
 
 ### Checklist R4 - Retention safety
 
 - [ ] Purge raw/facts có preview safety gate.
 - [ ] Forensic windows có reason và expiry.
+- [ ] Forensic carve-out là physical copy/move sang L5, không phải tag-only trên raw.
 
 ### Checklist R5 - Operator UX unification
 
 - [ ] Money Flow Control Center là narrative vận hành chính.
 - [ ] Panel cũ chỉ còn link-out/read-only hoặc legacy forensic, không còn là write-path song song.
+- [ ] Link-out upstream phải permission-gated, không được render link chết.
 
 ## 5. Regression test generation sau review
 
@@ -96,7 +104,10 @@ Nếu review nêu BUG findings, phải viết hoặc yêu cầu viết regressio
 4. selected-session truth parity test,
 5. retention preview safety gate test,
 6. forensic expiry policy test,
-7. control center effective-owner / link-out UI test.
+7. control center effective-owner / link-out UI test,
+8. blocked legacy writer API test,
+9. recompute cache invalidation test,
+10. physical forensic carve-out test.
 
 ## 6. Output format bắt buộc
 

@@ -14,6 +14,10 @@ from portfolio.global_signal_policy_helpers import (
 )
 from portfolio.models import TrackedSymbol, UserConfig, WatchlistItem, WhaleAdvisory
 from portfolio.models import SignalServiceRun
+from portfolio.services_money_flow_retention import (
+    materialize_money_flow_forensic_window_from_order_flow_signal,
+    should_materialize_money_flow_forensic_window,
+)
 from portfolio.services_signal_run_registry import (
     create_signal_service_run,
     finish_signal_service_run,
@@ -96,9 +100,15 @@ def _classify_order_flow_signal_severity(*, strength: float, confidence: str, cv
     )
 
 
-def _cache_latest_order_flow_signal(signal, *, triggered_at: str) -> None:
+def _cache_latest_order_flow_signal(signal, *, triggered_at: str, result: dict | None = None) -> None:
     retention_policy = get_global_signal_retention_policy()
     cache_ttl = max(int(retention_policy.get('summary_cache_ttl_seconds', 900) or 900), 60)
+    bucket_facts = list((result or {}).get('bucket_facts') or [])
+    session_summary = dict((result or {}).get('session_summary') or {})
+    anomaly_markers = list((result or {}).get('anomaly_markers') or [])
+    materialization = dict((result or {}).get('materialization') or {})
+    cached_at = timezone.now().isoformat()
+    generated_at = str(materialization.get('generated_at') or (result or {}).get('triggered_at') or triggered_at)
     cache.set(
         _latest_order_flow_signal_cache_key(signal.symbol),
         {
@@ -115,7 +125,23 @@ def _cache_latest_order_flow_signal(signal, *, triggered_at: str) -> None:
             'window_seconds': int(signal.window_seconds or 0),
             'components': signal.components_json or {},
             'triggered_at': triggered_at,
-            'cached_at': timezone.now().isoformat(),
+            'cached_at': cached_at,
+            'bucket_facts': bucket_facts,
+            'bucket_fact_count': len(bucket_facts),
+            'session_summary': session_summary,
+            'session_summary_state': 'complete' if bucket_facts else 'empty',
+            'anomaly_markers': anomaly_markers,
+            'anomaly_count': len(anomaly_markers),
+            'materialization': {
+                'source': str(materialization.get('source') or 'dark_flow_detect'),
+                'generated_at': generated_at,
+                'cached_at': cached_at,
+                'freshness_state': str(materialization.get('freshness_state') or ('fresh' if bucket_facts else 'empty')),
+                'lag_seconds': float(materialization.get('lag_seconds') or 0.0),
+                'bucket_fact_count': len(bucket_facts),
+                'anomaly_count': len(anomaly_markers),
+                'session_summary_state': 'complete' if bucket_facts else 'empty',
+            },
         },
         timeout=cache_ttl,
     )
@@ -157,7 +183,11 @@ def _persist_order_flow_signal(*, symbol: str, result: dict, runtime_settings: d
             'severity': severity,
         },
     )
-    _cache_latest_order_flow_signal(signal, triggered_at=triggered_at)
+    _cache_latest_order_flow_signal(signal, triggered_at=triggered_at, result=result)
+    retention_policy = get_global_signal_retention_policy()
+    forensic_window = None
+    if should_materialize_money_flow_forensic_window(severity, retention_policy):
+        forensic_window = materialize_money_flow_forensic_window_from_order_flow_signal(signal, policy=retention_policy)
     return {
         'persisted': True,
         'created': bool(created),
@@ -165,6 +195,9 @@ def _persist_order_flow_signal(*, symbol: str, result: dict, runtime_settings: d
         'strength': strength,
         'triggered_at': triggered_at,
         'severity': severity,
+        'forensic_window_created': bool(forensic_window and forensic_window.get('created')),
+        'forensic_window_id': int(forensic_window.get('window_id') or 0) if forensic_window else None,
+        'forensic_window_raw_tick_count': int(forensic_window.get('raw_tick_count') or 0) if forensic_window else 0,
     }
 
 

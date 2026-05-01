@@ -80,7 +80,8 @@ Pass criteria:
 
 1. preview universe/services trả source counts, effective counts và diffs,
 2. apply flow yêu cầu confirmation rõ ràng,
-3. field read-only/link-out không render writer action thứ hai.
+3. field read-only/link-out không render writer action thứ hai,
+4. deprecated writer surfaces bị hard-block ở backend, không chỉ ẩn trên UI.
 
 Evidence:
 
@@ -92,7 +93,8 @@ Evidence:
 Pass criteria:
 
 1. whale governance updates đi qua bridge hoặc flow mission-control hiện có,
-2. không có blob writer song song cho whale threshold/policy.
+2. không có blob writer song song cho whale threshold/policy,
+3. bridge trả pending/draft state và không auto-publish active version nếu chưa có approval/rollout proof.
 
 Evidence:
 
@@ -133,7 +135,9 @@ Pass criteria:
 
 1. raw/facts purge bị chặn nếu completeness hoặc dependency checks fail,
 2. forensic preview hiển thị rõ reason, scope, expiry,
-3. raw retention owner không bị split ở UI/API.
+3. raw retention owner không bị split ở UI/API,
+4. forensic window là physical carve-out sang L5 riêng, không phải tag-only trên raw,
+5. bounded override/TTL fallback phải xuất hiện khi completeness không thể phục hồi.
 
 Evidence:
 
@@ -149,7 +153,8 @@ Pass criteria:
 2. không có white screen,
 3. list lớn dùng phân trang chuẩn,
 4. text mới qua i18n tiếng Việt đầy đủ dấu,
-5. operator không phải nhảy sang surface cũ để hoàn tất workflow chính.
+5. operator không phải nhảy sang surface cũ để hoàn tất workflow chính,
+6. link-out upstream thiếu quyền phải render disabled state + badge, không phải link chết.
 
 Evidence:
 

@@ -127,11 +127,13 @@ Purge raw hoặc facts chỉ được chạy khi đồng thời đúng:
 1. preview đã chỉ ra impacted rows/partitions,
 2. materialization completeness đạt chuẩn,
 3. không có backfill hoặc recompute đang chờ phụ thuộc vào tier sắp purge,
-4. forensic windows liên quan đã được carve-out nếu policy yêu cầu.
+4. forensic windows liên quan đã được carve-out nếu policy yêu cầu,
+5. forensic carve-out phải là physical copy/move sang L5 table riêng, không chỉ gắn cờ trên raw L0,
+6. nếu completeness không thể phục hồi do upstream gap vĩnh viễn, preview phải hiển thị bounded override hoặc TTL fallback với explicit human approval, không được block vô thời hạn.
 
 ### 4.6 Backfill and recompute
 
-1. Mọi backfill/recompute phải đi qua run registry thống nhất.
+1. Mọi backfill/recompute phải đi qua run registry thống nhất và sau khi materialize xong phải invalidate các L4 cache keys bị ảnh hưởng.
 2. Nếu có dual-write hoặc shadow materialization trong migration, giai đoạn đó phải time-boxed và có explicit rollback plan.
 3. Không được duy trì song song hai read paths chính thức sau khi facts-first cutover đã pass audit.
 
@@ -153,7 +155,7 @@ Purge raw hoặc facts chỉ được chạy khi đồng thời đúng:
 |---|---|---|
 | Overview | health, freshness, owner matrix, anomalies | read-only |
 | Shared Lifecycle | service toggles, distribution, detection universe | preview/apply writer |
-| Whale Governance | active whale config version, rollout, anomaly state | write-through sang whale mission-control |
+| Whale Governance | active whale config version, rollout, anomaly state | write-through sang whale mission-control qua pending/draft bridge, không auto-publish active version |
 | Dark Flow Policy | thresholds, windows, severity policy | preview/apply writer |
 | Materialization | recompute, backfill, freshness preview | guarded writer |
 | Storage and Retention | tier preview, purge preview, forensic policy | guarded writer |
@@ -162,8 +164,9 @@ Purge raw hoặc facts chỉ được chạy khi đồng thời đúng:
 ### 5.3 Read-only link-out rules
 
 1. Nếu một knob còn thuộc `Data Ops` hoặc `Vnstock Config`, `Money Flow Control Center` chỉ hiển thị effective value và link-out, không thêm nút apply thứ hai.
-2. Nếu một whale domain field còn thuộc whale mission-control, control center chỉ được write-through hoặc open flow hiện có.
+2. Nếu một whale domain field còn thuộc whale mission-control, control center chỉ được write-through hoặc open flow hiện có; write-through bridge chỉ được tạo pending/draft version và không được tự Apply/Publish active version nếu thiếu explicit approval từ mission-control.
 3. UI phải gắn nhãn rõ `Nguồn chỉnh sửa chuẩn` khi hiển thị effective value từ domain khác.
+4. Nếu operator không có quyền trên `Data Ops` hoặc `Vnstock Config`, UI phải render disabled state kèm badge `Requires Data Ops permission` thay vì link chết.
 
 ## 6. API surface guidelines
 

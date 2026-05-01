@@ -40,12 +40,13 @@ Kết hợp mô hình của `tradingview-mcp` với lõi dữ liệu VNINVEST s�
 ### Phase 1: Xây dựng Multi-Agent Debate Framework (Nền tảng Tác tử)
 *Mục tiêu: Đập bỏ cấu trúc Single-Prompt AI hiện tại, thay bằng mô hình nhóm tác tử chuyên gia có khả năng dùng Tool (Function Calling).*
 
-1. **Thiết kế System Prompts và Roles:**
-   - **OrderFlow/Whale Analyst Agent:** Được cấp quyền truy cập các hàm query dữ liệu từ `Money Flow Control Center`, `CVD`, `Institutional Strength`. Đánh giá sức mạnh dòng tiền ngầm.
-   - **Technical Analyst Agent:** Được cấp quyền truy cập dữ liệu KLine, đường MA, RSI, MACD và mô hình nến (Candlestick Patterns).
-   - **Risk Manager Agent:** Phân tích độ biến động (Volatility), thanh khoản, và rủi ro điều chỉnh chung của thị trường (Global Screener Signals).
+1. **Thiết kế System Prompts và Roles (4 Agents):**
+   - **Whale Agent:** Được cấp quyền truy cập các hàm query dữ liệu từ `Money Flow Control Center`, `CVD`, `Institutional Strength`. Đánh giá sức mạnh dòng tiền ngầm.
+   - **Tech Agent:** Được cấp quyền truy cập dữ liệu KLine, đường MA, RSI, MACD và mô hình nến (Candlestick Patterns).
+   - **Risk Agent:** Phân tích độ biến động (Volatility), thanh khoản, và rủi ro điều chỉnh chung của thị trường (Global Screener Signals).
+   - **Sentiment Agent:** Đánh giá tâm lý thị trường từ tin tức và diễn đàn. Cảnh báo phân kỳ đám đông vs dòng tiền lớn. *(Nếu nguồn sentiment chưa sẵn sàng, agent chạy stub và trả HOLD.)*
 2. **Orchestrator (Bộ điều phối):**
-   - User gửi câu hỏi -> Orchestrator chia task cho 3 Agents -> Các Agents trả về nhận định (Bullish/Bearish kèm Score) -> Orchestrator tổng hợp thành 1 Decision cuối cùng (Ví dụ: `STRONG BUY`, Confidence: 85%).
+   - User gửi câu hỏi -> Orchestrator chia task cho 4 Agents (parallel) -> Các Agents trả về nhận định (BUY/SELL/HOLD kèm Score) -> Orchestrator tổng hợp (trọng số: Whale 40%, Tech 30%, Risk 20%, Sentiment 10%) thành 1 Decision cuối cùng (Ví dụ: `STRONG BUY`, Confidence: 85%).
 3. **Cập nhật Backend (Django):**
    - Viết các service layer để bọc các hàm query dữ liệu nội bộ của VNINVEST thành "Tools" cho AI (theo chuẩn OpenAI Function Calling hoặc Anthropic Tools).
 

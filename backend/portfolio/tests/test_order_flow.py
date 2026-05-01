@@ -311,8 +311,65 @@ class TestDetectDarkFlow(SimpleTestCase):
             "window_seconds": 300,
         }
         result = detect_dark_flow("VNM")
-        for key in ("signal_type", "strength", "confidence", "components", "triggered_at"):
+        for key in ("signal_type", "strength", "confidence", "components", "triggered_at", "bucket_facts", "session_summary", "anomaly_markers", "materialization"):
             self.assertIn(key, result)
+        self.assertEqual(result["bucket_facts"], [])
+        self.assertEqual(result["session_summary"]["bucket_fact_count"], 0)
+        self.assertEqual(result["materialization"]["freshness_state"], "empty")
+
+    @patch("portfolio.order_flow.detect_iceberg_clustering")
+    @patch("portfolio.order_flow.detect_absorption")
+    @patch("portfolio.order_flow.compute_cvd_series")
+    @patch("portfolio.order_flow.compute_tick_rate")
+    @patch("portfolio.order_flow._fetch_ticks")
+    def test_result_includes_bucket_facts_and_session_summary_from_ticks(
+        self,
+        mock_fetch,
+        mock_tick_rate,
+        mock_cvd_series,
+        mock_absorption,
+        mock_iceberg,
+    ):
+        today = django_timezone.localdate()
+        mock_fetch.return_value = [
+            {"trade_time": time(9, 30, 0), "price": 10000.0, "volume": 100, "side": "BUY", "value": 1_000_000.0},
+            {"trade_time": time(9, 30, 15), "price": 10000.0, "volume": 50, "side": "SELL", "value": 500_000.0},
+            {"trade_time": time(9, 30, 40), "price": 10000.0, "volume": 200, "side": "BUY", "value": 2_000_000.0},
+        ]
+        mock_cvd_series.return_value = [
+            {"bucket_ts": datetime.combine(today, time(9, 30, 0)).isoformat(), "buy_value": 1_000_000.0, "sell_value": 500_000.0, "cvd": 500_000.0, "cumulative_cvd": 500_000.0},
+            {"bucket_ts": datetime.combine(today, time(9, 30, 30)).isoformat(), "buy_value": 2_000_000.0, "sell_value": 0.0, "cvd": 2_000_000.0, "cumulative_cvd": 2_500_000.0},
+        ]
+        mock_tick_rate.return_value = {
+            "tick_rate_per_min": 3.0,
+            "small_order_count": 1,
+            "total_count": 3,
+            "small_order_ratio": 0.3333,
+            "window_seconds": 300,
+        }
+        mock_absorption.return_value = {
+            "detected": False,
+            "price_locked": False,
+            "cvd_change": 0.0,
+            "strength": 0.0,
+            "description": "Không phát hiện hấp thụ",
+        }
+        mock_iceberg.return_value = {
+            "detected": False,
+            "level": 0.0,
+            "repeat_count": 0,
+            "value_per_occurrence_avg": 0.0,
+            "confidence": "none",
+        }
+
+        result = detect_dark_flow("VNM")
+
+        self.assertEqual(len(result["bucket_facts"]), 2)
+        self.assertEqual(result["session_summary"]["bucket_fact_count"], 2)
+        self.assertEqual(result["session_summary"]["tick_count"], 3)
+        self.assertEqual(result["materialization"]["freshness_state"], "fresh")
+        self.assertEqual(result["materialization"]["bucket_fact_count"], 2)
+        self.assertEqual(result["anomaly_markers"], [])
 
     @patch("portfolio.order_flow._fetch_ticks")
     @patch("portfolio.order_flow.compute_tick_rate")
@@ -564,6 +621,76 @@ class TestOrderFlowSignalTask(TestCase):
                 "absorption": {"cvd_change": 123456789},
                 "iceberg": {"repeat_count": 8, "level": 78200},
             },
+            "bucket_facts": [
+                {
+                    "bucket_ts": "2026-04-04T06:00:00+00:00",
+                    "bucket_index": 0,
+                    "bucket_seconds": 30,
+                    "bucket_minutes": 0.5,
+                    "tick_count": 3,
+                    "small_order_count": 2,
+                    "small_order_ratio": 0.6667,
+                    "buy_value": 1_000_000.0,
+                    "sell_value": 500_000.0,
+                    "total_value": 1_500_000.0,
+                    "net_value": 500_000.0,
+                    "cvd": 500_000.0,
+                    "cumulative_cvd": 500_000.0,
+                    "dominant_side": "buy",
+                    "max_tick_value": 1_000_000.0,
+                    "first_trade_time": "09:30:00",
+                    "last_trade_time": "09:30:30",
+                }
+            ],
+            "session_summary": {
+                "symbol": "VNM",
+                "window_minutes": 5,
+                "window_seconds": 300,
+                "bucket_fact_count": 1,
+                "tick_count": 3,
+                "total_buy_value": 1_000_000.0,
+                "total_sell_value": 500_000.0,
+                "net_value": 500_000.0,
+                "dominant_side": "buy",
+                "signal_type": "iceberg",
+                "strength": 65.0,
+                "confidence": "high",
+                "tick_rate_per_min": 12.5,
+                "small_order_ratio": 0.8,
+                "signals_active": ["iceberg"],
+                "anomaly_count": 1,
+                "peak_bucket": {
+                    "bucket_ts": "2026-04-04T06:00:00+00:00",
+                    "bucket_index": 0,
+                    "tick_count": 3,
+                    "total_value": 1_500_000.0,
+                    "net_value": 500_000.0,
+                    "cumulative_cvd": 500_000.0,
+                    "dominant_side": "buy",
+                },
+            },
+            "anomaly_markers": [
+                {
+                    "kind": "iceberg",
+                    "label": "Iceberg",
+                    "severity": "warning",
+                    "detected": True,
+                    "strength": 40.0,
+                    "repeat_count": 8,
+                    "confidence": "high",
+                    "level": 78200,
+                    "value_per_occurrence_avg": 1_500_000.0,
+                }
+            ],
+            "materialization": {
+                "source": "dark_flow_detect",
+                "generated_at": "2026-04-04T06:00:00+00:00",
+                "freshness_state": "fresh",
+                "lag_seconds": 0.0,
+                "bucket_fact_count": 1,
+                "anomaly_count": 1,
+                "session_summary_state": "complete",
+            },
             "triggered_at": "2026-04-04T06:00:00+00:00",
         }
 
@@ -575,7 +702,11 @@ class TestOrderFlowSignalTask(TestCase):
         row = OrderFlowSignal.objects.get(symbol="VNM")
         self.assertEqual(row.event_id, "dark_flow:VNM:2026-04-04T06:00:00+00:00:iceberg")
         self.assertEqual(row.severity, "warning")
-        self.assertEqual(cache.get("order_flow:latest:VNM")["event_id"], row.event_id)
+        cache_payload = cache.get("order_flow:latest:VNM")
+        self.assertEqual(cache_payload["event_id"], row.event_id)
+        self.assertEqual(cache_payload["bucket_fact_count"], 1)
+        self.assertEqual(cache_payload["session_summary"]["bucket_fact_count"], 1)
+        self.assertEqual(cache_payload["materialization"]["freshness_state"], "fresh")
         mock_distribution_delay.assert_called_once_with(signal_id=row.id, triggered_at="2026-04-04T06:00:00+00:00")
 
     @patch("portfolio.tasks_order_flow.distribute_order_flow_signal.delay")

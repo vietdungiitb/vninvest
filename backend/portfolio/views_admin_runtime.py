@@ -35,6 +35,22 @@ def _is_celery_worker_available() -> bool:
     except Exception:
         return False
 
+
+def _has_surface_write_permission(request, permission_codename: str) -> bool:
+    user = getattr(request, 'user', None)
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if getattr(user, 'is_superuser', False):
+        return True
+    return bool(user.has_perm(f'portfolio.{permission_codename}'))
+
+
+def _forbidden_surface_response(surface_name: str):
+    return Response(
+        {'detail': f'Tài khoản không có quyền ghi {surface_name}.'},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
 def _parse_bool_query_param(raw_value, *, default: bool = False) -> bool:
     if raw_value in (None, ''):
         return default
@@ -789,6 +805,9 @@ def admin_vnstock_runtime_config_update_api(request):
     from .serializers import RuntimeVnstockConfigSerializer
     from .vnstock_runtime_config import invalidate_vnstock_runtime_cache
 
+    if not _has_surface_write_permission(request, 'change_runtimevnstockconfig'):
+        return _forbidden_surface_response('Runtime Vnstock Config')
+
     config = RuntimeVnstockConfig.get_or_create_singleton()
     before = config.to_runtime_dict()
 
@@ -834,6 +853,9 @@ def admin_vnstock_runtime_config_reset_api(request):
     from .models import RuntimeVnstockConfig
     from .serializers import RuntimeVnstockConfigSerializer
     from .vnstock_runtime_config import default_vnstock_runtime_settings, invalidate_vnstock_runtime_cache
+
+    if not _has_surface_write_permission(request, 'change_runtimevnstockconfig'):
+        return _forbidden_surface_response('Runtime Vnstock Config')
 
     defaults = default_vnstock_runtime_settings()
     config = RuntimeVnstockConfig.get_or_create_singleton()
@@ -1103,6 +1125,9 @@ def admin_intraday_side_backfill_apply_api(request):
         run_intraday_side_backfill_apply,
         set_intraday_side_backfill_task_status,
     )
+
+    if not _has_surface_write_permission(request, 'change_intradaytick'):
+        return _forbidden_surface_response('Data Ops')
 
     confirm = request.data.get('confirm')
     if str(confirm).strip().lower() not in {'true', '1', 'yes'}:

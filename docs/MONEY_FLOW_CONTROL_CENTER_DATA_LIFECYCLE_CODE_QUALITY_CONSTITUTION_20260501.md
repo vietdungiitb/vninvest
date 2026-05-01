@@ -33,6 +33,10 @@ Nguyên lý áp dụng:
 | Admin control plane write actions | 95% risk coverage | Preview/apply sai ở control center có thể làm hỏng toàn bộ runtime |
 | Effective owner visibility | 90% risk coverage | Operator không biết knob thuộc domain nào sẽ rất dễ gây parallel writer |
 | Governance and evidence | 90% risk coverage | Thiếu evidence làm final auditor không thể xác nhận implementation |
+| Legacy writer hard-block and deprecation boundaries | 95% risk coverage | Hidden write surfaces tạo phantom writes dù UI đã demote |
+| Recompute invalidation and cache safety | 95% risk coverage | L4 cache stale sau recompute sẽ làm facts-first route trả dữ liệu cũ |
+| Permission-gated link-out surfaces | 90% risk coverage | Dead links phá narrative vận hành của operator |
+| Physical forensic carve-out | 95% risk coverage | Tag-only window sẽ mất dữ liệu khi partition/raw cleanup chạy |
 
 ## 3. Coverage theater prevention
 
@@ -151,6 +155,58 @@ Where to inspect:
 How to verify:
 - source markers và timing evidence phải chứng minh primary path thật sự là facts-first.
 
+### S9 - Recompute xong nhưng L4 cache vẫn stale
+
+What can go wrong:
+- backfill/recompute đã cập nhật facts nhưng cache route whale vẫn còn dữ liệu cũ vì invalidation không được chạy hoặc không ghi rõ impacted keys.
+
+Where to inspect:
+- recompute orchestration,
+- cache invalidation helpers,
+- recompute evidence payload.
+
+How to verify:
+- recompute/backfill phải invalidate impacted L4 keys ngay sau materialization và evidence phải nêu rõ key set bị ảnh hưởng.
+
+### S10 - Whale bridge overwrite active version
+
+What can go wrong:
+- write-through bridge từ Money Flow Control Center ghi đè active whale version trực tiếp thay vì tạo pending/draft và chờ approval.
+
+Where to inspect:
+- whale bridge API,
+- approval/rollout audit note,
+- effective owner summary.
+
+How to verify:
+- bridge payload phải thể hiện pending/draft state và không có đường publish active version nếu thiếu approval.
+
+### S11 - Link-out chết vì thiếu quyền upstream
+
+What can go wrong:
+- operator không có quyền Data Ops/Vnstock vẫn thấy link-out có thể click, dẫn thẳng tới 403 và làm workflow đứt gãy.
+
+Where to inspect:
+- control-center IA,
+- permission metadata,
+- disabled-state rendering.
+
+How to verify:
+- thiếu quyền thì UI phải render disabled state + badge `Requires Data Ops permission`, không render link chết.
+
+### S12 - Forensic window chỉ là tag trên raw
+
+What can go wrong:
+- forensic window chỉ gắn tag lên raw L0, tới lúc partition cleanup chạy thì dữ liệu forensic biến mất luôn.
+
+Where to inspect:
+- forensic storage path,
+- retention preview,
+- stored sample evidence.
+
+How to verify:
+- forensic sample phải là physical carve-out sang L5 riêng và có expiry proof.
+
 ## 5. AI session quality discipline
 
 1. Không code trước explicit consent.
@@ -168,4 +224,8 @@ Những điểm sau bắt buộc cần human/final auditor quyết định cuố
 2. retention windows chính thức cho raw staging, canonical events, bucket facts và forensic windows,
 3. rollout order khi Money Flow Control Center thay thế hoặc hấp thụ control center cũ,
 4. ngưỡng freshness/degraded cho route whale và control plane,
-5. GO / NO-GO cuối cùng cho facts-first cutover trên runtime thật.
+5. GO / NO-GO cuối cùng cho facts-first cutover trên runtime thật,
+6. approval model cho whale bridge publish vs pending,
+7. cache invalidation policy sau recompute/backfill,
+8. permission-gated link-out behavior cho upstream surfaces,
+9. physical carve-out vs tagging semantics cho forensic windows.

@@ -11,7 +11,11 @@ Mục tiêu là chặn sớm các nhóm lỗi nguy hiểm nhất:
 3. purge xóa raw hoặc facts trước khi completeness/freshness đạt chuẩn,
 4. whale governance bị drift khỏi active version vì UI ghi sai domain,
 5. UI control center khiến operator hiểu sai đâu là effective owner của một knob,
-6. báo hoàn thành nhưng thiếu performance evidence hoặc doc sync.
+6. báo hoàn thành nhưng thiếu performance evidence hoặc doc sync,
+7. legacy writer surface vẫn còn viết được dù UI đã demote,
+8. recompute/backfill xong nhưng L4 cache vẫn stale,
+9. link-out upstream render chết vì thiếu quyền,
+10. forensic window chỉ là tag trên raw thay vì physical carve-out.
 
 ## 2. Nguyên tắc vận hành
 
@@ -152,6 +156,22 @@ PASS khi materialization, retention, universe, policy updates đều có preview
 
 PASS khi list lớn dùng `PaginationBar` và text mới đi qua i18n tiếng Việt.
 
+### D4. Hard-blocked legacy writers
+
+PASS khi deprecated write surfaces trả 400/403 hoặc redirect có chủ đích và không còn tạo state mới.
+
+### D5. Recompute invalidation
+
+PASS khi recompute/backfill invalidate impacted L4 cache keys ngay sau materialization.
+
+### D6. Permission-gated link-out
+
+PASS khi operator thiếu quyền upstream chỉ thấy disabled state + badge, không thấy link chết.
+
+### D7. Physical forensic carve-out
+
+PASS khi forensic sample nằm ở L5 vật lý riêng, có reason/expiry và không phụ thuộc tagging-only trên raw.
+
 ## E. Performance
 
 ### E1. Facts-first route load
@@ -179,6 +199,7 @@ PASS khi tối ưu hiệu năng không làm bubble/advisory/flow pane drift kh�
 3. `src/components/adminops/money-flow/WhaleGovernancePanel.test.jsx`
 4. `src/components/adminops/money-flow/DarkFlowPolicyPanel.test.jsx`
 5. `src/components/adminops/money-flow/StorageRetentionPanel.test.jsx`
+6. `src/components/adminops/money-flow/LinkOutPermission.test.jsx`
 
 ### Runtime / performance
 

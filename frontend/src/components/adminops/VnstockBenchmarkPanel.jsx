@@ -21,7 +21,7 @@ function parseCsvList(text, parser) {
     .filter((item) => item !== null && item !== undefined);
 }
 
-export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
+export default function VnstockBenchmarkPanel({ onApplyRecommendation, canApplyRecommendation = true }) {
   const [form, setForm] = useState({
     symbol: 'VNM',
     duration_seconds: '20',
@@ -230,7 +230,7 @@ export default function VnstockBenchmarkPanel({ onApplyRecommendation }) {
             </button>
             <button
               type="button"
-              disabled={!report?.recommendation}
+              disabled={!report?.recommendation || !canApplyRecommendation}
               onClick={applyRecommendation}
               className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
             >
