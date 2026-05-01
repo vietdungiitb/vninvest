@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-01 19:33:04`
+Generated at: `2026-05-01 20:38:20`
 
 ## Summary
 
-- Total modules: 512
+- Total modules: 513
 - Python modules: 329
-- JS/TS modules: 183
+- JS/TS modules: 184
 - Total classes: 561
-- Total functions: 2002
-- Total top-level variables: 3446
+- Total functions: 2005
+- Total top-level variables: 3455
 
 ## Python Modules
 
@@ -2436,14 +2436,14 @@ Generated at: `2026-05-01 19:33:04`
 ### `frontend/src/components/adminops/SignalControlCenter.jsx`
 
 - Functions:
-  - `BoundaryPanel`, `JsonPreview`, `ServiceSummaryCard`, `formatDateTimeValue`, `formatNumberValue`, `loadInitialState`, `resolvePositiveInteger`, `statusTone`
+  - `BoundaryPanel`, `JsonPreview`, `ServiceSummaryCard`, `formatAuditWarning`, `formatDateTimeValue`, `formatNumberValue`, `loadInitialState`, `resolvePositiveInteger`, `statusTone`
 - Top-level variables:
-  - `DEFAULT_PAGE_SIZE`, `applyConfigToForm`, `auditWarnings`, `buildRetentionPayload`, `buildServicesPayload`, `buildUniversePayload`, `canRetry`, `darkFlowPolicyPanel`, `darkFlowService`, `distribution`, `eventsRes`, `handleApplyConfig`, `handleApplyUniverse`, `handleEventsPageChange`, `handleEventsPageSizeChange`, `handleJobsPageChange`, `handleJobsPageSizeChange`, `handleLoadEvents`, `handleLoadJobs`, `handlePreviewConfig`, `handlePreviewUniverse`, `handleRetryRun`, `handleRunJob`, `jobsRes`, `lifecycle`, `loadEventsPage`, `loadJobsPage`, `loadStaticData`, `materializationPanelPayload`, `normalized`, `numeric`, `ownershipSnapshot`, `parsed`, `rawIntradayKeepDays`, `refreshControlCenter`, `response`, `results`, `retentionPolicy`, `retryBusy`, `runtimeKeepDays`, `servicesConfig`, `sharedLifecyclePayload`, `storageRetentionPanelPayload`, `universePolicy`, `updateField`, `whaleGovernancePanel`, `whaleGovernanceSnapshot`, `whaleService`
+  - `DEFAULT_PAGE_SIZE`, `applyConfigToForm`, `auditWarnings`, `buildRetentionPayload`, `buildServicesPayload`, `buildUniversePayload`, `canRetry`, `darkFlowPolicyPanel`, `darkFlowService`, `distribution`, `eventsRes`, `fieldLabel`, `handleApplyConfig`, `handleApplyUniverse`, `handleEventsPageChange`, `handleEventsPageSizeChange`, `handleJobsPageChange`, `handleJobsPageSizeChange`, `handleLoadEvents`, `handleLoadJobs`, `handlePreviewConfig`, `handlePreviewUniverse`, `handleRetryRun`, `handleRunJob`, `jobsRes`, `lifecycle`, `loadEventsPage`, `loadJobsPage`, `loadStaticData`, `materializationPanelPayload`, `normalized`, `numeric`, `ownershipSnapshot`, `parsed`, `rawIntradayKeepDays`, `refreshControlCenter`, `response`, `results`, `retentionPolicy`, `retryBusy`, `runtimeKeepDays`, `servicesConfig`, `sharedLifecyclePayload`, `storageRetentionPanelPayload`, `universePolicy`, `updateField`, `whaleGovernancePanel`, `whaleGovernanceSnapshot`, `whaleService`
 
 ### `frontend/src/components/adminops/SignalControlCenter.test.jsx`
 
 - Functions:
-  - `buildConfigPayload`, `buildOwnershipPayload`, `buildSummaryPayload`, `buildWhaleGovernancePayload`
+  - `buildConfigPayload`, `buildOwnershipPayload`, `buildSummaryPayload`, `buildWhaleGovernancePayload`, `warningMatcher`
 - Top-level variables:
   - `jobsPageSizeSelect`
 
@@ -2577,6 +2577,11 @@ Generated at: `2026-05-01 19:33:04`
   - `playCriticalTone`, `sourceLabel`, `stats`, `toNumber`, `toggleSeverityFilterFromSummary`
 - Top-level variables:
   - `aHolding`, `avgCost`, `bHolding`, `candidate`, `cardTone`, `computedLiveMarketValue`, `cooldownMs`, `costBasis`, `criticalAlerts`, `criticalToastCooldownRef`, `ctx`, `eventAgeSeconds`, `fallbackUnrealizedPL`, `gain`, `holdingSymbolSet`, `id`, `isEventStale`, `isUnread`, `liveMarketValue`, `livePrice`, `liveQuote`, `liveVsSnapshotDelta`, `marketStats`, `nowTs`, `oscillator`, `parsed`, `prioritized`, `quantity`, `realtimeLabels`, `realtimePortfolioStats`, `severity`, `snapshotMarketValue`, `sourceTone`, `statusClasses`, `timeoutId`, `toastId`, `toastTtlMs`, `typeTone`, `unreadCount`, `unrealizedPL`
+
+### `frontend/src/components/DashboardRealtimePanel.test.jsx`
+
+- Top-level variables:
+  - `mockGetRealtimeHealth`, `mockUseI18n`, `mockUsePersistentAlertState`, `mockUseUnifiedAlerts`
 
 ### `frontend/src/components/DepthChartPanel.jsx`
 
@@ -3010,9 +3015,9 @@ Generated at: `2026-05-01 19:33:04`
 ### `frontend/src/hooks/useUnifiedAlerts.js`
 
 - Functions:
-  - `backendNormalized`, `darkFlowUnified`, `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `loadSnapshotAlerts`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeSeverity`, `passesSeverity`, `toStableAlertTimestamp`
+  - `backendNormalized`, `darkFlowUnified`, `fetchUnifiedPage`, `fmtBil`, `formatNumberSafe`, `goToFirstUnifiedPage`, `goToLastUnifiedPage`, `goToNextUnifiedPage`, `goToPreviousUnifiedPage`, `loadSnapshotAlerts`, `localizeUnifiedDetail`, `localizeUnifiedHeadline`, `normalizeAlertText`, `normalizeSeverity`, `passesSeverity`, `toStableAlertTimestamp`
 - Top-level variables:
-  - `DEFAULT_UNIFIED_ALERTS_PAGE_SIZE`, `aScore`, `absPct`, `activeStack`, `alertSummary`, `bScore`, `base`, `cancelled`, `combined`, `combinedWithBackend`, `confidence`, `cursor`, `deduped`, `fallbackId`, `filtered`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingSet`, `hotSymbols`, `incoming`, `intervalId`, `isBuy`, `key`, `lastKnownIndex`, `leftTs`, `mappings`, `mergedAlerts`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedSeverity`, `normalizedTs`, `pct`, `priceShockMatch`, `priceShockUnified`, `quoteList`, `rawValue`, `record`, `resetStack`, `response`, `rightTs`, `scopedUnifiedAlerts`, `seen`, `sev`, `severity`, `severityRank`, `side`, `stableTs`, `staleMatch`, `staleUnified`, `strength`, `symbolMap`, `timeDelta`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `valueText`, `watchlistSet`, `whaleAlerts`, `whaleValueMatch`
+  - `DEFAULT_UNIFIED_ALERTS_PAGE_SIZE`, `aScore`, `absPct`, `activeStack`, `alertSummary`, `bScore`, `base`, `cancelled`, `combined`, `combinedWithBackend`, `confidence`, `cursor`, `deduped`, `fallbackId`, `filtered`, `filteredUnifiedAlerts`, `formattedValue`, `hasMore`, `holdingSet`, `hotSymbols`, `incoming`, `intervalId`, `isBuy`, `key`, `lastKnownIndex`, `leftTs`, `mappings`, `mergedAlerts`, `messageCandidate`, `monitoredKey`, `nextCursor`, `normalized`, `normalizedDetail`, `normalizedHeadline`, `normalizedSeverity`, `normalizedTs`, `pct`, `priceShockMatch`, `priceShockUnified`, `quoteList`, `rawValue`, `record`, `resetStack`, `response`, `rightTs`, `scopedUnifiedAlerts`, `seen`, `sev`, `severity`, `severityRank`, `side`, `stableTs`, `staleMatch`, `staleUnified`, `strength`, `symbolMap`, `text`, `timeDelta`, `translated`, `ts`, `unifiedAlerts`, `v`, `value`, `valueText`, `watchlistSet`, `whaleAlerts`, `whaleValueMatch`
 
 ### `frontend/src/hooks/useWatchlistProcessor.js`
 

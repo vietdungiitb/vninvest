@@ -294,6 +294,7 @@ describe('SignalControlCenter', () => {
     retryAdminSignalJob.mockResolvedValue({ data: { ok: true } });
     runAdminSignalJob.mockResolvedValue({ data: { ok: true } });
     updateAdminSignalsConfig.mockResolvedValue({ data: { ok: true } });
+
   });
 
   afterEach(() => {
@@ -357,6 +358,55 @@ describe('SignalControlCenter', () => {
       },
     });
     expect(previewAdminSignalsConfig.mock.calls[0][0].retention_policy).not.toHaveProperty('raw_intraday_keep_days');
+  });
+
+  it('renders object audit warnings as text without crashing', async () => {
+    previewAdminSignalMaterialization.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        preview: {
+          scope_rows: 18,
+          changed_rows: 4,
+          sample_rows: 2,
+          transitions: 3,
+        },
+        effective_owner: {
+          domains: {
+            materialization: { owner: 'signal-admin' },
+          },
+        },
+        effective_values: {
+          symbols: ['FPT', 'VCB'],
+          threshold: 1200000000,
+        },
+        impacted_counts: {
+          scope_rows: 18,
+          changed_rows: 4,
+          sample_rows: 2,
+          transitions: 3,
+        },
+        freshness: {
+          state: 'recompute pending',
+          source: 'intraday_side_backfill_preview',
+          preview_rows_scanned: 18,
+        },
+        effective_value_warnings: [
+          {
+            field: 'whale_threshold',
+            before: 500000000,
+            after: 900000000,
+            message: 'Ngưỡng whale thay đổi',
+            severity: 'warning',
+          },
+        ],
+      },
+    });
+
+    render(<SignalControlCenter />);
+
+    const warningMatcher = (_content, node) => Boolean(node?.tagName === 'LI' && node.textContent?.includes('whale_threshold: Ngưỡng whale thay đổi'));
+    expect(await screen.findByText(warningMatcher)).toBeInTheDocument();
+    expect(screen.queryByText('[object Object]')).not.toBeInTheDocument();
   });
 
   it('does not apply universe policy when confirmation is rejected', async () => {

@@ -1,3 +1,37 @@
+# ? AUDIT FILE LIST (2026-05-01u)
+- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md (NEW - detailed UI/UX audit report for Layout Template V1 compliance)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: Audit report created and verified against existing page implementations.
+
+# ✅ AUDIT FILE LIST (2026-05-01t)
+- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - normalize alert text payloads before they reach render paths)
+- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - render alert headline/detail via normalized text helper)
+- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - render alert headline/detail and critical toasts via normalized text helper)
+- frontend/src/components/DashboardRealtimePanel.test.jsx (NEW - regression for object-shaped alert payload rendering)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after frontend/runtime slice)
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 5/5 PASS.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
+
+# ✅ AUDIT FILE LIST (2026-05-01s)
+- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - normalize audit warning rendering to avoid React object-child crash)
+- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - add regression for top-level warning object rendering)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after frontend/runtime slice)
+
+Validation:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 4/4 PASS.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => impacted dev services rebuilt and started.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
+
 # ✅ AUDIT FILE LIST (2026-05-01r)
 - docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark remaining Money Flow taskboard slices complete)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01r)
@@ -4140,3 +4174,4 @@ Delta highlights:
 **Last Updated**: 2026-04-03 11:20  
 **Next Update**: after Redis-backed validation  
 **Target**: close Sprint 12 validation checklist
+

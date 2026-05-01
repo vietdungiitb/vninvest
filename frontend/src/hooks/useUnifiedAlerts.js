@@ -10,6 +10,31 @@ import {
 
 const DEFAULT_UNIFIED_ALERTS_PAGE_SIZE = 10;
 
+export function normalizeAlertText(value, fallback = '') {
+  if (value === null || value === undefined) {
+    return fallback;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value);
+  }
+  if (typeof value === 'object') {
+    const messageCandidate = value.message || value.detail || value.description || value.headline || value.title;
+    if (typeof messageCandidate === 'string' && messageCandidate.trim()) {
+      return messageCandidate;
+    }
+    try {
+      return JSON.stringify(value);
+    } catch (_error) {
+      return fallback;
+    }
+  }
+  const text = String(value);
+  return text || fallback;
+}
+
 function formatNumberSafe(value, formatNumberFn) {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';
@@ -26,10 +51,11 @@ function fmtBil(value, formatNumberFn) {
 }
 
 function localizeUnifiedDetail(detail, t, formatNumberFn) {
-  if (!detail) return detail;
+  const normalizedDetail = normalizeAlertText(detail, '');
+  if (!normalizedDetail) return normalizedDetail;
 
   // Regex to detect "Matched value: 1234567.8" or "matched value: 1234567.8"
-  const whaleValueMatch = detail.match(/(matched value|giá trị khớp|gia tri khop):\s*([\d.]+)/i);
+  const whaleValueMatch = normalizedDetail.match(/(matched value|giá trị khớp|gia tri khop):\s*([\d.]+)/i);
   if (whaleValueMatch) {
     const rawValue = whaleValueMatch[2];
     const formattedValue = fmtBil(rawValue, formatNumberFn);
@@ -37,22 +63,23 @@ function localizeUnifiedDetail(detail, t, formatNumberFn) {
   }
 
   // Handle Price Shock detail: "Price changed 5.20% in short window"
-  const priceShockMatch = detail.match(/price changed ([\d.]+)%/i);
+  const priceShockMatch = normalizedDetail.match(/price changed ([\d.]+)%/i);
   if (priceShockMatch) {
     return t('dashboardRealtime.unifiedDetailPriceShock', { pct: priceShockMatch[1] });
   }
 
   // Handle Stale Quote: "Quote is stale 30s"
-  const staleMatch = detail.match(/quote is stale ([\d.]+)s/i);
+  const staleMatch = normalizedDetail.match(/quote is stale ([\d.]+)s/i);
   if (staleMatch) {
     return t('dashboardRealtime.unifiedDetailStaleQuote', { seconds: staleMatch[1] });
   }
 
-  return detail;
+  return normalizedDetail;
 }
 
 function localizeUnifiedHeadline(headline, t) {
-  const normalized = String(headline || '').trim().toLowerCase();
+  const normalizedHeadline = normalizeAlertText(headline, '');
+  const normalized = normalizedHeadline.trim().toLowerCase();
   if (!normalized) return headline;
 
   const mappings = [
@@ -92,7 +119,7 @@ function localizeUnifiedHeadline(headline, t) {
     }
   }
 
-  return headline;
+  return normalizedHeadline;
 }
 
 function toStableAlertTimestamp(...values) {
@@ -409,7 +436,7 @@ export default function useUnifiedAlerts({
     const seen = new Set();
     const deduped = combinedWithBackend.filter((item) => {
       const normalizedTs = toStableAlertTimestamp(item.ts) || 'na';
-      const fallbackId = `${item.source || 'unknown'}-${item.symbol || 'NA'}-${item.headline || 'no-headline'}-${normalizedTs}`;
+      const fallbackId = `${item.source || 'unknown'}-${item.symbol || 'NA'}-${normalizeAlertText(item.headline, 'no-headline')}-${normalizedTs}`;
       const key = String(item.id || fallbackId);
       if (seen.has(key)) return false;
       seen.add(key);

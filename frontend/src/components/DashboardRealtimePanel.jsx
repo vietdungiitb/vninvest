@@ -4,7 +4,7 @@ import { getRealtimeHealth } from '../api/client';
 import AllocationPieChart from './AllocationPieChart';
 import { RealtimeQuoteTable, COLUMN_PRESETS } from './RealtimeQuoteTable';
 import { useI18n } from '../context/LangContext';
-import useUnifiedAlerts, { normalizeSeverity } from '../hooks/useUnifiedAlerts';
+import useUnifiedAlerts, { normalizeAlertText, normalizeSeverity } from '../hooks/useUnifiedAlerts';
 import usePersistentAlertState from '../hooks/usePersistentAlertState';
 import {
   alertCardTone,
@@ -242,7 +242,7 @@ export default function DashboardRealtimePanel({
             <div key={toast.id} className="flex items-center justify-between gap-3 rounded-lg border border-rose-700/70 bg-rose-950/40 px-4 py-2">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-rose-200">{t('dashboardRealtime.criticalToastTitle')}</p>
-                <p className="mt-0.5 text-xs text-rose-100">{toast.alert.symbol}: {toast.alert.headline}</p>
+                <p className="mt-0.5 text-xs text-rose-100">{toast.alert.symbol}: {normalizeAlertText(toast.alert.headline)}</p>
               </div>
               <button
                 onClick={() => setCriticalToasts((prev) => prev.filter((item) => item.id !== toast.id))}
@@ -398,10 +398,10 @@ export default function DashboardRealtimePanel({
                               </div>
                             </div>
                             <div className="mt-1 flex items-baseline justify-between gap-2">
-                              <span className="text-sm font-bold text-white">{alert.headline}</span>
+                              <span className="text-sm font-bold text-white">{normalizeAlertText(alert.headline)}</span>
                               <span className="text-[11px] text-slate-500">{formatDateTime(alert.ts, { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                             </div>
-                            <div className="mt-0.5 text-[11px] text-slate-500">{alert.detail}</div>
+                            <div className="mt-0.5 text-[11px] text-slate-500">{normalizeAlertText(alert.detail)}</div>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
                               <button onClick={(event) => { event.preventDefault(); event.stopPropagation(); markAlertAsRead(alert.id); }} className="rounded border border-gray-700 bg-gray-900 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:border-gray-600 hover:text-gray-100">
                                 {t('dashboardRealtime.markRead')}

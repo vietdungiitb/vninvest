@@ -1,3 +1,99 @@
+# Entry 2026-05-01u - UI/UX Audit for Layout Template V1 compliance
+
+Muc tieu:
+- Kiem tra cac trang giao dien chinh (Whale Alerts, Stock Detail, Watchlist, Legacy Dashboard) so voi Project UI Layout Template V1.
+- Xac dinh cac anti-pattern ve layout wrapper, spacing, grid ratio va semantic colors.
+- Tao bao cao audit chi tiet va de xuat lo trinh khac phuc (Remediation Roadmap).
+
+Noi dung cap nhat chinh:
+- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md:
+  - Tao bao cao audit chi tiet voi danh sach vi pham cho tung trang.
+  - Xac dinh cac loi common nhu thieu \.app-page-shell\, sai grid ratio 3 cot, va hard-code mau sac.
+- docs/CODE_CHANGE_AUDIT_LEDGER.md:
+  - Add entry 2026-05-01u.
+- PROGRESS_DASHBOARD.md:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+
+Ket qua kiem tra:
+- PASSED: docs/UI_LAYOUT_AUDIT_REPORT_20260501.md d� du?c t?o th�nh c�ng v?i n?i dung audit chi ti?t.
+- Evidence: Audit report highlights critical gaps in layout standardization across all main dashboard surfaces.
+
+# Entry 2026-05-01t - Normalize realtime alert text rendering across dashboard surfaces
+
+Muc tieu:
+- Chan object-child crash cho UnifiedAlertCenter va DashboardRealtimePanel khi alert headline/detail co payload khong phai string.
+- Normalize text o hook va render layer de alert objects khong bao gio chui thang vao JSX children.
+- Cap nhat regression test, audit trail, progress dashboard va module tree sau frontend slice.
+
+Noi dung cap nhat chinh:
+- `frontend/src/hooks/useUnifiedAlerts.js`:
+  - Them `normalizeAlertText` de coerce headline/detail/object payload thanh string an toan.
+  - Dung helper nay trong localization va fallback id de tranh object leak vao UI.
+- `frontend/src/components/UnifiedAlertCenter.jsx`:
+  - Render alert headline/detail qua helper text normalization.
+- `frontend/src/components/DashboardRealtimePanel.jsx`:
+  - Render critical toast headline va alert card headline/detail qua helper text normalization.
+- `frontend/src/components/DashboardRealtimePanel.test.jsx`:
+  - Add regression cho alert object payload trong realtime dashboard.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01t.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau frontend/runtime slice.
+
+Danh sach tep cap nhat:
+- frontend/src/hooks/useUnifiedAlerts.js
+- frontend/src/components/UnifiedAlertCenter.jsx
+- frontend/src/components/DashboardRealtimePanel.jsx
+- frontend/src/components/DashboardRealtimePanel.test.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 5/5 PASS.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
+- Evidence: alert render surfaces now coerce object-shaped headline/detail payloads to string-safe UI text.
+
+# Entry 2026-05-01s - Normalize audit warning rendering in SignalControlCenter
+
+Muc tieu:
+- Chan React object-child crash trong `Tác vụ và kiểm toán` khi materialization warnings tra ve object thay vi string.
+- Giu runtime fix nho, co regression test va runtime refresh de auditor co the kiem tra ngay.
+- Cap nhat audit trail, progress dashboard va module tree sau frontend slice.
+
+Noi dung cap nhat chinh:
+- `frontend/src/components/adminops/SignalControlCenter.jsx`:
+  - Normalize `auditWarnings` khi render, chuyen warning object thanh chuoi an toan va dung key stable.
+- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
+  - Add regression cho warning object top-level trong materialization preview response.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01s.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+- `module_tree_full.md`:
+  - Regenerate sau frontend/runtime slice.
+
+Danh sach tep cap nhat:
+- frontend/src/components/adminops/SignalControlCenter.jsx
+- frontend/src/components/adminops/SignalControlCenter.test.jsx
+- docs/CODE_CHANGE_AUDIT_LEDGER.md
+- PROGRESS_DASHBOARD.md
+- module_tree_full.md
+
+Ket qua kiem tra:
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 4/4 PASS.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => frontend/backend containers rebuilt and started.
+- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
+- Evidence: runtime refresh completed after fix; no `object as React child` crash in focused regression.
+
 # Entry 2026-05-01r - Close remaining Money Flow taskboard slices after implementation reconciliation
 
 Muc tieu:
@@ -9241,3 +9337,4 @@ Trạng thái:
 - docker-compose ps: tất cả 6 container **healthy**
 - GET /api/health/ → HTTP 200
 - Migration  047_add_market_discovery_fields_to_signals → [X] applied
+

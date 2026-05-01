@@ -128,6 +128,14 @@ function BoundaryPanel({ title, ownerLabel, modeLabel, statusLabel, items, paylo
   );
 }
 
+function formatAuditWarning(warning) {
+  if (warning && typeof warning === 'object') {
+    const fieldLabel = warning.field ? `${warning.field}: ` : '';
+    return `${fieldLabel}${warning.message || 'Cảnh báo ngưng dùng'}`;
+  }
+  return String(warning ?? 'Cảnh báo ngưng dùng');
+}
+
 export default function SignalControlCenter() {
   const { t } = useI18n();
   const [summary, setSummary] = useState(null);
@@ -820,8 +828,8 @@ export default function SignalControlCenter() {
           <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs leading-6 text-amber-100">
             <p className="font-semibold uppercase tracking-[0.16em] text-amber-200">{t('adminOps.signalCenterJobsAuditWarningsTitle', { defaultValue: 'Cảnh báo ngưng dùng' })}</p>
             <ul className="mt-2 space-y-1">
-              {auditWarnings.map((warning) => (
-                <li key={warning}>• {warning}</li>
+              {auditWarnings.map((warning, index) => (
+                <li key={`${typeof warning === 'object' ? warning.field || warning.message || index : warning}-${index}`}>• {formatAuditWarning(warning)}</li>
               ))}
             </ul>
           </div>

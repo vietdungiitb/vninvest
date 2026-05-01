@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
-import { normalizeSeverity } from '../hooks/useUnifiedAlerts';
+import { normalizeAlertText, normalizeSeverity } from '../hooks/useUnifiedAlerts';
 import PaginationBar from './shared/PaginationBar';
 import {
   alertCardTone,
@@ -200,7 +200,7 @@ export default function UnifiedAlertCenter({
                         </div>
 
                         <div className="mt-1 flex items-baseline justify-between gap-2">
-                          <span className="text-sm font-bold leading-snug text-white">{alert.headline}</span>
+                          <span className="text-sm font-bold leading-snug text-white">{normalizeAlertText(alert.headline)}</span>
                           <span className="text-[11px] text-slate-400">
                             {formatDateTime(alert.ts, {
                               day: '2-digit',
@@ -212,7 +212,7 @@ export default function UnifiedAlertCenter({
                           </span>
                         </div>
 
-                        <div className="mt-0.5 text-[11px] leading-relaxed text-slate-400">{alert.detail}</div>
+                        <div className="mt-0.5 text-[11px] leading-relaxed text-slate-400">{normalizeAlertText(alert.detail)}</div>
                         {alert.confidence != null && (
                           <div className="mt-1 text-[11px] text-slate-400">
                             {t('dashboardRealtime.confidence')}: {formatNumber(Number(alert.confidence) || 0)}
