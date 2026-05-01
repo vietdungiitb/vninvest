@@ -1,3 +1,22 @@
+# ✅ AUDIT FILE LIST (2026-05-01g)
+- backend/portfolio/views_signal_admin.py (MODIFIED - cache heavy summary/retention counts with a short TTL helper)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add chunked cleanup task for old SignalServiceRun rows)
+- backend/portfolio/tasks.py (MODIFIED - reexport the new cleanup task)
+- backend/config/settings.py (MODIFIED - add beat schedule entry for SignalServiceRun retention cleanup)
+- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - assert cached heavy-count helper behavior)
+- backend/portfolio/tests/test_signal_service_run_registry.py (MODIFIED - cover retention cleanup deletes only old terminal runs)
+- backend/portfolio/tests/test_celery_task_names.py (MODIFIED - assert task-name stability for the cleanup task)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - assert new beat schedule key exists)
+- module_tree_full.md (MODIFIED - regenerate sau backend slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01g)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` cho 8 file code/test backend vừa sửa => no errors found.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_cached_heavy_count_reuses_redis_value portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_signal_service_runs_deletes_only_old_terminal_runs portfolio.tests.test_celery_task_names.CeleryTaskNameStabilityTests portfolio.tests.test_ticker_prefetch_task.PrefetchSchedulerCanonicalConfigTests.test_celery_beat_uses_canonical_shard_scheduler_only --keepdb; Pop-Location` => 5 tests passed.
+- PENDING: rebuild/restart backend, celery_worker, và celery_beat containers to load code mới.
+- RESIDUAL RISK: retention cleanup is terminal-only by design; queued/running runs are preserved even if they are older than the cutoff.
+
 # ✅ AUDIT FILE LIST (2026-05-01f)
 - frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - load initial state/refresh chỉ còn static data; jobs/events chuyển sang lazy-load với placeholder + nút tải)
 - frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - rebaseline tests theo lazy-load flow và pagination sau thao tác tải thủ công)

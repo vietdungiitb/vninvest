@@ -528,6 +528,10 @@ CELERY_BEAT_SCHEDULE["eod-cleanup-ticks"] = {
     "task": "portfolio.tasks.cleanup_old_intraday_ticks",
     "schedule": _crontab_intraday_cleanup(hour=18, minute=30),
 }
+CELERY_BEAT_SCHEDULE["cleanup-signal-service-runs"] = {
+    "task": "portfolio.tasks.cleanup_old_signal_service_runs",
+    "schedule": _crontab_intraday_cleanup(hour=19, minute=15),
+}
 
 if _REALTIME_ENABLED_FLAG:
     # Thu thập + publish realtime mỗi 10 giây (giảm áp lực upstream và ws fanout)

@@ -36,6 +36,9 @@ from portfolio.runtime_policy_helpers import _get_runtime_prefetch_settings
 from portfolio.tasks_order_flow import ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX
 from portfolio.views_admin_runtime import _is_celery_worker_available
 
+HEAVY_COUNT_CACHE_KEY_PREFIX = 'admin_ops:signals:heavy_count:v1'
+HEAVY_COUNT_CACHE_TTL_SECONDS = 600
+
 
 def _truthy(value) -> bool:
     return str(value or '').strip().lower() in {'1', 'true', 'yes', 'on'}
@@ -133,6 +136,28 @@ def _latest_dark_flow_cache_payload() -> dict | None:
     return cache.get(f'{ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX}:{latest_signal.symbol}')
 
 
+def _cached_heavy_count(cache_suffix: str, count_fn) -> int:
+    cache_key = f'{HEAVY_COUNT_CACHE_KEY_PREFIX}:{cache_suffix}'
+
+    try:
+        cached_count = cache.get(cache_key)
+    except Exception:
+        cached_count = None
+
+    if cached_count is not None:
+        try:
+            return max(int(cached_count), 0)
+        except (TypeError, ValueError):
+            pass
+
+    count_value = max(int(count_fn()), 0)
+    try:
+        cache.set(cache_key, count_value, timeout=HEAVY_COUNT_CACHE_TTL_SECONDS)
+    except Exception:
+        pass
+    return count_value
+
+
 def _build_summary_domain_payload(service_domain: str) -> dict:
     now = timezone.now()
     window_start = now - timedelta(hours=24)
@@ -141,7 +166,7 @@ def _build_summary_domain_payload(service_domain: str) -> dict:
         latest_event = WhaleAlertEvent.objects.order_by('-occurred_at', '-id').first()
         cache_payload = _latest_whale_cache_payload()
         recent_count = WhaleAlertEvent.objects.filter(occurred_at__gte=window_start).count()
-        total_count = WhaleAlertEvent.objects.count()
+        total_count = _cached_heavy_count('whale_event_total_count', WhaleAlertEvent.objects.count)
         latest_payload = {
             'event_id': latest_event.event_id,
             'symbol': latest_event.symbol,
@@ -152,7 +177,7 @@ def _build_summary_domain_payload(service_domain: str) -> dict:
         latest_event = OrderFlowSignal.objects.order_by('-created_at', '-id').first()
         cache_payload = _latest_dark_flow_cache_payload()
         recent_count = OrderFlowSignal.objects.filter(created_at__gte=window_start).count()
-        total_count = OrderFlowSignal.objects.count()
+        total_count = _cached_heavy_count('order_flow_signal_total_count', OrderFlowSignal.objects.count)
         latest_payload = {
             'event_id': latest_event.event_id,
             'symbol': latest_event.symbol,
@@ -184,18 +209,18 @@ def _build_retention_preview(policy: dict) -> dict:
     return {
         'policy': policy,
         'raw_intraday': {
-            'rows_total': IntradayTick.objects.count(),
+            'rows_total': _cached_heavy_count('intraday_tick_total_count', IntradayTick.objects.count),
             'earliest_trade_date': IntradayTick.objects.order_by('trade_date', 'trade_time').values_list('trade_date', flat=True).first(),
             'keep_days': raw_keep_days,
             'purge_before': raw_cutoff,
         },
         'whale_events': {
-            'rows_total': WhaleAlertEvent.objects.count(),
+            'rows_total': _cached_heavy_count('whale_event_total_count', WhaleAlertEvent.objects.count),
             'earliest_occurred_at': (WhaleAlertEvent.objects.order_by('occurred_at').values_list('occurred_at', flat=True).first() or None),
             'purge_before': whale_cutoff,
         },
         'dark_flow_events': {
-            'rows_total': OrderFlowSignal.objects.count(),
+            'rows_total': _cached_heavy_count('order_flow_signal_total_count', OrderFlowSignal.objects.count),
             'earliest_created_at': (OrderFlowSignal.objects.order_by('created_at').values_list('created_at', flat=True).first() or None),
             'purge_before': dark_flow_cutoff,
         },

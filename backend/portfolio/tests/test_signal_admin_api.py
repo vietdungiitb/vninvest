@@ -11,6 +11,7 @@ from portfolio.global_signal_policy_helpers import get_global_signal_universe_po
 from portfolio.models import IntradayTick, OrderFlowSignal, SignalServiceRun, WhaleAlertEvent, WhaleConfigRollout, WhaleConfigVersion
 from portfolio.services_global_whale_alerts import GLOBAL_WHALE_LATEST_EVENT_CACHE_PREFIX
 from portfolio.tasks_order_flow import ORDER_FLOW_LATEST_SIGNAL_CACHE_PREFIX
+from portfolio.views_signal_admin import _cached_heavy_count, HEAVY_COUNT_CACHE_TTL_SECONDS
 
 
 class SignalAdminApiTests(TestCase):
@@ -123,6 +124,23 @@ class SignalAdminApiTests(TestCase):
         self.assertIn('raw_intraday', response.data['retention'])
         self.assertIn('ownership', response.data)
         self.assertIn('raw_intraday_keep_days', response.data['ownership']['compatibility'])
+
+    @patch('portfolio.views_signal_admin.cache')
+    def test_cached_heavy_count_reuses_redis_value(self, mock_cache):
+        count_fn = MagicMock(return_value=37)
+        mock_cache.get.side_effect = [None, 37]
+
+        first = _cached_heavy_count('whale_event_total_count', count_fn)
+        second = _cached_heavy_count('whale_event_total_count', count_fn)
+
+        self.assertEqual(first, 37)
+        self.assertEqual(second, 37)
+        count_fn.assert_called_once()
+        mock_cache.set.assert_called_once_with(
+            'admin_ops:signals:heavy_count:v1:whale_event_total_count',
+            37,
+            timeout=HEAVY_COUNT_CACHE_TTL_SECONDS,
+        )
 
     def test_config_preview_normalizes_without_persisting(self):
         self._auth_staff()

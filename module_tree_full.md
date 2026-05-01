@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-01 14:50:22`
+Generated at: `2026-05-01 15:12:35`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-01 14:50:22`
 - Python modules: 328
 - JS/TS modules: 182
 - Total classes: 560
-- Total functions: 1950
-- Total top-level variables: 3424
+- Total functions: 1952
+- Total top-level variables: 3426
 
 ## Python Modules
 
@@ -1027,7 +1027,7 @@ Generated at: `2026-05-01 14:50:22`
 ### `backend/portfolio/tasks_maintenance.py`
 
 - Functions:
-  - `cleanup_old_intraday_ticks`, `get_intraday_side_backfill_task_status`, `intraday_side_backfill_status_cache_key`, `run_intraday_side_backfill_apply`, `run_stream_consumer_batch`, `run_vnstock_price_board_benchmark`, `set_intraday_side_backfill_task_status`, `trim_streams`
+  - `cleanup_old_intraday_ticks`, `cleanup_old_signal_service_runs`, `get_intraday_side_backfill_task_status`, `intraday_side_backfill_status_cache_key`, `run_intraday_side_backfill_apply`, `run_stream_consumer_batch`, `run_vnstock_price_board_benchmark`, `set_intraday_side_backfill_task_status`, `trim_streams`
 - Top-level variables:
   - `INTRADAY_SIDE_BACKFILL_STATUS_CACHE_PREFIX`, `INTRADAY_SIDE_BACKFILL_STATUS_TTL_SECONDS`, `logger`
 
@@ -1710,12 +1710,12 @@ Generated at: `2026-05-01 14:50:22`
 ### `backend/portfolio/tests/test_signal_admin_api.py`
 
 - Classes:
-  - `SignalAdminApiTests` -> methods: `_auth_regular`, `_auth_staff`, `setUp`, `test_config_preview_normalizes_without_persisting`, `test_job_retry_creates_new_queued_run`, `test_jobs_list_supports_page_and_page_size`, `test_jobs_run_queues_manual_whale_run_and_list_returns_it`, `test_recent_events_and_retention_preview_return_expected_shapes`, `test_recent_events_support_page_and_page_size_across_merged_domains`, `test_summary_requires_staff`, `test_summary_returns_whale_dark_flow_and_retention_structure`, `test_universe_apply_requires_confirm_and_persists_policy`
+  - `SignalAdminApiTests` -> methods: `_auth_regular`, `_auth_staff`, `setUp`, `test_cached_heavy_count_reuses_redis_value`, `test_config_preview_normalizes_without_persisting`, `test_job_retry_creates_new_queued_run`, `test_jobs_list_supports_page_and_page_size`, `test_jobs_run_queues_manual_whale_run_and_list_returns_it`, `test_recent_events_and_retention_preview_return_expected_shapes`, `test_recent_events_support_page_and_page_size_across_merged_domains`, `test_summary_requires_staff`, `test_summary_returns_whale_dark_flow_and_retention_structure`, `test_universe_apply_requires_confirm_and_persists_policy`
 
 ### `backend/portfolio/tests/test_signal_service_run_registry.py`
 
 - Classes:
-  - `SignalServiceRunRegistryTests` -> methods: `test_detect_and_store_global_whale_alerts_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_marks_disabled_run_complete`
+  - `SignalServiceRunRegistryTests` -> methods: `test_cleanup_old_signal_service_runs_deletes_only_old_terminal_runs`, `test_detect_and_store_global_whale_alerts_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_creates_completed_signal_service_run`, `test_detect_and_store_order_flow_marks_disabled_run_complete`
 
 ### `backend/portfolio/tests/test_starter_portfolio_service.py`
 
@@ -2057,7 +2057,9 @@ Generated at: `2026-05-01 14:50:22`
 ### `backend/portfolio/views_signal_admin.py`
 
 - Functions:
-  - `_build_config_changes`, `_build_retention_preview`, `_build_summary_domain_payload`, `_build_whale_governance_snapshot`, `_latest_dark_flow_cache_payload`, `_latest_run`, `_latest_whale_cache_payload`, `_normalize_recent_events`, `_parse_bounded_positive_int`, `_serialize_run`, `_serialize_whale_governance_rollout`, `_serialize_whale_governance_version`, `_truthy`, `signal_admin_config_api`, `signal_admin_config_preview_api`, `signal_admin_job_retry_api`, `signal_admin_jobs_api`, `signal_admin_jobs_run_api`, `signal_admin_recent_events_api`, `signal_admin_retention_preview_api`, `signal_admin_summary_api`, `signal_admin_universe_apply_api`, `signal_admin_universe_preview_api`
+  - `_build_config_changes`, `_build_retention_preview`, `_build_summary_domain_payload`, `_build_whale_governance_snapshot`, `_cached_heavy_count`, `_latest_dark_flow_cache_payload`, `_latest_run`, `_latest_whale_cache_payload`, `_normalize_recent_events`, `_parse_bounded_positive_int`, `_serialize_run`, `_serialize_whale_governance_rollout`, `_serialize_whale_governance_version`, `_truthy`, `signal_admin_config_api`, `signal_admin_config_preview_api`, `signal_admin_job_retry_api`, `signal_admin_jobs_api`, `signal_admin_jobs_run_api`, `signal_admin_recent_events_api`, `signal_admin_retention_preview_api`, `signal_admin_summary_api`, `signal_admin_universe_apply_api`, `signal_admin_universe_preview_api`
+- Top-level variables:
+  - `HEAVY_COUNT_CACHE_KEY_PREFIX`, `HEAVY_COUNT_CACHE_TTL_SECONDS`
 
 ### `backend/portfolio/views_stock_catalog.py`
 

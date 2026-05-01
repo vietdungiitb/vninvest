@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from portfolio.models import SignalServiceRun
+from portfolio.tasks_maintenance import cleanup_old_signal_service_runs
 from portfolio.tasks_order_flow import detect_and_store_order_flow
 from portfolio.tasks_whale_service import detect_and_store_global_whale_alerts
 
@@ -77,3 +79,64 @@ class SignalServiceRunRegistryTests(TestCase):
         self.assertEqual(run.service_domain, SignalServiceRun.ServiceDomain.DARK_FLOW)
         self.assertEqual(run.status, SignalServiceRun.StatusChoices.COMPLETED)
         self.assertIn('disabled', run.log.lower())
+
+    @override_settings(SIGNAL_SERVICE_RUN_KEEP_DAYS=30)
+    def test_cleanup_old_signal_service_runs_deletes_only_old_terminal_runs(self):
+        now = timezone.now()
+        old_terminal_run_ids = []
+        active_run_ids = []
+
+        for status in [
+            SignalServiceRun.StatusChoices.COMPLETED,
+            SignalServiceRun.StatusChoices.FAILED,
+            SignalServiceRun.StatusChoices.PARTIAL,
+        ]:
+            run = SignalServiceRun.objects.create(
+                service_domain=SignalServiceRun.ServiceDomain.WHALE,
+                run_type=SignalServiceRun.RunType.SCHEDULED,
+                status=status,
+            )
+            old_terminal_run_ids.append(run.id)
+
+        for status in [
+            SignalServiceRun.StatusChoices.QUEUED,
+            SignalServiceRun.StatusChoices.RUNNING,
+        ]:
+            run = SignalServiceRun.objects.create(
+                service_domain=SignalServiceRun.ServiceDomain.DARK_FLOW,
+                run_type=SignalServiceRun.RunType.MANUAL,
+                status=status,
+            )
+            active_run_ids.append(run.id)
+
+        recent_terminal_run = SignalServiceRun.objects.create(
+            service_domain=SignalServiceRun.ServiceDomain.DARK_FLOW,
+            run_type=SignalServiceRun.RunType.RETENTION_PREVIEW,
+            status=SignalServiceRun.StatusChoices.COMPLETED,
+        )
+
+        old_created_at = now - timezone.timedelta(days=45)
+        recent_created_at = now - timezone.timedelta(days=7)
+        SignalServiceRun.objects.filter(id__in=old_terminal_run_ids + active_run_ids).update(
+            created_at=old_created_at,
+            updated_at=old_created_at,
+        )
+        SignalServiceRun.objects.filter(id=recent_terminal_run.id).update(
+            created_at=recent_created_at,
+            updated_at=recent_created_at,
+        )
+
+        result = cleanup_old_signal_service_runs.run()
+
+        self.assertEqual(result['status'], 'ok')
+        self.assertEqual(result['keep_days'], 30)
+        self.assertEqual(result['deleted'], 3)
+        remaining = list(SignalServiceRun.objects.order_by('id').values_list('status', flat=True))
+        self.assertCountEqual(
+            remaining,
+            [
+                SignalServiceRun.StatusChoices.QUEUED,
+                SignalServiceRun.StatusChoices.RUNNING,
+                SignalServiceRun.StatusChoices.COMPLETED,
+            ],
+        )

@@ -231,6 +231,48 @@ def cleanup_old_intraday_ticks(self) -> dict:
     return {"status": "ok", "deleted": total_deleted, "cutoff": str(cutoff), "keep_days": keep_days}
 
 
+@shared_task(bind=True, name='portfolio.tasks.cleanup_old_signal_service_runs', autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 2})
+def cleanup_old_signal_service_runs(self) -> dict:
+    """Delete old SignalServiceRun rows to keep audit/debug volume bounded.
+
+    Chỉ xóa các run terminal (completed / failed / partial) cũ hơn retention days.
+    Giữ lại queued/running runs để tránh làm mất context của job đang hoạt động.
+    """
+    from datetime import timedelta
+
+    from portfolio.models import SignalServiceRun
+
+    keep_days = max(min(int(getattr(settings, 'SIGNAL_SERVICE_RUN_KEEP_DAYS', 90) or 90), 90), 30)
+    cutoff = timezone.now() - timedelta(days=keep_days)
+    terminal_statuses = {
+        SignalServiceRun.StatusChoices.COMPLETED,
+        SignalServiceRun.StatusChoices.FAILED,
+        SignalServiceRun.StatusChoices.PARTIAL,
+    }
+
+    queryset = SignalServiceRun.objects.filter(
+        created_at__lt=cutoff,
+        status__in=terminal_statuses,
+    ).order_by('created_at', 'id')
+
+    total_deleted = 0
+    chunk_size = 5000
+    while True:
+        ids = list(queryset.values_list('id', flat=True)[:chunk_size])
+        if not ids:
+            break
+        deleted, _ = SignalServiceRun.objects.filter(id__in=ids).delete()
+        total_deleted += deleted
+
+    logger.info(
+        'SignalServiceRun cleanup: deleted %d records older than %s (keep_days=%d)',
+        total_deleted,
+        cutoff.isoformat(),
+        keep_days,
+    )
+    return {'status': 'ok', 'deleted': total_deleted, 'cutoff': cutoff.isoformat(), 'keep_days': keep_days}
+
+
 @shared_task(bind=True, name='portfolio.tasks.run_vnstock_price_board_benchmark', autoretry_for=(), retry_kwargs={"max_retries": 0})
 def run_vnstock_price_board_benchmark(self, payload: dict | None = None) -> dict:
     """Chạy benchmark provider price board và lưu kết quả vào cache.

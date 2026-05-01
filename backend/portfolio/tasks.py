@@ -148,6 +148,7 @@ from portfolio.tasks_symbol_engagement import warmup_symbol_intraday  # noqa: F4
 from portfolio.tasks_maintenance import (
     run_stream_consumer_batch,
     cleanup_old_intraday_ticks,
+    cleanup_old_signal_service_runs,
     trim_streams,
 )
 from portfolio.tasks_maintenance import run_vnstock_price_board_benchmark  # noqa: F401

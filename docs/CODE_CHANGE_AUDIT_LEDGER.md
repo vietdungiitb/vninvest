@@ -1,3 +1,29 @@
+# Entry 2026-05-01g - Cache heavy signal summary counts and bound SignalServiceRun retention
+
+Mục tiêu:
+- Giảm chi phí summary path của Signal Control Center bằng cách cache các count nặng cho WhaleAlertEvent, OrderFlowSignal và IntradayTick với TTL ngắn.
+- Giữ retention cho `SignalServiceRun` ở mức hữu hạn bằng cleanup task định kỳ, chỉ xóa các run terminal cũ hơn ngưỡng giữ lại.
+- Số liệu recent/live vẫn được tính trực tiếp; cache chỉ áp dụng cho các count tổng lớn và không đổi thường xuyên trong vài phút.
+
+Danh sách tệp cập nhật:
+- backend/portfolio/views_signal_admin.py (MODIFIED - add cached heavy-count helper and reuse it for summary/retention payloads)
+- backend/portfolio/tasks_maintenance.py (MODIFIED - add chunked cleanup task for old SignalServiceRun terminal rows)
+- backend/portfolio/tasks.py (MODIFIED - reexport cleanup task through public task surface)
+- backend/config/settings.py (MODIFIED - schedule the new SignalServiceRun cleanup beat job)
+- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - assert cached heavy-count helper behavior)
+- backend/portfolio/tests/test_signal_service_run_registry.py (MODIFIED - cover SignalServiceRun retention cleanup semantics)
+- backend/portfolio/tests/test_celery_task_names.py (MODIFIED - assert public task name stability for the new cleanup task)
+- backend/portfolio/tests/test_ticker_prefetch_task.py (MODIFIED - assert beat schedule contains the new retention cleanup job)
+- module_tree_full.md (MODIFIED - regenerate after backend slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry `2026-05-01g`)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` cho `backend/portfolio/views_signal_admin.py`, `backend/portfolio/tasks_maintenance.py`, `backend/portfolio/tasks.py`, `backend/config/settings.py`, và 4 file test liên quan => no errors found.
+- PASSED: `Push-Location ./backend; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_cached_heavy_count_reuses_redis_value portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_signal_service_runs_deletes_only_old_terminal_runs portfolio.tests.test_celery_task_names.CeleryTaskNameStabilityTests portfolio.tests.test_ticker_prefetch_task.PrefetchSchedulerCanonicalConfigTests.test_celery_beat_uses_canonical_shard_scheduler_only --keepdb; Pop-Location` => 5 tests passed.
+- PENDING: refresh dev backend/celery containers so runtime workers/beat load the new task and schedule.
+- RESIDUAL RISK: cached totals can be up to TTL stale by design; this slice intentionally keeps recent/live counts uncached.
+
 # Entry 2026-05-01f - Lazy-load jobs and recent events in Signal Control Center initial load
 
 Mục tiêu:

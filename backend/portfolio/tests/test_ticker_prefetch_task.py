@@ -328,6 +328,7 @@ class PrefetchSchedulerCanonicalConfigTests(SimpleTestCase):
         self.assertTrue(getattr(settings, 'TICKER_PREFETCH_SHARD_SCHEDULER_ENABLED', False))
         self.assertIn('build-realtime-symbol-universe-snapshot', settings.CELERY_BEAT_SCHEDULE)
         self.assertIn('schedule-realtime-prefetch-shards', settings.CELERY_BEAT_SCHEDULE)
+        self.assertIn('cleanup-signal-service-runs', settings.CELERY_BEAT_SCHEDULE)
         self.assertNotIn('prefetch-ticker-price-board', settings.CELERY_BEAT_SCHEDULE)
 
     @patch('portfolio.tasks_prefetch.prefetch_realtime_ticker_shard.apply_async')
