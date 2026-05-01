@@ -397,8 +397,8 @@ export default function ModernDashboard() {
 
       {/* 2. Main Workspace Layout */}
       <div className="relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4">
-        <div className="grid min-h-full grid-cols-1 items-start gap-4 xl:grid-cols-3">
-          <div className="min-w-0 xl:col-span-2">
+        <div className="page-body-grid page-body-grid--auto-height min-h-full items-start">
+          <div className="page-body-grid__main min-w-0">
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:h-[526px]">
               <div className="h-[526px] min-w-0 bg-slate-900/30 border border-slate-800/50 rounded-xl overflow-hidden p-1 lg:h-full">
                 <PortfolioHeatmap
@@ -458,7 +458,7 @@ export default function ModernDashboard() {
             </div>
           </div>
 
-          <div className="h-full min-h-[460px] min-w-0 self-start xl:col-span-1 space-y-4">
+          <div className="page-body-grid__side h-full min-h-[460px] min-w-0 self-start space-y-4">
             <Suspense fallback={<SidebarPanelFallback minHeightClass="min-h-[420px]" label="Đang tải bảng AI phụ trợ..." />}>
               <AIAdvisorAlertPanel 
                 holdings={holdings}

@@ -1,3 +1,133 @@
+# ✅ AUDIT FILE LIST (2026-05-01zd)
+- frontend/src/index.css (MODIFIED - add reusable auto-height 22/48/30 layout helpers for top-level 2+1 page shells)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - move outer workspace grid to shared 22/48/30 utility)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - align loading shell and main 3-column workspace to the shared utility)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - align both top-level 3-column rows to the shared utility)
+- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - align full-height operator grid to the shared 22/48/30 utility)
+- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md (MODIFIED - correct the audit to the 22/48/30 contract and mark remediated surfaces)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zd)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after frontend layout rollout)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `get_errors` on touched layout files => no errors found.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
+- EVIDENCE: screenshot captured on refreshed runtime at `http://localhost/whale-alerts/TCB` after reload; updated shell/header/grid visible.
+- NOTE: outer 3-column shells now share the same 22/48/30 contract across LegacyDashboard, StockDetail, WhaleAdvisory, and ModernDashboard; remaining layout drift is outside this slice.
+
+# ✅ AUDIT FILE LIST (2026-05-01zc)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - decouple workspace overview fetch from whale feed refresh and preserve feed data during silent refresh)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zc)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
+- NOTE: `getStockWorkspaceOverview()` is no longer refetched on every whale feed refresh; visible page load is still bounded by the slowest remaining parallel request.
+
+# ✅ AUDIT FILE LIST (2026-05-01zb)
+- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - reuse shared bucket facts, remove duplicate raw tick scan, and skip live whale feed on historical selected-session snapshots)
+- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - add historical no-live-feed regression and update cache/lock expectations)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after backend whale snapshot slice)
+
+Validation:
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api; Pop-Location`
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build backend; Pop-Location`
+- MEASURED: `_get_or_build_bucket_facts('MBB', '2026-04-29')` cold `2.033s`, warm cache `0.005s`.
+- MEASURED: `build_whale_analytics_snapshot('MBB', trade_date='2026-04-29', include_baseline=False)` in-process `2.083s`.
+- MEASURED: `market_data_service.get_stock_workspace_overview('MBB')` ~`3.257s`, van la mot page-level bottleneck rieng.
+- NOTE: do `whale-alerts/:symbol` goi nhieu endpoint song song, perceived latency cua page hien van phu thuoc ca `overview`, `whale_feed`, advisory va realtime surfaces, khong chi rieng snapshot pane.
+
+# ✅ AUDIT FILE LIST (2026-05-01za)
+- backend/portfolio/views_realtime_advanced.py (DELETED - retire orphaned legacy realtime module with stale WhaleFeed/RVOL implementations)
+- frontend/src/api/client.js (MODIFIED - remove unused `getWhaleOrdersBySymbol` legacy helper)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01za)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after dead-code cleanup slice)
+
+Validation:
+- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location`
+- NOTE: legacy backend whale-orders endpoint remains intentionally untouched in this slice; only the unused internal client helper was removed.
+
+# ✅ AUDIT FILE LIST (2026-05-01z)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - default whale snapshot requests to `includeBaseline: false`)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - disable baseline percentile work for selected-session bubble snapshot)
+- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - disable baseline percentile work for tab-level snapshot loads)
+- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - disable baseline percentile work for uncontrolled fetch and harden empty bubble groups)
+- frontend/src/hooks/useWhaleAnalyticsData.test.js (MODIFIED - assert baseline-disabled default request path)
+- frontend/src/components/WhaleBubbleChart.sync.test.jsx (MODIFIED - regression for uncontrolled bubble snapshot params)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01z)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after frontend whale snapshot slice)
+
+Validation:
+- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; Pop-Location`
+- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/WhaleBubbleChart.sync.test.jsx --testNamePattern "uses baseline-disabled snapshot fetches for uncontrolled bubble loads"; Pop-Location`
+- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
+- PASSED: `get_errors` on touched frontend files => no errors found.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (514 modules).
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => frontend container rebuilt/restarted successfully.
+
+# ✅ AUDIT FILE LIST (2026-05-01y)
+- backend/portfolio/views_ai_advisory_session.py (MODIFIED - avoid sync fallback on benchmark-request bootstrap GET)
+- backend/portfolio/market_data_service.py (MODIFIED - return empty series immediately when no requested symbols have history)
+- backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py (MODIFIED - deterministic coverage for queued benchmark bootstrap and queue-error branch)
+- backend/portfolio/tests/test_market_data_service.py (MODIFIED - missing-symbol regression coverage)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01y)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after backend slice and new utility module)
+
+Validation:
+- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session portfolio.tests.test_market_data_service --keepdb; Pop-Location`
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat`
+
+# ✅ AUDIT FILE LIST (2026-05-01x)
+- frontend/src/utils/requestCancellation.js (NEW - shared cancellation detector for abort/cancel request noise)
+- frontend/src/context/PortfolioContext.jsx (MODIFIED - ignore canceled portfolio bootstrap requests)
+- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - ignore canceled realtime polling requests)
+- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - ignore canceled whale analytics requests)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - ignore canceled order-flow polling requests)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - reuse shared cancellation helper)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01x)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- Pending: production build and module tree regeneration after this slice.
+
+# ✅ AUDIT FILE LIST (2026-05-01w)
+- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (MODIFIED - update V1 grid contract so the third column is 30%)
+- frontend/src/index.css (MODIFIED - sync shared page-body-grid utility to the 30% third-column contract)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
+
+# ✅ AUDIT FILE LIST (2026-05-01v)
+- frontend/src/index.css (MODIFIED - add V1 layout tokens and shared page-shell/page-panel/page-header utilities)
+- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - migrate root shell, header and major content panels to shared V1 utilities)
+- frontend/src/pages/StockDetail.jsx (MODIFIED - normalize loading and main shells to app-page-shell)
+- frontend/src/pages/Watchlist.jsx (MODIFIED - normalize root shell wrapper)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - normalize root shell wrapper)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - normalize root shell wrapper)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+- module_tree_full.md (MODIFIED - regenerate after layout shell slice)
+
+Validation:
+- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
+- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
+- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend container rebuilt/restarted successfully.
+
 # ? AUDIT FILE LIST (2026-05-01u)
 - docs/UI_LAYOUT_AUDIT_REPORT_20260501.md (NEW - detailed UI/UX audit report for Layout Template V1 compliance)
 - docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01u)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getRealtimeTicker, getRealtimeTickers, getRealtimeWebSocketUrl, refreshAccessToken } from '../api/client';
+import { isRequestCanceled } from '../utils/requestCancellation';
 
 function nowIso() {
   return new Date().toISOString();
@@ -475,6 +476,9 @@ export default function useRealtimeFeedCore({
           }
         } catch (error) {
           if (cancelled) return;
+            if (isRequestCanceled(err)) {
+              return;
+            }
           const status = getHttpStatus(error);
           setEventCounts((prev) => ({ ...prev, polling_failures: prev.polling_failures + 1 }));
           if (status !== 429) {

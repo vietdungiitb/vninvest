@@ -4,6 +4,8 @@ import { getAggregateWhaleFeed, getTrackedSymbols, getWatchlistGroups, getWhaleA
 import { usePortfolio } from '../context/PortfolioContext';
 import { useI18n } from '../context/LangContext';
 
+import { isRequestCanceled } from '../utils/requestCancellation';
+
 function formatMoney(value, formatNumberFn) {
   if (value == null || Number.isNaN(Number(value))) return '—';
   return formatNumberFn(Number(value));
@@ -237,12 +239,6 @@ function getFrequencyLabel(totalValue, t) {
 }
 
 const FEED_PAGE_SIZE_OPTIONS = [3, 6, 9, 12];
-
-function isRequestCanceled(err) {
-  const code = String(err?.code || '').toUpperCase();
-  const name = String(err?.name || '').toLowerCase();
-  return code === 'ERR_CANCELED' || name === 'cancelederror' || name === 'aborterror';
-}
 
 function TrackedSymbolCard({ symbol, stats, t, localeTag, formatDateTimeFn }) {
   const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0, latestAlertAt: null };

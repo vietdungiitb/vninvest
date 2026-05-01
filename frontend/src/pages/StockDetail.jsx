@@ -33,6 +33,7 @@ import {
   getStockNews,
   updateAIConfig,
 } from '../api/client';
+import { isRequestCanceled } from '../utils/requestCancellation';
 import StockNewsPanel from '../components/StockNewsPanel';
 import { WhaleFeedPanel } from '../components/WhaleFeedPanel';
 import { BubbleOrderChart } from '../components/BubbleOrderChart';
@@ -1533,6 +1534,9 @@ export default function StockDetail() {
       const response = await getStockOrderFlow(normalizedSymbol, orderFlowWindow);
       setOrderFlowData(response?.data || null);
     } catch (err) {
+      if (isRequestCanceled(err)) {
+        return;
+      }
       console.error('getStockOrderFlow:', err);
       setOrderFlowData(null);
     } finally {
@@ -2324,11 +2328,11 @@ export default function StockDetail() {
 
   if (loadingOverview) {
     return (
-      <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+      <div className="app-page-shell space-y-4">
         <div className="h-44 animate-pulse rounded-[24px] bg-slate-900" />
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.7fr)_380px]">
-          <div className="h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
-          <div className="h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
+        <div className="page-body-grid page-body-grid--auto-height">
+          <div className="page-body-grid__main h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
+          <div className="page-body-grid__side h-[560px] animate-pulse rounded-[24px] bg-slate-900" />
         </div>
       </div>
     );
@@ -2349,7 +2353,7 @@ export default function StockDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-[1800px] space-y-4 p-4 xl:px-5">
+    <div className="app-page-shell space-y-4">
       {/* Header Quote Section */}
       <section className="card-section overflow-hidden shadow-[0_18px_60px_rgba(2,6,23,0.45)] border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.14),_transparent_26%),linear-gradient(180deg,_rgba(15,23,42,0.98),_rgba(2,6,23,1))]">
         {/* Top bar: breadcrumb + feed status */}
@@ -2546,9 +2550,9 @@ export default function StockDetail() {
       </section>
 
       {/* Main content: chart + panels — 3-column weighted grid like Whale Dashboard */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_340px]">
+      <div className="page-body-grid page-body-grid--auto-height">
         {/* 2 cột trái: Kline chart + order flow radar + insights */}
-        <div className="xl:col-span-2 flex flex-col gap-4">
+        <div className="page-body-grid__main flex flex-col gap-4">
           <section className="card-section p-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
               <div>
@@ -2919,7 +2923,7 @@ export default function StockDetail() {
 
         </div>
         {/* Right side-bar — same column ratio as Whale Alerts Dashboard */}
-        <div className="flex flex-col gap-4">
+        <div className="page-body-grid__side flex flex-col gap-4">
           <IntradayMatchedPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <PriceDepthPanel symbol={normalizedSymbol} liveVolume={liveVolume} />
           <MoneyFlowDonut summary={whaleFeedData?.summary} loading={whaleFeedLoading} compact />

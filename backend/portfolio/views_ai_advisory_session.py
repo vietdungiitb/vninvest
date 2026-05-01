@@ -378,10 +378,15 @@ def stock_ai_advisory_session_api(request, symbol: str):
     def _should_use_sync_fallback() -> bool:
         return bool(getattr(settings, 'STOCK_AI_ADVISORY_SYNC_FALLBACK_IF_NO_WORKER', True))
 
-    def _queue_or_run(payload_kwargs: dict, *, force_sync: bool = False) -> dict:
+    def _queue_or_run(
+        payload_kwargs: dict,
+        *,
+        force_sync: bool = False,
+        prefer_sync_fallback: bool | None = None,
+    ) -> dict:
         return legacy_views._submit_advisory_generation_with_fallback(
             payload_kwargs=payload_kwargs,
-            prefer_sync_fallback=_should_use_sync_fallback(),
+            prefer_sync_fallback=_should_use_sync_fallback() if prefer_sync_fallback is None else prefer_sync_fallback,
             force_sync=force_sync,
             context_label=f'stock_ai_advisory_session_api:{normalized_symbol}',
         )
@@ -495,8 +500,12 @@ def stock_ai_advisory_session_api(request, symbol: str):
             'force_refresh': False,
             'user_id': request.user.id,
         }
-        force_sync_first_create = bool(getattr(settings, 'STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE', True))
-        submit_result = _queue_or_run(payload_kwargs, force_sync=force_sync_first_create)
+        force_sync_first_create = bool(getattr(settings, 'STOCK_AI_ADVISORY_FORCE_SYNC_FIRST_CREATE', True)) and not include_benchmarks
+        submit_result = _queue_or_run(
+            payload_kwargs,
+            force_sync=force_sync_first_create,
+            prefer_sync_fallback=not include_benchmarks,
+        )
         if submit_result.get('queue_error'):
             return _tracked_response(
                 {

@@ -34,14 +34,26 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
         return legacy_routes.ApiRouteSmokeTests._attach_dpi_license(self, plan_name, feature_flags, status, grace_days)
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=False)
+    @patch('portfolio.views._get_ai_runtime_config_status')
     @patch('portfolio.tasks.generate_whale_advisory_task.run')
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
-    def test_stock_ai_advisory_session_get_creates_sync_when_missing(self, mock_apply_async, mock_task_run, _mock_cache_get):
+    def test_stock_ai_advisory_session_get_creates_sync_when_missing(self, mock_apply_async, mock_task_run, mock_get_ai_status, _mock_worker_available, _mock_cache_get):
         UserConfig.objects.update_or_create(
             user=self.user,
             defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
         )
+        WhaleAdvisory.objects.filter(user=self.user, symbol='BCM').delete()
         self.authenticate()
+
+        mock_get_ai_status.return_value = {
+            'ready': True,
+            'message': '',
+            'reason': 'ready',
+            'provider': 'openai',
+            'model': 'gpt-4o',
+            'source': 'test',
+        }
 
         def _mock_run_side_effect(**kwargs):
             advisory = WhaleAdvisory.objects.create(
@@ -72,6 +84,39 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
         mock_apply_async.assert_not_called()
         mock_task_run.assert_called_once()
 
+    @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=True)
+    @patch('portfolio.views._get_ai_runtime_config_status')
+    @patch('portfolio.tasks.generate_whale_advisory_task.run')
+    @patch('portfolio.tasks.generate_whale_advisory_task.apply_async')
+    def test_stock_ai_advisory_session_get_queues_when_benchmarks_requested_and_missing(self, mock_apply_async, mock_task_run, mock_get_ai_status, _mock_worker_available, _mock_cache_get):
+        UserConfig.objects.update_or_create(
+            user=self.user,
+            defaults={'email_verified': True, 'ai_provider': 'openai', 'ai_model': 'gpt-4o'},
+        )
+        WhaleAdvisory.objects.filter(user=self.user, symbol='BCM').delete()
+        self.authenticate()
+
+        mock_get_ai_status.return_value = {
+            'ready': True,
+            'message': '',
+            'reason': 'ready',
+            'provider': 'openai',
+            'model': 'gpt-4o',
+            'source': 'test',
+        }
+
+        mock_apply_async.return_value = type('TaskResult', (), {'id': 'task-123'})()
+        mock_task_run.side_effect = AssertionError('sync bootstrap should not run when benchmarks are requested')
+
+        response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1')
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertTrue(response.data['queued'])
+        self.assertEqual(response.data['symbol'], 'BCM')
+        mock_apply_async.assert_called_once()
+        mock_task_run.assert_not_called()
+
     @patch.dict(
         'os.environ',
         {
@@ -98,10 +143,22 @@ class ApiRouteStockAiAdvisorySessionTests(APITestCase):
         self.assertTrue(response.data.get('config_issue'))
 
     @patch('portfolio.views._cache_get', return_value=None)
+    @patch('portfolio.views._is_celery_worker_available', return_value=False)
+    @patch('portfolio.views._get_ai_runtime_config_status')
     @patch('portfolio.tasks.generate_whale_advisory_task.run', side_effect=RuntimeError('sync failed'))
     @patch('portfolio.tasks.generate_whale_advisory_task.apply_async', side_effect=RuntimeError('broker down'))
-    def test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_task_run, _mock_cache_get):
+    def test_stock_ai_advisory_session_get_returns_503_when_queue_unavailable(self, _mock_apply_async, _mock_task_run, mock_get_ai_status, _mock_worker_available, _mock_cache_get):
+        WhaleAdvisory.objects.filter(user=self.user, symbol='BCM').delete()
         self.authenticate()
+
+        mock_get_ai_status.return_value = {
+            'ready': True,
+            'message': '',
+            'reason': 'ready',
+            'provider': 'openai',
+            'model': 'gpt-4o',
+            'source': 'test',
+        }
 
         response = self.client.get('/api/stock-management/stocks/BCM/ai-advisory-session/')
 
