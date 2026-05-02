@@ -795,3 +795,21 @@ Estimate: 0.5h
 Dependency: WEB-51  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, shell-check regression proof, seed-script validation, frontend rebuild/runtime proof va module tree phan anh dung advisory fallback + canonical test-user plan fix.
+
+---
+
+## 33. Compose-managed core stub queue
+
+- [x] `WEB-52` Dua core-api stub vao dev compose va cat phu thuoc host process  
+Owner: Frontend Lead + Backend Lead + DevOps  
+Estimate: 1h  
+Dependency: WEB-49, WEB-50  
+Anchor files: `docker-compose.dev.yml`, `frontend/docker/nginx.conf`, `packages/core/backend/src/vninvest_core/api_stub.py`  
+DoD: dev stack co service `core-api` chạy `vninvest_core.api_stub` ngay trong compose network, frontend nginx proxy `/core/v1/*` sang service name `core-api:8100`, va browser proof cho thay `/core/v1/health` van song khi khong con host listener `:8100`.
+
+- [x] `OPS-28` Sync audit docs va module tree sau core stub compose cutover  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-52  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, compose bring-up proof, same-origin health proof, host-listener teardown proof va module tree phan anh dung core stub da vao compose.

@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02av)
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-api` stub service and make frontend wait for it)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to `core-api:8100` instead of the host)
+- module_tree_full.md (MODIFIED - regenerated after the core stub compose cutover, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-52, OPS-28)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml` va `frontend/docker/nginx.conf`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api frontend` dua `vninvest-dev-core-api` len healthy va restart frontend thanh cong.
+- PASSED: host proof sau khi kill host terminal cu => `NO_HOST_LISTENER` tren `:8100`.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` van tra JSON qua frontend host du khong con host listener `:8100`.
+- PASSED: browser sanity reload tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` van vao duoc host page sau khi doi upstream sang compose service.
+- PASSED: backend-container investigation xac nhan `ai_not_configured` hien do runtime secret thieu: khong co provider env key, `testpro` khong co `AICommandCenterConfig`, va `SystemAISettings` active khong co DB key.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02au)
 - packages/web/src/adapters/core/coreAdapter.js (MODIFIED - parse JSON error payloads and retry advisory `v1` when a `v2` request is blocked by the holistic rollout gate)
 - packages/web/scripts/check-shell.mjs (MODIFIED - add shell regression proof for advisory fallback from `v2` to `v1`)

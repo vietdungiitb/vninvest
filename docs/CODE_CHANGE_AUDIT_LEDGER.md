@@ -1,3 +1,49 @@
+# Entry 2026-05-02av - Move the core stub into dev compose and close the AI runtime blocker investigation
+
+Muc tieu:
+- Hoan thanh nhanh buoc `2`: core stub khong con phu thuoc host process `:8100`, ma tro thanh service `core-api` chay ngay trong dev compose network va duoc frontend proxy qua same-origin `/core/v1`.
+- Chot nhanh buoc `1` den muc co the ket luan ky thuat: `ai_not_configured` tren advisory shell host hien khong con la bug code, ma la blocker runtime do backend container khong co env key va cung khong co DB-backed `AICommandCenterConfig`/`SystemAISettings` key.
+- Giu pham vi thay doi hep: chi sua compose/nginx cho core stub, con nhanh AI runtime duoc ghi ro thanh residual blocker thay vi them fake secret hay flow gia.
+
+Noi dung cap nhat chinh:
+- `docker-compose.dev.yml`:
+  - Them service `core-api` chay `python -m vninvest_core.api_stub` tu `./packages/core/backend`, noi vao `vninvest_network`, co healthcheck noi bo tren `http://127.0.0.1:8100/health`.
+  - Buoc `frontend` phai `depends_on` `core-api` healthy de same-origin shell host chi len sau khi core stub san sang.
+- `frontend/docker/nginx.conf`:
+  - Doi upstream `/core/v1/*` tu `host.docker.internal:8100` sang service compose `core-api:8100`.
+- `module_tree_full.md`:
+  - Regenerate sau compose/nginx cutover; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-52`, `OPS-28`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02av.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho compose-managed core stub slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-api` stub service and make frontend wait for it)
+- frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to `core-api:8100` instead of the host)
+- module_tree_full.md (MODIFIED - regenerated after the core stub compose cutover, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-52, OPS-28)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02av)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml` va `frontend/docker/nginx.conf`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build core-api frontend` => `vninvest-dev-core-api` healthy, `vninvest-dev-frontend` restarted thanh cong.
+- PASSED: host proof sau khi kill terminal host cu cho thay `Get-NetTCPConnection -LocalPort 8100 -State Listen` => `NO_HOST_LISTENER`.
+- PASSED: browser proof `http://127.0.0.1/core/v1/health` van tra `{"ok": true, "service": "core-api", "environment": "foundation", "version": "0.1.0"}` qua frontend host du host khong con listener `:8100`.
+- PASSED: browser sanity reload tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` van vao duoc host page sau khi doi upstream `/core/v1` sang compose service.
+- PASSED: runtime investigation proof trong backend container:
+  - khong co `OPENAI_API_KEY`, `OPENCLAW_API_KEY`, `COPILOT_API_KEY`, `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`;
+  - `testpro` khong co `AICommandCenterConfig`;
+  - `SystemAISettings` active co `allow_env_fallback=True` nhung khong co DB key.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Buoc `1` hien genuinely blocked boi missing AI secret/runtime source trong backend dev container; de advisory host co advisory that moi thay vi `ai_not_configured`, can cap mot provider key hop le qua `SystemAISettings` hoac `AICommandCenterConfig`.
+- Compose cutover nay moi dua `core-api` vao dev stack; `core-worker`/`core-beat` va topology rieng cua `packages/core/docker-compose.core.yml` chua duoc hop nhat vao root dev stack.
+
 # Entry 2026-05-02au - Harden the AI advisory shell host against rollout gating and canonicalize dev Pro test-user plans
 
 Muc tieu:
