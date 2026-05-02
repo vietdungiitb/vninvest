@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:23:39`
+Generated at: `2026-05-02 11:31:03`
 
 ## Summary
 
-- Total modules: 542
+- Total modules: 543
 - Python modules: 340
-- JS/TS modules: 202
+- JS/TS modules: 203
 - Total classes: 563
-- Total functions: 2130
-- Total top-level variables: 3608
+- Total functions: 2113
+- Total top-level variables: 3599
 
 ## Python Modules
 
@@ -3671,9 +3671,16 @@ Generated at: `2026-05-02 11:23:39`
 ### `packages/web/src/pages/admin/ShellAdminOpsPage.js`
 
 - Functions:
-  - `ShellAdminOpsPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `runInitialLoad`
+  - `ShellAdminOpsPage`
 - Top-level variables:
-  - `abilities`, `active`, `adminAbilities`, `adminFlags`, `adminRoutes`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fetchImplRef`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `snapshot`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
+  - `abilities`, `adminAbilities`, `adminFlags`, `adminRoutes`, `buildMeta`, `capabilities`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
+
+### `packages/web/src/pages/coreShellPageHelpers.js`
+
+- Functions:
+  - `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizePageErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderBuildMetaCard`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`, `useCoreShellPageSnapshot`
+- Top-level variables:
+  - `active`, `bootstrapLoaderRef`, `envRef`, `fallbackErrorMessageRef`, `fetchImplRef`, `snapshot`
 
 ### `packages/web/src/pages/pageRegistry.js`
 
@@ -3685,16 +3692,16 @@ Generated at: `2026-05-02 11:23:39`
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 
 - Functions:
-  - `ShellAiCommandCenterPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `runInitialLoad`
+  - `ShellAiCommandCenterPage`
 - Top-level variables:
-  - `abilities`, `active`, `aiAbilities`, `aiFlags`, `aiRoutes`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fetchImplRef`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `snapshot`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
+  - `abilities`, `aiAbilities`, `aiFlags`, `aiRoutes`, `buildMeta`, `capabilities`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
 
 ### `packages/web/src/pages/system/ShellSettingsPage.js`
 
 - Functions:
-  - `ShellSettingsPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`
+  - `ShellSettingsPage`
 - Top-level variables:
-  - `abilities`, `active`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `enabledSurfaces`, `envRef`, `fetchImplRef`, `health`, `identity`, `metrics`, `session`, `snapshot`, `summaryCards`, `visibleGroups`, `visibleRoutes`
+  - `abilities`, `buildMeta`, `capabilities`, `enabledSurfaces`, `health`, `identity`, `metrics`, `session`, `summaryCards`, `visibleGroups`, `visibleRoutes`
 
 ### `packages/web/src/pages/vip/VipLocalControlPage.js`
 

@@ -1,3 +1,50 @@
+# Entry 2026-05-02ae - Extract shared helpers for the core shell page family
+
+Muc tieu:
+- Tach shared helper/hook cho state machine bootstrap loading, refresh va cac render helper lap lai giua `settings`, `admin-ops` va `ai-command-center`.
+- Giu nguyen contract va hanh vi runtime cua ba core shell page, khong mo them API moi hay doi gating semantics.
+- Dong `WEB-23`, `WEB-24`, `OPS-11` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/coreShellPageHelpers.js`:
+  - Them helper dung chung cho bootstrap snapshot state, refresh flow, summary/list renderers va build metadata card cua core shell pages.
+  - Giu duoc state machine `autoLoad`/`refresh` trong mot noi duy nhat de tranh drift khi them them core pages.
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `packages/web/src/pages/admin/ShellAdminOpsPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Refactor de dung shared helper thay cho logic bootstrap va render helpers inline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them helper module moi; tong module tang len 543.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-23`, `WEB-24`, `OPS-11`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ae.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core helper extraction slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/coreShellPageHelpers.js (NEW - shared bootstrap state and render helpers for the core shell page family)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - move settings page onto the shared core shell helper)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - move admin shell page onto the shared core shell helper)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - move AI shell page onto the shared core shell helper)
+- module_tree_full.md (MODIFIED - regenerated after the helper extraction slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-23, WEB-24, OPS-11)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
+- FAILED -> FIXED: lan live parity dau tien dung sai env key `VNINVEST_CORE_API_BASE_URL`, gay loi `Failed to parse URL from /core/v1/health`; da doi sang `VNINVEST_CORE_BASE_URL` va rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, ShellAdminOpsPage, ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core shared shell live parity passed`; da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (543 modules).
+
+Residual note:
+- Slice nay moi chi gom logic bootstrap state va render helper co dang giong nhau; mapping du lieu sang narrative/page-specific panels van nam tai tung page de giu semantics rieng cho settings/admin/AI lane.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify ngay ba route core sau refactor.
+
 # Entry 2026-05-02ad - Add the first AI command center shell page on the shared template
 
 Muc tieu:

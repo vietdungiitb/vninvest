@@ -405,3 +405,28 @@ Estimate: 0.5h
 Dependency: WEB-22  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi `ai-command-center` tro thanh route-level page thu tu dung shared shell template.
+
+---
+
+## 16. Core shell helper extraction queue
+
+- [x] `WEB-23` Tach shared bootstrap helper cho core shell pages  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-17, WEB-19, WEB-21  
+Anchor files: `packages/web/src/pages/*`, `packages/web/src/context/*`  
+DoD: state machine bootstrap/error/refresh chung cua `settings`, `admin-ops` va `ai-command-center` duoc gom vao helper dung chung thay vi lap lai trong tung page.
+
+- [x] `WEB-24` Refactor ba core shell page len shared helper va validate parity  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-23  
+Anchor files: `packages/web/src/pages/*`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass, live SSR parity tren `:8100` pass cho `settings`, `admin-ops`, `ai-command-center`, khong thay doi contract hay markup gating.
+
+- [x] `OPS-11` Sync taskboard, audit docs va module tree sau core helper extraction slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-24  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung helper extraction slice moi nhat.

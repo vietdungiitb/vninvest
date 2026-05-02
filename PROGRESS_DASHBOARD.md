@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02ae)
+- packages/web/src/pages/coreShellPageHelpers.js (NEW - shared bootstrap state and render helpers for core shell pages)
+- packages/web/src/pages/system/ShellSettingsPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and summary/list renderers)
+- packages/web/src/pages/admin/ShellAdminOpsPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and admin renderers)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (MODIFIED - adopt the shared core shell helper for bootstrap state and AI renderers)
+- module_tree_full.md (MODIFIED - regenerated after the helper extraction slice, total modules 543)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-23, WEB-24, OPS-11)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ae)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/coreShellPageHelpers.js`, `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/admin/ShellAdminOpsPage.js` va `packages/web/src/pages/system/ShellAiCommandCenterPage.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi tach helper bootstrap/render dung chung cho ba core shell page.
+- FAILED -> FIXED: lan live parity dau tien dung sai env key `VNINVEST_CORE_API_BASE_URL`, tao loi `Failed to parse URL from /core/v1/health`; da doi ve `VNINVEST_CORE_BASE_URL` va rerun thanh cong.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan ca `settings`, `admin-ops`, `ai-command-center` van render `shellPage__panel` cung cac marker runtime expected.
+- PASSED: `module_tree_full.md` regenerated successfully with 543 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ad)
 - packages/web/src/pages/system/ShellAiCommandCenterPage.js (NEW - first AI command center shell page using the shared template)
 - packages/web/src/app/routeCatalog.js (MODIFIED - promote `ai-command-center` to `baseline` now that the page exists)
