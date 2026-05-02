@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:19:58`
+Generated at: `2026-05-02 11:23:39`
 
 ## Summary
 
-- Total modules: 541
+- Total modules: 542
 - Python modules: 340
-- JS/TS modules: 201
+- JS/TS modules: 202
 - Total classes: 563
-- Total functions: 2119
-- Total top-level variables: 3586
+- Total functions: 2130
+- Total top-level variables: 3608
 
 ## Python Modules
 
@@ -3681,6 +3681,13 @@ Generated at: `2026-05-02 11:19:58`
   - `getPageComponent`, `getPageRegistryRouteIds`
 - Top-level variables:
   - `pageEntry`, `pageRegistry`
+
+### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
+
+- Functions:
+  - `ShellAiCommandCenterPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderFlagList`, `renderSummaryCard`, `runInitialLoad`
+- Top-level variables:
+  - `abilities`, `active`, `aiAbilities`, `aiFlags`, `aiRoutes`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `envRef`, `fetchImplRef`, `groupFlags`, `health`, `identity`, `metrics`, `navigation`, `routeFlags`, `session`, `snapshot`, `summaryCards`, `surfaces`, `visibleGroups`, `visibleRoutes`
 
 ### `packages/web/src/pages/system/ShellSettingsPage.js`
 

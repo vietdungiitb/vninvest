@@ -1,3 +1,52 @@
+# Entry 2026-05-02ad - Add the first AI command center shell page on the shared template
+
+Muc tieu:
+- Dung route-level page `ai-command-center` de tiep tuc harden shared shell template tren lane AI cua core shell va dua route nay ra khoi trang thai `planned`.
+- Chi su dung surface da co san tu core bootstrap runtime: operator identity, navigation, surface flags, health va session; khong mo them API contract moi.
+- Dong `WEB-21`, `WEB-22`, `OPS-10` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/system/ShellAiCommandCenterPage.js`:
+  - Them page route-level moi cho `ai-command-center` bang shared shell template.
+  - Hien operator identity, AI route visibility, AI surface flags, build metadata va AI-relevant abilities.
+- `packages/web/src/app/routeCatalog.js`:
+  - Nang route `ai-command-center` tu `planned` len `baseline`.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `ai-command-center` vao page registry de shell co route-level component that cho lane AI.
+- `packages/web/src/index.js`:
+  - Export `ShellAiCommandCenterPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `ai-command-center` route/page registry va SSR render cua `ShellAiCommandCenterPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page AI moi; tong module tang len 542.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-21`, `WEB-22`, `OPS-10`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ad.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (NEW - first AI command center shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `ai-command-center` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-command-center` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiCommandCenterPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate AI command center registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-21, WEB-22, OPS-10)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/system/ShellAiCommandCenterPage.js`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them page `ai-command-center` vao shared shell surface.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAiCommandCenterPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `ai command center shared shell live parity passed`; da xac nhan live SSR markup render `shellPage__panel`, `package-admin`, `show_ai_command_center` va `ai-command-center` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (542 modules).
+
+Residual note:
+- `ai-command-center` hien moi la route-level audit surface doc tu bootstrap runtime; cac control AI that va workflow command plane van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub van dang duoc giu running tren `:8100` de auditor co the verify lien tiep `settings`, `admin-ops` va `ai-command-center`.
+
 # Entry 2026-05-02ac - Add the first admin operations shell page on the shared template
 
 Muc tieu:

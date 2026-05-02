@@ -91,7 +91,7 @@ export const routeCatalog = Object.freeze([
     buildTargets: ["saas", "vip"],
     requiredCapabilities: ["system.ai_command_center.manage"],
     adapter: "core",
-    status: "planned",
+    status: "baseline",
   },
   {
     id: "admin-ops",

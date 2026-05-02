@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02ad)
+- packages/web/src/pages/system/ShellAiCommandCenterPage.js (NEW - first AI command center shell page using the shared template)
+- packages/web/src/app/routeCatalog.js (MODIFIED - promote `ai-command-center` to `baseline` now that the page exists)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-command-center` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiCommandCenterPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate AI command center registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-21, WEB-22, OPS-10)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ad)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren AI command center page, route catalog, page registry, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-command-center` vao shared shell surface.
+- PASSED: live SSR parity tren core runtime `:8100` da render `shellPage__panel`, `package-admin`, `show_ai_command_center` va `ai-command-center`.
+- PASSED: `module_tree_full.md` regenerated successfully with 542 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ac)
 - packages/web/src/pages/admin/ShellAdminOpsPage.js (NEW - first admin operations shell page using the shared template)
 - packages/web/src/app/routeCatalog.js (MODIFIED - promote `admin-ops` to `baseline` now that the page exists)

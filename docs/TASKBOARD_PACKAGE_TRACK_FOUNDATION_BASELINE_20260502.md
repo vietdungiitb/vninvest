@@ -380,3 +380,28 @@ Estimate: 0.5h
 Dependency: WEB-20  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi `admin-ops` tro thanh route-level page thu ba dung shared shell template.
+
+---
+
+## 15. AI shell page reuse queue
+
+- [x] `WEB-21` Dung page `ai-command-center` bang shared template cho core shell  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-17, WEB-18, WEB-19, WEB-20  
+Anchor files: `packages/web/src/pages/system/*`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: `ai-command-center` duoc nang thanh route-level page `baseline`, reuse shared shell template va chi doc du lieu tu core bootstrap/session/health seam thay vi mo them contract moi.
+
+- [x] `WEB-22` Validate live parity cho AI shell page  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-21  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/web/src/pages/system/*`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan page `ai-command-center` render duoc operator identity, AI route visibility va surface flag `show_ai_command_center` tu core stub.
+
+- [x] `OPS-10` Sync taskboard, audit docs va module tree sau AI shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-22  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi `ai-command-center` tro thanh route-level page thu tu dung shared shell template.

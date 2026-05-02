@@ -1,4 +1,5 @@
 import { ShellAdminOpsPage } from "./admin/ShellAdminOpsPage.js";
+import { ShellAiCommandCenterPage } from "./system/ShellAiCommandCenterPage.js";
 import { ShellSettingsPage } from "./system/ShellSettingsPage.js";
 import { VipLocalControlPage } from "./vip/VipLocalControlPage.js";
 
@@ -6,6 +7,11 @@ export const pageRegistry = Object.freeze([
   {
     routeId: "admin-ops",
     component: ShellAdminOpsPage,
+    status: "baseline",
+  },
+  {
+    routeId: "ai-command-center",
+    component: ShellAiCommandCenterPage,
     status: "baseline",
   },
   {

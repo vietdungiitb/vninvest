@@ -19,6 +19,7 @@ import {
   renderShellSelectField,
   routeCatalog,
   ShellAdminOpsPage,
+  ShellAiCommandCenterPage,
   ShellSettingsPage,
   shellAdapters,
   VipLocalControlPage,
@@ -70,6 +71,7 @@ for (const adapter of shellAdapters) {
 }
 
 const adminOpsRoute = routeCatalog.find((route) => route.id === "admin-ops");
+const aiCommandCenterRoute = routeCatalog.find((route) => route.id === "ai-command-center");
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
 const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
@@ -86,15 +88,18 @@ for (const methodName of requiredVipControlMethods) {
 }
 
 assert(adminOpsRoute?.status === "baseline", "admin-ops route must move to baseline when the page exists");
+assert(aiCommandCenterRoute?.status === "baseline", "ai-command-center route must move to baseline when the page exists");
 assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
 const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
 assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
 assert(pageRegistryRouteIds.has("admin-ops"), "pageRegistry must register admin-ops");
+assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must register ai-command-center");
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
 assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
 assert(getPageComponent("admin-ops") === ShellAdminOpsPage, "admin-ops must resolve to ShellAdminOpsPage");
+assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-command-center must resolve to ShellAiCommandCenterPage");
 assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");
 assert(getPageComponent("vip-local-control") === VipLocalControlPage, "vip-local-control must resolve to VipLocalControlPage");
 assert(typeof renderShellPageChrome === "function", "Shared shell page chrome helper must be exported");
@@ -223,6 +228,56 @@ assert(vipControlRequests[2].init.method === "POST", "VIP control client upsertU
 assert(vipControlRequests[3].url === "http://vip-app.local/vip-app/v1/audit/logs?limit=5", "VIP control client must append audit query params through adapter metadata");
 assert(vipControlRequests[4].url === "http://vip-app.local/vip-app/v1/auth/reset", "VIP control client resetSession must use the reset endpoint");
 assert(vipControlRequests[5].url === "http://vip-app.local/vip-app/v1/auth/logout", "VIP control client logout must use the logout endpoint");
+
+const aiCommandCenterMarkup = renderToStaticMarkup(
+  createElement(ShellAiCommandCenterPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "Dashboard" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["ai-advisory", "settings", "admin-ops", "ai-command-center"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(aiCommandCenterMarkup.includes("Trung tâm điều hành AI shell"), "AI command center page must render the Vietnamese page title");
+assert(aiCommandCenterMarkup.includes("show_ai_command_center"), "AI command center page must render the AI surface flag");
+assert(aiCommandCenterMarkup.includes("ai-command-center"), "AI command center page must render AI route visibility");
+assert(aiCommandCenterMarkup.includes("package-admin"), "AI command center page must render the current operator identity");
 
 const adminOpsMarkup = renderToStaticMarkup(
   createElement(ShellAdminOpsPage, {
