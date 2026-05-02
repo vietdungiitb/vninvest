@@ -7,6 +7,7 @@ export { ShellAdminOpsPage } from "./pages/admin/ShellAdminOpsPage.js";
 export { ShellAiCommandCenterPage } from "./pages/system/ShellAiCommandCenterPage.js";
 export { ShellDashboardPage } from "./pages/workspace/ShellDashboardPage.js";
 export { ShellPortfoliosPage } from "./pages/workspace/ShellPortfoliosPage.js";
+export { ShellTransactionsPage } from "./pages/workspace/ShellTransactionsPage.js";
 export { ShellWatchlistPage } from "./pages/workspace/ShellWatchlistPage.js";
 export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
 export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";

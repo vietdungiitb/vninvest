@@ -1,3 +1,19 @@
+# ✅ AUDIT FILE LIST (2026-05-02ak)
+- packages/web/src/pages/workspace/ShellTransactionsPage.js (NEW - first workspace transactions shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `transactions` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellTransactionsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate transactions route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the transactions shell slice, total modules 548)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-35, WEB-36, OPS-17)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/workspace/ShellTransactionsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `transactions` vao shared shell surface va registry.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `transactions`, `workspace`, `package-admin`, `Workspace routes` va `Transactions abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 548 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02aj)
 - packages/web/src/pages/workspace/ShellWatchlistPage.js (NEW - first workspace watchlist shell page using the shared helper layer)
 - packages/web/src/pages/pageRegistry.js (MODIFIED - register `watchlist` in the route-level page registry)

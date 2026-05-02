@@ -1,3 +1,49 @@
+# Entry 2026-05-02ak - Add the first workspace transactions shell page on the shared helper layer
+
+Muc tieu:
+- Dung route-level page `transactions` de tiep tuc dong bo route catalog `baseline` cua workspace lane voi page registry that ma khong mo them backend contract moi.
+- Chi su dung bootstrap/session/health seam hien co; route va ability `Transactions` da co san trong core stub, nen slice nay la frontend-only theo nghia contract.
+- Dong `WEB-35`, `WEB-36`, `OPS-17` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/workspace/ShellTransactionsPage.js`:
+  - Them page route-level moi cho `transactions` bang shared helper layer.
+  - Hien operator/session, workspace groups, transaction route visibility, enabled surfaces, build metadata va transaction abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `transactions` vao page registry de shell co route-level component that cho workspace transactions lane.
+- `packages/web/src/index.js`:
+  - Export `ShellTransactionsPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `transactions` route/page registry va SSR render cua `ShellTransactionsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page workspace moi; tong module tang len 548.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-35`, `WEB-36`, `OPS-17`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ak.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho transactions workspace slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/workspace/ShellTransactionsPage.js (NEW - first workspace transactions shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `transactions` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellTransactionsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate transactions route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the transactions shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-35, WEB-36, OPS-17)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ak)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/workspace/ShellTransactionsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `transactions` vao shared shell surface va registry.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellTransactionsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core transactions shared shell live parity passed`; da xac nhan bootstrap payload san co chua transactions ability va route visibility tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (548 modules).
+
+Residual note:
+- `ShellTransactionsPage` hien la route-level audit surface doc tu bootstrap runtime; bang giao dich that, write interactions va transactional workflows chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+- Core stub `:8100` khong can doi contract cho slice nay; runtime parity hien dang dua tren payload bootstrap san co.
+
 # Entry 2026-05-02aj - Add the first workspace watchlist shell page on the shared helper layer
 
 Muc tieu:

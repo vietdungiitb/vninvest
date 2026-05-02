@@ -5,6 +5,7 @@ import { ShellSupportPage } from "./system/ShellSupportPage.js";
 import { VipLocalControlPage } from "./vip/VipLocalControlPage.js";
 import { ShellDashboardPage } from "./workspace/ShellDashboardPage.js";
 import { ShellPortfoliosPage } from "./workspace/ShellPortfoliosPage.js";
+import { ShellTransactionsPage } from "./workspace/ShellTransactionsPage.js";
 import { ShellWatchlistPage } from "./workspace/ShellWatchlistPage.js";
 
 export const pageRegistry = Object.freeze([
@@ -21,6 +22,11 @@ export const pageRegistry = Object.freeze([
   {
     routeId: "dashboard",
     component: ShellDashboardPage,
+    status: "baseline",
+  },
+  {
+    routeId: "transactions",
+    component: ShellTransactionsPage,
     status: "baseline",
   },
   {
