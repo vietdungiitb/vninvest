@@ -330,3 +330,28 @@ Estimate: 0.5h
 Dependency: WEB-16  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs va audit evidence dong bo sau khi shared shell template primitive dau tien duoc merge vao `packages/web`.
+
+---
+
+## 13. Core shell page reuse queue
+
+- [x] `WEB-17` Dung page `settings` dau tien cho core shell bang shared template  
+Owner: Frontend Lead  
+Estimate: 2h  
+Dependency: WEB-15, WEB-16  
+Anchor files: `packages/web/src/pages/system/*`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`, `packages/web/src/context/*`  
+DoD: `packages/web` co route-level page cho `settings` bám `core` bootstrap/session/health seam, reuse shared shell template thay vi dung them mot layout grammar rieng.
+
+- [x] `WEB-18` Validate live parity cho core settings shell page  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-17  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/web/src/pages/system/*`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren runtime core `:8100` xac nhan page `settings` moi render duoc principal, health va shared shell classes tu core stub.
+
+- [x] `OPS-08` Sync taskboard, audit docs va module tree sau core settings shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-18  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs va audit evidence dong bo sau khi `settings` tro thanh route-level page thu hai dung shared shell template.

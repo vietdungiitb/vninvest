@@ -18,6 +18,7 @@ import {
   renderShellPanel,
   renderShellSelectField,
   routeCatalog,
+  ShellSettingsPage,
   shellAdapters,
   VipLocalControlPage,
   useShellAuth,
@@ -68,6 +69,7 @@ for (const adapter of shellAdapters) {
 }
 
 const vipShellAdapter = shellAdapters.find((adapter) => adapter.adapterId === "vip-app");
+const settingsRoute = routeCatalog.find((route) => route.id === "settings");
 const vipLocalControlRoute = routeCatalog.find((route) => route.id === "vip-local-control");
 const requiredVipControlMethods = [
   "getAuthLoginEndpoint",
@@ -81,11 +83,14 @@ for (const methodName of requiredVipControlMethods) {
   assert(typeof vipShellAdapter?.[methodName] === "function", `VIP adapter is missing method: ${methodName}`);
 }
 
+assert(settingsRoute?.status === "baseline", "settings route must remain baseline once the shell settings page exists");
 assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route must move to baseline when the page exists");
 
 const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
 assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
+assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
 assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
+assert(getPageComponent("settings") === ShellSettingsPage, "settings must resolve to ShellSettingsPage");
 assert(getPageComponent("vip-local-control") === VipLocalControlPage, "vip-local-control must resolve to VipLocalControlPage");
 assert(typeof renderShellPageChrome === "function", "Shared shell page chrome helper must be exported");
 assert(typeof renderShellPanel === "function", "Shared shell panel helper must be exported");
@@ -213,6 +218,55 @@ assert(vipControlRequests[2].init.method === "POST", "VIP control client upsertU
 assert(vipControlRequests[3].url === "http://vip-app.local/vip-app/v1/audit/logs?limit=5", "VIP control client must append audit query params through adapter metadata");
 assert(vipControlRequests[4].url === "http://vip-app.local/vip-app/v1/auth/reset", "VIP control client resetSession must use the reset endpoint");
 assert(vipControlRequests[5].url === "http://vip-app.local/vip-app/v1/auth/logout", "VIP control client logout must use the logout endpoint");
+
+const settingsPageMarkup = renderToStaticMarkup(
+  createElement(ShellSettingsPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "Settings" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "system", "admin"],
+          visible_routes: ["dashboard", "settings", "admin-ops"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(settingsPageMarkup.includes("Thiết lập shell và quyền truy cập"), "Shell settings page must render the Vietnamese page title");
+assert(settingsPageMarkup.includes("package-admin"), "Shell settings page must render the current core identity");
+assert(settingsPageMarkup.includes("core-api"), "Shell settings page must render the health payload");
+assert(settingsPageMarkup.includes("show_admin_ops"), "Shell settings page must render surface flags");
 
 const vipPageMarkup = renderToStaticMarkup(
   createElement(VipLocalControlPage, {

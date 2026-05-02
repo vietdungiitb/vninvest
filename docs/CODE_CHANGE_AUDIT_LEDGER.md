@@ -1,3 +1,50 @@
+# Entry 2026-05-02ab - Build the first core settings page on top of the shared shell template
+
+Muc tieu:
+- Dung route-level page core thu hai cho `settings` de shared shell template duoc reuse tren hon mot route thay vi chi neo vao VIP local control.
+- Bám chặt surface da co san cua core bootstrap runtime: health, build meta, session, navigation va surfaces, khong mo them API contract moi.
+- Dong `WEB-17`, `WEB-18`, `OPS-08` bang proof shell check, live SSR parity tren core stub `:8100` va audit sync.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/system/ShellSettingsPage.js`:
+  - Them page route-level moi cho `settings` su dung shared shell template.
+  - Hien build target, plan, session, health, visible groups/routes, surfaces va ability map tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register route `settings` vao page registry cung voi `vip-local-control`.
+- `packages/web/src/index.js`:
+  - Export `ShellSettingsPage` tren root package surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho page registry route `settings` va SSR render cua `ShellSettingsPage`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page core moi; tong module tang len 540.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-17`, `WEB-18`, `OPS-08`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ab.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core settings shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/system/ShellSettingsPage.js (NEW - first core-backed settings shell page using the shared template)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `settings` as the second route-level page in the package shell)
+- packages/web/src/index.js (MODIFIED - export `ShellSettingsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate settings page registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the core settings shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-17, WEB-18, OPS-08)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/system/ShellSettingsPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi register `settings` vao page registry va them SSR proof cho core settings page.
+- FAILED -> FIXED: lan live parity dau tien fail voi `ECONNREFUSED 127.0.0.1:8100`; nguyen nhan la core stub chua chay va lan start dau tien dung sai cwd nen Python khong tim thay module `vninvest_core`. Da start lai tu `packages/core/backend/src` bang `"c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub` va rerun thanh cong.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellSettingsPage, loadShellBootstrap ... '@ | node --input-type=module; Pop-Location` => `core settings shared shell live parity passed`; da xac nhan markup render `shellPage__panel`, `package-admin`, `core-api` tu core runtime `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (540 modules).
+
+Residual note:
+- `settings` hien dong vai tro page audit/runtime status dau tien cho core shell; cac system pages sau nen reuse grammar nay thay vi tao panel contract rieng.
+- Core stub dang duoc giu running tren `:8100` de auditor co the verify page moi ngay lap tuc.
+
 # Entry 2026-05-02aa - Extract the first shared shell page template primitive for package-track UI
 
 Muc tieu:

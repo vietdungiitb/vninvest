@@ -1,3 +1,19 @@
+# ✅ AUDIT FILE LIST (2026-05-02ab)
+- packages/web/src/pages/system/ShellSettingsPage.js (NEW - first core-backed settings shell page using the shared template)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `settings` as the second route-level page in the package shell)
+- packages/web/src/index.js (MODIFIED - export `ShellSettingsPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate settings page registry wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the core settings shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-17, WEB-18, OPS-08)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ab)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren core settings page, page registry, root exports va shell validation script.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `settings` vao page registry.
+- PASSED: core stub da duoc start lai dung cwd va live SSR parity tren `:8100` da render `shellPage__panel`, `package-admin` va `core-api`.
+- PASSED: `module_tree_full.md` regenerated successfully with 540 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02aa)
 - packages/web/src/components/ShellPageTemplate.js (NEW - first shared shell page template primitive for package-track UI)
 - packages/web/src/pages/vip/VipLocalControlPage.js (MODIFIED - move VIP local control page onto shared shell helpers)

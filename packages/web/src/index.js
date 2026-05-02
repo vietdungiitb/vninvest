@@ -3,6 +3,7 @@ export { routeCatalog, getRouteCatalogIds, getRoutesForBuildTarget } from "./app
 export { navigationCatalog, getNavigationGroupIds, getNavigationForBuildTarget } from "./app/navigationCatalog.js";
 export { renderShellField, renderShellMetric, renderShellPageChrome, renderShellPanel, renderShellSelectField } from "./components/ShellPageTemplate.js";
 export { getPageComponent, getPageRegistryRouteIds, pageRegistry } from "./pages/pageRegistry.js";
+export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
 export { coreAdapter } from "./adapters/core/index.js";
 export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";

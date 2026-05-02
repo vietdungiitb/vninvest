@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 11:11:29`
+Generated at: `2026-05-02 11:16:01`
 
 ## Summary
 
-- Total modules: 539
+- Total modules: 540
 - Python modules: 340
-- JS/TS modules: 199
+- JS/TS modules: 200
 - Total classes: 563
-- Total functions: 2097
-- Total top-level variables: 3548
+- Total functions: 2108
+- Total top-level variables: 3564
 
 ## Python Modules
 
@@ -3674,6 +3674,13 @@ Generated at: `2026-05-02 11:11:29`
   - `getPageComponent`, `getPageRegistryRouteIds`
 - Top-level variables:
   - `pageEntry`, `pageRegistry`
+
+### `packages/web/src/pages/system/ShellSettingsPage.js`
+
+- Functions:
+  - `ShellSettingsPage`, `createEmptySnapshot`, `createInitialViewState`, `handleRefresh`, `normalizeErrorMessage`, `refreshSnapshot`, `renderAbilityList`, `renderElement`, `renderSummaryCard`, `renderValueList`, `runInitialLoad`
+- Top-level variables:
+  - `abilities`, `active`, `bootstrapLoaderRef`, `buildMeta`, `capabilities`, `enabledSurfaces`, `envRef`, `fetchImplRef`, `health`, `identity`, `metrics`, `session`, `snapshot`, `summaryCards`, `visibleGroups`, `visibleRoutes`
 
 ### `packages/web/src/pages/vip/VipLocalControlPage.js`
 

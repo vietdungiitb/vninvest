@@ -1,6 +1,12 @@
+import { ShellSettingsPage } from "./system/ShellSettingsPage.js";
 import { VipLocalControlPage } from "./vip/VipLocalControlPage.js";
 
 export const pageRegistry = Object.freeze([
+  {
+    routeId: "settings",
+    component: ShellSettingsPage,
+    status: "baseline",
+  },
   {
     routeId: "vip-local-control",
     component: VipLocalControlPage,
