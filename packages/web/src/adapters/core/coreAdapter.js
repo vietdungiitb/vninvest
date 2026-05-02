@@ -8,6 +8,10 @@ function resolveStockWorkspaceBaseUrl(env = {}) {
   return env.REACT_APP_STOCK_WORKSPACE_BASE_URL || env.VNINVEST_STOCK_WORKSPACE_BASE_URL || "/api/stock-management";
 }
 
+function resolvePortfolioApiBaseUrl(env = {}) {
+  return env.REACT_APP_API_BASE_URL || env.VNINVEST_API_BASE_URL || "/api";
+}
+
 function resolveFetchImpl(fetchImpl) {
   if (typeof fetchImpl === "function") {
     return fetchImpl;
@@ -17,7 +21,7 @@ function resolveFetchImpl(fetchImpl) {
     return globalThis.fetch.bind(globalThis);
   }
 
-  throw new Error("No fetch implementation available for the core advisory client");
+  throw new Error("No fetch implementation available for the core adapter client");
 }
 
 async function requestJson(fetchImpl, url, init = {}) {
@@ -30,7 +34,7 @@ async function requestJson(fetchImpl, url, init = {}) {
   });
 
   if (!response.ok) {
-    throw new Error(`Core advisory request failed: ${response.status} ${response.statusText} for ${url}`);
+    throw new Error(`Core adapter request failed: ${response.status} ${response.statusText} for ${url}`);
   }
 
   return response.json();
@@ -84,6 +88,19 @@ export const coreAdapter = {
       },
     );
   },
+  getWhaleAnalyticsSnapshotEndpoint(env = {}, options = {}) {
+    const normalizedSymbol = String(options.symbol || "").trim().toUpperCase();
+
+    return appendQuery(
+      `${resolvePortfolioApiBaseUrl(env)}/portfolio/whale/analytics/${encodeURIComponent(normalizedSymbol)}/`,
+      {
+        timeframe: options.timeframe,
+        compact: options.compact === false ? 0 : 1,
+        trade_date: options.tradeDate,
+        include_baseline: options.includeBaseline ? 1 : 0,
+      },
+    );
+  },
 };
 
 export function createCoreAdvisorySessionClient(options = {}) {
@@ -108,6 +125,35 @@ export function createCoreAdvisorySessionClient(options = {}) {
           includeBenchmarks: requestOptions.includeBenchmarks !== false,
           tradeDate: requestOptions.tradeDate,
           symbol: normalizedSymbol,
+        }),
+      );
+    },
+  };
+}
+
+export function createCoreWhaleAnalyticsSnapshotClient(options = {}) {
+  const { env = {}, fetchImpl } = options;
+  const request = resolveFetchImpl(fetchImpl);
+
+  return {
+    adapter: coreAdapter,
+    getBuildMeta() {
+      return coreAdapter.getBuildMeta(env);
+    },
+    getWhaleAnalyticsSnapshot(requestOptions = {}) {
+      const normalizedSymbol = String(requestOptions.symbol || "").trim().toUpperCase();
+      if (!normalizedSymbol) {
+        throw new Error("A whale analytics symbol is required");
+      }
+
+      return requestJson(
+        request,
+        coreAdapter.getWhaleAnalyticsSnapshotEndpoint(env, {
+          symbol: normalizedSymbol,
+          timeframe: requestOptions.timeframe || "session",
+          compact: requestOptions.compact !== false,
+          tradeDate: requestOptions.tradeDate,
+          includeBaseline: Boolean(requestOptions.includeBaseline),
         }),
       );
     },

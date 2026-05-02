@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 12:35:12`
+Generated at: `2026-05-02 13:08:10`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 12:35:12`
 - Python modules: 340
 - JS/TS modules: 210
 - Total classes: 563
-- Total functions: 2149
-- Total top-level variables: 3658
+- Total functions: 2166
+- Total top-level variables: 3673
 
 ## Python Modules
 
@@ -3595,7 +3595,7 @@ Generated at: `2026-05-02 12:35:12`
 ### `packages/web/src/adapters/core/coreAdapter.js`
 
 - Functions:
-  - `appendQuery`, `createCoreAdvisorySessionClient`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolveStockWorkspaceBaseUrl`
+  - `appendQuery`, `createCoreAdvisorySessionClient`, `createCoreWhaleAnalyticsSnapshotClient`, `requestJson`, `resolveCoreBaseUrl`, `resolveFetchImpl`, `resolvePortfolioApiBaseUrl`, `resolveStockWorkspaceBaseUrl`
 - Top-level variables:
   - `coreAdapter`, `normalizedSymbol`, `params`, `queryString`, `request`, `response`
 
@@ -3699,9 +3699,9 @@ Generated at: `2026-05-02 12:35:12`
 ### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
 
 - Functions:
-  - `ShellWhaleAlertsPage`
+  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleRefreshAll`, `handleWhaleSymbolChange`, `handleWhaleSymbolSubmit`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSymbolSearch`
 - Top-level variables:
-  - `SIGNAL_ROUTE_IDS`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `signalRoutes`, `summaryCards`, `whaleAbilities`
+  - `SIGNAL_ROUTE_IDS`, `active`, `enabledSurfaces`, `groupFlags`, `materialization`, `metrics`, `nextSymbol`, `nextUrl`, `qualityFlags`, `resolvedWhaleSymbol`, `routeFlags`, `search`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 

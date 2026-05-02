@@ -1,3 +1,60 @@
+# Entry 2026-05-02ap - Add the first whale snapshot read-only data slice to the whale alerts shell page
+
+Muc tieu:
+- Dua `ShellWhaleAlertsPage` ra khoi trang thai bootstrap-only bang cach noi voi snapshot endpoint whale analytics da ton tai.
+- Giu slice o muc facts-first read-model: chi surfacing `session_summary`, `materialization`, `quality_flags`, `session_context` va `summary`, khong lao vao full KLine/heatmap/marker workspace cua whale feature pack.
+- Bo sung symbol control nhe cho whale lane qua prop/query/browser state ma khong them router abstraction hoac route backend moi.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/adapters/core/coreAdapter.js`:
+  - Them `resolvePortfolioApiBaseUrl()` va endpoint builder cho `/api/portfolio/whale/analytics/<symbol>/`.
+  - Them thin client `createCoreWhaleAnalyticsSnapshotClient()` doc snapshot facts-first bang `timeframe=session`, `compact=1`, `include_baseline=0`.
+  - Tong quat hoa request error message cua core adapter de dung chung cho advisory va whale clients.
+- `packages/web/src/adapters/core/index.js`:
+  - Export whale snapshot client moi tren core adapter surface.
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them read-only whale snapshot state.
+  - Them query-driven symbol resolution (`?symbol=`), local symbol form control va URL sync bang `history.replaceState`.
+  - Hien facts-first card cho symbol/trade date/quality/read path/order count/bucket facts.
+  - Hien `Session context` va `Materialization facts` tu payload that.
+  - Nut refresh cua page gio reload ca bootstrap snapshot va whale snapshot data slice.
+  - Dung `useRef` cho whale snapshot loader de tranh refetch loop trong browser runtime.
+- `packages/web/src/index.js`:
+  - Export `createCoreWhaleAnalyticsSnapshotClient` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof request URL cho whale snapshot client.
+  - Them SSR proof cho `ShellWhaleAlertsPage` khi co initial whale snapshot facts-first.
+  - Them proof query-driven symbol path `?symbol=ssi` va empty state graceful cho symbol moi.
+- `module_tree_full.md`:
+  - Regenerate sau khi them whale snapshot read-model; tong module giu nguyen 550.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-44`, `OPS-22`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ap.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale snapshot shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add whale analytics snapshot endpoint resolver and thin facts-first client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export whale snapshot client)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - render whale snapshot facts-first data slice with query-driven symbol control)
+- packages/web/src/index.js (MODIFIED - export `createCoreWhaleAnalyticsSnapshotClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale snapshot client URL, facts-first SSR proof and query-driven symbol resolution)
+- module_tree_full.md (MODIFIED - regenerated after the whale snapshot shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-44, OPS-22)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/web/src/adapters/core/index.js` va `packages/web/src/index.js`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_returns_contract_and_headers portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date --keepdb` => 2/2 PASS.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (550 modules).
+
+Residual note:
+- Slice nay chi surfacing facts-first read-model cho whale shell; no chua mo heatmap/pane/marker/full KLine intelligence theo doc pack whale.
+- Symbol control hien dung `history.replaceState` va query string thay cho route param that, vi package shell hien chua co router abstraction cho `:symbol`.
+
 # Entry 2026-05-02ao - Add query-driven advisory symbol routing to the AI advisory shell page
 
 Muc tieu:

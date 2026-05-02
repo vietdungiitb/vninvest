@@ -5,6 +5,7 @@ import {
   BUILD_TARGETS,
   ShellAuthProvider,
   createCoreAdvisorySessionClient,
+  createCoreWhaleAnalyticsSnapshotClient,
   createVipAppControlClient,
   createEmptyAuthRuntimeState,
   createShellAuthRuntime,
@@ -144,6 +145,7 @@ assert(typeof renderShellMetric === "function", "Shared shell metric helper must
 assert(typeof renderShellField === "function", "Shared shell field helper must be exported");
 assert(typeof renderShellSelectField === "function", "Shared shell select helper must be exported");
 assert(typeof createCoreAdvisorySessionClient === "function", "Core advisory session client must be exported");
+assert(typeof createCoreWhaleAnalyticsSnapshotClient === "function", "Core whale analytics snapshot client must be exported");
 
 const advisoryRequests = [];
 const advisoryClient = createCoreAdvisorySessionClient({
@@ -202,6 +204,64 @@ assert(advisorySessionPayload.aggregate.decision.action === "accumulate", "Core 
 assert(
   advisoryRequests[0] === "http://backend.local/api/stock-management/stocks/BCM/ai-advisory-session/?contract=v2&include_benchmarks=1&trade_date=2026-04-15",
   "Core advisory session client must build the stock advisory session endpoint correctly",
+);
+
+const whaleSnapshotRequests = [];
+const whaleSnapshotClient = createCoreWhaleAnalyticsSnapshotClient({
+  env: { VNINVEST_API_BASE_URL: "http://backend.local/api" },
+  fetchImpl: async (url) => {
+    whaleSnapshotRequests.push(url);
+
+    return {
+      ok: true,
+      status: 200,
+      statusText: "OK",
+      async json() {
+        return {
+          symbol: "HPG",
+          trade_date: "2026-04-15",
+          session_context: {
+            selected_trade_date: "2026-04-15",
+            latest_valid_trade_date: "2026-04-15",
+            quality_state: "READY",
+          },
+          materialization: {
+            freshness_state: "fresh",
+            completeness_state: "complete",
+            session_summary_state: "complete",
+            read_path: "facts_first",
+            bucket_fact_count: 12,
+          },
+          quality_flags: {
+            contract_version: "kline-intelligence-v1",
+            has_session_summary: true,
+            facts_first_primary_path: true,
+          },
+          session_summary: {
+            quality_state: "READY",
+          },
+          summary: {
+            whale_order_count: 9,
+            extreme_order_count: 2,
+          },
+        };
+      },
+    };
+  },
+});
+
+const whaleSnapshotPayload = await whaleSnapshotClient.getWhaleAnalyticsSnapshot({
+  symbol: "HPG",
+  timeframe: "session",
+  compact: true,
+  includeBaseline: false,
+  tradeDate: "2026-04-15",
+});
+
+assert(whaleSnapshotPayload.materialization.read_path === "facts_first", "Core whale analytics snapshot client must return facts-first whale snapshot JSON");
+assert(
+  whaleSnapshotRequests[0] === "http://backend.local/api/portfolio/whale/analytics/HPG/?timeframe=session&compact=1&trade_date=2026-04-15&include_baseline=0",
+  "Core whale analytics snapshot client must build the whale analytics snapshot endpoint correctly",
 );
 
 const vipControlRequests = [];
@@ -997,6 +1057,35 @@ assert(aiAdvisoryQueryMarkup.includes("Chưa có advisory session thật"), "AI 
 const whaleAlertsMarkup = renderToStaticMarkup(
   createElement(ShellWhaleAlertsPage, {
     autoLoad: false,
+    whaleSymbol: "HPG",
+    initialWhaleSnapshot: {
+      symbol: "HPG",
+      trade_date: "2026-04-15",
+      session_context: {
+        selected_trade_date: "2026-04-15",
+        latest_valid_trade_date: "2026-04-15",
+        quality_state: "READY",
+      },
+      materialization: {
+        freshness_state: "fresh",
+        completeness_state: "complete",
+        session_summary_state: "complete",
+        read_path: "facts_first",
+        bucket_fact_count: 12,
+      },
+      quality_flags: {
+        contract_version: "kline-intelligence-v1",
+        has_session_summary: true,
+        facts_first_primary_path: true,
+      },
+      session_summary: {
+        quality_state: "READY",
+      },
+      summary: {
+        whale_order_count: 9,
+        extreme_order_count: 2,
+      },
+    },
     initialSnapshot: {
       buildMeta: {
         adapterId: "core",
@@ -1044,6 +1133,60 @@ assert(whaleAlertsMarkup.includes("Trung tâm whale alerts và tín hiệu"), "W
 assert(whaleAlertsMarkup.includes("whale-alerts"), "Whale alerts page must render whale-alerts route visibility");
 assert(whaleAlertsMarkup.includes("signals"), "Whale alerts page must render signals group visibility");
 assert(whaleAlertsMarkup.includes("package-admin"), "Whale alerts page must render the current operator identity");
+assert(whaleAlertsMarkup.includes("HPG"), "Whale alerts page must render the whale snapshot symbol from the live data slice");
+assert(whaleAlertsMarkup.includes("facts_first"), "Whale alerts page must render the facts-first materialization path");
+assert(whaleAlertsMarkup.includes("READY"), "Whale alerts page must render the whale snapshot quality state");
+assert(whaleAlertsMarkup.includes("Đổi mã whale"), "Whale alerts page must render the whale symbol control");
+
+const whaleAlertsQueryMarkup = renderToStaticMarkup(
+  createElement(ShellWhaleAlertsPage, {
+    autoLoad: false,
+    whaleSearch: "?symbol=ssi",
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "WhaleAdvisory" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "ai-advisory", "whale-alerts", "watchlist", "transactions"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(whaleAlertsQueryMarkup.includes("SSI"), "Whale alerts page must resolve the whale symbol from the query string when no prop overrides it");
+assert(whaleAlertsQueryMarkup.includes("Chưa có whale snapshot thật"), "Whale alerts page must keep a graceful empty state for query-driven whale symbols");
 
 const runtimeUpdates = [];
 const unsubscribe = authRuntime.subscribe((snapshot) => {

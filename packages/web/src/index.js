@@ -14,7 +14,7 @@ export { ShellWatchlistPage } from "./pages/workspace/ShellWatchlistPage.js";
 export { ShellSettingsPage } from "./pages/system/ShellSettingsPage.js";
 export { ShellSupportPage } from "./pages/system/ShellSupportPage.js";
 export { VipLocalControlPage } from "./pages/vip/VipLocalControlPage.js";
-export { coreAdapter, createCoreAdvisorySessionClient } from "./adapters/core/index.js";
+export { coreAdapter, createCoreAdvisorySessionClient, createCoreWhaleAnalyticsSnapshotClient } from "./adapters/core/index.js";
 export { createVipAppControlClient, vipAppAdapter } from "./adapters/vip-app/index.js";
 export {
 	createBootstrapClient,

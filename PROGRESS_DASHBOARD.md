@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02ap)
+- packages/web/src/adapters/core/coreAdapter.js (MODIFIED - add whale analytics snapshot endpoint resolver and thin facts-first client)
+- packages/web/src/adapters/core/index.js (MODIFIED - export whale snapshot client)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - render whale snapshot facts-first data slice with query-driven symbol control)
+- packages/web/src/index.js (MODIFIED - export `createCoreWhaleAnalyticsSnapshotClient` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate whale snapshot client URL, facts-first SSR proof and query-driven symbol resolution)
+- module_tree_full.md (MODIFIED - regenerated after the whale snapshot shell slice, total modules 550)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-44, OPS-22)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ap)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/web/src/adapters/core/index.js` va `packages/web/src/index.js`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them whale snapshot client va facts-first panel cho `whale-alerts`.
+- PASSED: focused Django contract suite `test_snapshot_endpoint_returns_contract_and_headers` + `test_snapshot_endpoint_falls_back_to_latest_completed_session_for_weekend_trade_date` => 2/2 PASS.
+- PASSED: `module_tree_full.md` regenerated successfully with 550 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ao)
 - packages/web/src/pages/signals/ShellAiAdvisoryPage.js (MODIFIED - add query-driven symbol resolution, local symbol form control and URL sync for the advisory data slice)
 - packages/web/scripts/check-shell.mjs (MODIFIED - validate advisory symbol control and query-string resolution proof)

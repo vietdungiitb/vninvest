@@ -673,3 +673,21 @@ Estimate: 0.5h
 Dependency: WEB-43  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung query-driven advisory symbol path, proof `check-shell`, va khong co regression tren advisory data slice truoc do.
+
+---
+
+## 27. Whale alerts read-model queue
+
+- [x] `WEB-44` Noi facts-first whale snapshot vao `whale-alerts` shell  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 2h  
+Dependency: WEB-41, WEB-42  
+Anchor files: `packages/web/src/adapters/core/*`, `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `backend/portfolio/views_whale_analytics.py`, `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`  
+DoD: `ShellWhaleAlertsPage` doc endpoint `/api/portfolio/whale/analytics/<symbol>/` bang thin client, surfacing `session_summary`, `materialization`, `quality_flags`, `summary` va symbol control nhe ma khong mo route/contract song song.
+
+- [x] `OPS-22` Sync audit docs va module tree sau whale snapshot shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-44  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung whale snapshot read-model facts-first, focused backend proof va shell SSR proof khong regression.
