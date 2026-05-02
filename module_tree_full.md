@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 07:55:02`
+Generated at: `2026-05-02 10:14:24`
 
 ## Summary
 
-- Total modules: 513
-- Python modules: 328
-- JS/TS modules: 185
-- Total classes: 559
-- Total functions: 2004
-- Total top-level variables: 3460
+- Total modules: 535
+- Python modules: 339
+- JS/TS modules: 196
+- Total classes: 561
+- Total functions: 2058
+- Total top-level variables: 3513
 
 ## Python Modules
 
@@ -2341,6 +2341,71 @@ Generated at: `2026-05-02 07:55:02`
 - Classes:
   - `SupportTicketApiTests` -> methods: `setUp`, `test_create_and_list_own_ticket`, `test_staff_dashboard_requires_staff_permission`, `test_staff_dashboard_returns_queue_and_sla_metrics`, `test_staff_patch_and_reply_updates_ticket`, `test_user_cannot_view_other_users_ticket`, `test_user_reply_reopens_resolved_ticket`
 
+### `packages/core/backend/src/vninvest_core/__init__.py`
+
+- Top-level variables:
+  - `__all__`
+
+### `packages/core/backend/src/vninvest_core/api_stub.py`
+
+- Classes:
+  - `_CoreApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+- Functions:
+  - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
+- Top-level variables:
+  - `ROUTE_HANDLERS`
+
+### `packages/core/backend/src/vninvest_core/app_manifest.py`
+
+- Functions:
+  - `get_core_manifest`
+- Top-level variables:
+  - `CORE_APP_MANIFEST`, `CORE_CONTRACT_NAMESPACES`, `CORE_SERVICE_NAMES`
+
+### `packages/core/backend/src/vninvest_core/beat_stub.py`
+
+- Functions:
+  - `main`
+
+### `packages/core/backend/src/vninvest_core/contracts/__init__.py`
+
+- Top-level variables:
+  - `CONTRACT_NAMESPACES`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/contracts/access/__init__.py`
+
+- Top-level variables:
+  - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/contracts/market/__init__.py`
+
+- Top-level variables:
+  - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/contracts/operator/__init__.py`
+
+- Top-level variables:
+  - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/contracts/partner/__init__.py`
+
+- Top-level variables:
+  - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/worker_stub.py`
+
+- Functions:
+  - `main`
+
+### `packages/vip-app/local-backend/api_stub.py`
+
+- Classes:
+  - `_VipAppApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+- Functions:
+  - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_manifest_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
+- Top-level variables:
+  - `ROUTE_HANDLERS`
+
 ### `scripts/ops/generate_module_tree.py`
 
 - Classes:
@@ -3516,6 +3581,75 @@ Generated at: `2026-05-02 07:55:02`
 ### `mobile-app/src/types/watchlist.ts`
 
 - No parseable top-level symbols found
+
+### `packages/web/src/adapters/core/coreAdapter.js`
+
+- Functions:
+  - `resolveCoreBaseUrl`
+- Top-level variables:
+  - `coreAdapter`
+
+### `packages/web/src/adapters/core/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/adapters/vip-app/index.js`
+
+- No parseable top-level symbols found
+
+### `packages/web/src/adapters/vip-app/vipAppAdapter.js`
+
+- Functions:
+  - `resolveVipAppBaseUrl`
+- Top-level variables:
+  - `vipAppAdapter`
+
+### `packages/web/src/app/navigationCatalog.js`
+
+- Functions:
+  - `getNavigationForBuildTarget`, `getNavigationGroupIds`
+- Top-level variables:
+  - `ALL_BUILD_TARGETS`, `navigationCatalog`, `normalizedTarget`
+
+### `packages/web/src/app/routeCatalog.js`
+
+- Functions:
+  - `getRouteCatalogIds`, `getRoutesForBuildTarget`
+- Top-level variables:
+  - `ALL_BUILD_TARGETS`, `normalizedTarget`, `routeCatalog`
+
+### `packages/web/src/config/buildTarget.js`
+
+- Functions:
+  - `getBuildTarget`, `isBuildTarget`, `normalizeBuildTarget`
+- Top-level variables:
+  - `BUILD_TARGETS`, `BUILD_TARGET_SET`, `DEFAULT_BUILD_TARGET`, `candidate`
+
+### `packages/web/src/context/authReact.js`
+
+- Functions:
+  - `ShellAuthProvider`, `createShellAuthContextValue`, `useShellAuth`, `useShellAuthRuntime`
+- Top-level variables:
+  - `ShellAuthContext`, `ShellAuthRuntimeContext`, `activeRuntime`, `context`, `runtimeRef`, `snapshot`
+
+### `packages/web/src/context/authRuntime.js`
+
+- Functions:
+  - `cloneAuthRuntimeState`, `commit`, `createEmptyAuthRuntimeState`, `createEmptyUserIdentity`, `createShellAuthRuntime`, `deriveAuthRuntimeState`, `emit`
+- Top-level variables:
+  - `adapter`, `bootstrapPayload`, `buildMeta`, `legacyAuthState`, `listeners`, `snapshot`, `state`, `userIdentity`
+
+### `packages/web/src/context/bootstrapClient.js`
+
+- Functions:
+  - `createBootstrapClient`, `deriveLegacyAuthState`, `loadShellBootstrap`, `requestJson`, `resolveFetchImpl`, `resolveShellAdapter`
+- Top-level variables:
+  - `ADAPTER_REGISTRY`, `adapter`, `capabilities`, `client`, `isStaff`, `isSuperuser`, `principalIdentity`, `request`, `response`, `session`
+
+### `packages/web/src/index.js`
+
+- Top-level variables:
+  - `shellAdapters`
 
 ## Update Workflow
 

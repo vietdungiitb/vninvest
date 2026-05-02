@@ -633,14 +633,16 @@ Theo thứ tự này, `core` đi đúng hướng thực tế: **contract trướ
 
 ### 8.2 `opencore`
 
-`opencore` không phải backend riêng. Nó là packaging/commercial layer chạy trên `core`, cần:
+`opencore` khong phai backend truth rieng, nhung nay phai duoc xem la mot **package** rieng cho distribution/commercial funnel chay tren `core`, can:
 
 - license,
 - feature matrix,
 - usage,
 - invoices,
 - build/runtime capabilities,
-- premium feature access.
+- premium feature access,
+- self-host/community distribution bundle,
+- activation va upgrade journey.
 
 ### 8.3 `vip-app`
 

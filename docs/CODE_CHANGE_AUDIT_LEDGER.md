@@ -1,3 +1,628 @@
+# Entry 2026-05-02w - Wrap the package-track web auth runtime into a real React provider/hook
+
+Muc tieu:
+- Boc `createShellAuthRuntime()` thanh React provider/hook that de `packages/web` co runtime/context surface tieu thu duoc ngay ma khong can import bat ky module nao tu legacy frontend.
+- Them React-focused shell validation that de phat hien drift giua runtime state, provider context va hook exposure truoc khi package shell duoc noi vao app that.
+- Dong `WEB-09`, `WEB-10`, `OPS-03` va de san queue tiep theo cho `vip-app` persistence lane.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/context/authReact.js`:
+  - Them `ShellAuthProvider`, `useShellAuth()` va `useShellAuthRuntime()` tren nen `createShellAuthRuntime()`.
+  - Provider su dung `useSyncExternalStore` de subscribe runtime state, giu `autoRefresh` configurable va expose `refresh/reset/hydrate` qua context value.
+- `packages/web/package.json`:
+  - Them export `./auth-react`.
+  - Khai bao `react`, `react-dom` trong `peerDependencies` va `devDependencies` de validation shell co the thuc thi truc tiep.
+- `packages/web/package-lock.json`:
+  - Tao lockfile cho package sau khi cai dependency React cục bộ.
+- `packages/web/src/index.js`:
+  - Export React auth provider/hook vao public shell surface.
+- `packages/web/src/context/README.md`:
+  - Cap nhat context foundation map cho bootstrap client, runtime va React wrapper.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them React smoke proof bang `renderToStaticMarkup()` de assert provider/hook doc duoc state da hydrate.
+  - Sua assertions de khop voi HTML-escaped markup cua SSR rendering.
+- `module_tree_full.md`:
+  - Regenerate sau khi them `authReact.js`; tong module tang len 535.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-09`, `WEB-10`, `OPS-03` complete va them queue `VIP-03` -> `OPS-04`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02w.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho React auth shell slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/context/authReact.js (NEW - React provider/hook wrapper for the package-track auth runtime)
+- packages/web/package.json (MODIFIED - add auth-react export and React dependency declarations)
+- packages/web/package-lock.json (NEW - local package lockfile after installing React dependencies for shell validation)
+- packages/web/src/index.js (MODIFIED - export React auth provider/hook surface)
+- packages/web/src/context/README.md (MODIFIED - document the current context foundation layout)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add and fix React-focused shell smoke)
+- module_tree_full.md (MODIFIED - regenerated after the React auth shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out React shell slice and queue the next VIP persistence lane)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- FAILED -> FIXED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => ban dau loi `Cannot find package 'react'`; da cai dependency package-local bang `npm install`.
+- FAILED -> FIXED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => React smoke assertion sai do SSR markup escape quotes; da inspect markup that va sua assertion.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them provider/hook React.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:PYTHONPATH = "c:/Mujoco Projects/vninvest/packages/core/backend/src"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub; Pop-Location` => core stub listening on `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; node --input-type=module -e "import React ... await runtime.refresh(); ..."; Pop-Location` => SSR smoke tra ve `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `buildTarget=saas` qua `ShellAuthProvider`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (535 modules).
+
+Residual note:
+- React provider/hook hien la wrapper rat mong quanh runtime auth co san; chua co CASL ability object, router provider hay persisted token flow. Queue tiep theo nen mo sang `VIP-03` hoac bo sung shell-level ability adapter neu muon tiep can legacy auth semantics day du hon.
+
+# Entry 2026-05-02v - Add and validate the VIP app bootstrap-ready local stub
+
+Muc tieu:
+- Dung local backend stub toi thieu cho `packages/vip-app` de `vipAppAdapter` co bootstrap path kiem chung duoc giong lane `core`.
+- Bien `packages/vip-app/docker-compose.vip.yml` tu placeholder thanh runtime artifact co the bring-up ngay cho session tiep theo.
+- Dong `VIP-01`, `VIP-02`, `OPS-02` bang evidence thuc thi, compose validation va module tree refresh.
+
+Noi dung cap nhat chinh:
+- `packages/vip-app/local-backend/api_stub.py`:
+  - Them HTTP stub su dung Python stdlib, phuc vu `/vip-app/v1/health`, `/vip-app/v1/access/capabilities`, `/vip-app/v1/session/bootstrap` va cac alias khong version.
+  - Payload bootstrap phan anh build target `vip`, navigation/surfaces rieng cho local VIP shell va session bootstrap co tenant/service-account metadata.
+- `packages/vip-app/docker-compose.vip.yml`:
+  - Bien compose placeholder thanh service `vip-local-api` chay `python api_stub.py` tren cong `8200`.
+  - Sua lai indentation YAML sau khi compose parser bao loi trong validation dau tien.
+- `packages/vip-app/local-backend/README.md`:
+  - Bo sung runbook focused cho local stub va bootstrap smoke path.
+- `module_tree_full.md`:
+  - Regenerate sau khi them VIP local backend stub; tong module tang len 534.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `VIP-01`, `VIP-02`, `OPS-02` complete.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02v.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice VIP app bootstrap.
+
+Danh sach tep cap nhat:
+- packages/vip-app/local-backend/api_stub.py (NEW - bootstrap-ready VIP local backend stub)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - runnable compose artifact for vip-local-api)
+- packages/vip-app/local-backend/README.md (MODIFIED - focused runbook for stub bootstrap validation)
+- module_tree_full.md (MODIFIED - regenerated after the VIP stub slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP runtime slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/vip-app/local-backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" api_stub.py; Pop-Location` => local stub listened on `:8200`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; node --input-type=module -e "const { createShellAuthRuntime } = await import('./src/index.js'); ..."; Pop-Location` => tra ve `{"status":"ready","ready":true,"authenticated":true,"plan":"vip","username":"vip-local-admin","vipShell":true,"abilityCount":7,"buildTarget":"vip"}` khi auth runtime refresh qua `vipAppAdapter`.
+- FAILED -> FIXED: `Push-Location "c:/Mujoco Projects/vninvest/packages/vip-app"; docker compose -f docker-compose.vip.yml up -d; Pop-Location` => YAML parser loi do tab indentation; da sua file compose va rerun.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/vip-app"; docker compose -f docker-compose.vip.yml up -d; Pop-Location` => service `vninvest-vip-package-vip-local-api-1` started successfully.
+- PASSED: smoke adapter duoc lap lai sau compose bring-up va van tra ve state `ready/authenticated` cho lane `vip`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (534 modules).
+
+Residual note:
+- Compose stack `packages/vip-app/docker-compose.vip.yml` dang duoc giu o trang thai running de auditor co the verify ngay; session sau co the dung `docker compose -f packages/vip-app/docker-compose.vip.yml down` neu can cleanup.
+
+# Entry 2026-05-02u - Wire a real auth runtime into the package-track web shell
+
+Muc tieu:
+- Bien `packages/web` tu cho chi co bootstrap client helper thanh co auth/context runtime that de quan ly state bootstrap, readiness, auth flag va subscription lifecycle cho package shell.
+- Sua lech shape giua `deriveLegacyAuthState()` va current legacy auth semantics bang cach expose dung `isStaff` / `isSuperuser` cho runtime-facing identity bridge.
+- Dong bo taskboard sang `WEB-07`, `WEB-08` complete va claim `VIP-01` sau khi auth runtime da duoc kiem chung bang shell validation va smoke end-to-end voi core stub.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/context/authRuntime.js`:
+  - Tao auth runtime JS thuần voi `createShellAuthRuntime()`, `createEmptyAuthRuntimeState()` va `deriveAuthRuntimeState()`.
+  - Ho tro `getState()`, `subscribe()`, `reset()`, `hydrate()` va `refresh()` tren cung contract bootstrap hien co.
+- `packages/web/src/context/bootstrapClient.js`:
+  - Chinh bridge `deriveLegacyAuthState()` de tra ve `userPlan = free` mac dinh va camelCase flags `isStaff` / `isSuperuser`, dong thoi giu alias snake_case de tranh drift khi chua co consumer that.
+- `packages/web/src/index.js`:
+  - Export auth runtime helpers vao public shell surface.
+- `packages/web/package.json`:
+  - Them export path `./auth-runtime`.
+- `packages/web/scripts/check-shell.mjs`:
+  - Mo rong shell validation de assert auth runtime initial state, derived state va refresh flow bang bootstrap loader fixture.
+- `module_tree_full.md`:
+  - Regenerate sau khi them auth runtime moi; tong module tang len 533.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mark `WEB-07`, `WEB-08` complete va claim `VIP-01`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02u.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- packages/web/src/context/authRuntime.js (NEW - runtime auth state manager for package-track web bootstrap/auth flows)
+- packages/web/src/context/bootstrapClient.js (MODIFIED - align legacy auth bridge shape with runtime-ready identity flags)
+- packages/web/src/index.js (MODIFIED - export auth runtime helpers)
+- packages/web/package.json (MODIFIED - add auth-runtime export path)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate auth runtime state derivation and refresh flow)
+- module_tree_full.md (MODIFIED - regenerated after the web auth runtime slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync runtime queue state)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them auth runtime surface.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/core/backend"; $env:PYTHONPATH = "c:/Mujoco Projects/vninvest/packages/core/backend/src"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m vninvest_core.api_stub; Pop-Location` => core stub listening on `:8100`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; node --input-type=module -e "const { createShellAuthRuntime } = await import('./src/index.js'); ..."; Pop-Location` => tra ve `{"status":"ready","ready":true,"authenticated":true,"plan":"pro","username":"package-admin","staff":true,"abilityCount":6}` khi auth runtime refresh tu `http://127.0.0.1:8100/core/v1`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (533 modules).
+
+# Entry 2026-05-02t - Harden the package-track planning and audit pack for multi-session continuity
+
+Muc tieu:
+- Ra soat bo tai lieu ke hoach thuc hien va audit noi bo cua package-track foundation baseline de dam bao doi code co the lam viec qua nhieu phien lien tuc ma khong bi bo sot hoac claim chong cheo.
+- Khoa ro vai tro cua `taskboard`, `CODE_CHANGE_AUDIT_LEDGER`, `PROGRESS_DASHBOARD` va `execution evidence template` de session sau khong phai doan trang thai tu transcript hoac diff.
+- Chot queue ke tiep bang `WEB-07`, `WEB-08`, `VIP-01`, `VIP-02`, `OPS-02` truoc khi mo rong sang runtime/auth context va vip-app stub.
+
+Noi dung cap nhat chinh:
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Bo sung hard rules va governance freeze criteria cho live taskboard, audit evidence surfaces va handoff packet bat buoc.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md`:
+  - Khoa ro taskboard la live status board, ledger/progress la history evidence, one-active-slice rule va handoff payload toi thieu.
+- `docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Mo rong step dong bo audit thanh live execution state va them buoc phat handoff packet cho session ke tiep.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Dong bo trang thai `[x]` cho cac slice da hoan thanh tu `2026-05-02p/q/r/s`.
+  - Them `ARC-03` cho continuity protocol va mo queue runtime ke tiep, trong do `WEB-07` duoc claim lam active slice.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md`:
+  - Them `GOV-03` va `GOV-04` de truy vet live taskboard parity va handoff packet completeness.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`:
+  - Them `Buoc 0 - Resume va claim slice`, yeu cau taskboard parity, one-active-slice rule va handoff completeness checks.
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`:
+  - Them fields cho dependency checked, task status khi nhan slice, taskboard sync va handoff packet section.
+
+Danh sach tep cap nhat:
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add live control-surface and handoff rules for package-track multi-session delivery)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - define taskboard authority, one-active-slice rule and mandatory handoff packet)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - extend close-out step with live execution state and handoff packet requirements)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync completed tasks, add continuity guard and open next runtime queue with `WEB-07` active)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add continuity and handoff governance requirements)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add resume/claim workflow and handoff completeness audit gates)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add taskboard sync and handoff packet fields)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on the seven edited planning/audit docs => no errors found.
+- PASSED: docs-only continuity slice; khong co code runtime/package source nao thay doi, nen khong can `module_tree_full.md` refresh hay docker restart.
+
+# Entry 2026-05-02s - Add a real bootstrap client to the package-track web shell
+
+Muc tieu:
+- Bien `packages/web` tu cho chi co adapter metadata thanh co bootstrap client that de lay health, capability bootstrap va session payload qua interface adapter chung.
+- Tao bridge helper de map package-track bootstrap payload ve auth semantics gan voi legacy `PortfolioContext` ma khong import bat ky code nao tu legacy frontend.
+- Dong bo `module_tree_full.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` va `PROGRESS_DASHBOARD.md` sau khi `packages/web` da duoc smoke-check end-to-end voi `packages/core` stub.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/context/bootstrapClient.js`:
+  - Tao bootstrap client thuần JS cho `health`, `capabilities`, `session` thong qua `core` hoac `vip-app` adapter.
+  - Bo sung `loadShellBootstrap()` de tai dong thoi ba payload va `deriveLegacyAuthState()` de bridge ve `userPlan`, `userIdentity`, `abilities`, `navigation`, `surfaces`.
+- `packages/web/src/index.js`:
+  - Export bootstrap client helpers vao public shell surface.
+- `packages/web/package.json`:
+  - Them export path `./bootstrap-client`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them bootstrap client moi; tong module tang len 532.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02s.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- packages/web/src/context/bootstrapClient.js (NEW - shell bootstrap client and legacy auth bridge for package-track web)
+- packages/web/src/index.js (MODIFIED - export bootstrap helpers from the shell public surface)
+- packages/web/package.json (MODIFIED - add bootstrap-client package export)
+- module_tree_full.md (MODIFIED - regenerated after the web bootstrap client slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them bootstrap client exports.
+- PASSED: `node --input-type=module -e "const { deriveLegacyAuthState, loadShellBootstrap } = await import('./src/index.js'); ..."` trong `packages/web` => tra ve `{"adapter":"core","healthService":"core-api","target":"saas","plan":"pro","username":"package-admin","abilityCount":6}` khi goi qua `loadShellBootstrap()` toi `http://127.0.0.1:8100/core/v1`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (532 modules).
+- PASSED: package-track shell slice only; chua co runtime legacy/front-end nao duoc wire sang package shell moi nen khong can refresh docker stack.
+
+# Entry 2026-05-02r - Extend the package-track core stub with bootstrap-ready endpoints
+
+Muc tieu:
+- Lam cho `packages/core` co the bootstrap duoc `packages/web` shell thong qua nhung endpoint da duoc encode san trong `coreAdapter`.
+- Giu lai baseline stub hien co, nhung bo sung duong dan versioned va payload shape phu hop voi shared contracts cho health, capabilities va session bootstrap.
+- Dong bo `module_tree_full.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` va `PROGRESS_DASHBOARD.md` ngay sau khi validation xac nhan stub da tra ve du lieu dung shape.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung payload builders cho health, capability bootstrap va session payload.
+  - Them parser cho env flag/int, timestamp UTC va route registry de phuc vu ca alias cu (`/healthz`, `/manifest`) lan adapter-facing paths moi (`/health`, `/access/capabilities`, `/session/me`).
+  - Ho tro ca bare paths va versioned paths duoi `/core/v1/*` de phu hop voi `packages/web/src/adapters/core/coreAdapter.js`.
+- `module_tree_full.md`:
+  - Regenerate sau khi cap nhat stub; tong module giu nguyen 531.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02r.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add adapter-compatible health, capability bootstrap and session payload endpoints for the package-track core stub)
+- module_tree_full.md (MODIFIED - regenerated after the core bootstrap endpoint slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `packages/core/backend/src/vninvest_core/api_stub.py` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled updated `vninvest_core.api_stub` successfully.
+- PASSED: Python smoke snippet imported `ROUTE_HANDLERS` from `vninvest_core.api_stub`, exercised `/core/v1/access/capabilities`, `/core/v1/session/me`, `/core/v1/health`, and confirmed expected top-level keys for each payload.
+- PASSED: HTTP probe against `http://127.0.0.1:8100/core/v1/health`, `http://127.0.0.1:8100/core/v1/access/capabilities`, and `http://127.0.0.1:8100/core/v1/session/me` returned `core-api`, capability version `1.0.0`, visible groups `workspace,signals,system,admin`, and session principal `package-admin`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: package-track stub slice only; chua co service nao trong dev compose hien tai wire den `packages/core`, nen khong can refresh docker stack.
+
+# Entry 2026-05-02q - Establish the package foundation handoff pack and real baseline for core, shared contracts, and web shell
+
+Muc tieu:
+- Hoan thien bo handoff tai lieu day du cho `PACKAGE_TRACK_FOUNDATION_BASELINE` de doi code co SSOT, taskboard, traceability, self-audit va evidence template ro rang.
+- Dung baseline that cho `packages/core` bang Python manifest, app skeleton, contract namespaces va compose topology stub thay vi placeholder.
+- Khoi tao cac shared contracts dau tien va shared shell that cho `packages/web` gom route catalog, navigation catalog, adapter core/vip-app va validation script rieng.
+- Dong bo `module_tree_full.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md` va `PROGRESS_DASHBOARD.md` de auditor co the kiem tra slice ngay.
+
+Noi dung cap nhat chinh:
+- `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_*`:
+  - Tao day du master handoff, implementation plan, tech spec, taskboard, traceability matrix, self-audit protocol, evidence template va handoff audit report cho package foundation baseline.
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Them `Phase 1.5 - Foundation baseline for core, web, shared` de khoa sequencing truoc khi mo rong package track.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Dua package foundation baseline handoff pack vao official architecture index.
+- `packages/core/**`:
+  - Tao `pyproject.toml`, bo `vninvest_core` package, app manifest, API/worker/beat stubs, contract namespace packages va compose topology stub cho `core-api`, `core-worker`, `core-beat`, `core-db`, `core-redis`.
+  - Cap nhat README boundary de phan biet scaffold placeholder truoc do voi baseline thuc thi moi.
+- `shared/api-contracts/**`:
+  - Tao 3 contract JSON dau tien cho build target, capability bootstrap va session payload; dong thoi nang README len baseline contract registry.
+- `packages/web/**`:
+  - Nang `package.json` thanh ESM shell package, them `exports`, `check:shell` script va tao `routeCatalog`, `navigationCatalog`, adapters `core` / `vip-app`, shell `index.js`, `scripts/check-shell.mjs`.
+  - Cap nhat `packages/web/src/README.md` de phan anh baseline moi.
+- `module_tree_full.md`:
+  - Regenerate sau khi them docs va package baseline; tong module hien tai la 531.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02q.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (NEW - master handoff for the package foundation baseline slice)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - ordered execution plan for shared contracts, core baseline, web shell and governance close-out)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - technical spec for contracts, package manifests, adapters and compose stubs)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - execution taskboard for architecture, shared, core, web, QA and ops tasks)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement to task and evidence mapping for the baseline)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - focused audit and validation protocol for the slice)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - execution evidence template for future package-track slices)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - audit verdict for the handoff pack)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add foundation baseline phase to the package migration plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - index the new package foundation handoff pack)
+- packages/core/README.md (MODIFIED - describe real core package boundary and manifest)
+- packages/core/backend/README.md (MODIFIED - document the new vninvest_core baseline modules)
+- packages/core/docker-compose.core.yml (MODIFIED - replace placeholder with core service topology stub)
+- packages/core/pyproject.toml (NEW - Python package manifest for vninvest-core)
+- packages/core/backend/src/vninvest_core/__init__.py (NEW - export package manifest helper)
+- packages/core/backend/src/vninvest_core/app_manifest.py (NEW - SSOT manifest for core service names and contract namespaces)
+- packages/core/backend/src/vninvest_core/api_stub.py (NEW - HTTP health and manifest stub for core-api)
+- packages/core/backend/src/vninvest_core/worker_stub.py (NEW - heartbeat worker stub for core-worker)
+- packages/core/backend/src/vninvest_core/beat_stub.py (NEW - scheduler heartbeat stub for core-beat)
+- packages/core/backend/src/vninvest_core/contracts/__init__.py (NEW - core contract namespace registry)
+- packages/core/backend/src/vninvest_core/contracts/access/__init__.py (NEW - access namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/market/__init__.py (NEW - market namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/operator/__init__.py (NEW - operator namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/partner/__init__.py (NEW - partner namespace marker)
+- shared/api-contracts/README.md (MODIFIED - register initial shared package-track contracts)
+- shared/api-contracts/build-target.contract.json (NEW - shared build target contract)
+- shared/api-contracts/capability-bootstrap.contract.json (NEW - shared capability bootstrap contract)
+- shared/api-contracts/session-payload.contract.json (NEW - shared session payload contract)
+- packages/web/package.json (MODIFIED - promote the web package to an ESM shell with exports and shell validation)
+- packages/web/src/README.md (MODIFIED - document the shared shell baseline artifacts)
+- packages/web/src/app/routeCatalog.js (NEW - canonical route catalog for build-target-aware package shell)
+- packages/web/src/app/navigationCatalog.js (NEW - canonical navigation group catalog for the package shell)
+- packages/web/src/adapters/core/coreAdapter.js (NEW - core API adapter seam for package-track web)
+- packages/web/src/adapters/core/index.js (NEW - core adapter export surface)
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (NEW - vip-app local adapter seam for package-track web)
+- packages/web/src/adapters/vip-app/index.js (NEW - vip-app adapter export surface)
+- packages/web/src/index.js (NEW - package shell public exports and adapter registry)
+- packages/web/scripts/check-shell.mjs (NEW - focused shell consistency validation for packages/web)
+- module_tree_full.md (MODIFIED - regenerated after package foundation docs and baseline source files were added)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md`, `docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md`, `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md`, `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md`, `docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_AUDIT_REPORT_20260502.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, and `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled `vninvest_core` package, app stubs and contract namespaces successfully.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `get_errors` on `packages/web/package.json`, `packages/web/src/app/routeCatalog.js`, `packages/web/src/app/navigationCatalog.js`, `packages/web/src/adapters/core/coreAdapter.js`, `packages/web/src/adapters/vip-app/vipAppAdapter.js`, `packages/web/src/index.js`, `packages/web/scripts/check-shell.mjs`, `shared/api-contracts/build-target.contract.json`, `shared/api-contracts/capability-bootstrap.contract.json`, and `shared/api-contracts/session-payload.contract.json` => no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: `grep_search` confirmed `module_tree_full.md` contains `packages/core/backend/src/vninvest_core/app_manifest.py` and `packages/web/src/app/routeCatalog.js`.
+- PASSED: package-track baseline slice only; khong co runtime legacy/front-end nao duoc wire vao compose dev hien tai nen khong can refresh docker stack.
+
+# Entry 2026-05-02p - Scaffold package-track directories and anchor the first shared build-target module
+
+Muc tieu:
+- Bien package-track da duoc phe duyet thanh cau truc thu muc that trong repo thay vi chi dung o muc tai lieu.
+- Tao cac scaffold boundaries cho `packages/core`, `packages/web`, `packages/opencore`, `packages/mobile`, `packages/vip-app` va `shared` ma khong dong vao legacy runtime.
+- Dam bao `module_tree_full.md` co the theo kip package track moi bang cach mo rong scanner sang `packages/` va `shared/`, dong thoi them `packages/web/src/config/buildTarget.js` lam code anchor dau tien cho shared frontend shell.
+
+Noi dung cap nhat chinh:
+- `packages/README.md`:
+  - Tao entrypoint mo ta package-track implementation lane va hard rules o cap thu muc goc.
+- `packages/core/**`:
+  - Tao scaffold cho `backend`, `opennews-main`, `infra`, `scripts` cung boundary README va `docker-compose.core.yml` placeholder.
+- `packages/web/**`:
+  - Tao scaffold cho shared frontend shell, `package.json`, `src` subtree READMEs va `src/config/buildTarget.js` de chot compile-time build-target anchor dau tien.
+- `packages/opencore/**`:
+  - Tao scaffold cho distribution, activation, docs-public va `docker-compose.opencore.yml` placeholder.
+- `packages/mobile/**`:
+  - Tao scaffold toi thieu va `package.json` placeholder cho mobile package track.
+- `packages/vip-app/**`:
+  - Tao scaffold cho `local-backend`, `orchestrator` va `docker-compose.vip.yml` placeholder.
+- `shared/**`:
+  - Tao SSOT scaffold cho `api-contracts` va `constants`.
+- `scripts/ops/generate_module_tree.py`:
+  - Mo rong `INCLUDE_DIRS` de quet them `packages` va `shared`.
+- `module_tree_full.md`:
+  - Regenerate sau scaffold; tong module tang len 514 va da ghi nhan `packages/web/src/config/buildTarget.js`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02p.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- packages/README.md (NEW - root package-track entrypoint and rules)
+- packages/core/README.md (NEW - boundary and ownership scaffold for core)
+- packages/core/backend/README.md (NEW - tracked placeholder for future package-track backend)
+- packages/core/docker-compose.core.yml (NEW - placeholder compose entry for core package track)
+- packages/core/infra/README.md (NEW - tracked placeholder for core infrastructure subtree)
+- packages/core/opennews-main/README.md (NEW - tracked placeholder for news/content subtree)
+- packages/core/scripts/README.md (NEW - tracked placeholder for core script subtree)
+- packages/mobile/README.md (NEW - boundary scaffold for mobile package track)
+- packages/mobile/package.json (NEW - placeholder manifest for mobile package track)
+- packages/opencore/README.md (NEW - boundary scaffold for OpenCore package track)
+- packages/opencore/activation/README.md (NEW - tracked placeholder for activation assets)
+- packages/opencore/distribution/README.md (NEW - tracked placeholder for self-host distribution assets)
+- packages/opencore/docker-compose.opencore.yml (NEW - placeholder compose entry for OpenCore package track)
+- packages/opencore/docs-public/README.md (NEW - public-safe documentation scaffold)
+- packages/vip-app/README.md (NEW - boundary scaffold for VIP local backend package)
+- packages/vip-app/docker-compose.vip.yml (NEW - placeholder compose entry for VIP package track)
+- packages/vip-app/local-backend/README.md (NEW - tracked placeholder for VIP local backend)
+- packages/vip-app/orchestrator/README.md (NEW - tracked placeholder for VIP orchestration lane)
+- packages/web/README.md (NEW - boundary scaffold for shared frontend shell)
+- packages/web/package.json (NEW - placeholder manifest for package-track web shell)
+- packages/web/src/README.md (NEW - shared frontend subtree guide)
+- packages/web/src/components/README.md (NEW - tracked placeholder for shared component subtree)
+- packages/web/src/config/README.md (NEW - tracked placeholder for build-target config subtree)
+- packages/web/src/config/buildTarget.js (NEW - initial compile-time build-target helper for package-track web shell)
+- packages/web/src/context/README.md (NEW - tracked placeholder for shared context subtree)
+- packages/web/src/features/community/README.md (NEW - tracked placeholder for community lane)
+- packages/web/src/features/saas/README.md (NEW - tracked placeholder for SaaS lane)
+- packages/web/src/features/vip/README.md (NEW - tracked placeholder for VIP lane)
+- packages/web/src/pages/README.md (NEW - tracked placeholder for route/page subtree)
+- shared/README.md (NEW - shared SSOT entrypoint)
+- shared/api-contracts/README.md (NEW - contract scaffold for cross-package APIs)
+- shared/constants/README.md (NEW - constants scaffold for cross-package usage)
+- scripts/ops/generate_module_tree.py (MODIFIED - include packages and shared in module tree scan)
+- module_tree_full.md (MODIFIED - regenerated after package-track scaffold and buildTarget anchor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `list_dir` confirmed `packages/`, `shared/`, `packages/core/`, `packages/web/src/`, and `packages/opencore/` scaffolds exist as expected.
+- PASSED: `get_errors` on scaffold READMEs, package manifests, compose placeholders, `scripts/ops/generate_module_tree.py`, `packages/web/src/config/buildTarget.js`, and `module_tree_full.md` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"` => regenerated `module_tree_full.md` successfully and total modules increased to 514.
+- PASSED: `grep_search` confirmed `module_tree_full.md` now contains `packages/web/src/config/buildTarget.js`.
+- PASSED: scaffold-only slice; khong co thay doi runtime/UI nen khong can refresh docker stack.
+
+# Entry 2026-05-02o - Add opencore as a first-class package in the package architecture
+
+Muc tieu:
+- Bo sung `packages/opencore` vao package architecture vi day la package funnel/distribution rat quan trong de thu hut user trai nghiem truoc khi nang cap len SaaS hoac VIP.
+- Dong bo lai bo docs kien truc de `opencore` duoc xem la package rieng, nhung van khong tro thanh backend truth rieng tach khoi `core`.
+
+Noi dung cap nhat chinh:
+- `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`:
+  - Nang package model tu 4 package ownership len 5 package ownership bang cach bo sung `opencore`.
+  - Them package responsibilities, plane ownership, workstream va exit criteria lien quan `opencore`.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Doi package strategy tu 4 packages sang 5 packages.
+  - Them `packages/opencore/` vao package list, boundary rules, roadmap va build/distribution matrix.
+- `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`:
+  - Them `packages/opencore/` vao target tree va mo ta package funnel/distribution cho Community/Self-host/Upgrade.
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Them `packages/opencore` vao execution plan, hard rules, phase build rieng va workstream mapping.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Doi cach dien giai `opencore` tu layer entitlement thuan tuy thanh package distribution/commercial, nhung giu `core` lam truth backend.
+- `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them `opencore` vao visual ownership model, build/deployment model, transition model va execution workstreams.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Lam ro `opencore` la package rieng cho distribution/funnel, nhung khong phai backend truth rieng.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Doi master index tu 4 packages sang 5 packages va cap nhat mo ta package `opencore`.
+- `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Lam ro `packages/opencore` chi package hoa community/self-host build, khong tao frontend source thu hai.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02o.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - add opencore as a first-class package and funnel/distribution plane)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - expand monorepo package strategy from 4 to 5 packages)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - add packages/opencore to target tree and package descriptions)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add packages/opencore to execution phases and workstreams)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - reinterpret opencore as package funnel while keeping core as truth backend)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add opencore to visual ownership and package-track diagrams)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - clarify opencore as a package, not a second backend truth)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - update current package count and opencore placement)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - clarify opencore packages the community build rather than owning a separate frontend)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, and `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02n - Approve packages-first parallel migration and align architecture docs
+
+Muc tieu:
+- Chot sequencing moi da duoc owner phe duyet: xay kien truc moi trong `packages/` song song voi legacy runtime cho toi khi du dieu kien cutover.
+- Dong bo lai tat ca architecture/roadmap docs de khong con xung dot giua `no-move-first` va `packages-first parallel migration`.
+- Tao execution plan chinh thuc cho package track de cac slice code sau nay co entry point ro rang.
+
+Noi dung cap nhat chinh:
+- `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`:
+  - Chot execution mode `packages-first parallel migration` trong SSOT tich hop.
+  - Them lien ket toi execution plan moi va them rule decommission legacy runtime sau cutover.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Doi sequencing tu `boundary-first, no-move-first` sang package track song song + cutover + decommission.
+  - Cap nhat phase plan, mapping table va conclusion theo huong moi.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Doi roadmap thanh 3 giai doan: package build song song, cutover, roi moi tinh den repo split.
+- `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`:
+  - Doi cach hieu tu folder target map thu dong thanh workspace plan cho package track.
+  - Lam ro legacy runtime la reference/fallback cho toi cutover.
+- `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Chuyen execution target cua shared frontend sang `packages/web`.
+  - Chot legacy `frontend/` chi la reference lane cho toi cutover.
+- `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`:
+  - Tao moi execution plan chinh thuc cho package track, parity gates, cutover va legacy decommission.
+- `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Bo sung visual transition model cho `packages-first parallel migration`.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Dua execution plan moi vao official index nhu sequencing doc chinh thuc.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02n.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - encode packages-first parallel migration in the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - re-sequence enterprise transformation around package track, cutover and decommission)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - adopt 3-phase roadmap with package build, cutover and optional repo split)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - reinterpret restructuring doc as workspace plan for package track)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - move shared frontend implementation target to packages/web)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (NEW - owner-approved execution plan for packages-first parallel migration)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add transition model visual for package track)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add execution plan to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, and `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02m - Normalize the visual architecture blueprint into a standards-aligned companion doc
+
+Muc tieu:
+- Chuyen `SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md` thanh tai lieu visual companion chuan hoa, de doc nhanh kien truc tong the nhung khong tranh quyen voi SSOT tich hop.
+- Sua cac diem lech quan trong ve authority model va API/auth mesh de tranh implementation drift.
+
+Noi dung cap nhat chinh:
+- `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Bo sung status, purpose va companion artifacts ro rang.
+  - Ha vai tro tu `SSOT` xuong `visual companion`.
+  - Them note ro rang rang PNG la conceptual visual asset, con canonical boundary semantics thuoc tai lieu tich hop.
+  - Sua section `API & Auth Mesh` cho khop voi integrated architecture: them tenant admin row, sua SaaS/VIP API families, va chot VIP browser phai di qua `vip-app` local APIs.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Dieu chinh `SYSTEM_ARCHITECTURE_BLUEPRINT_20260502` thanh visual companion trong official index, khong con nam o cung cap authority voi bo core SSOT.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02m.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - normalize the visual blueprint as a standards-aligned companion document)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - mark the visual blueprint as companion, not authoritative SSOT)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02l - Create visual system architecture blueprint
+
+Mục tiêu:
+- Hình ảnh hóa kiến trúc tổng thể tích hợp (Core, Web, VIP-App) theo yêu cầu của USER.
+- Cung cấp một bản blueprint trực quan bao gồm sơ đồ topology, data flow, database families và API mesh để làm SSOT cho các implementation plans sau này.
+
+Nội dung cập nhật chính:
+- `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Tạo mới blueprint trực quan với hình ảnh mockup 3D futuristic.
+  - Cung cấp các sơ đồ Mermaid chi tiết về Global Topology, Functional Ownership, Data Persistence, API & Auth Mesh, và Build Model.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Thêm blueprint trực quan vào Master Index (Phần 1 và Phần 1A) để dễ dàng truy cập.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02l.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sách tệp cập nhật:
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - comprehensive system architecture blueprint artifact)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add visual blueprint to architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: kiến trúc tổng thể VNInvest đã được hình ảnh hóa trực quan và khớp hoàn toàn với tài liệu tích hợp SSOT.
+- PASSED: doc-only slice; không cần build hay refresh runtime.
+
+# Entry 2026-05-02k - Add integrated architecture SSOT for core, web and vip-app
+
+Muc tieu:
+- Tao tai lieu kien truc tong the lam nen cho implementation plans chi tiet cua `web` va `vip-app` dua tren `core`.
+- Chot ro ownership, database planes, API families, auth model va workstreams thay vi de thong tin nam rai rac o nhieu doc rieng.
+
+Noi dung cap nhat chinh:
+- `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`:
+  - Tao SSOT tich hop cho `core`, `web`, `vip-app`.
+  - Chot topology, ownership matrix, functional decomposition, database architecture, API function families, end-to-end flows, hard boundaries va workstreams.
+- `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Them lien ket companion toi tai lieu kien truc tich hop moi de shared frontend blueprint duoc neo dung vao package architecture tong the.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them tai lieu kien truc tich hop moi vao official architecture index.
+  - Cap nhat numbering cua cac phan sau de giu tinh nhat quan.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02k.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (NEW - integrated architecture SSOT for core, web and vip-app)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - link shared frontend blueprint to the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add integrated architecture SSOT to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02j - Add unified web and VIP shared frontend blueprint
+
+Muc tieu:
+- Chuyen nhan dinh "web va vip-app giong nhau 95%" thanh blueprint co the dung de ra quyet dinh kien truc va sequencing.
+- Chot ro phuong an kha thi nhat: 1 frontend source trong `web`, `vip-app` chi so huu local backend/orchestrator, va khac biet duoc quan ly bang build target + capability + adapter seams.
+
+Noi dung cap nhat chinh:
+- `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`:
+  - Tao blueprint rieng cho hạng mục `web` / `vip-app` shared frontend.
+  - Chot lai boundary model, route taxonomy, adapter seam, folder target, hard rules, acceptance criteria va sequencing theo current repo.
+  - Canh chinh ky thuat: web va VIP build cung source, nhung VIP khong chi la web bo admin; VIP con co local internal admin surfaces.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them blueprint moi vao phan Tech Stack & Codebase de no tro thanh tai lieu tim den duoc trong official pack.
+  - Cap nhat numbering cua cac phan sau de index giu tinh nhat quan.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02j.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (NEW - unified frontend blueprint for SaaS web and VIP build variants)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add shared web/VIP frontend blueprint to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
 # Entry 2026-05-02i - Reconcile current worktree into a commit-ready snapshot
 
 Muc tieu:

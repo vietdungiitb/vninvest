@@ -1,7 +1,7 @@
 # CHIẾN LƯỢC REPOSITORY & LỘ TRÌNH THỰC THI B2B MCP
 
 **Date:** 2026-05-01  
-**Updated:** 2026-05-01 — Chuyển sang chiến lược "Monorepo with Boundaries"
+**Updated:** 2026-05-02 — Owner phê duyệt `packages-first parallel migration`
 
 Tài liệu này giải đáp vấn đề tổ chức Source Code và lộ trình phát triển để đạt được mô hình B2B Enterprise / VIP Client.
 
@@ -11,10 +11,10 @@ Tài liệu này giải đáp vấn đề tổ chức Source Code và lộ trìn
 
 ### Quyết định: Monorepo with Boundaries (Phân vùng thư mục)
 
-Thay vì tách ngay thành 4 repos riêng biệt (gây overhead quản lý cho đội dev nhỏ), chúng ta áp dụng chiến lược **"Monorepo with Boundaries"** — giữ nguyên 1 repo `vninvest`, tổ chức lại cấu trúc thư mục thành **4 Packages** có ranh giới rõ ràng. Khi đến thời điểm phù hợp (có khách VIP đầu tiên, team scale lên), mới tách thành repos riêng.
+Thay vì tách ngay thành 5 repos riêng biệt (gây overhead quản lý cho đội dev nhỏ), chúng ta áp dụng chiến lược **"Monorepo with Boundaries"** — giữ nguyên 1 repo `vninvest`, tổ chức lại cấu trúc thư mục thành **5 Packages** có ranh giới rõ ràng. Khi đến thời điểm phù hợp (có khách VIP đầu tiên, team scale lên), mới tách thành repos riêng.
 
 **Lý do:**
-1. **Đội dev nhỏ:** Overhead quản lý 4 repos + 4 CI pipelines + cross-repo dependencies lớn hơn lợi ích.
+1. **Đội dev nhỏ:** Overhead quản lý 5 repos + 5 CI pipelines + cross-repo dependencies lớn hơn lợi ích.
 2. **Chưa có khách VIP:** IP Protection chưa phải ưu tiên số 1 ở giai đoạn phát triển.
 3. **API contracts chưa ổn định:** Tách sớm gây breaking changes liên tục khi refactor.
 4. **Atomic commits:** Dev cần sửa API ở backend + frontend trong 1 commit.
@@ -22,7 +22,11 @@ Thay vì tách ngay thành 4 repos riêng biệt (gây overhead quản lý cho �
 Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mujoco%20Projects/vninvest/docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md).
 
 > [!IMPORTANT]
-> Với code hiện tại, **không bắt đầu bằng việc move `backend/` và `frontend/` sang `packages/` ngay lập tức**. Repo chưa có `packages/`, chưa có `shared/api-contracts/`, chưa có `buildTarget.js`, và docker/runtime/test commands hiện vẫn neo trực tiếp vào paths cũ. Theo [EXECUTION_REBASELINE](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md), Phase đầu phải là **boundary-first, no-move-first**.
+> Với quyết định Owner ngày 2026-05-02, `packages/` **được bắt đầu ngay** nhưng theo mô hình **implementation track song song**. Điều này có nghĩa là:
+> - **không** bulk-move `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` như một PR rename lớn,
+> - kiến trúc mới được xây trong `packages/` và `shared/`,
+> - legacy runtime tiếp tục chạy như reference/fallback lane cho tới cutover,
+> - sau khi packages đạt parity và vận hành ổn định, legacy runtime sẽ bị loại bỏ.
 >
 > Trước mọi quyết định package split hay move vật lý liên quan `core`, phải đọc bộ `core` docs hiện hành:
 > - [ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md)
@@ -32,7 +36,7 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 > - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
 > - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
 
-### 4 Packages (Phân vùng logic)
+### 5 Packages (Phân vùng logic)
 
 #### Package `packages/core/` → Tương lai sẽ thành repo `vninvest-core`
 - **Chứa:** Backend Django, Data Ops, SSOT, cấu hình Kong, ClickHouse, `opennews-main`, `infra`.
@@ -43,6 +47,11 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 - **Chứa:** Frontend ReactJS — **DUY NHẤT 1 source code** cho tất cả biến thể (Community, SaaS, VIP).
 - **Vai trò:** Dùng biến `REACT_APP_BUILD_TARGET` để build ra 3 bản khác nhau. Xem chi tiết tại [mục Build Variants](#4-chiến-lược-build-variants-1-source--3-bản-build).
 - **Bao gồm cả:** Central Operator Admin và Tenant Admin Console, vì đây đều là human-facing UI shells tiêu thụ APIs từ `core`.
+
+#### Package `packages/opencore/` → Tương lai sẽ thành repo `vninvest-opencore`
+- **Chứa:** Community/self-host distribution bundle, install scripts, compose overlays, activation/upgrade funnel assets, public-safe docs và packaging metadata.
+- **Vai trò:** Funnel thu hút user trai nghiem Community/Pro, sau do nang cap len SaaS hoac VIP.
+- **KHÔNG chứa:** Frontend source rieng, entitlement/quota/billing truth rieng, market/signal backend rieng.
 
 #### Package `packages/mobile/` → Tương lai sẽ thành repo `vninvest-mobile`
 - **Chứa:** Mobile app hiện hành.
@@ -59,61 +68,73 @@ Chi tiết ánh xạ thư mục: [CODEBASE_RESTRUCTURING_PROPOSAL](file:///c:/Mu
 > [!CAUTION]
 > Các quy tắc sau phải được tuân thủ nghiêm ngặt. Vi phạm boundary = Code Review REJECT.
 
-1. `packages/core/` **KHÔNG** import trực tiếp từ `packages/web/` hay `packages/vip-app/`.
+1. `packages/core/` **KHÔNG** import trực tiếp từ `packages/web/`, `packages/opencore/` hay `packages/vip-app/`.
 2. `packages/web/` giao tiếp với `packages/core/` **CHỈ** qua REST API (thông qua `shared/api-contracts/`).
-3. `packages/vip-app/` giao tiếp với `packages/core/` qua versioned partner/global APIs và MCP/data tools phù hợp theo use case; không import trực tiếp code từ `core`.
-4. `packages/mobile/` giao tiếp với `packages/core/` **CHỈ** qua REST API.
-5. Code dùng chung (TypeScript interfaces, constants) phải nằm trong thư mục `shared/`.
-6. Mọi human-facing admin UI pages đều thuộc `packages/web/`; `packages/core/` chỉ sở hữu APIs và semantics phía server.
+3. `packages/opencore/` chỉ được package hoa build artifacts tu `packages/web` va tieu thu commercial/user APIs tu `packages/core`; khong fork frontend source va khong import core internals.
+4. `packages/vip-app/` giao tiếp với `packages/core/` qua versioned partner/global APIs và MCP/data tools phù hợp theo use case; không import trực tiếp code từ `core`.
+5. `packages/mobile/` giao tiếp với `packages/core/` **CHỈ** qua REST API.
+6. Code dùng chung (TypeScript interfaces, constants) phải nằm trong thư mục `shared/`.
+7. Mọi human-facing source pages vẫn thuộc `packages/web/`; `packages/opencore/` chỉ sở hữu distribution/activation/doc assets cho lane OpenCore.
 
 ---
 
-## 2. Lộ Trình Thực Thi (Execution Roadmap — 2 Giai đoạn)
+## 2. Lộ Trình Thực Thi (Execution Roadmap — 3 Giai đoạn)
 
-### Giai đoạn A: Phát triển trong Monorepo (DEV PHASE)
-*Áp dụng ngay — Dành cho toàn bộ quá trình phát triển feature pack.*
+### Giai đoạn A: Xây kiến trúc mới trong `packages/` song song với legacy (DEV PHASE)
+*Áp dụng ngay — Đây là execution mode chính thức đã được Owner chấp thuận.*
 
-**Bước A0: Cố định boundaries trên cấu trúc hiện tại (BẮT BUỘC trước A1)**
-1. Giữ `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` là canonical paths của runtime hiện tại.
-2. Tạo `shared/api-contracts/` và `shared/constants/` như boundary artifact đầu tiên, **không** move runtime code trong cùng bước.
-3. Thêm `buildTarget.js` trực tiếp trong `frontend/src/` hiện tại để chứng minh build variants hoạt động trước khi move sang `packages/web/`.
-4. Chuẩn hóa external/core contracts, PAT/quota semantics, và ownership rules trước khi đụng tới folder layout lớn.
+**Bước A0: Đóng băng mở rộng kiến trúc trên legacy runtime**
+1. Giữ `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` như runtime đang phục vụ, reference semantics và rollback lane.
+2. Chỉ cho phép hotfix hoặc parity fix trên legacy path; mọi hạng mục kiến trúc mới đi vào `packages/` và `shared/`.
+3. Chuẩn hóa contract inventory, parity gates, cutover evidence và decommission rules trước khi scaffold lớn.
 
-**Bước A1: Tổ chức lại thư mục vật lý (Restructure có điều kiện)**
-> Chỉ bắt đầu sau khi A0 hoàn tất và A2/A3 đã chứng minh contracts, build flags và runtime paths ổn định.
+**Bước A1: Tạo `packages/` và `shared/` làm implementation track mới**
+1. Tạo `packages/core/`, `packages/web/`, `packages/opencore/`, `packages/mobile/`, `packages/vip-app/`, `shared/api-contracts/`, `shared/constants/`.
+2. Bootstrap workspace config, manifests và compose/dev helpers để package track có thể phát triển độc lập.
+3. Tuyệt đối không bulk-move các folder legacy sang `packages/` trong cùng bước này.
 
-1. Tạo cấu trúc `packages/` và `shared/` trong repo hiện tại.
-2. Di chuyển `backend/`, `opennews-main/`, `infra/`, `scripts/` vào `packages/core/`.
-3. Di chuyển `frontend/` vào `packages/web/`.
-4. Di chuyển `mobile-app/` vào `packages/mobile/`.
-5. Tạo `packages/vip-app/` (thư mục trống ban đầu, code khi làm đến Phase VIP).
-6. Cập nhật tất cả đường dẫn trong `docker-compose.dev.yml`, CI config, IDE workspace.
+**Bước A2: Dựng `packages/core` trước**
+1. Thực thi tenant / service account / PAT / quota / billing / capability snapshot trong `packages/core`.
+2. Dựng partner APIs, symbol snapshot, session facts, AI runtime contracts và control-plane/commercial-plane read models.
+3. Tiếp tục ưu tiên Redis/PostgreSQL/Channels/Streams-first; Kong/ClickHouse chỉ đi sau khi trigger rõ ràng.
 
-**Bước A2: Chuẩn bị "Máy Mẹ" (Core MCP Preparation)**
-1. **Database:** Code thêm bảng `Tenant` và `API_Keys` vào Django Backend, ưu tiên tái sử dụng license/quota primitives hiện có của OpenCore cho entitlement/accounting.
-2. **MCP API:** Viết Endpoint API bọc `global_signal_universe_policy` thành JSON Schema.
-3. **Gateway:** Setup PAT + DRF throttling + Redis-backed quota trước; Kong API Gateway chỉ vào sau khi external traffic đủ lớn.
-4. *(Hệ thống Web SaaS hiện tại vẫn chạy bình thường, không bị ảnh hưởng.)*
+**Bước A3: Dựng `packages/web`, `packages/opencore` và `packages/vip-app`**
+1. Dựng shared frontend shell trong `packages/web/src/` với `BUILD_TARGET`, route catalog, nav catalog và adapter seams.
+2. Dựng `packages/opencore/` như package distribution/commercial funnel cho community/self-host lane, activation va upgrade path.
+3. Dựng `packages/vip-app/` như thin local backend + orchestrator; VIP browser chỉ đi qua local APIs.
+4. Giữ rule bất biến: không clone frontend cho VIP hoac OpenCore, không cho browser VIP cầm machine PAT.
 
-**Bước A3: Phát triển VIP Features (Build Variants, không clone)**
-1. Thêm `config/buildTarget.js` vào `frontend/src/` hiện tại trước; khi A1 hoàn tất mới đổi path sang `packages/web/src/`.
-2. Viết 5 VIP-only pages (`AIConfigBYOK`, `SubUserManagement`, `WhiteLabelSettings`, `UsageAnalytics`, `AIPromptStudio`) trực tiếp trong frontend source hiện tại và gate bằng `SHOW_VIP_PAGES`.
-3. Wrap routes trong `App.jsx` hiện tại với flags từ `buildTarget.js` (xem Build Variants section).
-4. Tạo `packages/vip-app/orchestrator/` — Multi-Agent Debate logic (FastAPI).
-5. Tất cả giao tiếp với core phải đi qua API (không import trực tiếp).
+**Bước A4: Parity verification và pilot**
+1. So sánh payload, auth flow, capability gating, route behavior và UX flows giữa legacy và package track.
+2. Chạy focused suites và build commands trên package track.
+3. Chỉ khi parity đạt yêu cầu mới chuyển sang cutover.
 
-### Giai đoạn B: Tách Repo khi Production-Ready (DEPLOY PHASE)
-*Chỉ thực hiện khi đáp ứng ĐỦ CẢ 3 điều kiện trigger.*
+### Giai đoạn B: Cutover hoàn toàn sang `packages/` và loại bỏ legacy runtime (CUTOVER PHASE)
+*Chỉ thực hiện khi đáp ứng ĐỦ CẢ 4 điều kiện trigger.*
+
+**Trigger Conditions (4/4 phải đạt):**
+1. ✅ API contracts giữa `core` ↔ `web` ↔ `opencore` ↔ `vip-app` đã ổn định.
+2. ✅ Focused validation suites và build của package track đã pass ổn định.
+3. ✅ Compose/CI/workspace có thể chạy trực tiếp từ `packages/*`.
+4. ✅ Có runbook rollback và evidence parity đủ để cắt chuyển an toàn.
+
+**Khi cutover:**
+1. Chuyển `docker-compose`, CI, workspace và deployment sang `packages/*`.
+2. Đánh dấu `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` là read-only fallback trong một giai đoạn ổn định ngắn.
+3. Khi package track vận hành ổn định, xóa legacy runtime paths, scripts và docs references bám đường cũ.
+
+### Giai đoạn C: Tách Repo khi Production-Ready (DEPLOY PHASE)
+*Chỉ cân nhắc sau khi cutover sang `packages` đã ổn định.*
 
 **Trigger Conditions (3/3 phải đạt):**
-1. ✅ API contracts giữa core ↔ web ↔ vip-app đã ổn định (không breaking change > 2 tuần).
+1. ✅ Package boundaries và API contracts đã ổn định sau cutover.
 2. ✅ Có ít nhất 1 khách VIP thực tế cần nhận bản deploy riêng.
 3. ✅ Team đã vượt 5 dev → cần independent deployment cadence.
 
 **Khi tách:**
 1. Dùng `git filter-repo` hoặc `git subtree split` để tách mỗi package thành repo riêng, giữ nguyên commit history.
 2. `shared/` trở thành npm package `@vninvest/contracts` và pip package `vninvest-shared`.
-3. CI/CD chuyển từ 1 pipeline → 4 pipelines riêng.
+3. CI/CD chuyển từ 1 pipeline → 5 pipelines riêng.
 4. Đóng gói `vninvest-vip-app` thành Docker Images cho khách VIP:
    ```yaml
    services:
@@ -158,7 +179,7 @@ Biến môi trường quyết định bản build nào được tạo. React tre
 
 | Lệnh | Output | Phân phối |
 |------|--------|----------|
-| `REACT_APP_BUILD_TARGET=community npm run build` | `build-community/` | Docker Community (OpenCore) |
+| `REACT_APP_BUILD_TARGET=community npm run build` | `build-community/` | `packages/opencore` self-host/community distribution |
 | `REACT_APP_BUILD_TARGET=saas npm run build` | `build-saas/` | Server vninvest.vn |
 | `REACT_APP_BUILD_TARGET=vip npm run build` | `build-vip/` | Docker VIP B2B |
 
@@ -175,4 +196,4 @@ Chi tiết tham chiếu: [OPEN_CORE_STRATEGY](file:///c:/Mujoco%20Projects/vninv
 ## Status
 
 > [!NOTE]
-> **Đã được Owner phê duyệt ngày 2026-05-01.** Chiến lược Monorepo with Boundaries + Build Variants được chọn làm phương án chính thức.
+> **Đã được Owner phê duyệt cập nhật ngày 2026-05-02.** Chiến lược chính thức là Monorepo with Boundaries + Build Variants + `packages-first parallel migration` cho tới khi cutover hoàn tất.

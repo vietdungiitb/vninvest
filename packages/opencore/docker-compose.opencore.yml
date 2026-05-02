@@ -1,0 +1,6 @@
+name: vninvest-opencore-package
+
+services: {}
+
+# Scaffold only.
+# Future slices will attach self-host overlays and activation plumbing here.

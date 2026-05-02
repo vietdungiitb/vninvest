@@ -1,3 +1,264 @@
+# ✅ AUDIT FILE LIST (2026-05-02w)
+- packages/web/src/context/authReact.js (NEW - React provider/hook wrapper for the package-track auth runtime)
+- packages/web/package.json (MODIFIED - add auth-react export and React dependency declarations)
+- packages/web/package-lock.json (NEW - local package lockfile after installing React dependencies for shell validation)
+- packages/web/src/index.js (MODIFIED - export React auth provider/hook surface)
+- packages/web/src/context/README.md (MODIFIED - document the current context foundation layout)
+- packages/web/scripts/check-shell.mjs (MODIFIED - add and fix React-focused shell smoke)
+- module_tree_full.md (MODIFIED - regenerated after the React auth shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out React shell slice and queue the next VIP persistence lane)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02w)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `npm run check:shell` trong `packages/web` sau khi React dependency va SSR assertions duoc chot.
+- PASSED: React provider smoke voi core stub song tra ve `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `buildTarget=saas`.
+- PASSED: `module_tree_full.md` regenerated successfully with 535 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02v)
+- packages/vip-app/local-backend/api_stub.py (NEW - bootstrap-ready VIP local backend stub)
+- packages/vip-app/docker-compose.vip.yml (MODIFIED - runnable compose artifact for vip-local-api)
+- packages/vip-app/local-backend/README.md (MODIFIED - focused runbook for stub bootstrap validation)
+- module_tree_full.md (MODIFIED - regenerated after the VIP stub slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out VIP runtime slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02v)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: VIP local stub served bootstrap endpoints on `:8200`.
+- PASSED: auth runtime smoke through `vipAppAdapter` returned `status=ready`, `ready=true`, `authenticated=true`, `plan=vip`, `username=vip-local-admin`, `vipShell=true`, `abilityCount=7`, `buildTarget=vip`.
+- PASSED: `docker compose -f packages/vip-app/docker-compose.vip.yml up -d` started `vip-local-api` successfully after fixing YAML indentation.
+- PASSED: `module_tree_full.md` regenerated successfully with 534 modules.
+
+# ✅ AUDIT FILE LIST (2026-05-02u)
+- packages/web/src/context/authRuntime.js (NEW - runtime auth state manager for package-track web bootstrap/auth flows)
+- packages/web/src/context/bootstrapClient.js (MODIFIED - align legacy auth bridge shape with runtime-ready identity flags)
+- packages/web/src/index.js (MODIFIED - export auth runtime helpers)
+- packages/web/package.json (MODIFIED - add auth-runtime export path)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate auth runtime state derivation and refresh flow)
+- module_tree_full.md (MODIFIED - regenerated after the web auth runtime slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync runtime queue state)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02u)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: auth runtime smoke against `http://127.0.0.1:8100/core/v1` returned `status=ready`, `ready=true`, `authenticated=true`, `plan=pro`, `username=package-admin`, `staff=true`, `abilityCount=6`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (533 modules).
+
+# ✅ AUDIT FILE LIST (2026-05-02t)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add live control-surface and handoff rules for package-track multi-session delivery)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (MODIFIED - define taskboard authority, one-active-slice rule and mandatory handoff packet)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - extend close-out step with live execution state and handoff packet requirements)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - sync completed tasks, add continuity guard and open next runtime queue with `WEB-07` active)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (MODIFIED - add continuity and handoff governance requirements)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (MODIFIED - add resume/claim workflow and handoff completeness audit gates)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (MODIFIED - add taskboard sync and handoff packet fields)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02t)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on the edited planning/audit docs => no errors found.
+- PASSED: docs-only continuity slice; khong co runtime/package source nao thay doi, nen khong can module tree refresh hay docker restart.
+
+# ✅ AUDIT FILE LIST (2026-05-02s)
+- packages/web/src/context/bootstrapClient.js (NEW - shell bootstrap client and legacy auth bridge for package-track web)
+- packages/web/src/index.js (MODIFIED - export bootstrap helpers from the shell public surface)
+- packages/web/package.json (MODIFIED - add bootstrap-client package export)
+- module_tree_full.md (MODIFIED - regenerated after the web bootstrap client slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02s)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `loadShellBootstrap()` smoke check against `http://127.0.0.1:8100/core/v1` returned adapter `core`, service `core-api`, target `saas`, plan `pro`, username `package-admin`, and ability count `6`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (532 modules).
+- PASSED: package-track shell slice only; khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02r)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add adapter-compatible health, capability bootstrap and session payload endpoints for the package-track core stub)
+- module_tree_full.md (MODIFIED - regenerated after the core bootstrap endpoint slice)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02r)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `packages/core/backend/src/vninvest_core/api_stub.py` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled updated `vninvest_core.api_stub` successfully.
+- PASSED: Python smoke snippet imported `ROUTE_HANDLERS` from `vninvest_core.api_stub` and confirmed the capability, session and health payloads expose the expected top-level keys.
+- PASSED: HTTP probe on `/core/v1/health`, `/core/v1/access/capabilities`, and `/core/v1/session/me` returned the expected service identity and bootstrap payload summary.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: package-track stub slice only; khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02q)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_MASTER_20260502.md (NEW - master handoff for the package foundation baseline slice)
+- docs/IMPLEMENTATION_PLAN_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - ordered execution plan for shared contracts, core baseline, web shell and governance close-out)
+- docs/TECH_SPEC_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - technical spec for contracts, package manifests, adapters and compose stubs)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (NEW - execution taskboard for architecture, shared, core, web, QA and ops tasks)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_TRACEABILITY_MATRIX_20260502.md (NEW - requirement to task and evidence mapping for the baseline)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_SELF_AUDIT_AND_TEST_PROTOCOL_20260502.md (NEW - focused audit and validation protocol for the slice)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_EXECUTION_EVIDENCE_TEMPLATE_20260502.md (NEW - execution evidence template for future package-track slices)
+- docs/PACKAGE_TRACK_FOUNDATION_BASELINE_HANDOFF_AUDIT_REPORT_20260502.md (NEW - audit verdict for the handoff pack)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add foundation baseline phase to the package migration plan)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - index the new package foundation handoff pack)
+- packages/core/README.md (MODIFIED - describe real core package boundary and manifest)
+- packages/core/backend/README.md (MODIFIED - document the new vninvest_core baseline modules)
+- packages/core/docker-compose.core.yml (MODIFIED - replace placeholder with core service topology stub)
+- packages/core/pyproject.toml (NEW - Python package manifest for vninvest-core)
+- packages/core/backend/src/vninvest_core/__init__.py (NEW - export package manifest helper)
+- packages/core/backend/src/vninvest_core/app_manifest.py (NEW - SSOT manifest for core service names and contract namespaces)
+- packages/core/backend/src/vninvest_core/api_stub.py (NEW - HTTP health and manifest stub for core-api)
+- packages/core/backend/src/vninvest_core/worker_stub.py (NEW - heartbeat worker stub for core-worker)
+- packages/core/backend/src/vninvest_core/beat_stub.py (NEW - scheduler heartbeat stub for core-beat)
+- packages/core/backend/src/vninvest_core/contracts/__init__.py (NEW - core contract namespace registry)
+- packages/core/backend/src/vninvest_core/contracts/access/__init__.py (NEW - access namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/market/__init__.py (NEW - market namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/operator/__init__.py (NEW - operator namespace marker)
+- packages/core/backend/src/vninvest_core/contracts/partner/__init__.py (NEW - partner namespace marker)
+- shared/api-contracts/README.md (MODIFIED - register initial shared package-track contracts)
+- shared/api-contracts/build-target.contract.json (NEW - shared build target contract)
+- shared/api-contracts/capability-bootstrap.contract.json (NEW - shared capability bootstrap contract)
+- shared/api-contracts/session-payload.contract.json (NEW - shared session payload contract)
+- packages/web/package.json (MODIFIED - promote the web package to an ESM shell with exports and shell validation)
+- packages/web/src/README.md (MODIFIED - document the shared shell baseline artifacts)
+- packages/web/src/app/routeCatalog.js (NEW - canonical route catalog for build-target-aware package shell)
+- packages/web/src/app/navigationCatalog.js (NEW - canonical navigation group catalog for the package shell)
+- packages/web/src/adapters/core/coreAdapter.js (NEW - core API adapter seam for package-track web)
+- packages/web/src/adapters/core/index.js (NEW - core adapter export surface)
+- packages/web/src/adapters/vip-app/vipAppAdapter.js (NEW - vip-app local adapter seam for package-track web)
+- packages/web/src/adapters/vip-app/index.js (NEW - vip-app adapter export surface)
+- packages/web/src/index.js (NEW - package shell public exports and adapter registry)
+- packages/web/scripts/check-shell.mjs (NEW - focused shell consistency validation for packages/web)
+- module_tree_full.md (MODIFIED - regenerated after package foundation docs and baseline source files were added)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02q)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on the new package foundation doc pack and updated index docs => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" -m compileall "packages/core/backend/src"` => compiled `vninvest_core` package successfully.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed`.
+- PASSED: `get_errors` on the new `packages/web` shell files and `shared/api-contracts/*.json` => no errors found.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"; Pop-Location` => regenerated `module_tree_full.md` successfully (531 modules).
+- PASSED: package-track baseline slice only; khong co runtime legacy/front-end nao duoc wire vao compose dev hien tai nen khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02p)
+- packages/README.md (NEW - root package-track entrypoint and rules)
+- packages/core/README.md (NEW - boundary and ownership scaffold for core)
+- packages/core/backend/README.md (NEW - tracked placeholder for future package-track backend)
+- packages/core/docker-compose.core.yml (NEW - placeholder compose entry for core package track)
+- packages/core/infra/README.md (NEW - tracked placeholder for core infrastructure subtree)
+- packages/core/opennews-main/README.md (NEW - tracked placeholder for news/content subtree)
+- packages/core/scripts/README.md (NEW - tracked placeholder for core script subtree)
+- packages/mobile/README.md (NEW - boundary scaffold for mobile package track)
+- packages/mobile/package.json (NEW - placeholder manifest for mobile package track)
+- packages/opencore/README.md (NEW - boundary scaffold for OpenCore package track)
+- packages/opencore/activation/README.md (NEW - tracked placeholder for activation assets)
+- packages/opencore/distribution/README.md (NEW - tracked placeholder for self-host distribution assets)
+- packages/opencore/docker-compose.opencore.yml (NEW - placeholder compose entry for OpenCore package track)
+- packages/opencore/docs-public/README.md (NEW - public-safe documentation scaffold)
+- packages/vip-app/README.md (NEW - boundary scaffold for VIP local backend package)
+- packages/vip-app/docker-compose.vip.yml (NEW - placeholder compose entry for VIP package track)
+- packages/vip-app/local-backend/README.md (NEW - tracked placeholder for VIP local backend)
+- packages/vip-app/orchestrator/README.md (NEW - tracked placeholder for VIP orchestration lane)
+- packages/web/README.md (NEW - boundary scaffold for shared frontend shell)
+- packages/web/package.json (NEW - placeholder manifest for package-track web shell)
+- packages/web/src/README.md (NEW - shared frontend subtree guide)
+- packages/web/src/components/README.md (NEW - tracked placeholder for shared component subtree)
+- packages/web/src/config/README.md (NEW - tracked placeholder for build-target config subtree)
+- packages/web/src/config/buildTarget.js (NEW - initial compile-time build-target helper for package-track web shell)
+- packages/web/src/context/README.md (NEW - tracked placeholder for shared context subtree)
+- packages/web/src/features/community/README.md (NEW - tracked placeholder for community lane)
+- packages/web/src/features/saas/README.md (NEW - tracked placeholder for SaaS lane)
+- packages/web/src/features/vip/README.md (NEW - tracked placeholder for VIP lane)
+- packages/web/src/pages/README.md (NEW - tracked placeholder for route/page subtree)
+- shared/README.md (NEW - shared SSOT entrypoint)
+- shared/api-contracts/README.md (NEW - contract scaffold for cross-package APIs)
+- shared/constants/README.md (NEW - constants scaffold for cross-package usage)
+- scripts/ops/generate_module_tree.py (MODIFIED - include packages and shared in module tree scan)
+- module_tree_full.md (MODIFIED - regenerated after package-track scaffold and buildTarget anchor)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02p)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `list_dir` confirmed `packages/`, `shared/`, `packages/core/`, `packages/web/src/`, and `packages/opencore/` scaffolds exist as expected.
+- PASSED: `get_errors` on scaffold READMEs, package manifests, compose placeholders, `scripts/ops/generate_module_tree.py`, `packages/web/src/config/buildTarget.js`, and `module_tree_full.md` => no errors found.
+- PASSED: `& "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" "scripts/ops/generate_module_tree.py"` => regenerated `module_tree_full.md` successfully and total modules increased to 514.
+- PASSED: `grep_search` confirmed `module_tree_full.md` now contains `packages/web/src/config/buildTarget.js`.
+- PASSED: scaffold-only slice; khong co thay doi runtime/UI nen khong can refresh docker stack.
+
+# ✅ AUDIT FILE LIST (2026-05-02o)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - add opencore as a first-class package and funnel/distribution plane)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - expand monorepo package strategy from 4 to 5 packages)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - add packages/opencore to target tree and package descriptions)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (MODIFIED - add packages/opencore to execution phases and workstreams)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - reinterpret opencore as package funnel while keeping core as truth backend)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add opencore to visual ownership and package-track diagrams)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - clarify opencore as a package, not a second backend truth)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - update current package count and opencore placement)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - clarify opencore packages the community build rather than owning a separate frontend)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02o)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, and `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02n)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (MODIFIED - encode packages-first parallel migration in the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - re-sequence enterprise transformation around package track, cutover and decommission)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - adopt 3-phase roadmap with package build, cutover and optional repo split)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - reinterpret restructuring doc as workspace plan for package track)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - move shared frontend implementation target to packages/web)
+- docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md (NEW - owner-approved execution plan for packages-first parallel migration)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add transition model visual for package track)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add execution plan to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02n)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/PACKAGES_PARALLEL_MIGRATION_EXECUTION_PLAN_20260502.md`, `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, and `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02m)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - normalize the visual blueprint as a standards-aligned companion document)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - mark the visual blueprint as companion, not authoritative SSOT)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02m)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02l)
+- docs/SYSTEM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - comprehensive system architecture blueprint artifact)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add visual blueprint to architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02l)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: kiến trúc tổng thể VNInvest (Core, Web, VIP-App) đã được hình ảnh hóa và chuẩn hóa SSOT.
+- PASSED: doc-only slice; không cần build hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02k)
+- docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md (NEW - integrated architecture SSOT for core, web and vip-app)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (MODIFIED - link shared frontend blueprint to the integrated architecture SSOT)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add integrated architecture SSOT to official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02k)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/CORE_WEB_VIP_APP_INTEGRATED_ARCHITECTURE_20260502.md`, `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
+# ✅ AUDIT FILE LIST (2026-05-02j)
+- docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md (NEW - unified frontend blueprint for shared SaaS web and VIP build variants)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add the shared web/VIP frontend blueprint to the official architecture index)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02j)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` on `docs/WEB_VIP_APP_SHARED_FRONTEND_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, and `PROGRESS_DASHBOARD.md` => no errors found.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
+
 # ✅ AUDIT FILE LIST (2026-05-02i)
 - frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - current worktree keeps Whale Advisory shell and grid layout adjustments that must be included in the commit bundle)
 - docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - align target-state database segregation guidance with current core doc pack)

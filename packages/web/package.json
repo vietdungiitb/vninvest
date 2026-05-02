@@ -1,0 +1,29 @@
+{
+  "name": "@vninvest/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "VNInvest shared frontend package-track shell baseline",
+  "scripts": {
+    "check:shell": "node ./scripts/check-shell.mjs"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./build-target": "./src/config/buildTarget.js",
+    "./route-catalog": "./src/app/routeCatalog.js",
+    "./navigation-catalog": "./src/app/navigationCatalog.js",
+    "./bootstrap-client": "./src/context/bootstrapClient.js",
+    "./auth-runtime": "./src/context/authRuntime.js",
+    "./auth-react": "./src/context/authReact.js",
+    "./adapters/core": "./src/adapters/core/index.js",
+    "./adapters/vip-app": "./src/adapters/vip-app/index.js"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1 || ^19.0.0",
+    "react-dom": "^18.3.1 || ^19.0.0"
+  },
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

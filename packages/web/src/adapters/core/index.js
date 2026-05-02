@@ -1,0 +1,1 @@
+export { coreAdapter } from "./coreAdapter.js";

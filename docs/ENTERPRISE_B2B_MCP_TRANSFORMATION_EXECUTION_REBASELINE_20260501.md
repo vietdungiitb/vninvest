@@ -1,6 +1,7 @@
 # EXECUTION REBASELINE: ENTERPRISE B2B MCP TRANSFORMATION
 
 **Date:** 2026-05-01  
+**Updated:** 2026-05-02 - Owner approved packages-first parallel migration  
 **Status:** Current-code aligned execution override  
 **Applies to:** Toàn bộ bộ tài liệu enterprise transformation ngày 2026-05-01
 
@@ -55,7 +56,7 @@ Repo hiện đã có khối entitlement và quota user-level:
 - `frontend/src/components/ProtectedRoute.jsx`
 - `frontend/src/components/Can.jsx`
 
-**Kết luận:** lớp `opencore` không nên được thiết kế như một greenfield subsystem riêng ngay từ đầu. Nên xem đây là **hạt giống entitlement layer** để tiến hóa sang tenant quota, commercial packaging, build gating và partner access.
+**Kết luận:** `opencore` khong nen duoc thiet ke nhu mot greenfield backend truth rieng. Huong dung la xem day la **hat giong entitlement/commercial lane** de tien hoa thanh `packages/opencore` - mot package distribution va upgrade funnel dung lai primitives cua `core`.
 
 ### 2.4 Nền móng AI runtime đã có sẵn
 
@@ -73,7 +74,7 @@ Repo hiện đã có một trục AI configuration thật sự đang chạy:
 
 ## 3. Các quyết định rebaseline bắt buộc
 
-### 3.1 Không di chuyển thư mục vật lý ở Phase đầu
+### 3.1 Không move legacy folders trực tiếp; `packages/` là track song song
 
 Trong code hiện tại, move `backend/` sang `packages/core/` và `frontend/` sang `packages/web/` ngay lập tức sẽ tạo rủi ro lớn cho:
 
@@ -85,9 +86,10 @@ Trong code hiện tại, move `backend/` sang `packages/core/` và `frontend/` s
 
 **Rebaseline:**
 
-- Phase đầu chỉ làm **boundary-first**, không làm **folder-move-first**.
-- `packages/` là **đích đến vật lý**, không phải bước khởi đầu.
-- PR đầu tiên của transformation phải tạo **contracts, flags, ownership rules, API seams**, không phải rename hàng trăm đường dẫn.
+- Không rename hoặc bulk-move các thư mục legacy làm bước khởi đầu.
+- Tạo `packages/` và `shared/` sớm để làm **implementation track mới** theo mô hình song song.
+- `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` tiếp tục giữ runtime đang chạy, reference semantics và rollback lane cho tới cutover.
+- Chỉ cutover khi `packages` đã đạt parity, validation gates và readiness rõ ràng; sau đó mới decommission legacy runtime.
 
 ### 3.2 Giữ Redis-first async stack trước khi nghĩ tới RabbitMQ
 
@@ -145,16 +147,21 @@ Kong là công cụ đúng khi external partner traffic đủ lớn. Nhưng ở 
 - Bắt đầu bằng Django + DRF throttling + Redis-backed quota + NGINX edge.
 - Chỉ đưa Kong vào sau khi partner API thực sự hình thành và route contract đã đóng.
 
-### 3.6 OpenCore là lớp entitlement trước, package riêng sau
+### 3.6 OpenCore là package distribution/commercial, nhưng truth vẫn nằm ở `core`
 
 `opencore` hiện nên được hiểu là:
 
 - plan/quota/billing primitives,
 - feature boundary enforcement,
 - packaging rules,
-- community/self-host lane policy.
+- community/self-host lane policy,
+- distribution/activation/upgrade funnel package.
 
-Nó **chưa phải** một deployable riêng ở phase đầu.
+`opencore` co the va nen tro thanh mot package rieng trong package track, nhung:
+
+- khong duoc tu giu entitlement/quota/billing truth rieng,
+- khong duoc fork frontend source khoi `web`,
+- khong duoc tro thanh backend platform thu hai.
 
 ### 3.7 VIP app nên bắt đầu bằng “thin local control plane”
 
@@ -174,93 +181,91 @@ Sub-user management, branding suite, cost analytics chi tiết là phase sau khi
 
 ## 4. Kiến trúc chuyển đổi khả thi theo phase
 
-### Phase 0 — Boundary-first trên cấu trúc hiện tại
+### Phase 0 — Governance freeze và package boundaries
 
-**Mục tiêu:** Chuẩn hóa ranh giới logic mà không di chuyển thư mục.
+**Mục tiêu:** Chốt mô hình `packages-first parallel migration` mà không phá runtime đang chạy.
 
 **Làm ngay:**
 
-- Giữ `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/` là canonical paths.
-- Tạo `shared/api-contracts/` và `shared/constants/` ở cấp root nếu cần dùng chung contracts, nhưng không move runtime code.
-- Xác định 4 boundary logic trên code hiện có:
-  - `core-runtime` = Django backend + realtime + data ops
-  - `web-runtime` = React app hiện tại
-  - `opencore-entitlements` = plan/quota/billing/feature access
-  - `vip-surface` = future local control plane, chưa triển khai rộng
-- Thiết lập policy trong docs/CI/code review: không import chéo kiểu “UI gọi trực tiếp logic nội bộ ngoài API/service seam”.
+- Đóng băng mở rộng kiến trúc trong `backend/`, `frontend/`, `mobile-app/`, `opennews-main/`, `infra/`; các path này chỉ nhận hotfix hoặc parity fixes khi thật sự cần.
+- Chốt ownership, contract inventory, build-target model, parity evidence và decommission rules.
+- Xem legacy runtime là reference system cho semantics và rollback.
 
 **Exit criteria:**
 
-- Có contract inventory cho market data, whale analytics, AI config, entitlements.
-- Có build-flag strategy thống nhất cho frontend hiện tại.
-- Không cần rename thư mục để bắt đầu các slice enterprise tiếp theo.
+- Owner đã chốt execution model song song.
+- Có cutover gates và evidence model cho từng package track.
 
-### Phase 1 — Core enterprise access trên monolith hiện tại
+### Phase 1 — Tạo `packages/` và `shared/` như implementation track mới
 
-**Mục tiêu:** Biến Django backend hiện tại thành “core-ready monolith”.
-
-**Làm ngay:**
-
-- Thêm tenant / partner access model trong backend hiện tại.
-- Reuse `DPIQuotaTracker`, license/billing primitives để tiến hóa sang tenant quota và PAT accounting.
-- Tạo MCP/core API wrapper mỏng quanh service layer hiện có, thay vì nhân bản logic.
-- Đưa rate limiting và audit logging vào external data routes ngay trong Django trước.
-
-**Không làm ngay:**
-
-- Không dựng `vip-app` đầy đủ.
-- Không đưa Kong trước khi PAT/quota/routes đã chứng minh đúng.
-
-### Phase 2 — AI runtime transition dựa trên AICommandCenter hiện có
-
-**Mục tiêu:** Từ AI advisory tĩnh hiện tại tiến hóa sang multi-provider và orchestrator.
+**Mục tiêu:** Dựng workspace mới cho kiến trúc đích mà không bulk-move legacy folders.
 
 **Làm ngay:**
 
-- Mở rộng `AICommandCenterConfig` hoặc thêm credential child-model tương thích ngược.
-- Giữ `resolve_ai_runtime_config()` làm transition seam.
-- Tách tool wrappers gọi SSOT hiện có trong `core`.
-- Thêm external streaming endpoint cho orchestrator sau khi tool contracts ổn định.
-
-**Không làm ngay:**
-
-- Không thay toàn bộ config runtime hiện có bằng schema greenfield trong bước đầu.
-
-### Phase 3 — Build variants và OpenCore packaging
-
-**Mục tiêu:** Tách lane Community / SaaS / VIP trong cùng frontend source trước khi move sang `packages/web/`.
-
-**Làm ngay:**
-
-- Thêm `frontend/src/config/buildTarget.js` ngay trong cấu trúc hiện có.
-- Tận dụng `PortfolioContext`, `ProtectedRoute`, `Can` để gate route và component.
-- Gắn feature boundary docs với entitlement/runtime plan hiện có.
+- Tạo `packages/core`, `packages/web`, `packages/mobile`, `packages/vip-app`, `shared/api-contracts`, `shared/constants`.
+- Bootstrap manifest, workspace config, compose/dev helpers cho track mới.
+- Giữ nguyên runtime hiện hành để tiếp tục vận hành và làm lane đối chiếu.
 
 **Exit criteria:**
 
-- Frontend có thể build ra các lane khác nhau từ source hiện tại.
-- VIP/admin pages có thể được gate mà không cần clone frontend.
+- Có package tree tối thiểu để bắt đầu implementation theo boundaries mới.
+- CI/workspace có thể nhìn thấy cả legacy track và package track.
 
-### Phase 4 — VIP pilot với thin local orchestrator
+### Phase 2 — Build `packages/core` trên các seam đã được chứng minh
 
-**Mục tiêu:** Có bản self-host đầu tiên mà vẫn bảo vệ IP của core.
+**Mục tiêu:** Dựng `packages/core` như core-ready monolith mới, bám theo semantics đã chứng minh từ runtime hiện tại.
 
 **Làm ngay:**
 
-- Tạo local control plane nhỏ cho VIP: PAT, local AI keys, local prompt overrides, local logs.
-- Core chỉ trả data qua API/MCP contract.
-- AI orchestration chạy local hoặc edge-side, không kéo business logic nội bộ của core ra ngoài.
+- Thực thi tenant / partner access, PAT, quota, billing, capability snapshot trong `packages/core`.
+- Dựng core serving models: symbol snapshot, session facts, partner APIs, AI runtime contracts.
+- Tiếp tục ưu tiên Redis/PostgreSQL/Channels/Streams-first trước hạ tầng nặng hơn.
 
-### Phase 5 — Physical repo/package restructure
+**Không làm ngay:**
 
-**Chỉ bắt đầu khi đồng thời đúng các điều kiện sau:**
+- Không đưa Kong vào trước khi partner routes và quota semantics ổn định.
+- Không đưa ClickHouse vào trước khi facts/materialization path đã chứng minh không đủ.
 
-- API contracts giữa core, web, vip-app đã ổn định.
-- Build variants đã hoạt động trong frontend hiện tại.
-- Có ít nhất 1 consumer thực tế của external core API hoặc VIP self-host.
-- CI/deployment path đã tách được logic theo boundaries.
+### Phase 3 — Build `packages/web` và `packages/vip-app`
 
-Khi đó mới move dần sang `packages/core`, `packages/web`, `packages/mobile`, `packages/vip-app`.
+**Mục tiêu:** Dựng shared shell và thin local control plane hoàn toàn trong `packages`.
+
+**Làm ngay:**
+
+- Xây `packages/web` với build targets, route catalog, capability bootstrap, adapters cho `core` và `vip-app`.
+- Xây `packages/vip-app` với local auth, secret vault, prompt studio, local API gateway và usage analytics tối thiểu.
+- Giữ rule bất biến: VIP không có frontend riêng, browser VIP không cầm PAT.
+
+**Exit criteria:**
+
+- SaaS/VIP builds chạy từ `packages/web`.
+- VIP browser đi qua `packages/vip-app` local APIs thay vì gọi thẳng `core`.
+
+### Phase 4 — Parity verification và pilot rollout
+
+**Mục tiêu:** Chứng minh package track đủ ổn định để thay legacy runtime.
+
+**Làm ngay:**
+
+- So sánh payload, route behavior, auth flow, capability gating và UX flows giữa legacy và `packages`.
+- Chạy focused suites theo workstream và thu evidence parity.
+- Nếu cần, chạy pilot hoặc shadow traffic trước cutover.
+
+**Exit criteria:**
+
+- Contracts ổn định.
+- Focused tests/builds pass.
+- Runbook cutover/rollback đã sẵn sàng.
+
+### Phase 5 — Cutover sang `packages` và decommission legacy runtime
+
+**Mục tiêu:** Chuyển runtime chính sang kiến trúc mới và loại bỏ kiến trúc cũ.
+
+**Làm ngay:**
+
+- Chuyển compose, CI, workspace, scripts và deployment sang `packages/*`.
+- Đánh dấu legacy folders là read-only fallback trong thời gian ổn định ngắn.
+- Sau khi cutover ổn định, xóa legacy runtime paths và tài liệu/scripts bám đường cũ.
 
 ### Phase 6 — Heavy-scale infra uplift theo trigger đo được
 
@@ -291,13 +296,13 @@ Khi đó mới move dần sang `packages/core`, `packages/web`, `packages/mobile
 > - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
 > - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
 
-### 5.1 Core runtime deploy units phải được giữ làm SSOT trong phase đầu
+### 5.1 Legacy runtime deploy units phải được giữ làm reference SSOT trong giai đoạn song song
 
 | Deploy unit hiện có | Vai trò trong `core` | Nhiệm vụ chính | Hướng xử lý đúng |
 |---|---|---|---|
 | `db` | PostgreSQL source-of-record | Lưu dữ liệu giao dịch, profile, entitlement, signal events, billing/quota state | Phải giữ làm SSOT; tối ưu bằng partition, retention và read models trước khi nghĩ đến dual-store |
 | `redis` | Runtime bus dùng chung | Cache, Celery broker/result backend, Channels layer, Redis Streams | Phải giữ; ưu tiên chuẩn hóa keyspace, TTL, queue naming và isolation trước khi thêm substrate mới |
-| `backend` | ASGI API + auth + quota + WebSocket | Phục vụ REST APIs, operator APIs, health endpoints, realtime websocket | Tiếp tục là `core-ready monolith` ở phase đầu; chưa thay bằng API gateway mesh |
+| `backend` | ASGI API + auth + quota + WebSocket | Phục vụ REST APIs, operator APIs, health endpoints, realtime websocket | Tiếp tục là runtime đang chạy và nguồn đối chiếu semantics cho tới khi `packages/core` cutover; chưa thay bằng API gateway mesh |
 | `celery_worker` | Compute engine nền | Chạy prefetch, realtime collect, signal detection, off-peak ingest, enrichment, quota/billing jobs | Phải giữ; về sau có thể tách queue pools theo domain thay vì tách service vật lý quá sớm |
 | `celery_beat` | Scheduler trung tâm | Kích hoạt prefetch, cleanup, lifecycle, detection, ingest, enrichment | Phải giữ; lịch chạy hiện tại đã là nhịp điều phối thật của `core` |
 
@@ -400,13 +405,13 @@ Thứ tự đúng nên là:
 
 ## 6. Mapping mục tiêu `core / web / opencore / vip-app / mobile` vào repo hiện tại
 
-| Boundary mục tiêu | Neo vào repo hiện tại | Ý nghĩa thực tế trong phase đầu |
-|---|---|---|
-| `core` | `backend/` + `opennews-main/` + phần infra/data ops liên quan | Giữ nguyên monolith deploy unit, nhưng tách bằng API seam và ownership |
-| `web` | `frontend/` | Thêm build flags và route gating trước, chưa move sang `packages/web/` |
-| `opencore` | `backend/portfolio/opencore_*` + frontend plan gating | Dùng như entitlement layer nội bộ trước khi packaging riêng |
-| `vip-app` | Chưa có runtime thật | Phase đầu chỉ là thin local control plane + orchestrator |
-| `mobile` | `mobile-app/` | Giữ độc lập, tiếp tục đi qua REST/API contracts |
+| Boundary mục tiêu | Legacy reference runtime | Package track da duoc phe duyet | Ý nghĩa thực tế trong giai đoạn song song |
+|---|---|---|---|
+| `core` | `backend/` + `opennews-main/` + phần infra/data ops liên quan | `packages/core/` | Legacy giữ vai trò runtime thật + source đối chiếu; implementation mới đi vào `packages/core/` |
+| `web` | `frontend/` | `packages/web/` | Legacy frontend chỉ là reference/fallback; shared shell mới được xây trong `packages/web/` |
+| `opencore` | `backend/portfolio/opencore_*` + frontend plan gating | `packages/opencore/` + `packages/web` community build + `packages/core` commercial contracts | Reuse semantics entitlement hiện có, nhưng đóng gói thành package funnel/distribution riêng trong package track mới |
+| `vip-app` | Chưa có runtime thật | `packages/vip-app/` | Thin local control plane + orchestrator được dựng greenfield trong package track |
+| `mobile` | `mobile-app/` | `packages/mobile/` | Có thể migration sau khi `core/web/vip-app` đã ổn định hơn |
 
 ---
 
@@ -415,11 +420,11 @@ Thứ tự đúng nên là:
 | Tài liệu | Cách hiểu mới sau rebaseline |
 |---|---|
 | `HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md` | Là target-state tech stack. Thứ tự áp dụng phải đi qua Redis/PostgreSQL/Channels foundations hiện có trước. |
-| `REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md` | `packages/` là đích đến có điều kiện, không phải PR đầu tiên. |
-| `CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md` | Là map thư mục mục tiêu, không phải chỉ thị move ngay. |
+| `REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md` | `packages/` là implementation track song song đã được owner chấp nhận; không bulk-move legacy folders trước. |
+| `CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md` | Là map thư mục mục tiêu và workspace plan cho package track, không phải blind move của runtime cũ. |
 | `IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md` | Phải mở rộng AI config/runtime hiện có trước khi giới thiệu schema/route greenfield. |
 | `VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md` | Là phase-later backlog. Thin local control plane đi trước full admin suite. |
-| `OPEN_CORE_*` docs | Gắn với entitlement layer hiện có, không giả định package/deploy unit riêng ngay lập tức. |
+| `OPEN_CORE_*` docs | Gắn với entitlement/commercial lane hiện có, nay được diễn giải thành `packages/opencore` nhưng vẫn không thay `core` làm truth backend. |
 
 ---
 
@@ -427,11 +432,13 @@ Thứ tự đúng nên là:
 
 Nếu bám vào code hiện tại, đường nâng cấp khả thi của VNInvest là:
 
-1. **Boundary-first, không move folder trước.**
-2. **Core-first trên Django monolith hiện tại.**
+1. **Packages-first theo mô hình song song, không bulk-move legacy folders trước.**
+2. **Core-first trên runtime semantics đã chứng minh, nhưng implementation mới đi vào `packages/core`.**
 3. **Redis/PostgreSQL/Channels-first trước khi đưa infra nặng hơn.**
 4. **Mở rộng AICommandCenter và OpenCore hiện có thay vì bỏ qua chúng.**
-5. **Build variants trước, `packages/` sau.**
-6. **VIP self-host bắt đầu bằng thin local orchestrator, không phải mini-platform hoàn chỉnh ngay từ ngày đầu.**
+5. **`packages/opencore` là package funnel/distribution truoc VIP, nhung `core` van giu entitlement/quota/billing truth.**
+6. **`packages/web` là nơi dựng build variants mới; legacy frontend chỉ làm fallback/reference cho tới cutover.**
+7. **VIP self-host bắt đầu bằng thin local orchestrator, không phải mini-platform hoàn chỉnh ngay từ ngày đầu.**
+8. **Sau khi package track đạt parity và cutover ổn định, legacy runtime phải bị decommission.**
 
 Theo cách này, mục tiêu enterprise vẫn giữ nguyên nhưng lộ trình bớt rủi ro, bám sát repo hiện tại và tạo ra các điểm dừng kiểm chứng rõ ràng cho đội code.

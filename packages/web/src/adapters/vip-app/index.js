@@ -1,0 +1,1 @@
+export { vipAppAdapter } from "./vipAppAdapter.js";

@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vninvest/contracts/capability-bootstrap/v1",
+  "title": "VNInvest Capability Bootstrap Contract",
+  "description": "Shared bootstrap payload contract for abilities, navigation gating, and surface flags.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "principal",
+    "build",
+    "abilities",
+    "navigation",
+    "surfaces"
+  ],
+  "properties": {
+    "version": {
+      "const": "1.0.0"
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "identity"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "human",
+            "machine-bridge"
+          ]
+        },
+        "identity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "user_id",
+            "username",
+            "email",
+            "is_staff",
+            "is_superuser"
+          ],
+          "properties": {
+            "user_id": {
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "username": {
+              "type": "string"
+            },
+            "email": {
+              "type": "string"
+            },
+            "is_staff": {
+              "type": "boolean"
+            },
+            "is_superuser": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "plan"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "community",
+            "saas",
+            "vip"
+          ]
+        },
+        "plan": {
+          "type": "string"
+        }
+      }
+    },
+    "abilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action",
+          "subject"
+        ],
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visible_groups"
+      ],
+      "properties": {
+        "visible_groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visible_routes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "surfaces": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "show_admin_ops",
+        "show_ai_command_center",
+        "show_vip_shell"
+      ],
+      "properties": {
+        "show_admin_ops": {
+          "type": "boolean"
+        },
+        "show_ai_command_center": {
+          "type": "boolean"
+        },
+        "show_vip_shell": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
