@@ -1,3 +1,28 @@
+# ✅ AUDIT FILE LIST (2026-05-02ar)
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add latest-valid trade-date quick action and query-safe fallback jump for the whale shell)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate degraded-session fallback metadata and quick action rendering)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add browser CORS/OPTIONS support for the core stub host runtime)
+- frontend/package.json (MODIFIED - add local `@vninvest/web` dependency for the frontend host app)
+- frontend/package-lock.json (MODIFIED - lock the local `@vninvest/web` package dependency)
+- frontend/src/App.jsx (MODIFIED - add gated `/whale-alerts/shell` host route)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - add visible entry link to the whale shell host route)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (NEW - mount `ShellWhaleAlertsPage` inside the real frontend runtime with auth-aware fetch)
+- frontend/Dockerfile.dev-package-shell (NEW - dev-only frontend image that vendors `packages/web` without nested React dependencies)
+- docker-compose.dev.yml (MODIFIED - point dev frontend build to the package-shell host Dockerfile and enable host env flags)
+- backend/portfolio/models.py (MODIFIED - restore `UserConfig.ai_prompt_config` to match the live DB schema)
+- module_tree_full.md (MODIFIED - regenerated after the whale host-runtime slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-46, WEB-47, OPS-24)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/api_stub.py`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `backend/portfolio/models.py` va `frontend/Dockerfile.dev-package-shell`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them quick action fallback va host-runtime glue cho whale shell.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` build lai dev frontend thanh cong; `vninvest-dev-frontend` start va khong con duplicate React tu vendor copy `@vninvest/web`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend python create_test_users.py` seed lai `testfree/testpro` thanh cong sau khi model drift `UserConfig.ai_prompt_config` duoc dong bo.
+- PASSED: live browser route `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` render duoc package-shell host header, facts card `Whale snapshot that (SSI)` va session source `latest_completed_session`; loi `useRef` runtime da duoc loai bo.
+- PASSED: `module_tree_full.md` regenerated successfully with 551 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02aq)
 - packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add selected trade-date resolution, date input control and query sync for the whale snapshot shell slice)
 - packages/web/scripts/check-shell.mjs (MODIFIED - validate whale trade-date SSR and query-string proof)

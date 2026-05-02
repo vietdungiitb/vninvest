@@ -7,6 +7,7 @@ import StockDetail from './pages/StockDetail';
 import WhaleAdvisory from './pages/WhaleAdvisory';
 import WhaleAlertsHub from './pages/WhaleAlertsHub';
 import WhaleAlertsDashboard from './pages/WhaleAlertsDashboard';
+import WhaleAlertsShellHost from './pages/WhaleAlertsShellHost';
 import Transactions from './pages/Transactions';
 import Support from './pages/Support';
 import Watchlist from './pages/Watchlist';
@@ -24,6 +25,8 @@ import { LangProvider } from './context/LangContext';
 import { RealtimeProvider } from './context/RealtimeContext';
 import { InterfaceProvider } from './context/InterfaceContext';
 import ProtectedRoute from './components/ProtectedRoute';
+
+const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -79,6 +82,16 @@ export default function App() {
                   />
                   <Route path="whale-advisory" element={<Navigate to="/ai-advisory" replace />} />
                   <Route path="whale-alerts" element={<WhaleAlertsHub />} />
+                  {packageShellHostEnabled ? (
+                    <Route
+                      path="whale-alerts/shell"
+                      element={(
+                        <ProtectedRoute action="read" subject="WhaleAdvisory">
+                          <WhaleAlertsShellHost />
+                        </ProtectedRoute>
+                      )}
+                    />
+                  ) : null}
                   <Route path="whale-alerts/:symbol" element={<WhaleAlertsDashboard />} />
                   <Route path="transactions" element={<Transactions />} />
                   <Route path="support" element={<Support />} />

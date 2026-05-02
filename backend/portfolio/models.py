@@ -814,6 +814,11 @@ class UserConfig(models.Model):
         default='',
         verbose_name='AI API key (encrypted)',
     )
+    ai_prompt_config = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='AI prompt_config canonical',
+    )
     
     # PHASE 1 fields: Advisory auto-generation & cost control
     advisory_auto_generation_enabled = models.BooleanField(

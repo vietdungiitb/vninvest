@@ -1,3 +1,69 @@
+# Entry 2026-05-02ar - Add latest-valid whale fallback quick action and wire the shell into the real frontend runtime
+
+Muc tieu:
+- Them duong nhay nhanh tu selected trade date loi sang `latest_valid_trade_date` de auditor co the chuyen session fallback ngay tren whale shell thay vi sua query thu cong.
+- Noi `ShellWhaleAlertsPage` vao runtime `frontend` that de xac nhan package-shell whale lane chay duoc qua host app dang dang nhap, thay vi chi dung SSR/check-shell proofs.
+- Giai quyet cac blocker runtime phat sinh tren duong host that, gom CORS cho core stub, duplicate React trong vendor copy va drift `UserConfig.ai_prompt_config` dang chan seed/login path.
+
+Noi dung cap nhat chinh:
+- `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`:
+  - Them `latestValidWhaleTradeDate`, `canJumpToLatestValidTradeDate` va `handleJumpToLatestValidTradeDate()` de page doc metadata fallback tu `session_context` va doi date bang mot nut bam.
+  - Render nut `Dung phien hop le gan nhat` chi khi payload tra ve `latest_valid_trade_date` khac selected date hien tai; giu query string dong bo voi date moi.
+- `packages/web/scripts/check-shell.mjs`:
+  - Chuyen SSR proof sang payload degrade-session fallback (`latest_completed_session`, `latest_valid_trade_date`, `DEGRADED_SESSION_FALLBACK`).
+  - Assert them nut quick action va fallback metadata trong markup shell.
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung `OPTIONS` va CORS headers cho core stub de browser-hosted shell route goi truc tiep `http://127.0.0.1:8100/core/v1`.
+- `frontend/package.json` va `frontend/package-lock.json`:
+  - Them local dependency `@vninvest/web` tu `file:../packages/web` de legacy frontend co the host package shell.
+- `frontend/src/App.jsx`:
+  - Them protected route co flag gate cho `/whale-alerts/shell`.
+- `frontend/src/pages/WhaleAlertsHub.jsx`:
+  - Them entry link `Mo shell kiem chung` khi host runtime duoc bat.
+- `frontend/src/pages/WhaleAlertsShellHost.jsx`:
+  - Tao host wrapper page mount truc tiep `ShellWhaleAlertsPage`, chuyen `location.search`, dung env core stub, va attach JWT chi cho same-origin `/api` requests.
+- `frontend/Dockerfile.dev-package-shell` va `docker-compose.dev.yml`:
+  - Doi frontend dev build sang root context, vendor `packages/web` vao image dev, bat env host runtime, va strip `node_modules`/`package-lock.json` nested trong ban copy `@vninvest/web` de loai duplicate React gay invalid hook call.
+- `backend/portfolio/models.py`:
+  - Khoi phuc field `UserConfig.ai_prompt_config` de khop live DB schema, mo lai seed/login flow ma host runtime phu thuoc.
+- `module_tree_full.md`:
+  - Regenerate sau khi them host runtime files va backend/frontend glue; tong module tang len 551.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-46`, `WEB-47`, `OPS-24`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ar.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho whale fallback + host-runtime slice.
+
+Danh sach tep cap nhat:
+- packages/web/src/pages/signals/ShellWhaleAlertsPage.js (MODIFIED - add latest-valid trade-date quick action and query-safe fallback jump for the whale shell)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate degraded-session fallback metadata and quick action rendering)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - add browser CORS/OPTIONS support for the core stub host runtime)
+- frontend/package.json (MODIFIED - add local `@vninvest/web` dependency for the frontend host app)
+- frontend/package-lock.json (MODIFIED - lock the local `@vninvest/web` package dependency)
+- frontend/src/App.jsx (MODIFIED - add gated `/whale-alerts/shell` host route)
+- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - add visible entry link to the whale shell host route)
+- frontend/src/pages/WhaleAlertsShellHost.jsx (NEW - mount `ShellWhaleAlertsPage` inside the real frontend runtime with auth-aware fetch)
+- frontend/Dockerfile.dev-package-shell (NEW - dev-only frontend image that vendors `packages/web` without nested React dependencies)
+- docker-compose.dev.yml (MODIFIED - point dev frontend build to the package-shell host Dockerfile and enable host env flags)
+- backend/portfolio/models.py (MODIFIED - restore `UserConfig.ai_prompt_config` to match the live DB schema)
+- module_tree_full.md (MODIFIED - regenerated after the whale host-runtime slice, total modules 551)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-46, WEB-47, OPS-24)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ar)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/api_stub.py`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `backend/portfolio/models.py` va `frontend/Dockerfile.dev-package-shell`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them quick action fallback va host-runtime glue.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => frontend image build thanh cong, `vninvest-dev-frontend` started va Dockerfile dev moi da strip nested `node_modules` trong vendor copy `@vninvest/web`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend python create_test_users.py` => seed `testfree` va `testpro` thanh cong sau khi drift `UserConfig.ai_prompt_config` duoc sua.
+- PASSED: live browser route `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` render duoc host header `Whale alerts shell chay trong frontend that`, facts card `Whale snapshot that (SSI)` va `Nguon phien: latest_completed_session`; loi `Cannot read properties of null (reading 'useRef')` khong con lap lai.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (551 modules).
+
+Residual note:
+- Host route nay la dev/audit lane duoc gate boi `REACT_APP_ENABLE_PACKAGE_SHELL_HOST=1`; no chua thay the runtime whale hub legacy va chua duoc expose cho prod stack.
+- Core stub van dang duoc browser goi cross-origin qua `:8100` cho muc dich audit runtime; truoc khi cutover can chot lai runtime ownership/same-origin strategy cho package-shell consumer that.
+
 # Entry 2026-05-02aq - Add selected trade-date targeting to the whale alerts shell page
 
 Muc tieu:

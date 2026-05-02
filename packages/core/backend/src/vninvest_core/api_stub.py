@@ -150,6 +150,12 @@ ROUTE_HANDLERS = {
 
 
 class _CoreApiStubHandler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._write_cors_headers()
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
     def do_GET(self):
         path = urlparse(self.path).path.rstrip("/") or "/"
         payload_factory = ROUTE_HANDLERS.get(path)
@@ -172,10 +178,16 @@ class _CoreApiStubHandler(BaseHTTPRequestHandler):
     def _write_json(self, status_code, payload):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status_code)
+        self._write_cors_headers()
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _write_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", os.getenv("CORE_STUB_ALLOW_ORIGIN", "*"))
+        self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Accept, Content-Type, Authorization")
 
 
 def main():

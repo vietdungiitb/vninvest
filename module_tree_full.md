@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 13:14:14`
+Generated at: `2026-05-02 13:49:16`
 
 ## Summary
 
-- Total modules: 550
+- Total modules: 551
 - Python modules: 340
-- JS/TS modules: 210
+- JS/TS modules: 211
 - Total classes: 563
-- Total functions: 2170
-- Total top-level variables: 3677
+- Total functions: 2173
+- Total top-level variables: 3687
 
 ## Python Modules
 
@@ -2349,7 +2349,7 @@ Generated at: `2026-05-02 13:14:14`
 ### `packages/core/backend/src/vninvest_core/api_stub.py`
 
 - Classes:
-  - `_CoreApiStubHandler` -> methods: `_write_json`, `do_GET`, `log_message`
+  - `_CoreApiStubHandler` -> methods: `_write_cors_headers`, `_write_json`, `do_GET`, `do_OPTIONS`, `log_message`
 - Functions:
   - `_ability_rules`, `_build_target`, `_capability_bootstrap_payload`, `_env_flag`, `_env_int`, `_health_payload`, `_now_isoformat`, `_session_payload`, `_user_identity`, `_visible_groups`, `_visible_routes`, `main`
 - Top-level variables:
@@ -2491,7 +2491,7 @@ Generated at: `2026-05-02 13:14:14`
 - Functions:
   - `LoginPage`, `ProtectedLayout`
 - Top-level variables:
-  - `hasStoredTokens`, `location`, `navigate`
+  - `hasStoredTokens`, `location`, `navigate`, `packageShellHostEnabled`
 
 ### `frontend/src/components/adminops/GlobalScreenerAdminPanel.jsx`
 
@@ -3300,7 +3300,7 @@ Generated at: `2026-05-02 13:14:14`
 - Functions:
   - `AdvisoryPreviewCard`, `AggregateFeedCard`, `CampaignCard`, `CampaignDetailModal`, `SymbolInvestigationPanel`, `TrackedSymbolCard`, `buildAggregateEventKey`, `buildSymbolStatsFromFeed`, `buildTrackedSymbolBuckets`, `formatCompactMoney`, `formatDuration`, `formatMoney`, `formatTime`, `getAggregateSourceMeta`, `getCampaignSideLabel`, `getCampaignTypeLabel`, `getFrequencyLabel`, `getSeverityLabel`, `getSeverityTone`, `getSideTone`, `getSizeClassLabel`, `getThresholdSourceLabel`, `isCountableWhaleOrder`, `loadInitialCampaigns`, `mergeUniqueAggregateEvents`
 - Top-level variables:
-  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `parsed`, `parsedId`, `payload`, `primaryTime`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
+  - `FEED_PAGE_SIZE_OPTIONS`, `abnormalityScore`, `abnormalityTone`, `activeWatchlistGroup`, `activeWatchlistGroupId`, `advisoryRequest`, `aggregateAbortRef`, `aggregateDisplayedCount`, `aggregateRequestSeqRef`, `aggregateSourceMeta`, `aggregateTotalCount`, `alertTimeRaw`, `avgValue`, `bootstrapRequestSeqRef`, `buyRatio`, `campaignAbortRef`, `campaignRequestSeqRef`, `campaigns`, `canReadAdvisory`, `cancelled`, `candidateTime`, `checkList`, `coObsSummary`, `currentTime`, `fetchData`, `filteredCampaigns`, `freq`, `groupedTimeline`, `handleHideLess`, `handleLoadMore`, `handleLoadMoreCampaigns`, `handleSortChange`, `hasExplain`, `hours`, `investigation`, `isBuy`, `isOrderSide`, `key`, `loadAggregateFeed`, `loadCampaigns`, `loadData`, `localController`, `map`, `merged`, `minutes`, `nextItems`, `normalized`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `normalizedSource`, `packageShellHostEnabled`, `parsed`, `parsedId`, `payload`, `primaryTime`, `raw`, `requestSeq`, `requestSignal`, `response`, `scopeLabel`, `seen`, `severityTone`, `side`, `sideTone`, `signals`, `sourceKeys`, `sourceMixLabel`, `st`, `strength`, `sym`, `symbol`, `symbolShortcuts`, `symbolStatsMap`, `tone`, `totalOrders`, `trackedSymbolsRequest`, `type`, `unique`, `watchlistGroupId`, `watchlistGroupsRequest`, `whaleAvgPrice`, `whyList`
 
 ### `frontend/src/pages/WhaleAlertsHub.test.jsx`
 
@@ -3308,6 +3308,13 @@ Generated at: `2026-05-02 13:14:14`
   - `renderPage`, `setupCommonMocks`
 - Top-level variables:
   - `campaignA`, `campaignB`, `secondCall`
+
+### `frontend/src/pages/WhaleAlertsShellHost.jsx`
+
+- Functions:
+  - `shellHostFetch`, `shouldAttachApiToken`
+- Top-level variables:
+  - `accessToken`, `headers`, `location`, `requestUrl`, `resolvedUrl`, `shellEnv`
 
 ### `frontend/src/setupProxy.js`
 
@@ -3699,9 +3706,9 @@ Generated at: `2026-05-02 13:14:14`
 ### `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`
 
 - Functions:
-  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleRefreshAll`, `handleWhaleSnapshotSubmit`, `handleWhaleSymbolChange`, `handleWhaleTradeDateChange`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `normalizeWhaleTradeDate`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `resolveWhaleTradeDate`, `resolveWhaleTradeDateFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSearch`
+  - `ShellWhaleAlertsPage`, `buildWhaleSnapshotContextItems`, `buildWhaleSnapshotMaterializationItems`, `buildWhaleSnapshotRows`, `createInitialWhaleSnapshotState`, `handleJumpToLatestValidTradeDate`, `handleRefreshAll`, `handleWhaleSnapshotSubmit`, `handleWhaleSymbolChange`, `handleWhaleTradeDateChange`, `normalizeWhaleSnapshotError`, `normalizeWhaleSymbol`, `normalizeWhaleTradeDate`, `refreshWhaleSnapshot`, `resolveWhaleSearch`, `resolveWhaleSymbol`, `resolveWhaleSymbolFromSearch`, `resolveWhaleTradeDate`, `resolveWhaleTradeDateFromSearch`, `runWhaleSnapshotLoad`, `syncWhaleSearch`
 - Top-level variables:
-  - `SIGNAL_ROUTE_IDS`, `active`, `enabledSurfaces`, `groupFlags`, `materialization`, `metrics`, `nextSymbol`, `nextTradeDate`, `nextUrl`, `normalized`, `qualityFlags`, `resolvedWhaleSymbol`, `resolvedWhaleTradeDate`, `routeFlags`, `search`, `searchParams`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
+  - `SIGNAL_ROUTE_IDS`, `active`, `canJumpToLatestValidTradeDate`, `enabledSurfaces`, `groupFlags`, `latestValidWhaleTradeDate`, `materialization`, `metrics`, `nextSymbol`, `nextTradeDate`, `nextUrl`, `normalized`, `qualityFlags`, `resolvedWhaleSymbol`, `resolvedWhaleTradeDate`, `routeFlags`, `search`, `searchParams`, `sessionContext`, `signalRoutes`, `summaryCards`, `whaleAbilities`, `whaleEnvRef`, `whaleFetchRef`, `whaleLoaderRef`, `whaleSnapshot`, `whaleSnapshotContextItems`, `whaleSnapshotMaterializationItems`, `whaleSnapshotRows`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 

@@ -239,6 +239,7 @@ function getFrequencyLabel(totalValue, t) {
 }
 
 const FEED_PAGE_SIZE_OPTIONS = [3, 6, 9, 12];
+const packageShellHostEnabled = process.env.REACT_APP_ENABLE_PACKAGE_SHELL_HOST === '1';
 
 function TrackedSymbolCard({ symbol, stats, t, localeTag, formatDateTimeFn }) {
   const st = stats || { buyCount: 0, sellCount: 0, totalValue: 0, totalVolume: 0, count: 0, latestAlertAt: null };
@@ -1186,6 +1187,14 @@ export default function WhaleAlertsHub() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {packageShellHostEnabled ? (
+              <Link
+                to="/whale-alerts/shell"
+                className="rounded-full border border-amber-700/60 bg-amber-950/30 px-3 py-1.5 text-xs font-semibold text-amber-200 transition-colors hover:border-amber-500 hover:text-amber-100"
+              >
+                Mở shell kiểm chứng
+              </Link>
+            ) : null}
             <div className="rounded-full border border-cyan-900/60 bg-cyan-950/30 px-3 py-1.5 text-xs text-cyan-200">
               {t('whaleHub.currentPlan', { plan: userPlan || 'free' })}
             </div>

@@ -709,3 +709,28 @@ Estimate: 0.5h
 Dependency: WEB-45  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung selected trade-date path moi, `check-shell` xanh va backend weekend-fallback contract proof van pass.
+
+---
+
+## 29. Whale alerts fallback and host-runtime queue
+
+- [x] `WEB-46` Them quick action nhay ve phien hop le gan nhat cho `whale-alerts` shell  
+Owner: Frontend Lead  
+Estimate: 1h  
+Dependency: WEB-45  
+Anchor files: `packages/web/src/pages/signals/ShellWhaleAlertsPage.js`, `packages/web/scripts/check-shell.mjs`  
+DoD: `ShellWhaleAlertsPage` surfacing `latest_valid_trade_date` thanh quick action ro rang, cho phep auditor doi ve phien hop le gan nhat bang mot nut bam va giu query/form state dong bo ma khong tao route hay backend contract moi.
+
+- [x] `WEB-47` Mount `ShellWhaleAlertsPage` vao frontend runtime that  
+Owner: Frontend Lead + Backend Lead + DevOps  
+Estimate: 4h  
+Dependency: WEB-46  
+Anchor files: `frontend/package.json`, `frontend/src/App.jsx`, `frontend/src/pages/WhaleAlertsHub.jsx`, `frontend/src/pages/WhaleAlertsShellHost.jsx`, `frontend/Dockerfile.dev-package-shell`, `docker-compose.dev.yml`, `packages/core/backend/src/vninvest_core/api_stub.py`, `backend/portfolio/models.py`  
+DoD: route `/whale-alerts/shell` render duoc sau login trong `frontend`, dung JWT session hien tai cho `/api`, goi duoc core stub qua browser bang CORS, dev compose rebuild thanh cong va vendor copy `@vninvest/web` khong con duplicate React/invalid hook call; drift `UserConfig.ai_prompt_config` khong con chan login va seed user dev.
+
+- [x] `OPS-24` Sync audit docs va module tree sau whale host-runtime slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-47  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, runtime proof browser that va module tree phan anh dung quick action fallback moi, host route `/whale-alerts/shell`, dev Docker path va backend auth drift fix.

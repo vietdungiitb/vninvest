@@ -174,11 +174,13 @@ services:
   frontend:
     container_name: vninvest-dev-frontend
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile.dev-package-shell
       args:
         REACT_APP_API_BASE_URL: /api
         REACT_APP_AI_ADVISORY_PATH: /ai-advisory
+        REACT_APP_ENABLE_PACKAGE_SHELL_HOST: "1"
+        REACT_APP_PACKAGE_SHELL_CORE_BASE_URL: http://127.0.0.1:8100/core/v1
     depends_on:
       backend:
         condition: service_healthy
@@ -189,6 +191,7 @@ services:
       - vninvest_network
     mem_limit: ${FRONTEND_MEM_LIMIT:-512m}
     cpus: ${FRONTEND_CPUS:-0.5}
+
 
 volumes:
   postgres_data:

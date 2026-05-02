@@ -259,6 +259,11 @@ export function ShellWhaleAlertsPage({
   const whaleSnapshotRows = buildWhaleSnapshotRows(whaleSnapshotState.data, activeWhaleSymbol, activeWhaleTradeDate);
   const whaleSnapshotContextItems = buildWhaleSnapshotContextItems(whaleSnapshotState.data);
   const whaleSnapshotMaterializationItems = buildWhaleSnapshotMaterializationItems(whaleSnapshotState.data);
+  const latestValidWhaleTradeDate = normalizeWhaleTradeDate(whaleSnapshotState.data?.session_context?.latest_valid_trade_date);
+  const canJumpToLatestValidTradeDate = Boolean(
+    latestValidWhaleTradeDate
+      && latestValidWhaleTradeDate !== activeWhaleTradeDate,
+  );
 
   useEffect(() => {
     setActiveWhaleSymbol(resolvedWhaleSymbol);
@@ -364,6 +369,16 @@ export function ShellWhaleAlertsPage({
     setWhaleSymbolDraft(nextSymbol);
     setWhaleTradeDateDraft(nextTradeDate);
     syncWhaleSearch(nextSymbol, nextTradeDate, whaleSearch);
+  }
+
+  function handleJumpToLatestValidTradeDate() {
+    if (!canJumpToLatestValidTradeDate) {
+      return;
+    }
+
+    setActiveWhaleTradeDate(latestValidWhaleTradeDate);
+    setWhaleTradeDateDraft(latestValidWhaleTradeDate);
+    syncWhaleSearch(activeWhaleSymbol, latestValidWhaleTradeDate, whaleSearch);
   }
 
   const metrics = [
@@ -494,6 +509,18 @@ export function ShellWhaleAlertsPage({
                 },
                 "Tải snapshot whale",
               ),
+              canJumpToLatestValidTradeDate
+                ? renderElement(
+                  "button",
+                  {
+                    type: "button",
+                    className: "shellPage__button shellPage__button--secondary",
+                    disabled: whaleSnapshotState.loading,
+                    onClick: handleJumpToLatestValidTradeDate,
+                  },
+                  "Dùng phiên hợp lệ gần nhất",
+                )
+                : null,
             ),
           ),
           renderSummaryCard({
