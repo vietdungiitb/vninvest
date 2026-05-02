@@ -19,6 +19,7 @@ import {
   renderShellSelectField,
   routeCatalog,
   ShellAdminOpsPage,
+  ShellAiAdvisoryPage,
   ShellAiCommandCenterPage,
   ShellDashboardPage,
   ShellPortfoliosPage,
@@ -76,6 +77,7 @@ for (const adapter of shellAdapters) {
 }
 
 const adminOpsRoute = routeCatalog.find((route) => route.id === "admin-ops");
+const aiAdvisoryRoute = routeCatalog.find((route) => route.id === "ai-advisory");
 const aiCommandCenterRoute = routeCatalog.find((route) => route.id === "ai-command-center");
 const dashboardRoute = routeCatalog.find((route) => route.id === "dashboard");
 const portfoliosRoute = routeCatalog.find((route) => route.id === "portfolios");
@@ -98,6 +100,7 @@ for (const methodName of requiredVipControlMethods) {
 }
 
 assert(adminOpsRoute?.status === "baseline", "admin-ops route must move to baseline when the page exists");
+assert(aiAdvisoryRoute?.status === "baseline", "ai-advisory route must remain baseline once the shell AI advisory page exists");
 assert(aiCommandCenterRoute?.status === "baseline", "ai-command-center route must move to baseline when the page exists");
 assert(dashboardRoute?.status === "baseline", "dashboard route must remain baseline once the shell dashboard page exists");
 assert(portfoliosRoute?.status === "baseline", "portfolios route must move to baseline when the page exists");
@@ -110,6 +113,7 @@ assert(vipLocalControlRoute?.status === "baseline", "vip-local-control route mus
 const pageRegistryRouteIds = new Set(getPageRegistryRouteIds());
 assert(pageRegistry.length === pageRegistryRouteIds.size, "Duplicate route ids detected in pageRegistry");
 assert(pageRegistryRouteIds.has("admin-ops"), "pageRegistry must register admin-ops");
+assert(pageRegistryRouteIds.has("ai-advisory"), "pageRegistry must register ai-advisory");
 assert(pageRegistryRouteIds.has("ai-command-center"), "pageRegistry must register ai-command-center");
 assert(pageRegistryRouteIds.has("dashboard"), "pageRegistry must register dashboard");
 assert(pageRegistryRouteIds.has("transactions"), "pageRegistry must register transactions");
@@ -119,6 +123,7 @@ assert(pageRegistryRouteIds.has("support"), "pageRegistry must register support"
 assert(pageRegistryRouteIds.has("settings"), "pageRegistry must register settings");
 assert(pageRegistryRouteIds.has("vip-local-control"), "pageRegistry must register vip-local-control");
 assert(getPageComponent("admin-ops") === ShellAdminOpsPage, "admin-ops must resolve to ShellAdminOpsPage");
+assert(getPageComponent("ai-advisory") === ShellAiAdvisoryPage, "ai-advisory must resolve to ShellAiAdvisoryPage");
 assert(getPageComponent("ai-command-center") === ShellAiCommandCenterPage, "ai-command-center must resolve to ShellAiCommandCenterPage");
 assert(getPageComponent("dashboard") === ShellDashboardPage, "dashboard must resolve to ShellDashboardPage");
 assert(getPageComponent("transactions") === ShellTransactionsPage, "transactions must resolve to ShellTransactionsPage");
@@ -786,6 +791,58 @@ const authRuntime = createShellAuthRuntime({
     },
   }),
 });
+
+const aiAdvisoryMarkup = renderToStaticMarkup(
+  createElement(ShellAiAdvisoryPage, {
+    autoLoad: false,
+    initialSnapshot: {
+      buildMeta: {
+        adapterId: "core",
+        displayName: "Core API",
+        target: "saas",
+        baseUrl: "http://core.local/core/v1",
+      },
+      health: { ok: true, service: "core-api", environment: "foundation" },
+      capabilities: {
+        principal: {
+          identity: {
+            username: "package-admin",
+            email: "package-admin@vninvest.local",
+            is_staff: true,
+            is_superuser: true,
+          },
+        },
+        build: {
+          target: "saas",
+          plan: "pro",
+        },
+        abilities: [
+          { action: "read", subject: "AiAdvisory" },
+          { action: "read", subject: "WhaleAdvisory" },
+          { action: "manage", subject: "all" },
+        ],
+        navigation: {
+          visible_groups: ["workspace", "signals", "system", "admin"],
+          visible_routes: ["dashboard", "ai-advisory", "whale-alerts", "watchlist", "transactions"],
+        },
+        surfaces: {
+          show_admin_ops: true,
+          show_ai_command_center: true,
+          show_vip_shell: false,
+        },
+      },
+      session: {
+        session_id: "core-session-foundation",
+        principal: { username: "package-admin" },
+      },
+    },
+  }),
+);
+
+assert(aiAdvisoryMarkup.includes("Trung tâm AI advisory và tín hiệu"), "AI advisory page must render the Vietnamese page title");
+assert(aiAdvisoryMarkup.includes("ai-advisory"), "AI advisory page must render ai-advisory route visibility");
+assert(aiAdvisoryMarkup.includes("signals"), "AI advisory page must render signals group visibility");
+assert(aiAdvisoryMarkup.includes("package-admin"), "AI advisory page must render the current operator identity");
 
 const runtimeUpdates = [];
 const unsubscribe = authRuntime.subscribe((snapshot) => {

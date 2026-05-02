@@ -1,3 +1,54 @@
+# Entry 2026-05-02al - Add the first AI advisory signals shell page and close the advisory ability drift
+
+Muc tieu:
+- Dung route-level page `ai-advisory` de tiep tuc dong bo route catalog `baseline` cua signals lane voi page registry that.
+- Dong drift contract giua route capability `signals.ai_advisory.read` va bootstrap ability subject hien co bang cach bo sung alias `AiAdvisory` trong core stub, trong khi van giu `WhaleAdvisory` de khong lam vo whale lane chua tach rieq.
+- Dong `WEB-37`, `WEB-38`, `OPS-18` bang proof shell check, live SSR parity tren core stub `:8100`, audit sync va live capability proof cho subject `AiAdvisory`.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/api_stub.py`:
+  - Bo sung ability `read AiAdvisory` vao bootstrap stub de route `ai-advisory` co subject naming phu hop voi contract signals hien tai.
+  - Giu lai `read WhaleAdvisory` de khong gay regression cho lane whale-alerts chua co route-level page rieng.
+- `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`:
+  - Them page route-level moi cho `ai-advisory` bang shared helper layer.
+  - Hien operator/session, signals groups, advisory route visibility, enabled surfaces, build metadata va advisory abilities tu core bootstrap payload.
+- `packages/web/src/pages/pageRegistry.js`:
+  - Register `ai-advisory` vao page registry de shell co route-level component that cho signals advisory lane.
+- `packages/web/src/index.js`:
+  - Export `ShellAiAdvisoryPage` tren public shell surface.
+- `packages/web/scripts/check-shell.mjs`:
+  - Them proof cho `ai-advisory` route/page registry, SSR render cua `ShellAiAdvisoryPage` va route status baseline.
+- `module_tree_full.md`:
+  - Regenerate sau khi them route-level page signals moi; tong module tang len 549.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-37`, `WEB-38`, `OPS-18`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02al.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho AI advisory signals slice.
+
+Danh sach tep cap nhat:
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read AiAdvisory` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (NEW - first AI advisory signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-advisory` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiAdvisoryPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate ai-advisory route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI advisory shell slice)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-37, WEB-38, OPS-18)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; npm run check:shell; Pop-Location` => `packages/web shell check passed` sau khi them route-level page `ai-advisory`, register vao shell surface va them SSR proof.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `AiAdvisory` tren live capabilities.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest/packages/web"; @' ... ShellAiAdvisoryPage ... '@ | node --input-type=module; Pop-Location` => `core ai advisory shared shell live parity passed`; da xac nhan payload that chua subject `AiAdvisory` va markup render co `ai-advisory`, `signals`, `package-admin`, `Signals routes`, `Advisory abilities`.
+- PASSED: `Push-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py; Pop-Location` => regenerated `module_tree_full.md` successfully (549 modules).
+
+Residual note:
+- Slice nay dong drift cho `ai-advisory`, nhung whale lane van con subject legacy `WhaleAdvisory`; route-level page `whale-alerts` nen duoc lam o slice tiep theo de quy hoach naming va SSR proof rieng thay vi gop lan nua.
+- `ShellAiAdvisoryPage` hien la route-level audit surface doc tu bootstrap runtime; cac panel advisory that, policy outputs va data cards chi tiet van nen di o slice rieng de giu contract va validation path ro rang.
+
 # Entry 2026-05-02ak - Add the first workspace transactions shell page on the shared helper layer
 
 Muc tieu:

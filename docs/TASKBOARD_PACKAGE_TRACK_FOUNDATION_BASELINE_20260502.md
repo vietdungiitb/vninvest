@@ -580,3 +580,28 @@ Estimate: 0.5h
 Dependency: WEB-36  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit va module tree phan anh dung route-level page `transactions` moi nhat.
+
+---
+
+## 23. AI advisory signals shell queue
+
+- [x] `WEB-37` Dong bo advisory ability va dung page `ai-advisory` tren shared helper layer  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 2h  
+Dependency: WEB-25, WEB-26  
+Anchor files: `packages/core/backend/src/vninvest_core/*`, `packages/web/src/pages/signals/*`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js`  
+DoD: core stub bootstrap expose advisory subject phu hop voi route contract, `ai-advisory` co route-level page that reuse shared helper layer va khong lam vo whale lane hien co.
+
+- [x] `WEB-38` Validate AI advisory runtime parity va registry coverage  
+Owner: Frontend Lead + Backend Lead  
+Estimate: 1h  
+Dependency: WEB-37  
+Anchor files: `packages/web/scripts/check-shell.mjs`, `packages/core/backend/src/vninvest_core/*`  
+DoD: `npm run check:shell` pass va live SSR parity tren `:8100` xac nhan route/page `ai-advisory` render duoc marker runtime expected, dong thoi payload that chua subject `AiAdvisory`.
+
+- [x] `OPS-18` Sync taskboard, audit docs va module tree sau AI advisory shell slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-38  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit va module tree phan anh dung route-level page `ai-advisory` va drift fix cua advisory ability.

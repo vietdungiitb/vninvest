@@ -1,3 +1,21 @@
+# ✅ AUDIT FILE LIST (2026-05-02al)
+- packages/core/backend/src/vninvest_core/api_stub.py (MODIFIED - expose `read AiAdvisory` while keeping `WhaleAdvisory` for compatibility)
+- packages/web/src/pages/signals/ShellAiAdvisoryPage.js (NEW - first AI advisory signals shell page using the shared helper layer)
+- packages/web/src/pages/pageRegistry.js (MODIFIED - register `ai-advisory` in the route-level page registry)
+- packages/web/src/index.js (MODIFIED - export `ShellAiAdvisoryPage` on the public shell surface)
+- packages/web/scripts/check-shell.mjs (MODIFIED - validate ai-advisory route wiring and SSR render proof)
+- module_tree_full.md (MODIFIED - regenerated after the AI advisory shell slice, total modules 549)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-37, WEB-38, OPS-18)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02al)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/api_stub.py`, `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`, `packages/web/src/pages/pageRegistry.js`, `packages/web/src/index.js` va `packages/web/scripts/check-shell.mjs`.
+- PASSED: `npm run check:shell` trong `packages/web` sau khi them route-level page `ai-advisory` vao shared shell surface va registry.
+- PASSED: core stub tren `:8100` da duoc refresh lai dung cwd de bootstrap payload moi expose subject `AiAdvisory`.
+- PASSED: live SSR parity tren core runtime `:8100` da xac nhan `ai-advisory`, `signals`, `package-admin`, `Signals routes` va `Advisory abilities` deu co trong markup render tu payload that.
+- PASSED: `module_tree_full.md` regenerated successfully with 549 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ak)
 - packages/web/src/pages/workspace/ShellTransactionsPage.js (NEW - first workspace transactions shell page using the shared helper layer)
 - packages/web/src/pages/pageRegistry.js (MODIFIED - register `transactions` in the route-level page registry)

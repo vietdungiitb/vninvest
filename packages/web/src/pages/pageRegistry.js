@@ -1,4 +1,5 @@
 import { ShellAdminOpsPage } from "./admin/ShellAdminOpsPage.js";
+import { ShellAiAdvisoryPage } from "./signals/ShellAiAdvisoryPage.js";
 import { ShellAiCommandCenterPage } from "./system/ShellAiCommandCenterPage.js";
 import { ShellSettingsPage } from "./system/ShellSettingsPage.js";
 import { ShellSupportPage } from "./system/ShellSupportPage.js";
@@ -17,6 +18,11 @@ export const pageRegistry = Object.freeze([
   {
     routeId: "ai-command-center",
     component: ShellAiCommandCenterPage,
+    status: "baseline",
+  },
+  {
+    routeId: "ai-advisory",
+    component: ShellAiAdvisoryPage,
     status: "baseline",
   },
   {

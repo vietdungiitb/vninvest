@@ -2,16 +2,16 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 12:02:06`
+Generated at: `2026-05-02 12:07:21`
 
 ## Summary
 
-- Total modules: 548
+- Total modules: 549
 - Python modules: 340
-- JS/TS modules: 208
+- JS/TS modules: 209
 - Total classes: 563
-- Total functions: 2128
-- Total top-level variables: 3622
+- Total functions: 2129
+- Total top-level variables: 3630
 
 ## Python Modules
 
@@ -3688,6 +3688,13 @@ Generated at: `2026-05-02 12:02:06`
   - `getPageComponent`, `getPageRegistryRouteIds`
 - Top-level variables:
   - `pageEntry`, `pageRegistry`
+
+### `packages/web/src/pages/signals/ShellAiAdvisoryPage.js`
+
+- Functions:
+  - `ShellAiAdvisoryPage`
+- Top-level variables:
+  - `SIGNAL_ROUTE_IDS`, `advisoryAbilities`, `enabledSurfaces`, `groupFlags`, `metrics`, `routeFlags`, `signalRoutes`, `summaryCards`
 
 ### `packages/web/src/pages/system/ShellAiCommandCenterPage.js`
 
