@@ -831,3 +831,21 @@ Estimate: 0.5h
 Dependency: WEB-53  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, compose status proof va module tree phan anh dung ba core stub services da nam trong root dev stack.
+
+---
+
+## 35. Core stub health signaling queue
+
+- [x] `WEB-54` Them heartbeat-based health signal cho core-worker va core-beat  
+Owner: Backend Lead + DevOps  
+Estimate: 1h  
+Dependency: WEB-53  
+Anchor files: `docker-compose.dev.yml`, `packages/core/backend/src/vninvest_core/stub_heartbeat.py`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py`  
+DoD: `core-worker` va `core-beat` tu ghi heartbeat file ngay luc start va moi chu ky, compose healthcheck doc duoc freshness cua heartbeat nay, va `docker inspect`/`docker compose ps` phan anh hai service len `healthy` thay vi chi `Up`.
+
+- [x] `OPS-30` Sync audit docs va module tree sau core health signaling slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-54  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, compose health proof, heartbeat log proof va module tree phan anh dung helper `stub_heartbeat.py` da vao root codebase.

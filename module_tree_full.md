@@ -2,15 +2,15 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 15:06:25`
+Generated at: `2026-05-02 15:19:35`
 
 ## Summary
 
-- Total modules: 553
-- Python modules: 340
+- Total modules: 554
+- Python modules: 341
 - JS/TS modules: 213
 - Total classes: 564
-- Total functions: 2175
+- Total functions: 2180
 - Total top-level variables: 3706
 
 ## Python Modules
@@ -2391,6 +2391,11 @@ Generated at: `2026-05-02 15:06:25`
 
 - Top-level variables:
   - `NAMESPACE`, `__all__`
+
+### `packages/core/backend/src/vninvest_core/stub_heartbeat.py`
+
+- Functions:
+  - `_health_file`, `_health_max_age_seconds`, `_now_isoformat`, `run_healthcheck`, `write_heartbeat`
 
 ### `packages/core/backend/src/vninvest_core/worker_stub.py`
 

@@ -89,12 +89,26 @@ services:
     environment:
       CORE_ENV: foundation
       CORE_STUB_INTERVAL_SECONDS: "30"
+      CORE_STUB_HEALTH_FILE: /tmp/vninvest-core-worker-health.json
+      CORE_STUB_HEALTH_MAX_AGE_SECONDS: "90"
       PYTHONPATH: /workspace/src
     command: ["python", "-m", "vninvest_core.worker_stub"]
     restart: unless-stopped
     depends_on:
       core-api:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from vninvest_core.stub_heartbeat import run_healthcheck; run_healthcheck('/tmp/vninvest-core-worker-health.json')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - vninvest_network
     mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
@@ -109,12 +123,26 @@ services:
     environment:
       CORE_ENV: foundation
       CORE_STUB_INTERVAL_SECONDS: "30"
+      CORE_STUB_HEALTH_FILE: /tmp/vninvest-core-beat-health.json
+      CORE_STUB_HEALTH_MAX_AGE_SECONDS: "90"
       PYTHONPATH: /workspace/src
     command: ["python", "-m", "vninvest_core.beat_stub"]
     restart: unless-stopped
     depends_on:
       core-api:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from vninvest_core.stub_heartbeat import run_healthcheck; run_healthcheck('/tmp/vninvest-core-beat-health.json')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks:
       - vninvest_network
     mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}

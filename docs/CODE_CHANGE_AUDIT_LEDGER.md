@@ -1,3 +1,49 @@
+# Entry 2026-05-02ax - Add heartbeat-based health signaling for core worker and beat stubs
+
+Muc tieu:
+- Giai quyet residual cua `2026-05-02aw`: root dev stack da co `core-worker` va `core-beat`, nhung Docker moi chi thay process `Up`; can mot health signal toi thieu de auditor thay duoc readiness/liveness ro hon.
+- Giu scope hep va khong tao contract gia: stub processes tu ghi heartbeat file trong container, con compose healthcheck chi doc freshness cua heartbeat nay.
+- Tang quan sat runtime toi thieu cho core topology root stack ma khong mo them HTTP service hoac them dependency ngoai stdlib.
+
+Noi dung cap nhat chinh:
+- `packages/core/backend/src/vninvest_core/stub_heartbeat.py`:
+  - Them helper dung chung de ghi heartbeat snapshot JSON va kiem tra freshness cua health file bang stdlib.
+- `packages/core/backend/src/vninvest_core/worker_stub.py`:
+  - Ghi heartbeat file ngay luc start va moi chu ky `heartbeat`, dong thoi flush log de compose logs phan anh ngay.
+- `packages/core/backend/src/vninvest_core/beat_stub.py`:
+  - Ghi heartbeat file ngay luc start va moi chu ky `tick`, dong thoi flush log de compose logs phan anh ngay.
+- `docker-compose.dev.yml`:
+  - Them env `CORE_STUB_HEALTH_FILE`, `CORE_STUB_HEALTH_MAX_AGE_SECONDS` va healthcheck cho `core-worker`, `core-beat` bang `vninvest_core.stub_heartbeat.run_healthcheck(...)`.
+- `module_tree_full.md`:
+  - Regenerate sau khi them helper moi; tong module thanh 554.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-54`, `OPS-30`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02ax.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core health signaling slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add heartbeat-backed Docker healthchecks for `core-worker` and `core-beat`)
+- packages/core/backend/src/vninvest_core/stub_heartbeat.py (NEW - shared helper to write and validate core stub heartbeat files)
+- packages/core/backend/src/vninvest_core/worker_stub.py (MODIFIED - emit worker heartbeat snapshots and flush startup/runtime logs)
+- packages/core/backend/src/vninvest_core/beat_stub.py (MODIFIED - emit beat heartbeat snapshots and flush startup/runtime logs)
+- module_tree_full.md (MODIFIED - regenerated after the core health signaling slice, total modules 554)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-54, OPS-30)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/stub_heartbeat.py`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py` va `docker-compose.dev.yml`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` => recreate thanh cong hai service sau khi them heartbeat signal va healthcheck.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker logs --tail 20 vninvest-dev-core-worker; docker logs --tail 20 vninvest-dev-core-beat` => xac nhan worker/beat ghi startup log kem heartbeat file path `/tmp/vninvest-core-worker-health.json` va `/tmp/vninvest-core-beat-health.json`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker inspect --format "{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-health{{end}}" vninvest-dev-core-worker vninvest-dev-core-beat` => ca hai service len `healthy`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Health signal hien la file-freshness contract noi bo, du cho dev compose audit va basic restart detection; neu sau nay worker/beat tro thanh process that co queue/scheduler semantics, nen nang cap len endpoint hoac metrics contract bieu dien readiness giau hon.
+- Slice nay khong thay doi lane advisory runtime; viec user da nap provider key can duoc validate rieng neu muon mo lai nhanh `1`.
+
 # Entry 2026-05-02aw - Complete the root dev compose topology for core stub services
 
 Muc tieu:

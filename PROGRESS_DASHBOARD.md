@@ -1,3 +1,20 @@
+# ✅ AUDIT FILE LIST (2026-05-02ax)
+- docker-compose.dev.yml (MODIFIED - add heartbeat-backed Docker healthchecks for `core-worker` and `core-beat`)
+- packages/core/backend/src/vninvest_core/stub_heartbeat.py (NEW - shared helper to write and validate core stub heartbeat files)
+- packages/core/backend/src/vninvest_core/worker_stub.py (MODIFIED - emit worker heartbeat snapshots and flush startup/runtime logs)
+- packages/core/backend/src/vninvest_core/beat_stub.py (MODIFIED - emit beat heartbeat snapshots and flush startup/runtime logs)
+- module_tree_full.md (MODIFIED - regenerated after the core health signaling slice, total modules 554)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-54, OPS-30)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02ax)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `packages/core/backend/src/vninvest_core/stub_heartbeat.py`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py` va `docker-compose.dev.yml`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` recreate thanh cong hai service sau khi them heartbeat signal va healthcheck.
+- PASSED: `docker logs --tail 20 vninvest-dev-core-worker; docker logs --tail 20 vninvest-dev-core-beat` xac nhan logs startup co duong dan heartbeat file cho ca worker va beat.
+- PASSED: `docker inspect --format "{{.Name}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-health{{end}}" vninvest-dev-core-worker vninvest-dev-core-beat` xac nhan ca hai service deu `healthy`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02aw)
 - docker-compose.dev.yml (MODIFIED - add compose-managed `core-worker` and `core-beat` stub services alongside `core-api`)
 - module_tree_full.md (MODIFIED - regenerated after the core topology completion slice, total modules 553)
