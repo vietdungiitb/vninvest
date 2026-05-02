@@ -813,3 +813,21 @@ Estimate: 0.5h
 Dependency: WEB-52  
 Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
 DoD: control docs, file list audit, compose bring-up proof, same-origin health proof, host-listener teardown proof va module tree phan anh dung core stub da vao compose.
+
+---
+
+## 34. Core stub topology completion queue
+
+- [x] `WEB-53` Dua core-worker va core-beat vao root dev compose  
+Owner: Backend Lead + DevOps  
+Estimate: 1h  
+Dependency: WEB-52  
+Anchor files: `docker-compose.dev.yml`, `packages/core/backend/src/vninvest_core/worker_stub.py`, `packages/core/backend/src/vninvest_core/beat_stub.py`  
+DoD: root dev stack co du `core-api`, `core-worker`, `core-beat` trong cung `vninvest_network`; worker/beat dung source `packages/core/backend` va co the duoc bring-up bang `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` ma khong can stack rieng `packages/core/docker-compose.core.yml`.
+
+- [x] `OPS-29` Sync audit docs va module tree sau core topology completion slice  
+Owner: Platform Lead  
+Estimate: 0.5h  
+Dependency: WEB-53  
+Anchor files: `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`, `docs/CODE_CHANGE_AUDIT_LEDGER.md`, `PROGRESS_DASHBOARD.md`, `module_tree_full.md`  
+DoD: control docs, file list audit, compose status proof va module tree phan anh dung ba core stub services da nam trong root dev stack.

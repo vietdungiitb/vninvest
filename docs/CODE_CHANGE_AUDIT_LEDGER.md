@@ -1,3 +1,40 @@
+# Entry 2026-05-02aw - Complete the root dev compose topology for core stub services
+
+Muc tieu:
+- Hoan thanh nhánh compose tiep theo sau `WEB-52`: root dev stack khong chi co `core-api`, ma co du `core-worker` va `core-beat` de topology stub cua `packages/core` khong con bi tach roi khoi compose goc.
+- Giu thay doi cuc hep trong `docker-compose.dev.yml`, reuse dung source `packages/core/backend` va stub processes da co san, khong chen them DB/Redis semantics gia khi worker/beat hien chi la heartbeat loops.
+- Chot proof runtime bang compose status thay vi chi dua vao diff, de auditor thay duoc ba service core cung ton tai trong mot stack.
+
+Noi dung cap nhat chinh:
+- `docker-compose.dev.yml`:
+  - Them service `core-worker` chay `python -m vninvest_core.worker_stub`, mount `./packages/core/backend`, noi vao `vninvest_network`, phu thuoc `core-api` healthy.
+  - Them service `core-beat` chay `python -m vninvest_core.beat_stub`, mount `./packages/core/backend`, noi vao `vninvest_network`, phu thuoc `core-api` healthy.
+- `module_tree_full.md`:
+  - Regenerate sau compose topology completion; tong module giu 553.
+- `docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md`:
+  - Add va close `WEB-53`, `OPS-29`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02aw.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho core topology completion slice.
+
+Danh sach tep cap nhat:
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-worker` and `core-beat` stub services alongside `core-api`)
+- module_tree_full.md (MODIFIED - regenerated after the core topology completion slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-53, OPS-29)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` => `vninvest-dev-core-worker` va `vninvest-dev-core-beat` start thanh cong, giu `vninvest-dev-core-api` healthy.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-beat` => ca ba service `core-api`, `core-worker`, `core-beat` deu o trang thai `Up` trong root dev stack.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (553 modules).
+
+Residual note:
+- Topology goc hien da co du ba stub services trong root dev compose, nhung chi `core-api` dang duoc shell host tieu thu truc tiep; `core-worker` va `core-beat` moi dung heartbeat stub va chua co health/metrics contract rieng.
+- Blocker `ai_not_configured` cho advisory host van giu nguyen: can secret/runtime source hop le truoc khi co the tao advisory that.
+
 # Entry 2026-05-02av - Move the core stub into dev compose and close the AI runtime blocker investigation
 
 Muc tieu:

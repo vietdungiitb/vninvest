@@ -1,3 +1,16 @@
+# ✅ AUDIT FILE LIST (2026-05-02aw)
+- docker-compose.dev.yml (MODIFIED - add compose-managed `core-worker` and `core-beat` stub services alongside `core-api`)
+- module_tree_full.md (MODIFIED - regenerated after the core topology completion slice, total modules 553)
+- docs/TASKBOARD_PACKAGE_TRACK_FOUNDATION_BASELINE_20260502.md (MODIFIED - close out WEB-53, OPS-29)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02aw)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `docker-compose.dev.yml`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d core-worker core-beat` dua `vninvest-dev-core-worker` va `vninvest-dev-core-beat` len `Up`.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml ps core-api core-worker core-beat` xac nhan ca ba service `core-api`, `core-worker`, `core-beat` deu dang chay trong root dev stack.
+- PASSED: `module_tree_full.md` regenerated successfully with 553 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02av)
 - docker-compose.dev.yml (MODIFIED - add compose-managed `core-api` stub service and make frontend wait for it)
 - frontend/docker/nginx.conf (MODIFIED - proxy same-origin `/core/v1` to `core-api:8100` instead of the host)

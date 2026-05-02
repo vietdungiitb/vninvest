@@ -80,6 +80,46 @@ services:
     mem_limit: ${CORE_API_MEM_LIMIT:-256m}
     cpus: ${CORE_API_CPUS:-0.5}
 
+  core-worker:
+    container_name: vninvest-dev-core-worker
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./packages/core/backend:/workspace
+    environment:
+      CORE_ENV: foundation
+      CORE_STUB_INTERVAL_SECONDS: "30"
+      PYTHONPATH: /workspace/src
+    command: ["python", "-m", "vninvest_core.worker_stub"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_WORKER_MEM_LIMIT:-128m}
+    cpus: ${CORE_WORKER_CPUS:-0.25}
+
+  core-beat:
+    container_name: vninvest-dev-core-beat
+    image: python:3.13-slim
+    working_dir: /workspace
+    volumes:
+      - ./packages/core/backend:/workspace
+    environment:
+      CORE_ENV: foundation
+      CORE_STUB_INTERVAL_SECONDS: "30"
+      PYTHONPATH: /workspace/src
+    command: ["python", "-m", "vninvest_core.beat_stub"]
+    restart: unless-stopped
+    depends_on:
+      core-api:
+        condition: service_healthy
+    networks:
+      - vninvest_network
+    mem_limit: ${CORE_BEAT_MEM_LIMIT:-128m}
+    cpus: ${CORE_BEAT_CPUS:-0.25}
+
   backend:
     container_name: vninvest-dev-backend
     build:
