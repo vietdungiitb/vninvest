@@ -1,3 +1,17 @@
+# ✅ AUDIT FILE LIST (2026-05-02bb)
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell session id to a frontend-auth synthetic id for authenticated frontend users)
+- module_tree_full.md (MODIFIED - regenerated after the final shell session-id bridge adjustment, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: editor diagnostics clean tren `frontend/src/pages/packageShellHostRuntime.js` sau khi them guard `frontend-auth` cho session id.
+- PASSED: `npm run build` trong `frontend` thanh cong sau session-id bridge.
+- PASSED: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` refresh lai dev frontend thanh cong voi bundle moi.
+- PASSED: browser proof tren `/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, advisory `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Session ID: frontend-auth:testpro` cho `testpro`, whale snapshot `SSI` van giu `latest_completed_session` va `raw_fallback`.
+- PASSED: `module_tree_full.md` regenerated successfully with 554 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02ba)
 - frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell bootstrap through frontend auth context and strip admin-only runtime flags for non-admin users)
 - frontend/src/pages/AiAdvisoryShellHost.jsx (MODIFIED - pass frontend auth-backed bootstrap loader into the advisory shell host)

@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 16:37:31`
+Generated at: `2026-05-02 17:18:01`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 16:37:31`
 - Python modules: 341
 - JS/TS modules: 213
 - Total classes: 564
-- Total functions: 2184
-- Total top-level variables: 3715
+- Total functions: 2188
+- Total top-level variables: 3721
 
 ## Python Modules
 
@@ -3193,9 +3193,9 @@ Generated at: `2026-05-02 16:37:31`
 ### `frontend/src/pages/packageShellHostRuntime.js`
 
 - Functions:
-  - `cloneAbilityRules`, `createPackageShellBootstrapLoader`, `normalizePackageShellIdentity`, `packageShellHostFetch`, `shouldAttachApiToken`
+  - `buildFrontendSessionId`, `cloneAbilityRules`, `createPackageShellBootstrapLoader`, `isAdminShellIdentity`, `normalizePackageShellIdentity`, `normalizePackageShellNavigation`, `normalizePackageShellSurfaces`, `packageShellHostFetch`, `shouldAttachApiToken`
 - Top-level variables:
-  - `abilityRules`, `accessToken`, `bootstrapPayload`, `capabilities`, `hasFrontendIdentity`, `headers`, `normalizedIdentity`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`, `session`
+  - `abilityRules`, `accessToken`, `bootstrapPayload`, `capabilities`, `hasFrontendIdentity`, `headers`, `isAdminIdentity`, `navigation`, `normalizedIdentity`, `packageShellHostEnv`, `requestUrl`, `resolvedUrl`, `session`, `sessionSubject`, `surfaces`, `visibleGroups`, `visibleRoutes`
 
 ### `frontend/src/pages/PortfolioManagement.jsx`
 

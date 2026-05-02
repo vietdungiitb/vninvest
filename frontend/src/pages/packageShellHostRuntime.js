@@ -55,6 +55,11 @@ function normalizePackageShellSurfaces(surfaces = {}, isAdminIdentity = false) {
   };
 }
 
+function buildFrontendSessionId(identity) {
+  const sessionSubject = identity?.username || identity?.user_id || 'guest';
+  return `frontend-auth:${sessionSubject}`;
+}
+
 export function createPackageShellBootstrapLoader({ userIdentity, userPlan, ability }) {
   const normalizedIdentity = normalizePackageShellIdentity(userIdentity);
   const abilityRules = cloneAbilityRules(ability);
@@ -97,6 +102,9 @@ export function createPackageShellBootstrapLoader({ userIdentity, userPlan, abil
       },
       session: {
         ...session,
+        session_id: hasFrontendIdentity
+          ? buildFrontendSessionId(normalizedIdentity)
+          : (session.session_id || buildFrontendSessionId(normalizedIdentity)),
         principal: {
           ...session.principal,
           user_id: hasFrontendIdentity

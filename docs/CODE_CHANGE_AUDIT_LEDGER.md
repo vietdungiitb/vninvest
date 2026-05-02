@@ -1,3 +1,39 @@
+# Entry 2026-05-02bb - Bridge shell session id to frontend auth identity
+
+Muc tieu:
+- Chot residual con lai cua slice auth-parity shell host: `Session ID` van hien `core-session-foundation` cho `testpro`, trong khi user principal da la frontend auth that.
+- Giữ health/build metadata va core bootstrap contract cua shell, chi thay session id thanh chuoi synthetic do host frontend tao ra khi co real frontend identity.
+- Tranh edge case sinh `frontend-auth:guest` khi bridge khong co frontend identity that.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/packageShellHostRuntime.js`:
+  - Them helper `buildFrontendSessionId(...)`.
+  - Override `session.session_id` sang `frontend-auth:<username|user_id>` khi frontend identity co that.
+  - Neu bridge khong co frontend identity that, giu fallback `session.session_id` tu core stub thay vi ep sang guest synthetic id.
+- `module_tree_full.md`:
+  - Regenerate sau khi sua host runtime; tong module giu 554.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bb.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice session-id bridge.
+
+Danh sach tep cap nhat:
+- frontend/src/pages/packageShellHostRuntime.js (MODIFIED - bridge shell session id to a frontend-auth synthetic id for authenticated frontend users)
+- module_tree_full.md (MODIFIED - regenerated after the final shell session-id bridge adjustment, total modules 554)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bb)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/pages/packageShellHostRuntime.js` sau khi them guard `frontend-auth` cho session id.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh voi bundle moi sau session-id bridge.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build frontend` => dev frontend runtime duoc refresh lai theo code cuoi cung.
+- PASSED: browser proof tren `http://127.0.0.1/ai-advisory/shell?symbol=BCM&ts=1777707400` xac nhan `Username: testpro`, `Session ID: frontend-auth:testpro`, `Plan: pro`, `Signals routes visible: 2`, `Advisory routes active: 1`, va advisory session `BCM` van giu `Contract: v2`, `Quality: 33.5`.
+- PASSED: browser proof tren `http://127.0.0.1/whale-alerts/shell?symbol=SSI&trade_date=2026-04-19` xac nhan `Username: testpro`, `Session ID: frontend-auth:testpro`, `Plan: pro`, `Signals routes visible: 2`, `Whale routes active: 1`, va whale snapshot `SSI` van giu `latest_completed_session` / `raw_fallback`.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (554 modules).
+
+Residual note:
+- Health, build meta va shell bootstrap routes van den tu core stub theo contract hien tai. Slice nay chi dong bo session id cho frontend-auth users, khong thay doi core runtime contract o muc transport.
+
 # Entry 2026-05-02ba - Bridge package-shell bootstrap to frontend auth context
 
 Muc tieu:
