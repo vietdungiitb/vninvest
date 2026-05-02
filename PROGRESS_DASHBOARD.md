@@ -1,428 +1,176 @@
-# ✅ AUDIT FILE LIST (2026-05-01zd)
-- frontend/src/index.css (MODIFIED - add reusable auto-height 22/48/30 layout helpers for top-level 2+1 page shells)
-- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - move outer workspace grid to shared 22/48/30 utility)
-- frontend/src/pages/StockDetail.jsx (MODIFIED - align loading shell and main 3-column workspace to the shared utility)
-- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - align both top-level 3-column rows to the shared utility)
-- frontend/src/pages/modern/ModernDashboard.jsx (MODIFIED - align full-height operator grid to the shared 22/48/30 utility)
-- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md (MODIFIED - correct the audit to the 22/48/30 contract and mark remediated surfaces)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zd)
+# ✅ AUDIT FILE LIST (2026-05-02i)
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - current worktree keeps Whale Advisory shell and grid layout adjustments that must be included in the commit bundle)
+- docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - align target-state database segregation guidance with current core doc pack)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - clarify current-code-first package move discipline and core doc dependencies)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add reconciliation entry 2026-05-02i)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - expand official core foundation entry path)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - align target-state stack rollout with execution rebaseline)
+- docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - re-sequence AI trading rollout around current runtime seams)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - require execution rebaseline and current core docs before implementation)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - enforce boundary-first execution and partner API direction)
+- docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - defer core schema and contract decisions to the new core pack)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - distinguish VIP local admin semantics from central core admin)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (NEW - current-code aligned execution override for enterprise transformation pack)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (NEW - backend capability snapshot contract for frontend auth and navigation)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (NEW - execution taskboard for core admin rollout)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (NEW - granular role and ability matrix for core admin surfaces)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (NEW - screen-level spec for central operator and tenant admin routes)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (NEW - architecture and package placement for core admin UI)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (NEW - resource catalog, endpoint matrix and contract governance for core)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (NEW - operator-only API backlog and freeze order)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (NEW - detailed P0 read contract for operator APIs)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (NEW - partner and vip-app API contract draft)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - detailed core platform blueprint for services, storage and APIs)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (NEW - freeze checklist for the first core resources)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (NEW - schema family analysis before migrations)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (NEW - schema-last storage strategy for core)
+- module_tree_full.md (MODIFIED - regenerated after including the current WhaleAdvisory frontend change in the commit bundle)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after frontend layout rollout)
 
 Validation:
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `get_errors` on touched layout files => no errors found.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
-- EVIDENCE: screenshot captured on refreshed runtime at `http://localhost/whale-alerts/TCB` after reload; updated shell/header/grid visible.
-- NOTE: outer 3-column shells now share the same 22/48/30 contract across LegacyDashboard, StockDetail, WhaleAdvisory, and ModernDashboard; remaining layout drift is outside this slice.
-
-# ✅ AUDIT FILE LIST (2026-05-01zc)
-- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - decouple workspace overview fetch from whale feed refresh and preserve feed data during silent refresh)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zc)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
-- NOTE: `getStockWorkspaceOverview()` is no longer refetched on every whale feed refresh; visible page load is still bounded by the slowest remaining parallel request.
-
-# ✅ AUDIT FILE LIST (2026-05-01zb)
-- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - reuse shared bucket facts, remove duplicate raw tick scan, and skip live whale feed on historical selected-session snapshots)
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - add historical no-live-feed regression and update cache/lock expectations)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zb)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after backend whale snapshot slice)
-
-Validation:
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api; Pop-Location`
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build backend; Pop-Location`
-- MEASURED: `_get_or_build_bucket_facts('MBB', '2026-04-29')` cold `2.033s`, warm cache `0.005s`.
-- MEASURED: `build_whale_analytics_snapshot('MBB', trade_date='2026-04-29', include_baseline=False)` in-process `2.083s`.
-- MEASURED: `market_data_service.get_stock_workspace_overview('MBB')` ~`3.257s`, van la mot page-level bottleneck rieng.
-- NOTE: do `whale-alerts/:symbol` goi nhieu endpoint song song, perceived latency cua page hien van phu thuoc ca `overview`, `whale_feed`, advisory va realtime surfaces, khong chi rieng snapshot pane.
-
-# ✅ AUDIT FILE LIST (2026-05-01za)
-- backend/portfolio/views_realtime_advanced.py (DELETED - retire orphaned legacy realtime module with stale WhaleFeed/RVOL implementations)
-- frontend/src/api/client.js (MODIFIED - remove unused `getWhaleOrdersBySymbol` legacy helper)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01za)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after dead-code cleanup slice)
-
-Validation:
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `get_errors` on `frontend/src/pages/WhaleAdvisory.jsx` => no errors found.
 - PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
 - PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location`
-- NOTE: legacy backend whale-orders endpoint remains intentionally untouched in this slice; only the unused internal client helper was removed.
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => impacted dev runtime refreshed successfully.
 
-# ✅ AUDIT FILE LIST (2026-05-01z)
-- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - default whale snapshot requests to `includeBaseline: false`)
-- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - disable baseline percentile work for selected-session bubble snapshot)
-- frontend/src/components/WhaleAnalyticsTab.jsx (MODIFIED - disable baseline percentile work for tab-level snapshot loads)
-- frontend/src/components/WhaleBubbleChart.jsx (MODIFIED - disable baseline percentile work for uncontrolled fetch and harden empty bubble groups)
-- frontend/src/hooks/useWhaleAnalyticsData.test.js (MODIFIED - assert baseline-disabled default request path)
-- frontend/src/components/WhaleBubbleChart.sync.test.jsx (MODIFIED - regression for uncontrolled bubble snapshot params)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01z)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after frontend whale snapshot slice)
-
-Validation:
-- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; Pop-Location`
-- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/WhaleBubbleChart.sync.test.jsx --testNamePattern "uses baseline-disabled snapshot fetches for uncontrolled bubble loads"; Pop-Location`
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `get_errors` on touched frontend files => no errors found.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (514 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => frontend container rebuilt/restarted successfully.
-
-# ✅ AUDIT FILE LIST (2026-05-01y)
-- backend/portfolio/views_ai_advisory_session.py (MODIFIED - avoid sync fallback on benchmark-request bootstrap GET)
-- backend/portfolio/market_data_service.py (MODIFIED - return empty series immediately when no requested symbols have history)
-- backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py (MODIFIED - deterministic coverage for queued benchmark bootstrap and queue-error branch)
-- backend/portfolio/tests/test_market_data_service.py (MODIFIED - missing-symbol regression coverage)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01y)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after backend slice and new utility module)
-
-Validation:
-- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session portfolio.tests.test_market_data_service --keepdb; Pop-Location`
-- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat`
-
-# ✅ AUDIT FILE LIST (2026-05-01x)
-- frontend/src/utils/requestCancellation.js (NEW - shared cancellation detector for abort/cancel request noise)
-- frontend/src/context/PortfolioContext.jsx (MODIFIED - ignore canceled portfolio bootstrap requests)
-- frontend/src/hooks/useRealtimeFeedCore.js (MODIFIED - ignore canceled realtime polling requests)
-- frontend/src/hooks/useWhaleAnalyticsData.js (MODIFIED - ignore canceled whale analytics requests)
-- frontend/src/pages/StockDetail.jsx (MODIFIED - ignore canceled order-flow polling requests)
-- frontend/src/pages/WhaleAlertsHub.jsx (MODIFIED - reuse shared cancellation helper)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01x)
+# ✅ AUDIT FILE LIST (2026-05-02h)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (NEW - detailed field/query/degrade contract for operator P0 read endpoints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (NEW - backend capability snapshot contract for frontend auth/navigation)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (NEW - frontend/backend slice taskboard for core admin rollout)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add new admin companion artifacts)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - link detailed operator contracts)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - link capability payload contract)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - link implementation taskboard)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - include 3 new companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include 3 new core detail docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - expand official core foundation list)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02h)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- Pending: production build and module tree regeneration after this slice.
+- PASSED: doc design grounded against current frontend auth anchors and backend API/runtime anchors before patching.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01w)
-- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md (MODIFIED - update V1 grid contract so the third column is 30%)
-- frontend/src/index.css (MODIFIED - sync shared page-body-grid utility to the 30% third-column contract)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01w)
+# ✅ AUDIT FILE LIST (2026-05-02g)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (NEW - roles, abilities, capability claims and route gating for core admin surfaces)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (NEW - screen-level spec for central operator and tenant admin routes)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (NEW - operator-only API backlog and freeze order)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - link admin companion artifacts)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - include new admin companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include new admin companion docs in core pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - official core foundation list expanded)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - align vip-app boundary with partner/global API direction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02g)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
+- PASSED: `grep_search` / `read_file` cross-check against existing frontend auth primitives and current core docs before patching.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01v)
-- frontend/src/index.css (MODIFIED - add V1 layout tokens and shared page-shell/page-panel/page-header utilities)
-- frontend/src/pages/WhaleAlertsDashboard.jsx (MODIFIED - migrate root shell, header and major content panels to shared V1 utilities)
-- frontend/src/pages/StockDetail.jsx (MODIFIED - normalize loading and main shells to app-page-shell)
-- frontend/src/pages/Watchlist.jsx (MODIFIED - normalize root shell wrapper)
-- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - normalize root shell wrapper)
-- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - normalize root shell wrapper)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01v)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after layout shell slice)
-
-Validation:
-- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => frontend container rebuilt/restarted successfully.
-
-# ? AUDIT FILE LIST (2026-05-01u)
-- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md (NEW - detailed UI/UX audit report for Layout Template V1 compliance)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01u)
+# ✅ AUDIT FILE LIST (2026-05-02f)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (NEW - admin UI architecture, package placement, route groups and UI-to-API mapping)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add admin UI companion doc and placement rule)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include admin UI doc in core companion set)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add admin UI doc to official core foundation pack)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - make admin UI placement explicit in package boundaries)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - distinguish VIP internal admin from core admin UI)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02f)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: Audit report created and verified against existing page implementations.
+- PASSED: `read_file` cross-check against controlling docs before patching to ensure the admin UI decision was attached to the right architecture boundaries.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01t)
-- frontend/src/hooks/useUnifiedAlerts.js (MODIFIED - normalize alert text payloads before they reach render paths)
-- frontend/src/components/UnifiedAlertCenter.jsx (MODIFIED - render alert headline/detail via normalized text helper)
-- frontend/src/components/DashboardRealtimePanel.jsx (MODIFIED - render alert headline/detail and critical toasts via normalized text helper)
-- frontend/src/components/DashboardRealtimePanel.test.jsx (NEW - regression for object-shaped alert payload rendering)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01t)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after frontend/runtime slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 5/5 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
-
-# ✅ AUDIT FILE LIST (2026-05-01s)
-- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - normalize audit warning rendering to avoid React object-child crash)
-- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - add regression for top-level warning object rendering)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01s)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after frontend/runtime slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 4/4 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
-- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => impacted dev services rebuilt and started.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-
-# ✅ AUDIT FILE LIST (2026-05-01r)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark remaining Money Flow taskboard slices complete)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01r)
+# ✅ AUDIT FILE LIST (2026-05-02e)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (NEW - freeze checklist for the first six core resources)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (NEW - detailed schema analysis for core domains and candidate tables)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - link new companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include new companion docs in core summary)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add core platform foundation section and official entry path)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - cross-link core docs before package move)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - cross-link core schema and contract docs)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - cross-link core docs for package/core decisions)
+- docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - reinterpret target-state DB segregation via core docs)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - link VIP/core integration semantics to partner/core docs)
+- docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - defer core schema/contract decisions to core docs)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - add core docs to mandatory context for B2B/VIP slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02e)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `grep_search` trên `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md` với query `- [ ]` => no matches found; taskboard Money Flow không còn item mở.
+- PASSED: `read_file` cross-check against enterprise pack docs before patching ensured cross-links were placed in the controlling docs.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01q)
-- backend/portfolio/views_signal_admin.py (MODIFIED - add whale governance bridge preview/apply APIs, pending draft snapshot, and audit logging)
-- backend/portfolio/views.py (MODIFIED - re-export whale governance bridge handlers through portfolio.views)
-- backend/config/urls.py (MODIFIED - wire whale governance bridge routes)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add bridge preview/apply regressions and pending draft assertions)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-5.3 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01q)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after backend bridge slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_whale_governance_bridge_preview_and_apply_create_pending_draft portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_whale_governance_bridge_apply_requires_confirm --keepdb; Pop-Location` => 3/3 PASS.
-- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-- Evidence: bridge preview/apply payload path validated via focused tests; pending draft snapshot and audit logs were asserted.
-
-# ✅ AUDIT FILE LIST (2026-05-01p)
-- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - add jobs/audit warning surface and materialization preview load)
-- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - update warning matcher and materialization preview assertions)
-- frontend/src/pages/AdminOps.jsx (MODIFIED - add permission-gated legacy writer redirect card and access notices)
-- frontend/src/pages/AdminOps.test.jsx (NEW - regression for legacy writer link-out permissions)
-- frontend/src/components/adminops/VnstockBenchmarkPanel.jsx (MODIFIED - gate apply recommendation by upstream permission)
-- frontend/src/i18n/vi.js (MODIFIED - Vietnamese copy for surface lock and audit surface)
-- frontend/src/i18n/en.js (MODIFIED - English copy for surface lock and audit surface)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark FE-6.4/FE-6.5 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01p)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after FE-6.4/FE-6.5 slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --runInBand src/components/adminops/SignalControlCenter.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => 5/5 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-- Evidence: browser screenshots captured for AdminOps main content and the legacy writer navigation card.
-
-# ✅ AUDIT FILE LIST (2026-05-01o)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark QA-7.1/QA-7.2/QA-7.3/OPS-7.4 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01o)
+# ✅ AUDIT FILE LIST (2026-05-02d)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (NEW - resource catalog, field dictionary, endpoint matrix and contract governance for core)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (NEW - schema-last storage strategy and migration/split rules for core)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (NEW - detailed partner/vip-app API contract draft)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - link to companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - link to companion docs in core summary)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02d)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api portfolio.tests.test_signal_service_run_registry --keepdb; Pop-Location` => 22/22 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: rollback-isolated benchmark in Django test DB => `cold_request_ms=35.4`, `warm_request_ms=2.8`, `cold_read_path=facts_first`, `warm_read_path=facts_first`, `cold_raw_fallback_used=false`, `warm_raw_fallback_used=false`.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat; Pop-Location`.
-- Evidence: AdminOps Money Flow Control Center screenshot captured after runtime refresh; backend logs showed 200 responses for `signals/summary`, `money-flow/materialization/preview`, and `signals/retention/preview`.
+- PASSED: `file_search` confirmed companion docs did not already exist before creation.
+- PASSED: `read_file` cross-check against blueprint/rebaseline docs ensured companion artifacts match the same contract-first/schema-last model.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01n)
-- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - add whale/dark-flow boundary panels and overflow wrap fix)
-- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - update assertions for boundary panels)
-- frontend/src/i18n/vi.js (MODIFIED - Vietnamese FE-6.3 labels)
-- frontend/src/i18n/en.js (MODIFIED - English FE-6.3 labels)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark FE-6.3 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01n)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after FE-6.3 frontend slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshots captured on `http://localhost/admin-ops` for both boundary panels.
-
-# ✅ AUDIT FILE LIST (2026-05-01m)
-- frontend/src/api/client.js (MODIFIED - add materialization preview client call)
-- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - add lifecycle/materialization/storage panels)
-- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - assert the new panels and preview load path)
-- frontend/src/i18n/vi.js (MODIFIED - Vietnamese titles for the three new panels)
-- frontend/src/i18n/en.js (MODIFIED - English titles for the three new panels)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark FE-6.2 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01m)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after FE-6.2 frontend slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: frontend dev stack rebuilt and restarted with `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshot captured on `http://localhost/admin-ops` with the lifecycle and storage panels visible.
-
-# ✅ AUDIT FILE LIST (2026-05-01l)
-- frontend/src/pages/AdminOps.jsx (MODIFIED - rename signals tab shell copy)
-- frontend/src/components/adminops/SignalControlCenter.jsx (MODIFIED - update Money Flow Control Center header copy)
-- frontend/src/components/adminops/SignalControlCenter.test.jsx (MODIFIED - align assertions with renamed shell copy)
-- frontend/src/i18n/vi.js (MODIFIED - Vietnamese labels for the shell rename)
-- frontend/src/i18n/en.js (MODIFIED - English labels for the shell rename)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark FE-6.1 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01l)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after frontend slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: frontend dev stack rebuilt and restarted with `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshot captured on `http://localhost/admin-ops` with the updated `Trung tam dong tien` shell visible.
-
-# ✅ AUDIT FILE LIST (2026-05-01k)
-- backend/portfolio/views_signal_admin.py (MODIFIED - add money-flow materialization preview/run APIs and effective-value envelopes)
-- backend/config/urls.py (MODIFIED - wire money-flow materialization routes)
-- backend/portfolio/views.py (MODIFIED - re-export new money-flow handlers)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - extend admin signal API regressions for preview/run envelopes)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-5.2 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01k)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after BE-5.2 backend slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 12/12 PASS.
-
-# ✅ AUDIT FILE LIST (2026-05-01j)
-- backend/portfolio/views_signal_admin.py (MODIFIED - expand summary API with lifecycle tiers, materialization lag, anomaly backlog and effective owner matrix)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add lifecycle summary contract regression)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-5.1 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01j)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-- module_tree_full.md (MODIFIED - regenerate after BE-5.1 summary slice)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure --keepdb; Pop-Location` => 1/1 PASS.
-
-# ✅ AUDIT FILE LIST (2026-05-01i)
-- backend/portfolio/models.py (MODIFIED - add MoneyFlowForensicWindow physical carve-out table)
-- backend/portfolio/services_money_flow_retention.py (MODIFIED - add selective forensic window materialization and expired purge helpers)
-- backend/portfolio/tasks_order_flow.py (MODIFIED - materialize forensic windows for severe dark-flow signals)
-- backend/portfolio/tasks_whale_service.py (MODIFIED - materialize forensic windows for severe whale alerts)
-- backend/portfolio/tasks_maintenance.py (MODIFIED - purge expired forensic windows during intraday cleanup)
-- backend/portfolio/migrations/0065_moneyflowforensicwindow.py (NEW - persist forensic window schema)
-- backend/portfolio/tests/test_signal_service_run_registry.py (MODIFIED - add forensic storage and purge regressions)
-- module_tree_full.md (MODIFIED - regenerate after forensic storage slice)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-4.2/BE-4.3 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01i)
+# ✅ AUDIT FILE LIST (2026-05-02c)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add contract-first governance, real-world API conventions and schema-last phase gates)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - add executive summary for contract-first and schema-last execution order)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02c)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_service_run_registry --keepdb; Pop-Location` => 10/10 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (511 modules).
+- PASSED: `fetch_webpage` cross-check against Stripe API versioning/idempotency/request IDs, GitHub REST API versions, Google Cloud API design guide.
+- PASSED: `read_file` cross-check against current blueprint/rebaseline docs and audit files.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01h)
-- backend/portfolio/global_signal_policy_helpers.py (MODIFIED - add forensic retention knobs and retention severity coercion)
-- backend/portfolio/services_money_flow_retention.py (NEW - shared retention safety gate, forensic window preview and cached heavy-count helper)
-- backend/portfolio/views_signal_admin.py (MODIFIED - wire shared retention preview helper into admin preview and annotate fresh safety gate)
-- backend/portfolio/tasks_maintenance.py (MODIFIED - block raw intraday purge when retention preview gate is not ready)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - extend retention preview regression with safety gate and forensic policy assertions)
-- backend/portfolio/tests/test_signal_service_run_registry.py (MODIFIED - add blocked/allowed purge regressions for preview-required gate)
-- module_tree_full.md (MODIFIED - regenerate after retention safety gate slice)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-4.1 completed)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01h)
+# ✅ AUDIT FILE LIST (2026-05-02b)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add international B2B core patterns and detailed VIP-app token/billing/quota model)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - summarize token, entitlement, metering and billing guidance for VIP-app)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02b)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_recent_events_and_retention_preview_return_expected_shapes portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_intraday_ticks_creates_purge_run portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_intraday_ticks_blocks_without_retention_preview --keepdb; Pop-Location` => 3/3 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (511 modules).
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build backend celery_worker celery_beat; Pop-Location` => backend, celery worker and celery beat rebuilt/restarted successfully.
+- PASSED: `fetch_webpage` cross-check against Stripe usage-based billing and entitlements, AWS API Gateway usage plans and API keys, GitHub fine-grained personal access token guidance.
+- PASSED: `read_file` cross-check against current blueprint/rebaseline docs, `module_tree_full.md` and audit files.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01g)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - mark BE-3.1/BE-3.2/BE-3.3 completed after dark-flow validation)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01g)
+# ✅ AUDIT FILE LIST (2026-05-02a)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - detailed blueprint for core boundaries, database organization, services and global APIs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - link core summary to the detailed core blueprint)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02a)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `read_file` on `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md` => BE-3.1/BE-3.2/BE-3.3 show `[x]`.
+- PASSED: `read_file` / `grep_search` cross-check against `backend/portfolio/models.py`, `backend/portfolio/opencore_dpi.py`, `backend/portfolio/opencore_analytics.py`, `backend/portfolio/opencore_revenue.py`, `backend/portfolio/urls.py`, `backend/portfolio/urls_stock.py`, `backend/portfolio/urls_realtime.py`, `backend/portfolio/market_data_service.py`, `backend/portfolio/services_whale_analytics_snapshot.py`, `backend/portfolio/tasks_prefetch.py`, `backend/portfolio/tasks_realtime.py`, `backend/portfolio/tasks_maintenance.py`, `backend/config/health.py`.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01f)
-- backend/portfolio/order_flow.py (MODIFIED - add additive dark-flow bucket facts, session summary, anomaly markers, and materialization metadata)
-- backend/portfolio/tasks_order_flow.py (MODIFIED - cache richer dark-flow snapshot payload in the latest-signal cache entry)
-- backend/portfolio/views_signal_admin.py (MODIFIED - expose dark-flow materialization freshness, session summary, anomaly markers, and pending run counts)
-- backend/portfolio/tests/test_order_flow.py (MODIFIED - extend dark-flow detector and cache contract regressions)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - extend summary API regression with dark-flow freshness/materialization assertions)
-- module_tree_full.md (MODIFIED - regenerate after dark-flow lifecycle parity slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01f)
+# ✅ AUDIT FILE LIST (2026-05-01zf)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - add core runtime deploy units, background service inventory, enrichment roadmap and API readiness review)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zf)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_order_flow.TestDetectDarkFlow portfolio.tests.test_order_flow.TestOrderFlowSignalTask --keepdb; Pop-Location` => 15/15 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure --keepdb; Pop-Location` => 1/1 PASS.
+- PASSED: `read_file` / `grep_search` cross-check against `docker-compose.dev.yml`, `backend/config/settings.py`, `backend/config/urls.py`, `backend/portfolio/tasks_prefetch.py`, `backend/portfolio/tasks_realtime.py`, `backend/portfolio/tasks_maintenance.py`, `backend/portfolio/tasks_global_screener.py`, `backend/portfolio/tasks_whale_service.py`, `backend/portfolio/market_views.py`, `backend/portfolio/market_data_service.py`, `backend/portfolio/services_whale_analytics_snapshot.py`.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
-# ✅ AUDIT FILE LIST (2026-05-01e)
-- backend/portfolio/models.py (MODIFIED - add lifecycle service domain and materialization/purge run types)
-- backend/portfolio/tasks_global_screener.py (MODIFIED - register global screener materialization runs)
-- backend/portfolio/tasks_maintenance.py (MODIFIED - register recompute and purge lifecycle runs)
-- backend/portfolio/views_signal_admin.py (MODIFIED - register retention preview runs and expose lifecycle job listing)
-- backend/portfolio/tests/test_signal_service_run_registry.py (MODIFIED - add materialization/recompute/purge regressions)
-- backend/portfolio/tests/test_signal_admin_api.py (MODIFIED - add retention preview/job list/retry guard regressions)
-- module_tree_full.md (MODIFIED - regenerate after lifecycle run-registry slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01e)
+# ✅ AUDIT FILE LIST (2026-05-01ze)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (NEW - current-code aligned execution override for enterprise transformation pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - require rebaseline before interpreting the 18-doc pack)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - phase-gate Kong/ClickHouse and prioritize current Redis/PostgreSQL/Channels stack)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - add boundary-first phase and defer physical package move)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - clarify target-map vs immediate move)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - add rebaseline precedence and current-code-first hard constraint)
+- docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - align implementation steps to current AI runtime and frontend surfaces)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01ze)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_signal_service_run_registry portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 18/18 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (510 modules).
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build backend celery_worker celery_beat; Pop-Location` => backend, celery worker and celery beat rebuilt/restarted successfully.
-
-# ✅ AUDIT FILE LIST (2026-05-01d)
-- backend/portfolio/views_admin_runtime.py (MODIFIED - hard-block Runtime Vnstock Config update/reset and intraday backfill apply by surface permission)
-- backend/portfolio/tests/test_admin_ops.py (MODIFIED - add locked-staff 403 regressions and explicit writer permission setup)
-- module_tree_full.md (MODIFIED - regenerate after backend permission hard-block slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01d)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_admin_ops.AdminOpsVnstockRuntimeConfigTests portfolio.tests.test_admin_ops.AdminIntradaySideBackfillAsyncTests --keepdb; Pop-Location` => 9/9 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (510 modules).
-
-# ✅ AUDIT FILE LIST (2026-05-01c)
-- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - add revision-based invalidation for whale snapshot/materialization caches and expose cache_revision in payload)
-- backend/portfolio/views_whale_analytics.py (MODIFIED - thread cache revision into snapshot cache key and builder)
-- backend/portfolio/tasks_maintenance.py (MODIFIED - bump whale cache revision after intraday side backfill apply and track invalidated symbols)
-- backend/portfolio/views_stock_workspace_admin.py (MODIFIED - expose surface_permissions for Vnstock/Data Ops write gating)
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - update revision-aware cache assertions and add invalidation regression)
-- backend/portfolio/tests/test_admin_ops.py (MODIFIED - add surface_permissions assertion and backfill invalidation regression)
-- frontend/src/pages/AdminOps.jsx (MODIFIED - add localized read-only banners and disable dangerous write actions)
-- frontend/src/components/adminops/VnstockBenchmarkPanel.jsx (MODIFIED - disable apply recommendation when write access is locked)
-- frontend/src/i18n/vi.js (MODIFIED - add Vietnamese i18n for read-only banners and surface names)
-- frontend/src/i18n/en.js (MODIFIED - add English i18n for read-only banners and surface names)
-- module_tree_full.md (MODIFIED - regenerate after runtime/UI slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01c)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_admin_ops --keepdb; Pop-Location`.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location`.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (510 modules).
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location` => backend healthy, frontend started.
-
-Rui ro con lai / note:
-- UI dang gate write actions bang `surface_permissions`; backend write endpoints van di qua admin permission hien co. Neu can server-side role split chat hon, can mot slice phan quyen rieng.
-
-# ✅ AUDIT FILE LIST (2026-05-01b)
-- docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add explicit cache invalidation, pending-only whale bridge, permission-gated link-out và physical forensic carve-out rules)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - tighten DoD/evidence cho deprecation hard-block, purge/recompute invalidation, pending bridge và permission-gated UI)
-- docs/IMPLEMENTATION_PLAN_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - align phase goals to hard-block legacy writers, invalidation, physical carve-out and approval-gated bridge)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md (MODIFIED - extend final outcomes and non-negotiables with the new safeguards)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_TRACEABILITY_MATRIX_20260501.md (MODIFIED - add Req IDs MFC-12..MFC-16 for the new safeguards)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501.md (MODIFIED - expand coverage targets, scenarios and human-gate items)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_SELF_AUDIT_AND_TEST_PROTOCOL_20260501.md (MODIFIED - add audit risks and pass criteria for the new safeguards)
-- docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add review prompts/checklist items for hard-block, invalidation, permission gating and forensic carve-out)
-- docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add pass criteria for backend hard-block, approval-gated bridge, permission-gated link-out and physical carve-out)
-- docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add Council of Three prompts for the new safeguard gaps)
-- quality/spec_audits/2026-05-01-money-flow-triage-summary.md (MODIFIED - append post-rebuttal closure note)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01b)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: grep_search/read_file cross-check trên TECH_SPEC, TASKBOARD, IMPLEMENTATION_PLAN, HANDOFF_MASTER, TRACEABILITY_MATRIX, CODE_QUALITY_CONSTITUTION, SELF_AUDIT_AND_TEST_PROTOCOL, RUN_CODE_REVIEW, RUN_INTEGRATION_TESTS, RUN_SPEC_AUDIT và quality/spec_audits triage summary => audit file list đã sync đúng sau docs patch.
-
-# ✅ AUDIT FILE LIST (2026-05-01a)
-- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - add shared bucket facts cache/materialization metadata and fix the time import collision)
-- backend/portfolio/views_whale_analytics.py (MODIFIED - bump snapshot cache key to v5)
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - add regression for shared bucket facts reuse and update v5 contract expectation)
-- module_tree_full.md (MODIFIED - regenerate after backend snapshot materialization slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01a)
-- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
-
-Validation:
-- PASSED: `Push-Location .\backend; & ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_returns_contract_and_headers portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_local_build_when_lock_wait_expires portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_shared_bucket_facts_cache_reuses_raw_tick_query_across_calls --keepdb; Pop-Location` => 3/3 PASS.
-- NOTE: the full snapshot test module still surfaces an unrelated baseline percentile assertion in `test_snapshot_endpoint_returns_percentile_fields_when_historical_baseline_exists`; this slice did not change that path.
+- PASSED: doc cross-check by source inspection against current repo anchors for ASGI, Redis Streams, OpenCore, AICommandCenter and frontend entitlement gating.
+- PASSED: `grep_search` / `read_file` confirmed repo hien tai chua co `packages/`, root `shared/api-contracts/` hoac `buildTarget.js`, nen plan da duoc rebase ve current-code-first sequencing.
+- PASSED: doc-only slice; khong can build, migrate hay refresh runtime.
 
 # ✅ AUDIT FILE LIST (2026-04-28m)
 - backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - add cached percentile baseline helper and optional `include_baseline` skip path)
@@ -4304,4 +4052,3 @@ Delta highlights:
 **Last Updated**: 2026-04-03 11:20  
 **Next Update**: after Redis-backed validation  
 **Target**: close Sprint 12 validation checklist
-

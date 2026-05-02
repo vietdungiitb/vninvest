@@ -2,6 +2,14 @@
 
 Bản thiết kế này giải quyết bài toán mở rộng VNInvest thành một **Hệ sinh thái B2B2C (Business-to-Business-to-Consumer)**. Khách VIP không chỉ là người dùng cá nhân, mà có thể là các Quỹ đầu tư, Đội nhóm môi giới (Brokers) muốn sử dụng dữ liệu của VNInvest để phục vụ cho *khách hàng riêng của họ*.
 
+> [!IMPORTANT]
+> Phần Database Segregation và Tenant/API Token ở tài liệu này là target-state business view. Khi chuyển sang quyết định contract và storage thật cho `core`, phải bám theo bộ tài liệu chi tiết hơn:
+> - [ENTERPRISE_CORE_CONTRACT_PACK_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md)
+> - [ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md)
+> - [ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md)
+> - [ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md)
+> - [ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502](file:///c:/Mujoco%20Projects/vninvest/docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md)
+
 ---
 
 ## 1. Cơ sở dữ liệu (Database Segregation)

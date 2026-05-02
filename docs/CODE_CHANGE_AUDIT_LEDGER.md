@@ -1,1094 +1,456 @@
-# Entry 2026-05-01zd - Roll out shared 30% third-column layout to remaining top-level pages
+# Entry 2026-05-02i - Reconcile current worktree into a commit-ready snapshot
 
 Muc tieu:
-- Ap dung thong nhat contract 22/48/30 cho cac top-level 3-column pages con lai dang hard-code outer grid shell.
-- Dung utility chung de giu cung mot bo cuc cho Legacy Dashboard, Stock Detail, Whale Advisory va Modern Dashboard ma khong sua cac grid con ben trong module.
-- Cap nhat audit report de phan biet ro cac surface da remediation va cac drift con lai khong thuoc pham vi cot thu 3.
+- Chot lai audit trail theo dung trang thai working tree hien tai truoc khi commit len `dev` va `main`.
+- Bao gom thay doi UI con ton tai o `frontend/src/pages/WhaleAdvisory.jsx` cung toan bo doc pack enterprise/core da duoc tao trong session.
 
 Noi dung cap nhat chinh:
-- `frontend/src/index.css`:
-  - Them `page-body-grid--auto-height`, `page-body-grid__main` va `page-body-grid__side` de tai su dung contract 22/48/30 cho cac page co outer shell 2+1.
-- `frontend/src/pages/LegacyDashboard.jsx`:
-  - Chuyen outer layout sang shared grid utility thay cho `xl:grid-cols-3` hard-code.
-- `frontend/src/pages/StockDetail.jsx`:
-  - Dong bo loading shell va main 3-column workspace sang shared grid utility.
 - `frontend/src/pages/WhaleAdvisory.jsx`:
-  - Dong bo ca hai outer 3-column rows sang shared grid utility.
-- `frontend/src/pages/modern/ModernDashboard.jsx`:
-  - Canh lai operator surface outer grid ve cung utility 22/48/30 trong khi van giu full-height workspace.
-- `docs/UI_LAYOUT_AUDIT_REPORT_20260501.md`:
-  - Sua noi dung audit cho dung contract 22/48/30 hien hanh va ghi ro cac page da duoc remediation trong slice nay.
+  - Giu lai thay doi shell va outer grid layout dang ton tai trong working tree de commit bundle phan anh dung UI state hien tai.
+- `docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md`:
+  - Canh chinh target-state database segregation note ve bo core docs current-code-aligned.
+- `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`:
+  - Chot folder-target-map semantics va dieu kien package move theo execution rebaseline.
+- `docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md`:
+  - Dat lai thu tu ap dung stack enterprise theo Redis/PostgreSQL/Channels-first.
+- `docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md`:
+  - Re-sequence rollout theo current AI runtime seams.
+- `docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md`:
+  - Them execution rebaseline va current-core-doc requirements.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Chot boundary-first execution va partner/global API direction cho `vip-app`.
+- `docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md`:
+  - Defer core schema/contract decisions sang bo core docs moi.
+- `docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md`:
+  - Tach ro VIP local admin semantics khoi central core admin.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Tao execution override doc cho pack enterprise theo current repo.
+- `docs/ENTERPRISE_CORE_*_20260502.md`:
+  - Bo sung day du core blueprint, contract pack, admin architecture, RBAC, screen spec, operator contracts, capability payload, taskboard, schema strategy va schema analysis.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Mo rong official core foundation entry path.
 - `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01zd.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau frontend layout rollout.
-
-Danh sach tep cap nhat:
-- frontend/src/index.css
-- frontend/src/pages/LegacyDashboard.jsx
-- frontend/src/pages/StockDetail.jsx
-- frontend/src/pages/WhaleAdvisory.jsx
-- frontend/src/pages/modern/ModernDashboard.jsx
-- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `get_errors` tren `frontend/src/index.css`, `frontend/src/pages/LegacyDashboard.jsx`, `frontend/src/pages/StockDetail.jsx`, `frontend/src/pages/WhaleAdvisory.jsx`, `frontend/src/pages/modern/ModernDashboard.jsx` => no errors found.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
-- EVIDENCE: screenshot captured on refreshed runtime at `http://localhost/whale-alerts/TCB` after rebuild; shared shell/header/grid rendered with the updated 22/48/30 contract.
-
-Residual risk:
-- Slice nay chuan hoa outer 3-column shell; cac drift con lai ve header contract, tokenization va hard-coded panel styling tren Watchlist/Support/AICommandCenter/WhaleAlertsHub van can mot dot cleanup rieng.
-- `WhaleAlertsDashboard.jsx` da dung contract 22/48/30 tu truoc, nen slice nay khong sua them page do.
-
-# Entry 2026-05-01zc - Decouple Whale Alerts feed refresh from workspace overview
-
-Muc tieu:
-- Cat lien ket giua `getWhaleFeed()` va `getStockWorkspaceOverview()` tren `whale-alerts/:symbol` de feed refresh khong bi block boi workspace overview.
-- Giu lai `feedData` cu trong silent refresh de user khong bi trang/trong panel khi websocket/timer tick.
-- Chot audit trail cho frontend performance slice da duoc build va runtime refresh truoc do trong cung session.
-
-Noi dung cap nhat chinh:
-- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
-  - Tach `fetchFeed()` va `fetchOverview()` thanh hai request flow doc lap.
-  - Them request id refs de tranh stale response ghi de state moi.
-  - Silent feed refresh khong xoa du lieu dang hien thi va khong refetch overview moi lan co whale event/timer tick.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01zc.
+  - Add entry 2026-05-02i.
 - `PROGRESS_DASHBOARD.md`:
   - Sync audit file list.
 
 Danh sach tep cap nhat:
-- frontend/src/pages/WhaleAlertsDashboard.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
+- frontend/src/pages/WhaleAdvisory.jsx (MODIFIED - current worktree keeps Whale Advisory shell and grid layout adjustments)
+- docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - align target-state database segregation guidance with current core doc pack)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - clarify current-code-first package move discipline and core doc dependencies)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02i)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - expand official core foundation entry path)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - align target-state stack rollout with execution rebaseline)
+- docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - re-sequence AI trading rollout around current runtime seams)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - require execution rebaseline and current core docs before implementation)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - enforce boundary-first execution and partner API direction)
+- docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - defer core schema and contract decisions to the new core pack)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - distinguish VIP local admin semantics from central core admin)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (NEW - current-code aligned execution override for enterprise transformation pack)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (NEW - backend capability snapshot contract for frontend auth and navigation)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (NEW - execution taskboard for core admin rollout)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (NEW - granular role and ability matrix for core admin surfaces)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (NEW - screen-level spec for central operator and tenant admin routes)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (NEW - architecture and package placement for core admin UI)
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (NEW - resource catalog, endpoint matrix and contract governance for core)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (NEW - operator-only API backlog and freeze order)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (NEW - detailed P0 read contract for operator APIs)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (NEW - partner and vip-app API contract draft)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - detailed core platform blueprint for services, storage and APIs)
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (NEW - freeze checklist for the first core resources)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (NEW - schema family analysis before migrations)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (NEW - schema-last storage strategy for core)
+- module_tree_full.md (MODIFIED - regenerated after including the current WhaleAdvisory frontend change in the commit bundle)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Ket qua kiem tra:
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location`
-- NOTE: `getStockWorkspaceOverview()` khong con bi refetch trong moi lan whale feed refresh; page-level latency van phu thuoc request cham nhat trong cac endpoint song song con lai.
-
-# Entry 2026-05-01zb - Collapse duplicate whale snapshot scans and keep historical selected-session on facts-first path
-
-Muc tieu:
-- Cat bo phan scan `IntradayTick` bi lap lai trong `build_whale_analytics_snapshot()` de snapshot selected-session khong doc lai cung mot tap raw ticks hai lan trong mot request.
-- Chan historical/selected-session snapshot goi `market_data_service.get_whale_feed()` live/current-day, vi duong nay khong phai facts-first path va keo route `whale-alerts/:symbol` cham khong can thiet.
-- Bo sung regression test khoa hanh vi historical snapshot chi doc facts/cache/db cua session duoc chon.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/services_whale_analytics_snapshot.py`:
-  - Chuyen `build_whale_analytics_snapshot()` sang facts-first som hon: lay `shared_bucket_facts` ngay tu dau va tai su dung `tick_rows`/`bucket_facts` thay vi quet `IntradayTick` lan hai.
-  - Chi goi `market_data_service.get_whale_feed()` khi snapshot dang o live session trong ngay; historical/selected-session dung bubble source tu facts/ticks cua session da chon.
-  - Bo sung fallback iterator de helper facts van tuong thich voi test mocks tra ve `list` thay vi queryset that.
-- `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`:
-  - Them regression test dam bao historical snapshot khong goi live whale feed.
-  - Cap nhat test cache/view lock va same-request cache expectation cho dung hanh vi facts-first/live-only moi.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01zb.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau backend snapshot slice.
-
-Danh sach tep cap nhat:
-- backend/portfolio/services_whale_analytics_snapshot.py
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api; Pop-Location`
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build backend; Pop-Location`
-- MEASURED: `_get_or_build_bucket_facts('MBB', '2026-04-29')` cold `2.033s`, warm cache `0.005s`, `tick_count=1465`, `bucket_count=11`.
-- MEASURED: `build_whale_analytics_snapshot('MBB', trade_date='2026-04-29', include_baseline=False)` in-process `2.083s` sau khi bo scan lap va bo historical live-feed call.
-- MEASURED: `market_data_service.get_stock_workspace_overview('MBB')` van mat khoang `3.257s`, day la mot latency rieng cua page shell ngoai snapshot pane.
-
-Residual risk:
-- Page `whale-alerts/:symbol` van goi them `getWhaleFeed()`, `getStockWorkspaceOverview()`, advisory session va cac endpoint realtime khac song song; vi vay page-level perceived latency van bi chi phoi boi slowest request, khong chi rieng snapshot heatmap/CVD/strength.
-- Facts cache hien chi nhanh khi da duoc warm cho dung `symbol/trade_date/timeframe`; cold miss dau tien van phai bucketize raw ticks tu DB.
-
-# Entry 2026-05-01za - Retire dead legacy realtime paths
-
-Muc tieu:
-- Loai bo implementation realtime legacy khong con duoc wiring vao route nao de tranh bi import/goi nham trong cac slice sau.
-- Xoa helper API frontend cho whale-orders legacy khong con caller noi bo, de SSOT mac dinh giu o whale analytics snapshot.
-- Giam drift giua code dang song va code zombie trong nhom whale/rvol.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/views_realtime_advanced.py`:
-  - Delete toan bo module legacy khong con route/import tham chieu trong codebase hien tai.
-  - Module nay chua logic `WhaleFeedView`/`RVOLView` cu va giu thuoc vao cac symbol/ham khong con hop le, nen de lai co nguy co bi goi nham.
-- `frontend/src/api/client.js`:
-  - Remove `getWhaleOrdersBySymbol()` vi frontend hien tai khong con caller noi bo nao su dung path whale-orders legacy.
-  - Giu mot duong client SSOT ro rang hon cho whale analytics qua `getWhaleAnalyticsSnapshot()`.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01za.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau cleanup slice.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_realtime_advanced.py
-- frontend/src/api/client.js
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location .\backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py check; Pop-Location`
+- PASSED: `get_errors` tren `frontend/src/pages/WhaleAdvisory.jsx` => no errors found.
 - PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
 - PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location`
-- NOTE: backend `whale/orders/<symbol>` route chua bi cat bo trong slice nay de tranh vo backward compatibility ngoai repo; cleanup hien tai chi bo duong goi noi bo khong con duoc su dung.
+- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => impacted dev runtime refreshed successfully.
 
-# Entry 2026-05-01z - Unblock bubble chart snapshot cold path
-
-Muc tieu:
-- Chan duong request whale analytics snapshot mac dinh van tinh percentile baseline o cac surface bubble/chart, vi day la nguon gay 504 cho bubble chart cold path.
-- Dam bao ca consumer qua hook va fetch noi bo cua `WhaleBubbleChart` deu di qua `include_baseline=0` truoc khi vao backend.
-- Gia co `WhaleBubbleChart` an toan hon o lan render dau khi bubble groups chua san sang day du.
-
-Noi dung cap nhat chinh:
-- `frontend/src/hooks/useWhaleAnalyticsData.js`:
-  - Dat mac dinh `includeBaseline` thanh `false` cho snapshot consumer cua chart/bubble.
-- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
-  - Bubble selected-session snapshot truyen ro `includeBaseline: false`.
-- `frontend/src/components/WhaleAnalyticsTab.jsx`:
-  - Tab-level whale analytics snapshot truyen ro `includeBaseline: false`.
-- `frontend/src/components/WhaleBubbleChart.jsx`:
-  - Fetch noi bo o che do uncontrolled truyen `includeBaseline: false`.
-  - Them guard de khong vo render khi `orders` hoac bubble groups chua du shape.
-- `frontend/src/hooks/useWhaleAnalyticsData.test.js`:
-  - Khoa regression cho mac dinh baseline-disabled.
-- `frontend/src/components/WhaleBubbleChart.sync.test.jsx`:
-  - Them regression cho uncontrolled snapshot request params.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01z.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau frontend whale snapshot slice.
-
-Danh sach tep cap nhat:
-- frontend/src/hooks/useWhaleAnalyticsData.js
-- frontend/src/pages/WhaleAlertsDashboard.jsx
-- frontend/src/components/WhaleAnalyticsTab.jsx
-- frontend/src/components/WhaleBubbleChart.jsx
-- frontend/src/hooks/useWhaleAnalyticsData.test.js
-- frontend/src/components/WhaleBubbleChart.sync.test.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/hooks/useWhaleAnalyticsData.test.js; Pop-Location`
-- PASSED: `Push-Location .\frontend; $env:CI='true'; npm test -- --runInBand --watch=false --runTestsByPath src/components/WhaleBubbleChart.sync.test.jsx --testNamePattern "uses baseline-disabled snapshot fetches for uncontrolled bubble loads"; Pop-Location`
-- PASSED: `Push-Location .\frontend; npm run build; Pop-Location`
-- PASSED: `get_errors` tren `frontend/src/hooks/useWhaleAnalyticsData.js`, `frontend/src/pages/WhaleAlertsDashboard.jsx`, `frontend/src/components/WhaleAnalyticsTab.jsx`, `frontend/src/components/WhaleBubbleChart.jsx`, `frontend/src/hooks/useWhaleAnalyticsData.test.js`, `frontend/src/components/WhaleBubbleChart.sync.test.jsx` => no errors found.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (514 modules).
-- PASSED: `Push-Location .; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => impacted dev frontend runtime rebuilt/restarted successfully.
-- NOTE: neu `ai-advisory-session` van 504 o mot so route, do la backend slice rieng; patch nay chi giai quyet cold path cua bubble/snapshot.
-
-# Entry 2026-05-01y - Stabilize ai-advisory-session benchmark bootstrap on whale routes
+# Entry 2026-05-02h - Add detailed operator contracts, capability payload contract and admin taskboard
 
 Muc tieu:
-- Ngat duong sync-first-create gay 504/502 cho GET ai-advisory-session khi frontend request include_benchmarks=1.
-- Lam cho benchmark bootstrap cua session v2 di qua queue nhanh thay vi sync fallback khi symbol chua co advisory.
-- Chan scan rong trong get_historical_indicators khi khong co symbol co du lieu, de tranh query doc toan bang.
+- Day tiep bo `Core Admin` docs theo dung thu tu user yeu cau: `1, 3, 2`.
+- Chuyen tu backlog/matrix/spec tong quan sang 3 artifact implementation-facing: operator P0 detailed contracts, capability payload contract, va admin taskboard.
 
 Noi dung cap nhat chinh:
-- `backend/portfolio/views_ai_advisory_session.py`:
-  - GET bootstrap khong force sync fallback neu request co `include_benchmarks=1`.
-  - Queue path giu responsivity thay vi cho sync fallback tren route load ban dau.
-- `backend/portfolio/market_data_service.py`:
-  - Return empty series ngay khi khong co symbol nao co du lieu de tranh scan sai toan bang.
-- `backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py`:
-  - Add deterministic coverage for benchmark-request bootstrap queue path and sync/503 branches.
-- `backend/portfolio/tests/test_market_data_service.py`:
-  - Add regression test for missing-symbol historical indicator lookup.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md`:
+  - Tao contract chi tiet cho tung operator read endpoint P0.
+  - Chot query params, response fields, list ordering, extension fields va degrade semantics.
+- `docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md`:
+  - Chot payload bootstrap backend -> frontend cho abilities, surfaces, navigation, constraints va bridge state.
+  - Bám theo `AbilityContext`, `PortfolioContext`, `Can`, `ProtectedRoute`, `TopNav` và backend anchors liên quan auth/opencore/ai runtime.
+- `docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md`:
+  - Tao taskboard chia `Core Admin` thanh cac slice frontend/backend co contract dependency va exit criteria ro rang.
+- `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`:
+  - Mo rong companion artifact set cho admin docs.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`:
+  - Them lien ket sang ban detailed contracts.
+- `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`:
+  - Them lien ket sang capability payload contract.
+- `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Them lien ket sang implementation taskboard.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them 3 companion docs moi vao core blueprint.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them 3 docs moi vao core companion set.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them 3 docs moi vao official core foundation path va sua drift dem so tai lieu tong quan.
 - `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01y.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate after backend slice and new utility module.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_ai_advisory_session.py
-- backend/portfolio/market_data_service.py
-- backend/portfolio/tests/test_api_routes_stock_ai_advisory_session.py
-- backend/portfolio/tests/test_market_data_service.py
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location ./backend; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_api_routes_stock_ai_advisory_session portfolio.tests.test_market_data_service --keepdb; Pop-Location`
-- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build backend celery_worker celery_beat`
-
-# Entry 2026-05-01x - Suppress expected aborted-request noise in whale polling paths
-
-Muc tieu:
-- Loai bo console noise do request bi cancel/abort hop le trong PortfolioContext, whale realtime polling va whale analytics fetch.
-- Giu lai cac loi that su, chi bo qua cac truong hop ERR_CANCELED / AbortError / Request aborted.
-- Dong bo helper xu ly cancel de StockDetail va Whale Alerts Hub cung dung cung mot quy tac.
-
-Noi dung cap nhat chinh:
-- `frontend/src/utils/requestCancellation.js`:
-  - Add shared `isRequestCanceled()` helper that recognizes axios/browser cancellation shapes and the literal `Request aborted` message.
-- `frontend/src/context/PortfolioContext.jsx`:
-  - Skip logging when `getPortfolios()` is canceled.
-- `frontend/src/hooks/useRealtimeFeedCore.js`:
-  - Skip polling error logging for canceled requests.
-- `frontend/src/hooks/useWhaleAnalyticsData.js`:
-  - Skip analytics error logging and error state updates for canceled requests.
-- `frontend/src/pages/StockDetail.jsx`:
-  - Skip `getStockOrderFlow()` logging for canceled requests.
-- `frontend/src/pages/WhaleAlertsHub.jsx`:
-  - Reuse the shared cancellation helper instead of a local duplicate.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01x.
+  - Add entry 2026-05-02h.
 - `PROGRESS_DASHBOARD.md`:
   - Sync audit file list.
 
 Danh sach tep cap nhat:
-- frontend/src/utils/requestCancellation.js
-- frontend/src/context/PortfolioContext.jsx
-- frontend/src/hooks/useRealtimeFeedCore.js
-- frontend/src/hooks/useWhaleAnalyticsData.js
-- frontend/src/pages/StockDetail.jsx
-- frontend/src/pages/WhaleAlertsHub.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- Pending: production build and module tree regeneration after this slice.
-
-# Entry 2026-05-01w - Adjust V1 grid contract to 30% third column
-
-Muc tieu:
-- Dieu chinh template grid V1 de cot thu 3 chiem 30% thay vi contract cu 39%.
-- Dong bo lai shared page-body-grid utility trong frontend/src/index.css voi template chuan.
-- Cap nhat audit trail va progress dashboard sau slice layout nay.
-
-Noi dung cap nhat chinh:
-- `docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md`:
-  - Update grid contract sang `22% / 48% / 30%` de cot 3 khong vuot 30%.
-- `frontend/src/index.css`:
-  - Sync shared `.page-body-grid` utility to the new 30% third-column contract.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01w.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-
-Danh sach tep cap nhat:
-- docs/PROJECT_UI_LAYOUT_TEMPLATE_V1_20260421.md
-- frontend/src/index.css
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
-
-# Entry 2026-05-01v - Baseline V1 shell tokens and page wrapper normalization
-
-Muc tieu:
-- Thiet lap shared layout tokens/utility cho V1 va chuan hoa wrapper goc cua cac trang chinh sang app-page-shell.
-- Giam drift ve max-width, padding va header contract tren Whale Alerts, Stock Detail, Watchlist, Legacy Dashboard va Whale Advisory.
-- Cap nhat audit trail, progress dashboard, module tree va runtime refresh sau frontend slice.
-
-Noi dung cap nhat chinh:
-- `frontend/src/index.css`:
-  - Add V1 layout tokens and shared page-shell/page-panel/page-header/page-state-bar utilities.
-  - Tokenize semantic text/surface colors for future page migrations.
-- `frontend/src/pages/WhaleAlertsDashboard.jsx`:
-  - Migrate root shell, header contract and primary content panels to the shared V1 page utilities.
-- `frontend/src/pages/StockDetail.jsx`:
-  - Normalize both loading and primary render shells to `app-page-shell`.
-- `frontend/src/pages/Watchlist.jsx`:
-  - Normalize the root wrapper to the shared shell contract.
-- `frontend/src/pages/LegacyDashboard.jsx`:
-  - Normalize the root wrapper to the shared shell contract.
-- `frontend/src/pages/WhaleAdvisory.jsx`:
-  - Normalize the root wrapper to the shared shell contract.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01v.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate after layout shell slice.
-
-Danh sach tep cap nhat:
-- frontend/src/index.css
-- frontend/src/pages/WhaleAlertsDashboard.jsx
-- frontend/src/pages/StockDetail.jsx
-- frontend/src/pages/Watchlist.jsx
-- frontend/src/pages/LegacyDashboard.jsx
-- frontend/src/pages/WhaleAdvisory.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location ./frontend; npm run build; Pop-Location` => production build compiled successfully.
-- PASSED: `Push-Location .; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (513 modules).
-- PASSED: `docker compose -f ./docker-compose.dev.yml up -d --build frontend` => impacted dev stack rebuilt/restarted successfully.
-- Evidence: frontend shell utilities are now loaded in the refreshed dev runtime and the updated page wrappers compile cleanly.
-
-# Entry 2026-05-01u - UI/UX Audit for Layout Template V1 compliance
-
-Muc tieu:
-- Kiem tra cac trang giao dien chinh (Whale Alerts, Stock Detail, Watchlist, Legacy Dashboard) so voi Project UI Layout Template V1.
-- Xac dinh cac anti-pattern ve layout wrapper, spacing, grid ratio va semantic colors.
-- Tao bao cao audit chi tiet va de xuat lo trinh khac phuc (Remediation Roadmap).
-
-Noi dung cap nhat chinh:
-- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md:
-  - Tao bao cao audit chi tiet voi danh sach vi pham cho tung trang.
-  - Xac dinh cac loi common nhu thieu \.app-page-shell\, sai grid ratio 3 cot, va hard-code mau sac.
-- docs/CODE_CHANGE_AUDIT_LEDGER.md:
-  - Add entry 2026-05-01u.
-- PROGRESS_DASHBOARD.md:
-  - Sync audit file list.
-
-Danh sach tep cap nhat:
-- docs/UI_LAYOUT_AUDIT_REPORT_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: docs/UI_LAYOUT_AUDIT_REPORT_20260501.md d� du?c t?o th�nh c�ng v?i n?i dung audit chi ti?t.
-- Evidence: Audit report highlights critical gaps in layout standardization across all main dashboard surfaces.
-
-# Entry 2026-05-01t - Normalize realtime alert text rendering across dashboard surfaces
-
-Muc tieu:
-- Chan object-child crash cho UnifiedAlertCenter va DashboardRealtimePanel khi alert headline/detail co payload khong phai string.
-- Normalize text o hook va render layer de alert objects khong bao gio chui thang vao JSX children.
-- Cap nhat regression test, audit trail, progress dashboard va module tree sau frontend slice.
-
-Noi dung cap nhat chinh:
-- `frontend/src/hooks/useUnifiedAlerts.js`:
-  - Them `normalizeAlertText` de coerce headline/detail/object payload thanh string an toan.
-  - Dung helper nay trong localization va fallback id de tranh object leak vao UI.
-- `frontend/src/components/UnifiedAlertCenter.jsx`:
-  - Render alert headline/detail qua helper text normalization.
-- `frontend/src/components/DashboardRealtimePanel.jsx`:
-  - Render critical toast headline va alert card headline/detail qua helper text normalization.
-- `frontend/src/components/DashboardRealtimePanel.test.jsx`:
-  - Add regression cho alert object payload trong realtime dashboard.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01t.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau frontend/runtime slice.
-
-Danh sach tep cap nhat:
-- frontend/src/hooks/useUnifiedAlerts.js
-- frontend/src/components/UnifiedAlertCenter.jsx
-- frontend/src/components/DashboardRealtimePanel.jsx
-- frontend/src/components/DashboardRealtimePanel.test.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx src/components/DashboardRealtimePanel.test.jsx; Pop-Location` => 5/5 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
-- Evidence: alert render surfaces now coerce object-shaped headline/detail payloads to string-safe UI text.
-
-# Entry 2026-05-01s - Normalize audit warning rendering in SignalControlCenter
-
-Muc tieu:
-- Chan React object-child crash trong `Tác vụ và kiểm toán` khi materialization warnings tra ve object thay vi string.
-- Giu runtime fix nho, co regression test va runtime refresh de auditor co the kiem tra ngay.
-- Cap nhat audit trail, progress dashboard va module tree sau frontend slice.
-
-Noi dung cap nhat chinh:
-- `frontend/src/components/adminops/SignalControlCenter.jsx`:
-  - Normalize `auditWarnings` khi render, chuyen warning object thanh chuoi an toan va dung key stable.
-- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
-  - Add regression cho warning object top-level trong materialization preview response.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01s.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau frontend/runtime slice.
-
-Danh sach tep cap nhat:
-- frontend/src/components/adminops/SignalControlCenter.jsx
-- frontend/src/components/adminops/SignalControlCenter.test.jsx
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 4/4 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => production build compiled successfully.
-- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => frontend/backend containers rebuilt and started.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-- Evidence: runtime refresh completed after fix; no `object as React child` crash in focused regression.
-
-# Entry 2026-05-01r - Close remaining Money Flow taskboard slices after implementation reconciliation
-
-Muc tieu:
-- Dong bo taskboard Money Flow Control Center voi evidence code/doc da co san trong workspace.
-- Danh dau 9 slice con mo trong taskboard Money Flow la hoan tat, de taskboard khong tre so voi implementation thuc te.
-- Cap nhat audit trail va progress dashboard cho trang thai production-ready cua pack nay.
-
-Noi dung cap nhat chinh:
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark `ARC-01`, `ARC-02`, `ARC-03`, `BE-1.1`, `BE-1.2`, `BE-1.3`, `BE-2.1`, `BE-2.2`, `BE-2.3` completed.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01r.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-
-Danh sach tep cap nhat:
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `grep_search` trên `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md` với query `- [ ]` => no matches found; taskboard Money Flow không còn item mở.
-
-# Entry 2026-05-01q - Add whale governance pending-draft bridge APIs for Money Flow Control Center
-
-Muc tieu:
-- Hoan tat BE-5.3 bang bridge preview/apply cho whale governance, tao pending draft/submitted state ma khong overwrite active version.
-- Giu summary snapshot co pending_draft state de control center doc duoc bridge queue va audit trail ro rang.
-- Cap nhat taskboard, progress dashboard va module tree sau backend slice.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/views_signal_admin.py`:
-  - Them whale-governance bridge preview/apply APIs.
-  - Them pending draft snapshot va audit logging cho create/submit draft.
-- `backend/portfolio/views.py`:
-  - Re-export bridge handlers qua same admin-ops surface da co.
-- `backend/config/urls.py`:
-  - Wire route bridge moi duoi `/api/admin-ops/signals/whale-governance/bridge/`.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Add regressions cho preview/apply bridge, confirm gate, pending draft snapshot va audit logs.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark `BE-5.3` completed.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01q.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list.
-- `module_tree_full.md`:
-  - Regenerate sau backend slice.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_signal_admin.py
-- backend/portfolio/views.py
-- backend/config/urls.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_whale_governance_bridge_preview_and_apply_create_pending_draft portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_whale_governance_bridge_apply_requires_confirm --keepdb; Pop-Location` => 3/3 PASS.
-- PASSED: `Push-Location .; .\.venv\Scripts\python.exe scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-- Evidence: bridge preview/apply responses validated in focused tests, including pending draft snapshot and audit log creation.
-
-# Entry 2026-05-01p - Finish FE-6.4/FE-6.5 audit hardening and legacy writer link-out in AdminOps
-
-Muc tieu:
-- Hoan tat FE-6.4 va FE-6.5 bang cach gom warning/deprecation states vao surface jobs/audit va hard-block cac writer surface cu qua link-out co quyen.
-- Giu Money Flow Control Center la surface trung tam, dong thoi cho operator mot duong link-out ro rang toi surface legacys thay vi de button apply song song.
-- Cap nhat test, taskboard, progress dashboard va module tree sau frontend slice.
-
-Noi dung cap nhat chinh:
-- `frontend/src/components/adminops/SignalControlCenter.jsx`:
-  - Derive `auditWarnings` tu lifecycle deprecation warnings va materialization warnings.
-  - Gom jobs, recent events, retention preview va deprecation warnings vao mot outer audit card `Tác vụ và kiểm toán`.
-  - Load `previewAdminSignalMaterialization` cung summary/config/retention trong flow refresh.
-- `frontend/src/pages/AdminOps.jsx`:
-  - Them `AccessNotice` va `SurfaceRedirectCard` cho surface legacy writer.
-  - Link-out toi `/admin-crawl-control` duoc gate theo `surface_permissions` va hien disabled state khi thieu quyen upstream.
-  - Lock runtime Vnstock Config va Data Ops apply/ save controls bang permission-aware fieldset.
-- `frontend/src/components/adminops/VnstockBenchmarkPanel.jsx`:
-  - Apply recommendation disable theo `canApplyRecommendation`.
-- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
-  - Cap nhat mock lifecycle warnings + materialization preview va assert lenient warning matcher.
-- `frontend/src/pages/AdminOps.test.jsx`:
-  - Regression cho legacy writer link-out disabled/active theo quyen upstream.
-- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
-  - Bo sung copy cho surface write lock, legacy writer link-out va jobs audit.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark `FE-6.4` va `FE-6.5` completed.
-- `module_tree_full.md`:
-  - Regenerate sau frontend slice.
-
-Danh sach tep cap nhat:
-- frontend/src/components/adminops/SignalControlCenter.jsx
-- frontend/src/components/adminops/SignalControlCenter.test.jsx
-- frontend/src/pages/AdminOps.jsx
-- frontend/src/pages/AdminOps.test.jsx
-- frontend/src/components/adminops/VnstockBenchmarkPanel.jsx
-- frontend/src/i18n/vi.js
-- frontend/src/i18n/en.js
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; $env:CI='true'; npm test -- --runInBand src/components/adminops/SignalControlCenter.test.jsx src/pages/AdminOps.test.jsx; Pop-Location` => 5/5 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend; Pop-Location` => frontend rebuilt/restarted and container started.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (512 modules).
-- Evidence: live browser screenshots captured for AdminOps main content and legacy writer navigation card after runtime refresh.
-
-# Entry 2026-05-01o - QA closeout, performance benchmark, and runtime refresh for Money Flow Control Center
-
-Muc tieu:
-- Dong bo evidence cho QA-7.1, QA-7.2, QA-7.3 va OPS-7.4 cua Money Flow Control Center / Data Lifecycle pack.
-- Xac nhan backend/frontend regression suites, facts-first benchmark va runtime refresh deu co ban ghi ro rang cho auditor.
-- Cap nhat taskboard va progress dashboard de phan anh trang thai dong cua Phase 7.
-
-Noi dung cap nhat chinh:
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark `QA-7.1`, `QA-7.2`, `QA-7.3` va `OPS-7.4` completed.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry closeout cho Phase 7 QA/performance/rollout.
-- `PROGRESS_DASHBOARD.md`:
-  - Sync audit file list voi ban ghi closeout moi.
-
-Danh sach tep cap nhat:
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api portfolio.tests.test_signal_service_run_registry --keepdb; Pop-Location` => 22/22 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: rollback-isolated benchmark in Django test DB => `cold_request_ms=35.4`, `warm_request_ms=2.8`, `cold_read_path=facts_first`, `warm_read_path=facts_first`, `cold_raw_fallback_used=false`, `warm_raw_fallback_used=false`, `facts_first_primary_path=true`.
-- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend celery_worker celery_beat`.
-- Evidence: AdminOps Money Flow Control Center screenshot captured after runtime refresh, with summary surface visible and backend logs confirming 200 responses for `signals/summary`, `money-flow/materialization/preview`, and `signals/retention/preview`.
-
-# Entry 2026-05-01n - Add whale/dark-flow boundary panels and layout wrap fix to AdminOps
-
-Muc tieu:
-- Hien thi `Whale Governance` va `Dark Flow Policy` boundary panels trong `Money Flow Control Center`.
-- Chan JSON preview overflow de giao dien khong bi lech horizontal nhu anh debug ban dau.
-
-Noi dung cap nhat chinh:
-- `frontend/src/components/adminops/SignalControlCenter.jsx`:
-  - Them `BoundaryPanel` helper, derive `whaleGovernancePanel` va `darkFlowPolicyPanel`.
-  - Wrap `JsonPreview`, them `min-w-0` va `overflow-hidden` de chong stretch layout.
-- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
-  - Cap nhat mock data va assertion cho panel boundary moi.
-- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
-  - Them label, owner badge, mode badge, note va metrics cho FE-6.3.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark `FE-6.3` completed.
-- `module_tree_full.md`:
-  - Regenerate sau khi frontend slice thay doi.
-
-Danh sach tep cap nhat:
-- frontend/src/components/adminops/SignalControlCenter.jsx
-- frontend/src/components/adminops/SignalControlCenter.test.jsx
-- frontend/src/i18n/vi.js
-- frontend/src/i18n/en.js
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshots captured for both whale governance and dark-flow boundary panels, with no horizontal overflow.
-
-# Entry 2026-05-01m - Add lifecycle, materialization and storage-retention panels to AdminOps
-
-Muc tieu:
-- Dung ba panel `Shared Lifecycle`, `Materialization`, va `Storage and Retention` trong shell `Money Flow Control Center`.
-- Go them materialization preview client call va do du lieu toi panel bang i18n co dau.
-- Luu evidence screenshot va payload summary sau khi rebuild frontend stack.
-
-Noi dung cap nhat chinh:
-- `frontend/src/components/adminops/SignalControlCenter.jsx`:
-  - Them panel payload cho shared lifecycle, materialization va storage/retention.
-  - Load them `previewAdminSignalMaterialization` trong flow refresh.
-- `frontend/src/api/client.js`:
-  - Export `previewAdminSignalMaterialization`.
-- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
-  - Mock + assert materialization preview call va panel labels.
-- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
-  - Them chuoi panel title moi.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark FE-6.2 completed.
-- `module_tree_full.md`:
-  - Regenerate sau khi frontend source thay doi.
-
-Danh sach tep cap nhat:
-- frontend/src/api/client.js
-- frontend/src/components/adminops/SignalControlCenter.jsx
-- frontend/src/components/adminops/SignalControlCenter.test.jsx
-- frontend/src/i18n/vi.js
-- frontend/src/i18n/en.js
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: frontend dev stack rebuilt and restarted with `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshot captured for `http://localhost/admin-ops` showing `Vòng đời dùng chung`, `Vật hoá dữ liệu`, and `Lưu trữ và lưu giữ` panels.
-
-# Entry 2026-05-01l - Rename AdminOps signals tab to Money Flow Control Center shell
-
-Muc tieu:
-- Evolve tab `signals` trong AdminOps thanh shell `Money Flow Control Center` voi copy Vietnamese co dau.
-- Dong bo i18n va test expectations cho SignalControlCenter.
-- Luu evidence UI thuc te sau khi rebuild frontend stack.
-
-Noi dung cap nhat chinh:
-- `frontend/src/pages/AdminOps.jsx`:
-  - Doi defaultValue cua tab `signals` thanh `Trung tam dong tien`.
-- `frontend/src/components/adminops/SignalControlCenter.jsx`:
-  - Cap nhat eyebrow/title/description copy cho shell Money Flow Control Center.
-- `frontend/src/i18n/vi.js` va `frontend/src/i18n/en.js`:
-  - Doi chuoi tab va shell sang dang moi.
-- `frontend/src/components/adminops/SignalControlCenter.test.jsx`:
-  - Cap nhat assertion theo copy moi.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark FE-6.1 completed.
-- `module_tree_full.md`:
-  - Regenerate sau khi frontend source thay doi.
-
-Danh sach tep cap nhat:
-- frontend/src/pages/AdminOps.jsx
-- frontend/src/components/adminops/SignalControlCenter.jsx
-- frontend/src/components/adminops/SignalControlCenter.test.jsx
-- frontend/src/i18n/vi.js
-- frontend/src/i18n/en.js
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm test -- --watchAll=false --runTestsByPath src/components/adminops/SignalControlCenter.test.jsx; Pop-Location` => 3/3 PASS.
-- PASSED: frontend dev stack rebuilt and restarted with `docker compose -f .\docker-compose.dev.yml up -d --build frontend`.
-- Evidence: live screenshot captured for `http://localhost/admin-ops` showing the updated `Trung tam dong tien` tab.
-
-# Entry 2026-05-01k - Add money-flow materialization preview/run APIs with effective-value envelopes
-
-Muc tieu:
-- Bo sung money-flow materialization preview/run APIs trong Signal Control Center de operator co preview/apply payload ro rang cho backfill materialization.
-- Nang cap config/retention preview payload voi effective_owner, effective_values, diff, impacted_counts va freshness metadata.
-- Dong bo taskboard, audit ledger, progress dashboard va module tree cho slice BE-5.2.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/views_signal_admin.py`:
-  - Them `money-flow/materialization/preview` va `money-flow/materialization/run` APIs.
-  - Bo sung effective-value warning envelope cho config và retention preview/apply payloads.
-- `backend/config/urls.py`:
-  - Wire route cho hai money-flow materialization endpoints moi.
-- `backend/portfolio/views.py`:
-  - Re-export handler moi sang root portfolio view surface.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Regression cho config/retention preview envelope va materialization preview/run contract.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark BE-5.2 completed.
-- `module_tree_full.md`:
-  - Regenerate sau khi them route/view export va helper moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_signal_admin.py
-- backend/config/urls.py
-- backend/portfolio/views.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => 12/12 PASS.
-
-# Entry 2026-05-01j - Expand signal admin summary with lifecycle tiers and effective owner matrix
-
-Muc tieu:
-- Mo rong summary API cho Money Flow Control Center de operator thay lifecycle tiers, materialization lag, anomaly backlog va effective owner matrix trong mot payload.
-- Giu summary contract facts-rich nhung additive: khong dong chap giua retention, ownership va services payload hien co.
-- Dong bo taskboard, audit ledger, progress dashboard va validation quanh BE-5.1.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/views_signal_admin.py`:
-  - Them `lifecycle` block trong summary response voi tiers, materialization lag, anomaly backlog, effective owner matrix, deprecation warnings va risky duplicate fields.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Bo sung regression cho lifecycle summary contract moi.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark BE-5.1 completed.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice BE-5.1.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_signal_admin.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-- module_tree_full.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure --keepdb; Pop-Location` => 1/1 PASS.
-
-# Entry 2026-05-01i - Add physical forensic window storage and purge orchestration
-
-Muc tieu:
-- Dua selective forensic window contract sang storage vat ly that, khong chi la preview metadata.
-- Materialize forensic window cho whale va dark-flow severity cao vao L5 carve-out table rieng.
-- Cho cleanup raw intraday purge co the xoa expired forensic windows trong cung purge orchestration.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/models.py`:
-  - Them `MoneyFlowForensicWindow` physical carve-out table.
-- `backend/portfolio/services_money_flow_retention.py`:
-  - Them materialization helper, whale/dark-flow wrappers va purge expired forensic window helper.
-- `backend/portfolio/tasks_order_flow.py`:
-  - Materialize forensic window khi dark-flow signal dat nguong severity.
-- `backend/portfolio/tasks_whale_service.py`:
-  - Materialize forensic window khi whale alert dat nguong severity.
-- `backend/portfolio/tasks_maintenance.py`:
-  - Purge expired forensic windows trong intraday cleanup orchestration.
-- `backend/portfolio/migrations/0065_moneyflowforensicwindow.py`:
-  - Persist schema cho forensic window storage.
-- `backend/portfolio/tests/test_signal_service_run_registry.py`:
-  - Them regression cho physical carve-out va expired forensic purge.
-- `module_tree_full.md`:
-  - Regenerate sau forensic storage slice.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark BE-4.2/BE-4.3 completed.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/models.py
-- backend/portfolio/services_money_flow_retention.py
-- backend/portfolio/tasks_order_flow.py
-- backend/portfolio/tasks_whale_service.py
-- backend/portfolio/tasks_maintenance.py
-- backend/portfolio/migrations/0065_moneyflowforensicwindow.py
-- backend/portfolio/tests/test_signal_service_run_registry.py
-- module_tree_full.md
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_service_run_registry --keepdb; Pop-Location` => 10/10 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (511 modules).
-
-# Entry 2026-05-01h - Add retention safety gate and forensic preview groundwork
-
-Muc tieu:
-- Dong bo retention preview voi safety gate chong purge khi chua co preview hop le.
-- Dua selective forensic window preview vao control-plane de operator thay physical carve-out contract truoc khi BE-4.2 persist window storage.
-- Giu audit ledger, progress dashboard, module tree va runtime refresh khop voi slice backend moi.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/global_signal_policy_helpers.py`:
-  - Them forensic retention knobs va retention severity coercion.
-- `backend/portfolio/services_money_flow_retention.py`:
-  - Them shared retention safety gate, forensic window preview va cached heavy-count helper.
-- `backend/portfolio/views_signal_admin.py`:
-  - Noi shared retention helper vao preview API va annotate freshness gate sau khi preview run hoan tat.
-- `backend/portfolio/tasks_maintenance.py`:
-  - Chan raw intraday purge khi retention preview gate chua ready.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Mo rong regression cho safety gate va forensic policy preview.
-- `backend/portfolio/tests/test_signal_service_run_registry.py`:
-  - Them blocked/allowed purge regressions cho preview-required gate.
-- `module_tree_full.md`:
-  - Regenerate sau slice retention safety gate.
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark BE-4.1 completed.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/global_signal_policy_helpers.py
-- backend/portfolio/services_money_flow_retention.py
-- backend/portfolio/views_signal_admin.py
-- backend/portfolio/tasks_maintenance.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- backend/portfolio/tests/test_signal_service_run_registry.py
-- module_tree_full.md
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_recent_events_and_retention_preview_return_expected_shapes portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_intraday_ticks_creates_purge_run portfolio.tests.test_signal_service_run_registry.SignalServiceRunRegistryTests.test_cleanup_old_intraday_ticks_blocks_without_retention_preview --keepdb; Pop-Location` => 3/3 PASS.
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerated (511 modules).
-- PASSED: `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build backend celery_worker celery_beat; Pop-Location` => backend, celery worker and celery beat rebuilt/restarted successfully.
-
-Rui ro con lai / note:
-- BE-4.2 physical carve-out storage slice con open; slice nay chi cung cap preview policy va safety gate groundwork.
-
-# Entry 2026-05-01g - Close BE-3 taskboard status after dark-flow parity validation
-
-Muc tieu:
-- Dong bo taskboard voi backend slice da hoan tat cho dark-flow lifecycle parity.
-- Danh dau BE-3.1/BE-3.2/BE-3.3 la completed sau khi detect/cache/summary contract va test regressions da xanh.
-- Giu audit ledger va progress dashboard phan anh tinh trang phat trien thuc te, khong de taskboard tre so voi code.
-
-Noi dung cap nhat chinh:
-- `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md`:
-  - Mark BE-3.1/BE-3.2/BE-3.3 completed.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01g.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi taskboard completion slice.
-
-Danh sach tep cap nhat:
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- PASSED: `read_file` trên `docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md` => BE-3.1/BE-3.2/BE-3.3 hien thi `[x]`.
-
-# Entry 2026-05-01f - Surface dark-flow materialization freshness in the signal admin summary
-
-Muc tieu:
-- Dua dark-flow bucket facts, session summary, anomaly markers va materialization freshness len control-plane summary.
-- Giup Phase 3 co contract ro rang giua task cache, summary API va test regressions.
-- Dong bo audit file list, module tree va runtime refresh sau khi thay doi.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/order_flow.py`:
-  - Them additive bucket facts, session summary, anomaly markers va materialization metadata cho `detect_dark_flow`.
-- `backend/portfolio/tasks_order_flow.py`:
-  - Cache payload latest dark-flow signal duoc bo sung bucket facts/session summary/materialization.
-- `backend/portfolio/views_signal_admin.py`:
-  - Expose dark-flow freshness, lag, session summary, anomaly markers va pending run counts trong summary API.
-- `backend/portfolio/tests/test_order_flow.py`:
-  - Mo rong regression cho detect result va cached latest-signal payload.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Them regression cho dark-flow freshness/materialization contract tren summary endpoint.
-- `module_tree_full.md`:
-  - Regenerate sau slice dark-flow lifecycle parity.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01f.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/order_flow.py
-- backend/portfolio/tasks_order_flow.py
-- backend/portfolio/views_signal_admin.py
-- backend/portfolio/tests/test_order_flow.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- module_tree_full.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_order_flow.TestDetectDarkFlow portfolio.tests.test_order_flow.TestOrderFlowSignalTask --keepdb; Pop-Location` => 15/15 PASS.
-- `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "..\.venv\Scripts\python.exe" manage.py test portfolio.tests.test_signal_admin_api.SignalAdminApiTests.test_summary_returns_whale_dark_flow_and_retention_structure --keepdb; Pop-Location` => 1/1 PASS.
-
-# Entry 2026-05-01e - Expand lifecycle run registry for materialization, recompute, retention preview and purge
-
-Muc tieu:
-- Dua cac job money-flow lifecycle vao shared SignalServiceRun registry de co status, freshness va log thong nhat.
-- Ghi nhan materialization, recompute, retention preview va purge jobs trong run registry thay vi chi cache status rieng le.
-- Dong bo regression tests va refresh runtime backend/celery sau khi thay doi.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/models.py`:
-  - Them `SignalServiceRun.ServiceDomain.LIFECYCLE` va cac run type `MATERIALIZATION` / `PURGE`.
-- `backend/portfolio/tasks_global_screener.py`:
-  - Ghi lifecycle materialization run cho scheduled screener snapshot materialization.
-- `backend/portfolio/tasks_maintenance.py`:
-  - Ghi lifecycle recompute run cho intraday side backfill apply.
-  - Ghi lifecycle purge runs cho intraday tick cleanup va signal-service-run cleanup.
-- `backend/portfolio/views_signal_admin.py`:
-  - Ghi lifecycle retention preview run va cho phep list lifecycle runs trong jobs API.
-  - Chan retry lifecycle runs qua dark-flow/whale retry path.
-- `backend/portfolio/tests/test_signal_service_run_registry.py`:
-  - Them regression cho materialization, recompute va purge runs.
-- `backend/portfolio/tests/test_signal_admin_api.py`:
-  - Them regression cho retention preview registry, lifecycle jobs list va retry guard.
-- `module_tree_full.md`:
-  - Regenerate sau khi backend registry slice thay doi.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01e.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/models.py
-- backend/portfolio/tasks_global_screener.py
-- backend/portfolio/tasks_maintenance.py
-- backend/portfolio/views_signal_admin.py
-- backend/portfolio/tests/test_signal_service_run_registry.py
-- backend/portfolio/tests/test_signal_admin_api.py
-- module_tree_full.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_signal_service_run_registry portfolio.tests.test_signal_admin_api --keepdb; Pop-Location` => PASS 18/18.
-- `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerate thanh cong (510 modules).
-- `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build backend celery_worker celery_beat; Pop-Location` => backend, celery worker va celery beat rebuilt/restarted successfully.
-
-Rui ro con lai / note:
-- Lifecycle run registry da duoc noi vao jobs/preview/purge path co san; phan materialization UI/summary phase sau van can follow-up neu can hien thi them tren control surface.
-
-# Entry 2026-05-01d - Hard-block legacy AdminOps write surfaces on backend
-
-Muc tieu:
-- Chan server-side cac write surface cu cua AdminOps cho Runtime Vnstock Config va Data Ops backfill khi user khong co permission ghi tuong ung.
-- Giu read-only current/changelog/status surfaces cho staff, nhung tu choi update/reset/apply neu khong co quyen cu the.
-- Dong bo regression tests cho staff co/quanh permission de proof hard-block khong chi nam o UI.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/views_admin_runtime.py`:
-  - Them helper kiem tra surface permission chung.
-  - Chan `update-config` va `reset-to-defaults` neu user khong co `portfolio.change_runtimevnstockconfig` hoac khong phai superuser.
-  - Chan `intraday-side-backfill/apply` neu user khong co `portfolio.change_intradaytick` hoac khong phai superuser.
-- `backend/portfolio/tests/test_admin_ops.py`:
-  - Cap quyen ghi cu the cho staff duoc phep trong success-path tests.
-  - Them regression 403 cho staff bi lock tren Vnstock Config va Data Ops apply.
-- `module_tree_full.md`:
-  - Regenerate sau slice hard-block backend permission.
-- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
-  - Add entry 2026-05-01d.
-- `PROGRESS_DASHBOARD.md`:
-  - Dong bo audit file list voi slice backend moi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/views_admin_runtime.py
-- backend/portfolio/tests/test_admin_ops.py
-- module_tree_full.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_admin_ops.AdminOpsVnstockRuntimeConfigTests portfolio.tests.test_admin_ops.AdminIntradaySideBackfillAsyncTests --keepdb; Pop-Location` => PASS 9/9.
-- `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerate thanh cong (510 modules).
-
-Rui ro con lai / note:
-- Cac read-only admin surfaces van giu `IsAdminUser` theo design; neu can split granular hon cho cac write surface khac, can mot slice phan quyen backend rieng.
-
-# Entry 2026-05-01c - Add whale snapshot cache revision invalidation and AdminOps write-gated surfaces
-
-Muc tieu:
-- Invalidate whale analytics snapshot/materialization caches ngay sau intraday side backfill apply.
-- Gate cac thao tac ghi nguy hiem o AdminOps (Vnstock Config / Data Ops) bang permission flags, giu read-only surfaces hien thi.
-
-Noi dung cap nhat chinh:
-- `backend/portfolio/services_whale_analytics_snapshot.py`:
-  - Them whale analytics cache revision theo symbol va thread revision vao snapshot cache key + shared bucket-facts cache key.
-  - Bo sung helper invalidation de bump revision cho symbol bi backfill/recompute tac dong.
-  - Emission `materialization.cache_revision` trong payload snapshot de traceability ro hon.
-- `backend/portfolio/views_whale_analytics.py`:
-  - Thread revision token vao `_build_snapshot_cache_key` va payload builder de key request khop voi payload materialized.
-- `backend/portfolio/tasks_maintenance.py`:
-  - Sau `intraday_side_backfill_apply` thanh cong, bump revision cache cho cac symbol touched va ghi `cache_invalidated_symbols` vao task payload.
-- `backend/portfolio/views_stock_workspace_admin.py`:
-  - Expose `surface_permissions` cho `vnstock_config_write` va `intraday_side_backfill_apply` trong AdminOps stats.
-- `backend/portfolio/tests/test_whale_analytics_snapshot_api.py`:
-  - Cap nhat cache-key assertions sang revision-aware path.
-  - Them regression cho invalidate/bump revision va shared bucket-facts cache reuse.
-- `backend/portfolio/tests/test_admin_ops.py`:
-  - Them regression cho `surface_permissions` va backfill task invalidation.
-- `frontend/src/pages/AdminOps.jsx`:
-  - Khóa cac write actions bang banner read-only + permission flags, giu read-only surfaces cho staff.
-- `frontend/src/components/adminops/VnstockBenchmarkPanel.jsx`:
-  - Disable apply recommendation khi khong co quyen ghi Vnstock.
-- `frontend/src/i18n/vi.js`, `frontend/src/i18n/en.js`:
-  - Them chuoi i18n cho banner read-only va surface names.
-- `module_tree_full.md`:
-  - Regenerate sau khi code slice runtime/UI thay doi.
-
-Danh sach tep cap nhat:
-- backend/portfolio/services_whale_analytics_snapshot.py
-- backend/portfolio/views_whale_analytics.py
-- backend/portfolio/tasks_maintenance.py
-- backend/portfolio/views_stock_workspace_admin.py
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py
-- backend/portfolio/tests/test_admin_ops.py
-- frontend/src/pages/AdminOps.jsx
-- frontend/src/components/adminops/VnstockBenchmarkPanel.jsx
-- frontend/src/i18n/vi.js
-- frontend/src/i18n/en.js
-- module_tree_full.md
-- docs/CODE_CHANGE_AUDIT_LEDGER.md
-- PROGRESS_DASHBOARD.md
-
-Ket qua kiem tra:
-- `Push-Location "c:\Mujoco Projects\vninvest\backend"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_whale_analytics_snapshot_api --keepdb; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" manage.py test portfolio.tests.test_admin_ops --keepdb; Pop-Location` => PASS.
-- `Push-Location "c:\Mujoco Projects\vninvest\frontend"; npm run build; Pop-Location` => compiled successfully.
-- `Push-Location "c:\Mujoco Projects\vninvest"; & "c:/Mujoco Projects/vninvest/.venv/Scripts/python.exe" .\scripts\ops\generate_module_tree.py; Pop-Location` => `module_tree_full.md` regenerate thanh cong (510 modules).
-- `Push-Location "c:\Mujoco Projects\vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend; Pop-Location` => backend healthy, frontend started.
-
-Rui ro con lai / note:
-- Phan permission gate hien tai la UI/read-only gate dua tren `surface_permissions`; backend write endpoints van di qua cau truc admin hien co. Neu can phan quyen server-side chuyen sau hon, can mot slice backend permission model rieng.
-
-# Entry 2026-05-01b - Tighten Money Flow Control Center docs for cache invalidation, approval gates and forensic carve-outs
-
-Muc tieu:
-- Khóa lại các gap còn mơ hồ trong bộ tài liệu Money Flow Control Center Data Lifecycle trước khi implementation bắt đầu.
-- Siết rõ cache invalidation sau recompute, pending-only whale bridge semantics, permission-gated link-out và physical forensic carve-out.
-- Đồng bộ lại quality protocol để các audit/review/integration sau này bắt đúng safeguard thay vì chỉ đọc tên task.
-
-Danh sach tep cap nhat:
-- docs/TECH_SPEC_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add explicit cache invalidation, pending-only whale bridge, permission-gated link-out và physical forensic carve-out rules)
-- docs/TASKBOARD_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - tighten DoD/evidence cho deprecation hard-block, purge/recompute invalidation, pending bridge và permission-gated UI)
-- docs/IMPLEMENTATION_PLAN_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - align phase goals to hard-block legacy writers, invalidation, physical carve-out and approval-gated bridge)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_HANDOFF_MASTER_20260501.md (MODIFIED - extend final outcomes and non-negotiables with the new safeguards)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_TRACEABILITY_MATRIX_20260501.md (MODIFIED - add Req IDs MFC-12..MFC-16 for the new safeguards)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_CODE_QUALITY_CONSTITUTION_20260501.md (MODIFIED - expand coverage targets, scenarios and human-gate items)
-- docs/MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_SELF_AUDIT_AND_TEST_PROTOCOL_20260501.md (MODIFIED - add audit risks and pass criteria for the new safeguards)
-- docs/RUN_CODE_REVIEW_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add review prompts/checklist items for hard-block, invalidation, permission gating and forensic carve-out)
-- docs/RUN_INTEGRATION_TESTS_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add pass criteria for backend hard-block, approval-gated bridge, permission-gated link-out and physical carve-out)
-- docs/RUN_SPEC_AUDIT_MONEY_FLOW_CONTROL_CENTER_DATA_LIFECYCLE_20260501.md (MODIFIED - add Council of Three prompts for the new safeguard gaps)
-- quality/spec_audits/2026-05-01-money-flow-triage-summary.md (MODIFIED - append post-rebuttal closure note)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01b)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_DETAILED_CONTRACTS_20260502.md (NEW - detailed field/query/degrade contract for operator P0 read endpoints)
+- docs/ENTERPRISE_CORE_ACCESS_CAPABILITY_PAYLOAD_CONTRACT_20260502.md (NEW - backend capability snapshot contract for frontend auth/navigation)
+- docs/ENTERPRISE_CORE_ADMIN_IMPLEMENTATION_TASKBOARD_20260502.md (NEW - frontend/backend slice taskboard for core admin rollout)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - add new admin companion artifacts)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (MODIFIED - link detailed operator contracts)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (MODIFIED - link capability payload contract)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (MODIFIED - link implementation taskboard)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - include 3 new companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include 3 new core detail docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - expand official core foundation list)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02h)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: grep_search/read_file cross-check trên TECH_SPEC, TASKBOARD, IMPLEMENTATION_PLAN, HANDOFF_MASTER, TRACEABILITY_MATRIX, CODE_QUALITY_CONSTITUTION, SELF_AUDIT_AND_TEST_PROTOCOL, RUN_CODE_REVIEW, RUN_INTEGRATION_TESTS, RUN_SPEC_AUDIT và quality/spec_audits triage summary => safeguard mới đã xuất hiện đúng ở các file liên quan.
+- PASSED: doc design grounded against current frontend auth anchors and backend API/runtime anchors before patching.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
 
-# Entry 2026-05-01a - Materialize shared bucket facts for whale snapshot cold path
+# Entry 2026-05-02g - Add admin RBAC matrix, screen spec and operator API contract backlog
 
 Muc tieu:
-- Materialize shared bucket facts on the whale snapshot cold path so repeated requests reuse raw tick aggregation instead of rebuilding it per call.
-- Bump snapshot cache version to v5 and keep the cache key aligned with the new materialization payload.
-- Add focused regression coverage for shared facts reuse and the cache-key bump.
+- Day bo `Core Admin UI` docs tu muc kien truc tong quan xuong muc du implementation.
+- Chot 3 lop con thieu: RBAC/capability matrix, screen-level spec, va backlog contract cho operator admin APIs.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md`:
+  - Tao ma tran roles, abilities, capability claims va route gating cho Central Operator Admin va Tenant Admin Console.
+  - Bám theo current frontend primitives: `AbilityContext`, `PortfolioContext`, `Can`, `ProtectedRoute`, va current `manage all` fallback.
+- `docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md`:
+  - Tao screen spec cho admin surfaces: Platform Overview, Tenant Registry, PATs, Usage/Billing, Runtime Health/Jobs, Audit Trace, AI Runtime Governance, va tenant console screens.
+- `docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md`:
+  - Tao backlog contract cho operator admin APIs noi bo, tach khoi partner APIs.
+  - Chia P0 read-first endpoints va P1 write endpoints cho tenant/runtime/operator actions.
+- `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`:
+  - Them companion artifacts moi de admin UI docs tro thanh mot cum ro rang.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them 3 companion docs moi vao core blueprint.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them 3 companion docs moi vao core companion set.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Nang `CORE PLATFORM FOUNDATION` len mot bo ho so day du hon voi admin RBAC, screen spec va operator API backlog.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Sua drift boundary cho `vip-app`: khong con rang buoc sai theo huong chi qua MCP API, ma canh chinh lai theo versioned partner/global APIs + MCP/data tools tuy use case.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02g.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
 
 Danh sach tep cap nhat:
-- backend/portfolio/services_whale_analytics_snapshot.py (MODIFIED - add shared bucket facts cache/materialization metadata and fix the time import collision)
-- backend/portfolio/views_whale_analytics.py (MODIFIED - bump snapshot cache key to v5)
-- backend/portfolio/tests/test_whale_analytics_snapshot_api.py (MODIFIED - add regression for shared bucket facts reuse and update v5 contract expectation)
-- module_tree_full.md (MODIFIED - regenerate after backend snapshot materialization slice)
-- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01a)
+- docs/ENTERPRISE_CORE_ADMIN_RBAC_CAPABILITY_MATRIX_20260502.md (NEW - roles, abilities, capability claims and route gating for core admin surfaces)
+- docs/ENTERPRISE_CORE_ADMIN_SCREEN_SPEC_20260502.md (NEW - screen-level spec for central operator and tenant admin routes)
+- docs/ENTERPRISE_CORE_OPERATOR_ADMIN_API_CONTRACT_BACKLOG_20260502.md (NEW - operator-only API backlog and freeze order)
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (MODIFIED - link admin companion artifacts)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - include new admin companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include new admin companion docs in core pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - official core foundation list expanded)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - align vip-app boundary with partner/global API direction)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02g)
 - PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
 
 Validation:
-- PASSED: `Push-Location .\backend; & ..\.venv\Scripts\python.exe manage.py test portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_returns_contract_and_headers portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_snapshot_endpoint_falls_back_to_local_build_when_lock_wait_expires portfolio.tests.test_whale_analytics_snapshot_api.WhaleAnalyticsSnapshotApiTestCase.test_shared_bucket_facts_cache_reuses_raw_tick_query_across_calls --keepdb; Pop-Location` => 3/3 PASS.
-- NOTE: the full snapshot test module still surfaces an unrelated baseline percentile assertion in `test_snapshot_endpoint_returns_percentile_fields_when_historical_baseline_exists`; this slice did not change that path.
+- PASSED: `grep_search` / `read_file` cross-check against existing frontend auth anchors (`ProtectedRoute`, `Can`, `PortfolioContext`, `AbilityContext`, `TopNav`) and current core docs before patching.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02f - Define Core Admin UI architecture and package placement
+
+Muc tieu:
+- Chot ro `Core Admin UI` nam o dau va duoc thiet ke theo boundary nao.
+- Tach bach ro giua `core` backend package, `web` admin shell va `vip-app` local admin backend de tranh hieu sai khi vao implementation.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md`:
+  - Tao companion doc moi cho `Core Admin UI`.
+  - Chot placement: human-facing admin UI nam trong `web`, khong nam trong `core`.
+  - Phan tach 3 surfaces: Central Operator Admin, Tenant Admin Console, VIP Internal Admin.
+  - Bo sung information architecture, route layout, UI-to-API mapping va rollout path.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them link companion doc moi.
+  - Them subsection chot `Core Admin UI` la `web` surface tieu thu operator/partner APIs cua `core`.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them `Core Admin UI` vao companion docs list cua `core`.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them `Core Admin UI Architecture` vao `CORE PLATFORM FOUNDATION` va official entry path.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Chot boundary rule moi: human-facing admin UI pages thuoc `web`, `core` khong chua React admin shell.
+- `docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md`:
+  - Them distinction ro rang giua `VIP Internal Admin` va `Core Admin UI`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02f.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_ADMIN_UI_ARCHITECTURE_20260502.md (NEW - admin UI architecture, package placement, route groups and UI-to-API mapping)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add admin UI companion doc and placement rule)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include admin UI doc in core companion set)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add admin UI doc to official core foundation pack)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - make admin UI placement explicit in package boundaries)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - distinguish VIP internal admin from core admin UI)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02f)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `read_file` cross-check against module tree, blueprint, repo strategy, partner API draft, ledger and progress docs before patching.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02e - Add core resource freeze checklist, schema analysis and make core docs the official pack entry path
+
+Muc tieu:
+- Thuc hien tiep option 1 va 3: them freeze checklist theo tung resource cho `core`, va cam link cheo de bo core docs tro thanh entry point chinh thuc trong enterprise pack.
+- Bo sung phan tich schema chi tiet hon cho `core` truoc khi nghi den migrations hay schema split.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md`:
+  - Tao checklist freeze cho 6 resource uu tien: tenant, service account, PAT credential, usage meter, symbol snapshot, session facts.
+  - Chot current decisions, open questions va dieu kien de moi resource duoc coi la frozen.
+- `docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md`:
+  - Tao phan tich schema chi tiet cho `core`: control-plane, commercial-plane, market/signal serving, ops/audit, quan he du lieu, candidate P0/P1/P2 schema slices.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them links den freeze checklist va schema analysis.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them 2 companion docs moi vao core summary.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them phan `CORE PLATFORM FOUNDATION` va chot bo core docs lam entry point chinh thuc.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`, `docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md`, `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`, `docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md`, `docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md`, `docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md`, `docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md`:
+  - Them cross-links den bo core docs de tranh drift giua target-state docs va current-code-aligned core pack.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02e.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_RESOURCE_FREEZE_CHECKLIST_20260502.md (NEW - freeze checklist for the first six core resources)
+- docs/ENTERPRISE_CORE_SCHEMA_ANALYSIS_20260502.md (NEW - detailed schema analysis for core domains and candidate tables)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - link new companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - include new companion docs in core summary)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - add core platform foundation section and official entry path)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - cross-link core docs before package move)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - cross-link core schema and contract docs)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - cross-link core docs for package/core decisions)
+- docs/B2B_ENTERPRISE_ARCHITECTURE_PROPOSAL_20260501.md (MODIFIED - reinterpret target-state DB segregation via core docs)
+- docs/VIP_APP_INTERNAL_ADMIN_FEATURES_20260501.md (MODIFIED - link VIP/core integration semantics to partner/core docs)
+- docs/TECH_SPEC_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - defer core schema/contract decisions to core docs)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - add core docs to mandatory context for B2B/VIP slices)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02e)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `read_file` cross-check against master index, repo strategy, tech stack, codebase restructuring, B2B architecture, VIP app admin, AI tech spec and handoff docs before patching.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02d - Complete core documentation set with contract pack, schema strategy and partner API draft
+
+Muc tieu:
+- Hoan thien bo tai lieu `core` thanh bo ho so co cau truc, khong chi dung o blueprint tong quan.
+- Bo sung day du artifact con thieu de co the review/freeze contracts truoc implementation: contract pack, storage/schema strategy va partner API draft.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md`:
+  - Tao contract pack cho `core` gom resource catalog, field dictionary, endpoint matrix, auth/scope/meter matrix, error model, versioning va freeze checklist.
+- `docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md`:
+  - Tao chien luoc luu tru va schema theo huong schema-last: logical namespaces, rules cho bang canonical/read model, migration/backfill discipline va phase split gates.
+- `docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md`:
+  - Tao draft partner/global API contracts cho `vip-app` gom control-plane, commercial-plane va data-plane endpoints cung response shapes va error codes.
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them links den 3 companion artifacts moi.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them companion docs list tai phan executive summary cua `core`.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02d.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_CONTRACT_PACK_20260502.md (NEW - resource catalog, field dictionary, endpoint matrix and contract governance for core)
+- docs/ENTERPRISE_CORE_STORAGE_SCHEMA_STRATEGY_20260502.md (NEW - schema-last storage strategy and migration/split rules for core)
+- docs/ENTERPRISE_CORE_PARTNER_API_CONTRACT_DRAFT_20260502.md (NEW - detailed partner/vip-app API contract draft)
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - link to companion docs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - link to companion docs in core summary)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02d)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `file_search` confirmed companion docs did not already exist before creation.
+- PASSED: `read_file` cross-check against blueprint and rebaseline ensured new docs align with contract-first/schema-last direction already established.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02c - Deepen core blueprint with contract-first governance and schema-last phase gates
+
+Muc tieu:
+- Chi tiet hoa `core` de sat hon voi cac API/data platforms production dang hoat dong thuc te.
+- Chot ro rang khong nen implement partner/global APIs hay tach schema CSDL truoc khi contract pack va serving model duoc thong qua.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them cac dac tinh contract cua he production thuc te: resource-oriented contracts, additive-first policy, version pinning, idempotency, cursor pagination, request id, projection control.
+  - Them mo hinh van hanh `contract-first` voi 8 artifact bat buoc cua contract pack.
+  - Them chinh sach `schema-last`: chua tach physical schema CSDL, dung logical ownership map truoc va them phase gates cho schema split.
+  - Them contract conventions, contract freeze gates va phase gates G0/G1/G2 truoc implementation.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them executive summary ve `contract-first` va `schema-last` de rang buoc thu tu trien khai.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02c.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add contract-first governance, real-world API conventions and schema-last phase gates)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - add executive summary for contract-first and schema-last execution order)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02c)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `fetch_webpage` cross-check against Stripe API versioning/idempotency/request IDs, GitHub REST API versions, Google Cloud API design guide.
+- PASSED: `read_file` cross-check against current blueprint and rebaseline docs to ensure new gates align with existing tenant/PAT/billing design.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02b - Enrich core blueprint with international B2B token, billing and quota patterns for VIP-app
+
+Muc tieu:
+- Bo sung cho blueprint `core` cac pattern quoc te phu hop voi B2B SaaS/API platform, tap trung vao `vip-app`.
+- Chot ro mo hinh user management, machine identity, PAT lifecycle, billing meters va quota enforcement de co the trien khai duoc tren codebase hien tai.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Them section pattern quoc te tham chieu cho `core`: fine-grained PAT, usage plan, entitlements, metered billing va tach user principal khoi machine access.
+  - Cu the hoa mo hinh `CoreTenant -> CoreServiceAccount -> CorePATCredential -> CoreUsageMeter/CoreBillingAccount` cho `vip-app`.
+  - Them cac quy tac token rotation/revoke/scope/expiry, quota 4 lop, meter catalog va partner control APIs cho service accounts, PATs, usage, billing.
+  - Bo sung them service boundaries `identity_access_service`, `usage_meter_rollup_service`, `token_audit_anomaly_service`.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them executive summary cho pattern quoc te can ap dung vao `vip-app` access layer va tac dong len execution plan.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02b.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (MODIFIED - add international B2B core patterns and detailed VIP-app token/billing/quota model)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - summarize token, entitlement, metering and billing guidance for VIP-app)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02b)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `fetch_webpage` cross-check against Stripe usage-based billing and entitlements, AWS API Gateway usage plans and API keys, GitHub fine-grained personal access token guidance.
+- PASSED: `read_file` cross-check against current `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`, `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`, `module_tree_full.md` and existing audit docs.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-02a - Add detailed core platform architecture blueprint for all packages
+
+Muc tieu:
+- Cu the hoa `core` thanh mot kien truc tong the nhung co the implement: boundary, CSDL, services va global APIs.
+- Chot ro `core` phai phuc vu `web`, `opencore`, `vip-app`, `mobile` bang cac contracts nao, va package nao khong duoc tu tai tao logic du lieu loi.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md`:
+  - Tao blueprint chi tiet cho `core` gom vai tro, boundary voi cac package, logic architecture, to chuc CSDL theo domain/data tier, services architecture va global API catalog.
+  - Chot danh sach read models/tables can bo sung som: tenant/PAT, symbol snapshot, session facts, price board snapshot, sector snapshot, partner projection.
+  - Chot nguyen tac partner/global APIs chi duoc doc tu canonical tables hoac materialized projections.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them link tu phan `core` executive summary sang blueprint chi tiet moi.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02a.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_CORE_PLATFORM_ARCHITECTURE_BLUEPRINT_20260502.md (NEW - detailed blueprint for core boundaries, database organization, services and global APIs)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - link core summary to the detailed core blueprint)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02a)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `read_file` / `grep_search` cross-check against `backend/portfolio/models.py`, `backend/portfolio/opencore_dpi.py`, `backend/portfolio/opencore_analytics.py`, `backend/portfolio/opencore_revenue.py`, `backend/portfolio/urls.py`, `backend/portfolio/urls_stock.py`, `backend/portfolio/urls_realtime.py`, `backend/portfolio/market_data_service.py`, `backend/portfolio/services_whale_analytics_snapshot.py`, `backend/portfolio/tasks_prefetch.py`, `backend/portfolio/tasks_realtime.py`, `backend/portfolio/tasks_maintenance.py`, `backend/config/health.py`.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-01zf - Expand enterprise rebaseline with core background-service and API-readiness review
+
+Muc tieu:
+- Tap trung hoa phan `core` trong execution rebaseline bang inventory runtime/background services, roadmap enrichment va danh gia readiness cua cac API dung chung.
+- Chuyen yeu cau “service nao dang chay nen, service nao nen bo sung, API nao du chua” thanh guidance co the thuc thi cho phase dau cua enterprise transition.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Them runtime deploy-unit inventory cho `db`, `redis`, `backend`, `celery_worker`, `celery_beat`.
+  - Them bang danh sach background services dang chay, nhiem vu va huong enterprise cho prefetch, realtime, streams, lifecycle, whale/order-flow, screener, OpenCore va enrichment jobs.
+  - Them roadmap cac service nen bo sung som nhat de lam giau du lieu va giam chi phi request-time.
+  - Them bang danh gia readiness cua cac global read paths/API nhu realtime ticker(s), intraday, price-board, stock overview va whale analytics snapshot.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01zf.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (MODIFIED - add core runtime services, enrichment roadmap and API readiness review)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01zf)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `read_file` / `grep_search` cross-check against `docker-compose.dev.yml`, `backend/config/settings.py`, `backend/config/urls.py`, `backend/portfolio/tasks_prefetch.py`, `backend/portfolio/tasks_realtime.py`, `backend/portfolio/tasks_maintenance.py`, `backend/portfolio/tasks_global_screener.py`, `backend/portfolio/tasks_whale_service.py`, `backend/portfolio/market_views.py`, `backend/portfolio/market_data_service.py`, `backend/portfolio/services_whale_analytics_snapshot.py`.
+- PASSED: day la slice doc-only; khong can build, migrate hay refresh runtime.
+
+# Entry 2026-05-01ze - Rebaseline enterprise transformation doc pack to current code
+
+Muc tieu:
+- Bien bo tai lieu enterprise transformation 2026-05-01 tu target-state proposal thanh execution pack co the trien khai tu repo hien tai.
+- Chen mot lop rebaseline bat buoc de doi code di tu `backend/` + `frontend/` + OpenCore + Redis Streams/Channels hien co, thay vi bat dau bang move sang `packages/`, Kong, ClickHouse hoac VIP local backend day du.
+- Dong bo lai cac tai lieu dieu phoi chinh de sequencing, scope va trigger conditions bam sat thuc te code.
+
+Noi dung cap nhat chinh:
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md`:
+  - Tao moi execution override doc cho toan bo pack enterprise.
+  - Chot current-code anchors: Django ASGI, Channels, Redis Streams, OpenCore entitlements, AICommandCenter runtime, current repo layout.
+  - Dua ra phase plan rebase: boundary-first, core-ready monolith, entitlement-first, build-variants-first, thin VIP local control plane, packages later, heavy infra by measured triggers.
+- `docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md`:
+  - Them note bat buoc doc Rebaseline truoc khi dien giai 18 tai lieu target-state.
+- `docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md`:
+  - Chuyen cach doc tu “dung ngay Kong/ClickHouse” sang “Redis/PostgreSQL/Channels-first, Kong/ClickHouse later by trigger”.
+- `docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md`:
+  - Them buoc A0 boundary-first tren cau truc hien tai va doi A1 thanh restructure vat ly co dieu kien.
+  - Dieu chinh Build Variants de di tu `frontend/src/` hien co truoc khi move sang `packages/web/`.
+- `docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md`:
+  - Danh dau day la folder target map, khong phai chi thi move ngay lap tuc.
+- `docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md`:
+  - Buoc doc Rebaseline len dau va them hard constraint current-code-first sequencing.
+- `docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md`:
+  - Them Step 0 rebaseline.
+  - Doi Step 1 sang mo rong AI config hien co (`AICommandCenterConfig`, `ai_runtime_config`) thay vi bo qua current runtime.
+  - Doi frontend rollout sang `AICommandCenter.jsx` + `frontend/src/config/buildTarget.js` hien co.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-01ze.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list.
+
+Danh sach tep cap nhat:
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_EXECUTION_REBASELINE_20260501.md (NEW - current-code aligned execution override for enterprise transformation pack)
+- docs/ENTERPRISE_B2B_MCP_TRANSFORMATION_MASTER_INDEX_20260501.md (MODIFIED - require rebaseline before interpreting the 18-doc pack)
+- docs/HIGH_CONCURRENCY_TECH_STACK_PROPOSAL_20260501.md (MODIFIED - phase-gate Kong/ClickHouse and prioritize current Redis/PostgreSQL/Channels stack)
+- docs/REPO_STRATEGY_AND_EXECUTION_ROADMAP_20260501.md (MODIFIED - add boundary-first phase and defer physical package move)
+- docs/CODEBASE_RESTRUCTURING_PROPOSAL_20260501.md (MODIFIED - clarify target-map vs immediate move)
+- docs/MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_HANDOFF_MASTER_20260501.md (MODIFIED - add rebaseline precedence and current-code-first hard constraint)
+- docs/IMPLEMENTATION_PLAN_MULTI_AGENT_AI_TRADING_INFRASTRUCTURE_20260501.md (MODIFIED - align implementation steps to current AI runtime and frontend surfaces)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-01ze)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: doc cross-check by source inspection against current repo anchors `backend/config/asgi.py`, `backend/config/settings.py`, `backend/portfolio/realtime/tick_producer.py`, `backend/portfolio/opencore_api.py`, `backend/portfolio/opencore_analytics.py`, `backend/portfolio/ai_runtime_config.py`, `backend/portfolio/views_ai_runtime_stats.py`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/ProtectedRoute.jsx`, `frontend/src/components/Can.jsx`, `frontend/src/App.jsx`.
+- PASSED: `grep_search` / `read_file` confirmed repo hien tai chua co `packages/`, chua co root `shared/api-contracts/`, chua co `buildTarget.js`, nhung da co runtime foundations cho Redis Streams, Channels, OpenCore va AICommandCenter.
+- PASSED: day la slice doc-only; khong can build, migrate hoac refresh runtime.
 
 # Entry 2026-04-28m - Stabilize whale analytics chart snapshot 1H runtime
 
@@ -9684,4 +9046,3 @@ Trạng thái:
 - docker-compose ps: tất cả 6 container **healthy**
 - GET /api/health/ → HTTP 200
 - Migration  047_add_market_discovery_fields_to_signals → [X] applied
-
