@@ -3,7 +3,7 @@
  * Bảng danh sách các vị thế đang nắm giữ phiên bản Workstation (v6.7).
  * Tích hợp Performance Bar và Sparklines mini.
  */
-import React, { useCallback } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useI18n } from '../context/LangContext';
 
@@ -66,7 +66,71 @@ function MiniSparkline({ points, width = 60, height = 24 }) {
   );
 }
 
-export default function HoldingsTable({ holdings, loading }) {
+function formatWhaleMatchedValue(value) {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return null;
+  }
+
+  if (numericValue >= 1_000_000_000_000) return `${(numericValue / 1_000_000_000_000).toFixed(1)}N`;
+  if (numericValue >= 1_000_000_000) return `${(numericValue / 1_000_000_000).toFixed(1)}T`;
+  if (numericValue >= 1_000_000) return `${(numericValue / 1_000_000).toFixed(0)}M`;
+  if (numericValue >= 1_000) return `${(numericValue / 1_000).toFixed(0)}K`;
+  return numericValue.toLocaleString('vi-VN');
+}
+
+function resolveWhaleAlertIcon(sizeClass, severity) {
+  const normalizedSizeClass = String(sizeClass || '').toLowerCase();
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSizeClass === 'shark' || normalizedSeverity === 'critical' || normalizedSeverity === 'high') {
+    return '🦈';
+  }
+  return '🐋';
+}
+
+function resolveWhaleAlertRowTone(severity) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'critical') {
+    return 'border-rose-500/60 bg-rose-950/35 shadow-[0_0_0_1px_rgba(248,113,113,0.26),0_0_18px_rgba(244,63,94,0.18)]';
+  }
+  if (normalizedSeverity === 'high') {
+    return 'border-amber-500/60 bg-amber-950/25 shadow-[0_0_0_1px_rgba(251,191,36,0.22),0_0_16px_rgba(245,158,11,0.14)]';
+  }
+  if (normalizedSeverity === 'medium') {
+    return 'border-cyan-500/50 bg-cyan-950/18 shadow-[0_0_0_1px_rgba(34,211,238,0.18),0_0_14px_rgba(34,211,238,0.10)]';
+  }
+  return 'border-slate-500/60 bg-slate-900/35 shadow-[0_0_0_1px_rgba(148,163,184,0.14)]';
+}
+
+function resolveWhaleAlertBadgeTone(severity) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'critical') {
+    return 'border-rose-400/80 bg-rose-950/55 text-rose-100 shadow-[0_0_12px_rgba(248,113,113,0.20)]';
+  }
+  if (normalizedSeverity === 'high') {
+    return 'border-amber-400/80 bg-amber-950/40 text-amber-100 shadow-[0_0_12px_rgba(251,191,36,0.18)]';
+  }
+  if (normalizedSeverity === 'medium') {
+    return 'border-cyan-400/70 bg-cyan-950/32 text-cyan-100 shadow-[0_0_10px_rgba(34,211,238,0.12)]';
+  }
+  return 'border-slate-500/70 bg-slate-900/70 text-slate-100';
+}
+
+function resolveWhaleAlertSeverityLabel(t, severity) {
+  const normalizedSeverity = String(severity || '').toLowerCase();
+  if (normalizedSeverity === 'critical') return t('severityCritical');
+  if (normalizedSeverity === 'high') return t('severityHigh');
+  if (normalizedSeverity === 'medium') return t('severityMedium');
+  return t('severityLow');
+}
+
+function resolveWhaleAlertSideLabel(t, side) {
+  const normalizedSide = String(side || '').toLowerCase();
+  if (normalizedSide === 'sell') return t('typeSell');
+  return t('typeBuy');
+}
+
+export default function HoldingsTable({ holdings, loading, whaleAlertsBySymbol = {} }) {
   const { t, formatQuotePrice, formatQuoteInteger } = useI18n();
 
   const renderSkeleton = () => (
@@ -103,20 +167,30 @@ export default function HoldingsTable({ holdings, loading }) {
         </thead>
         <tbody>
           {holdings.map((h, idx) => {
+            const symbolKey = String(h.symbol || '').trim().toUpperCase();
+            const whaleAlert = whaleAlertsBySymbol[symbolKey] || null;
             const currentPrice = h.live_current_price ?? h.current_price;
             const marketValue = h.live_market_value ?? h.market_value;
             const plPct = h.live_unrealized_pl_pct ?? h.unrealized_pl_pct;
             const isFresh = (h.live_freshness_seconds ?? Infinity) < 30;
+            const whaleBadgeTone = whaleAlert ? resolveWhaleAlertBadgeTone(whaleAlert.severity) : '';
+            const whaleRowTone = whaleAlert ? resolveWhaleAlertRowTone(whaleAlert.severity) : '';
+            const whaleIcon = whaleAlert ? resolveWhaleAlertIcon(whaleAlert.sizeClass, whaleAlert.severity) : '';
+            const whaleSeverityLabel = whaleAlert ? resolveWhaleAlertSeverityLabel(t, whaleAlert.severity) : '';
+            const whaleSideLabel = whaleAlert ? resolveWhaleAlertSideLabel(t, whaleAlert.side) : '';
+            const whaleMatchedValueLabel = whaleAlert ? formatWhaleMatchedValue(whaleAlert.matchedValue) : null;
 
             return (
               <tr 
                 key={h.symbol} 
-                className="group bg-slate-900/30 hover:bg-slate-800/40 border border-slate-800/50 rounded-xl transition-all duration-300 relative overflow-hidden"
+                className={`group bg-slate-900/30 hover:bg-slate-800/40 border border-slate-800/50 rounded-xl transition-all duration-300 relative overflow-hidden ${whaleRowTone}`}
               >
                 <td className="px-4 py-3 first:rounded-l-xl last:rounded-r-xl relative">
-                  {isFresh && (
+                  {whaleAlert ? (
+                    <div className={`absolute left-0 top-0 bottom-0 w-1 ${whaleAlert.severity === 'critical' ? 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.55)]' : whaleAlert.severity === 'high' ? 'bg-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.50)]' : 'bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]'} fade-in`} />
+                  ) : isFresh ? (
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)] fade-in" />
-                  )}
+                  ) : null}
                   <div className="flex flex-col">
                     <Link 
                       to={`/stocks/${h.symbol}`} 
@@ -127,6 +201,17 @@ export default function HoldingsTable({ holdings, loading }) {
                     <span className="text-[9px] text-slate-500 mt-0.5 uppercase truncate max-w-[100px]">
                       {h.industry || 'Khác'}
                     </span>
+                    {whaleAlert ? (
+                      <span
+                        className={`mt-1 inline-flex w-fit max-w-full items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] ${whaleBadgeTone} ${whaleAlert.severity === 'critical' || whaleAlert.severity === 'high' ? 'animate-pulse' : ''}`}
+                        title={`${whaleSeverityLabel} ${whaleSideLabel}${whaleMatchedValueLabel ? ` · ${whaleMatchedValueLabel}` : ''}`}
+                      >
+                        <span>{whaleIcon}</span>
+                        <span>{whaleSeverityLabel}</span>
+                        <span>{whaleSideLabel}</span>
+                        {whaleMatchedValueLabel ? <span className="text-[8px] font-black tracking-[0.14em] text-slate-300">{whaleMatchedValueLabel}</span> : null}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
 

@@ -21,6 +21,7 @@ import {
   buildLiveHoldingsOverlay,
   buildLiveSummaryFromHoldings,
 } from '../utils/dashboardRealtimeSelectors';
+import { normalizeAlertSeverity, severityWeight } from '../utils/alertTaxonomy';
 
 const AllocationPieChart = lazy(() => import('../components/AllocationPieChart'));
 const PortfolioAnalyticsPanel = lazy(() => import('../components/PortfolioAnalyticsPanel'));
@@ -37,6 +38,47 @@ function DashboardPanelFallback({ minHeightClass = 'min-h-[220px]' }) {
 
 function normalizeSymbol(value) {
   return String(value || '').trim().toUpperCase();
+}
+
+function normalizeAlertTimestamp(value) {
+  const parsedTime = new Date(value || 0).getTime();
+  return Number.isFinite(parsedTime) ? parsedTime : null;
+}
+
+function buildRecentWhaleAlertMap(alertList) {
+  const now = Date.now();
+  const recentWindowMs = 5 * 60 * 1000;
+
+  return (alertList || []).reduce((accumulator, alert) => {
+    const symbol = normalizeSymbol(alert?.symbol);
+    if (!symbol) {
+      return accumulator;
+    }
+
+    const timestamp = normalizeAlertTimestamp(alert?.ts || alert?.time || alert?.created_at || alert?.event_time);
+    if (timestamp === null || now - timestamp > recentWindowMs) {
+      return accumulator;
+    }
+
+    const severity = normalizeAlertSeverity(alert?.severity, 'medium');
+    const sideSource = String(alert?.side || alert?.signal_type || alert?.type || '').toLowerCase();
+    const side = sideSource.includes('sell') ? 'sell' : 'buy';
+    const sizeClass = String(alert?.size_class || '').trim().toLowerCase();
+    const matchedValue = Number(alert?.matched_value ?? alert?.matchedValue ?? alert?.value ?? 0);
+    const current = accumulator[symbol];
+
+    if (!current || timestamp > current.ts || (timestamp === current.ts && severityWeight(severity) > severityWeight(current.severity))) {
+      accumulator[symbol] = {
+        ts: timestamp,
+        severity,
+        side,
+        sizeClass,
+        matchedValue,
+      };
+    }
+
+    return accumulator;
+  }, {});
 }
 
 export default function LegacyDashboard() {
@@ -127,6 +169,11 @@ export default function LegacyDashboard() {
   const monitoredQuotes = useMemo(
     () => monitoredSymbols.map((symbol) => quotesBySymbol[symbol] || { symbol }),
     [monitoredSymbols, quotesBySymbol],
+  );
+
+  const whaleAlertsBySymbol = useMemo(
+    () => buildRecentWhaleAlertMap(alerts),
+    [alerts],
   );
 
   const liveHoldings = buildLiveHoldingsOverlay(holdings, quotesBySymbol);
@@ -645,7 +692,7 @@ export default function LegacyDashboard() {
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-300">
           {t('dashboard.holdings')}
         </h2>
-        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} />
+        <HoldingsTable holdings={liveHoldings} loading={loadingHoldings} whaleAlertsBySymbol={whaleAlertsBySymbol} />
       </div>
     </div>
   );

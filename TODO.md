@@ -19,7 +19,7 @@ Huong lam tiep:
 
 ## Phase 1: Holdings + Core Alerts [3 files, 1 day]
 
-### [ ] 1.1 HoldingsTable whale badges
+### [x] 1.1 HoldingsTable whale badges
 ```
 frontend/src/components/HoldingsTable.jsx
 - Add prop: whaleAlertsBySymbol
@@ -78,5 +78,5 @@ backend/portfolio/views.py
 [ ] Metrics before/after: alert engagement
 ```
 
-**Current Phase**: 1.1 HoldingsTable
+**Current Phase**: 1.2 Sticky Alert Bar
 

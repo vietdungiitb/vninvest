@@ -1,3 +1,43 @@
+# Entry 2026-05-02bi - HoldingsTable whale badges and recent alert glow
+
+Muc tieu:
+- Gop whale alert recent 5 phut vao `HoldingsTable` de canh bao ngay tren dong vi the.
+- Giu nguon du lieu ton tai san trong `LegacyDashboard` (`alerts` realtime) va khong them fetch contract moi.
+- Cap nhat backlog phase 1 de danh dau 1.1 hoan thanh va chuyen sang 1.2 cho dashboard improvement.
+
+Noi dung cap nhat chinh:
+- `frontend/src/pages/LegacyDashboard.jsx`:
+  - Tao `whaleAlertsBySymbol` tu `alerts` realtime voi cua so 5 phut, gom severity/side/size class/matched value.
+  - Truyen map nay vao `HoldingsTable` de render badge theo symbol.
+- `frontend/src/components/HoldingsTable.jsx`:
+  - Them badge whale o cot ma co icon `🦈/🐋`, severity label, side label va matched value compact.
+  - Them row glow/accent theo severity va giu indicator freshness xanh cho row khong co whale alert.
+- `TODO.md`:
+  - Danh dau `1.1 HoldingsTable whale badges` la done va chuyen `Current Phase` sang `1.2 Sticky Alert Bar`.
+- `module_tree_full.md`:
+  - Regenerate sau slice nay; tong module van 564.
+- `docs/CODE_CHANGE_AUDIT_LEDGER.md`:
+  - Add entry 2026-05-02bi.
+- `PROGRESS_DASHBOARD.md`:
+  - Sync audit file list cho slice whale badge nay.
+
+Danh sach tep cap nhat:
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - render whale badge/glow on holdings rows)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - build 5-minute whale alert map and pass to holdings table)
+- TODO.md (MODIFIED - mark 1.1 complete and advance current phase)
+- module_tree_full.md (MODIFIED - regenerated after the dashboard badge slice, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/HoldingsTable.jsx` va `frontend/src/pages/LegacyDashboard.jsx` sau khi them whale badge map.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest/frontend"; npm run build` => frontend compile xanh sau HoldingsTable badge update.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` => refresh dev stack thanh cong; backend healthy, frontend started.
+- PASSED: `Set-Location "c:/Mujoco Projects/vninvest"; & ".venv/Scripts/python.exe" scripts/ops/generate_module_tree.py` => regenerated `module_tree_full.md` successfully (564 modules).
+
+Residual note:
+- Badge map currently dựa vào shape alert realtime `symbol`, `ts`, `side`, `severity`, `size_class`, `matched_value`; nếu upstream schema đổi, helper `buildRecentWhaleAlertMap()` sẽ cần chạm nhỏ.
+
 # Entry 2026-05-02bh - Canonical tenant registry and bridge removal
 
 Muc tieu:

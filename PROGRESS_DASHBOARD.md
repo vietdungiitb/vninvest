@@ -1,3 +1,17 @@
+# ✅ AUDIT FILE LIST (2026-05-02bi)
+- frontend/src/components/HoldingsTable.jsx (MODIFIED - whale badge + row glow for recent whale alerts)
+- frontend/src/pages/LegacyDashboard.jsx (MODIFIED - 5-minute whale alert map from realtime feed)
+- TODO.md (MODIFIED - mark 1.1 done and advance current phase to 1.2)
+- module_tree_full.md (MODIFIED - regenerated after dashboard badge slice, total modules 564)
+- docs/CODE_CHANGE_AUDIT_LEDGER.md (MODIFIED - add entry 2026-05-02bi)
+- PROGRESS_DASHBOARD.md (MODIFIED - audit file list synchronized)
+
+Validation:
+- PASSED: `get_errors` clean tren `frontend/src/components/HoldingsTable.jsx` va `frontend/src/pages/LegacyDashboard.jsx` sau khi them whale badge map.
+- PASSED: `npm run build` trong `frontend` thanh cong voi HoldingsTable whale badge update.
+- PASSED: `docker compose -f .\docker-compose.dev.yml up -d --build frontend backend` refresh dev stack thanh cong; backend va frontend healthy.
+- PASSED: `scripts/ops/generate_module_tree.py` regenerate thanh cong `module_tree_full.md` voi tong 564 modules.
+
 # ✅ AUDIT FILE LIST (2026-05-02bh)
 - backend/portfolio/models.py (MODIFIED - add CoreTenant canonical registry and align tenant-scoped primitives)
 - backend/portfolio/partner_tenant_context.py (MODIFIED - resolve tenant context through CoreTenant)

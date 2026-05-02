@@ -2,7 +2,7 @@
 
 > Do not edit manually. Regenerate with `python scripts/ops/generate_module_tree.py`.
 
-Generated at: `2026-05-02 21:32:59`
+Generated at: `2026-05-02 21:41:43`
 
 ## Summary
 
@@ -10,8 +10,8 @@ Generated at: `2026-05-02 21:32:59`
 - Python modules: 345
 - JS/TS modules: 219
 - Total classes: 573
-- Total functions: 2278
-- Total top-level variables: 3796
+- Total functions: 2286
+- Total top-level variables: 3819
 
 ## Python Modules
 
@@ -2714,9 +2714,9 @@ Generated at: `2026-05-02 21:32:59`
 ### `frontend/src/components/HoldingsTable.jsx`
 
 - Functions:
-  - `MiniSparkline`, `PerformanceBar`, `renderSkeleton`, `toX`, `toY`
+  - `MiniSparkline`, `PerformanceBar`, `formatWhaleMatchedValue`, `renderSkeleton`, `resolveWhaleAlertBadgeTone`, `resolveWhaleAlertIcon`, `resolveWhaleAlertRowTone`, `resolveWhaleAlertSeverityLabel`, `resolveWhaleAlertSideLabel`, `toX`, `toY`
 - Top-level variables:
-  - `clampedPct`, `currentPrice`, `isFresh`, `isPositive`, `isUp`, `marketValue`, `max`, `min`, `numericPct`, `pathData`, `plPct`, `range`, `widthStr`
+  - `clampedPct`, `currentPrice`, `isFresh`, `isPositive`, `isUp`, `marketValue`, `max`, `min`, `normalizedSeverity`, `normalizedSide`, `normalizedSizeClass`, `numericPct`, `numericValue`, `pathData`, `plPct`, `range`, `symbolKey`, `whaleAlert`, `whaleBadgeTone`, `whaleIcon`, `whaleMatchedValueLabel`, `whaleRowTone`, `whaleSeverityLabel`, `whaleSideLabel`, `widthStr`
 
 ### `frontend/src/components/KLineChartPanel.jsx`
 
@@ -3255,9 +3255,9 @@ Generated at: `2026-05-02 21:32:59`
 ### `frontend/src/pages/LegacyDashboard.jsx`
 
 - Functions:
-  - `DashboardPanelFallback`, `buildFallbackSparkline`, `handleSync`, `hydrateHeatmapSparkline`, `normalizeSymbol`, `scheduleHydration`
+  - `DashboardPanelFallback`, `buildFallbackSparkline`, `buildRecentWhaleAlertMap`, `handleSync`, `hydrateHeatmapSparkline`, `normalizeAlertTimestamp`, `normalizeSymbol`, `scheduleHydration`
 - Top-level variables:
-  - `AllocationPieChart`, `CONCURRENCY`, `EquityVsBenchmarkChart`, `PortfolioAnalyticsPanel`, `PortfolioDigestPanel`, `avgPositionSize`, `base`, `batch`, `batchResults`, `cancelled`, `changePct`, `current`, `delayTimer`, `delta`, `existing`, `fetchData`, `fetched`, `handleSeverityBarFilter`, `heatmapData`, `held`, `holdingSymbols`, `holdingsMap`, `idleHandle`, `industry`, `industryRaw`, `liveHoldings`, `liveSummary`, `marketValue`, `monitoredQuotes`, `monitoredSymbols`, `next`, `nominalSize`, `payload`, `points`, `prev`, `quote`, `realizedPL`, `realtimeDeltaVsSnapshot`, `realtimeMarketBreadth`, `realtimeStalePositions`, `res`, `resp`, `results`, `settled`, `snapshotMarketValue`, `sparkline24`, `symbolsToHydrate`, `syncButtonLabel`, `total`, `totalHeldValue`, `trackedDisplaySize`, `trackedInfo`, `trackedSymbolMap`, `trackedSymbolNames`, `trades`, `unreadUnifiedCount`, `unrealizedPL`, `unrealizedPLPctValue`, `unrealizedPLValue`
+  - `AllocationPieChart`, `CONCURRENCY`, `EquityVsBenchmarkChart`, `PortfolioAnalyticsPanel`, `PortfolioDigestPanel`, `avgPositionSize`, `base`, `batch`, `batchResults`, `cancelled`, `changePct`, `current`, `delayTimer`, `delta`, `existing`, `fetchData`, `fetched`, `handleSeverityBarFilter`, `heatmapData`, `held`, `holdingSymbols`, `holdingsMap`, `idleHandle`, `industry`, `industryRaw`, `liveHoldings`, `liveSummary`, `marketValue`, `matchedValue`, `monitoredQuotes`, `monitoredSymbols`, `next`, `nominalSize`, `now`, `parsedTime`, `payload`, `points`, `prev`, `quote`, `realizedPL`, `realtimeDeltaVsSnapshot`, `realtimeMarketBreadth`, `realtimeStalePositions`, `recentWindowMs`, `res`, `resp`, `results`, `settled`, `severity`, `side`, `sideSource`, `sizeClass`, `snapshotMarketValue`, `sparkline24`, `symbol`, `symbolsToHydrate`, `syncButtonLabel`, `timestamp`, `total`, `totalHeldValue`, `trackedDisplaySize`, `trackedInfo`, `trackedSymbolMap`, `trackedSymbolNames`, `trades`, `unreadUnifiedCount`, `unrealizedPL`, `unrealizedPLPctValue`, `unrealizedPLValue`, `whaleAlertsBySymbol`
 
 ### `frontend/src/pages/modern/ModernDashboard.jsx`
 
